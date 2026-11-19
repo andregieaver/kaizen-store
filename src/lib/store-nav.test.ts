@@ -19,6 +19,13 @@ const SKIPPED = new Set(["setup", "assistant"]);
 
 const items = STORE_SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.items));
 
+/** The addresses inside a section's tab: its sidebar's `prefixes`, found by the key the tab names (bloat review step 2.28). */
+const insideTab = (base: string, flags: Parameters<typeof storeTabs>[1], label: string): string[] => {
+  const tab = storeTabs(base, flags).find((t) => t.label === label)!;
+  expect(tab.also, `${label} names its section instead of its addresses`).toBeUndefined();
+  return storeAreas(base, flags).find((a) => a.section === tab.section)!.prefixes;
+};
+
 describe("the store admin's sections (D147)", () => {
   it("lists each page once, in one sidebar", () => {
     const paths = items.map((i) => i.path);
@@ -62,12 +69,12 @@ describe("the store admin's sections (D147)", () => {
     expect(tabs.map((t) => t.label)).toEqual(["Home", "Orders", "Products", "Customers", "Marketing", "Analytics", "Website", "Bookings", "Support", "Settings"]);
     expect(tabs[0]).toMatchObject({ href: "/admin/s", exact: true, icon: "home" });
     const settings = tabs.find((t) => t.label === "Settings")!;
-    expect(settings).toMatchObject({ href: "/admin/s/settings", exact: true });
+    expect(settings).toMatchObject({ href: "/admin/s/settings", exact: true, section: "settings" });
     // The Design page is in Settings' address space, but the Website's: its tab is not marked as Settings'.
-    expect(settings.also).not.toContain("/admin/s/settings/design");
+    expect(insideTab("/admin/s", ALL, "Settings")).not.toContain("/admin/s/settings/design");
     // Nor its own address: below it would take every settings page, Design included.
-    expect(settings.also).not.toContain("/admin/s/settings");
-    expect(tabs.find((t) => t.label === "Website")!.also).toContain("/admin/s/settings/design");
+    expect(insideTab("/admin/s", ALL, "Settings")).not.toContain("/admin/s/settings");
+    expect(insideTab("/admin/s", ALL, "Website")).toContain("/admin/s/settings/design");
     const areas = storeAreas("/admin/s", ALL);
     const settingsArea = areas.find((a) => a.exact?.includes("/admin/s/settings"))!;
     expect(settingsArea.groups.map((g) => g.heading)).toEqual(["Store", "Selling", "Site", "Tools", "Account"]);
@@ -201,7 +208,7 @@ describe("the store admin's sections (D147)", () => {
     // Marked as the page being viewed by its own address: a query string on Deals' address never was.
     const sidebar = storeAreas("/admin/s", { features: ["shop", "sales"] }).find((a) => a.prefixes.includes("/admin/s/leads"))!;
     expect(sidebar.groups.flatMap((g) => g.items).find((i) => i.label === "Leads")).toMatchObject({ href: "/admin/s/leads", icon: "user-plus" });
-    expect(storeTabs("/admin/s", { features: ["shop", "sales"] }).find((t) => t.label === "Customers")!.also).toContain("/admin/s/leads");
+    expect(insideTab("/admin/s", { features: ["shop", "sales"] }, "Customers")).toContain("/admin/s/leads");
     // Without Deals there are no leads to follow up.
     expect(storeSections({ features: ["shop"] }).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)))).not.toContain("/leads");
   });
@@ -215,7 +222,7 @@ describe("the store admin's sections (D147)", () => {
     // The sidebar marks Discounts on an offer's page, and Marketing's tab is marked there too.
     const sidebar = storeAreas("/admin/s", ALL).find((a) => a.prefixes.includes("/admin/s/campaigns"))!;
     expect(sidebar.groups.flatMap((g) => g.items).find((i) => i.label === "Discounts")).toMatchObject({ href: "/admin/s/discounts", also: ["/admin/s/campaigns"] });
-    expect(storeTabs("/admin/s", ALL).find((t) => t.label === "Marketing")!.also).toEqual(expect.arrayContaining(["/admin/s/discounts", "/admin/s/campaigns"]));
+    expect(insideTab("/admin/s", ALL, "Marketing")).toEqual(expect.arrayContaining(["/admin/s/discounts", "/admin/s/campaigns"]));
   });
 
   it("finds a page's section by the longest address it is inside", () => {
@@ -375,6 +382,35 @@ describe("the menu's cost (bloat review step 0.17)", () => {
     for (let i = 0; i < runs; i += 1) storeNav("/admin/x", ALL, canOpen);
     // Under 2 ms a build measured locally on 14 November 2026; 125 ms before this step. 20 ms is a margin for a loaded CI runner.
     expect((performance.now() - start) / runs).toBeLessThan(20);
+  });
+
+  // The menu of a store with everything on, as JSON, at the base `/admin/s` (docs/rules/budgets.md): 14,757 characters on 19 November 2026,
+  // 17,307 before each section's tab stopped repeating its sidebar's addresses (bloat review step 2.28, whose brief gave 14,000 for the menu
+  // of 12 November, six pages smaller). Lowered, never raised: a new page adds about 120.
+  const MENU_CHARS = 15_000;
+
+  it("sends each address once as a prefix: the menu of a store with everything on stays under its figure (bloat review step 2.28)", () => {
+    const base = "/admin/s";
+    const tabs = storeTabs(base, ALL);
+    const areas = storeAreas(base, ALL);
+    const json = JSON.stringify({ tabs, areas });
+    expect(json.length).toBeLessThan(MENU_CHARS);
+    // Home keeps its own addresses; every section's tab names its sidebar instead, and each sidebar has the key.
+    expect(tabs[0]).toMatchObject({ label: "Home", also: HOME_PATHS.map((p) => `${base}${p}`) });
+    expect(tabs[0].section).toBeUndefined();
+    for (const tab of tabs.slice(1)) {
+      expect(tab.also, tab.label).toBeUndefined();
+      expect(areas.filter((a) => a.section === tab.section), tab.label).toHaveLength(1);
+    }
+    expect(areas[0].section).toBe("home");
+    // Besides the tabs' own links (a section's tab leads to its main page, also a link in its sidebar), each address is sent at most twice:
+    // once as an item's href, once as a prefix.
+    const lists = JSON.stringify({ tabs: tabs.map(({ href, ...rest }) => (void href, rest)), areas });
+    const addresses = new Set([...json.matchAll(/"(\/admin\/s(?:\/[^"]*)?)"/g)].map((m) => m[1]));
+    for (const address of addresses) {
+      const times = lists.split(`"${address}"`).length - 1;
+      expect(times, address).toBeLessThanOrEqual(2);
+    }
   });
 
   it("storeNav equals the two it replaces, for every role", () => {

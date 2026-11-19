@@ -152,7 +152,20 @@
     }
   },
   "saves": {
-    "product": 130588,
-    "builder": 1087
+    "product": {
+      "answer": 127821,
+      "words": 66222,
+      "menu": 13514
+    },
+    "builder": {
+      "answer": 1087,
+      "words": 0,
+      "menu": 0
+    },
+    "shell": {
+      "answer": 318490,
+      "words": 66679,
+      "menu": 13514
+    }
   }
 }

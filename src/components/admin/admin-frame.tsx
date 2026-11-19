@@ -140,7 +140,7 @@ export function AdminFrame({
         />
       ) : (
         <>
-          <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: w.sections, items: tabs }] : []), ...groups]} label={w.allPages} />
+          <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: w.sections, items: tabs }] : []), ...groups]} label={w.allPages} areas={areas ?? []} />
           {menuFooter && <div className="flex flex-col gap-4 border-t border-line px-3 pt-6 text-sm">{menuFooter}</div>}
         </>
       )}
@@ -181,7 +181,7 @@ export function AdminFrame({
         {sheet}
         {before}
         <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
-          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizena Flow" }} label={tabsLabel} collapseOn={workspace} />, null)}
+          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizena Flow" }} label={tabsLabel} collapseOn={workspace} areas={areas ?? []} />, null)}
           <div className="flex min-w-0 flex-1 flex-col">
             <header data-admin-topbar className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
               {focused(
@@ -206,7 +206,7 @@ export function AdminFrame({
             {phoneTabs && focused(<div aria-hidden className="h-24 shrink-0 md:hidden" />, null)}
           </div>
         </div>
-        {phoneTabs && focused(<PhoneTabBar items={tabs} label={w.sections} more={w.more} />, null)}
+        {phoneTabs && focused(<PhoneTabBar items={tabs} label={w.sections} more={w.more} areas={areas ?? []} />, null)}
         {menu}
       </>
     );
@@ -230,7 +230,7 @@ export function AdminFrame({
           </div>
           {tabs.length > 0 && (
             <div className={`mx-auto px-1 sm:px-3 ${bar}`}>
-              <StoreTabs items={tabs} label={tabsLabel} />
+              <StoreTabs items={tabs} label={tabsLabel} areas={areas ?? []} />
             </div>
           )}
         </header>

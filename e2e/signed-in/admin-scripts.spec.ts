@@ -119,41 +119,56 @@ async function idsOf(store: string): Promise<{ product: string; page: string }> 
   }
 }
 
-/** The balanced JSON object that starts at `from` (an opening brace) in `text`, skipping string contents and escaped quotes. */
-function balancedObject(text: string, from: number): string {
-  let depth = 0;
-  let inString = false;
-  for (let i = from; i < text.length; i += 1) {
-    const char = text[i];
-    if (inString) {
-      if (char === "\\") i += 1;
-      else if (char === '"') inString = false;
-    } else if (char === '"') inString = true;
-    else if (char === "{") depth += 1;
-    else if (char === "}") {
-      depth -= 1;
-      if (depth === 0) return text.slice(from, i + 1);
+/**
+ * Every balanced JSON value that follows `opener` in `text` (a prop's name and its opening brace or bracket: `"texts":{`, `"tabs":[`,
+ * `"areas":[`), each from that brace or bracket to the one that closes it, skipping string contents and escaped quotes.
+ */
+function balanced(text: string, opener: string): string[] {
+  const open = opener[opener.length - 1];
+  const close = open === "{" ? "}" : "]";
+  const found: string[] = [];
+  for (let at = text.indexOf(opener); at !== -1; at = text.indexOf(opener, at + 1)) {
+    const from = at + opener.length - 1;
+    let depth = 0;
+    let inString = false;
+    let end = -1;
+    for (let i = from; i < text.length && end === -1; i += 1) {
+      const char = text[i];
+      if (inString) {
+        if (char === "\\") i += 1;
+        else if (char === '"') inString = false;
+      } else if (char === '"') inString = true;
+      else if (char === open) depth += 1;
+      else if (char === close) {
+        depth -= 1;
+        if (depth === 0) end = i;
+      }
     }
+    if (end === -1) throw new Error(`an unbalanced ${opener} in the payload`);
+    found.push(text.slice(from, end + 1));
   }
-  throw new Error("an unbalanced texts object in the payload");
+  return found;
 }
 
-/**
- * The bytes of the `texts` objects in the document's flight payload (the prop `AdminTextProvider` is given), and the top-level keys
- * (the areas) they hold.
- */
-function handedOf(html: string): { handed: number; areas: string[] } {
-  const joined = [...html.matchAll(/<script[^>]*>(self\.__next_f\.push\([\s\S]*?\))<\/script>/g)]
+/** The flight payload a document carries: the strings at index 1 of its inline `self.__next_f.push([...])` calls, joined. */
+function payloadOf(html: string): string {
+  return [...html.matchAll(/<script[^>]*>(self\.__next_f\.push\([\s\S]*?\))<\/script>/g)]
     .map((match) => {
       const call = match[1];
       const parts = JSON.parse(call.slice(call.indexOf("(") + 1, call.lastIndexOf(")"))) as unknown[];
       return typeof parts[1] === "string" ? parts[1] : "";
     })
     .join("");
+}
+
+/**
+ * The bytes of the `texts` objects in a flight payload (the prop `AdminTextProvider` is given), and the top-level keys (the areas) they
+ * hold.
+ */
+function wordsIn(flight: string): { handed: number; areas: string[] } {
   let handed = 0;
   const areas = new Set<string>();
-  for (let at = joined.indexOf('"texts":{'); at !== -1; at = joined.indexOf('"texts":{', at + 1)) {
-    const object = balancedObject(joined, at + '"texts":'.length);
+  for (const object of balanced(flight, '"texts":{')) {
     // Other props are called `texts` too (a count's plural forms, `{ one, many }`, and empty ones, one per row): the words are objects of
     // areas, each an object of groups, and those two kinds change with the store's rows, not with the words.
     const found = JSON.parse(object) as Record<string, unknown>;
@@ -163,6 +178,11 @@ function handedOf(html: string): { handed: number; areas: string[] } {
     for (const key of keys) areas.add(key);
   }
   return { handed, areas: [...areas].sort() };
+}
+
+/** The words handed in the document's flight payload. */
+function handedOf(html: string): { handed: number; areas: string[] } {
+  return wordsIn(payloadOf(html));
 }
 
 /** Names of Supabase's realtime, storage and database clients: the full client (an upload's press loads it), never an idle screen (step 2.31). */
@@ -284,10 +304,16 @@ test.describe("what a signed-in screen is handed", () => {
 });
 
 /**
- * What a save answers with (the English owner only): the bytes of the response to the server action that saves the product editor
- * and the page builder, recorded in the baseline (`saves`) and held to 5 %. The smallest real change is one more character in the
- * title; the title is set back and saved again, so the store is left as it was. A save that makes more than one action request is
- * measured by the one that carries the changed title (the builder's title also asks for a preview and a follow-up).
+ * What a save answers with (the English owner only): the response to the server action that saves the product editor and the page
+ * builder, and the document of a shell redraw (the store's Pages list, loaded again), each as three figures recorded in the baseline
+ * (`saves`) and held to 4 %: `answer`, the whole body's bytes; `words`, the bytes of its `texts` objects (as the words handed are
+ * counted); `menu`, the bytes of its `tabs` and `areas` arrays (bloat review step 2.28). An action's answer is the flight text itself,
+ * read directly; the document's payload is decoded as above. The shell's answer is the whole document, which grows with the pages the
+ * specs before this one made (306,317 bytes on a fresh store, 318,490 after them): its baseline is what CI sees. The tabs are passed to
+ * the rail first, so the payload often names them by reference and only the sidebars are counted. The smallest real change is one more
+ * character in the title; the title is set back and saved again, so the store is left as it was. A save that makes more than one action
+ * request is measured by the one that carries the changed title (the builder's title also asks for a preview and a follow-up). The
+ * builder's save is a draft's, which redraws nothing (a publish does).
  */
 test.describe("what a save answers with", () => {
   test.setTimeout(90_000);
@@ -295,13 +321,13 @@ test.describe("what a save answers with", () => {
    * Presses Save and returns the bytes of the answer to the save's own server action: the action request that carries the changed
    * title (a builder's title also makes a preview action and a follow-up, which do not).
    */
-  async function saveAnswer(page: Page, press: () => Promise<void>, changed: string): Promise<number> {
-    const answers: number[] = [];
+  async function saveAnswer(page: Page, press: () => Promise<void>, changed: string): Promise<string> {
+    const answers: string[] = [];
     const onResponse = (response: Response) => {
       const request = response.request();
       if (request.method() !== "POST" || request.headers()["next-action"] === undefined) return;
       if (!(request.postData() ?? "").includes(changed)) return;
-      void response.body().then((body) => void answers.push(body.length), () => undefined);
+      void response.body().then((body) => void answers.push(body.toString("utf8")), () => undefined);
     };
     page.on("response", onResponse);
     try {
@@ -311,19 +337,32 @@ test.describe("what a save answers with", () => {
         await expect.poll(() => answers.length, { timeout: 6000 }).toBeGreaterThan(0);
       }).toPass({ timeout: 40_000 });
       await page.waitForTimeout(1000);
-      return Math.max(...answers);
+      return answers.reduce((largest, body) => (Buffer.byteLength(body) > Buffer.byteLength(largest) ? body : largest));
     } finally {
       page.off("response", onResponse);
     }
   }
 
-  function check(name: "product" | "builder", answer: number) {
+  /** The three figures of an answer: the body's bytes, its words and its menu (`flight` is the flight text the body carries). */
+  function check(name: "product" | "builder" | "shell", body: string, flight: string) {
+    const figures = {
+      answer: Buffer.byteLength(body),
+      words: wordsIn(flight).handed,
+      menu: [...balanced(flight, '"tabs":['), ...balanced(flight, '"areas":[')].reduce((sum, part) => sum + Buffer.byteLength(part), 0),
+    };
     if (MEASURE) {
-      console.log(`[save] ${name} ${answer}`);
+      console.log(`[save] ${name} answer=${figures.answer} words=${figures.words} menu=${figures.menu}`);
       return;
     }
     const held = baseline.saves[name];
-    expect(answer, `the ${name} save's answer is ${answer} bytes, baseline ${held}; lower the baseline in the same change when a figure falls: E2E_MEASURE=1 prints them`).toBeLessThanOrEqual(held * 1.05);
+    for (const key of ["answer", "words", "menu"] as const) {
+      // The shell redraw's answer is the whole Pages list, which grows with every page the specs before it (and other changes) add, so
+      // it gets 15 % of room; its words and its menu, which this budget is about, keep 4 %.
+      const room = name === "shell" && key === "answer" ? 1.15 : 1.04;
+      expect(figures[key], `the ${name} ${key} is ${figures[key]} bytes, baseline ${held[key]}; lower the baseline in the same change when a figure falls: E2E_MEASURE=1 prints them`).toBeLessThanOrEqual(
+        held[key] * room,
+      );
+    }
   }
 
   test("the product editor's save", async ({ page }) => {
@@ -341,7 +380,7 @@ test.describe("what a save answers with", () => {
         `${before}x`,
       );
       await expect(page.getByText("Saved.").first()).toBeVisible();
-      check("product", answer);
+      check("product", answer, answer);
     } finally {
       await title.fill(before);
       await page.getByRole("button", { name: "Save", exact: true }).first().click();
@@ -368,7 +407,7 @@ test.describe("what a save answers with", () => {
         `${before}x`,
       );
       await expect(saved).toBeVisible();
-      check("builder", answer);
+      check("builder", answer, answer);
     } finally {
       await title.fill(before);
       await page.getByRole("button", { name: "Save draft" }).click();
@@ -376,5 +415,14 @@ test.describe("what a save answers with", () => {
     }
     await page.reload();
     await expect(page.getByLabel("Title", { exact: true })).toHaveValue(before);
+  });
+
+  test("a shell redraw", async ({ page }) => {
+    // The Pages list, loaded again: its document carries the shell's words and menu, as a redraw of the route sends them.
+    await page.goto(`/admin/${E2E_STORE}/pages`);
+    await expect(page.locator("main").first()).toBeVisible();
+    const response = await page.goto(`/admin/${E2E_STORE}/pages`);
+    const html = await response!.text();
+    check("shell", html, payloadOf(html));
   });
 });
