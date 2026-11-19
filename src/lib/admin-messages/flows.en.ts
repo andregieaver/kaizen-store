@@ -18,6 +18,7 @@ export const flowsEn = {
   automationOff: "The automation that sent the same email is now off, so nobody gets both.",
   goals: {
     title: "Start from a goal",
+    fromOwn: "Starts from the email you already send for this, with its days and follow-ups.",
     start: "Start",
     welcome: { title: "Welcome new subscribers", text: "A welcome the same day; three days later, a thank-you or your best sellers." },
     after_purchase: { title: "Follow up after a purchase", text: "A week after an order, ask how it is going; three weeks later, something new." },

@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
-import { RECIPES, type RecipeKey } from "@/lib/flow-recipes";
+import { flowFromAutomation, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { insertStep, newStep, removeStep, withCondition, withEmailWords, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
 import { storeAction } from "@/server/store-action";
@@ -23,7 +24,10 @@ export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey): 
   const made = await storeAction(
     { store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" },
     async (member, lang) => {
-      const recipe = RECIPES[key]?.(member.store.localization.locales[0] ?? "en-GB");
+      const locale = member.store.localization.locales[0] ?? "en-GB";
+      // The owner's own automation, when they wrote one, keeps its words, days and follow-ups (slice 3, M2.2); else the recipe.
+      const own = key in RECIPES ? await getAutomation(member.store, key) : null;
+      const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key]?.(locale);
       if (!recipe) return refusal(adminText(lang, "flows").problems.missing);
       const saved = await saveFlow(member.store.id, member.account.id, null, recipe);
       return saved.ok ? { status: "ok" as const, messages: [saved.id] } : refusal(saved.problem);

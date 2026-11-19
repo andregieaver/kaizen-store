@@ -181,7 +181,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## Accounts that own stores (D748, `docs/extensions.md`)
 
 - **Accounts that own stores (D748, `docs/extensions.md`)**: plans, billing and paid extensions move from the store to the account that
-  owns it, `commerce.organisations` (built in steps E1 to E11; E1 is built). Every store has `stores.organisation_id`, set by the database
+  owns it, `commerce.organisations` (built in steps E1 to E11; E1 to E3 and part one of E4 are built). Every store has `stores.organisation_id`, set by the database
   when its transaction commits (`commerce.place_store()`, deferred triggers on `stores` and on owners in `store_members`): Kaizena Flow's own
   stores (template, store templates, sandboxes, the house store) in the one `platform` organisation, every other in the organisation its
   creator owns (`commerce.account_organisation()`, made on first need, named after the store, never after a person). A sandbox kept by its
@@ -192,7 +192,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   is never changed in place: `replacePrices()` switches the old row off and adds a new one, as for plans; the editor shows every currency
   the plans or the catalogue have a price in (`extensionCurrencies()`), so a save never drops a price it did not show. An account's standing is
   `extensionState()` over `organisationExtensionStandings()`: the platform always; every account until `platform_settings.extensions_launched_at`;
-  then its plan's grants (any of its stores on a plan), then its own `organisation_extensions` row. The store read carries the facts (`Store.extensionFacts`); what works is read against the clock (`storeExtensionsOn()`).
+  then its plan's grants (its account's plan once billed through its account, else any of its stores' plans), then its own `organisation_extensions` row. The store read carries the facts (`Store.extensionFacts`); what works is read against the clock (`storeExtensionsOn()`).
 - The gates (E3): a page, item or tool of an extension carries `extension` (navigation, `ADMIN_PAGES`, `TOOL_EXTENSIONS`); every page under an
   extension's folders calls `requireExtension(member, id)` and every action or route there passes the extension to `checkPermission()`,
   `requirePermission()` or `storeAction()` (`extension-gates.scan.test.ts`). A job asks `commerce.extension_on(store, id)`. A writer of an
@@ -200,6 +200,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - Deals on another screen are `dealsOn(store)` (the feature `sales` and the Deals extension), never `featureOn(store, "sales")`; a
   membership's `store.workOn` already includes the Work extension (`liveStore()` in `auth.ts`); a desk whose account lacks the support
   desk reads as mode `off`.
+- Billed through the account (E4, `docs/extensions.md` 13): an account with a row in `commerce.organisation_billing` has one plan,
+  subscription and trial for all its stores; one without is billed store by store (`store_billing`). A store's plan, price, status, trial
+  and fee are read from the view `commerce.store_plans` (`by_account` says which), never from either table alone; a count of revenue takes
+  one line per subscription. An account's limits are its plan's against its stores' use together (`StoreLimits.account`). A store billed
+  through its account refuses its own plan actions (`ACCOUNT_BILLED`). Writers of a store's own row (`applySubscription()`, the trial
+  pause mark) stay on `store_billing`.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

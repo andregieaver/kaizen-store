@@ -34,7 +34,7 @@ export async function platformOverview(): Promise<PlatformOverview> {
         count(*) filter (where b.status in ('past_due', 'unpaid'))::int as overdue,
         count(*) filter (where b.status is null or b.status in ('canceled', 'incomplete', 'incomplete_expired'))::int as without_plan
       from commerce.stores s
-      left join commerce.store_billing b on b.store_id = s.id
+      left join commerce.store_plans b on b.store_id = s.id
       where s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
     `),
     db().execute<Row>(sql`

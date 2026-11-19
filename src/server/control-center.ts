@@ -73,7 +73,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     -- Store templates (D175) are the platform's work, not the account's stores.
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.starter and not s.sandbox
     left join commerce.store_roles sr on sr.store_id = m.store_id and sr.id = m.role_id
-    left join commerce.store_billing b on b.store_id = s.id
+    left join commerce.store_plans b on b.store_id = s.id
     left join commerce.plans p on p.id = b.plan_id
     left join commerce.payment_providers pr on pr.store_id = s.id and pr.provider = 'stripe'
     where m.account_id = ${account.id}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())${onlyStore ? sql` and s.slug = ${onlyStore}` : sql``}

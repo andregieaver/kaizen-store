@@ -190,9 +190,12 @@ describe("email into the desk", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({ to_address: "lise@example.com", subject: "Re: Parcel" });
     expect(String(sent[0].text)).toContain("Your parcel is on its way.");
-    // The AI's answer is marked as the AI's (AI Act Art. 50), as the chat's notice says.
-    expect(String(sent[0].text)).toContain("Svar fra KI:");
-    expect(String(sent[0].text)).toContain("skrevet av kunstig intelligens");
+    // The AI's answer is signed by its assistant, and the line under the signature says it is the AI's (AI Act Art. 50).
+    const text = String(sent[0].text);
+    expect(text).not.toContain("Svar fra KI:");
+    expect(text).toContain("Med vennlig hilsen\n\nIngrid");
+    expect(text).toContain("skrevet av en KI-assistent");
+    expect(text.indexOf("skrevet av en KI-assistent")).toBeGreaterThan(text.indexOf("Ingrid"));
     await sendReplyEmails(new Date(Date.now() + 120_000));
     expect(await answerEmails(c.id)).toHaveLength(1);
   });

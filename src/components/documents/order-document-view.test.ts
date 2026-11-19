@@ -6,8 +6,16 @@ import { vatIncluded } from "@/lib/checkout";
 import { creditNoteSnapshot, type ReturnWorking } from "@/lib/credit-allocation";
 import { buildInvoiceSnapshot, type InvoiceFacts, type InvoiceLineFacts, type InvoiceOrderFacts, type OrderInvoiceSnapshot } from "@/lib/invoice-snapshot";
 import { DOCUMENT_LANGUAGES, documentText } from "@/lib/invoice-text";
+import { staticMarkup } from "@/lib/static-markup";
 
 import { OrderDocumentView } from "./order-document-view";
+
+/** What the PDF writes (`staticMarkup()`, D695) is what React writes, for every document drawn here. */
+const checkedMarkup = (element: Parameters<typeof renderToStaticMarkup>[0]) => {
+  const html = renderToStaticMarkup(element);
+  expect(staticMarkup(element)).toBe(html);
+  return html;
+};
 
 /**
  * The invoice and the credit note as a shopper reads them (D159, `docs/wave-1b-invoices.md` 4.3 and 6.1): every field of the content list
@@ -82,7 +90,7 @@ function facts(lines: InvoiceLineFacts[], over: Partial<InvoiceOrderFacts> = {},
 }
 
 const ctx = { number: "F-17", issuedOn: "2026-10-05", supplyDate: "2026-10-04" };
-const render = (snapshot: Parameters<typeof OrderDocumentView>[0]["snapshot"]) => renderToStaticMarkup(createElement(OrderDocumentView, { snapshot }));
+const render = (snapshot: Parameters<typeof OrderDocumentView>[0]["snapshot"]) => checkedMarkup(createElement(OrderDocumentView, { snapshot }));
 /** The words on the page, as one line, as a reader sees them. */
 const words = (html: string) =>
   html
@@ -124,7 +132,7 @@ describe("an invoice, in Norwegian", () => {
   });
 
   it("holds the snapshot's amounts and no others", () => {
-    const money = (n: number) => words(renderToStaticMarkup(createElement("span", null, new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" }).format(n / 100))));
+    const money = (n: number) => words(checkedMarkup(createElement("span", null, new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" }).format(n / 100))));
     expect(text).toContain(money(snap.totals.grossMinor));
     expect(text).toContain(money(snap.totals.vatMinor));
     for (const b of snap.buckets) {

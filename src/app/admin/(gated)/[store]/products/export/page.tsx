@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PhoneRow } from "@/components/admin/phone-row";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -38,7 +39,12 @@ export default async function ProductExportPage({ params, searchParams }: Props)
         backHref={`/admin/${store.slug}/products`}
         backLabel={w.back}
         title={w.title}
-        intro={fillWords(w.intro, { rows: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
+        intro={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{fillWords(w.intro, { rows: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}</span>
+          </>
+        }
       />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
@@ -59,6 +65,9 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     <>
       <ProblemAlert text={problem} />
       <ProductExportForm slug={member.store.slug} terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind }))} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
+      {/* Round 51 (D784): on a phone what the file leaves out is a row under the button. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.notCarried} sub={w.phone.notCarriedSub} change={w.phone.open} done={w.phone.close}>
       <Notice title={w.notCarried}>
         <ul className="list-disc pl-5">
           {w.notInFile.map((line) => (
@@ -73,6 +82,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           .
         </p>
       </Notice>
+      </PhoneRow>
+      </div>
       <ExportSection member={member} kind="product_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/products/export`} now={new Date()} />
     </>
   );

@@ -52,6 +52,17 @@ export function effectiveLimit(sources: { override?: LimitSource; plan?: LimitSo
   return { value: null, origin: "none" };
 }
 
+/**
+ * The widest of several sources (D748 E4: the overrides of an account's stores, for an account billed through its account): unlimited wins,
+ * else the largest number; none set is none.
+ */
+export function widestSource(sources: readonly LimitSource[]): LimitSource {
+  const set = sources.filter((s): s is { value: number | null } => s !== undefined);
+  if (set.length === 0) return undefined;
+  if (set.some((s) => s.value === null)) return { value: null };
+  return { value: Math.max(...set.map((s) => s.value as number)) };
+}
+
 export type LimitState = "ok" | "near" | "reached" | "over";
 
 /** Where usage stands against a limit: near from 80 %, reached from 100 %, over above it. Unlimited is always ok. */

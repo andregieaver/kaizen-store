@@ -283,6 +283,37 @@ offers deals and the inbox's conversations only with theirs (`recordKindsFor()`)
 without the support desk. The pages customers open from an extension (signing a contract, a Work invoice, a broadcast's tracked link) are
 left as they are: E5's read-only state decides them, since a customer may hold such a link from before.
 
+**E4, planned in four parts (19 November 2026).** Billing moves account by account: an account with a row in
+`commerce.organisation_billing` is billed through its account (one plan, one subscription, one trial, limits across its stores); one
+without is billed store by store (`store_billing`), as today. The owner's answer for the three running subscriptions (all in Stripe's test
+mode: one account with two Basic stores, one with Plus): **moved automatically at launch**, so the move is E5's launch day, and until then
+no account has a row except a test account the platform admin moves by hand.
+
+1. **Dark rows and reads**: the table; `commerce.store_plans`, what counts for each store; every reader of a store's plan reads the view;
+   limits across the account. Nothing changes while no account has a row.
+2. **Stripe**: the account's customer, one subscription with items (the plan and the extensions; bundles in E6, metered use in E11), the
+   extension prices synced, the webhook by `kaizen_organisation_id`, plan moves and plan events per account.
+3. **Screens**: Account → Billing for its owner (plan, extensions, invoices, how it pays), the platform's accounts list and its overrides
+   per account; a moved store's Billing page sends the owner to the account's.
+4. **The move**: a preview per account (its stores and their plans, the highest, what changes in money, an account above its plan's store
+   limit keeps its stores but adds none until it moves up), "Move this account" for a test account, and at launch every account: the
+   subscription of the store on the highest plan becomes the account's (no new charge), the others end with credit for the unused time,
+   the owner gets an email, trials move to the account, and sign-ups after launch start with an account trial. "Highest" is the plan's
+   position, then its price: Plus and Advanced both have position 2 in production.
+
+**E4 as built, part one (19 November 2026).** `organisation_billing` (one row per account; Kaizena Flow's own account is refused; a price
+belongs to its plan). `commerce.store_plans` gives each store its account's plan, price, subscription, status and trial when the account
+has a row, else its own; Kaizena Flow's fee takes the store's own override, then the account's. Readers moved to it: limits, the fee and
+the store's billing read (`getStoreBilling()`, with `byAccount`), setup, the trial job, plan reminders, the platform's home, overview,
+briefing, customers, channels, API, integrations and discounts, the AI manager's and the account assistant's reads, domain prices and the
+control center; plan analytics counts one line per subscription. What a plan includes (`organisation_extension_facts()`,
+`extension_on()`) is the account's plan once it has a row (a workspace with no store has one too). Limits of an account with a row: its
+plan's numbers against what its stores use together (each store's count, summed), its stores' overrides at their widest, and
+`stores_owned` counting the account's stores; A/B tests running stays per store (the engine's five are a store's). A store billed through
+its account refuses its own plan actions (choose, cancel, a code, the portal: `ACCOUNT_BILLED`) until part three gives it the account's
+page. Left on the store's own row: the trial pause mark (which store the trial's end made private, now written even without a row), the
+open-plan check when a store closes, and the store's invoices.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.

@@ -206,7 +206,7 @@ export async function myStores(accountId: string) {
     select s.slug, s.name, s.status, m.role, p.name as plan
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
-    left join commerce.store_billing b on b.store_id = s.id
+    left join commerce.store_plans b on b.store_id = s.id
     left join commerce.plans p on p.id = b.plan_id
     where m.account_id = ${accountId}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
     order by lower(s.name), s.slug limit 50
@@ -222,7 +222,7 @@ export async function storeStatus(accountId: string, slug: string) {
       exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'test' and a.card_payments = 'active') as test_cards
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
-    left join commerce.store_billing b on b.store_id = s.id
+    left join commerce.store_plans b on b.store_id = s.id
     left join commerce.plans p on p.id = b.plan_id
     where m.account_id = ${accountId}::uuid and s.slug = ${slug} and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
   `);

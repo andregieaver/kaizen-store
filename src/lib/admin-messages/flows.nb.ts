@@ -18,6 +18,7 @@ export const flowsNb: FlowsMessages = {
   automationOff: "Automatiseringen som sendte den samme e-posten er nå av, så ingen får begge.",
   goals: {
     title: "Start fra et mål",
+    fromOwn: "Starter fra e-posten du allerede sender for dette, med dagene og oppfølgingene.",
     start: "Start",
     welcome: { title: "Ønsk nye abonnenter velkommen", text: "En velkomst samme dag; tre dager senere en takk eller bestselgerne dine." },
     after_purchase: { title: "Følg opp etter et kjøp", text: "En uke etter en bestilling, spør hvordan det går; tre uker senere, noe nytt." },

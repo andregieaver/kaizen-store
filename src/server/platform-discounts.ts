@@ -159,7 +159,7 @@ export type PlatformDiscountRow = PlatformDiscount & {
 export async function listPlatformDiscounts(): Promise<PlatformDiscountRow[]> {
   const rows = await db().execute<Row>(sql`
     select d.*,
-      (select count(*)::int from commerce.store_billing b where b.platform_discount_id = d.id) as stores,
+      (select count(*)::int from commerce.store_plans b where b.platform_discount_id = d.id) as stores,
       (select coalesce(jsonb_agg(s.mode), '[]'::jsonb) from commerce.stripe_sync s
         where s.kind = 'promotion_code' and s.local_id = d.id::text and s.stripe_id is not null) as synced_modes,
       (select s.error from commerce.stripe_sync s

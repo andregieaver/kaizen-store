@@ -237,7 +237,7 @@ async function readPlan(storeId: string) {
     }),
     sql`
       select p.name, pp.interval, pp.amount_minor, pp.currency, b.status, b.mode::text as mode, b.current_period_end, b.cancel_at_period_end
-      from commerce.store_billing b
+      from commerce.store_plans b
       left join commerce.plans p on p.id = b.plan_id
       left join commerce.plan_prices pp on pp.id = b.price_id
       where b.store_id = ${storeId}::uuid

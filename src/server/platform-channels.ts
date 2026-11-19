@@ -48,7 +48,7 @@ export async function platformOwnerCohorts(months = 12): Promise<{ currency: str
         coalesce(b.status::text in ('active', 'past_due') and b.mode::text = 'live', false) as paying,
         coalesce((select sum(p.net_minor - least(p.credited_minor, p.total_minor) * p.net_minor / nullif(p.total_minor, 0))
           from commerce.platform_sales p where p.buyer_store_id = s.id and p.mode = 'live' and p.kind = 'plan' and p.currency = ${currency}), 0)::bigint as paid
-      from commerce.stores s left join commerce.store_billing b on b.store_id = s.id
+      from commerce.stores s left join commerce.store_plans b on b.store_id = s.id
       where ${OWNERS_STORES} and s.created_at >= date_trunc('month', now() at time zone 'Europe/Oslo') - make_interval(months => ${months - 1})
     `,
   );
@@ -66,7 +66,7 @@ export async function platformChannels(from: string, to: string): Promise<{ curr
           coalesce(b.status::text in ('active', 'past_due') and b.mode::text = 'live', false) as paying
         from commerce.access_requests r
         left join commerce.stores s on s.id = r.store_id
-        left join commerce.store_billing b on b.store_id = r.store_id
+        left join commerce.store_plans b on b.store_id = r.store_id
         where (r.created_at at time zone 'Europe/Oslo')::date >= ${from}::date and (r.created_at at time zone 'Europe/Oslo')::date < ${to}::date
       `,
     ),
