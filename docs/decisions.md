@@ -787,6 +787,7 @@ this file wins.
 | D785 | **E3 rest: the AI reads the campaigns report and the books' budget (100-day E3)** (claimed 2026-11-19, text follows) | 2026-11-19 | |
 | D786 | **Dates in the store's own time zone: one admin date formatter (code review 1.14, FS5)** (claimed 2026-11-19, text follows) | 2026-11-19 | |
 | D787 | **Unsaved work survives: one leave guard for in-app links and a draft kept in the browser (code review 1.16, FB5)** (claimed 2026-11-19, text follows) | 2026-11-19 | |
+| D788 | **Admin redesign round 52: saved replies, media library and share a theme on a phone** (claimed 2026-11-19, text follows) | 2026-11-19 | |
 
 ### Selling from Norway to Sweden and Denmark
 
