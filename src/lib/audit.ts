@@ -185,8 +185,9 @@ const PREFIXES: Record<string, AuditArea> = {
   "support.": "support",
   "chat.": "support",
   "knowledge.": "support",
-  // Billing
+  // Billing, and an account's paid extensions (D748): a trial is what the account pays for.
   "billing.": "billing",
+  "extension.": "billing",
   // Staff
   "staff.": "staff",
   "role.": "staff",

@@ -355,10 +355,7 @@ export async function startExtensionTrial(actor: Account, organisationId: string
   );
   if (!started) return { ok: false, refusal: "had_trial" };
   await refreshExtensionFacts({ organisationId });
-  await audit(actor.id, null, "extension.trial_started", { organisationId, extensionId, days: EXTENSION_TRIAL_DAYS }, {
-    area: "settings",
-    target: { type: "organisation", id: organisationId },
-  });
+  await audit(actor.id, null, "extension.trial_started", { organisationId, extensionId, days: EXTENSION_TRIAL_DAYS }, { target: { type: "organisation", id: organisationId } });
   return { ok: true };
 }
 

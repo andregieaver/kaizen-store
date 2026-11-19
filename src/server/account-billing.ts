@@ -336,7 +336,7 @@ const metadataOf = (organisationId: string, resolved: Resolved): Record<string, 
   ...(resolved.plan && { kaizen_plan_id: resolved.plan.planId, kaizen_price_id: resolved.plan.id }),
 });
 
-const accountTarget = (organisationId: string) => ({ area: "settings" as const, target: { type: "organisation", id: organisationId } });
+const accountTarget = (organisationId: string) => ({ target: { type: "organisation", id: organisationId } });
 
 /** Moves the running subscription to the wanted items at once, prorated: kept items untouched, new ones added, the rest taken off. */
 async function changeItems(actor: Account, organisationId: string, mode: PaymentModeName, stripe: Stripe, subscriptionId: string, resolved: Resolved): Promise<SaveResult> {
