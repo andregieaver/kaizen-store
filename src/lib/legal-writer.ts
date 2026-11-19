@@ -369,7 +369,17 @@ export function writerMessages(plan: LegalPlan, sheet: FactSheet, settings: Writ
 // Reading and checking the answer
 // ---------------------------------------------------------------------------
 
-const cite = z.object({ source: z.string(), passage: z.string(), quote: z.string() });
+/**
+ * A source or passage key as the model wrote it, down to the key: keys hold no spaces (`eu-gdpr`, `art_6`, `gdpr/a13`, `2:10`), and the model
+ * often writes the passage's heading or the start of its text after the key, as the source data shows them (`gdpr/a13 Artikkel 13. …`), or the
+ * data's brackets (`[no-popplyl gdpr/a13]`). The quote is still checked word for word against the passage the key names.
+ */
+const keyOf = (raw: string): string[] => raw.trim().replace(/^\[/, "").replace(/^§\s*/, "").split(/[\s\]]+/).filter(Boolean);
+const cite = z.object({ source: z.string(), passage: z.string(), quote: z.string() }).transform(({ source, passage, quote }) => {
+  const [sourceKey = "", inSource] = keyOf(source);
+  const [key = inSource ?? ""] = keyOf(passage);
+  return { source: sourceKey, passage: key, quote };
+});
 const block = z.union([
   z.object({ kind: z.enum(["statement", "practical"]), text: z.string(), cites: z.array(cite).optional() }),
   z.object({ kind: z.literal("list"), items: z.array(z.string()), cites: z.array(cite).optional() }),

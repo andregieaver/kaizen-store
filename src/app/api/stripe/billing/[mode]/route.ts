@@ -2,6 +2,7 @@ import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
+import { applyAccountSubscription } from "@/server/account-billing";
 import { applySubscription } from "@/server/billing";
 import { getPlatformWebhookSecret } from "@/server/connect";
 import { handleReferralEvent } from "@/server/referral-billing";
@@ -15,7 +16,7 @@ import { log } from "@/server/log";
 export const maxDuration = 60;
 
 /**
- * Events about Kaizen's own subscriptions to stores (Stripe Billing on
+ * Events about Kaizen's own subscriptions to stores and to accounts billed through their account (D748 E4; Stripe Billing on
  * Kaizen's account): started, renewed, overdue, cancelled; and about their
  * invoices and credit notes, for the referral program (D131): commission when
  * a referred store pays, credit on a referrer's draft invoice, both undone by
@@ -57,7 +58,10 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
   if (!event.type.startsWith("customer.subscription.")) return Response.json({ received: true });
 
   try {
-    const known = await applySubscription(event.data.object as Stripe.Subscription, mode as PaymentModeName);
+    // An account's subscription (D748 E4, `kaizen_organisation_id`) is the account's; any other is a store's own.
+    const subscription = event.data.object as Stripe.Subscription;
+    const known =
+      (await applyAccountSubscription(subscription, mode as PaymentModeName)) || (await applySubscription(subscription, mode as PaymentModeName));
     return Response.json({ received: true, ...(known ? {} : { ignored: "not a Kaizena Flow store" }) });
   } catch (error) {
     log("error", "stripe.platform_webhook_failed", { mode, eventId: event.id, type: event.type }, error);

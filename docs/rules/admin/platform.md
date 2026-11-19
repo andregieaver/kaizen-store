@@ -202,10 +202,13 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   desk reads as mode `off`.
 - Billed through the account (E4, `docs/extensions.md` 13): an account with a row in `commerce.organisation_billing` has one plan,
   subscription and trial for all its stores; one without is billed store by store (`store_billing`). A store's plan, price, status, trial
-  and fee are read from the view `commerce.store_plans` (`by_account` says which), never from either table alone; a count of revenue takes
+  and fee are read from the view `commerce.store_plans` (`by_account` says which), never from either table alone (a job the query budget
+  holds that already reads the store's row writes the view's rule out beside it, as `house-customers.ts` does); a count of revenue takes
   one line per subscription. An account's limits are its plan's against its stores' use together (`StoreLimits.account`). A store billed
   through its account refuses its own plan actions (`ACCOUNT_BILLED`). Writers of a store's own row (`applySubscription()`, the trial
-  pause mark) stay on `store_billing`.
+  pause mark) stay on `store_billing`. The account's one subscription is `src/server/account-billing.ts` (items: the plan and each
+  extension bought on its own; `applyAccountSubscription()` is the only writer of an account's row and its bought extension rows from
+  Stripe); a subscription's metadata `kaizen_organisation_id` sends its events there, any other to the store's path.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

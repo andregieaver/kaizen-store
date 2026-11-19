@@ -250,7 +250,7 @@ export async function savePlan(
   };
 }
 
-async function recordSync(
+export async function recordSync(
   mode: PaymentModeName,
   kind: "product" | "price" | "tax_rate" | "portal",
   localId: string,
@@ -268,7 +268,7 @@ async function recordSync(
   `);
 }
 
-async function syncedId(mode: PaymentModeName, kind: string, localId: string): Promise<string | null> {
+export async function syncedId(mode: PaymentModeName, kind: string, localId: string): Promise<string | null> {
   const row = await typedRow(z.object({ stripe_id: col.textOrNull }), sql`
     select stripe_id from commerce.stripe_sync where mode = ${mode} and kind = ${kind} and local_id = ${localId}
   `);
@@ -280,6 +280,44 @@ async function isArchived(mode: PaymentModeName, localId: string): Promise<boole
     select archived from commerce.stripe_sync where mode = ${mode} and kind = 'price' and local_id = ${localId}
   `);
   return Boolean(row?.archived);
+}
+
+/**
+ * One recurring price in Kaizena Flow's Stripe account, as a plan's (`syncPlans()`) or an extension size's (`syncExtensions()`): made once
+ * while it is offered, switched off in Stripe once it is not. Prices never change in place: a new amount is a new row, so a new price.
+ */
+export async function syncRecurringPrice(
+  stripe: Stripe,
+  mode: PaymentModeName,
+  productId: string,
+  price: { id: string; active: boolean; currency: string; interval: PlanInterval; amountMinor: number },
+  made: { name: string; metadata: Record<string, string>; idempotencyKey: string },
+): Promise<void> {
+  const priceId = await syncedId(mode, "price", price.id);
+  if (priceId) {
+    if (!price.active && !(await isArchived(mode, price.id))) {
+      await stripe.prices.update(priceId, { active: false });
+      await db().execute(sql`
+        update commerce.stripe_sync set archived = true, updated_at = now()
+        where mode = ${mode} and kind = 'price' and local_id = ${price.id}
+      `);
+    }
+    return;
+  }
+  if (!price.active) return;
+  const created = await stripe.prices.create(
+    {
+      product: productId,
+      nickname: `${made.name} · ${price.currency} · ${price.interval === "month" ? "monthly" : "yearly"}`,
+      currency: price.currency.toLowerCase(),
+      unit_amount: price.amountMinor,
+      recurring: { interval: price.interval },
+      tax_behavior: "exclusive",
+      metadata: made.metadata,
+    },
+    { idempotencyKey: made.idempotencyKey },
+  );
+  await recordSync(mode, "price", price.id, { stripeId: created.id });
 }
 
 /**
@@ -308,31 +346,11 @@ export async function syncPlans(mode: PaymentModeName): Promise<SaveResult> {
       await recordSync(mode, "product", plan.id, { stripeId: productId });
 
       for (const price of plan.prices) {
-        const priceId = await syncedId(mode, "price", price.id);
-        if (priceId) {
-          if (!price.active && !(await isArchived(mode, price.id))) {
-            await stripe.prices.update(priceId, { active: false });
-            await db().execute(sql`
-              update commerce.stripe_sync set archived = true, updated_at = now()
-              where mode = ${mode} and kind = 'price' and local_id = ${price.id}
-            `);
-          }
-          continue;
-        }
-        if (!price.active) continue;
-        const created = await stripe.prices.create(
-          {
-            product: productId,
-            nickname: `${plan.name} · ${price.currency} · ${price.interval === "month" ? "monthly" : "yearly"}`,
-            currency: price.currency.toLowerCase(),
-            unit_amount: price.amountMinor,
-            recurring: { interval: price.interval },
-            tax_behavior: "exclusive",
-            metadata: { kaizen_plan_id: plan.id, kaizen_price_id: price.id },
-          },
-          { idempotencyKey: `kaizen-price-${price.id}-${mode}` },
-        );
-        await recordSync(mode, "price", price.id, { stripeId: created.id });
+        await syncRecurringPrice(stripe, mode, productId, price, {
+          name: plan.name,
+          metadata: { kaizen_plan_id: plan.id, kaizen_price_id: price.id },
+          idempotencyKey: `kaizen-price-${price.id}-${mode}`,
+        });
       }
     } catch (error) {
       const problem = stripeProblem(error);
@@ -370,7 +388,7 @@ async function norwegianVatRate(stripe: Stripe, mode: PaymentModeName): Promise<
 }
 
 /** Stripe's customer portal as stores see it: their invoices and how they pay. */
-async function portalConfiguration(stripe: Stripe, mode: PaymentModeName): Promise<string> {
+export async function portalConfiguration(stripe: Stripe, mode: PaymentModeName): Promise<string> {
   const existing = await syncedId(mode, "portal", "stores");
   if (existing) return existing;
   const configuration = await stripe.billingPortal.configurations.create(
@@ -568,6 +586,22 @@ async function codeTypedAtStripe(subscription: Stripe.Subscription, mode: Paymen
 }
 
 /**
+ * The end of a billing row's upsert from a Stripe subscription (a store's here, an account's in `account-billing.ts`, both aliased `b`):
+ * the subscription's fields taken, unless the event is about an older subscription that has ended while the row holds another.
+ */
+export const SUBSCRIPTION_KEPT = sql`
+      mode = excluded.mode,
+      subscription_id = excluded.subscription_id,
+      status = excluded.status,
+      current_period_end = excluded.current_period_end,
+      cancel_at_period_end = excluded.cancel_at_period_end,
+      updated_at = now(),
+      updated_by = coalesce(excluded.updated_by, b.updated_by)
+    where b.subscription_id is null
+       or b.subscription_id = excluded.subscription_id
+       or excluded.status not in ('canceled', 'incomplete_expired')`;
+
+/**
  * Records a subscription as Stripe reports it. An event about an older,
  * cancelled subscription never replaces the store's current one.
  */
@@ -623,16 +657,7 @@ export async function applySubscription(
         else b.discount_applied_at end,
       plan_id = coalesce(excluded.plan_id, b.plan_id),
       price_id = coalesce(excluded.price_id, b.price_id),
-      mode = excluded.mode,
-      subscription_id = excluded.subscription_id,
-      status = excluded.status,
-      current_period_end = excluded.current_period_end,
-      cancel_at_period_end = excluded.cancel_at_period_end,
-      updated_at = now(),
-      updated_by = coalesce(excluded.updated_by, b.updated_by)
-    where b.subscription_id is null
-       or b.subscription_id = excluded.subscription_id
-       or excluded.status not in ('canceled', 'incomplete_expired')
+      ${SUBSCRIPTION_KEPT}
   `);
   // On a plan: no more reminders about paying for one (D33).
   if (isOnPlan(subscription.status)) await markPlanCheckoutRecovered(storeId);
@@ -1113,7 +1138,7 @@ export type PlanInvoice = {
 
 const when = (seconds: number | null | undefined) => (seconds ? new Date(seconds * 1000).toISOString() : null);
 
-function toInvoice(invoice: Stripe.Invoice, mode: PaymentModeName): PlanInvoice {
+export function toInvoice(invoice: Stripe.Invoice, mode: PaymentModeName): PlanInvoice {
   return {
     id: invoice.id ?? "",
     number: invoice.number ?? null,
