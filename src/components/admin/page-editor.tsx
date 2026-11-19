@@ -73,6 +73,7 @@ import type { EditablePage, PageState } from "@/server/pages";
 
 import { CssPanel } from "./css-panel";
 import { useAdminLang, useAdminText } from "./admin-text";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { PhoneRow, PhoneRows } from "./phone-row";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -403,7 +404,7 @@ export function PageEditor({
     setDirty(true);
     setMessage(
       fillWords(ew.versionTaken, {
-        when: new Intl.DateTimeFormat(dateLocale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(item.at)),
+        when: adminDate(context.timeZone, item.at, "dayTime", dateLocale),
       }),
     );
   };
@@ -1151,6 +1152,7 @@ export function PageEditor({
         saveSiteCss={actions.saveSiteCss}
         versions={actions.cssVersions}
         classNames={cssClassNames}
+        timeZone={context.timeZone}
       />
       )}
 
@@ -1185,6 +1187,7 @@ export function PageEditor({
           read={(version) => actions.versions!.read(saved.id, version)}
           onUse={takeVersion}
           current={content}
+          timeZone={context.timeZone}
         />
       )}
 
@@ -1218,7 +1221,7 @@ export function PageEditor({
               {context.schedule && saved && (context.type === "page" || context.type === "article" || context.type === "header" || context.type === "footer") && (
                 <ScheduleButton pageId={saved.id} noun={context.type} schedule={context.schedule} dirty={dirty} saveDraft={() => save(false)} />
               )}
-              {context.share && saved && (context.type === "page" || context.type === "article") && <ShareButton id={saved.id} noun={context.type} actions={context.share} />}
+              {context.share && saved && (context.type === "page" || context.type === "article") && <ShareButton id={saved.id} noun={context.type} actions={context.share} timeZone={context.timeZone} />}
             </>
           ) : context.draftOnly ? (
             // A design profile's workspace (D177): every save is the profile's draft, published with the profile from its own page.
@@ -1257,7 +1260,7 @@ export function PageEditor({
               {/* Links that open the draft without signing in (D340). */}
               {context.share && saved && (context.type === "page" || context.type === "article") && (
                 <span className={`contents ${more}`}>
-                  <ShareButton id={saved.id} noun={context.type} actions={context.share} />
+                  <ShareButton id={saved.id} noun={context.type} actions={context.share} timeZone={context.timeZone} />
                 </span>
               )}
             </>

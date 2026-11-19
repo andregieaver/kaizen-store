@@ -95,7 +95,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           recordings: canOpenPath(holder, "/analytics/recordings"),
         }
       : null;
-  const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now });
+  const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now, timeZone: store.timeZone });
   const readyAround = card.progress.readyAround ? adminDay(card.progress.readyAround, "day", lang) : null;
   const builder = adminText(lang, "builder");
   const differenceWords = Object.fromEntries(Object.entries(differences).map(([key, list]) => [key, list.map((d) => differenceLine(d, builder))]));

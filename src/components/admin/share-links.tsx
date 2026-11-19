@@ -4,7 +4,7 @@ import { Share2 } from "lucide-react";
 import { useEffect, useId, useState, useTransition } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
 import { PREVIEW_DAY_CHOICES, PREVIEW_DEFAULT_DAYS, type PreviewLinkItem } from "@/lib/preview-links";
 
 import { useAdminLang, useAdminText } from "./admin-text";
@@ -19,11 +19,11 @@ type Noun = "page" | "article" | "theme";
  * copies it), the address shown once with *Copy*, and the links made with until when each works and *Revoke*. The same panel in the
  * builder's *Share* dialog and on an installed theme's page.
  */
-export function ShareLinks({ id, noun, actions }: { id: string; noun: Noun; actions: PreviewLinkActions }) {
+export function ShareLinks({ id, noun, actions, timeZone }: { id: string; noun: Noun; actions: PreviewLinkActions; /** The store's zone: until when each link works, on its clock (D812). */ timeZone: string }) {
   const all = useAdminText("schedulesEditor");
   const w = all.share;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
-  const when = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+  const lang = useAdminLang();
+  const when = (iso: string) => adminDate(timeZone, iso, "dayTime", lang);
   const field = useId();
   const [links, setLinks] = useState<PreviewLinkItem[] | null>(null);
   const [days, setDays] = useState<number>(PREVIEW_DEFAULT_DAYS);
@@ -130,7 +130,7 @@ export function ShareLinks({ id, noun, actions }: { id: string; noun: Noun; acti
 }
 
 /** The builder's *Share* (D340): opens the page's or article's preview links in a dialog, once the page has been saved. */
-export function ShareButton({ id, noun, actions }: { id: string; noun: "page" | "article"; actions: PreviewLinkActions }) {
+export function ShareButton({ id, noun, actions, timeZone }: { id: string; noun: "page" | "article"; actions: PreviewLinkActions; timeZone: string }) {
   const w = useAdminText("schedulesEditor").share;
   const [open, setOpen] = useState(false);
   return (
@@ -146,7 +146,7 @@ export function ShareButton({ id, noun, actions }: { id: string; noun: "page" | 
         {w.button}
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={w.title} footer={<Button onClick={() => setOpen(false)}>{w.close}</Button>}>
-        {open && <ShareLinks id={id} noun={noun} actions={actions} />}
+        {open && <ShareLinks id={id} noun={noun} actions={actions} timeZone={timeZone} />}
       </Modal>
     </>
   );

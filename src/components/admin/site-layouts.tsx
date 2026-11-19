@@ -5,7 +5,7 @@ import type { PageSummary } from "@/server/pages";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 import { Card, CARD_CLASS, Chip, List, ListRow, RowLead } from "@/components/admin/ui";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 
 import type { ScheduleChip } from "@/lib/page-schedules";
@@ -67,15 +67,18 @@ export function SiteLayoutsTable({
   adminBase,
   current,
   schedules = {},
+  timeZone,
 }: {
   layouts: PageSummary[];
   adminBase: string;
   current: string | null;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own site (D812). */
+  timeZone: string;
   /** What is scheduled for each header or footer or did not happen (D340), by page id. */
   schedules?: Record<string, ScheduleChip>;
 }) {
   const w = useAdminText("websiteList").list;
-  const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[useAdminLang()].locale, { dateStyle: "medium" });
+  const lang = useAdminLang();
   return (
     <Card compact>
       <List>
@@ -83,7 +86,7 @@ export function SiteLayoutsTable({
           <ListRow key={layout.id} href={`${adminBase}/${layout.id}`}>
             <RowLead
               title={layout.title || w.untitled}
-              sub={layout.publishedAt ? fillWords(w.publishedOn, { date: date.format(new Date(layout.publishedAt)) }) : undefined}
+              sub={layout.publishedAt ? fillWords(w.publishedOn, { date: adminDate(timeZone, layout.publishedAt, "day", lang) }) : undefined}
             />
             {layout.id === current && (
               <Chip signal="positive" dot>

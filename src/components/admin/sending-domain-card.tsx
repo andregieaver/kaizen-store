@@ -1,5 +1,6 @@
 "use client";
 
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import type { SendingStatus } from "@/lib/sending-domains";
@@ -32,6 +33,7 @@ export function SendingDomainCard({
   words: w,
   action,
   display,
+  timeZone,
 }: {
   domain: SendingDomainView | null;
   /** The store's own domain, filled in for a new one. */
@@ -40,6 +42,8 @@ export function SendingDomainCard({
   action: ((state: FormState, form: FormData) => Promise<FormState>) | null;
   /** The person's language tag, for the date. */
   display: string;
+  /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own: when the domain was checked, on that clock (D812). */
+  timeZone: string;
 }) {
   if (!domain) {
     return (
@@ -76,7 +80,7 @@ export function SendingDomainCard({
   const title =
     domain.status === "verified" ? fillWords(w.verified, { from: domain.from }) : fillWords(domain.status === "failed" ? w.failed : w.pending, { domain: domain.domain });
   const lead = domain.status === "verified" ? w.verifiedLead : domain.status === "failed" ? w.failedLead : domain.recordsWritten ? w.pendingWritten : w.pendingCopy;
-  const checked = domain.checkedAt ? fillWords(w.checkedAt, { at: new Date(domain.checkedAt).toLocaleString(display, { dateStyle: "medium", timeStyle: "short" }) }) : null;
+  const checked = domain.checkedAt ? fillWords(w.checkedAt, { at: adminDate(timeZone, domain.checkedAt, "dayTime", display) }) : null;
   const showRecords = domain.status !== "verified" && domain.records.length > 0;
   return (
     <Card title={title} description={lead}>

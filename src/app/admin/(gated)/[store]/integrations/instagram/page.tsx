@@ -32,6 +32,7 @@ export default async function StoreInstagramPage({ params, searchParams }: PageP
           returned={instagramReturned((await searchParams).instagram)}
           connect={connectInstagramAction.bind(null, store.slug)}
           disconnect={disconnectInstagramAction.bind(null, store.slug)}
+          timeZone={store.timeZone}
         />
       </div>
     </AdminTextScope>

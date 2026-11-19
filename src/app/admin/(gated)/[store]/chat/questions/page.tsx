@@ -41,6 +41,7 @@ export default async function StoreQuestionsPage({ params, searchParams }: PageP
         restore={write ? (id) => restoreQuestionAction.bind(null, slug, id) : null}
         lang={lang}
         words={words}
+        timeZone={member.store.timeZone}
       />
     </div>
   );

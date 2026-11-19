@@ -11,6 +11,7 @@ import { getHostTaxDetails, hostTaxStatus } from "@/server/dac7";
 import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -44,7 +45,6 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   const owner = memberCan(current, "owner");
   const stage = mode ? accountStage(accounts[mode] ?? null) : null;
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "en-GB") : ADMIN_LANG_FACTS[lang].locale;
-  const date = new Intl.DateTimeFormat(lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale, { day: "numeric", month: "short", year: "numeric" });
   // What the host got from the payments listed, per currency.
   const netByCurrency = new Map<string, number>();
   for (const e of earnings) netByCurrency.set(e.currency, (netByCurrency.get(e.currency) ?? 0) + e.netMinor);
@@ -109,7 +109,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
             {earnings.map((e) => (
               <li key={e.paymentId} className="flex flex-wrap justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">
-                  {e.number} · {date.format(new Date(e.paidAt))}
+                  {e.number} · {adminDate(store, e.paidAt, "day", lang)}
                   {e.kind === "no_show" && <span className="block text-xs text-muted">{w.noShowFee}</span>}
                   <span className="block text-xs text-muted tabular-nums">
                     {fillWords(e.refundedMinor > 0 ? w.guestPaidRefunded : w.guestPaid, { amount: formatMoney(e.paidMinor - e.refundedMinor, e.currency, locale) })} ·{" "}

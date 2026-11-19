@@ -42,8 +42,8 @@ export type ZoneOf = string | { readonly timeZone?: string | null } | null | und
  */
 export type AdminDayStyle = "day" | "long" | "short" | "dayMonth" | "iso";
 
-/** A day's styles, and an instant's own: `dayTime` (3 Oct 2026, 14:05) and `time` (14:05). */
-export type AdminDateStyle = AdminDayStyle | "dayTime" | "time";
+/** A day's styles, and an instant's own: `dayTime` (3 Oct 2026, 14:05), `time` (14:05) and `seconds` (14:05:33, a live figure's update). */
+export type AdminDateStyle = AdminDayStyle | "dayTime" | "time" | "seconds";
 
 const OPTIONS: Record<Exclude<AdminDateStyle, "iso">, Intl.DateTimeFormatOptions> = {
   day: { dateStyle: "medium" },
@@ -52,6 +52,7 @@ const OPTIONS: Record<Exclude<AdminDateStyle, "iso">, Intl.DateTimeFormatOptions
   dayMonth: { day: "numeric", month: "long" },
   dayTime: { dateStyle: "medium", timeStyle: "short" },
   time: { timeStyle: "short" },
+  seconds: { timeStyle: "medium" },
 };
 
 const BARE_DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -103,7 +104,7 @@ function formatter(locale: string, timeZone: string, style: Exclude<AdminDateSty
 }
 
 /** A day's style for a value that has no time: a time style shows the day. */
-const dayStyle = (style: AdminDateStyle): AdminDayStyle => (style === "dayTime" || style === "time" ? "day" : style);
+const dayStyle = (style: AdminDateStyle): AdminDayStyle => (style === "dayTime" || style === "time" || style === "seconds" ? "day" : style);
 
 /**
  * A calendar day for people, as it is: never moved by a zone, so a due date of 3 October reads 3 October in Oslo and in New York. A value

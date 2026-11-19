@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { Card, Chip } from "@/components/admin/ui";
@@ -36,6 +37,7 @@ export function WalletsCard({
   words = paymentsEn.wallets,
   methodWords = paymentsEn.methods,
   locale = "en",
+  timeZone,
 }: {
   hosts: readonly string[];
   domains: Record<string, WalletDomain> | null;
@@ -46,6 +48,8 @@ export function WalletsCard({
   words?: PaymentsMessages["wallets"];
   methodWords?: PaymentsMessages["methods"];
   locale?: string;
+  /** The store's time zone: when the wallets were last checked, on the store's clock (D812). */
+  timeZone: string;
 }) {
   const w = words;
   const accountState = (capability: string): MethodStateWord => {
@@ -93,7 +97,7 @@ export function WalletsCard({
           </table>
         </div>
         <p className="text-sm text-muted">
-          {readAt ? fillWords(w.checkedAt, { when: new Date(readAt).toLocaleString(locale) }) : w.neverRead} {w.expressNote}
+          {readAt ? fillWords(w.checkedAt, { when: adminDate(timeZone, readAt, "dayTime", locale) }) : w.neverRead} {w.expressNote}
         </p>
         {isOwner ? (
           <ActionForm action={action}>

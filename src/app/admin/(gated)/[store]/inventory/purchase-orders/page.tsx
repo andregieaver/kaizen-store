@@ -87,6 +87,7 @@ async function Body({ storeSlug, reorder }: { storeSlug: string; reorder: boolea
             expectedOn: o.expectedOn,
             createdAt: o.createdAt,
           }))}
+          timeZone={store.timeZone}
         />
         {/* Round 46 (D750): on a phone a new order is a row that opens the form; a prepared reorder opens it. */}
         {mayWrite && places.length > 0 && (

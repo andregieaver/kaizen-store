@@ -37,7 +37,7 @@ export default async function PackingSlipPage({ params, searchParams }: PageProp
     if (typeof shipment !== "string" || !z.uuid().safeParse(shipment).success) notFound();
     const parcel = await parcelSlipData(store.id, orderId, shipment);
     if (!parcel) notFound();
-    return <SlipPage slip={parcel} storeName={store.name} seller={store.details} print={w.print} />;
+    return <SlipPage slip={parcel} storeName={store.name} seller={store.details} timeZone={store.timeZone} print={w.print} />;
   }
   const set = await packingSlipData(store.id, [orderId], { reprint: true });
   if (!set.ok) notFound();
@@ -55,16 +55,16 @@ export default async function PackingSlipPage({ params, searchParams }: PageProp
       </div>
     );
   }
-  return <SlipPage slip={slip} storeName={store.name} seller={store.details} print={w.print} />;
+  return <SlipPage slip={slip} storeName={store.name} seller={store.details} timeZone={store.timeZone} print={w.print} />;
 }
 
-function SlipPage({ slip, storeName, seller, print }: { slip: PackingSlip; storeName: string; seller: Parameters<typeof PackingSlipView>[0]["seller"]; print: string }) {
+function SlipPage({ slip, storeName, seller, timeZone, print }: { slip: PackingSlip; storeName: string; seller: Parameters<typeof PackingSlipView>[0]["seller"]; timeZone: string; print: string }) {
   return (
     <PrintArea className="flex flex-col gap-4">
       <div className="mx-auto flex w-full max-w-2xl justify-end print:hidden">
         <PrintButton label={print} />
       </div>
-      <PackingSlipView slip={slip} storeName={storeName} seller={seller} />
+      <PackingSlipView slip={slip} storeName={storeName} seller={seller} timeZone={timeZone} />
     </PrintArea>
   );
 }

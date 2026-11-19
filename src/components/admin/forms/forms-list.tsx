@@ -1,7 +1,8 @@
 import { ClipboardList, Plus } from "lucide-react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
+import type { AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { FormSummary, FormUse } from "@/server/forms-admin";
 
@@ -11,9 +12,9 @@ import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } f
  * The owner's forms (D705): each with its kind, where it shows and its responses, and *New form* as the one main action. A form that cannot
  * deliver or is archived says so, since it shows nothing on the site.
  */
-export function FormsList({ lang, base, forms, uses }: { lang: AdminLang; base: string; forms: FormSummary[]; uses: FormUse[] }) {
+/** `timeZone`: the store's, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own forms: the last response on its clock (D812). */
+export function FormsList({ lang, base, forms, uses, timeZone }: { lang: AdminLang; base: string; forms: FormSummary[]; uses: FormUse[]; timeZone: string }) {
   const w = adminText(lang, "forms");
-  const when = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium" });
   if (forms.length === 0) {
     return (
       <Card>
@@ -41,7 +42,7 @@ export function FormsList({ lang, base, forms, uses }: { lang: AdminLang; base: 
         return (
           <ListRow key={form.id} href={`${base}/${form.id}`}>
             <RowLead title={form.name} sub={sub} />
-            <RowFact sub={form.lastAt ? fillWords(w.list.lastAt, { when: when.format(new Date(form.lastAt)) }) : w.list.never}>
+            <RowFact sub={form.lastAt ? fillWords(w.list.lastAt, { when: adminDate(timeZone, form.lastAt, "day", lang) }) : w.list.never}>
               {form.responses} {w.list.responses.toLowerCase()}
             </RowFact>
             <RowActions>

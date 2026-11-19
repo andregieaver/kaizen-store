@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { buttonClass } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import type { SupportMessages } from "@/lib/admin-messages/support.en";
@@ -32,6 +33,7 @@ export function UnansweredQuestionsView({
   restore,
   lang,
   words,
+  timeZone,
 }: {
   rows: UnansweredQuestion[];
   show: QuestionStatus;
@@ -49,10 +51,12 @@ export function UnansweredQuestionsView({
   restore: ((id: string) => Action) | null;
   lang: AdminLang;
   words: SupportMessages;
+  /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own desk: when each question was asked, on that clock (D812). */
+  timeZone: string;
 }) {
   const w = words.questions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
+  const date = (iso: string) => adminDate(timeZone, iso, "day", lang);
   const languageName = (code: string) => {
     try {
       return new Intl.DisplayNames([locale], { type: "language" }).of(code) ?? code;

@@ -58,6 +58,7 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
         storeSlug={slug}
         words={words}
         lang={lang}
+        timeZone={member.store.timeZone}
         actions={{
           createStarter: createStarterAction.bind(null, slug),
           createAll: createAllStartersAction.bind(null, slug),

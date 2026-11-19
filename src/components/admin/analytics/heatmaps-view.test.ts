@@ -82,6 +82,7 @@ const map = (over: Partial<Parameters<typeof PageMapView>[0]> = {}) =>
       refresher: null,
       words,
       locale: "en-GB",
+      timeZone: "Europe/Oslo",
       ...over,
     }),
   );

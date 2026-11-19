@@ -1,3 +1,4 @@
+import { adminDate } from "@/lib/admin-date";
 import { answerText } from "@/lib/checkout-rules";
 import { t } from "@/lib/i18n";
 import type { PackingSlip } from "@/server/packing-slips";
@@ -11,7 +12,8 @@ type SellerDetails = { legalName?: string | null; postalAddress?: string | null;
  * Sending in parts (D174): a slip prints what is still to send, one parcel's items (with "More of this order follows in another parcel" when units remain), or, reprinted
  * for an order with nothing left, every item under *All items (already sent)*. The shopper's answers to the checkout questions (D357) follow the lines, as text.
  */
-export function PackingSlipView({ slip, storeName, seller, breakAfter = false }: { slip: PackingSlip; storeName: string; seller: SellerDetails; breakAfter?: boolean }) {
+/** `timeZone`: the store's, so the order's day on the slip is the store's own (D812). */
+export function PackingSlipView({ slip, storeName, seller, timeZone, breakAfter = false }: { slip: PackingSlip; storeName: string; seller: SellerDetails; timeZone: string; breakAfter?: boolean }) {
   const m = t(slip.lang);
   const a = slip.shipTo;
   const address = [a.name, a.line1, a.line2, `${a.postalCode ?? ""} ${a.city ?? ""}`.trim(), a.country].filter((part): part is string => Boolean(part && part.trim()));
@@ -49,7 +51,7 @@ export function PackingSlipView({ slip, storeName, seller, breakAfter = false }:
         <div className="text-right">
           <p className="text-sm font-medium">{m.orderNumber}</p>
           <p className="text-2xl font-semibold">{slip.number}</p>
-          <p className="text-sm">{new Date(slip.placedAt).toLocaleDateString(slip.locale, { dateStyle: "long" })}</p>
+          <p className="text-sm">{adminDate(timeZone, slip.placedAt, "long", slip.locale)}</p>
         </div>
       </div>
       {gift && (

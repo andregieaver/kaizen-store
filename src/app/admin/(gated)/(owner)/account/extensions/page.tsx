@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -33,7 +34,7 @@ export default async function ExtensionsPage() {
   const [launchedAt, billing, currency] = await Promise.all([extensionsLaunchedAt(), getAccountBilling(own.id), accountCurrency(own.id)]);
   const extensions = await accountExtensions(own.id, currency);
   const launched = launchedAt !== null && launchedAt <= new Date();
-  const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(locale, { dateStyle: "long" }) : "");
+  const day = (iso: string | null) => adminDate(PLATFORM_TIME_ZONE, iso, "long", lang);
   const stateLine = (e: AccountExtension) =>
     e.source === "legacy"
       ? w.states.legacy

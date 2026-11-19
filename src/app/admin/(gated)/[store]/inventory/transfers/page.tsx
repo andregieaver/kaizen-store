@@ -58,6 +58,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
             received: t.received,
             createdAt: t.createdAt,
           }))}
+          timeZone={member.store.timeZone}
         />
         {memberCan(member, "products:write") && places.length >= 2 && (
           <NewStockDocument kind="transfer" places={places} documentBase={base} create={createTransferAction.bind(null, store.slug)} />

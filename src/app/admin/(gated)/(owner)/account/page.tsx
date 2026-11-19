@@ -7,8 +7,8 @@ import { AppearanceField } from "@/components/admin/admin-colors";
 import { SchemeField } from "@/components/admin/admin-scheme";
 import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
 import { AdminLanguageField, AdminTextProvider } from "@/components/admin/admin-text";
-import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { ManageTwoStep } from "@/components/admin/two-step-panel";
@@ -55,7 +55,6 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const w = adminText(lang, "bookings").account;
   const vw = adminText(lang, "shell").view;
   const ow = adminText(lang, "oauth");
-  const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
   const status = query["kaizen-life"];
   const owner = await isOwner(account);
@@ -272,7 +271,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
               <li key={grant.client.id} className="flex items-center justify-between gap-3 rounded-md border border-line p-3 text-sm">
                 <span>
                   {grant.client.name || w.anApp}
-                  <span className="block text-xs text-muted">{fillWords(w.since, { date: new Date(grant.granted_at).toLocaleDateString(dateLocale, { dateStyle: "medium" }) })}</span>
+                  <span className="block text-xs text-muted">{fillWords(w.since, { date: adminDate(PLATFORM_TIME_ZONE, String(grant.granted_at), "day", lang) })}</span>
                 </span>
                 <form action={revokeAppAction}>
                   <input type="hidden" name="client" value={grant.client.id} />

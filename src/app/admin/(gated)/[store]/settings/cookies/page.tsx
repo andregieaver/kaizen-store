@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { toolCategories } from "@/lib/cookie-consent";
 
@@ -83,7 +84,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
         words={words}
       />
       </PhoneRow>
-      <PhoneRow title={p.scan} sub={lastDone?.finishedAt ? fillWords(p.scannedOn, { day: new Date(lastDone.finishedAt).toLocaleDateString(locale, { dateStyle: "medium" }) }) : p.notScanned} {...look}>
+      <PhoneRow title={p.scan} sub={lastDone?.finishedAt ? fillWords(p.scannedOn, { day: adminDate(store, lastDone.finishedAt, "day", locale) }) : p.notScanned} {...look}>
       <CookieScanPanel
         timeZone={store.timeZone}
         scans={scans}

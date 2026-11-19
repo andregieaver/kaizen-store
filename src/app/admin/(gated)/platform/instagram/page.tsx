@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AdminAreas } from "@/components/admin/admin-areas";
 import { InstagramSettings, instagramReturned } from "@/components/admin/instagram-settings";
 import { PageHeader } from "@/components/admin/ui";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { platformCan, requirePlatform } from "@/server/auth";
@@ -27,6 +28,7 @@ export default async function PlatformInstagramPage({ searchParams }: PageProps<
           canEdit={platformCan(admin, "settings")}
           lang={lang}
           pictureBase="/api/instagram/kaizen"
+          timeZone={PLATFORM_TIME_ZONE}
           returned={instagramReturned((await searchParams).instagram)}
           connect={connectPlatformInstagramAction}
           disconnect={disconnectPlatformInstagramAction}

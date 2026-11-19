@@ -200,19 +200,19 @@ describe("the packing slip of a pickup or local order", () => {
   const seller = { legalName: "Kaffe AS", postalAddress: null, contactEmail: null };
 
   it("prints the place for a pickup order instead of an address, in the order's language", () => {
-    const en = draw(h(PackingSlipView, { slip: slip({ method: "pickup", place: "Shop Oslo" }), storeName: "Kaffe AS", seller })).text;
+    const en = draw(h(PackingSlipView, { slip: slip({ method: "pickup", place: "Shop Oslo" }), storeName: "Kaffe AS", seller, timeZone: "Europe/Oslo" })).text;
     expect(en).toContain("Collect at Shop Oslo");
     expect(en).not.toContain("Gata 1");
-    const nb = draw(h(PackingSlipView, { slip: slip({ method: "pickup", place: "Butikken" }, "nb"), storeName: "Kaffe AS", seller })).text;
+    const nb = draw(h(PackingSlipView, { slip: slip({ method: "pickup", place: "Butikken" }, "nb"), storeName: "Kaffe AS", seller, timeZone: "Europe/Oslo" })).text;
     expect(nb).toContain("Butikken");
     expect(nb).not.toContain("Collect at");
   });
 
   it("prints the driver's note under the address of a local order", () => {
-    const text = draw(h(PackingSlipView, { slip: slip({ method: "local", note: "Ring twice" }), storeName: "Kaffe AS", seller })).text;
+    const text = draw(h(PackingSlipView, { slip: slip({ method: "local", note: "Ring twice" }), storeName: "Kaffe AS", seller, timeZone: "Europe/Oslo" })).text;
     expect(text).toContain("Gata 1");
     expect(text).toContain("Your note for the driver");
     expect(text).toContain("Ring twice");
-    expect(draw(h(PackingSlipView, { slip: slip(null), storeName: "Kaffe AS", seller })).text).not.toContain("note for the driver");
+    expect(draw(h(PackingSlipView, { slip: slip(null), storeName: "Kaffe AS", seller, timeZone: "Europe/Oslo" })).text).not.toContain("note for the driver");
   });
 });

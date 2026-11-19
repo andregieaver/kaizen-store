@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { NO_FIGURE } from "@/lib/analytics-core";
@@ -27,9 +28,12 @@ export function OrderProfitsView({
   capped,
   cappedAt,
   words = financeEn,
+  timeZone,
 }: {
   base: string;
   locale: string;
+  /** The store's time zone: the day each order was sold, on the store's clock (D812). */
+  timeZone: string;
   period: string;
   rows: readonly OrderProfitRow[];
   summary: ProfitSummary;
@@ -39,7 +43,6 @@ export function OrderProfitsView({
 }) {
   const w = words.orderProfits;
   const pct = financeNumbers(words).percent;
-  const day = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
   const lowest = rows
     .filter((r) => r.profit.profitMinor !== null)
     .sort((a, b) => (a.profit.profitMinor ?? 0) - (b.profit.profitMinor ?? 0))
@@ -54,7 +57,7 @@ export function OrderProfitsView({
         </Link>
       ),
     },
-    { key: "sold", label: w.sold, cell: (r) => day.format(new Date(r.soldAt)) },
+    { key: "sold", label: w.sold, cell: (r) => adminDate(timeZone, r.soldAt, "short", locale) },
     {
       key: "profit",
       label: w.profit,

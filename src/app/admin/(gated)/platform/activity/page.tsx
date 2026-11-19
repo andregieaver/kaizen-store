@@ -6,14 +6,16 @@ import { isAuditArea } from "@/lib/audit";
 import { listPlatformActivity, platformActivityFilters } from "@/server/activity";
 import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
-import { adminLangOf } from "@/lib/admin-lang";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Change log" };
 
 /**
  * What the platform's admins and the platform did, with no store (wave 1, 1f): two-step events, recovery codes used, resets, approvals.
- * Platform admins only. A store's own log is on its own page; nothing of a store is ever here.
+ * Platform admins only. A store's own log is on its own page; nothing of a store is ever here. Its days and times are on the platform's clock
+ * (`PLATFORM_TIME_ZONE`, D812), as a store's log is on the store's.
  */
 export default async function PlatformActivityPage({ searchParams }: PageProps<"/admin/platform/activity">) {
   const account = await requirePlatformReader();
@@ -38,12 +40,13 @@ export default async function PlatformActivityPage({ searchParams }: PageProps<"
         title={w.title}
         description={w.description}
       />
-      <ActivityFilters action={base} values={values} people={choices.people} areas={["platform", "account"]} actions={choices.actions} zoneName="UTC" words={staffWords} />
+      <ActivityFilters action={base} values={values} people={choices.people} areas={["platform", "account"]} actions={choices.actions} zoneName={PLATFORM_TIME_ZONE} words={staffWords} />
       <ActivityList
         now={drawnAt.getTime()}
         entries={page.entries}
-        zone="UTC"
+        zone={PLATFORM_TIME_ZONE}
         words={staffWords}
+        locale={ADMIN_LANG_FACTS[lang].locale}
         older={page.next === null ? null : `${base}${activityQuery({ person: values.person, area: values.area, action: values.action, from: values.from, to: values.to, before: page.next })}`}
       />
     </div>

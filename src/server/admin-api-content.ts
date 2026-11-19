@@ -429,7 +429,7 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       const test = (await getExperiment(storeId, route.id)) ?? fail("not_found", "No such A/B test in this store.");
       const now = new Date();
       const results = test.status === "running" || test.status === "stopped" ? await experimentResults(store, test, now) : null;
-      const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now });
+      const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now, timeZone: store.timeZone });
       return ok(route.name, { data: experimentOut(test, card) });
     }
     case "webhooks.list": {

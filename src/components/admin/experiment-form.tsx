@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { DEVICES, GOAL_WORDS, MAX_RUN_DAYS, MIN_DAYS, type Device, type Goal } from "@/lib/experiments";
 import { isTestedPlace, type TargetKind } from "@/lib/ab-site";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { CHANGES, eligiblePerDay, findableChange, goalEstimate, isCountedGoal, recommendedGoal, weeksOf, type TrafficFacts } from "@/lib/experiment-traffic";
@@ -63,6 +64,7 @@ export function ExperimentForm({
   house = false,
   destinations = [],
   siteForms = [],
+  timeZone,
 }: {
   /** A part of the page chosen in the builder (D148): the test is of it, on the one page offered. */
   part?: PartInfo | null;
@@ -78,6 +80,8 @@ export function ExperimentForm({
   destinations?: Destination[];
   /** Forms elsewhere on the site, each labelled with where it is (phase 20). */
   siteForms?: SiteForm[];
+  /** The store's time zone: the day an answer is expected, on the store's calendar (D812). */
+  timeZone: string;
 }) {
   const w = useAdminText("experiments");
   const f = w.form;
@@ -116,7 +120,7 @@ export function ExperimentForm({
     page ? goalEstimate({ facts: traffic, targetId: page.id, goal: g, trafficShare: share, versions: 2, relativeChange: change, words: w, numberLocale }) : null;
   const estimate = useMemo(() => estimateOf(goal), [goal, pageId, share, change, traffic]); // eslint-disable-line react-hooks/exhaustive-deps
   const number = (n: number) => n.toLocaleString(numberLocale, { maximumFractionDigits: 0 });
-  const date = (days: number) => new Date(Date.now() + days * DAY).toLocaleDateString(numberLocale, { dateStyle: "medium" });
+  const date = (days: number) => adminDate(timeZone, Date.now() + days * DAY, "day", numberLocale);
 
   const toggle = <T extends string>(list: T[], value: T, set: (next: T[]) => void) =>
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);

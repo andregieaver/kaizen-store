@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import type { ContentSite } from "@/components/admin/content-site";
 import { Button, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import {
@@ -100,7 +101,6 @@ export async function ContentEntriesView({ site, typeId, q }: { site: ContentSit
   const all = (await listEntries(site.owner, type.id)).map((entry) => ({ entry, title: entryTitle(type, entry.draft.data, main, main) }));
   const shown = query ? all.filter((e) => e.title.toLowerCase().includes(query)) : all;
   const { base } = site;
-  const when = new Intl.DateTimeFormat(site.lang === "nb" ? "nb-NO" : "en-GB", { dateStyle: "medium" });
 
   return (
     <AdminTextScope texts={adminTexts(site.lang, ["content"])}>
@@ -146,7 +146,7 @@ export async function ContentEntriesView({ site, typeId, q }: { site: ContentSit
                     <RowFact>
                       <Chip signal={SIGNAL[status]}>{w.status[status]}</Chip>
                     </RowFact>
-                    <RowFact className="hidden md:block">{fillWords(w.entries.changed, { when: when.format(new Date(entry.updatedAt)) })}</RowFact>
+                    <RowFact className="hidden md:block">{fillWords(w.entries.changed, { when: adminDate(site.timeZone, entry.updatedAt, "day", site.lang) })}</RowFact>
                     {!query && (
                       <RowActions>
                         <form action={site.actions.move(entry.id, "earlier")}>

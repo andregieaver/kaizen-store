@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import type { FormResponseRow } from "@/server/forms-admin";
 
 import { useAdminLang, useAdminText } from "../admin-text";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { fileSize } from "@/lib/form-files";
 import { AdminLink } from "../ui/link";
@@ -24,6 +24,7 @@ export function FormResponses({
   exportAction,
   setState,
   remove,
+  timeZone,
 }: {
   responses: FormResponseRow[];
   archived: boolean;
@@ -33,12 +34,13 @@ export function FormResponses({
   exportAction: string;
   setState: (ids: string[], state: FormResponseRow["state"]) => Promise<number>;
   remove: (ids: string[]) => Promise<number>;
+  /** The store's time zone, or the platform's for Kaizena Flow's own forms: when each response came, on that clock (D812). */
+  timeZone: string;
 }) {
   const w = useAdminText("forms").responses;
   const lang = useAdminLang();
   const [open, setOpen] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const when = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short" });
   // The actions refresh the page themselves.
   const run = (job: () => Promise<unknown>) => start(async () => void (await job()));
 
@@ -92,7 +94,7 @@ export function FormResponses({
                   )}
                   {r.payment?.state === "waiting" && <Chip data-response-unpaid>{w.unpaid}</Chip>}
                   {r.delivery === "failed" && <Chip signal="warning">{w.emailFailed}</Chip>}
-                  <span className="shrink-0 text-caption text-muted tabular-nums">{when.format(new Date(r.createdAt))}</span>
+                  <span className="shrink-0 text-caption text-muted tabular-nums">{adminDate(timeZone, r.createdAt, "dayTime", lang)}</span>
                 </button>
                 {isOpen && (
                   <div className="flex flex-col gap-4 border-t border-line px-4 py-4">

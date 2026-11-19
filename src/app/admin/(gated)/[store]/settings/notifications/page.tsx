@@ -75,6 +75,7 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
             words={words.sendingDomain}
             action={canWrite ? sendingDomainAction.bind(null, store.slug) : null}
             display={ADMIN_LANG_FACTS[lang].tag}
+            timeZone={store.timeZone}
           />
         </PhoneRow>
       </PhoneRows>

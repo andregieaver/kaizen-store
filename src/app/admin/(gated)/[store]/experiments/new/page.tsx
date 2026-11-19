@@ -104,7 +104,7 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
           {w.newTest.cannotPart}
         </p>
       ) : (
-        <ExperimentForm pages={withButtons} markets={markets} create={createExperimentAction.bind(null, store.slug)} base={base} part={part} traffic={traffic} history={history} house={houseId === store.id} destinations={goesTo} siteForms={elsewhere} />
+        <ExperimentForm pages={withButtons} markets={markets} create={createExperimentAction.bind(null, store.slug)} base={base} part={part} traffic={traffic} history={history} house={houseId === store.id} destinations={goesTo} siteForms={elsewhere} timeZone={store.timeZone} />
       )}
     </div>
     </AdminTextScope>

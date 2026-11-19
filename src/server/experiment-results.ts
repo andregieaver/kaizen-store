@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { zoneOf } from "@/lib/admin-date";
 import { convertMinor } from "@/lib/currency";
 import { splitCheckP, verdictOf, type VariantFigures, type Verdict } from "@/lib/experiment-results";
 import {
@@ -18,6 +19,7 @@ import {
 import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { GOAL_WORDS } from "@/lib/experiments";
 import { mainCurrency } from "@/lib/markets";
+import { dayIn, daysBetween } from "@/lib/work-dates";
 
 import type { ExperimentInfo } from "./experiment-admin";
 import { col, typedRows } from "./typed-rows";
@@ -31,10 +33,18 @@ type Row = Record<string, unknown>;
  * visitors of each version, who of them ordered (a paid order of a cart they were tied to, after they first saw the version
  * and while the test ran), added to the cart, started checkout or clicked, and what their orders came to without VAT, in
  * the store's main currency at its rates. Copied orders and hosts' orders never count.
+ *
+ * Days are the store's own (D812): an exposure, a conversion and a test's start fall on the day of the store's clock (`store.timeZone`), as the
+ * store's visits do (`visits.day`), so an evening visitor in New York or a morning one in Auckland is counted on the day the store saw them.
+ * Kaizena Flow's own store has the platform's zone, so its tests read the platform's days.
  */
 
 const PAID = sql`('paid', 'fulfilled', 'closed')`;
 
+/** A day's new visitors, or a day's conversions, per version: the day is the store's (D812). */
+const DAY_ROW = z.object({ day: col.text, variant: col.text, n: col.int });
+
+/** `day` is a calendar day on the store's clock, `YYYY-MM-DD` (D812). */
 export type DayFigures = { day: string; variants: Record<string, { visitors: number; conversions: number }> };
 
 export type ExperimentResults = {
@@ -60,8 +70,6 @@ export type ExperimentResults = {
   guardrails: GuardrailCheck[];
 };
 
-const day = (d: Date) => d.toISOString().slice(0, 10);
-
 /** The value at a share of the sorted values (linear between neighbours). */
 function percentile(sorted: number[], share: number): number {
   if (sorted.length === 0) return 0;
@@ -73,11 +81,12 @@ function percentile(sorted: number[], share: number): number {
 
 /** `say` writes the verdict in the account's words (D312 A7); without it the verdict is English, as the AI manager's tools read it. */
 export async function experimentResults(
-  store: Pick<Store, "id" | "markets" | "localization" | "visitCounting">,
+  store: Pick<Store, "id" | "markets" | "localization" | "visitCounting" | "timeZone">,
   test: ExperimentInfo,
   now = new Date(),
   say?: { words: ExperimentsMessages; numberLocale: string },
 ): Promise<ExperimentResults> {
+  const zone = zoneOf(store);
   const [exposures, events, orders, daysRows] = await Promise.all([
     db().execute<Row>(sql`
       select variant, count(*)::int as visitors from commerce.experiment_exposures where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid group by variant
@@ -95,10 +104,13 @@ export async function experimentResults(
       where x.experiment_id = ${test.id}::uuid and x.store_id = ${store.id}::uuid
       group by x.variant, x.visitor, o.currency
     `),
-    db().execute<Row>(sql`
-      select to_char(first_seen at time zone 'utc', 'YYYY-MM-DD') as day, variant, count(*)::int as n
-      from commerce.experiment_exposures where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid group by 1, 2
-    `),
+    typedRows(
+      DAY_ROW,
+      sql`
+        select to_char(first_seen at time zone ${zone}, 'YYYY-MM-DD') as day, variant, count(*)::int as n
+        from commerce.experiment_exposures where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid group by 1, 2
+      `,
+    ),
   ]);
 
   const keys = test.variants.map((v) => v.key);
@@ -163,20 +175,24 @@ export async function experimentResults(
     byDay.set(d, m);
     return m[k];
   };
-  for (const r of daysRows) if (keys.includes(String(r.variant))) touch(String(r.day), String(r.variant)).visitors += Number(r.n);
-  if (goal === "orders") for (const v of perVisitor.values()) if (keys.includes(v.variant)) touch(day(v.at), v.variant).conversions += 1;
+  for (const r of daysRows) if (keys.includes(r.variant)) touch(r.day, r.variant).visitors += r.n;
+  if (goal === "orders") for (const v of perVisitor.values()) if (keys.includes(v.variant)) touch(dayIn(v.at, zone), v.variant).conversions += 1;
   // Cart, checkout, click, form, sign-up and page days come from the events.
   if (goal === "cart" || goal === "checkout" || goal === "click" || goal === "form" || goal === "signup" || goal === "page") {
-    const rows = await db().execute<Row>(sql`
-      select to_char(occurred_at at time zone 'utc', 'YYYY-MM-DD') as day, variant, count(distinct visitor)::int as n
-      from commerce.experiment_events where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid and goal = ${goal} group by 1, 2
-    `);
-    for (const r of rows) if (keys.includes(String(r.variant))) touch(String(r.day), String(r.variant)).conversions += Number(r.n);
+    const rows = await typedRows(
+      DAY_ROW,
+      sql`
+        select to_char(occurred_at at time zone ${zone}, 'YYYY-MM-DD') as day, variant, count(distinct visitor)::int as n
+        from commerce.experiment_events where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid and goal = ${goal} group by 1, 2
+      `,
+    );
+    for (const r of rows) if (keys.includes(r.variant)) touch(r.day, r.variant).conversions += r.n;
   }
   const daily = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([d, variants]) => ({ day: d, variants }));
   const weeks = new Map<number, DayFigures["variants"]>();
+  const startDay = dayIn(startedAt, zone);
   for (const d of daily) {
-    const week = Math.max(0, Math.floor((new Date(`${d.day}T00:00:00Z`).getTime() - Date.UTC(startedAt.getUTCFullYear(), startedAt.getUTCMonth(), startedAt.getUTCDate())) / (7 * 86_400_000)));
+    const week = Math.max(0, Math.floor(daysBetween(startDay, d.day) / 7));
     const m = weeks.get(week) ?? Object.fromEntries(keys.map((k) => [k, { visitors: 0, conversions: 0 }]));
     weeks.set(week, m);
     for (const k of keys) {
@@ -200,7 +216,7 @@ export async function experimentResults(
     words: say?.words ?? experimentsEn,
     ...(say && { numberLocale: say.numberLocale }),
   });
-  const watched = await guardrailCounts(store, test, now);
+  const watched = await guardrailCounts(store, test, now, zone);
   const count = (pick: (k: string) => { n: number; bad: number }) => keys.map((key) => ({ key, ...pick(key) }));
   const guardrails = [
     checkGuardrail("orders", count((k) => ({ n: funnel[k].visitors, bad: funnel[k].buyers }))),
@@ -224,8 +240,9 @@ export async function experimentResults(
  *   or a refund made within `RETURNS_DAYS` of the order (a refund of an order change or an exchange is neither).
  * Copied orders and hosts' orders never count, as in the funnel.
  */
-async function guardrailCounts(store: { id: string }, test: ExperimentInfo, now: Date) {
-  const startedDay = (test.startedAt ? new Date(test.startedAt) : now).toISOString().slice(0, 10);
+async function guardrailCounts(store: { id: string }, test: ExperimentInfo, now: Date, zone: string) {
+  // `speed_samples.day` is the store's day, as the start's here; a day before it is kept for a store whose zone changed meanwhile.
+  const startedDay = dayIn(test.startedAt ? new Date(test.startedAt) : now, zone);
   const until = (test.stoppedAt ? new Date(test.stoppedAt) : now).toISOString();
   const [speedRows, failedRows, returnRows] = await Promise.all([
     typedRows(

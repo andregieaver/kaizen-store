@@ -17,6 +17,8 @@ type NoticeItem = {
   kind: NoticeKind;
   place: string | null;
   storeId: string | null;
+  /** When it came, written by the feed in the person's language on its store's clock or the platform's (D812): the admin frame carries no date formatter. */
+  when: string;
   facts: Record<string, string>;
   href: string;
   read: boolean;
@@ -173,7 +175,7 @@ export function NoticeList({ place, onOpen, onChange, showPlace = false }: { pla
                   <span className={`text-sm ${item.read ? "text-ink-2" : "text-body-strong text-ink"}`}>{words(item)}</span>
                   <span className="text-caption text-muted">
                     {showPlace && <>{fillWords(w.from, { place: item.place ?? w.kaizen })} · </>}
-                    {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                    {item.when}
                   </span>
                 </Link>
               </li>

@@ -6,7 +6,7 @@ import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { PlatformFlagsCard } from "@/components/admin/platform-flags-card";
 import { ColdStartsCard } from "@/components/admin/cold-starts-card";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
-import { adminDate } from "@/lib/admin-date";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
@@ -147,7 +147,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
                       <tr key={job.job}>
                         <th scope="row" className="py-2 pr-4 font-mono text-ink">{job.job}</th>
                         <td className="py-2 pr-4 text-ink-2 tabular-nums">
-                          {job.lastFinishedAt ? new Date(job.lastFinishedAt).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" }) : w.jobs.never}
+                          {job.lastFinishedAt ? adminDate(PLATFORM_TIME_ZONE, job.lastFinishedAt, "dayTime", lang) : w.jobs.never}
                         </td>
                         <td className={`py-2 pr-4 ${health === "ok" ? "text-ink-2" : "text-danger-text"}`}>{w.jobs[health]}</td>
                         <td className="max-w-md truncate py-2 pr-4 text-muted" title={job.failures > 0 ? (job.lastError ?? "") : ""}>

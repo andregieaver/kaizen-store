@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { zoneless } from "@/test/zoneless-dates";
+
 /**
  * Dates in the admin (code review 1.14, FS5, D786): an instant is shown with `adminDate(zone, at, style, lang)` from `src/lib/admin-date.ts`
  * in the store's zone (each row's own store where a screen spans stores), Kaizena Flow's figures in `PLATFORM_TIME_ZONE`, and Norway-only
@@ -13,6 +15,12 @@ import { describe, expect, it } from "vitest";
  * A cut that is not a date shown to a person is kept below, per file, with its reason: `list` (the first ten items of a list), `typed` (a
  * form's text cut to its length, already on the store's clock), `local` (the day part of a `datetime-local` text, already on the store's
  * clock) or `file` (a file name stamped with the moment the file itself holds). A count only falls (`docs/rules/budgets.md`).
+ *
+ * And no date formatted without a zone (D812, rule 3 of `dates.scan.test.ts`, the same detector: `toLocaleDateString(locale)`,
+ * `Intl.DateTimeFormat(locale, { dateStyle })` and the like with no `timeZone`): on the server it is UTC's day, in a client part the
+ * browser's, so a page and its hydration disagree and a store's evening order shows on another day. Give it `adminDate(zone, at, style,
+ * lang)`. The only ones kept are `browser`: a time set in the browser and shown on the viewer's own clock on purpose, never drawn on the
+ * server, listed below with what each is.
  */
 
 const DIRS = ["src/app/admin", "src/components/admin"];
@@ -30,6 +38,12 @@ const KEPT: Record<string, Kept> = {
   "src/components/admin/campaign-editor.tsx": { count: 1, why: "local" },
   "src/components/admin/css-panel.tsx": { count: 1, why: "list" },
   "src/components/admin/discount-editor.tsx": { count: 2, why: "local" },
+};
+
+/** Rule 3's kept dates, each formatted only in the browser on the viewer's own clock, on purpose (D812). */
+const KEPT_ZONELESS: Record<string, { count: number; why: "browser"; what: string }> = {
+  "src/components/admin/drafts/draft-editor.tsx": { count: 1, why: "browser", what: "Saved at: the moment the person just saved, set by their own press" },
+  "src/components/admin/leave-dialogs.tsx": { count: 1, why: "browser", what: "RestoreBar: when unsaved changes were kept in this browser" },
 };
 
 /** Every source file under a folder, tests left out. */
@@ -76,5 +90,25 @@ describe("admin dates (code review 1.14, FS5, D786)", () => {
 
   it("holds the kept cases to their ceiling (only falls)", () => {
     expect(Object.values(KEPT).reduce((sum, kept) => sum + kept.count, 0)).toBeLessThanOrEqual(11);
+  });
+
+  it("formats no date without a zone beyond the kept browser ones (D812)", () => {
+    const over = files.flatMap(({ rel, lines }) => {
+      const n = zoneless(lines.join("\n")).length;
+      const kept = KEPT_ZONELESS[rel]?.count ?? 0;
+      return n > kept ? [`${rel}: ${n} found, ${kept} kept. Give it the zone: adminDate(store, at, style, lang), or PLATFORM_TIME_ZONE for Kaizena Flow's own and an account's records.`] : [];
+    });
+    expect(over).toEqual([]);
+  });
+
+  it("keeps the zoneless list as low as the code: lower a count, or take out a file, once its date is gone", () => {
+    const high = Object.entries(KEPT_ZONELESS)
+      .filter(([rel, kept]) => zoneless(files.find((f) => f.rel === rel)?.lines.join("\n") ?? "").length < kept.count)
+      .map(([rel, kept]) => `${rel}: fewer than ${kept.count} kept`);
+    expect(high).toEqual([]);
+  });
+
+  it("holds the kept zoneless dates to their ceiling (only falls)", () => {
+    expect(Object.values(KEPT_ZONELESS).reduce((sum, kept) => sum + kept.count, 0)).toBeLessThanOrEqual(2);
   });
 });

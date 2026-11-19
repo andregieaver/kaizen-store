@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
+import { adminDate, adminDay } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import type { HeatmapsMessages } from "@/lib/admin-messages/heatmaps.en";
 import { formatCount, formatNumber, formatPercent } from "@/lib/analytics-core";
+import { addDays } from "@/lib/analytics-period";
 import { foldPercent, frustrationRank, projectCells, reachedShares, reachLines, attentionSeconds, type MapLayout } from "@/lib/heat-read";
 import { partLabel, partTotals } from "@/lib/heat-tools";
 import { BANDS, MIN_MAP_VIEWS, type HeatDevice } from "@/lib/page-heat";
@@ -171,6 +173,8 @@ export type PageMapViewProps = {
   refresher: ReactNode;
   words: HeatmapsMessages;
   locale: string;
+  /** The store's time zone: when the picture was taken, on the store's clock (D812). */
+  timeZone: string;
   /** The owner's link to this page's recordings with rage clicks (D656 step 11); left out for anyone else. */
   watchHref?: string;
   /** The A/B version shown (`{experiment}:{version}`), `""` for every visitor (D656 step 12). */
@@ -185,7 +189,7 @@ export type PageMapViewProps = {
 };
 
 export function PageMapView(props: PageMapViewProps) {
-  const { base, page, view, device, days, devices, heat, shot, period, words, locale } = props;
+  const { base, page, view, device, days, devices, heat, shot, period, words, locale, timeZone } = props;
   const w = words.map;
   const tag = props.tag ?? "";
   const here = (params: Partial<{ view: string; device: string; days: string; tag: string }>) => {
@@ -274,9 +278,6 @@ export function PageMapView(props: PageMapViewProps) {
     );
   else picture = <p className="text-sm text-muted">{w.noPicture}</p>;
 
-  const dateOf = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(iso));
-  const lastDay = new Date(`${period.to}T00:00:00Z`);
-  lastDay.setUTCDate(lastDay.getUTCDate() - 1);
 
   return (
     <div className="flex flex-col gap-6">
@@ -378,8 +379,8 @@ export function PageMapView(props: PageMapViewProps) {
             <div className="mt-3 flex flex-col gap-2 text-muted">
               {props.newPicture}
               {missing > 0 ? <p>{fillWords(w.notOnPicture, { n: formatCount(missing) })}</p> : null}
-              {shot.shotAt ? <p>{fillWords(w.pictureFrom, { date: dateOf(shot.shotAt) })}</p> : null}
-              <p>{fillWords(w.figuresFrom, { from: dateOf(`${period.from}T12:00:00Z`), to: dateOf(lastDay.toISOString()) })}</p>
+              {shot.shotAt ? <p>{fillWords(w.pictureFrom, { date: adminDate(timeZone, shot.shotAt, "day", locale) })}</p> : null}
+              <p>{fillWords(w.figuresFrom, { from: adminDay(period.from, "day", locale), to: adminDay(addDays(period.to, -1), "day", locale) })}</p>
             </div>
           </details>
         </div>
