@@ -222,11 +222,9 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             filtered ? (
               <ButtonLink href={hrefWith({ q: null, tag: null })}>{words.showEveryone}</ButtonLink>
             ) : (
-              !show && canWrite && (
-                <ButtonLink kind="main" href={`${base}/new`}>
-                  {staff.addCustomer}
-                </ButtonLink>
-              )
+              // The header holds Add customer; a list with nobody yet offers the other way in, the old shop's file (the owner's, D165).
+              !show &&
+              memberCan(member, "owner") && <ButtonLink href={`${base}/import`}>{staff.importCustomers}</ButtonLink>
             )
           }
         />
