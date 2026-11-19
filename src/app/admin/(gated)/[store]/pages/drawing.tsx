@@ -74,6 +74,7 @@ export function PageDrawing({
           byline={content.author || store.name}
           lang={market?.lang ?? "en"}
           locale={market?.locale ?? "en-GB"}
+          timeZone={store.timeZone}
           place={place}
           inAdmin
         />

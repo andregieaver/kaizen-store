@@ -165,11 +165,12 @@ export async function StoreArticle({ params, handle }: { params: ArticleParams; 
         byline={bylineOf(author, c, store.name)}
         lang={market.lang}
         locale={market.locale}
+        timeZone={store.timeZone}
         place={place}
         editable={market.locale === store.localization.locales[0]}
         author={author}
       />
-      <BlogComments setting={blog.comments} comments={comments} store={store.slug} market={market.slug} article={page.id} lang={market.lang} locale={market.locale} />
+      <BlogComments setting={blog.comments} comments={comments} store={store.slug} market={market.slug} article={page.id} lang={market.lang} locale={market.locale} timeZone={store.timeZone} />
       <PageEditLink pageId={page.id} store={store.slug} article adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
     </div>
   );

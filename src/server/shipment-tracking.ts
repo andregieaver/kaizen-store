@@ -3,6 +3,7 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { FOLLOWED_CARRIERS, type CarrierId } from "@/lib/shipping-carriers";
 import {
   CHECK_NOW_SECONDS,
@@ -109,7 +110,7 @@ const parcelOf = (row: Row): Parcel => ({
   sentAt: new Date(String(row.sent_at)),
   lang: String(row.locale ?? "en").split("-")[0] || "en",
   country: row.country ? String(row.country) : null,
-  storeZone: String(row.time_zone ?? "Europe/Oslo"),
+  storeZone: storeZoneOf(row.time_zone),
 });
 
 /** The columns of a parcel the check needs (`sh`, `o`, `s` in the query). */

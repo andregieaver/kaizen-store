@@ -12,6 +12,7 @@ import {
   type OrderListParams,
   readOrderListParams,
 } from "@/lib/order-list";
+import { storeZoneOf } from "@/lib/dates";
 import { noteStart, payCellOf, shipCellOf, type OrderListItem, type OrderStatusValue } from "@/lib/order-list-row";
 import { ORDERS_COUNT_CAP, ORDERS_PAGE_SIZE } from "@/lib/order-limits";
 import { searchWords } from "@/lib/order-search";
@@ -49,7 +50,7 @@ export async function loadOrderListContext(storeId: string): Promise<OrderListCo
   `);
   const currencies = await db().execute<Row>(sql`select currency, rate from commerce.store_currencies where store_id = ${storeId}::uuid`);
   return {
-    timeZone: String(row?.time_zone ?? "Europe/Oslo"),
+    timeZone: storeZoneOf(row?.time_zone),
     today: String(row?.today ?? new Date().toISOString().slice(0, 10)),
     marketCodes: ((row?.markets ?? []) as string[]).map((code) => String(code).trim()),
     totalFactors: valueFactors(currencies.map((c) => ({ currency: String(c.currency).trim(), rate: c.rate === null || c.rate === undefined ? null : Number(c.rate), digits: minorUnitDigits(String(c.currency).trim()) }))),

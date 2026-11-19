@@ -136,7 +136,7 @@ export function isoWeekday(day: string): number {
 /** The Monday on or before the day. */
 export const startOfWeek = (day: string) => addDays(day, 1 - isoWeekday(day));
 
-/** What day it is in a time zone (an IANA name such as `Europe/Oslo`). */
+/** What day it is in a time zone (an IANA name such as `America/New_York`). */
 export function todayIn(now: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";

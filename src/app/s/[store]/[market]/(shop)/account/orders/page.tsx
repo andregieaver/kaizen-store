@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { accountTabHref } from "@/lib/account-tabs";
 import { accountsShown } from "@/lib/customer-accounts";
 import { ACCOUNT_ORDER_STATES, accountOrdersQuery, parseAccountOrderParams } from "@/lib/account-orders";
+import { dateIn } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -48,7 +49,7 @@ async function Orders({ params, searchParams }: Pick<Props, "params" | "searchPa
   const m = a.orderList;
   const page = marketPath(store.slug, market.slug, "/account/orders");
   const text = query.search.words.map((w) => w.raw).join(" ");
-  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  const date = (iso: string) => dateIn(store, iso, "day", market.locale);
   const stateWords = { open: m.open, sent: m.sent, delivered: m.delivered, returned: m.returned };
   const chip = (on: boolean) => `rounded-button border px-3 py-1 text-sm ${on ? "border-foreground" : "border-border"}`;
 

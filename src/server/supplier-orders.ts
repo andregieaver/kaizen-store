@@ -759,9 +759,9 @@ export type OwedRow = { orderId: string; number: string; shippedAt: string; unit
 /**
  * What the shop owes a supplier for the parcels it sent in a month (the store's main currency, without VAT): each shipped supplier order's units
  * at the cost the order line froze when it was sold (D152). A line sold without a cost is counted at 0 and marked, so the owner sees what is
- * missing. Paying it stays outside Kaizena Flow.
+ * missing. Paying it stays outside Kaizena Flow. The month is the store's own (`timeZone`).
  */
-export async function owedToSupplier(storeId: string, supplierId: string, month: string): Promise<{ rows: OwedRow[]; totalMinor: number }> {
+export async function owedToSupplier(storeId: string, supplierId: string, month: string, timeZone: string): Promise<{ rows: OwedRow[]; totalMinor: number }> {
   if (!UUID.test(supplierId) || !/^\d{4}-\d{2}$/.test(month)) return { rows: [], totalMinor: 0 };
   const rows = await typedRows(
     z.object({ order_id: col.uuid, number: col.text, shipped_at: col.timestamp, units: col.int, cost_minor: col.minor, missing: col.bool }),
@@ -773,7 +773,9 @@ export async function owedToSupplier(storeId: string, supplierId: string, month:
         join commerce.supplier_order_lines l on l.store_id = so.store_id and l.supplier_order_id = so.id
         join commerce.order_lines ol on ol.store_id = l.store_id and ol.id = l.order_line_id
         where so.store_id = ${storeId}::uuid and so.supplier_id = ${supplierId}::uuid and so.state = 'shipped'
-          and so.shipped_at >= ${`${month}-01`}::date and so.shipped_at < (${`${month}-01`}::date + interval '1 month')
+          -- The month on the store's own clock (D796), as the page names it, not UTC's.
+          and so.shipped_at >= (${`${month}-01`}::date)::timestamp at time zone ${timeZone}
+          and so.shipped_at < (${`${month}-01`}::date + interval '1 month')::timestamp at time zone ${timeZone}
         group by so.id, so.order_id, o.number, so.shipped_at
         order by so.shipped_at`,
   );

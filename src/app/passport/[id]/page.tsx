@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { dateIn } from "@/lib/dates";
 import { countryName } from "@/lib/drop-shipping";
 import { passportWords, recycledShare } from "@/lib/product-passport";
 import { publicPassport, type PublicPassport } from "@/server/product-passports";
@@ -136,7 +137,7 @@ function Body({ p }: { p: PublicPassport }) {
       </Section>
       <footer className="flex flex-col gap-1 border-t border-border pt-4 text-sm text-muted">
         <p>
-          {w.updated}: {new Date(p.updatedAt).toISOString().slice(0, 10)}
+          {w.updated}: {dateIn(p.storeTimeZone, p.updatedAt, "iso", p.lang)}
         </p>
         <a href={`/passport/${p.id}/json`} className="underline underline-offset-2">
           {w.json}

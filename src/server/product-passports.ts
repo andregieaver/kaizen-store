@@ -77,6 +77,8 @@ export async function savePassport(member: Membership, productId: string, raw: u
 export type PublicPassport = {
   id: string;
   updatedAt: string;
+  /** The store's zone, which the day it was updated is read in (D796). */
+  storeTimeZone: string;
   storeName: string;
   storeAddress: string;
   lang: string;
@@ -117,13 +119,14 @@ async function readPublicPassport(id: string): Promise<{ storeId: string; passpo
       data: z.unknown(),
       store_name: col.text,
       store_address: col.textOrNull,
+      time_zone: col.text,
       locale: col.textOrNull,
       title: col.textOrNull,
       identifiers: z.array(z.object({ sku: z.string().nullable(), gtin: z.string().nullable() })).nullable(),
       manufacturer: operator,
       responsible: operator,
     }),
-    sql`select pp.id, pp.store_id, pp.updated_at, pp.data, coalesce(nullif(st.legal_name, ''), st.name) as store_name, st.postal_address as store_address,
+    sql`select pp.id, pp.store_id, pp.updated_at, pp.data, coalesce(nullif(st.legal_name, ''), st.name) as store_name, st.postal_address as store_address, st.time_zone,
                m.default_locale as locale,
                coalesce((select t.title from commerce.product_translations t where t.store_id = p.store_id and t.product_id = p.id and t.locale = m.default_locale),
                         (select t.title from commerce.product_translations t where t.store_id = p.store_id and t.product_id = p.id order by t.locale limit 1)) as title,
@@ -142,6 +145,7 @@ async function readPublicPassport(id: string): Promise<{ storeId: string; passpo
   const passport: PublicPassport = {
     id: row.id,
     updatedAt: row.updated_at,
+    storeTimeZone: row.time_zone,
     storeName: row.store_name,
     storeAddress: row.store_address ?? "",
     lang: (row.locale ?? "en").split("-")[0],

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { cartSubtotal } from "@/lib/cart";
 import { NO_CART_AFFILIATE } from "@/lib/affiliates";
 import { memberOffAfterCampaign } from "@/lib/campaigns";
@@ -74,7 +75,8 @@ export async function cartSummary(
   const serviceRequest = needsServiceRequest(
     cart.lines.map((line) => ({ delivery: line.delivery, startsAt: line.booking?.startsAt ?? null, withdrawalExclusion: line.withdrawalExclusion })),
     new Date(),
-    cart.lines.find((line) => line.booking)?.booking?.timeZone ?? "Europe/Oslo",
+    // The booked line's own zone; a cart with no booked service asks nothing of a zone, so the platform's stands in (D796).
+    cart.lines.find((line) => line.booking)?.booking?.timeZone ?? PLATFORM_TIME_ZONE,
   );
   // The delivery the shopper chose at checkout (D135) is the basket's shipping rate instead of the market's flat rate;
   // a subscription pays the flat rate on each delivery (D25), so there it counts for nothing.

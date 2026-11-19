@@ -1,6 +1,7 @@
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
 import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import { dateIn } from "./dates";
 import type { EmailContent } from "./email-layout";
 
 /**
@@ -44,7 +45,8 @@ export function shareText(part: number, whole: number, locale = "en-GB"): string
   return `${pct.toLocaleString(locale, { maximumFractionDigits: pct < 1 ? 2 : 1 })} %`;
 }
 
-export type PausedFacts = { storeName: string; reason: GuardReason; counts: GuardCounts; since: Date; url: string };
+/** `timeZone` is the store's, which the day the guard counts from is read in (D796). */
+export type PausedFacts = { storeName: string; timeZone: string; reason: GuardReason; counts: GuardCounts; since: Date; url: string };
 
 /** The email to a store's owners when the guard pauses its marketing email, in their admin language. */
 export function pausedEmail(facts: PausedFacts, words: StaffEmailsMessages = staffEmailsEn, lang: AdminLang = "en"): EmailContent {
@@ -56,7 +58,7 @@ export function pausedEmail(facts: PausedFacts, words: StaffEmailsMessages = sta
     sent: n(facts.counts.sent),
     bounced: n(facts.counts.bounced),
     complained: n(facts.counts.complained),
-    since: facts.since.toLocaleDateString(locale, { dateStyle: "long", timeZone: "UTC" }),
+    since: dateIn(facts.timeZone, facts.since, "long", lang),
     rate: shareText(facts.reason === "bounces" ? facts.counts.bounced : facts.counts.complained, facts.counts.sent, locale),
   };
   return {

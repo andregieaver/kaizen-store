@@ -17,6 +17,7 @@ import {
   type TemplateSlot,
   type TemplatedSlots,
 } from "@/lib/email-template";
+import { dateIn } from "@/lib/dates";
 import { deliveryEmailText, emailText, type EmailText } from "@/lib/email-text";
 import { formatMoney, type MoneyStyle } from "@/lib/money";
 import { sampleOrder, samplePlaceholders, type SampleOrder } from "@/lib/notification-sample";
@@ -274,7 +275,7 @@ export async function resetTemplate(storeId: string, id: string, lang: string, a
  * The fixed subject, heading and intro of a notification in a language, filled with the given values: the words the real builders use (`orderNotice()`,
  * `returnMail()`, `sendOrderConfirmation()`, the change and parcel emails), for the preview and the editor's placeholders.
  */
-export function fixedSlots(id: string, lang: string, values: PlaceholderValues): BuiltSlots {
+export function fixedSlots(id: string, lang: string, values: PlaceholderValues, when: { now: Date; timeZone: string }): BuiltSlots {
   const v = Object.fromEntries(PLACEHOLDER_NAMES.map((name) => [name, values[name] ?? ""])) as Record<PlaceholderName, string>;
   const text = emailText(lang);
   const delivery = deliveryEmailText(lang);
@@ -303,7 +304,7 @@ export function fixedSlots(id: string, lang: string, values: PlaceholderValues):
     case "order.out_for_delivery":
       return { subject: delivery.outSubject(store, number), heading: delivery.outHeading, intro: delivery.outIntro(number) };
     case "return.acknowledgement":
-      return { subject: r.ackSubject(store, number), heading: r.ackHeading, intro: r.ackIntro(store, number, new Date().toLocaleDateString(lang)) };
+      return { subject: r.ackSubject(store, number), heading: r.ackHeading, intro: r.ackIntro(store, number, dateIn(when.timeZone, when.now, "long", lang)) };
     case "return.approved":
       return { subject: r.approvedSubject(store, v.return_number), heading: r.approvedHeading, intro: r.approvedIntro(v.return_number) };
     case "return.declined":
@@ -370,7 +371,7 @@ export async function previewNotification(storeId: string, id: string, lang: str
   const market = sampleMarket(store, locale);
   const sample = sampleOrder({ storeName: store.name, currency: market.currency, locale: market.locale, lang: locale, now });
   const values = samplePlaceholders(sample, store.name);
-  const standard = fixedSlots(id, locale, values);
+  const standard = fixedSlots(id, locale, values, { now, timeZone: store.timeZone });
   const template = !n.editable ? null : draft !== undefined && draft !== null ? draft : await templatesFor(storeId, id, locale);
   const problems = template ? templateProblems(template, id) : [];
   const slots = withTemplate(standard, template, id, values);

@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { NORWAY_TIME_ZONE } from "@/lib/dates";
 import { todayIn } from "@/lib/analytics-period";
 import { sortClients, vatToReport, type ClientFacts } from "@/lib/books-clients";
 import { can } from "@/lib/permissions";
@@ -90,6 +91,7 @@ export async function booksClients(account: Pick<Account, "id">, now = new Date(
       vatTotalMinor: vat,
     });
   }
-  return sortClients(clients, todayIn(now, "Europe/Oslo"));
+  // Norway's day: the books' deadlines are the Norwegian VAT return's (D796).
+  return sortClients(clients, todayIn(now, NORWAY_TIME_ZONE));
 }
 

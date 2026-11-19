@@ -95,7 +95,7 @@ export async function stockLevelsTool(ctx: Ctx, { search, status, location, limi
 export async function stockHistoryTool(ctx: Ctx, { sku, days, reason, limit }: OwnerToolInput<"stock_history">) {
   const store = ctx.store;
   const variant = await variantBySku(store, sku);
-  const from = dayBefore(todayIn(new Date(), store.timeZone || "Europe/Oslo"), days - 1);
+  const from = dayBefore(todayIn(new Date(), store.timeZone), days - 1);
   const { rows, nextCursor } = await stockHistory(store, { variantId: variant.id, reason, from, limit });
   return {
     sku: variant.sku,

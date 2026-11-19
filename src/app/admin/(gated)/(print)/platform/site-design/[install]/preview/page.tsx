@@ -20,6 +20,7 @@ import { getPlatformChrome } from "@/server/platform-navigation";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { platformInstallPreview, platformPreviewPage } from "@/server/platform-theme-preview";
 import { fillWords } from "@/lib/admin-fill";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
@@ -96,7 +97,7 @@ export default async function PlatformThemePreviewPage({ params, searchParams }:
           <main className="flex flex-col">
             {shown && place ? (
               shown.type === "article" ? (
-                <ArticleView content={shown.content} date={shown.publishedAt} byline="Kaizena Flow" lang="en" locale="en-GB" place={place} inAdmin />
+                <ArticleView content={shown.content} date={shown.publishedAt} byline="Kaizena Flow" lang="en" locale="en-GB" timeZone={PLATFORM_TIME_ZONE} place={place} inAdmin />
               ) : (
                 <PageArticle content={shown.content} place={place} inAdmin />
               )

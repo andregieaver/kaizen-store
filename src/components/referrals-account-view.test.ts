@@ -38,7 +38,7 @@ const referrals = (over: Partial<ShopperReferrals> = {}): ShopperReferrals => ({
   ...over,
 });
 const view = (over: Partial<ShopperReferrals> = {}, lang = "en", link: string | null = "https://kaffe.example/s/kaffe?ref=abcdef23") =>
-  createElement(ReferralsAccountView, { referrals: referrals(over), link, m: t(lang), locale: lang === "en" ? "en-GB" : "nb-NO", base: "/s/kaffe/no" });
+  createElement(ReferralsAccountView, { referrals: referrals(over), link, m: t(lang), locale: lang === "en" ? "en-GB" : "nb-NO", timeZone: "Europe/Oslo", base: "/s/kaffe/no" });
 
 describe("Refer a friend on My account", () => {
   it("shows the link to share with a button to copy it, and how it works in the store's terms", () => {

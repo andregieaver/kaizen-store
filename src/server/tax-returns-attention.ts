@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { zonedDate } from "@/lib/booking-slots";
 import { buildReturn } from "@/lib/oss-return";
 import { candidatePeriods, exportKey, returnsDue, schemesOf, type DueProfile, type ReturnDue } from "@/lib/tax-returns-due";
@@ -35,7 +36,7 @@ export async function taxReturnsAttention(storeIds: readonly string[], now: Date
 
   const stores = rows.map((r) => ({
     id: String(r.id),
-    today: zonedDate(now.getTime(), String(r.time_zone ?? "Europe/Oslo")),
+    today: zonedDate(now.getTime(), storeZoneOf(r.time_zone)),
     profile: {
       ossScheme: r.oss_scheme === "union" || r.oss_scheme === "non_union" ? r.oss_scheme : "none",
       ossRegisteredOn: r.oss_registered_on ? String(r.oss_registered_on) : null,

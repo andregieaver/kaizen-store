@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { zoneOf } from "@/lib/dates";
 import { clipForLive, readLiveTurns, type LiveTurn } from "@/lib/speech-text";
 
 import { aiFor, type LiveConnection } from "./ai";
@@ -91,7 +92,7 @@ async function pickConversation(p: Principal, requested: string | null): Promise
 /** The voice's own instructions: who it is and how it talks and hands over work. The store's rules live in the AI manager it delegates to. */
 export function liveInstructions(p: Principal, now = new Date()): string {
   const { store, account } = p;
-  const timeZone = store?.timeZone ?? "Europe/Oslo";
+  const timeZone = zoneOf(store);
   const stamp = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone }).format(now);
   return [
     "# Who you are",

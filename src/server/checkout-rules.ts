@@ -33,6 +33,7 @@ import {
   todayInZone,
   type FieldBounds,
 } from "@/lib/checkout-rules";
+import { storeZoneOf } from "@/lib/dates";
 import { boundsProblems, checklistProblems, fieldInputSchema, ruleInputSchema } from "@/lib/checkout-rules-schema";
 import { shown, type Market } from "@/lib/markets";
 import { SWITCHABLE_METHODS } from "@/lib/payment-methods";
@@ -528,7 +529,7 @@ export async function checkoutQuestionsFor(
 /** The store's today (`YYYY-MM-DD`) in its own time zone. */
 export async function storeToday(storeId: string): Promise<string> {
   const row = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  return todayInZone(row?.time_zone ?? "Europe/Oslo");
+  return todayInZone(storeZoneOf(row?.time_zone));
 }
 
 /** What the rule editor offers (D357): the store's delivery options in every country (named with the country), products, categories, tags, groups. */

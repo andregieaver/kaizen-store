@@ -183,6 +183,7 @@ describe("what is pending and from when", () => {
       ],
       600,
       now,
+      "Europe/Oslo",
     );
     expect(parts.map((p) => [p.availableAt.slice(0, 10), p.amountMinor])).toEqual([
       ["2026-10-10", 300],
@@ -190,14 +191,25 @@ describe("what is pending and from when", () => {
     ]);
   });
 
+  it("groups by the store's own day, not UTC's (D796)", () => {
+    // 08:00 and 18:00 UTC on 10 October are the 10th and the 11th in Auckland (UTC+13), and 04:00 and 14:00 on the 10th in New York.
+    const grants = [entry("b", 200, "2026-10-10T08:00:00Z"), entry("c", 100, "2026-10-10T18:00:00Z")];
+    expect(pendingParts(grants, 300, now, "Pacific/Auckland").map((p) => p.amountMinor)).toEqual([200, 100]);
+    expect(pendingParts(grants, 300, now, "America/New_York").map((p) => p.amountMinor)).toEqual([300]);
+    // 22:00 UTC on 10 October and 03:30 UTC on the 11th are both the evening of the 10th in New York: one day there, as the page shows it.
+    const evening = [entry("b", 200, "2026-10-10T22:00:00Z"), entry("c", 100, "2026-10-11T03:30:00Z")];
+    expect(pendingParts(evening, 300, now, "America/New_York")).toEqual([{ availableAt: "2026-10-10T22:00:00Z", amountMinor: 300 }]);
+  });
+
   it("never lists more than the balance says is pending, taking the excess off the latest", () => {
     const parts = pendingParts(
       [entry("a", 300, "2026-10-20T08:00:00Z"), entry("b", 300, "2026-10-10T08:00:00Z")],
       400,
       now,
+      "Europe/Oslo",
     );
     expect(parts.map((p) => p.amountMinor)).toEqual([300, 100]);
-    expect(pendingParts([entry("a", 300, "2026-10-20T08:00:00Z")], 0, now)).toEqual([]);
+    expect(pendingParts([entry("a", 300, "2026-10-20T08:00:00Z")], 0, now, "Europe/Oslo")).toEqual([]);
   });
 });
 

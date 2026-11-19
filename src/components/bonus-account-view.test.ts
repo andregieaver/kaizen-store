@@ -59,6 +59,7 @@ const html = (over: Partial<ShopperBonus> = {}, extra: Partial<ComponentProps<ty
       bonus: shopper(over),
       m: t("en"),
       locale: "en-IE",
+      timeZone: "Europe/Dublin",
       base: "/s/demo/ie",
       orderIds: { "1042": "order-1042" },
       now,

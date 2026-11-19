@@ -1,4 +1,5 @@
 import type { RedeemedCode, ShopperReward } from "@/lib/bonus-rewards";
+import { dateIn } from "@/lib/dates";
 import type { Messages } from "@/lib/i18n";
 import { formatMoney, type PriceDecimals } from "@/lib/money";
 
@@ -13,6 +14,7 @@ export function BonusRewardsSection({
   birthdayMinor,
   currency,
   locale,
+  timeZone,
   m,
   outcome,
   redeem,
@@ -26,6 +28,8 @@ export function BonusRewardsSection({
   birthdayMinor: number;
   currency: string;
   locale: string;
+  /** The store's zone: a code's last day is the store's own (D796). */
+  timeZone: string;
   m: Messages;
   outcome: "ok" | "failed" | null;
   redeem: (rewardId: string) => Promise<void>;
@@ -79,7 +83,7 @@ export function BonusRewardsSection({
                       <code className="font-mono text-base tracking-wider">{c.code}</code>
                     </span>
                     <span className="opacity-80">
-                      {c.used ? b.codeUsed : c.ended ? b.codeEnded : c.endsAt ? b.codeEnds(new Date(c.endsAt).toLocaleDateString(locale, { dateStyle: "long" })) : null}
+                      {c.used ? b.codeUsed : c.ended ? b.codeEnded : c.endsAt ? b.codeEnds(dateIn(timeZone, c.endsAt, "long", locale)) : null}
                     </span>
                   </li>
                 ))}

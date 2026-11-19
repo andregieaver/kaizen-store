@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { PLATFORM_TIME_ZONE } from "./dates";
 import { SMS_COUNTRIES, normalisePhone, phoneCountry } from "./phone";
 
 /**
@@ -107,7 +108,8 @@ export const NO_SUNDAY_COUNTRIES: ReadonlySet<string> = new Set(["FR"]);
  * next time it is `from` o'clock there on a day that is open. The window is `[from, until)` in whole hours.
  */
 export function nextSendTime(now: Date, country: string, hours: { from: number; until: number } = QUIET_DEFAULT): Date {
-  const zone = SMS_COUNTRIES[country]?.zone ?? "Europe/Oslo";
+  // A country the table does not name keeps the platform's clock (D796).
+  const zone = SMS_COUNTRIES[country]?.zone ?? PLATFORM_TIME_ZONE;
   const w = wallClock(now, zone);
   const today = Date.UTC(w.year, w.month - 1, w.day);
   const closed = (dayMs: number) => NO_SUNDAY_COUNTRIES.has(country) && new Date(dayMs).getUTCDay() === 0;

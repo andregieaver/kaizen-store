@@ -15,6 +15,7 @@ import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { previewKaizenTemplate } from "@/server/templates";
 import { fillWords } from "@/lib/admin-fill";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
@@ -69,7 +70,7 @@ export default async function KaizenTemplatePreviewPage({
             ) : type === "footer" ? (
               <KaizenSiteFooter chrome={chrome} layout={{ id: preview.id, content }} />
             ) : type === "article" ? (
-              <ArticleView content={content} date={null} byline="Kaizena Flow" lang="en" locale="en-GB" place={place} inAdmin />
+              <ArticleView content={content} date={null} byline="Kaizena Flow" lang="en" locale="en-GB" timeZone={PLATFORM_TIME_ZONE} place={place} inAdmin />
             ) : (
               <PageArticle content={content} place={place} inAdmin />
             )}

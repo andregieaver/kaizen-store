@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import type { BonusExpiryReminder } from "@/lib/bonus";
+import { dateIn } from "@/lib/dates";
 import { renderEmail } from "@/lib/email-layout";
 import { bonusExpiryText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
@@ -38,12 +39,11 @@ export async function sendBonusExpiryEmail(reminder: BonusExpiryReminder): Promi
   const ctx = await emailContext(reminder.storeId, String(main.code), String(customer.locale ?? main.default_locale));
   if (!ctx) return null;
   const { store, market, text } = ctx;
-  const expiresOn = new Date(reminder.firstExpiresAt);
   const words = bonusExpiryText(text, {
     store: store.name,
     customerName: String(customer.name ?? ""),
     amount: formatMoney(reminder.amountMinor, reminder.currency, market.locale, market.priceStyle),
-    expiresOn: expiresOn.toLocaleDateString(market.locale, { dateStyle: "long" }),
+    expiresOn: dateIn(store, reminder.firstExpiresAt, "long", market.locale),
     url: `${marketUrl(store.slug, market.slug, "/account/bonus")}`,
   });
   const email = renderEmail({

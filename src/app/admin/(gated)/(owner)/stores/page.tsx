@@ -5,9 +5,10 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignCards } from "@/components/admin/design-cards";
 import { StoresList } from "@/components/admin/stores-list";
 import { listClosedStores, listStores, requireAccount } from "@/server/auth";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { PROMPT_MAX, PROMPT_MIN } from "@/lib/dream-factory";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { copyProgressPath } from "@/lib/store-copy-paths";
 import { listHostings } from "@/server/hosts";
@@ -26,7 +27,6 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export default async function AllStoresPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const locale = ADMIN_LANG_FACTS[lang].locale;
   const words = adminText(lang, "home");
   const { stores: w, common: c } = words;
   const [stores, hostings, copies, closed] = await Promise.all([listStores(account), listHostings(account), listStoreCopies(account), listClosedStores(account)]);
@@ -125,7 +125,7 @@ export default async function AllStoresPage() {
                 </Link>
                 <span className="block text-muted">
                   {c.closedAt
-                    ? fillWords(w.closedOn, { date: c.closedAt.toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) })
+                    ? fillWords(w.closedOn, { date: adminDate(c, c.closedAt, "long", lang) })
                     : w.closedPlain}{" "}
                   {c.role === "owner" ? w.closedOwner : w.closedStaff}
                 </span>

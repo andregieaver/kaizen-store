@@ -13,6 +13,7 @@ import {
   type IntegrationEvent,
   type Provider,
 } from "@/lib/integrations";
+import { storeZoneOf } from "@/lib/dates";
 import { mainCurrency } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
@@ -1538,6 +1539,8 @@ type Claimed = {
   storeId: string;
   storeSlug: string;
   storeName: string;
+  /** The store's zone, which a message about it reads its moments in (D796). */
+  storeTimeZone: string;
   /** The store's main language, for amounts in Slack's messages. */
   locale: string;
   /** A service, or `webhook` for an owner's own endpoint (D354). */
@@ -1647,13 +1650,13 @@ async function keepEndpointHealth(delivery: Claimed, outcome: Outcome): Promise<
   // An app's installation's endpoint (D441) is the app's to mend: the store's owners are not told of an address they never gave.
   if (delivery.appEndpoint) return;
   await notifyEndpointOff(
-    { id: delivery.storeId, slug: delivery.storeSlug, name: delivery.storeName },
+    { id: delivery.storeId, slug: delivery.storeSlug, name: delivery.storeName, timeZone: delivery.storeTimeZone },
     { id: String(off.id), name: String(off.name), hint: String(off.hint), since: new Date(String(off.failing_since)).toISOString(), error: outcome.error ?? String(outcome.status ?? "") },
   );
 }
 
 const claimedColumns = sql`
-  d.id, d.store_id, s.slug, s.name, d.provider, d.event, d.subject_id, d.payload, d.attempts, d.created_at,
+  d.id, d.store_id, s.slug, s.name, s.time_zone, d.provider, d.event, d.subject_id, d.payload, d.attempts, d.created_at,
   coalesce(i.webhook_url_encrypted, e.url_encrypted) as webhook_url_encrypted, coalesce(i.enabled, e.enabled, false) as enabled,
   d.endpoint_id, e.secret_encrypted, e.disabled_reason as endpoint_off, e.app_grant_id is not null as app_endpoint,
   coalesce((
@@ -1669,6 +1672,7 @@ function toClaimed(row: Row): Claimed {
     storeId: String(row.store_id),
     storeSlug: String(row.slug),
     storeName: String(row.name),
+    storeTimeZone: storeZoneOf(row.time_zone),
     locale: String(row.locale),
     provider: row.provider as Provider | "webhook",
     event: String(row.event),

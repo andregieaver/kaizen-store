@@ -118,7 +118,7 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
                 <ul className="mt-1 flex flex-col gap-0.5 text-ink-2">
                   {s.other.slice(-20).map((o) => (
                     <li key={`${o.ref}:${o.at}`} className="font-mono">
-                      {new Date(o.at).toLocaleString(locale, { dateStyle: "short", timeStyle: "short", timeZone: "UTC" })} · {o.what}
+                      {adminDate(PLATFORM_TIME_ZONE, o.at, "dayTime", lang)} · {o.what}
                     </li>
                   ))}
                 </ul>

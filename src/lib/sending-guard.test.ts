@@ -30,7 +30,7 @@ describe("the sending guard's verdict (D730)", () => {
 });
 
 describe("the email to the owners", () => {
-  const facts = { storeName: "Nordlys Te", reason: "bounces" as const, counts: { sent: 1200, bounced: 84, complained: 1 }, since: new Date("2026-11-10T00:00:00Z"), url: "https://kaizenaflow.com/admin/nordlys/marketing" };
+  const facts = { storeName: "Nordlys Te", timeZone: "Europe/Oslo", reason: "bounces" as const, counts: { sent: 1200, bounced: 84, complained: 1 }, since: new Date("2026-11-10T00:00:00Z"), url: "https://kaizenaflow.com/admin/nordlys/marketing" };
 
   it("says what was counted, what is held and what goes on", () => {
     const email = pausedEmail(facts);

@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { addDays, zonedTime } from "@/lib/booking-slots";
 import { stripeLocale } from "@/lib/checkout";
 import { toMarket, type Market } from "@/lib/markets";
@@ -197,7 +198,7 @@ export type StandingOrderView = {
 
 async function storeClock(storeId: string): Promise<{ timeZone: string; audience: string }> {
   const [row] = await db().execute<Row>(sql`select s.time_zone, ${STORE_AUDIENCE} as audience from commerce.stores s where s.id = ${storeId}::uuid`);
-  return { timeZone: String(row?.time_zone ?? "Europe/Oslo"), audience: String(row?.audience ?? "consumers") };
+  return { timeZone: storeZoneOf(row?.time_zone), audience: String(row?.audience ?? "consumers") };
 }
 
 /** The customer's open list in this store, or null. */
