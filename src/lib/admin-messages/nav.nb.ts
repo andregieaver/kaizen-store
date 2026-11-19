@@ -398,6 +398,9 @@ export const NAV_NB: Record<string, string> = {
   Extensions: "Utvidelser",
   "The paid extensions: their sizes and prices, the bundles, and what each plan includes.":
     "De betalte utvidelsene: størrelsene og prisene, pakkene, og hva hvert abonnement gir.",
+  Accounts: "Kontoer",
+  "Each account's billing, and the move of accounts billed store by store to one plan.":
+    "Hver kontos fakturering, og flyttingen av kontoer som faktureres butikk for butikk til ett abonnement.",
   "Access requests": "Forespørsler om tilgang",
   "Search test": "Søketest",
   "VAT rates": "Mva-satser",

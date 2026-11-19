@@ -377,6 +377,49 @@ describe("email into the desk", () => {
     await db().execute(sql`delete from commerce.support_inbound_emails where from_address like '%@inbound.example'`);
     await db().execute(sql`delete from commerce.accounts where id = ${String(account.id)}::uuid`);
   });
+
+  it("answers the platform's address from Kaizena Flow's own store while the site is served from it, and one email sent to both once", async () => {
+    const [house] = await db().execute<Row>(sql`select commerce.make_house_store() as id`);
+    const houseId = String(house.id);
+    await support.ensureDesk(systemDesk(houseId));
+    await support.ensureDesk(systemDesk(null));
+    const [before] = await db().execute<Row>(sql`select site_from_store from commerce.platform_settings`);
+    const [platformBefore] = await db().execute<Row>(sql`select mode from commerce.support_settings where store_id is null`);
+    await db().execute(sql`update commerce.support_settings set mode = 'people', tone_on = false, summaries_on = false where store_id = ${houseId}::uuid or store_id is null`);
+    const houseAddress = (await inbound.deskEmailAddress(systemDesk(houseId), env))!;
+    const platformAddress = (await inbound.deskEmailAddress(systemDesk(null), env))!;
+    /** One email (one Message-ID) as Resend gives it for one of the addresses it was sent to. */
+    const copy = async (to: string, messageId: string) => {
+      const id = `em_copy_${++counter}`;
+      emails.set(id, { from: "twice@inbound.example", subject: "Nettsider", text: "Hei, hvor mange nettsider har jeg?", headers: {}, message_id: messageId });
+      const result = await inbound.receiveInboundEvent({ type: "email.received", data: { email_id: id, from: "twice@inbound.example", to: [to], subject: "Nettsider", message_id: messageId } }, deps);
+      for (const task of background.tasks.splice(0)) await task();
+      const [row] = await db().execute<Row>(sql`select * from commerce.support_inbound_emails where provider_id = ${id}`);
+      return { result, row };
+    };
+    try {
+      // While the site is the platform's own, each desk keeps its address.
+      await db().execute(sql`update commerce.platform_settings set site_from_store = false`);
+      const own = await copy(platformAddress, "<own-1@mail.example.com>");
+      expect(own.row.store_id).toBeNull();
+
+      await db().execute(sql`update commerce.platform_settings set site_from_store = true`);
+      const first = await copy(platformAddress, "<both-1@mail.example.com>");
+      expect(String(first.row.store_id)).toBe(houseId);
+      expect(first.row.conversation_id).not.toBeNull();
+      // The same email through the store's own address: kept, refused as a second copy, no second conversation.
+      const second = await copy(houseAddress, "<both-1@mail.example.com>");
+      expect(second.result.status).toBe("refused");
+      expect(second.row).toMatchObject({ status: "refused", reason: "duplicate", conversation_id: null });
+      // Another email from the same sender is its own.
+      const third = await copy(houseAddress, "<both-2@mail.example.com>");
+      expect(third.row.status).toBe("done");
+    } finally {
+      await db().execute(sql`update commerce.platform_settings set site_from_store = ${Boolean(before?.site_from_store)}`);
+      await db().execute(sql`update commerce.support_settings set mode = ${String(platformBefore?.mode ?? "off")} where store_id is null`);
+      await db().execute(sql`delete from commerce.support_inbound_emails where from_address like '%@inbound.example'`);
+    }
+  });
 });
 
 const answerEmails = async (conversationId: unknown) =>

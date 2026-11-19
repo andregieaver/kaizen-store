@@ -194,8 +194,8 @@ export async function syncExtensions(mode: PaymentModeName): Promise<SaveResult>
 // The account's customer and its one subscription
 // ---------------------------------------------------------------------------
 
-/** One subscription change at a time per account, as `oneAtATime()` does per store. */
-function oneAtATime<T>(organisationId: string, work: () => Promise<T>): Promise<T> {
+/** One subscription change at a time per account, as `oneAtATime()` does per store; the move to one plan takes it too. */
+export function accountLock<T>(organisationId: string, work: () => Promise<T>): Promise<T> {
   return db().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('account_subscribe'), hashtext(${organisationId}))`);
     return work();
@@ -384,7 +384,7 @@ export async function chooseAccountPlan(
   items: AccountItems,
   origin: string,
 ): Promise<{ ok: true; checkoutUrl?: string } | { ok: false; problems: string[] }> {
-  return oneAtATime(organisationId, async () => {
+  return accountLock(organisationId, async () => {
     const p = await prepareAccount(owner, organisationId, items, origin);
     if (!p.ok) return p;
     if (p.running) return changeItems(owner, organisationId, p.mode, p.stripe, p.running, p.resolved);
@@ -420,7 +420,7 @@ export async function chooseAccountPlan(
  * store's is); a running one changes at once, prorated.
  */
 export async function assignAccountPlan(actor: Account, organisationId: string, items: AccountItems, trialDays: number, origin: string): Promise<SaveResult> {
-  return oneAtATime(organisationId, async () => {
+  return accountLock(organisationId, async () => {
     const p = await prepareAccount(actor, organisationId, items, origin);
     if (!p.ok) return p;
     if (p.running) return changeItems(actor, organisationId, p.mode, p.stripe, p.running, p.resolved);

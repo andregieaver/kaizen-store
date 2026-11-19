@@ -800,6 +800,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D795 | **Contracts' upkeep runs in the five-minute dispatcher, and it calls the PDF route only when a signed contract waits for its seal** | 2026-11-19 | [text](decisions/D795.md) |
 | D796 | **Dates shoppers see in the store's own time zone: storefront, shopper emails and contracts (code review 1.14's next, FS11** | 2026-11-19 | [text](decisions/D796.md) |
 | D797 | **The AI answers a store's form messages (100-day B2)** | 2026-11-19 | [text](decisions/D797.md) |
+| D798 | **Admin redesign round 53: live, stock locations and authors on a phone** | 2026-11-19 | [text](decisions/D798.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

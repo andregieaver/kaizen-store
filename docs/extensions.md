@@ -332,7 +332,19 @@ portal, invoices.
 account: price, status and renewal, "every store in your account is on this plan", the extensions it pays for, change plan (the extensions
 come along), the latest invoices, Stripe's page and cancel; the stores' list stays, without the stores' own totals and Manage links. An
 account billed store by store sees the page as before. A moved store's own Billing page says it is on the account's plan and links
-there. Still to come in part three: the platform's accounts list with overrides per account.
+there. Platform → Plans → Accounts lists every account (part four below). Limit overrides per account are left to the store overrides,
+taken at their widest for an account billed through its account (part one); an override row per account waits until one is needed.
+
+**E4 as built, part four (19 November 2026).** `src/server/account-move.ts` (the ranking pure in `src/lib/account-move.ts`): an account's
+preview (its open stores and their plans, the kept subscription, the plans that end, the latest trial, the money a month before and after,
+a store limit it is above) and the move. The kept subscription is the running one on the highest plan: the plan's position, then its price
+a month (Plus and Advanced share position 2 in production, so Plus wins), then the oldest store. The move writes the account's row first,
+inside a transaction where `commerce.billing_move` keeps the plan's history and events quiet (the kept subscription only changes hands;
+migration `20261119135417_billing_move`); the store's own row keeps its plan as history and drops its subscription. Then Stripe: the kept
+subscription names the account, each other running one ends now with credit for the unused time (its end is a plan move, as it is), the
+owner gets an email in their language, and the facts and limits are refreshed. An account above its plan's store limit keeps every store
+and adds one only on a bigger plan. Platform → Plans → Accounts shows each account's preview and "Move this account" (the box to tick
+appears only when a store's plan would end). Moving every account is E5's launch.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
