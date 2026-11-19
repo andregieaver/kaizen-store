@@ -346,6 +346,19 @@ owner gets an email in their language, and the facts and limits are refreshed. A
 and adds one only on a bigger plan. Platform → Plans → Accounts shows each account's preview and "Move this account" (the box to tick
 appears only when a store's plan would end). Moving every account is E5's launch.
 
+**E5, planned in two parts (19 November 2026).** Nothing an owner sees changes until the launch button is pressed.
+
+1. **Trials, read-only and markers, dark**: an owner starts an extension's 14-day trial in one press (once per account per extension;
+   its grace period is set with it); an extension in read-only opens its pages with a banner and Subscribe (reading and exporting stay,
+   every action and job already refuses); the panel an absent extension's page shows (E3) becomes its marker: words for what Homer gets,
+   "Try free for 14 days" for the owner, Subscribe after a trial, "Ask your account owner" for a member, and a dismissal kept for good
+   (`extension_marker_dismissals`); Account → Extensions lists every extension with its state and price, with start, subscribe and
+   cancel. Until launch every account has every extension, so none of it shows.
+2. **The launch**: a preview and one button on Platform → Plans → Extensions. It moves every account still billed store by store (E4
+   part four), gives each account a 60-day trial of every extension it already uses and its plan does not include (evidence per
+   extension: its records exist), and sets `extensions_launched_at`. A daily job emails the owner 30, 14 and 3 days before a trial
+   ends (3 days for a 14-day one). Sign-ups after launch start with the account's trial on `organisation_billing`, not a store's.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
