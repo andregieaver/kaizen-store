@@ -25,6 +25,7 @@ export const ENTRIES = {
   "platform-admin-home": "src/app/admin/(gated)/platform/page.tsx",
   "site-front-page": "src/app/(platform)/page.tsx",
   "docs-feedback": "src/app/api/docs/feedback/route.ts",
+  "page-reads": "src/server/page-reads.ts",
 };
 
 /** The five beacons: a visitor's cheapest calls, which carry no admin word and no chat. */
@@ -110,6 +111,7 @@ export const FORBIDDEN = {
   "platform-admin-home": ADMIN_LIST,
   "site-front-page": SITE_LIST,
   "docs-feedback": SITE_LIST,
+  "page-reads": ["src/server/pages.ts", "src/server/auth.ts", "src/server/design-presets.ts", "src/server/page-ai.ts", "src/lib/signature/"],
 };
 
 /** A route.ts whose function loads more files than this is named, with its reason, in the baseline. */
