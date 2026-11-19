@@ -116,6 +116,17 @@ export const commonEn = {
     saved: "Saved {size} ({percent}%)",
     unreadable: "{name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.",
   },
+  /** Leaving an editor with changes not saved, and the changes an editor keeps in this browser (code review 1.16, D787, `leave-dialogs.tsx`). */
+  unsaved: {
+    title: "Leave without saving?",
+    text: "Your changes are not saved yet. If you leave now, they are lost.",
+    stay: "Keep editing",
+    leave: "Leave without saving",
+    kept: "Changes from {when} were not saved. They are kept in this browser.",
+    restore: "Restore unsaved changes",
+    discard: "Discard",
+    restored: "Unsaved changes restored. Save to keep them.",
+  },
   /** The data pages' jobs (D165): their state, progress, files and the recent list, on every import and export page. */
   dataJobs: {
     statuses: {

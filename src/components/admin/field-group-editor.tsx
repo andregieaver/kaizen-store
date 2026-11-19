@@ -17,9 +17,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
+import { useLeaveGuard } from "@/components/admin/leave-guard";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
@@ -137,12 +138,8 @@ export function FieldGroupEditor({
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const problemsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  // Leaving with unsaved changes asks first, by a link in the admin and the browser's Back too (`useLeaveGuard`, D787).
+  const guard = useLeaveGuard(dirty);
 
   const change = (next: (group: Draft) => Draft) => {
     setDraft(next);
@@ -244,6 +241,7 @@ export function FieldGroupEditor({
   // The preview and the dialogs sit outside the form, so Enter in their inputs never saves the group.
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      {guard.dialog}
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -425,7 +423,8 @@ export function FieldGroupEditor({
           >
             {saving ? w.saving : w.save}
           </button>
-          <a href={base} className="text-sm underline">
+          {/* While it says *Leave without saving*, the guard lets it go without asking again. */}
+          <a href={base} className="text-sm underline" data-leave-anyway={dirty ? "" : undefined}>
             {dirty ? w.leave : w.back}
           </a>
           <span role="status" className="text-sm text-muted">
