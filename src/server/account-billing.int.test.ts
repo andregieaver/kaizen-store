@@ -60,8 +60,9 @@ const fake = vi.hoisted(() => {
       retrieve: record("subscriptions.retrieve", (p) => shape(subscriptions.get(String(p.id))!)),
       update: record("subscriptions.update", (p) => {
         const s = subscriptions.get(String(p.id))!;
-        for (const change of (p.items as ({ id: string; deleted: true } | { price: string })[] | undefined) ?? []) {
+        for (const change of (p.items as ({ id: string; deleted: true } | { id?: string; price: string })[] | undefined) ?? []) {
           if ("deleted" in change) s.items = s.items.filter((item) => item.id !== change.id);
+          else if (change.id) s.items = s.items.map((item) => (item.id === change.id ? { ...item, price: change.price } : item));
           else s.items.push({ id: id("si"), price: change.price });
         }
         if (typeof p.cancel_at_period_end === "boolean") s.cancel = p.cancel_at_period_end;
@@ -297,6 +298,43 @@ describe("an account's one subscription (D748 E4 part two)", () => {
       { extension_id: "email_automation", source: "bought", bundle: null, ended: false },
       { extension_id: "support_desk", source: "bought", bundle: null, ended: false },
     ]);
+  });
+
+  it("bills a founding price while it is offered, keeps it for its months, then moves it to the price (D748 E6)", async () => {
+    const stripeOf = async (local: string) => {
+      const [row] = await db().execute<Row>(sql`select stripe_id from commerce.stripe_sync where mode = 'test' and kind = 'price' and local_id = ${local}`);
+      return row ? String(row.stripe_id) : null;
+    };
+    const subscriptionId = String((await accounts.getAccountBilling(organisation))?.subscriptionId);
+    const pricesNow = () => fake.subscriptions.get(subscriptionId)!.items.map((item) => item.price);
+    await db().execute(sql`update commerce.platform_settings set extension_founding_until = now() + interval '30 days', extension_founding_months = 12`);
+    try {
+      expect(await accounts.setAccountExtension(owner, organisation, "work", true, origin)).toEqual({ ok: true });
+      expect(pricesNow()).toContain(await stripeOf(`founding:${workPrice}`));
+      const [row] = await db().execute<Row>(sql`
+        select source, round(extract(epoch from founding_ends_at - now()) / 86400 / 30) as months
+          from commerce.organisation_extensions where organisation_id = ${organisation}::uuid and extension_id = 'work'`);
+      expect(row).toEqual({ source: "bought", months: "12" });
+      // The offer ends: what the account has keeps its founding price (a plan change keeps it too).
+      await db().execute(sql`update commerce.platform_settings set extension_founding_until = now() - interval '1 day'`);
+      expect(await accounts.assignAccountPlan(admin, organisation, { planPriceId: planPrice, extensionPriceIds: "kept" }, 0, origin)).toEqual({ ok: true });
+      expect(pricesNow()).toContain(await stripeOf(`founding:${workPrice}`));
+      // A founding price asked for after the offer, for something not kept, is refused.
+      expect(await accounts.chooseAccountPlan(owner, organisation, { planPriceId: planPrice, extensionPriceIds: [`founding:${workPrice}`, `founding:${dealsPrice}`] }, origin)).toEqual({
+        ok: false,
+        problems: ["That founding price is no longer offered."],
+      });
+      // Its months are over: the daily job moves it to the price, without proration.
+      await db().execute(sql`update commerce.organisation_extensions set founding_ends_at = now() - interval '1 hour' where organisation_id = ${organisation}::uuid and extension_id = 'work'`);
+      expect(await accounts.endFoundingPrices()).toMatchObject({ items: 1 });
+      expect(calls("subscriptions.update").at(-1)?.params).toMatchObject({ proration_behavior: "none" });
+      expect(pricesNow()).toContain(await stripeOf(workPrice));
+      expect(pricesNow()).not.toContain(await stripeOf(`founding:${workPrice}`));
+      const [after] = await db().execute<Row>(sql`select founding_ends_at from commerce.organisation_extensions where organisation_id = ${organisation}::uuid and extension_id = 'work'`);
+      expect(after).toEqual({ founding_ends_at: null });
+    } finally {
+      await db().execute(sql`update commerce.platform_settings set extension_founding_until = null, extension_founding_months = 12`);
+    }
   });
 
   it("opens Stripe's portal and lists invoices for the account's customer", async () => {

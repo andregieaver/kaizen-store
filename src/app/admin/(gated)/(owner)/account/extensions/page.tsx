@@ -7,12 +7,12 @@ import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { EXTENSION_TRIAL_DAYS } from "@/lib/extensions";
+import { EXTENSION_TRIAL_DAYS, foundingOpen } from "@/lib/extensions";
 import { formatMoney } from "@/lib/money";
 import { accountCurrency, getAccountBilling } from "@/server/account-billing";
 import { bundleHints } from "@/server/account-cover";
 import { requireAccount } from "@/server/auth";
-import { accountExtensions, extensionsLaunchedAt, type AccountExtension } from "@/server/extensions";
+import { accountExtensions, extensionFounding, extensionsLaunchedAt, type AccountExtension } from "@/server/extensions";
 import { ownedAccount } from "@/server/privacy-officers";
 
 import { setExtensionAction, tryExtensionAction } from "../actions";
@@ -32,7 +32,8 @@ export default async function ExtensionsPage() {
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const own = await ownedAccount(account.id);
   if (!own) return <PageHeader title={w.title} description={w.ownerOnly} />;
-  const [launchedAt, billing, currency] = await Promise.all([extensionsLaunchedAt(), getAccountBilling(own.id), accountCurrency(own.id)]);
+  const [launchedAt, billing, currency, founding] = await Promise.all([extensionsLaunchedAt(), getAccountBilling(own.id), accountCurrency(own.id), extensionFounding()]);
+  const foundingOffered = foundingOpen(founding.until, new Date());
   const extensions = await accountExtensions(own.id, currency);
   const launched = launchedAt !== null && launchedAt <= new Date();
   // Paid for now, on its own or in a bundle: ended from here; anything else not in the plan can be added.
@@ -68,9 +69,17 @@ export default async function ExtensionsPage() {
               sub={
                 hints[e.id]
                   ? fillWords(w.bundleHint, { bundle: hints[e.id]!.bundle, price: money(hints[e.id]!.amountMinor), saving: money(hints[e.id]!.savingMinor) })
-                  : e.priceFrom
-                    ? fillWords(w.from, { price: formatMoney(e.priceFrom.amountMinor, e.priceFrom.currency, locale) })
-                    : undefined
+                  : paid(e) && e.foundingEndsAt
+                    ? fillWords(w.foundingUntil, { date: day(e.foundingEndsAt) })
+                    : e.priceFrom && foundingOffered && e.priceFrom.foundingMinor !== null
+                      ? fillWords(w.foundingFrom, {
+                          founding: formatMoney(e.priceFrom.foundingMinor, e.priceFrom.currency, locale),
+                          months: String(founding.months),
+                          price: formatMoney(e.priceFrom.amountMinor, e.priceFrom.currency, locale),
+                        })
+                      : e.priceFrom
+                        ? fillWords(w.from, { price: formatMoney(e.priceFrom.amountMinor, e.priceFrom.currency, locale) })
+                        : undefined
               }
             >
               <Chip signal={e.state === "read_only" || e.state === "grace" ? "warning" : e.state === "absent" ? "neutral" : "positive"} dot>

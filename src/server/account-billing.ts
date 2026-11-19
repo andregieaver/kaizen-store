@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { endedExtensions, GRACE_DAYS, itemChanges, itemProblems, type WantedBundle, type WantedExtension, type WantedPrice } from "@/lib/account-billing";
-import { isExtensionId, type ExtensionId } from "@/lib/extensions";
+import { FOUNDING_PREFIX, foundingOpen, isExtensionId, type ExtensionId } from "@/lib/extensions";
 import { storeBase, storeOrigin } from "@/lib/paths";
 import { effectiveFeeBps, isOnPlan } from "@/lib/plans";
 import type { PaymentModeName } from "@/lib/stripe-account";
@@ -30,6 +30,7 @@ import {
 import { createStripeAccount, getSaleFeeBps, getStripeAccounts, stripeProblem } from "./connect";
 import { refreshExtensionFacts } from "./extensions";
 import { forgetLimits } from "./limits";
+import { log } from "./log";
 import type { SaveResult } from "./settings";
 import { platformStripe } from "./stripe";
 import { getStore } from "./stores";
@@ -132,6 +133,7 @@ const SYNC_PRICE_ROW = z.object({
   currency: col.currency,
   interval: z.enum(["month", "year"]),
   amount_minor: col.minor,
+  founding_minor: col.minorOrNull,
   active: col.bool,
 });
 
@@ -147,12 +149,12 @@ export async function syncExtensions(mode: PaymentModeName): Promise<SaveResult>
     SYNC_PRICE_ROW,
     sql`
       select 'extension' as kind, ep.id, e.id as owner, e.name as owner_name, e.description as owner_description, e.active as owner_active,
-             es.label as size_label, es.id as size_id, ep.currency, ep.interval, ep.amount_minor, ep.active
+             es.label as size_label, es.id as size_id, ep.currency, ep.interval, ep.amount_minor, ep.founding_minor, ep.active
         from commerce.extensions e
         join commerce.extension_sizes es on es.extension_id = e.id
         join commerce.extension_prices ep on ep.size_id = es.id
       union all
-      select 'bundle', bp.id, b.id::text, b.name, b.description, b.active, '', null, bp.currency, bp.interval, bp.amount_minor, bp.active
+      select 'bundle', bp.id, b.id::text, b.name, b.description, b.active, '', null, bp.currency, bp.interval, bp.amount_minor, bp.founding_minor, bp.active
         from commerce.extension_bundles b
         join commerce.extension_bundle_prices bp on bp.bundle_id = b.id
        order by 1, 3
@@ -189,6 +191,17 @@ export async function syncExtensions(mode: PaymentModeName): Promise<SaveResult>
               }
             : { name: price.owner_name, metadata: { ...owned, kaizen_bundle_price_id: price.id }, idempotencyKey: `kaizen-bundle-price-${price.id}-${mode}` },
         );
+        // Its founding price (E6) is a Stripe price of its own, which the account pays while its founding price is locked.
+        if (price.founding_minor !== null) {
+          const local = `${FOUNDING_PREFIX}${price.id}`;
+          await syncRecurringPrice(
+            stripe,
+            mode,
+            productId,
+            { id: local, active: price.active, currency: price.currency, interval: price.interval, amountMinor: price.founding_minor },
+            { name: [price.owner_name, price.size_label, "(founding)"].filter(Boolean).join(" "), metadata: { ...owned, kaizen_founding_of: price.id }, idempotencyKey: `kaizen-${local}-${mode}` },
+          );
+        }
       }
     } catch (error) {
       const problem = stripeProblem(error);
@@ -265,7 +278,32 @@ const WANTED_ROW = z.object({
   currency: col.currency,
   interval: z.enum(["month", "year"]),
   members: z.array(z.string()).nullable(),
+  founding_minor: col.minorOrNull,
+  size_id: col.uuid.nullable(),
 });
+
+/** A price id without its founding marker (`founding:{price id}`, E6): the row it is read from. */
+const localPrice = (id: string) => (id.startsWith(FOUNDING_PREFIX) ? id.slice(FOUNDING_PREFIX.length) : id);
+
+/**
+ * Which founding prices the account may pay (E6): every one while founding prices are offered, else only those it keeps for what it already
+ * has (the extension's size on its own, or the bundle).
+ */
+async function foundingAllowed(organisationId: string, now = new Date()) {
+  const [settings, locks] = await Promise.all([
+    typedRow(z.object({ until: col.timestampOrNull }), sql`select extension_founding_until as until from commerce.platform_settings`),
+    typedRows(
+      z.object({ size_id: col.uuid.nullable(), bundle_id: col.uuid.nullable() }),
+      sql`
+        select size_id, bundle_id from commerce.organisation_extensions
+         where organisation_id = ${organisationId}::uuid and source in ('bought', 'bundle') and ended_at is null and founding_ends_at > ${now.toISOString()}::timestamptz
+      `,
+    ),
+  ]);
+  const open = foundingOpen(settings?.until ? new Date(settings.until) : null, now);
+  return (row: z.output<typeof WANTED_ROW>) =>
+    open || (row.kind === "bundle" ? locks.some((l) => l.bundle_id === row.owner) : locks.some((l) => l.bundle_id === null && l.size_id === row.size_id));
+}
 
 /**
  * What the account wants on its subscription: a plan price (or none) and the prices of what it buys beside it, each an extension's or a
@@ -284,9 +322,11 @@ async function resolveItems(
 ): Promise<{ ok: true; resolved: Resolved } | { ok: false; problems: string[] }> {
   const items = { planPriceId: wanted.planPriceId, extensionPriceIds: wanted.extensionPriceIds === "kept" ? await keptPrices(organisationId, wanted.planPriceId) : wanted.extensionPriceIds };
   const ids = [...(items.planPriceId ? [items.planPriceId] : []), ...items.extensionPriceIds];
-  if (ids.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) return { ok: false, problems: ["That price is no longer offered."] };
+  if (ids.some((id) => !/^[0-9a-f-]{36}$/i.test(localPrice(id))) || items.planPriceId?.startsWith(FOUNDING_PREFIX)) {
+    return { ok: false, problems: ["That price is no longer offered."] };
+  }
   const list = sql.join(
-    ids.map((id) => sql`${id}::uuid`),
+    ids.map((id) => sql`${localPrice(id)}::uuid`),
     sql`, `,
   );
   const rows =
@@ -295,17 +335,20 @@ async function resolveItems(
       : await typedRows(
           WANTED_ROW,
           sql`
-            select pp.id, 'plan' as kind, pp.plan_id::text as owner, pp.currency, pp.interval, null::text[] as members from commerce.plan_prices pp
+            select pp.id, 'plan' as kind, pp.plan_id::text as owner, pp.currency, pp.interval, null::text[] as members, null::bigint as founding_minor,
+                   null::uuid as size_id
+              from commerce.plan_prices pp
               join commerce.plans p on p.id = pp.plan_id and p.active
              where pp.active and pp.id in (${list})
             union all
-            select ep.id, 'extension', es.extension_id, ep.currency, ep.interval, null from commerce.extension_prices ep
+            select ep.id, 'extension', es.extension_id, ep.currency, ep.interval, null, ep.founding_minor, es.id from commerce.extension_prices ep
               join commerce.extension_sizes es on es.id = ep.size_id and es.active
               join commerce.extensions e on e.id = es.extension_id and e.active
              where ep.active and ep.id in (${list})
             union all
             select bp.id, 'bundle', b.id::text, bp.currency, bp.interval,
-                   array(select m.extension_id from commerce.extension_bundle_members m where m.bundle_id = b.id order by m.extension_id)
+                   array(select m.extension_id from commerce.extension_bundle_members m where m.bundle_id = b.id order by m.extension_id),
+                   bp.founding_minor, null
               from commerce.extension_bundle_prices bp join commerce.extension_bundles b on b.id = bp.bundle_id and b.active
              where bp.active and bp.id in (${list})
           `,
@@ -314,8 +357,11 @@ async function resolveItems(
   if (items.planPriceId && !planRow) return { ok: false, problems: ["That plan is no longer offered."] };
   const extensions: WantedExtension[] = [];
   const bundles: WantedBundle[] = [];
+  const founding = items.extensionPriceIds.some((id) => id.startsWith(FOUNDING_PREFIX)) ? await foundingAllowed(organisationId) : null;
   for (const id of items.extensionPriceIds) {
-    const row = rows.find((r) => r.id === id && r.kind !== "plan");
+    const row = rows.find((r) => r.id === localPrice(id) && r.kind !== "plan");
+    // A founding price only while it is offered, or kept for what the account already has (E6).
+    if (row && id.startsWith(FOUNDING_PREFIX) && (row.founding_minor === null || !founding?.(row))) return { ok: false, problems: ["That founding price is no longer offered."] };
     if (row?.kind === "bundle") bundles.push({ id, currency: row.currency, interval: row.interval, bundleId: row.owner, members: (row.members ?? []).filter(isExtensionId) });
     else if (row && isExtensionId(row.owner)) extensions.push({ id, currency: row.currency, interval: row.interval, extensionId: row.owner });
     else return { ok: false, problems: ["That extension is no longer offered."] };
@@ -564,15 +610,15 @@ export async function accountCurrency(organisationId: string): Promise<string | 
 
 /**
  * The extensions the account pays for on its subscription now (on their own or in a bundle, running or in their grace period), with their
- * sizes and the bundle's name.
+ * sizes, the bundle's name and until when it pays its founding price (E6).
  */
 export async function boughtExtensions(
   organisationId: string,
-): Promise<{ extensionId: ExtensionId; name: string; size: string; endedAt: string | null; bundle: string | null }[]> {
+): Promise<{ extensionId: ExtensionId; name: string; size: string; endedAt: string | null; bundle: string | null; foundingEndsAt: string | null }[]> {
   const rows = await typedRows(
-    z.object({ extension_id: col.text, name: col.text, size: col.text, ended_at: col.timestampOrNull, bundle: col.textOrNull }),
+    z.object({ extension_id: col.text, name: col.text, size: col.text, ended_at: col.timestampOrNull, bundle: col.textOrNull, founding_ends_at: col.timestampOrNull }),
     sql`
-      select oe.extension_id, e.name, es.label as size, oe.ended_at, b.name as bundle from commerce.organisation_extensions oe
+      select oe.extension_id, e.name, es.label as size, oe.ended_at, b.name as bundle, oe.founding_ends_at from commerce.organisation_extensions oe
         join commerce.extensions e on e.id = oe.extension_id
         join commerce.extension_sizes es on es.id = oe.size_id
         left join commerce.extension_bundles b on b.id = oe.bundle_id
@@ -580,7 +626,11 @@ export async function boughtExtensions(
        order by e.position, e.id
     `,
   );
-  return rows.flatMap((r) => (isExtensionId(r.extension_id) ? [{ extensionId: r.extension_id, name: r.name, size: r.size, endedAt: r.ended_at, bundle: r.bundle }] : []));
+  return rows.flatMap((r) =>
+    isExtensionId(r.extension_id)
+      ? [{ extensionId: r.extension_id, name: r.name, size: r.size, endedAt: r.ended_at, bundle: r.bundle, foundingEndsAt: r.ended_at ? null : r.founding_ends_at }]
+      : [],
+  );
 }
 
 /** The account's latest invoices from Kaizena Flow, newest first: none before it is billed, null when Stripe cannot be asked. */
@@ -599,30 +649,41 @@ export async function listAccountInvoices(organisationId: string, limit = 12): P
 // Stripe's word on the subscription
 // ---------------------------------------------------------------------------
 
-const ITEM_PRICE_ROW = z.object({ stripe_id: col.text, kind: z.enum(["plan", "extension", "bundle"]), price_id: col.uuid, owner: col.text, size_id: col.uuid.nullable() });
+const ITEM_PRICE_ROW = z.object({
+  stripe_id: col.text,
+  kind: z.enum(["plan", "extension", "bundle"]),
+  price_id: col.uuid,
+  owner: col.text,
+  size_id: col.uuid.nullable(),
+  founding: col.bool,
+});
 
-/** The plan price, the extension prices and the bundle prices a subscription's items bill, by their Stripe prices. */
+/**
+ * The plan price, the extension prices and the bundle prices a subscription's items bill, by their Stripe prices; `founding` when an item
+ * bills the price's founding price (E6, synced as `founding:{price id}`).
+ */
 async function itemPrices(stripePrices: readonly string[], mode: PaymentModeName) {
   if (stripePrices.length === 0) return [];
   const list = sql.join(
     stripePrices.map((id) => sql`${id}`),
     sql`, `,
   );
+  const ours = sql`s.mode = ${mode} and s.kind = 'price' and s.stripe_id in (${list})`;
   return typedRows(
     ITEM_PRICE_ROW,
     sql`
-      select s.stripe_id, 'plan' as kind, pp.id as price_id, pp.plan_id::text as owner, null::uuid as size_id
+      select s.stripe_id, 'plan' as kind, pp.id as price_id, pp.plan_id::text as owner, null::uuid as size_id, false as founding
         from commerce.stripe_sync s join commerce.plan_prices pp on pp.id::text = s.local_id
-       where s.mode = ${mode} and s.kind = 'price' and s.stripe_id in (${list})
+       where ${ours}
       union all
-      select s.stripe_id, 'extension', ep.id, es.extension_id, es.id
-        from commerce.stripe_sync s join commerce.extension_prices ep on ep.id::text = s.local_id
+      select s.stripe_id, 'extension', ep.id, es.extension_id, es.id, s.local_id like ${`${FOUNDING_PREFIX}%`}
+        from commerce.stripe_sync s join commerce.extension_prices ep on s.local_id in (ep.id::text, ${FOUNDING_PREFIX} || ep.id::text)
         join commerce.extension_sizes es on es.id = ep.size_id
-       where s.mode = ${mode} and s.kind = 'price' and s.stripe_id in (${list})
+       where ${ours}
       union all
-      select s.stripe_id, 'bundle', bp.id, bp.bundle_id::text, null
-        from commerce.stripe_sync s join commerce.extension_bundle_prices bp on bp.id::text = s.local_id
-       where s.mode = ${mode} and s.kind = 'price' and s.stripe_id in (${list})
+      select s.stripe_id, 'bundle', bp.id, bp.bundle_id::text, null, s.local_id like ${`${FOUNDING_PREFIX}%`}
+        from commerce.stripe_sync s join commerce.extension_bundle_prices bp on s.local_id in (bp.id::text, ${FOUNDING_PREFIX} || bp.id::text)
+       where ${ours}
     `,
   );
 }
@@ -640,6 +701,85 @@ async function bundleMembers(bundleIds: readonly string[], executor: Executor) {
     `,
     executor,
   );
+}
+
+/** Accounts moved off founding prices a run: the job comes back the next day. */
+const FOUNDING_PER_RUN = 50;
+
+/**
+ * The daily move off founding prices (E6, `daily.extension-founding`): an account whose founding price has ended pays the list price from
+ * its next invoice. Each such item of its subscription changes to the same price's list price in Stripe, without proration (the period
+ * paid stays paid), and Stripe's word clears the founding end; a founding end with nothing left to change is cleared too. A Stripe failure
+ * is logged and tried again the next day.
+ */
+export async function endFoundingPrices(now = new Date()): Promise<{ accounts: number; items: number }> {
+  const due = await typedRows(
+    z.object({ organisation_id: col.uuid }),
+    sql`
+      select distinct organisation_id from commerce.organisation_extensions
+       where founding_ends_at <= ${now.toISOString()}::timestamptz and ended_at is null and source in ('bought', 'bundle')
+       order by organisation_id limit ${FOUNDING_PER_RUN}
+    `,
+  );
+  let accounts = 0;
+  let items = 0;
+  for (const { organisation_id: organisationId } of due) {
+    try {
+      const swapped = await accountLock(organisationId, () => endAccountFounding(organisationId, now));
+      if (swapped > 0) {
+        accounts += 1;
+        items += swapped;
+      }
+    } catch (error) {
+      log("warn", "extension_founding.end_failed", { organisationId }, error);
+    }
+  }
+  if (accounts > 0) log("info", "extension_founding.ended", { accounts, items });
+  return { accounts, items };
+}
+
+/** One account's move off its ended founding prices, under its lock; answers how many items changed. */
+async function endAccountFounding(organisationId: string, now: Date): Promise<number> {
+  const at = now.toISOString();
+  const billing = await getAccountBilling(organisationId);
+  const mode = billing?.mode ?? null;
+  const stripe = mode ? platformStripe(mode) : null;
+  const subscriptionId = billing && mode ? running(billing, mode) : null;
+  let swapped = 0;
+  if (stripe && mode && subscriptionId) {
+    const [subscription, dueRows] = await Promise.all([
+      stripe.subscriptions.retrieve(subscriptionId),
+      typedRows(
+        z.object({ size_id: col.uuid.nullable(), bundle_id: col.uuid.nullable() }),
+        sql`
+          select size_id, bundle_id from commerce.organisation_extensions
+           where organisation_id = ${organisationId}::uuid and founding_ends_at <= ${at}::timestamptz and ended_at is null
+        `,
+      ),
+    ]);
+    const prices = await itemPrices(
+      subscription.items.data.map((item) => item.price.id),
+      mode,
+    );
+    const swaps: { id: string; price: string }[] = [];
+    for (const item of subscription.items.data) {
+      const price = prices.find((p) => p.stripe_id === item.price.id);
+      if (!price?.founding) continue;
+      const ended = price.kind === "bundle" ? dueRows.some((r) => r.bundle_id === price.owner) : dueRows.some((r) => r.bundle_id === null && r.size_id === price.size_id);
+      const list = ended ? await syncedId(mode, "price", price.price_id) : null;
+      if (list) swaps.push({ id: item.id, price: list });
+    }
+    if (swaps.length > 0) {
+      const updated = await stripe.subscriptions.update(subscriptionId, { items: swaps, proration_behavior: "none" });
+      await applyAccountSubscription(updated, mode);
+      swapped = swaps.length;
+    }
+  }
+  await db().execute(sql`
+    update commerce.organisation_extensions set founding_ends_at = null, updated_at = now()
+     where organisation_id = ${organisationId}::uuid and founding_ends_at <= ${at}::timestamptz and ended_at is null
+  `);
+  return swapped;
 }
 
 /**
@@ -694,17 +834,27 @@ export async function applyAccountSubscription(subscription: Stripe.Subscription
       tx,
     );
     if (isOnPlan(status)) {
+      const foundingBundles = new Set(prices.filter((p) => p.kind === "bundle" && p.founding).map((p) => p.owner));
       const paid = [
-        ...extensions.map((item) => ({ extensionId: item.owner, source: "bought", sizeId: item.size_id, bundleId: null as string | null })),
-        ...members.map((m) => ({ extensionId: m.extension_id, source: "bundle", sizeId: m.size_id, bundleId: m.bundle_id as string | null })),
+        ...extensions.map((item) => ({ extensionId: item.owner, source: "bought", sizeId: item.size_id, bundleId: null as string | null, founding: item.founding })),
+        ...members.map((m) => ({ extensionId: m.extension_id, source: "bundle", sizeId: m.size_id, bundleId: m.bundle_id as string | null, founding: foundingBundles.has(m.bundle_id) })),
       ];
+      // A founding price is kept from when it started for platform_settings.extension_founding_months (E6); a running one keeps its end.
       for (const item of paid) {
         await tx.execute(sql`
-          insert into commerce.organisation_extensions (organisation_id, extension_id, source, size_id, bundle_id)
-          values (${organisationId}::uuid, ${item.extensionId}, ${item.source}, ${item.sizeId}::uuid, ${item.bundleId}::uuid)
+          insert into commerce.organisation_extensions (organisation_id, extension_id, source, size_id, bundle_id, founding_ends_at)
+          values (
+            ${organisationId}::uuid, ${item.extensionId}, ${item.source}, ${item.sizeId}::uuid, ${item.bundleId}::uuid,
+            case when ${item.founding} then now() + make_interval(months => (select extension_founding_months from commerce.platform_settings)) end
+          )
           on conflict (organisation_id, extension_id) do update set
             source = excluded.source, size_id = excluded.size_id, bundle_id = excluded.bundle_id, trial_ends_at = null, ended_at = null,
-            grace_ends_at = null, updated_at = now()
+            grace_ends_at = null, updated_at = now(),
+            founding_ends_at = case
+              when excluded.founding_ends_at is null then null
+              when organisation_extensions.founding_ends_at is not null and organisation_extensions.ended_at is null then organisation_extensions.founding_ends_at
+              else excluded.founding_ends_at
+            end
         `);
       }
     }

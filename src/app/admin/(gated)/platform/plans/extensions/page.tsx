@@ -18,6 +18,7 @@ import { listPlans } from "@/server/billing";
 import { launchPreview, type LaunchPreview } from "@/server/extension-launch";
 import {
   extensionCurrencies,
+  extensionFounding,
   extensionsLaunchedAt,
   getExtensionCatalogue,
   type CatalogueBundle,
@@ -25,7 +26,7 @@ import {
   type ExtensionPrice,
 } from "@/server/extensions";
 
-import { launchExtensionsAction, saveBundleAction, saveExtensionAction, savePlanGrantsAction } from "./actions";
+import { launchExtensionsAction, saveBundleAction, saveExtensionAction, saveFoundingAction, savePlanGrantsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Extensions" };
 
@@ -44,7 +45,13 @@ export default async function ExtensionsPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").extensions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const [catalogue, plans, currencies, launchedAt] = await Promise.all([getExtensionCatalogue(), listPlans(), extensionCurrencies(), extensionsLaunchedAt()]);
+  const [catalogue, plans, currencies, launchedAt, founding] = await Promise.all([
+    getExtensionCatalogue(),
+    listPlans(),
+    extensionCurrencies(),
+    extensionsLaunchedAt(),
+    extensionFounding(),
+  ]);
   const columns = plans.filter((plan) => plan.active);
   // The launch's preview is read only until it has happened.
   const preview = launchedAt ? null : await launchPreview();
@@ -59,6 +66,8 @@ export default async function ExtensionsPage() {
           {launchedAt ? fillWords(w.launched, { date: adminDate(PLATFORM_TIME_ZONE, launchedAt, "long", lang) }) : w.notLaunched}
         </p>
       )}
+
+      <FoundingCard founding={founding} lang={lang} w={w} />
 
       {catalogue.extensions.map((extension) => (
         <section key={extension.id} aria-labelledby={`ext-${extension.id}`} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
@@ -153,34 +162,46 @@ export default async function ExtensionsPage() {
 
 const intervalLabel = (w: W, interval: PlanInterval) => (interval === "month" ? w.month : w.year);
 
-/** A price box per currency (rows) and interval (columns), named `{prefix}price:{currency}:{interval}`; an empty box is no price. */
+/**
+ * A price box per currency (rows) and interval (columns), named `{prefix}price:{currency}:{interval}`, and under them the founding prices
+ * (D748 E6) named `{prefix}founding:{currency}:{interval}`; an empty box is no price, or no founding price.
+ */
 function PriceBoxes({ prefix, prices, currencies, w, label }: { prefix: string; prices: readonly ExtensionPrice[]; currencies: readonly string[]; w: W; label: string }) {
   return (
-    <div className="grid w-fit grid-cols-[3rem_repeat(2,7rem)] items-center gap-x-3 gap-y-1 text-sm" role="group" aria-label={`${label}: ${w.price}`}>
-      <span />
-      {PLAN_INTERVALS.map((interval) => (
-        <span key={interval} className="text-muted">
-          {intervalLabel(w, interval)}
-        </span>
-      ))}
-      {currencies.map((currency) => [
-        <span key={currency} className="font-medium">
-          {currency}
-        </span>,
-        ...PLAN_INTERVALS.map((interval) => {
-          const price = prices.find((p) => p.currency === currency && p.interval === interval);
-          return (
-            <input
-              key={`${currency}:${interval}`}
-              name={`${prefix}price:${currency}:${interval}`}
-              inputMode="decimal"
-              aria-label={`${label}: ${fillWords(w.priceIn, { interval: intervalLabel(w, interval), currency })}`}
-              defaultValue={price ? formatPriceInput(price.amountMinor, currency) : ""}
-              className={cell}
-            />
-          );
-        }),
-      ])}
+    <div className="flex flex-wrap gap-x-8 gap-y-3">
+      {(["price", "founding"] as const).map((kind) => {
+        const title = kind === "price" ? w.price : w.founding.price;
+        return (
+          <div key={kind} className="grid w-fit grid-cols-[3rem_repeat(2,7rem)] items-center gap-x-3 gap-y-1 text-sm" role="group" aria-label={`${label}: ${title}`}>
+            <span className="col-span-3 text-muted">{title}</span>
+            <span />
+            {PLAN_INTERVALS.map((interval) => (
+              <span key={interval} className="text-muted">
+                {intervalLabel(w, interval)}
+              </span>
+            ))}
+            {currencies.map((currency) => [
+              <span key={currency} className="font-medium">
+                {currency}
+              </span>,
+              ...PLAN_INTERVALS.map((interval) => {
+                const price = prices.find((p) => p.currency === currency && p.interval === interval);
+                const minor = kind === "price" ? price?.amountMinor : price?.foundingMinor;
+                return (
+                  <input
+                    key={`${currency}:${interval}`}
+                    name={`${prefix}${kind}:${currency}:${interval}`}
+                    inputMode="decimal"
+                    aria-label={`${label}: ${title}, ${fillWords(w.priceIn, { interval: intervalLabel(w, interval), currency })}`}
+                    defaultValue={minor !== undefined && minor !== null ? formatPriceInput(minor, currency) : ""}
+                    className={cell}
+                  />
+                );
+              }),
+            ])}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -383,6 +404,36 @@ function LaunchCard({ preview, catalogue, lang, w }: { preview: LaunchPreview; c
           {l.understand}
         </label>
         <SubmitButton>{l.button}</SubmitButton>
+      </ActionForm>
+    </section>
+  );
+}
+
+/**
+ * The founding offer (D748 E6): until which day an account that adds an extension or bundle pays its founding price, and for how many
+ * months it keeps it; the founding amounts are beside each price below.
+ */
+function FoundingCard({ founding, lang, w }: { founding: { until: Date | null; months: number }; lang: AdminLang; w: W }) {
+  const f = w.founding;
+  // The last day offered: the stored end is the next midnight in Kaizena Flow's time zone.
+  const lastDay = founding.until ? adminDate(PLATFORM_TIME_ZONE, new Date(founding.until.getTime() - 1), "iso", lang) : "";
+  return (
+    <section aria-labelledby="founding" className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
+      <h2 id="founding" className="text-title text-ink">
+        {f.title}
+      </h2>
+      <p className="text-sm text-muted">{f.hint}</p>
+      <p className="text-sm">{founding.until ? fillWords(f.offered, { date: adminDate(PLATFORM_TIME_ZONE, new Date(founding.until.getTime() - 1), "long", lang), months: String(founding.months) }) : f.notOffered}</p>
+      <ActionForm action={saveFoundingAction} className="flex flex-wrap items-end gap-4">
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {f.until}
+          <input type="date" name="until" defaultValue={lastDay} className={control} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {f.months}
+          <input type="number" name="months" min={1} max={36} defaultValue={founding.months} className={`${control} w-24`} />
+        </label>
+        <SubmitButton>{w.save}</SubmitButton>
       </ActionForm>
     </section>
   );

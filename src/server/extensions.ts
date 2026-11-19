@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { GRACE_DAYS } from "@/lib/account-billing";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import {
   EXTENSION_IDS,
   EXTENSION_TRIAL_DAYS,
@@ -34,7 +35,7 @@ import { col, typedRow, typedRows, type Executor } from "./typed-rows";
  * off, as for plans, so what an account pays stays what it signed up at.
  */
 
-export type ExtensionPrice = { id: string; currency: string; interval: PlanInterval; amountMinor: number };
+export type ExtensionPrice = { id: string; currency: string; interval: PlanInterval; amountMinor: number; foundingMinor: number | null };
 export type ExtensionSize = { id: string; label: string; allowances: Allowances; position: number; active: boolean; prices: ExtensionPrice[] };
 export type CatalogueExtension = {
   id: ExtensionId;
@@ -63,12 +64,18 @@ const EXTENSION_ROW = z.object({
   active: col.bool,
 });
 const SIZE_ROW = z.object({ id: col.uuid, extension_id: extensionId, label: col.text, allowances: z.unknown(), position: col.int, active: col.bool });
-const PRICE_ROW = z.object({ id: col.uuid, owner_id: col.uuid, currency: col.currency, interval, amount_minor: col.minor });
+const PRICE_ROW = z.object({ id: col.uuid, owner_id: col.uuid, currency: col.currency, interval, amount_minor: col.minor, founding_minor: col.minorOrNull });
 const BUNDLE_ROW = z.object({ id: col.uuid, name: col.text, description: col.text, position: col.int, active: col.bool });
 const MEMBER_ROW = z.object({ bundle_id: col.uuid, extension_id: extensionId });
 const GRANT_ROW = z.object({ plan_id: col.uuid, extension_id: extensionId, size_id: col.uuid });
 
-const priceOf = (row: z.output<typeof PRICE_ROW>): ExtensionPrice => ({ id: row.id, currency: row.currency, interval: row.interval, amountMinor: row.amount_minor });
+const priceOf = (row: z.output<typeof PRICE_ROW>): ExtensionPrice => ({
+  id: row.id,
+  currency: row.currency,
+  interval: row.interval,
+  amountMinor: row.amount_minor,
+  foundingMinor: row.founding_minor,
+});
 
 /** The whole catalogue, offered or not, with only the prices on offer. For the platform admin's editor; nothing here is secret. */
 export async function getExtensionCatalogue(): Promise<Catalogue> {
@@ -77,13 +84,13 @@ export async function getExtensionCatalogue(): Promise<Catalogue> {
     typedRows(SIZE_ROW, sql`select id, extension_id, label, allowances, position, active from commerce.extension_sizes order by position, created_at`),
     typedRows(
       PRICE_ROW,
-      sql`select id, size_id as owner_id, currency, interval, amount_minor from commerce.extension_prices where active order by currency, interval`,
+      sql`select id, size_id as owner_id, currency, interval, amount_minor, founding_minor from commerce.extension_prices where active order by currency, interval`,
     ),
     typedRows(BUNDLE_ROW, sql`select id, name, description, position, active from commerce.extension_bundles order by position, created_at`),
     typedRows(MEMBER_ROW, sql`select bundle_id, extension_id from commerce.extension_bundle_members`),
     typedRows(
       PRICE_ROW,
-      sql`select id, bundle_id as owner_id, currency, interval, amount_minor from commerce.extension_bundle_prices where active order by currency, interval`,
+      sql`select id, bundle_id as owner_id, currency, interval, amount_minor, founding_minor from commerce.extension_bundle_prices where active order by currency, interval`,
     ),
     typedRows(GRANT_ROW, sql`select plan_id, extension_id, size_id from commerce.plan_extension_grants`),
   ]);
@@ -166,27 +173,29 @@ export async function refreshExtensionFacts(scope: { organisationId: string } | 
 
 const SLUG_ROW = z.object({ id: col.uuid, slug: col.text });
 
-const ACTIVE_PRICE_ROW = z.object({ id: col.uuid, currency: col.currency, interval, amount_minor: col.minor });
+const ACTIVE_PRICE_ROW = z.object({ id: col.uuid, currency: col.currency, interval, amount_minor: col.minor, founding_minor: col.minorOrNull });
 
 /** The two price tables, each with its owner column, as fixed queries: nothing here is built from input. */
 const PRICE_TABLES = {
   size: {
-    current: (ownerId: string) => sql`select id, currency, interval, amount_minor from commerce.extension_prices where size_id = ${ownerId}::uuid and active`,
+    current: (ownerId: string) =>
+      sql`select id, currency, interval, amount_minor, founding_minor from commerce.extension_prices where size_id = ${ownerId}::uuid and active`,
     off: (id: string) => sql`update commerce.extension_prices set active = false where id = ${id}::uuid`,
     add: (ownerId: string, p: ExtensionPriceInput) =>
-      sql`insert into commerce.extension_prices (size_id, currency, interval, amount_minor) values (${ownerId}::uuid, ${p.currency}, ${p.interval}, ${p.amountMinor})`,
+      sql`insert into commerce.extension_prices (size_id, currency, interval, amount_minor, founding_minor) values (${ownerId}::uuid, ${p.currency}, ${p.interval}, ${p.amountMinor}, ${p.foundingMinor})`,
   },
   bundle: {
-    current: (ownerId: string) => sql`select id, currency, interval, amount_minor from commerce.extension_bundle_prices where bundle_id = ${ownerId}::uuid and active`,
+    current: (ownerId: string) =>
+      sql`select id, currency, interval, amount_minor, founding_minor from commerce.extension_bundle_prices where bundle_id = ${ownerId}::uuid and active`,
     off: (id: string) => sql`update commerce.extension_bundle_prices set active = false where id = ${id}::uuid`,
     add: (ownerId: string, p: ExtensionPriceInput) =>
-      sql`insert into commerce.extension_bundle_prices (bundle_id, currency, interval, amount_minor) values (${ownerId}::uuid, ${p.currency}, ${p.interval}, ${p.amountMinor})`,
+      sql`insert into commerce.extension_bundle_prices (bundle_id, currency, interval, amount_minor, founding_minor) values (${ownerId}::uuid, ${p.currency}, ${p.interval}, ${p.amountMinor}, ${p.foundingMinor})`,
   },
 };
 
 /**
- * Makes an owner's prices on offer the wanted ones: a price whose amount is unchanged stays, any other is switched off, and a new amount is
- * a new row, as for plans.
+ * Makes an owner's prices on offer the wanted ones: a price whose amount and founding price are unchanged stays, any other is switched off,
+ * and a new amount is a new row, as for plans.
  */
 async function replacePrices(tx: Executor, kind: keyof typeof PRICE_TABLES, ownerId: string, wanted: readonly ExtensionPriceInput[]): Promise<void> {
   const table = PRICE_TABLES[kind];
@@ -194,7 +203,7 @@ async function replacePrices(tx: Executor, kind: keyof typeof PRICE_TABLES, owne
   const left = new Map(wanted.map((p) => [`${p.currency}:${p.interval}`, p]));
   for (const row of current) {
     const want = left.get(`${row.currency}:${row.interval}`);
-    if (want && row.amount_minor === want.amountMinor) left.delete(`${row.currency}:${row.interval}`);
+    if (want && row.amount_minor === want.amountMinor && row.founding_minor === want.foundingMinor) left.delete(`${row.currency}:${row.interval}`);
     else await tx.execute(table.off(row.id));
   }
   for (const price of left.values()) await tx.execute(table.add(ownerId, price));
@@ -301,6 +310,26 @@ export async function extensionsLaunchedAt(): Promise<Date | null> {
   return row?.at ? new Date(row.at) : null;
 }
 
+/** The founding offer (D748 E6): until when founding prices are offered (null: not offered) and for how many months an account keeps one. */
+export async function extensionFounding(): Promise<{ until: Date | null; months: number }> {
+  const row = await typedRow(
+    z.object({ until: col.timestampOrNull, months: col.int }),
+    sql`select extension_founding_until as until, extension_founding_months as months from commerce.platform_settings`,
+  );
+  return { until: row?.until ? new Date(row.until) : null, months: row?.months ?? 12 };
+}
+
+/** Saves the founding offer: offered through `until` (a day, ending at midnight in Kaizena Flow's time zone), or not offered (null). */
+export async function saveExtensionFounding(actor: Account, until: string | null, months: number): Promise<SaveResult> {
+  await db().execute(sql`
+    update commerce.platform_settings
+       set extension_founding_until = case when ${until}::date is null then null else ((${until}::date + 1)::timestamp at time zone ${PLATFORM_TIME_ZONE}) end,
+           extension_founding_months = ${months}, updated_by = ${actor.id}::uuid
+  `);
+  await audit(actor.id, null, "platform.extension_founding_updated", { until, months });
+  return { ok: true };
+}
+
 /**
  * The currencies the editor shows a price box for: the plans' (`planCurrencies()`) and every currency an extension or bundle already has a
  * price in, so that saving a form never drops a price the form did not show.
@@ -368,8 +397,10 @@ export type AccountExtension = {
   source: StateSource;
   trialEndsAt: string | null;
   graceEndsAt: string | null;
-  /** Its smallest size's price a month in the account's currency, when it has one. */
-  priceFrom: { currency: string; amountMinor: number } | null;
+  /** Its smallest size's price a month in the account's currency, when it has one, with its founding price (E6). */
+  priceFrom: { currency: string; amountMinor: number; foundingMinor: number | null } | null;
+  /** While the account pays its founding price for it (E6). */
+  foundingEndsAt: string | null;
 };
 
 /** Every extension for an account's Extensions page, in the catalogue's order; only active extensions are offered. */
@@ -378,8 +409,8 @@ export async function accountExtensions(organisationId: string, currency: string
     getExtensionCatalogue(),
     organisationExtensionStandings(organisationId, now),
     typedRows(
-      z.object({ extension_id: col.text, trial_ends_at: col.timestampOrNull, grace_ends_at: col.timestampOrNull }),
-      sql`select extension_id, trial_ends_at, grace_ends_at from commerce.organisation_extensions where organisation_id = ${organisationId}::uuid`,
+      z.object({ extension_id: col.text, trial_ends_at: col.timestampOrNull, grace_ends_at: col.timestampOrNull, founding_ends_at: col.timestampOrNull }),
+      sql`select extension_id, trial_ends_at, grace_ends_at, founding_ends_at from commerce.organisation_extensions where organisation_id = ${organisationId}::uuid`,
     ),
   ]);
   return catalogue.extensions
@@ -396,7 +427,8 @@ export async function accountExtensions(organisationId: string, currency: string
         source: standings[e.id].source,
         trialEndsAt: row?.trial_ends_at ?? null,
         graceEndsAt: row?.grace_ends_at ?? null,
-        priceFrom: price ? { currency: price.currency, amountMinor: price.amountMinor } : null,
+        priceFrom: price ? { currency: price.currency, amountMinor: price.amountMinor, foundingMinor: price.foundingMinor } : null,
+        foundingEndsAt: row?.founding_ends_at ?? null,
       };
     });
 }

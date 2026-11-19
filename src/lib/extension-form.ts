@@ -6,7 +6,8 @@ import { ALLOWANCE_KEYS, isExtensionId, type AllowanceKey, type Allowances, type
 import { PLAN_INTERVALS, type PlanInterval } from "./plans";
 import { parsePrice } from "./product-input";
 
-export type ExtensionPriceInput = { currency: string; interval: PlanInterval; amountMinor: number };
+/** A price per currency and interval, with its founding price (D748 E6) when it has one: always below the price. */
+export type ExtensionPriceInput = { currency: string; interval: PlanInterval; amountMinor: number; foundingMinor: number | null };
 export type SizeInput = { id: string | null; label: string; allowances: Allowances; position: number; active: boolean; prices: ExtensionPriceInput[] };
 export type ExtensionInput = { name: string; description: string; standalone: boolean; position: number; active: boolean; sizes: SizeInput[] };
 export type BundleInput = { name: string; description: string; position: number; active: boolean; members: ExtensionId[]; prices: ExtensionPriceInput[] };
@@ -20,7 +21,11 @@ export type FormProblem =
   | { key: "sizeNeedsAPrice"; values: { size: string } }
   | { key: "bundleNeedsTwo" }
   | { key: "bundleNeedsAPrice" }
-  | { key: "unknownSize" };
+  | { key: "unknownSize" }
+  | { key: "foundingNotBelow"; values: { currency: string } }
+  | { key: "foundingWithoutPrice"; values: { currency: string } }
+  | { key: "foundingMonths" }
+  | { key: "foundingDate" };
 
 export type Parsed<T> = { ok: true; input: T } | { ok: false; problems: FormProblem[] };
 
@@ -30,19 +35,44 @@ const whole = (form: FormData, name: string, fallback = 0) => {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 };
 
-/** The prices posted under `{prefix}price:{currency}:{interval}`; an empty box is no price in that currency and interval. */
+/**
+ * The prices posted under `{prefix}price:{currency}:{interval}`, each with its founding price under `{prefix}founding:{currency}:{interval}`
+ * (D748 E6); an empty box is no price, or no founding price. A founding price is below its price and never without one.
+ */
 function prices(form: FormData, prefix: string, currencies: readonly string[], problems: FormProblem[]): ExtensionPriceInput[] {
   const out: ExtensionPriceInput[] = [];
+  const amountOf = (name: string, currency: string): number | null | undefined => {
+    const value = text(form, name);
+    if (!value) return undefined;
+    const amount = parsePrice(value, currency);
+    if (amount === null) problems.push({ key: "notAmount", values: { text: value, currency } });
+    return amount;
+  };
   for (const currency of currencies) {
     for (const interval of PLAN_INTERVALS) {
-      const value = text(form, `${prefix}price:${currency}:${interval}`);
-      if (!value) continue;
-      const amount = parsePrice(value, currency);
-      if (amount === null) problems.push({ key: "notAmount", values: { text: value, currency } });
-      else out.push({ currency, interval, amountMinor: amount });
+      const amount = amountOf(`${prefix}price:${currency}:${interval}`, currency);
+      const founding = amountOf(`${prefix}founding:${currency}:${interval}`, currency);
+      if (amount === undefined) {
+        if (founding !== undefined) problems.push({ key: "foundingWithoutPrice", values: { currency } });
+        continue;
+      }
+      if (amount === null || founding === null) continue;
+      if (founding !== undefined && founding >= amount) problems.push({ key: "foundingNotBelow", values: { currency } });
+      else out.push({ currency, interval, amountMinor: amount, foundingMinor: founding ?? null });
     }
   }
   return out;
+}
+
+/** The founding offer's form (D748 E6): `until`, a day (empty: no founding prices offered), and `months`, how long a founding price is kept. */
+export function parseFoundingForm(form: FormData): Parsed<{ until: string | null; months: number }> {
+  const until = text(form, "until");
+  const months = Number.parseInt(text(form, "months"), 10);
+  const problems: FormProblem[] = [];
+  if (until && (!/^\d{4}-\d{2}-\d{2}$/.test(until) || Number.isNaN(Date.parse(`${until}T00:00:00Z`)))) problems.push({ key: "foundingDate" });
+  if (!Number.isInteger(months) || months < 1 || months > 36) problems.push({ key: "foundingMonths" });
+  if (problems.length > 0) return { ok: false, problems };
+  return { ok: true, input: { until: until || null, months } };
 }
 
 function allowances(form: FormData, prefix: string, keys: readonly AllowanceKey[], problems: FormProblem[]): Allowances {

@@ -332,6 +332,15 @@ export const platformEn = {
     notIncluded: "Not included",
     includesOf: "What {plan} includes of {name}",
     noPlan: "There is no active plan yet. Make one under Plans, then say what it includes here.",
+    founding: {
+      title: "Founding prices",
+      hint: "An account that adds an extension or a bundle before the offer ends pays its founding price for the months below, then its price. Set each founding price beside its price.",
+      until: "Offered until (last day)",
+      months: "Kept for (months)",
+      offered: "Offered until {date}; an account keeps its founding price for {months} months.",
+      notOffered: "Not offered: every account pays the prices.",
+      price: "Founding price",
+    },
     launch: {
       title: "Launch extensions",
       lead: "Launching starts selling extensions. From then on each account has what its plan includes, what it pays for and its trials.",
@@ -360,6 +369,10 @@ export const platformEn = {
       unknownSize: "That size is not the extension's own.",
       unknownExtension: "There is no such extension.",
       unknownBundle: "There is no such bundle.",
+      foundingNotBelow: "A founding price in {currency} is less than its price.",
+      foundingWithoutPrice: "A founding price in {currency} needs a price beside it.",
+      foundingMonths: "A founding price is kept for 1 to 36 months.",
+      foundingDate: "Give the last day founding prices are offered as a date, or leave it empty.",
     },
   },
   features: {

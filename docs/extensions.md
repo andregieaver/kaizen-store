@@ -384,7 +384,7 @@ plan buttons on a store act on its account. The daily run's `daily.extension-tri
 30, 14 and 3 days before a trial ends (`trialReminderDue()`: only reminders shorter than the trial, the latest due after a missed day), one
 email per account for trials ending together, each once (its key kept with the email).
 
-**E6, planned in two parts (19 November 2026).** 1. Bundles and the cheapest way: `cheapestCover()`, a bundle's price on the account's
+**E6, planned in two parts (19 November 2026), both built.** 1. Bundles and the cheapest way: `cheapestCover()`, a bundle's price on the account's
 subscription, and every add, end and plan change buying the cheapest cover. 2. Founding prices: timed prices (D524) for extensions and
 bundles, locked for 12 months for those who start while one runs.
 
@@ -398,6 +398,18 @@ Stripe products (`bundle:<id>`) beside the extensions; Stripe's word makes each 
 longer covered ends with its grace period. Account → Extensions says when adding one is cheapest as a bundle ("Cheapest as the Customers
 bundle: …, … less than one by one", `bundleHints()`, read once for every row) and ends one in a bundle too; Account → Billing names the
 bundle.
+
+**E6 as built, part two (19 November 2026).** Founding prices: each extension and bundle price may carry a founding price below it
+(`founding_minor`, part of the price, so a change is a new row; migration `20261119210826_short_husk`, and `20261119210841_founding_price_sheet`
+seeds the first price sheet's founding prices on every price still at the sheet's amount). Platform → Plans → Extensions sets the offer's last
+day and how many months an account keeps its founding price (`platform_settings.extension_founding_until`, `extension_founding_months`,
+12), and each price's founding price beside it. They are not D524's campaign coupons: those take one amount or percent per campaign, the
+sheet's founding prices differ per item, and Stripe Checkout cannot discount one item. So a founding price is a Stripe price of its own
+(`founding:{price id}` in `stripe_sync`): while the offer is open the cover (`accountCover()`) buys founding prices, after it only for what
+the account keeps; `resolveItems()` refuses any other. Stripe's word sets `organisation_extensions.founding_ends_at` when a founding price
+starts (a running one keeps its end), and `daily.extension-founding` (`endFoundingPrices()`) moves an ended one to the list price
+without proration, the period paid staying paid. Account → Extensions shows the founding price and until when it is kept; Account → Billing
+says until when one is paid.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
