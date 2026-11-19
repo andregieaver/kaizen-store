@@ -63,6 +63,15 @@ export const customersEn = {
     morePictures: "+{n}",
   },
   export: {
+    /** Round 51 (D784): what a phone shows. */
+    phone: {
+      lead: "A spreadsheet of your customers, one row each.",
+      personal: "Personal data: keep it only as long as you need it. Deleted from here after {days} days.",
+      about: "About this file",
+      aboutSub: "Its columns, marketing consent, large exports",
+      open: "Open",
+      close: "Close",
+    },
     back: "Customers",
     title: "Export customers",
     intro:

@@ -400,6 +400,13 @@ export const productsNb: ProductsMessages = {
     backToProducts: "Tilbake til produktene",
   },
   exportPage: {
+    /** Round 51 (D784): what a phone shows. */
+    phone: {
+      lead: "Én rad for hver variant, med priser, lager og bilder.",
+      notCarriedSub: "Abonnementer, nedlastinger, bestillinger",
+      open: "Åpne",
+      close: "Lukk",
+    },
     back: "Produkter",
     title: "Eksporter produkter",
     intro:

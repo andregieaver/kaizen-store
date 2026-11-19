@@ -36,7 +36,8 @@ export function DialectField({ defaultValue, id = "dialect", words: w = EN }: { 
           </option>
         ))}
       </select>
-      <p className={hint}>{w.formatHint}</p>
+      {/* Round 51 (D784): the formats' help is for a wider screen; their names say enough on a phone. */}
+      <p className={`${hint} max-sm:hidden`}>{w.formatHint}</p>
     </div>
   );
 }

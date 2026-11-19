@@ -201,6 +201,8 @@ export const settingsNb: SettingsMessages = {
     },
   },
   company: {
+    /** Round 51 (D784): a new place's optional fields as one row on a phone. */
+    phone: { more: "Telefon, veibeskrivelse og åpningstider", open: "Åpne", close: "Lukk" },
     title: "Virksomhet",
     missing: { one: "Én ting loven krever, mangler.", many: "{n} ting loven krever, mangler." },
     missingRest: " Kundene ser dem i bunnteksten, i vilkårene og i hver ordrebekreftelse.",
