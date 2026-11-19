@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test } from "@playwright/test";
 
 /**
@@ -20,6 +22,30 @@ test("a store's footer leads to its page, prerendered in the store's own layout"
   // The page spans the window: the storefront's main drops its width for it.
   const main = await page.getByRole("main").boundingBox();
   expect(main?.width).toBe(1280);
+});
+
+/**
+ * A page served as a static file is made again on the server after its revalidate time or a tag (here at once, as Next's own
+ * revalidation header asks with the build's preview id). Made again with a param it cannot fill (the `rest` of a `@drawer/[...rest]`
+ * slot, bloat review step 2.4, CI run 44499394318), its metadata waited for good, and a link to it met a cut-off answer: React error
+ * 412 and "Something went wrong". `scripts/render-modes.mjs` refuses such a route at build; this follows the shopper's path.
+ */
+test("a store page made again on the server still opens by a link", async ({ page, request }) => {
+  const { previewModeId } = JSON.parse(readFileSync(".next/prerender-manifest.json", "utf8")).preview;
+  for (const path of ["/s/demo/no/om-oss", "/s/demo/no/blog/nye-produkter"]) {
+    const made = await request.get(path, { headers: { "x-prerender-revalidate": previewModeId } });
+    expect(made.status()).toBe(200);
+    expect(made.headers()["x-nextjs-cache"], path).toBe("REVALIDATED");
+    // As a link asks for it: the whole page, nothing left for later.
+    const flight = await request.get(path, { headers: { rsc: "1", "next-url": "/s/demo/no" } });
+    expect(flight.headers()["x-nextjs-postponed"], path).toBeUndefined();
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/s/demo/no");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Om oss", exact: true }).click();
+  await expect(page).toHaveURL("/s/demo/no/om-oss");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Om Kaizena Flow Demo");
+  await expect(page).toHaveTitle("Om oss · Kaizena Flow Demo");
 });
 
 test("a store page is in every market, and unknown pages and the store's routes are its own", async ({ page, request }) => {

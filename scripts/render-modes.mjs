@@ -116,6 +116,29 @@ function measureDemo() {
   return { entries, withList, withBothTags, medianBytes };
 }
 
+/**
+ * Routes prerendered whole ('static') whose pattern has a param that can never be prerendered: the build fills it from the address, but
+ * a regeneration (after the revalidate time or a tag) leaves it unknown, so the page's metadata waits on it (Next's `pathname` hangs
+ * while any param is unknown) and the regenerated entry is postponed. Next still serves that entry's flight data to a client navigation
+ * as a finished page, which then ends with chunks missing: React error 412 and the global error page (bloat review step 2.4, CI run
+ * 44499394318: the `rest` of `@drawer/[...rest]` under /s/demo/no/om-oss). A parallel slot's catch-all is the usual source.
+ */
+function regenerationHoles() {
+  const found = new Map();
+  for (const [route, entry] of Object.entries(manifest.routes)) {
+    if (entry.compute !== "static" || !entry.srcRoute) continue;
+    const pattern = manifest.dynamicRoutes?.[entry.srcRoute];
+    if (!pattern) continue;
+    const prerenderable = new Set((pattern.remainingPrerenderableParams ?? []).map((p) => p.paramName));
+    const never = (pattern.fallbackRouteParams ?? []).map((p) => p.paramName).filter((name) => !prerenderable.has(name));
+    if (never.length === 0) continue;
+    const seen = found.get(entry.srcRoute) ?? { params: never, routes: [] };
+    seen.routes.push(route);
+    found.set(entry.srcRoute, seen);
+  }
+  return [...found].map(([pattern, { params, routes }]) => `${pattern} (never prerendered: ${params.join(", ")}; ${routes.length} routes, e.g. ${routes[0]})`);
+}
+
 const today = { routes: Object.fromEntries(ROUTES.map((r) => [r, measureRoute(r)])), meta: measureDemo() };
 const byCompute = {};
 for (const r of Object.values(manifest.routes)) byCompute[r.compute ?? "unknown"] = (byCompute[r.compute ?? "unknown"] ?? 0) + 1;
@@ -135,6 +158,15 @@ console.log(
   `\nDemo store: ${today.meta.entries} entries; ${today.meta.withList} keep a list of page documents; ${today.meta.withBothTags} carry both the pages tag and a page's own; median resume data ${today.meta.medianBytes} bytes.`,
 );
 console.log(`Whole manifest (noted, not held): routes by compute ${JSON.stringify(byCompute)}; dynamic patterns without a fallback ${noFallback}.`);
+
+// Not a figure of the baseline: a route here breaks client navigation after its first regeneration, so neither --write nor a note lets it by.
+const deferred = regenerationHoles();
+if (deferred.length) {
+  console.error(
+    `\nrender-modes: ${deferred.length} pattern(s) are static at build, but their regeneration cannot fill a param, so it is postponed and a client navigation to the page gets a cut-off answer (React error 412):\n- ${deferred.join("\n- ")}\nGive the param generateStaticParams, or take the catch-all that adds it out of the slot.`,
+  );
+  process.exit(1);
+}
 
 if (process.argv.includes("--write")) {
   fs.writeFileSync(BASELINE, JSON.stringify({ routes: today.routes, meta: today.meta, totals }, null, 2) + "\n");

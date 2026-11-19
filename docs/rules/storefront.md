@@ -674,8 +674,11 @@ the path, component or table you change, or list the rules with a search for lin
   header (`src/components/shopper-own.tsx`, bloat review step 2.4).
   Its contents (`cart/cart-contents.tsx`) are the cart page and, on phones,
   the slide-out cart (D64): the `@drawer` slot of the `(shop)` route group (`src/app/s/[store]/[market]/(shop)/layout.tsx`, one level under the market layout, because a slot on a root layout makes Next draw the layout twice) intercepts
-  `/cart` on client navigation (`(.)cart`, `CartDrawer`); `[...rest]` closes
-  it on any other page, and larger screens load the cart page instead.
+  `/cart` on client navigation (`(.)cart`, `CartDrawer`); the drawer draws itself only while the address is the cart's, so a link
+  inside it closes it, and larger screens load the cart page instead. The slot has no catch-all page: a `[...rest]` there adds a param
+  that a regeneration of a static store page can never fill, which left the page's metadata waiting and broke client navigation to it
+  after its revalidate time (bloat review step 2.4; `scripts/render-modes.mjs` refuses such a route, `e2e/store-pages.spec.ts` follows
+  the link after a regeneration).
   The header's cart link is drawn twice, a router link shown under 768 px and a plain anchor shown from 768 px, so a larger screen loads the cart page at once and never fetches the drawer (bloat review step 2.2).
   Stores can open it on adding (`stores.open_cart_on_add`, `useOpenCartAfterAdd()`).
   Its totals come from `cartSummary()` (`src/server/cart-summary.ts`), which
