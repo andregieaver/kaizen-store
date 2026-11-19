@@ -32,7 +32,7 @@ export function DocsGuideForm({
   upload: Upload | null;
   save: SaveDocsGuide;
 }) {
-  const w = useAdminText("platform").docsGuide.form;
+  const w = useAdminText("platformDocsGuide").docsGuide.form;
   const [value, setValue] = useState(guide);
   const [pending, start] = useTransition();
   const [outcome, setOutcome] = useState<{ ok: boolean; messages: string[] } | null>(null);

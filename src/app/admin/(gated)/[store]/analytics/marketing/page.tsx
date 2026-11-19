@@ -85,7 +85,7 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
   const row = { change: pw.open, done: pw.close, flat: true } as const;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport", "reportsCampaigns"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader

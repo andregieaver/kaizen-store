@@ -22,7 +22,7 @@ export default async function AnalyticsLivePage({ params, searchParams }: PagePr
   const words = adminText(ctx.lang, "analytics");
   const live = await liveFigures(ctx.store, ctx.now);
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader ctx={ctx} path="/analytics/live" title={words.live.title} description={<><span className="sm:hidden">{words.live.phone.lead}</span><span className="max-sm:hidden">{words.live.description}</span></>} picker={false} showCompare={false} />
         <LiveView base={ctx.base} locale={ctx.locale} timeZone={ctx.store.timeZone} live={live} words={words} />

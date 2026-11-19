@@ -6,7 +6,7 @@ import { useAdminText } from "./admin-text";
 
 /** Sends a test event now and says how it went (D41). */
 export function TestSendButton({ action }: { action: () => Promise<{ ok: boolean; message: string }> }) {
-  const w = useAdminText("notifications").integrations.provider;
+  const w = useAdminText("notificationsIntegrations").integrations.provider;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   return (

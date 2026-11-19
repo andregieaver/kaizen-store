@@ -40,7 +40,7 @@ export default async function AnalyticsProductsPage({ params, searchParams }: Pa
   const w = adminText(ctx.lang, "reports");
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader

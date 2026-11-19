@@ -99,7 +99,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
     : w.officeNone;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsCompany", "settingsHours"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}

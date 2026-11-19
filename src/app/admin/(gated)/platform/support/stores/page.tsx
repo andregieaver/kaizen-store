@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 
 import { PeriodPicker } from "@/components/admin/analytics/period-picker";
 import { StoreTotalsView } from "@/components/admin/support/store-totals-view";
@@ -30,7 +29,7 @@ export default async function StoresSupportPage({
   });
   const { stores, cut } = await storeTotals(period);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support"])}>
+    <>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.platformStores.title}
@@ -53,6 +52,6 @@ export default async function StoresSupportPage({
           periodLabel={period.label}
         />
       </div>
-    </AdminTextScope>
+    </>
   );
 }

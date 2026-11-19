@@ -35,7 +35,7 @@ export function HoursEditor({
   initial: OpeningHours | null;
   optional?: boolean;
 }) {
-  const w = useAdminText("settings").hours;
+  const w = useAdminText("settingsHours").hours;
   const [hours, setHours] = useState<OpeningHours>(initial ?? defaultHours());
   const [shown, setShown] = useState(!optional || initial !== null);
   const id = useId();
@@ -110,7 +110,7 @@ function ExceptionEditor({
   onChange: (change: HoursException) => void;
   onRemove: () => void;
 }) {
-  const w = useAdminText("settings").hours;
+  const w = useAdminText("settingsHours").hours;
   const what = exception.kind === "season" ? "season" : "date";
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
@@ -164,7 +164,7 @@ function ExceptionEditor({
 }
 
 function WeekGrid({ week, onChange, idPrefix }: { week: WeekHours; onChange: (week: WeekHours) => void; idPrefix: string }) {
-  const w = useAdminText("settings").hours;
+  const w = useAdminText("settingsHours").hours;
   return (
     <div className="flex flex-col gap-1">
       {DAYS.map((day) => (
@@ -200,7 +200,7 @@ function DayRow({
   onChange: (hours: DayHours) => void;
   idPrefix: string;
 }) {
-  const w = useAdminText("settings").hours;
+  const w = useAdminText("settingsHours").hours;
   const open = hours !== null;
   const backwards = hours !== null && hours.open >= hours.close;
   return (

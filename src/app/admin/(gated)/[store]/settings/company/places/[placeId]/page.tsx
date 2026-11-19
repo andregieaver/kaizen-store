@@ -36,7 +36,7 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
   const kind = place.kind;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsHours"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `/admin/${store.slug}/settings/company`, label: w.title }}

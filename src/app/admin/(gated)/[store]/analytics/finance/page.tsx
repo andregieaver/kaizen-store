@@ -75,7 +75,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   const row = { change: words.phone.open, done: words.phone.close, flat: true } as const;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["finance", "analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader ctx={ctx} path="/analytics/finance" title={words.pages.financeTitle} description={<span className="max-sm:hidden">{words.pages.financeDescription}</span>} />

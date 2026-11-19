@@ -3,13 +3,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { formatMoney } from "@/lib/money";
 import { norwegianOrgNumber } from "@/lib/tripletex";
@@ -179,7 +178,7 @@ export default async function TripletexPage({ params, searchParams }: PageProps<
   );
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <>
       <div className="flex flex-col gap-6">
         <div>
           <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">
@@ -493,6 +492,6 @@ export default async function TripletexPage({ params, searchParams }: PageProps<
           <DeleteDiscountButton action={disconnectTripletexAction.bind(null, store.slug)} code="Tripletex" question={w.disconnectQuestion} label={w.disconnect} />
         )}
       </div>
-    </AdminTextScope>
+    </>
   );
 }

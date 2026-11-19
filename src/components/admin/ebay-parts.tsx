@@ -31,7 +31,7 @@ const SETTING_KEYS = ["fulfillmentPolicyId", "paymentPolicyId", "returnPolicyId"
 
 /** The marketplace and what eBay asks every offer to name (D555). */
 export function EbaySettingsForm({ initial, save }: { initial: Record<string, string>; save: (raw: Record<string, string>) => Promise<Step> }) {
-  const w = useAdminText("notifications").integrations.ebay;
+  const w = useAdminText("notificationsIntegrations").integrations.ebay;
   const [values, setValues] = useState<Record<string, string>>({ marketplace: "EBAY_DE", ...initial });
   const { run, pending, view } = useRun();
   return (
@@ -75,7 +75,7 @@ export type EbayProductRow = { variantId: string; name: string; sku: string; sta
 
 /** Tick products and list them on eBay, or stop listing them. */
 export function EbayProducts({ rows, choose }: { rows: EbayProductRow[]; choose: (ids: string[], on: boolean) => Promise<{ ok: true; changed: number } | { ok: false; problem: string }> }) {
-  const w = useAdminText("notifications").integrations.ebay;
+  const w = useAdminText("notificationsIntegrations").integrations.ebay;
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const { run, pending, view } = useRun();
   const ids = [...chosen];
@@ -123,7 +123,7 @@ export function EbayProducts({ rows, choose }: { rows: EbayProductRow[]; choose:
 
 /** Mark one eBay order sent: the carrier and tracking number go to eBay. */
 export function EbayMarkSent({ mark }: { mark: (carrier: string, tracking: string) => Promise<Step> }) {
-  const w = useAdminText("notifications").integrations.ebay;
+  const w = useAdminText("notificationsIntegrations").integrations.ebay;
   const [carrier, setCarrier] = useState<string>("DHL");
   const [tracking, setTracking] = useState("");
   const { run, pending, view } = useRun();

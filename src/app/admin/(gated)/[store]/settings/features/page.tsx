@@ -42,7 +42,7 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
   const shown = (id: FeatureId) => featureOffered(id, offer) || featureKept(store, id);
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsFeatures"])}>
     <div className="flex flex-col gap-6">
       {/* With the online shop off, what was sold stays reachable while it can still be withdrawn from or returned (D178 step 5). */}
       <AfterSaleNote store={store} />

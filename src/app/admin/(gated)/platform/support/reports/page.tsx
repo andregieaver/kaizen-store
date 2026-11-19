@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 
 import { PeriodPicker } from "@/components/admin/analytics/period-picker";
 import { ReportsView } from "@/components/admin/support/reports-view";
@@ -30,7 +29,7 @@ export default async function KaizenSupportReportsPage({
     KAIZEN_TIME_ZONE,
   );
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support"])}>
+    <>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.platformReports.title}
@@ -56,6 +55,6 @@ export default async function KaizenSupportReportsPage({
           }
         />
       </div>
-    </AdminTextScope>
+    </>
   );
 }

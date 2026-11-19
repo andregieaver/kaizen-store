@@ -160,7 +160,7 @@ function Checklist({
   invalid: boolean;
   errorId: string;
 }) {
-  const w = useAdminText("platform").copyWizard;
+  const w = useAdminText("platformCopy").copyWizard;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const words = w.kinds[kind];
   const [query, setQuery] = useState("");
@@ -282,7 +282,7 @@ function KindChoice({
   problem: WizardProblem | undefined;
   hint: string;
 }) {
-  const w = useAdminText("platform").copyWizard;
+  const w = useAdminText("platformCopy").copyWizard;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const words = w.kinds[kind];
   const rows = useMemo(
@@ -380,7 +380,7 @@ export function StoreCopyWizard({
   initialMessages?: string[];
 }) {
   const router = useRouter();
-  const w = useAdminText("platform").copyWizard;
+  const w = useAdminText("platformCopy").copyWizard;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const [state, setState] = useState<WizardState>(
     () => initial ?? initialWizard(choices.source.name, w.lib),

@@ -21,7 +21,7 @@ export default async function StoreCopyProgressPage({
   if (!first.ok) notFound();
   return (
     <AdminTextScope
-      texts={adminTexts(adminLangOf(account.adminLocale), ["platform"])}
+      texts={adminTexts(adminLangOf(account.adminLocale), ["platformCopy"])}
     >
       <StoreCopyProgress
         id={copyId}

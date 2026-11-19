@@ -66,7 +66,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
       : w.none;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsAi"])}>
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title={w.title} description={<>{current}</>} />

@@ -32,7 +32,7 @@ type Props = {
 const FIELD = "min-h-10 rounded-md border border-line bg-card px-3";
 
 export function ProducerRegistrationForm({ action, schemes, markets, today, editing = null, start = null, cancelHref, disabled = false }: Props) {
-  const w = useAdminText("settings").producer;
+  const w = useAdminText("settingsProducer").producer;
   const [scheme, setScheme] = useState<SchemeId>(editing?.scheme ?? start?.scheme ?? schemes[0]?.id ?? "packaging");
   const [market, setMarket] = useState(editing?.market ?? start?.market ?? markets[0]?.code ?? "");
   const [kind, setKind] = useState<RegistrationKind>(editing?.kind ?? "registered");
@@ -163,7 +163,7 @@ export function ProducerRegistrationForm({ action, schemes, markets, today, edit
 
 /** One registration's Remove button. */
 export function RemoveRegistration({ action, id }: { action: FormAction; id: string }) {
-  const w = useAdminText("settings").producer;
+  const w = useAdminText("settingsProducer").producer;
   return (
     <ActionForm action={action} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />

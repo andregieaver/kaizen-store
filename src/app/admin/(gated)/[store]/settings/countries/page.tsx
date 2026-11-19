@@ -137,7 +137,7 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
       {!editor && <p className="text-sm">{all.common.readOnly}</p>}
 
       {ruled && (
-        <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+        <AdminTextScope texts={adminTexts(lang, ["settingsPriceRules"])}>
           <MarketPriceRules
             markets={store.keptMarkets.map((m) => ({ code: m.code, name: nameOf(m.code), currency: m.nativeCurrency }))}
             rules={ruled}

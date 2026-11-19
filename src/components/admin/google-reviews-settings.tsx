@@ -37,7 +37,7 @@ export function GoogleReviewsSettings({
   place: GooglePlace | null;
   actions: GoogleReviewsActions;
 }) {
-  const w = useAdminText("notifications").google;
+  const w = useAdminText("notificationsGoogle").google;
   const [pending, start] = useTransition();
   const [key, setKey] = useState("");
   const [query, setQuery] = useState("");

@@ -38,7 +38,7 @@ export default async function AnalyticsSalesPage({ params, searchParams }: PageP
   const kept = Object.fromEntries(Object.entries(query).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader ctx={ctx} path="/analytics/sales" title={w.pages.sales.title} description={w.pages.sales.description} />
         <SalesView report={report} base={ctx.base} query={kept} locale={ctx.locale} words={w.sales} />

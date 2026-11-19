@@ -32,7 +32,7 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
   const t = adminText(lang, "bookings");
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsHours"])}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/bookings/staff`, label: t.staff.title }} title={<>{staff.name}</>} />
       <StaffForm staff={staff} words={t.staffForm} action={saveStaffAction.bind(null, store.slug, staff.id)} />

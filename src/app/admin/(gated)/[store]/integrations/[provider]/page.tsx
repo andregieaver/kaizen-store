@@ -53,7 +53,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
   const steps = all.integrations.infos[info.id]?.steps ?? info.steps ?? [];
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
     <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">

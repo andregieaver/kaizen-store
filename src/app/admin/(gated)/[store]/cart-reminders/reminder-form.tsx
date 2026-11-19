@@ -38,7 +38,7 @@ export async function ReminderForm({
     formatMoney(minor, currencyOf(marketCode), locale);
   const lang = await requestAdminLang();
   return (
-    <AdminTextScope texts={adminTexts(lang, ["platform"])}>
+    <AdminTextScope texts={adminTexts(lang, ["platformReminders"])}>
       <ReminderEditor
         initial={step}
         storeName={store.name}

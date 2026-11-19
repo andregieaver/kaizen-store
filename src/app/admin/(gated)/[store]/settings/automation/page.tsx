@@ -4,12 +4,11 @@ import { redirect } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireFeature } from "@/components/admin/feature-off";
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { RuleList } from "@/components/admin/automation/rule-list";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 import { listRules } from "@/server/order-rules";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { moveRulesToWorkflows, rulesMovePlan } from "@/server/rules-to-workflows";
@@ -50,7 +49,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
   const base = `/admin/${store.slug}/settings/automation`;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
@@ -107,6 +106,6 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
       />
       {!canWrite && <p className="text-sm text-muted">{w.readOnly}</p>}
     </div>
-    </AdminTextScope>
+    </>
   );
 }

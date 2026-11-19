@@ -245,6 +245,24 @@ export type AdminAreaMessages = {
   designEditor: Pick<DesignMessages, "fonts" | "changes">;
   blogEditor: Pick<BlogMessages, "editor">;
   schedulesEditor: Pick<SchedulesMessages, "dialog" | "nouns" | "share">;
+  /** Cuts of the screens' own areas (bloat review step 2.27, commit 5): the groups the parts under each screen read. */
+  notificationsIntegrations: Pick<NotificationsMessages, "integrations">;
+  notificationsGoogle: Pick<NotificationsMessages, "google">;
+  notificationsTokens: Pick<NotificationsMessages, "apiTokens" | "customApps" | "storefrontTokens">;
+  notificationsWorkflows: Pick<NotificationsMessages, "workflows">;
+  settingsHours: Pick<SettingsMessages, "hours">;
+  settingsAi: Pick<SettingsMessages, "ai" | "common">;
+  settingsProducer: Pick<SettingsMessages, "producer">;
+  settingsCompany: Pick<SettingsMessages, "company">;
+  settingsPriceRules: Pick<SettingsMessages, "priceRules">;
+  settingsFeatures: Pick<SettingsMessages, "features">;
+  settingsPrices: Pick<SettingsMessages, "common" | "prices">;
+  supportSettings: Pick<SupportMessages, "settings">;
+  analyticsExport: Pick<AnalyticsMessages, "exportButton">;
+  reportsCampaigns: Pick<ReportsMessages, "campaigns" | "channels">;
+  platformCopy: Pick<PlatformMessages, "copyWizard" | "copyProgress">;
+  platformDocsGuide: Pick<PlatformMessages, "docsGuide">;
+  platformReminders: Pick<PlatformMessages, "reminderEditor">;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -364,6 +382,23 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   designEditor: cut({ en: designEn, nb: designNb }, ["fonts", "changes"]),
   blogEditor: cut({ en: blogEn, nb: blogNb }, ["editor"]),
   schedulesEditor: cut({ en: schedulesEn, nb: schedulesNb }, ["dialog", "nouns", "share"]),
+  notificationsIntegrations: cut({ en: notificationsEn, nb: notificationsNb }, ["integrations"]),
+  notificationsGoogle: cut({ en: notificationsEn, nb: notificationsNb }, ["google"]),
+  notificationsTokens: cut({ en: notificationsEn, nb: notificationsNb }, ["apiTokens", "customApps", "storefrontTokens"]),
+  notificationsWorkflows: cut({ en: notificationsEn, nb: notificationsNb }, ["workflows"]),
+  settingsHours: cut({ en: settingsEn, nb: settingsNb }, ["hours"]),
+  settingsAi: cut({ en: settingsEn, nb: settingsNb }, ["ai", "common"]),
+  settingsProducer: cut({ en: settingsEn, nb: settingsNb }, ["producer"]),
+  settingsCompany: cut({ en: settingsEn, nb: settingsNb }, ["company"]),
+  settingsPriceRules: cut({ en: settingsEn, nb: settingsNb }, ["priceRules"]),
+  settingsFeatures: cut({ en: settingsEn, nb: settingsNb }, ["features"]),
+  settingsPrices: cut({ en: settingsEn, nb: settingsNb }, ["common", "prices"]),
+  supportSettings: cut(SUPPORT_WORDS, ["settings"]),
+  analyticsExport: cut({ en: analyticsEn, nb: analyticsNb }, ["exportButton"]),
+  reportsCampaigns: cut(REPORTS_WORDS, ["campaigns", "channels"]),
+  platformCopy: cut(PLATFORM_WORDS, ["copyWizard", "copyProgress"]),
+  platformDocsGuide: cut(PLATFORM_WORDS, ["docsGuide"]),
+  platformReminders: cut(PLATFORM_WORDS, ["reminderEditor"]),
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 import { effectiveDispatch } from "@/lib/tax-profile";
 import { customsMarkets, productsWithoutHsCode } from "@/server/customs";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -53,7 +52,7 @@ export default async function CustomsSettingsPage({ params }: PageProps<"/admin/
         </p>
       )}
       {dispatch && (
-        <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+        <>
           <Card title={w.choice}>
             {markets.length === 0 ? (
               <p className="text-sm text-muted">{w.none}</p>
@@ -90,7 +89,7 @@ export default async function CustomsSettingsPage({ params }: PageProps<"/admin/
               </List>
             )}
           </Card>
-        </AdminTextScope>
+        </>
       )}
       <p className="text-sm text-muted">{w.estimateNote}</p>
     </div>

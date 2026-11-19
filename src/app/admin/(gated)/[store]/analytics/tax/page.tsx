@@ -161,7 +161,7 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
   const partHref = (part: { from: string; to: string }) => taxHref(ctx.base, { view: "vat" }, { period: "custom", from: part.from, to: addDays(part.to, -1) });
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["taxReports", "analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
     <div className="flex flex-col gap-8">
       <AnalyticsHeader
         ctx={ctx}

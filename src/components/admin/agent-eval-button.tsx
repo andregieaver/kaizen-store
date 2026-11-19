@@ -25,7 +25,7 @@ interface AgentEvalButtonProps {
 }
 
 export function AgentEvalButton({ action }: AgentEvalButtonProps) {
-  const w = useAdminText("settings").ai.form;
+  const w = useAdminText("settingsAi").ai.form;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AgentEvalOutcome | null>(null);
   return (

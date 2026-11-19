@@ -26,7 +26,7 @@ export default async function AnalyticsPayoutsPage({ params, searchParams }: Pag
   const report = await payoutsReport(ctx.store, ctx.params.period);
   const words = adminText(ctx.lang, "finance");
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["finance", "analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader

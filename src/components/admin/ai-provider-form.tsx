@@ -61,8 +61,8 @@ export function AiProviderForm({
   checkVision?: (model: string) => Promise<AiVisionCheckResult>;
 }) {
   const id = useId();
-  const w = useAdminText("settings").ai.form;
-  const save = useAdminText("settings").common.save;
+  const w = useAdminText("settingsAi").ai.form;
+  const save = useAdminText("settingsAi").common.save;
   const [provider, setProvider] = useState<AiProviderId>(settings?.provider ?? "gateway");
   const info = providerInfo(provider);
   const saved = settings && settings.provider === provider ? settings : null;
@@ -77,7 +77,7 @@ export function AiProviderForm({
   const keptLiveKey = settings?.liveProvider && settings.liveProvider === liveProvider ? settings.liveApiKeyHint : null;
   const liveSaved = settings && (settings.liveProvider ?? "") === liveProvider;
   // Round 29 (D702): on a phone each part after the provider and key is a row saying what is set; hidden fields still send.
-  const p = useAdminText("settings").ai.phone;
+  const p = useAdminText("settingsAi").ai.phone;
   const row = { change: p.change, done: p.done } as const;
   const off = p.off;
   const models = [settings?.embeddingModel, settings?.textModel].filter(Boolean).join(" · ");
@@ -521,7 +521,7 @@ function VisionField({
   defaultValue: string;
   check: ((model: string) => Promise<AiVisionCheckResult>) | null;
 }) {
-  const w = useAdminText("settings").ai.form;
+  const w = useAdminText("settingsAi").ai.form;
   const [value, setValue] = useState(defaultValue);
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiVisionCheckResult | null>(null);
@@ -588,7 +588,7 @@ export type AiTestResult = { embedding: { ok: boolean; message: string } | null;
 
 /** Tries the saved models now and says how each went. */
 export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }) {
-  const w = useAdminText("settings").ai.form;
+  const w = useAdminText("settingsAi").ai.form;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiTestResult | null>(null);
   const lines =
@@ -625,7 +625,7 @@ export type AiEvalResult =
 
 /** Runs the query-understanding eval against the saved text model and shows how it did (D75). */
 export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }) {
-  const w = useAdminText("settings").ai.form;
+  const w = useAdminText("settingsAi").ai.form;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiEvalResult | null>(null);
   return (
@@ -675,7 +675,7 @@ export type AiImageTestResult = { ok: true; dataUrl: string; ms: number } | { ok
 
 /** Makes one small test picture with the saved picture model and shows it (not kept). */
 export function AiImageTestButton({ action }: { action: () => Promise<AiImageTestResult> }) {
-  const w = useAdminText("settings").ai.form;
+  const w = useAdminText("settingsAi").ai.form;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiImageTestResult | null>(null);
   return (

@@ -22,7 +22,7 @@ export default async function AnalyticsSpeedPage({ params, searchParams }: PageP
   const report = await speedReport(ctx.store);
   const words = adminText(ctx.lang, "analytics");
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
       <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
         <div className="flex flex-col gap-8">
           <AnalyticsHeader ctx={ctx} path="/analytics/speed" title={words.speed.title} description={<><span className="sm:hidden">{words.speed.phone.lead}</span><span className="max-sm:hidden">{words.speed.description}</span></>} picker={false} showCompare={false} />

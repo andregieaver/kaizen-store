@@ -25,7 +25,7 @@ export type CustomAppView = {
 
 /** Adds an owner's own app (D363): its MCP endpoint and token; its tools are read at once. */
 export function AddCustomApp({ add }: { add: (form: FormData) => AsyncAnswer }) {
-  const w = useAdminText("notifications").customApps;
+  const w = useAdminText("notificationsTokens").customApps;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const [key, setKey] = useState(0);
@@ -79,7 +79,7 @@ export function CustomAppCard({
   app: CustomAppView;
   actions: { switchTool: (tool: string, gate: string) => AsyncAnswer; relist: () => AsyncAnswer; remove: () => AsyncAnswer };
 }) {
-  const w = useAdminText("notifications").customApps;
+  const w = useAdminText("notificationsTokens").customApps;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const run = (work: () => AsyncAnswer) =>

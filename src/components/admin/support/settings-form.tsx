@@ -85,7 +85,7 @@ export function SupportSettingsForm({
   /** The desk has its own email address, so replies to the store's order emails can come here (ecosystem plan E1.4). */
   takesEmail?: boolean;
 }) {
-  const w = useAdminText("support").settings;
+  const w = useAdminText("supportSettings").settings;
   const kindWords = w.actionKinds as Record<string, string>;
   const needsModel = settings.aiReady ? "" : w.noneConnected;
   const [mode, setMode] = useState<SupportMode>(settings.mode);
@@ -441,7 +441,7 @@ export function SupportSettingsForm({
 
 /** A tone line: off, or a score from the bands' edges (the band is named beside the number). */
 function ToneLine({ name, value }: { name: string; value: number | null }) {
-  const w = useAdminText("support").settings.toneLine;
+  const w = useAdminText("supportSettings").settings.toneLine;
   const choices = [-20, -40, -60, -80];
   const options =
     value !== null && !choices.includes(value)
