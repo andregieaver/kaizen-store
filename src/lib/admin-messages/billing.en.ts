@@ -41,6 +41,12 @@ export const billingEn = {
     testMode: "Kaizena Flow is in test mode: no real money is charged.",
     changePlan: "Change plan",
     choosePlan: "Choose a plan",
+    /** A store billed through its account (D748 E4): its plan is the account's. */
+    accountDescription: "What {store} pays Kaizena Flow: it is on your account's plan.",
+    accountPlan: "On your account's plan: {plan}",
+    accountNoPlan: "Your account has no plan yet",
+    accountBilled: "Every store in your account shares one plan, changed in one place.",
+    accountLink: "Your account's billing",
     houseTitle: "No plan needed",
     house: "This is Kaizena Flow's own store: it needs no plan and pays no fee per sale. The plans it sells are edited under Platform.",
     houseLink: "Kaizena Flow's plans",

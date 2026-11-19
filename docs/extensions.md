@@ -331,8 +331,8 @@ portal, invoices.
 **E4 as built, part three begun (19 November 2026).** Account → Billing draws the account's one plan first for an account billed through its
 account: price, status and renewal, "every store in your account is on this plan", the extensions it pays for, change plan (the extensions
 come along), the latest invoices, Stripe's page and cancel; the stores' list stays, without the stores' own totals and Manage links. An
-account billed store by store sees the page as before. Still to come in part three: the platform's accounts list with overrides per
-account, and a moved store's own Billing page pointing to the account's.
+account billed store by store sees the page as before. A moved store's own Billing page says it is on the account's plan and links
+there. Still to come in part three: the platform's accounts list with overrides per account.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
