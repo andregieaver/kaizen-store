@@ -49,7 +49,6 @@ export function AddToCart({
   store,
   market,
   cartHref,
-  redraw = false,
   variantId,
   disabled,
   labels,
@@ -60,8 +59,6 @@ export function AddToCart({
   store: string;
   market: string;
   cartHref: string;
-  /** The page draws the cart (a basket note, the cart's own upsells): the add redraws it (bloat review step 2.4). */
-  redraw?: boolean;
   variantId: string;
   disabled: boolean;
   labels: AddToCartLabels;
@@ -109,7 +106,6 @@ export function AddToCart({
       <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />
-      {redraw && <input type="hidden" name="redraw" value="1" />}
       {!quantity && <input type="hidden" name="quantity" value="1" />}
       <AffiliateField store={store} />
       <RecommendField />

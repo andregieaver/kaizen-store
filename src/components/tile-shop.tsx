@@ -45,22 +45,7 @@ function factsFor(where: Where, productId: string): Promise<TileFactsAnswer | nu
  * there, a quantity chooser with Add to cart, as the store's settings and the grid's own choices say. Nothing is drawn until the facts
  * arrive, and nothing at all without scripts: the tile still links to the product's page, where both are.
  */
-export function TileShop({
-  productId,
-  where,
-  cart,
-  ask,
-  words,
-  redraw = false,
-}: {
-  productId: string;
-  where: Where;
-  cart: string;
-  ask: TileAsk;
-  words: TileShopWords;
-  /** The page holds a basket note, which an add redraws (bloat review step 2.4). */
-  redraw?: boolean;
-}) {
+export function TileShop({ productId, where, cart, ask, words }: { productId: string; where: Where; cart: string; ask: TileAsk; words: TileShopWords }) {
   const [seen, setSeen] = useState<{ fact: TileFact; shows: { stock: boolean; quantity: boolean }; buttons: boolean } | null>(null);
   const { store, market } = where;
   const { stock: askStock, quantity: askQuantity } = ask;
@@ -92,7 +77,6 @@ export function TileShop({
             store={where.store}
             market={where.market}
             cartHref={cart}
-            redraw={redraw}
             variantId={buy.variantId}
             disabled={!buy.canBuy}
             labels={words.cart}

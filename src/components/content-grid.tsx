@@ -41,12 +41,9 @@ export function ContentGridView({
   notices,
   eager = false,
   tiles = null,
-  redraw = false,
 }: {
   block: ContentGridBlock;
   data: GridData;
-  /** The page holds a note about the shopper's basket: a tile's Add to cart redraws it (bloat review step 2.4). */
-  redraw?: boolean;
   /**
    * What a store's product tiles may show besides the price (D557): the stock left and a quantity chooser with Add to cart, as the grid's
    * own choices allow (`tileAsk()`); the store's settings come with the facts. Null, as in the builder's canvas, shows neither.
@@ -228,7 +225,7 @@ export function ContentGridView({
               {words(item.priceText)}
             </p>
           )}
-          {shop && shopWords && <TileShop productId={item.id} where={shop.where} cart={shop.cart} ask={shop.ask} words={shopWords} redraw={redraw} />}
+          {shop && shopWords && <TileShop productId={item.id} where={shop.where} cart={shop.cart} ask={shop.ask} words={shopWords} />}
           {block.show.button && item.href !== "" && (
             <div className="mt-auto pt-1">
               {/* Named with the item, so "Read more" links are told apart; the visible text starts the name. */}
