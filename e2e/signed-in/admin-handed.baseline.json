@@ -24,7 +24,7 @@
       ]
     },
     "product": {
-      "document": 241677,
+      "document": 236060,
       "handed": 64711,
       "scriptByIdle": 1238644,
       "named": 64530,
@@ -40,7 +40,7 @@
       ]
     },
     "builder": {
-      "document": 468351,
+      "document": 460097,
       "handed": 182315,
       "scriptByIdle": 2747092,
       "named": null,
@@ -52,6 +52,7 @@
         "blogEditor",
         "builder",
         "builderText",
+        "builderVersions",
         "common",
         "designEditor",
         "fieldsEditor",
@@ -127,6 +128,7 @@
         "blogEditor",
         "builder",
         "builderText",
+        "builderVersions",
         "common",
         "designEditor",
         "fieldsEditor",
@@ -150,7 +152,7 @@
     }
   },
   "saves": {
-    "product": 134598,
+    "product": 130588,
     "builder": 1087
   }
 }
