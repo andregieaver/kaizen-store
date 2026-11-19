@@ -1,19 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { toggleWishlistAction } from "@/app/s/[store]/[market]/(shop)/wishlist/actions";
 
-import { loadOwn, setSaved, useSaved } from "./shopper-own";
-
 /**
- * The shopper's saved products (D34), asked once per page for every heart on it (`loadOwn()`, from `/api/shop/mine`), so the pages
- * themselves stay the same for everyone (and static), and only when the marker cookie `kaizen_mine_{storeId}` says this visitor may
- * have saved something or signed in. Null until it arrives.
+ * The shopper's saved products (D34), fetched once per page for every
+ * heart on it, so the pages themselves stay the same for everyone (and
+ * cached), and only when the marker cookie `kaizen_mine_{storeId}` says this
+ * visitor has saved something or signed in. Null until it arrives.
  */
-function useSavedIn(store: string, market: string, storeId: string): Set<string> | null {
-  useEffect(() => loadOwn({ store, market, storeId, hinted: false }), [store, market, storeId]);
-  return useSaved();
+let saved: Set<string> | null = null;
+let loading: string | null = null;
+const listeners = new Set<() => void>();
+
+function setSaved(products: string[]) {
+  saved = new Set(products);
+  for (const listener of listeners) listener();
+}
+
+function load(base: string) {
+  if (loading === base) return;
+  loading = base;
+  // Nothing saved and no account here: nothing to ask for.
+  if (!/(?:^|;\s*)kaizen_mine_[0-9a-f-]{36}=1(?:;|$)/.test(document.cookie)) {
+    setSaved([]);
+    return;
+  }
+  fetch(`${base}/wishlist/saved`, { cache: "no-store" })
+    .then((response) => response.json())
+    .then((data: { products: string[] }) => setSaved(data.products))
+    .catch(() => {
+      loading = null;
+    });
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function useSaved(base: string): Set<string> | null {
+  useEffect(() => load(base), [base]);
+  return useSyncExternalStore(subscribe, () => saved, () => null);
 }
 
 function HeartShape({ filled }: { filled: boolean }) {
@@ -31,20 +60,20 @@ function HeartShape({ filled }: { filled: boolean }) {
 export function WishlistHeart({
   store,
   market,
-  storeId,
+  base,
   productId,
   labels,
   placement = "card",
 }: {
   store: string;
   market: string;
-  /** The store's id, whose marker cookie says whether there is anything to ask for. */
-  storeId: string;
+  /** The market's path, e.g. `/s/demo/no`. */
+  base: string;
   productId: string;
   labels: { save: string; saved: string; removed: string };
   placement?: "card" | "page";
 }) {
-  const products = useSavedIn(store, market, storeId);
+  const products = useSaved(base);
   const [pending, setPending] = useState<boolean | null>(null);
   const [announce, setAnnounce] = useState("");
   const isSaved = pending ?? products?.has(productId) ?? false;
@@ -87,8 +116,8 @@ export function WishlistHeart({
 }
 
 /** How many products the shopper has saved, beside the header's wishlist link. */
-export function WishlistCount({ store, market, storeId }: { store: string; market: string; storeId: string }) {
-  const products = useSavedIn(store, market, storeId);
+export function WishlistCount({ base }: { base: string }) {
+  const products = useSaved(base);
   const count = products?.size ?? 0;
   if (count === 0) return null;
   return (

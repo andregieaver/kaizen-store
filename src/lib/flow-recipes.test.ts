@@ -37,3 +37,19 @@ describe("the goals a flow starts from (D767 slice 3, M3.1)", () => {
     expect(RECIPES.after_purchase("nb-NO").name).toBe("Etter et kjøp");
   });
 });
+
+describe("a goal's flow from the owner's own automation (slice 3, M2.2)", () => {
+  it("keeps the owner's words and days, follow-ups after their days, ended by an order", async () => {
+    const { flowFromAutomation } = await import("./flow-recipes");
+    const words = (subject: string) => ({ "nb-NO": { subject, preview: "", blocks: [{ type: "paragraph" as const, text: subject }] } });
+    const flow = flowFromAutomation("after_purchase", { delayDays: 7, content: words("Hvordan går det?"), followUps: [{ position: 2, delayDays: 14, content: words("Noe nytt") }] }, "nb-NO");
+    expect(flow).toMatchObject({ name: "Etter et kjøp", trigger: "order.paid", replaces: "after_purchase", goals: [{ kind: "ordered" }] });
+    expect(flow?.steps.map((s) => (s.kind === "wait" ? `wait ${s.hours}` : s.id))).toEqual(["wait 168", "email-1", "wait 336", "email-2"]);
+    expect(flow && checkFlow(flow.steps)).toEqual([]);
+    // A welcome the same day has no wait first, and no goal without follow-ups.
+    const welcome = flowFromAutomation("welcome", { delayDays: 0, content: words("Velkommen"), followUps: [] }, "nb-NO");
+    expect(welcome?.steps.map((s) => s.id)).toEqual(["email-1"]);
+    expect(welcome?.goals).toEqual([]);
+    expect(flowFromAutomation("welcome", { delayDays: 0, content: null, followUps: [] }, "nb-NO")).toBeNull();
+  });
+});

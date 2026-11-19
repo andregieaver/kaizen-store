@@ -56,6 +56,36 @@ describe("renderEmail", () => {
     expect(email.html).not.toContain('<td width="56"');
   });
 
+  it("signs with the assistant's picture, name and occupation, and the site's logo as a link to it", () => {
+    const signed = renderEmail({
+      subject: "Re: Nettsider",
+      preview: "",
+      lang: "nb",
+      blocks: [
+        { type: "paragraph", text: "Du har én nettside." },
+        {
+          type: "signature",
+          greeting: "Med vennlig hilsen",
+          name: "Ingrid",
+          occupation: "AI Support",
+          avatar: "https://cdn.example.com/ingrid.png",
+          logo: { url: "https://cdn.example.com/logo.png", width: 400, height: 100, alt: "Kaizena Flow", href: "https://kaizenaflow.com" },
+        },
+      ],
+      footer: [],
+    });
+    expect(signed.html).toContain('src="https://cdn.example.com/ingrid.png"');
+    expect(signed.html).toContain("border-radius:50%");
+    expect(signed.html).toContain("<strong>Ingrid</strong>");
+    // The logo 32 pixels high at its own shape: 400 by 100 is 128 wide.
+    expect(signed.html).toContain('<a href="https://kaizenaflow.com"><img src="https://cdn.example.com/logo.png" alt="Kaizena Flow" width="128" height="32"');
+    expect(signed.text).toContain("Med vennlig hilsen\n\nIngrid\nAI Support\nKaizena Flow: https://kaizenaflow.com");
+    // Without a picture, an occupation or a logo, only what there is.
+    const bare = renderEmail({ subject: "s", preview: "", lang: "en", blocks: [{ type: "signature", greeting: "Kind regards", name: "Abby", occupation: "", avatar: null, logo: null }], footer: [] });
+    expect(bare.html).not.toContain("<img");
+    expect(bare.text).toContain("Kind regards\n\nAbby");
+  });
+
   it("escapes quotes", () => {
     expect(escapeHtml(`"a" 'b'`)).toBe("&quot;a&quot; &#39;b&#39;");
   });

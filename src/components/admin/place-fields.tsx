@@ -13,6 +13,7 @@ export function PlaceFields({
   defaultCountry,
   what,
   w = settingsEn,
+  part = "all",
 }: {
   place: StoreLocation | null;
   countries: Country[];
@@ -21,16 +22,22 @@ export function PlaceFields({
   what: string;
   /** The words in the account's language (`adminText(lang, "settings")`). */
   w?: SettingsMessages;
+  /** Round 51 (D784): the address alone, or the optional phone and directions alone, so a page can put the second behind a phone row. */
+  part?: "all" | "address" | "extras";
 }) {
   const t = w.company.place;
   const optional = <span className="font-normal text-muted">{w.common.optional}</span>;
+  const address = part !== "extras";
+  const extras = part !== "address";
   return (
     <>
+      {address && (
+      <>
       <label className={field}>
         {t.street}
         <input name="street" required maxLength={200} autoComplete="address-line1" defaultValue={place?.street ?? ""} className={control} />
       </label>
-      <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
+      <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-4 sm:grid-cols-[10rem_1fr] [&_input]:min-w-0">
         <label className={field}>
           {t.postcode}
           <input name="postalCode" required maxLength={20} autoComplete="postal-code" defaultValue={place?.postalCode ?? ""} className={control} />
@@ -50,6 +57,10 @@ export function PlaceFields({
           ))}
         </select>
       </label>
+      </>
+      )}
+      {extras && (
+      <>
       <label className={field}>
         <span>{t.phone} {optional}</span>
         <input name="phone" type="tel" maxLength={40} autoComplete="tel" defaultValue={place?.phone ?? ""} className={control} />
@@ -69,6 +80,8 @@ export function PlaceFields({
           {fillWords(t.directionsHint, { what })}
         </p>
       </div>
+      </>
+      )}
     </>
   );
 }

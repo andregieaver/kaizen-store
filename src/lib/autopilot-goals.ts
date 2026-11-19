@@ -29,8 +29,9 @@ export type GoalTargetKind = (typeof GOAL_TARGETS)[number];
 /**
  * The targets the AI manager's `set_goal` offers: every one but those held out of its schema until the agents' eval is recorded with them
  * (D391, the tools' version; like `HELD_FOR_EVAL` in `owner-tools.ts`). Until then a person sets a held one on the Autopilot page's Goals.
+ * None is held: `signup_rate_30d` (D757) joined the tool on 19 November 2026, with the eval recorded after it.
  */
-export const HELD_GOAL_TARGETS = ["signup_rate_30d"] as const satisfies readonly GoalTargetKind[];
+export const HELD_GOAL_TARGETS = [] as const satisfies readonly GoalTargetKind[];
 export const TOOL_GOAL_TARGETS = [
   "revenue_30d",
   "orders_30d",
@@ -43,6 +44,7 @@ export const TOOL_GOAL_TARGETS = [
   "margin_30d",
   "revenue_since",
   "contribution_since",
+  "signup_rate_30d",
 ] as const satisfies readonly Exclude<GoalTargetKind, (typeof HELD_GOAL_TARGETS)[number]>[];
 
 /** Whose goals: a store's, Kaizena Flow's own store's (`stores.house`, D466), or Kaizena Flow's with no store. */
@@ -106,7 +108,7 @@ export const goalTargetInput = z.object({
       "revenue_30d: net sales of 30 days without VAT; contribution_30d: contribution profit of 30 days (net sales less goods, fees, shipping and marketing); revenue_since and contribution_since: the same added up since `since`. In the store's main currency, such as '50000'.",
     ),
   count: z.number().int().positive().max(10_000_000).optional().describe("orders_30d, products, pages or stores: how many."),
-  percent: z.number().positive().max(100).optional().describe("conversion_30d: orders per 100 visits; margin_30d: contribution profit per 100 of net sales, last 30 days."),
+  percent: z.number().positive().max(100).optional().describe("conversion_30d: orders per 100 visits; margin_30d: contribution profit per 100 of net sales; signup_rate_30d: sign-ups per 100 visits (Kaizena Flow only); last 30 days."),
   date: day.optional().describe("open_by: the date the store should be open, YYYY-MM-DD."),
   since: day.optional().describe("revenue_since and contribution_since: the first day counted, YYYY-MM-DD (the challenge's Day 1)."),
 });

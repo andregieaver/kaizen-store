@@ -45,43 +45,29 @@ test("a shopper saves products with the heart, sorts them into lists and adds a 
 });
 
 test("a visitor who saved nothing is not asked for", async ({ page }) => {
-  const mine: string[] = [];
-  const old: string[] = [];
+  const asked: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/api/shop/mine")) mine.push(request.url());
-    if (request.url().includes("/wishlist/saved")) old.push(request.url());
+    if (request.url().includes("/wishlist/saved")) asked.push(request.url());
   });
-  // Kaizena Flow's own site has one country and no shop: nothing of the visitor's to ask for.
-  await page.goto("/");
-  await page.waitForLoadState("load");
-  await page.waitForTimeout(3000);
-  expect(mine).toHaveLength(0);
-  // The demo store sells in several countries, so its page asks once, for the country suggestion; with no marker, nothing is in it.
-  const answer = page.waitForResponse((response) => response.url().includes("/api/shop/mine"));
   await page.goto("/s/demo/no");
-  expect(await (await answer).json()).toMatchObject({ cart: 0, saved: [] });
-  await page.waitForTimeout(3000);
-  expect(mine).toHaveLength(1);
-  expect(old).toHaveLength(0);
+  await page.waitForLoadState("load");
+  await page.waitForTimeout(1500);
+  expect(asked).toHaveLength(0);
 });
 
-test("a saved product is asked for after a reload, in one small call", async ({ page }) => {
+test("a saved product is asked for after a reload", async ({ page }) => {
   await page.goto("/s/demo/no/p/demo-handlenett");
   const heart = page.getByRole("button", { name: /i ønskelisten$/ });
   await heart.click();
   // Really saved (the words come once it is), so the reload cannot cut the save short.
   await expect(page.getByRole("status").filter({ hasText: "Lagret i ønskelisten." }).first()).toBeAttached();
 
-  const mine: string[] = [];
-  const old: string[] = [];
+  const asked: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/api/shop/mine")) mine.push(request.url());
-    if (request.url().includes("/wishlist/saved")) old.push(request.url());
+    if (request.url().includes("/wishlist/saved")) asked.push(request.url());
   });
   await page.reload();
   await expect(page.getByRole("button", { name: /i ønskelisten$/ })).toHaveAttribute("aria-pressed", "true");
+  expect(asked).toHaveLength(1);
   await expect(page.getByRole("link", { name: "Ønskeliste" }).first()).toContainText("1");
-  // The header's count and every heart share the one answer (bloat review step 2.4).
-  expect(mine).toHaveLength(1);
-  expect(old).toHaveLength(0);
 });

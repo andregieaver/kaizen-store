@@ -63,4 +63,30 @@ describe("writePlatformLegalPages", () => {
     `);
     expect(Number(log.n)).toBe(3);
   });
+
+  it("writes the house store's copies while kaizenaflow.com is served from it, leaving the platform's frozen, and names Kaizena Flow's data protection officer (D763)", async () => {
+    const [house] = await db().execute<Row>(sql`select commerce.house_store() as id`);
+    if (!house?.id) return;
+    const houseId = String(house.id);
+    const [setting] = await db().execute<Row>(sql`select site_from_store from commerce.platform_settings`);
+    const [platform] = await db().execute<Row>(sql`select id from commerce.organisations where platform`);
+    const before = (await published(PLATFORM_LEGAL_SLUGS.privacy)).content;
+    await db().execute(sql`update commerce.platform_settings set site_from_store = true`);
+    await db().execute(sql`insert into commerce.privacy_officers (organisation_id, name, email) values (${String(platform.id)}::uuid, 'Nordic Privacy AS', 'dpo@nordicprivacy.example')`);
+    try {
+      const out = await writePlatformLegalPages(admin, { overwrite: ["privacy"] });
+      expect(out.every((o) => o.owner === houseId)).toBe(true);
+      expect(out.flatMap((o) => o.problems ?? [])).toEqual([]);
+      expect(out.find((o) => o.kind === "privacy")?.outcome).toMatch(/written|made/);
+      const [copy] = await db().execute<Row>(sql`select published::text as text from commerce.pages where store_id = ${houseId}::uuid and type = 'page' and slug = ${PLATFORM_LEGAL_SLUGS.privacy}`);
+      expect(String(copy.text)).toContain("Our data protection officer is Nordic Privacy AS, dpo@nordicprivacy.example.");
+      expect(String(copy.text)).toContain("Personvernombudet vårt er Nordic Privacy AS, dpo@nordicprivacy.example.");
+      // The platform's own copy is not on the site now and stays as it was.
+      expect((await published(PLATFORM_LEGAL_SLUGS.privacy)).content).toEqual(before);
+      expect((await platformLegalOverview()).pages.find((p) => p.kind === "privacy")?.written).toBe(true);
+    } finally {
+      await db().execute(sql`delete from commerce.privacy_officers where organisation_id = ${String(platform.id)}::uuid`);
+      await db().execute(sql`update commerce.platform_settings set site_from_store = ${Boolean(setting.site_from_store)}`);
+    }
+  });
 });

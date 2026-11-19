@@ -184,7 +184,7 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
       )}
       <Suspense
         fallback={
-          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />
+          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} notices={notices} />
         }
       >
         <ProductListingFor

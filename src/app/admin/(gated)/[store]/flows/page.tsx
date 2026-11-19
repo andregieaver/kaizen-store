@@ -7,6 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { storyLead } from "@/lib/flow-story";
+import { getAutomations } from "@/server/automations";
 import { listFlows } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -30,6 +31,8 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
   const mayWrite = memberCan(member, "marketing:write");
   const made = new Set(flows.map((f) => f.replaces));
   const goals = (Object.keys(RECIPES) as RecipeKey[]).filter((key) => !made.has(key));
+  // A goal whose automation the owner already wrote starts from their words (slice 3, M2.2), and says so.
+  const automations = mayWrite && goals.length > 0 ? await getAutomations(store) : null;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.lead} />
@@ -62,7 +65,7 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
               <Card compact key={key}>
                 <div role="group" aria-label={w.goals[key].title} className="flex h-full flex-col items-start gap-2">
                   <p className="text-body-strong text-ink">{w.goals[key].title}</p>
-                  <p className="flex-1 text-caption text-muted">{w.goals[key].text}</p>
+                  <p className="flex-1 text-caption text-muted">{automations?.[key].saved ? w.goals.fromOwn : w.goals[key].text}</p>
                   <ActionForm action={startRecipeFlowAction.bind(null, store.slug, key)}>
                     <SubmitButton variant={flows.length === 0 ? "primary" : "secondary"}>{w.goals.start}</SubmitButton>
                   </ActionForm>

@@ -177,8 +177,7 @@ describe("the shopper's VAT number (D157)", () => {
     const shop = (await resolveShop(slug, market))!;
     await changeLine({ storeId, market: shop.market }, String(variant.id), 1, "add");
     const cookiesBefore = [...jar.keys()];
-    // The cart's cookie, and the marker that tells the page to ask for the cart's count (bloat review step 2.4).
-    expect(cookiesBefore).toEqual([cartKey(), `kaizen_mine_${storeId}`]);
+    expect(cookiesBefore).toEqual([cartKey()]);
 
     // A private buyer cannot give one.
     expect(await cartActions.vatNumberAction(slug, market, "DK12345678")).toEqual({ outcome: "no_company" });
@@ -190,7 +189,7 @@ describe("the shopper's VAT number (D157)", () => {
     expect(vies.calls).toBe(base + 1);
     expect(await cartActions.vatNumberAction(slug, market, "", null)).toEqual({ outcome: "cleared" });
     expect(await cartActions.vatNumberAction(slug, market, "12", undefined)).toEqual({ outcome: "shape" });
-    // Nothing was stored in the browser: the cookies are still the cart's and its marker.
+    // Nothing was stored in the browser: the one cookie is still the cart's.
     expect([...jar.keys()]).toEqual(cookiesBefore);
     // A company with no name or a number that is not one is refused before anything is asked.
     const calls0 = vies.calls;

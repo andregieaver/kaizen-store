@@ -55,8 +55,6 @@ export async function CartUpsell({ store, market, m, limit = 3, compact = false 
                       store={store.slug}
                       market={market.slug}
                       cartHref={cart}
-                      // The cart's own lines change: the page is drawn again (bloat review step 2.4).
-                      redraw
                       variantId={buy.variantId}
                       disabled={false}
                       labels={{ addToCart: m.addToCart, adding: m.adding, added: m.added, capped: m.capped, unavailable: m.unavailable, planConflict: m.planConflict, tryAgain: m.tryAgain, goToCart: m.goToCart }}

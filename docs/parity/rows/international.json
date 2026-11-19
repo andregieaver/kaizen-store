@@ -436,8 +436,7 @@
       "files": [
         "src/app/s/[store]/(chooser)/page.tsx",
         "src/app/s/[store]/[market]/layout.tsx",
-        "src/app/api/shop/mine/route.ts",
-        "src/components/country-hint-slot.tsx",
+        "src/components/country-hint-section.tsx",
         "src/components/country-hint.tsx",
         "src/lib/country-hint.ts",
         "src/lib/markets.ts"

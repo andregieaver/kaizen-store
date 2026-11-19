@@ -38,12 +38,16 @@ function ScaledFrame({ version, width, label, draftLabel }: { version: FrameVers
   const scale = room > 0 ? Math.min(1, room / drawn) : 1;
   return (
     <figure className="flex min-w-0 flex-col gap-2">
-      <figcaption className="truncate text-body-strong text-ink">{version.name}</figcaption>
-      <div ref={box} className="relative overflow-hidden rounded-card border border-edge bg-card" style={{ height: SHOWN_HEIGHT }}>
-        {/* Over the frame, not under the name: both frames keep the same top, so the two pages line up. */}
+      {/* One line beside the name, cut where it runs out: both captions keep one height, so the two pages line up, and nothing covers the page. */}
+      <figcaption className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
+        <span className="shrink-0 text-body-strong text-ink">{version.name}</span>
         {version.draft && (
-          <span className="absolute inset-x-2 top-2 z-10 rounded-md bg-warning-soft px-2 py-1 text-caption text-warning-text shadow-sm">{draftLabel}</span>
+          <span title={draftLabel} className="min-w-0 truncate text-caption text-warning-text">
+            {draftLabel}
+          </span>
         )}
+      </figcaption>
+      <div ref={box} className="overflow-hidden rounded-card border border-edge bg-card" style={{ height: SHOWN_HEIGHT }}>
         {room > 0 && (
           <iframe
             src={version.src}

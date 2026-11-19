@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ReportContentLink } from "@/components/report-content-link";
 import { accountsShown } from "@/lib/customer-accounts";
@@ -22,7 +23,7 @@ import { siteTerms } from "@/server/taxonomy";
 import { termsIn } from "@/lib/term-texts";
 
 import { BuyerSwitch } from "./buyer";
-import { CartLink } from "./cart-link-live";
+import { CartLink, CartLinkShell } from "./cart-link";
 import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
 import { AnimatedLogo } from "./animated-logo";
@@ -278,10 +279,12 @@ function ShopTools({ store, market }: Props) {
       )}
       <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
         <Icon name="heart" />
-        <WishlistCount store={store.slug} market={market.slug} storeId={store.id} />
+        <WishlistCount base={base} />
         <span className="sr-only">{m.wishlist.title}</span>
       </Link>
-      <CartLink storeId={store.id} storeSlug={store.slug} market={market.slug} lang={market.lang} href={marketPath(store.slug, market.slug, "/cart")} hinted={store.markets.length > 1} />
+      <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>
+        <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
+      </Suspense>
     </>
   );
 }
@@ -583,7 +586,9 @@ export function StoreBottomBar({ store, market }: Props) {
                 {m.account.title}
               </Link>
             )}
-            <CartLink storeId={store.id} storeSlug={store.slug} market={market.slug} lang={market.lang} href={marketPath(store.slug, market.slug, "/cart")} variant="bar" hinted={store.markets.length > 1} />
+            <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} variant="bar" />}>
+              <CartLink storeId={store.id} storeSlug={store.slug} market={market} variant="bar" />
+            </Suspense>
           </>
         )}
       </nav>

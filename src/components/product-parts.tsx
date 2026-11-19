@@ -1,5 +1,5 @@
 import { FreeShippingNote, ProductSavedNote } from "./shop-notes";
-import { drawsCartNote, productSaving } from "@/lib/shop-notes";
+import { productSaving } from "@/lib/shop-notes";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
@@ -46,7 +46,7 @@ import { inView, shown, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { todayIn } from "@/lib/analytics-period";
 import { browserText } from "@/lib/browser-text";
-import { pageBlocks, type PageContent, type ProductBlock } from "@/lib/page-content";
+import type { PageContent, ProductBlock } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import type { VariantStock } from "@/lib/stock-availability";
@@ -108,8 +108,6 @@ export type ProductPageContext = {
   reviews?: ReviewFacts | null;
   /** What the owner set about buying (bloat review step 2.13), read with the page's cached reads; absent in the admin's layout preview, where the parts read as before. */
   buy?: BuyFacts;
-  /** The layout holds a basket note (the free-shipping part), so an add redraws the page; else it answers the count (bloat review step 2.4). */
-  redraw?: boolean;
 };
 
 export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: ProductPageContext }) {
@@ -169,7 +167,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
             <WishlistHeart
               store={store.slug}
               market={market.slug}
-              storeId={store.id}
+              base={base}
               productId={product.id}
               placement="page"
               labels={{ save: m.wishlist.save(product.title), saved: m.wishlist.saved, removed: m.wishlist.removed }}
@@ -235,7 +233,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <section aria-label={m.booking.chooseTime} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
               <MemberNotice store={store} m={m} />
-              <AppointmentBooking store={store} product={product} market={market} m={m} redraw={ctx.redraw} />
+              <AppointmentBooking store={store} product={product} market={market} m={m} />
             </Suspense>
           </section>
         );
@@ -246,7 +244,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <section aria-label={m.stay.chooseDates} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
               <MemberNotice store={store} m={m} />
-              <RangeBooking store={store} product={product} market={market} m={m} redraw={ctx.redraw} />
+              <RangeBooking store={store} product={product} market={market} m={m} />
             </Suspense>
           </section>
         );
@@ -256,7 +254,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
         return (
           <section aria-label={product.title} className={forBusiness}>
             <Suspense fallback={null}>
-              <GiftCardPurchase store={store} product={product} market={market} m={m} redraw={ctx.redraw} />
+              <GiftCardPurchase store={store} product={product} market={market} m={m} />
             </Suspense>
           </section>
         );
@@ -278,7 +276,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <section aria-label={product.title} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
               <MemberNotice store={store} m={m} />
-              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} buy={ctx.buy} redraw={ctx.redraw} />
+              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} buy={ctx.buy} />
             </Suspense>
           </section>
         );
@@ -290,7 +288,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </h2>
           <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
             <MemberNotice store={store} m={m} />
-            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} buy={ctx.buy} redraw={ctx.redraw} />
+            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} buy={ctx.buy} />
           </Suspense>
         </section>
       );
@@ -618,14 +616,13 @@ async function QuoteQuestion({ block, store, product, market, m, heading, buy }:
 }
 
 /** A gift card's amounts and *Send it to someone* (D300), with the store's day for the earliest send, read per request. */
-async function GiftCardPurchase({ store, product, market, m, redraw }: { store: Store; product: ProductDetail; market: Market; m: Messages; redraw?: boolean }) {
+async function GiftCardPurchase({ store, product, market, m }: { store: Store; product: ProductDetail; market: Market; m: Messages }) {
   await connection();
   return (
     <GiftCardBuy
       store={store.slug}
       market={market.slug}
       cartHref={marketPath(store.slug, market.slug, "/cart")}
-      redraw={redraw}
       openCart={store.openCartOnAdd}
       amounts={product.variants.map((variant) => ({
         variantId: variant.id,
@@ -686,7 +683,6 @@ async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageCo
         market={market}
         m={m}
         store={store.slug}
-        storeId={store.id}
         base={marketPath(store.slug, market.slug)}
         sizedColumns
         notices={ctx.campaigns}
@@ -735,13 +731,11 @@ async function AppointmentBooking({
   product,
   market,
   m,
-  redraw,
 }: {
   store: Store;
   product: ProductDetail;
   market: Market;
   m: Messages;
-  redraw?: boolean;
 }) {
   await connection();
   const [offer, week, listed] = await Promise.all([
@@ -786,7 +780,6 @@ async function AppointmentBooking({
         store={store.slug}
         market={market.slug}
         cartHref={marketPath(store.slug, market.slug, "/cart")}
-        redraw={redraw}
         productId={product.id}
         variants={product.variants.map((variant) => ({
           id: variant.id,
@@ -816,13 +809,11 @@ async function RangeBooking({
   product,
   market,
   m,
-  redraw,
 }: {
   store: Store;
   product: ProductDetail;
   market: Market;
   m: Messages;
-  redraw?: boolean;
 }) {
   await connection();
   // The calendar opens for the first variant: by the day, or (a rental, D69) by the half day or hour.
@@ -918,7 +909,6 @@ async function RangeBooking({
         store={store.slug}
         market={market.slug}
         cartHref={marketPath(store.slug, market.slug, "/cart")}
-        redraw={redraw}
         productId={product.id}
         kind={offer.kind}
         variants={product.variants.map((variant) => ({
@@ -986,14 +976,11 @@ async function VariantsWithStock({
   quantity,
   quote,
   buy,
-  redraw,
 }: {
   store: Store;
   product: ProductDetail;
   market: Market;
   m: Messages;
-  /** The page holds a basket note, which an add redraws (bloat review step 2.4). */
-  redraw?: boolean;
   /** What the owner set about buying (step 2.13), from the page's cached read; absent in the admin's preview, where each is read as before. */
   buy?: BuyFacts;
   /** From this many variants each option is a list of its own (D320, the buy part's `optionsFrom`). */
@@ -1154,7 +1141,6 @@ async function VariantsWithStock({
           store={store.slug}
           market={market.slug}
           cartHref={marketPath(store.slug, market.slug, "/cart")}
-          redraw={redraw}
           openCart={store.openCartOnAdd}
           optionsFrom={optionsFrom}
           variants={product.variants.map((variant) => {
@@ -1224,7 +1210,6 @@ async function VariantsWithStock({
         store={store.slug}
         market={market.slug}
         cartHref={marketPath(store.slug, market.slug, "/cart")}
-        redraw={redraw}
         currency={market.currency}
         locale={market.locale}
         vat={product.variants[0].price.vat}
@@ -1338,15 +1323,13 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
   const { store, market, product } = ctx;
   // Blocks bound to a custom field of the product show its value (D118); the product's fields are read with it, so this costs nothing more.
   const content = bindPage(localizePage(layout, market.locale), product.fields, product.storeFields);
-  // A layout with the free-shipping note is drawn again when the shopper adds; any other add answers the count (bloat review step 2.4).
-  const partCtx = { ...ctx, redraw: drawsCartNote(pageBlocks(content)) };
   return (
     <PageArticle
       content={{ ...content, title: product.title }}
       place={{ pageId: null, owner: store.id, market: market.slug, product: product.id, theme: themeLayersOf(store.theme.settings) }}
       inAdmin={inAdmin}
       renderBlock={(block) =>
-        block.type === "product" && productPartShows(block, product, ctx.campaigns, store, ctx.reviews) ? <ProductPartView block={block} ctx={partCtx} /> : null
+        block.type === "product" && productPartShows(block, product, ctx.campaigns, store, ctx.reviews) ? <ProductPartView block={block} ctx={ctx} /> : null
       }
     />
   );

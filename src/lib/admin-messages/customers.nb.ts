@@ -58,6 +58,15 @@ export const customersNb: CustomersMessages = {
     morePictures: "+{n}",
   },
   export: {
+    /** Round 51 (D784): what a phone shows. */
+    phone: {
+      lead: "Et regneark over kundene dine, én rad for hver.",
+      personal: "Personopplysninger: behold filen bare så lenge du trenger den. Slettes herfra etter {days} dager.",
+      about: "Om denne filen",
+      aboutSub: "Kolonnene, markedsføringssamtykke, store eksporter",
+      open: "Åpne",
+      close: "Lukk",
+    },
     back: "Kunder",
     title: "Eksporter kunder",
     intro:
