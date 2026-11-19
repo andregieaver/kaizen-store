@@ -1,3 +1,5 @@
+import { AdminLink } from "@/components/admin/ui/link";
+
 import { formatCount } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -50,9 +52,21 @@ export function LiveView({ base, locale, live, words = analyticsEn }: { base: st
       <p className="text-caption text-muted" aria-live="polite">
         {fillWords(w.updated, { time })}
       </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Round 53 (D798): on a phone visit counting is said once, above the figures, which share one card two by two. */}
+      {live.counting ? null : (
+        <div className="flex items-center justify-between gap-3 rounded-panel bg-card p-4 sm:hidden">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-body text-ink">{w.phone.off}</span>
+            <span className="text-caption text-ink-2">{w.phone.offSub}</span>
+          </span>
+          <AdminLink href={off.action.href} className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-line px-4 text-sm text-ink no-underline">
+            {w.phone.turnOn}
+          </AdminLink>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:gap-3 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent lg:grid-cols-3">
         {cards.map((c) => (
-          <KpiCard key={c.label} {...c} />
+          <KpiCard key={c.label} {...c} phoneCompact />
         ))}
       </div>
       {live.counting ? (

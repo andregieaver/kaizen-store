@@ -42,6 +42,12 @@ export const inventoryEn = {
     addSupplierSub: "A name and where it ships from",
     waitSub: "{minutes} min, for a quick cancellation",
     seller: "You are the seller: VAT, invoices, withdrawals and refunds are yours.",
+    locationsLead: "Where your stock is held. Orders are taken from the top one first.",
+    pickRow: "How orders pick a location",
+    pickRank: "Top first, kept together where it can",
+    pickNearest: "The delivery country's first",
+    addLocation: "Add a location",
+    addLocationSub: "A name and its country",
   },
   pages: {
     list: {
