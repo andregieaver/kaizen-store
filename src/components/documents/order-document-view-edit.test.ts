@@ -7,8 +7,16 @@ import { editCreditNote } from "@/lib/credit-allocation";
 import { buildEditInvoiceSnapshot, buildInvoiceSnapshot, type InvoiceFacts, type InvoiceLineFacts } from "@/lib/invoice-snapshot";
 import { documentText, editDocumentText } from "@/lib/invoice-text";
 import { dayText, printLocale } from "@/lib/work-invoice-print";
+import { staticMarkup } from "@/lib/static-markup";
 
 import { OrderDocumentView } from "./order-document-view";
+
+/** What the PDF writes (`staticMarkup()`, D695) is what React writes, for every document drawn here. */
+const checkedMarkup = (element: Parameters<typeof renderToStaticMarkup>[0]) => {
+  const html = renderToStaticMarkup(element);
+  expect(staticMarkup(element)).toBe(html);
+  return html;
+};
 
 /**
  * A change's additional invoice and credit note as the customer reads them (hosted page, PDF, emails; wave 3 run 3, D174, spec 4.6; first written by the
@@ -52,7 +60,7 @@ const LOCALES = [
 ] as const;
 
 const words = (html: string) => html.replace(/<style>[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|\u00a0|\u202f/g, " ").replace(/\s+/g, " ");
-const render = (snapshot: Parameters<typeof OrderDocumentView>[0]["snapshot"]) => words(renderToStaticMarkup(createElement(OrderDocumentView, { snapshot })));
+const render = (snapshot: Parameters<typeof OrderDocumentView>[0]["snapshot"]) => words(checkedMarkup(createElement(OrderDocumentView, { snapshot })));
 const added = [line("b", "Lue", 30000, 1, 0.25)];
 
 describe.each(LOCALES)("a change's documents in %s", (lang, locale) => {
@@ -94,7 +102,7 @@ describe.each(LOCALES)("a change's documents in %s", (lang, locale) => {
       { number: "F-18", issuedOn: "2026-10-06", supplyDate: "2026-10-06" },
     );
     const text = render(snap);
-    const html = renderToStaticMarkup(createElement(OrderDocumentView, { snapshot: snap }));
+    const html = checkedMarkup(createElement(OrderDocumentView, { snapshot: snap }));
 
     it("dates the payment by the change's own payment, never the order's first payment day", () => {
       // The head's payment row is the change's (6 October), not the order's (4 October).

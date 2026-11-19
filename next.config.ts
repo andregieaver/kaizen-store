@@ -15,14 +15,8 @@ const CHROMIUM_FILES = [
   "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/{browsers,package}.json",
 ];
 
-// The documents' PDFs also render their HTML with `react-dom/server`, which `src/server/document-html.tsx` loads from disk at run time
-// (Next refuses to bundle it into a route), so the trace is told about it and the packages it needs. Read from pnpm's own folders, like Chromium's.
-const DOCUMENT_PDF_FILES = [
-  ...CHROMIUM_FILES,
-  "./node_modules/.pnpm/react-dom@*/node_modules/react-dom/**",
-  "./node_modules/.pnpm/react@*/node_modules/react/**",
-  "./node_modules/.pnpm/scheduler@*/node_modules/scheduler/**",
-];
+// The documents' PDFs draw with Chromium; their HTML is written by `staticMarkup()`, which needs no package from disk (D695, 19 November 2026).
+const DOCUMENT_PDF_FILES = [...CHROMIUM_FILES];
 
 // The docs' content (D442): every article, the sections' titles and the list of Norwegian pages still to write.
 const DOCS_FILES = ["./content/docs/**/*"];
