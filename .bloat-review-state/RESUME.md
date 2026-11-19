@@ -373,3 +373,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 2.27 commit 5 done locally (5a 82bfea094 SHARED_WORDS held; 5b e50e1f0e5; 5c 5764f55ba; 5d e48b4983e): words handed en 10,881,284 -> 6,132,124; 68 -> 3 sites over the rule (left: theme shell, Work account layout, order page). NOT pushed: executor resumed to run the signed-in build + fallbacks/admin-scripts/bundle-budget/nb walk/full unit in a quiet window. Then push + D-row 2.27.
 - 20:1x 2.5+2.6 pushed 51234b9bd..26ed9b957 (+ extensions page AdminLink fix for new directLinks ratchet). Check 21:06 (trig_0178PWqo7EMsgezGh69o5WRn): CI webkit/prefetch/money 9&5, prod Bingbot curl, then D-rows 2.5/2.6. CLAUDE.md bullet proposed in 3862626ac msg -> owner.
 - kz-b: 2.7 Opus abbd54cbcd592655d, brief $S/run/kz-b-2.7.md.
+- 20:5x 2.27 commit 5 pushed (ef0b030e5..04943ed0e) + ratchet fix for round-60 domains/move page (8445130cb). D821 written (daaab104c, bcb61616a); 2.27 In progress (3 sites left; CI reading). pgrep fix: builds are "next-build (v16)" -> use pgrep -f "next.build" (templates updated, kz-b/kz-d told).
+- kz-c: 2.28 Opus aeec07520aa191701, brief $S/run/kz-c-2.28.md.
