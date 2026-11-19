@@ -87,7 +87,8 @@ export function Modal({
               </button>
             </div>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
+          {/* A question that is all title (`ConfirmButton`) passes null: no empty middle. */}
+          {children != null && <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>}
           {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
         </div>
       )}
