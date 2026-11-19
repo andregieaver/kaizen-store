@@ -377,3 +377,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - kz-c: 2.28 Opus aeec07520aa191701, brief $S/run/kz-c-2.28.md.
 - 21:0x 2.21 pushed 732da16a8..fdc7d193a (lint/tc/full unit 1398 pass). D824 written cd0a21d95; In progress: pages/menus/blog on prod to check (fold into 21:06 check).
 - kz-d: 2.22 Opus (brief $S/run/kz-d-2.22.md).
+- 21:14 CI green on 26ed9b957 and 8445130cb (2.6 budgets held incl. webkit). Prod Bingbot: HIT + title/desc in head; FB BYPASS. D825 (2.5), D826 (2.6) pushed 2f607a9a4, both In progress (owner SEO checks; phone/1280 checks). 2.21 prod check at 22:00 (trig_01BVAdQdymiw5b5gr4wZw2D2) -> Done.
