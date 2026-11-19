@@ -5,6 +5,8 @@
 // store), and in total the casts through `unknown` (`as unknown as`) and the lines that switch off the linter's `any` rule.
 // Two more totals (bloat review step 1.24): the source files over 100 KB and over 2,000 lines. A file this large is read by window,
 // so the counts only fall; splitting a file belongs to the code area, never to the step that holds the count.
+// And the files that import `next/link` directly (bloat review step 2.6, `directLinks`): a link states what it may fetch ahead through
+// `PolicyLink` or `AdminLink`, so only the wrappers in `LINK_WRAPPERS` import it, and the files that still do only fall.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -22,6 +24,11 @@ export const PAGE_DOCUMENT_READ =
   /\bselect\b(?:(?!`|\bselect\b)[\s\S])*?(?<![\w.])(?:\w+\.)?(?:draft|published)\b(?!_|\s+is\b|\s*->)(?:(?!`|\bselect\b)[\s\S])*?\bfrom\s+commerce\.pages\b/gi;
 /** A place that makes every built page of a store stale: refresh the page's own tag instead. */
 export const PAGES_TAG_REFRESH = /\b(?:refreshTag|refreshTagNow|invalidate|revalidateTag|updateTag)\(\s*pagesTag\(/g;
+
+/** An import of `next/link` (bloat review step 2.6): outside `LINK_WRAPPERS` a link goes through `PolicyLink` or `AdminLink`. */
+export const DIRECT_LINK = /from\s+["']next\/link["']/g;
+/** The files that may import `next/link`: the wrappers that state a link's prefetch policy. */
+export const LINK_WRAPPERS = ["src/components/policy-link.tsx", "src/components/block-link.tsx", "src/components/admin/ui/link.tsx"];
 
 /** A source file over this many bytes, or over this many lines, is counted (bloat review step 1.24). */
 export const BIG_FILE_BYTES = 100_000;
@@ -109,7 +116,7 @@ export function adminRepeats(root) {
   return out;
 }
 
-/** The counts as they stand: untyped reads, writes by id alone and `store_id is not distinct from` uses, by file (only files that have one), and the totals. */
+/** The counts as they stand: untyped reads, writes by id alone, `store_id is not distinct from` uses and direct imports of `next/link`, by file (only files that have one), and the totals. */
 export function ratchetCounts(root) {
   /** @type {Record<string, number>} */
   const untypedReads = {};
@@ -121,6 +128,8 @@ export function ratchetCounts(root) {
   const pageDocumentReads = {};
   /** @type {Record<string, number>} */
   const pagesTagRefreshes = {};
+  /** @type {Record<string, number>} */
+  const directLinks = {};
   const tables = storeTables(root);
   let unknownCasts = 0;
   let anySuppressed = 0;
@@ -138,10 +147,11 @@ export function ratchetCounts(root) {
     if (documents > 0) pageDocumentReads[file] = documents;
     const refreshes = count(text, PAGES_TAG_REFRESH);
     if (refreshes > 0) pagesTagRefreshes[file] = refreshes;
+    if (!LINK_WRAPPERS.includes(file) && count(text, DIRECT_LINK) > 0) directLinks[file] = 1;
     if (Buffer.byteLength(text) > BIG_FILE_BYTES) filesOver100Kb++;
     if (text.split("\n").length > LONG_FILE_LINES) filesOver2000Lines++;
     unknownCasts += count(text, UNKNOWN_CAST);
     anySuppressed += count(text, ANY_SUPPRESSED);
   }
-  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore, pageDocumentReads, pagesTagRefreshes, adminRepeats: adminRepeats(root) };
+  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore, pageDocumentReads, pagesTagRefreshes, directLinks, adminRepeats: adminRepeats(root) };
 }

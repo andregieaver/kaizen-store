@@ -296,6 +296,11 @@ export const staffEmailsEn = {
     ended: "The plans of {stores} have ended, and the time you had paid for and not used is credited.",
     limits: "What your plan includes, such as products and storage, now counts for your stores together. Change your plan here:",
   },
+  extensionTrialEnding: {
+    subject: "Your free trial ends in {days} days",
+    ends: "Your free trial of {extensions} ends on {date}.",
+    keep: "To keep it, add it on your account's Extensions page. If you do nothing, it keeps working for {grace} more days, then turns read-only: you can still read and export everything, and nothing is lost.",
+  },
   planReminder: {
     line: "Kaizena Flow {plan}, paid {interval}",
     yearly: "yearly",

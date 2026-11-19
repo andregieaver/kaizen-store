@@ -3,7 +3,7 @@ import "server-only";
 import { withPicks } from "@/lib/automations";
 import { picksFor } from "./automations";
 import { refreshBuyFacts } from "./buy-facts";
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
@@ -222,8 +222,11 @@ export async function flowReplacing(storeId: string, kind: string): Promise<stri
  * no person (or a guest's review, kept only as a hash).
  */
 function emailOfSubject(event: string, storeId: string, subjectId: string) {
-  const store = sql`${storeId}::uuid`;
-  const id = sql`${subjectId}::uuid`;
+  return emailOfSubjectAt(event, sql`${storeId}::uuid`, sql`${subjectId}::uuid`);
+}
+
+/** As `emailOfSubject()`, for a store and subject given as SQL (a column of an outer query, for the dry run's count). */
+function emailOfSubjectAt(event: string, store: SQL, id: SQL) {
   switch (event) {
     case "order.paid":
     case "order.sent":
@@ -634,4 +637,55 @@ export async function recordFlowClick(flowId: string, key: string, marketSlug: s
     return resolverFor(store, market)(target);
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// The dry run's reach (email plan M3.5)
+// ---------------------------------------------------------------------------
+
+/** The days the dry run looks back over to judge the next as many. */
+export const REACH_DAYS = 30;
+
+/**
+ * About how many people would start a flow in the next `REACH_DAYS` days, from real data (M3.5): for an event, the people on the list behind
+ * its events of the last as many days (`emailOfSubjectAt()`); for a lapse, the customers whose lapse falls in the next as many days; for
+ * browsing, the signed-in subscribers with views kept now (they are kept a week, D691). Read only; nothing is sent or entered.
+ */
+export async function flowReach(storeId: string, trigger: string, triggerDays: number | null): Promise<number> {
+  const store = sql`${storeId}::uuid`;
+  const n = z.object({ n: col.int });
+  if (trigger === "subscriber.subscribed") {
+    const row = await typedRow(n, sql`
+      select count(distinct s.id)::int as n from commerce.events e
+        join commerce.marketing_subscribers s on s.store_id = e.store_id and s.id = e.subject_id and s.status = 'subscribed'
+       where e.store_id = ${store} and e.event = ${trigger} and e.at > now() - make_interval(days => ${REACH_DAYS})`);
+    return row?.n ?? 0;
+  }
+  if (trigger === "customer.lapsed") {
+    const days = triggerDays ?? 90;
+    const row = await typedRow(n, sql`
+      select count(distinct s.id)::int as n from commerce.orders l
+        join commerce.marketing_subscribers s on s.store_id = l.store_id and lower(s.email) = lower(l.email) and s.status = 'subscribed'
+       where l.store_id = ${store} and l.restricted_at is null
+         and l.placed_at + make_interval(days => ${days}) between now() and now() + make_interval(days => ${REACH_DAYS})
+         and exists (select 1 from commerce.orders o where o.store_id = l.store_id and o.id = l.id and ${PAID})
+         and not exists (select 1 from commerce.orders o where o.store_id = l.store_id and lower(o.email) = lower(l.email) and o.placed_at > l.placed_at and ${PAID})`);
+    return row?.n ?? 0;
+  }
+  if (trigger === "customer.browsed") {
+    const row = await typedRow(n, sql`
+      select count(distinct s.id)::int as n from commerce.customer_product_views cv
+        join commerce.customers c on c.store_id = cv.store_id and c.id = cv.customer_id
+        join commerce.marketing_subscribers s on s.store_id = c.store_id and lower(s.email) = lower(c.email) and s.status = 'subscribed'
+       where cv.store_id = ${store}`);
+    return row?.n ?? 0;
+  }
+  const email = emailOfSubjectAt(trigger, sql`e.store_id`, sql`e.subject_id`);
+  if (!email) return 0;
+  const row = await typedRow(n, sql`
+    select count(distinct s.id)::int as n from commerce.events e
+      cross join lateral (${email}) em
+      join commerce.marketing_subscribers s on s.store_id = e.store_id and lower(s.email) = lower(em.email) and s.status = 'subscribed'
+     where e.store_id = ${store} and e.event = ${trigger} and e.at > now() - make_interval(days => ${REACH_DAYS})`);
+  return row?.n ?? 0;
 }

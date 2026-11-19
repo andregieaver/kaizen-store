@@ -1,4 +1,4 @@
-/** Norwegian interface text, written by hand (`src/lib/i18n.ts`, D212). */
+/** Norwegian interface text, hand-written (`src/lib/i18n.ts`, D212). */
 import { nbBrowser } from "./nb-browser";
 import { nbReturns } from "./nb-returns";
 import { nbExchange, nbReturnLabel } from "./nb-exchange";
@@ -201,7 +201,7 @@ export const nb: Messages = {
     birthdaySave: "Lagre bursdagen",
     birthdayRemove: "Fjern bursdagen",
   },
-  /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md section 8). `{terms}` and `{privacy}` stand for the two links. */
+  /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md 8). `{terms}` and `{privacy}` stand for the two links. */
   terms: {
     both: (terms: string, privacy: string) => `Ved å bestille godtar du ${terms} og bekrefter at du har lest ${privacy}.`,
     termsOnly: (terms: string) => `Ved å bestille godtar du ${terms}.`,
@@ -1173,7 +1173,7 @@ export const nb: Messages = {
     popular: "Mest populær",
     includes: "Dette er inkludert",
     /** What a plan includes of its limits (D314): the amount, then the limit's name ("10 GB storage", "Unlimited products"). */
-    limitNames: { storage_bytes: "lagring", products: "produkter", staff_seats: "ansatte", custom_domains: "egne domener", marketing_emails_month: "markedsførings-e-poster i måneden", ai_cost_month_micros: "til KI i måneden", requests_month: "besøk i måneden", egress_bytes_month: "båndbredde i måneden", recordings_month: "opptak av besøk i måneden", ab_tests_running: "A/B-tester om gangen", stores_owned: "butikker" },
+    limitNames: { storage_bytes: "lagring", products: "produkter", staff_seats: "ansatte", custom_domains: "egne domener", marketing_emails_month: "markedsførings-e-poster i måneden", ai_cost_month_micros: "til KI i måneden", requests_month: "besøk i måneden", egress_bytes_month: "båndbredde i måneden", recordings_month: "opptak av besøk i måneden", contracts_sent_month: "kontrakter sendt i måneden", ab_tests_running: "A/B-tester om gangen", stores_owned: "butikker" },
     limitNamesOne: { products: "produkt", staff_seats: "ansatt", custom_domains: "eget domene", ab_tests_running: "A/B-test om gangen", stores_owned: "butikk" },
     unlimited: "Ubegrenset",
     unlimitedCounted: "Ubegrenset antall",

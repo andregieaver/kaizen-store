@@ -176,6 +176,9 @@ the signers in order with their role, name and dates, and the dates; never an em
 deliveries about the person's contracts, a signed one's too: the contract is kept under bookkeeping law, the copies sent out are not.
 Kaizena Flow's own deals are in its store (D466), so the platform gets the events as a store. API contract 1.36.
 
+*Usage and limits (19 November 2026, D817):* contracts sent a month counted (`contracts_sent`), with a soft limit no plan sets yet;
+the line shows once a store has sent one that month.
+
 *The Admin API (19 November 2026, D810):* `GET /contracts` and `GET /contracts/{id}` under `customers:read`, the webhooks' fields and
 drafts, read only. API contract 1.46.
 

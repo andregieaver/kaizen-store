@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PolicyLink } from "./policy-link";
 import type { PageContent } from "@/lib/page-content";
 import { phoneMenuIds } from "@/lib/site-layout";
 import { Suspense } from "react";
@@ -76,7 +76,7 @@ export function MenuLinks({
 export function Brand({ chrome, size, height, animation, lang = "en" }: Props & { size: "header" | "footer"; height?: number; animation?: AnimationFile }) {
   const logo = chrome.navigation.logo;
   return (
-    <Link href={platformPath(lang, "/")} className="flex min-w-0 items-center">
+    <PolicyLink policy="intent" href={platformPath(lang, "/")} className="flex min-w-0 items-center">
       {animation ? (
         <AnimatedLogo animation={animation} alt="Kaizena Flow" name="kaizena-flow" height={height} size={size} />
       ) : logo ? (
@@ -93,7 +93,7 @@ export function Brand({ chrome, size, height, animation, lang = "en" }: Props & 
       ) : (
         <span className="truncate text-lg font-semibold">Kaizena Flow</span>
       )}
-    </Link>
+    </PolicyLink>
   );
 }
 
@@ -130,16 +130,16 @@ export function PlatformHeader({ chrome, lang = "en" }: Props) {
           )}
 
           <div className="ml-auto flex items-center gap-1">
-            <Link href="/admin" prefetch={false} className="flex size-11 items-center justify-center rounded-full hover:bg-surface">
+            <PolicyLink policy="intent" href="/admin" className="flex size-11 items-center justify-center rounded-full hover:bg-surface">
               <Icon name="user" />
               <span className="sr-only">{nav.signIn}</span>
-            </Link>
-            <Link
+            </PolicyLink>
+            <PolicyLink policy="sight"
               href={platformPath(lang, "/sign-up")}
               className="hidden min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background sm:flex"
             >
               {nav.signUp}
-            </Link>
+            </PolicyLink>
           </div>
         </div>
       </header>
@@ -168,14 +168,14 @@ export function PlatformMenu({ chrome, lang = "en", header }: Props & { header?:
       {chosen.map((id) => menuNav(id, true))}
       <ul className="flex flex-col">
         <li>
-          <Link href={platformPath(lang, "/sign-up")} className="flex min-h-12 items-center gap-3">
+          <PolicyLink policy="sight" href={platformPath(lang, "/sign-up")} className="flex min-h-12 items-center gap-3">
             <Icon name="home" /> {nav.signUp}
-          </Link>
+          </PolicyLink>
         </li>
         <li>
-          <Link href="/admin" prefetch={false} className="flex min-h-12 items-center gap-3">
+          <PolicyLink policy="intent" href="/admin" className="flex min-h-12 items-center gap-3">
             <Icon name="user" /> {nav.signIn}
-          </Link>
+          </PolicyLink>
         </li>
       </ul>
       {/* The site's languages (D312) at the menu's foot, as a store's menu ends with its own: a phone's header has no room for them. */}
@@ -220,16 +220,16 @@ export function PlatformFooter({ chrome, lang = "en" }: Props) {
             )}
           </address>
           {/* What the site stores in the browser, and the choice about it (D58). */}
-          <Link href={platformPath(lang, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+          <PolicyLink policy="intent" href={platformPath(lang, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
-          </Link>
+          </PolicyLink>
           {/* Notices of illegal content on a store (DSA art. 16, D411). */}
           <ReportContentLink lang={PLATFORM_LANG_FACTS[lang].messages} />
           {/* Kaizena Flow's own legal pages (D312 P5), once published, by their titles in the page's language. */}
           {legalPages(chrome, lang).map((page) => (
-            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+            <PolicyLink policy="intent" key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="inline-flex min-h-6 w-fit items-center text-muted underline">
               {page.title}
-            </Link>
+            </PolicyLink>
           ))}
           {/* The site's languages (D312): this standard footer's own; a footer of the owner's has them where its Languages part is. */}
           {chrome.langs.length > 1 && (
@@ -261,19 +261,19 @@ export function PlatformBottomBar({ lang = "en" }: { lang?: PlatformLang }) {
   return (
     <HidingBottomBar>
       <nav aria-label={m.shortcuts} className="flex">
-        <Link href={platformPath(lang, "/")} className={item}>
+        <PolicyLink policy="intent" href={platformPath(lang, "/")} className={item}>
           <Icon name="home" />
           {nav.home}
-        </Link>
+        </PolicyLink>
         {/* The slide-out menu opens on any `data-open-menu` button. */}
         <button type="button" data-open-menu aria-haspopup="dialog" aria-label={m.openMenu} className={item}>
           <Icon name="menu" />
           {m.menu}
         </button>
-        <Link href="/admin" prefetch={false} className={item}>
+        <PolicyLink policy="intent" href="/admin" className={item}>
           <Icon name="user" />
           {nav.signIn}
-        </Link>
+        </PolicyLink>
       </nav>
     </HidingBottomBar>
   );

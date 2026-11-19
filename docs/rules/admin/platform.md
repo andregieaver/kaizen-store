@@ -83,6 +83,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   in the admin's frame or a list row is an `AdminLink`, not `next/link`'s `Link`; a raw `Link` there is fetched on sight and
   breaks `e2e/signed-in/prefetch.spec.ts`.
 
+## The admin's links say what they may fetch ahead (bloat review step 2.6)
+
+An admin link is an `AdminLink` (`src/components/admin/ui/link.tsx`: on top of `PolicyLink`, fetched on intent unless a policy is given),
+and a new file may not import `next/link` (the ratchet count `directLinks` only falls). The table of policies is in `docs/performance.md`
+under *What the router fetches ahead*.
+
 ## Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`)
 
 - Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`): a store's admin lists each section's everyday pages in **Basic**, the default for every account, and every page in
@@ -214,7 +220,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## Accounts that own stores (D748, `docs/extensions.md`)
 
 - **Accounts (E1)**: plans, billing and paid extensions belong to the account that owns a store, `commerce.organisations` (steps E1 to E11;
-  E1 to E4 built). `stores.organisation_id` is set by the database at commit (`commerce.place_store()`): Kaizena Flow's own stores in the
+  E1 to E5 built). `stores.organisation_id` is set by the database at commit (`commerce.place_store()`): Kaizena Flow's own stores in the
   one `platform` organisation, every other in its creator's (`commerce.account_organisation()`, named after the store, never a person). No
   code writes it by hand; screens say "account", never "organisation". `src/db/organisations.test.ts` holds the rules.
 - **The catalogue (E2, `src/lib/extensions.ts`, `src/server/extensions.ts`, Platform → Plans → Extensions)**: ids are fixed in
@@ -238,11 +244,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   An absent extension's pages show its marker; one in its grace period or read-only opens them under the store frame's banner, matched by
   `EXTENSION_PATHS` (one list, which `extension-gates.scan.test.ts` reads too); its writes still refuse. Account → Extensions adds or ends
   one through `setAccountExtension()`.
+- **The launch (E5)**: `launchExtensions()` (`src/server/extension-launch.ts`) alone sets `extensions_launched_at`, once: every account
+  moved or given its row (one made later gets it from `organisation_billed_after_launch`), and a 60-day trial of each extension an account's
+  records show it uses (`USED`) and its plan lacks. After it no account is billed store by store: a trial goes on the account's row
+  (`writeTrial()`), the platform's plan buttons on a store act on its account, and `daily.extension-trials` emails at 30, 14 and 3 days.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 
 - **Free trials and their end (D420, `src/server/store-trial.ts`)**: self-serve sign-up and every Dream Factory run give a store
-  `TRIAL_DAYS` (14) days (`grantTrial()`, once a store: a store that had a trial or is on a plan keeps what it has). On the trial the owner
+  `TRIAL_DAYS` (14) days (`grantTrial()`, once a store: a store that had a trial or is on a plan keeps what it has; after the extensions'
+  launch, on its account's row). On the trial the owner
   may look, change and open the store without a plan; a plan chosen before the end is free until then. When it ends with no plan
   (Stripe's status not trialing, active or past due), the dispatcher's `trials` job (`settleTrials()`) makes an open store private through
   `pauseAfterTrial()` in `src/server/private-mode.ts` (the only writer of `private_mode`) and keeps `store_billing.trial_paused_at`; while it

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/ui/link";
 import { useRouter } from "next/navigation";
 import {
   useEffect,

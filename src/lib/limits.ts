@@ -24,6 +24,8 @@ export const LIMITS = {
   egress_bytes_month: { metric: "egress_bytes", period: "month", enforce: "soft", scope: "store" },
   /** Recordings of visits started this month (D656): past it the store stops recording, silently. */
   recordings_month: { metric: "recordings", period: "month", enforce: "hard", scope: "store" },
+  /** Contracts sent for signing this month (D817): soft, so reaching it only warns; no plan sets it yet, so it is a count. */
+  contracts_sent_month: { metric: "contracts_sent", period: "month", enforce: "soft", scope: "store" },
   /** A/B tests running at once (D148 phase 21): 0 is a plan without A/B tests; counted live, never metered; at most the engine's five. */
   ab_tests_running: { metric: null, period: "now", enforce: "hard", scope: "store" },
   /** How many stores an owner may have; counted live, never metered. */

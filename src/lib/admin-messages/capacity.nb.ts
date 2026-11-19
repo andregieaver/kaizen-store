@@ -14,6 +14,7 @@ export const capacityNb: CapacityMessages = {
     marketing_emails: "Markedsførings-e-poster",
     ai_cost_micros: "KI",
     recordings: "Opptak av besøk",
+    contracts_sent: "Kontrakter sendt",
   },
   limits: {
     storage_bytes: "Lagring",
@@ -25,6 +26,7 @@ export const capacityNb: CapacityMessages = {
     requests_month: "Besøk i måneden",
     egress_bytes_month: "Båndbredde i måneden",
     recordings_month: "Opptak av besøk i måneden",
+    contracts_sent_month: "Kontrakter sendt i måneden",
     ab_tests_running: "A/B-tester om gangen (0: ingen; høyst 5)",
     stores_owned: "Butikker per eier",
   },
@@ -55,6 +57,7 @@ export const capacityNb: CapacityMessages = {
     ai_cost_month_micros: "Butikken har brukt den KI-en abonnementet inkluderer denne måneden.",
     requests_month: "",
     egress_bytes_month: "",
+    contracts_sent_month: "",
     recordings_month: "Butikken har tatt opp de {limit} besøkene abonnementet gir denne måneden. Opptak starter igjen neste måned, eller velg et abonnement med mer.",
     ab_tests_running: "Abonnementet ditt kjører opptil {limit} A/B-tester om gangen. Stopp en først, eller velg et abonnement med mer.",
     stores_owned: "Abonnementet ditt tillater {limit} butikker. Velg et abonnement med mer for å legge til en til.",

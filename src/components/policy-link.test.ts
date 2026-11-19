@@ -17,14 +17,14 @@ import { PolicyLink } from "./policy-link";
 
 /** The three policies of PolicyLink (bloat review step 0.13): what each hands next/link before any event, and that no attribute is lost. */
 describe("PolicyLink", () => {
-  it("view hands Next's default (null)", () => {
-    expect(renderToStaticMarkup(h(PolicyLink, { policy: "view", href: "/a" }, "A"))).toContain('data-prefetch="null"');
+  it("sight hands Next's default (null)", () => {
+    expect(renderToStaticMarkup(h(PolicyLink, { policy: "sight", href: "/a" }, "A"))).toContain('data-prefetch="null"');
   });
   it("intent is false until the link is asked", () => {
     expect(renderToStaticMarkup(h(PolicyLink, { policy: "intent", href: "/a" }, "A"))).toContain('data-prefetch="false"');
   });
-  it("none is false", () => {
-    expect(renderToStaticMarkup(h(PolicyLink, { policy: "none", href: "/a" }, "A"))).toContain('data-prefetch="false"');
+  it("never is false", () => {
+    expect(renderToStaticMarkup(h(PolicyLink, { policy: "never", href: "/a" }, "A"))).toContain('data-prefetch="false"');
   });
   it("keeps every attribute and the children", () => {
     const markup = renderToStaticMarkup(h(PolicyLink, { policy: "intent", href: "/a", "aria-current": "page", role: "menuitem", className: "x" }, "Label"));
@@ -43,7 +43,7 @@ describe("AdminLink", () => {
   it("treats prefetch={false} as none", () => {
     expect(renderToStaticMarkup(h(AdminLink, { href: "/a", prefetch: false }, "A"))).toContain('data-prefetch="false"');
   });
-  it("passes a view policy through", () => {
-    expect(renderToStaticMarkup(h(AdminLink, { href: "/a", policy: "view" }, "A"))).toContain('data-prefetch="null"');
+  it("passes a sight policy through", () => {
+    expect(renderToStaticMarkup(h(AdminLink, { href: "/a", policy: "sight" }, "A"))).toContain('data-prefetch="null"');
   });
 });

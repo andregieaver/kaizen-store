@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
+import { AdminLink as Link } from "@/components/admin/ui/link";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { adminText } from "@/lib/admin-text";
-import { ALLOWANCES_OF, type AllowanceKey, type ExtensionId } from "@/lib/extensions";
+import { ALLOWANCES_OF, LAUNCH_TRIAL_DAYS, type AllowanceKey, type ExtensionId } from "@/lib/extensions";
 import { formatMoney } from "@/lib/money";
 import { PLAN_INTERVALS, type PlanInterval } from "@/lib/plans";
 import { formatPriceInput } from "@/lib/product-input";
 import { requirePlatformReader } from "@/server/auth";
 import { listPlans } from "@/server/billing";
+import { launchPreview, type LaunchPreview } from "@/server/extension-launch";
 import {
   extensionCurrencies,
   extensionsLaunchedAt,
@@ -23,7 +25,7 @@ import {
   type ExtensionPrice,
 } from "@/server/extensions";
 
-import { saveBundleAction, saveExtensionAction, savePlanGrantsAction } from "./actions";
+import { launchExtensionsAction, saveBundleAction, saveExtensionAction, savePlanGrantsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Extensions" };
 
@@ -44,13 +46,19 @@ export default async function ExtensionsPage() {
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const [catalogue, plans, currencies, launchedAt] = await Promise.all([getExtensionCatalogue(), listPlans(), extensionCurrencies(), extensionsLaunchedAt()]);
   const columns = plans.filter((plan) => plan.active);
+  // The launch's preview is read only until it has happened.
+  const preview = launchedAt ? null : await launchPreview();
 
   return (
     <>
       <PageHeader back={{ href: "/admin/platform/plans", label: w.plans }} title={w.title} description={w.description} />
-      <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-        {launchedAt ? fillWords(w.launched, { date: adminDate(PLATFORM_TIME_ZONE, launchedAt, "long", lang) }) : w.notLaunched}
-      </p>
+      {preview ? (
+        <LaunchCard preview={preview} catalogue={catalogue.extensions} lang={lang} w={w} />
+      ) : (
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
+          {launchedAt ? fillWords(w.launched, { date: adminDate(PLATFORM_TIME_ZONE, launchedAt, "long", lang) }) : w.notLaunched}
+        </p>
+      )}
 
       {catalogue.extensions.map((extension) => (
         <section key={extension.id} aria-labelledby={`ext-${extension.id}`} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
@@ -333,5 +341,49 @@ function BundleFields({
         {w.offered}
       </label>
     </>
+  );
+}
+
+/** The launch (D748 step E5): what it does, as read now, and its one button behind a box to tick. */
+function LaunchCard({ preview, catalogue, lang, w }: { preview: LaunchPreview; catalogue: CatalogueExtension[]; lang: AdminLang; w: W }) {
+  const l = w.launch;
+  const trials = preview.trials.filter((t) => t.accounts > 0);
+  const nameOf = (id: ExtensionId) => catalogue.find((e) => e.id === id)?.name ?? id;
+  return (
+    <section aria-labelledby="launch" className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
+      <h2 id="launch" className="text-title text-ink">
+        {l.title}
+      </h2>
+      <p className="text-sm text-muted">{w.notLaunched}</p>
+      <p className="text-sm">{l.lead}</p>
+      <p className="text-sm">
+        {preview.moving === 0
+          ? l.noneMoving
+          : fillWords(preview.ending > 0 ? l.moving : l.movingOnly, { count: String(preview.moving), ending: String(preview.ending) })}{" "}
+        <Link href="/admin/platform/plans/accounts" className="underline underline-offset-2">
+          {l.seeAccounts}
+        </Link>
+      </p>
+      {trials.length > 0 ? (
+        <div className="text-sm">
+          <p>{fillWords(l.trials, { days: String(LAUNCH_TRIAL_DAYS), date: adminDate(PLATFORM_TIME_ZONE, preview.trialsEnd, "long", lang) })}</p>
+          <ul className="mt-1 list-disc pl-5">
+            {trials.map((t) => (
+              <li key={t.extensionId}>{fillWords(l.trialLine, { name: nameOf(t.extensionId), count: String(t.accounts) })}</li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="text-sm">{l.noTrials}</p>
+      )}
+      <p className="text-sm text-muted">{l.reminders}</p>
+      <ActionForm action={launchExtensionsAction} className="flex flex-col items-start gap-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="understand" required className="size-4" />
+          {l.understand}
+        </label>
+        <SubmitButton>{l.button}</SubmitButton>
+      </ActionForm>
+    </section>
   );
 }

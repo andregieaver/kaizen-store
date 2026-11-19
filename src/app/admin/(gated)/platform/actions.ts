@@ -12,6 +12,7 @@ import { parsePrice } from "@/lib/product-input";
 import { seoFromForm } from "@/lib/seo";
 import { designLookChoice } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
+import { assignAccountPlan, billedAccountOf, cancelAccountPlan } from "@/server/account-billing";
 import { requireAccount, requirePlatform, type Account } from "@/server/auth";
 import {
   applyPlanDiscount,
@@ -246,7 +247,12 @@ export async function assignPlanAction(storeSlug: string, _state: FormState, for
   if (!Number.isInteger(trial) || trial < 0 || trial > 730) {
     return { status: "error", messages: [(await said()).aFreeTrialIsBetween] };
   }
-  const result = await assignPlan(admin, storeSlug, priceId.data, trial, await origin());
+  // A store billed through its account (D748): the plan is the account's, its extensions kept.
+  const store = await getStore(storeSlug);
+  const billedAccount = store ? await billedAccountOf(store.id) : null;
+  const result = billedAccount
+    ? await assignAccountPlan(admin, billedAccount, { planPriceId: priceId.data, extensionPriceIds: "kept" }, trial, await origin())
+    : await assignPlan(admin, storeSlug, priceId.data, trial, await origin());
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return { status: "ok", messages: [(await said()).planSavedStripeEmailsThe] };
@@ -257,7 +263,8 @@ export async function cancelPlanAction(storeId: string, _state: FormState, formD
   const admin = await requirePlatform("plans");
   const when = z.enum(["period_end", "now", "undo"]).safeParse(formData.get("when"));
   if (!when.success || !z.uuid().safeParse(storeId).success) return { status: "error", messages: [(await said()).unknownRequest] };
-  const result = await cancelPlan(admin, storeId, when.data);
+  const billedAccount = await billedAccountOf(storeId);
+  const result = billedAccount ? await cancelAccountPlan(admin, billedAccount, when.data) : await cancelPlan(admin, storeId, when.data);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return {

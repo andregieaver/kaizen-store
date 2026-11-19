@@ -92,3 +92,10 @@ blocking, an email not written in the store's first language (its readers in a m
 written; warning, a picture without a description, one in a format many mail apps do not show, an email near Gmail's 102 KB
 clipping. Switch on is refused while a blocking one stands, in the same words. Links need no check (refused when saved). A broadcast's
 page shows the same warnings before sending (`contentChecks()`); what blocks a send is refused by `sendProblems()` as before.
+
+## The dry run (19 November 2026, email plan M3.5 in part)
+
+Above Test, the flow says about how many people would start it in the next 30 days, judged from the last 30 (`flowReach()`, read only):
+for an event, the people on the list behind its events of the last 30 days (the event log keeps 90); for a lapse, the customers whose
+lapse falls in the next 30; for browsing, the signed-in subscribers with views kept now. Test walks the newest subscriber through it,
+sending nothing. Still to come: the reach of each step, and each email drawn for the person tested.

@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { extensionBanners, extensionOfPath, extensionState, readAllowances, TOPIC_EXTENSIONS, topicOffered, type ExtensionRow, type StateFacts } from "./extensions";
+import {
+  extensionBanners,
+  extensionOfPath,
+  extensionState,
+  readAllowances,
+  TOPIC_EXTENSIONS,
+  topicOffered,
+  trialReminderDue,
+  type ExtensionRow,
+  type StateFacts,
+} from "./extensions";
 import { WEBHOOK_TOPICS } from "./webhook-topics";
 
 /** An account's standing with one extension (D748, `docs/extensions.md` 4.1). */
@@ -90,5 +100,24 @@ describe("extensionBanners", () => {
       { extension: "deals", state: "grace", until: days(12).toISOString() },
     ]);
     expect(extensionBanners({ ...facts, launchedAt: null }, now)).toEqual([]);
+  });
+});
+
+describe("trialReminderDue", () => {
+  const started = days(-1);
+  it("reminds a 60-day trial at 30, 14 and 3 days before its end, and a 14-day one at 3", () => {
+    const long = days(59);
+    expect(trialReminderDue(started, long, days(28))).toBeNull();
+    expect(trialReminderDue(started, long, days(29))).toBe(30);
+    expect(trialReminderDue(started, long, days(46))).toBe(14);
+    expect(trialReminderDue(started, long, days(56))).toBe(3);
+    const short = days(13);
+    expect(trialReminderDue(started, short, now)).toBeNull();
+    expect(trialReminderDue(started, short, days(10))).toBe(3);
+  });
+
+  it("sends only the latest reminder after a missed day, and none once the trial has ended", () => {
+    expect(trialReminderDue(started, days(59), days(57))).toBe(3);
+    expect(trialReminderDue(started, days(59), days(59))).toBeNull();
   });
 });

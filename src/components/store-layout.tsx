@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PolicyLink } from "./policy-link";
 
 import { ReportContentLink } from "@/components/report-content-link";
 import { accountsShown } from "@/lib/customer-accounts";
@@ -122,7 +122,7 @@ export function Brand({
 }: Props & { size: "header" | "footer"; place?: LogoPlace; height?: number; animation?: AnimationFile }) {
   const logo = store.navigation.logo;
   return (
-    <Link href={marketHome(store.slug, market.slug)} className="flex min-w-0 items-center">
+    <PolicyLink policy="intent" href={marketHome(store.slug, market.slug)} className="flex min-w-0 items-center">
       {animation ? (
         <AnimatedLogo animation={animation} alt={store.name} name={store.slug} height={height} size={size} />
       ) : logo ? (
@@ -139,7 +139,7 @@ export function Brand({
       ) : (
         <span className="truncate text-lg font-semibold">{store.name}</span>
       )}
-    </Link>
+    </PolicyLink>
   );
 }
 
@@ -230,16 +230,15 @@ export function MarketChoice({ store, market, m, className = "hidden md:block" }
       <ul className="absolute right-0 z-10 mt-2 min-w-44 rounded-lg border border-border bg-background p-1 text-foreground shadow-lg">
         {store.markets.map((other) => (
           <li key={other.slug}>
-            <Link
+            <PolicyLink policy="never"
               href={marketHome(store.slug, other.slug)}
-              prefetch={false}
               hrefLang={other.lang}
               lang={other.lang}
               aria-current={other.code === market.code ? "page" : undefined}
               className="block rounded-md px-3 py-2 text-sm hover:bg-surface aria-[current=page]:font-semibold"
             >
               {other.name}
-            </Link>
+            </PolicyLink>
           </li>
         ))}
       </ul>
@@ -262,25 +261,25 @@ function ShopTools({ store, market }: Props) {
   const base = marketPath(store.slug, market.slug);
   return (
     <>
-      <Link href={`${base}/search`} className="flex size-11 items-center justify-center rounded-full hover:bg-current/5">
+      <PolicyLink policy="intent" href={`${base}/search`} className="flex size-11 items-center justify-center rounded-full hover:bg-current/5">
         <Icon name="search" />
         <span className="sr-only">{m.search.title}</span>
-      </Link>
+      </PolicyLink>
       {/* No sign-in or account while the store has customer accounts off (D365). */}
       {accountsShown(store) && (
-        <Link
+        <PolicyLink policy="intent"
           href={`${base}/account`}
           className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 kzb-md-flex"
         >
           <Icon name="user" />
           <span className="sr-only">{m.account.title}</span>
-        </Link>
+        </PolicyLink>
       )}
-      <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
+      <PolicyLink policy="intent" href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
         <Icon name="heart" />
         <WishlistCount store={store.slug} market={market.slug} storeId={store.id} />
         <span className="sr-only">{m.wishlist.title}</span>
-      </Link>
+      </PolicyLink>
       <CartLink storeId={store.id} storeSlug={store.slug} market={market.slug} lang={market.lang} href={marketPath(store.slug, market.slug, "/cart")} hinted={store.markets.length > 1} />
     </>
   );
@@ -393,15 +392,15 @@ export function StoreMenu({ store, market, header }: Props & { header?: Pick<Pag
         <ul className="flex flex-col">
           {accountsShown(store) && (
             <li>
-              <Link href={`${base}/account`} className="flex min-h-12 items-center gap-3">
+              <PolicyLink policy="intent" href={`${base}/account`} className="flex min-h-12 items-center gap-3">
                 <Icon name="user" /> {m.account.title}
-              </Link>
+              </PolicyLink>
             </li>
           )}
           <li>
-            <Link href={`${base}/cart`} className="flex min-h-12 items-center gap-3">
+            <PolicyLink policy="intent" href={`${base}/cart`} className="flex min-h-12 items-center gap-3">
               <Icon name="bag" /> {m.cart}
-            </Link>
+            </PolicyLink>
           </li>
         </ul>
       )}
@@ -412,16 +411,15 @@ export function StoreMenu({ store, market, header }: Props & { header?: Pick<Pag
           <ul className="flex flex-wrap gap-2">
             {store.markets.map((other) => (
               <li key={other.slug}>
-                <Link
+                <PolicyLink policy="never"
                   href={marketHome(store.slug, other.slug)}
-                  prefetch={false}
                   hrefLang={other.lang}
                   lang={other.lang}
                   aria-current={other.code === market.code ? "page" : undefined}
                   className="flex min-h-11 items-center rounded-button border border-border px-4 text-sm aria-[current=page]:border-foreground aria-[current=page]:font-semibold"
                 >
                   {other.name}
-                </Link>
+                </PolicyLink>
               </li>
             ))}
           </ul>
@@ -437,9 +435,9 @@ export function StoreMenu({ store, market, header }: Props & { header?: Pick<Pag
  */
 export function WithdrawalLink({ store, market }: Props) {
   return (
-    <Link href={marketPath(store.slug, market.slug, "/withdraw")} prefetch={false} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+    <PolicyLink policy="intent" href={marketPath(store.slug, market.slug, "/withdraw")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
       {t(market.lang).returns.footerLink}
-    </Link>
+    </PolicyLink>
   );
 }
 
@@ -498,9 +496,9 @@ export async function StoreFooter({
             )}
           </address>
           {/* What the store stores in the browser, and the choice about it (D58). */}
-          <Link href={marketPath(store.slug, market.slug, "/cookies")} prefetch={false} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+          <PolicyLink policy="intent" href={marketPath(store.slug, market.slug, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
-          </Link>
+          </PolicyLink>
           {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
           <ReportContentLink lang={market.lang} absolute />
           {/* The withdrawal function, always reachable (D153); in a website (D178 step 5) while an order can still be withdrawn from or returned. */}
@@ -511,9 +509,9 @@ export async function StoreFooter({
               <ul className="flex flex-col gap-1">
                 {legalPages.map((page) => (
                   <li key={page.role}>
-                    <Link href={page.href} prefetch={false} className="inline-flex min-h-10 items-center text-muted underline">
+                    <PolicyLink policy="intent" href={page.href} className="inline-flex min-h-10 items-center text-muted underline">
                       {page.title}
-                    </Link>
+                    </PolicyLink>
                   </li>
                 ))}
               </ul>
@@ -537,16 +535,15 @@ export async function StoreFooter({
             <ul className="flex flex-col gap-1">
               {store.markets.map((other) => (
                 <li key={other.slug}>
-                  <Link
+                  <PolicyLink policy="never"
                     href={marketHome(store.slug, other.slug)}
-                    prefetch={false}
                     hrefLang={other.lang}
                     lang={other.lang}
                     aria-current={other.code === market.code ? "page" : undefined}
                     className="inline-flex min-h-10 items-center hover:underline aria-[current=page]:font-semibold"
                   >
                     {other.name}
-                  </Link>
+                  </PolicyLink>
                 </li>
               ))}
             </ul>
@@ -565,10 +562,10 @@ export function StoreBottomBar({ store, market }: Props) {
   return (
     <HidingBottomBar>
       <nav aria-label={m.shortcuts} className="flex">
-        <Link href={base || "/"} className={item}>
+        <PolicyLink policy="intent" href={base || "/"} className={item}>
           <Icon name="home" />
           {m.home}
-        </Link>
+        </PolicyLink>
         {/* The slide-out menu opens on any `data-open-menu` button. */}
         <button type="button" data-open-menu aria-haspopup="dialog" aria-label={m.openMenu} className={item}>
           <Icon name="menu" />
@@ -578,10 +575,10 @@ export function StoreBottomBar({ store, market }: Props) {
         {featureOn(store, "shop") && (
           <>
             {accountsShown(store) && (
-              <Link href={`${base}/account`} className={item}>
+              <PolicyLink policy="intent" href={`${base}/account`} className={item}>
                 <Icon name="user" />
                 {m.account.title}
-              </Link>
+              </PolicyLink>
             )}
             <CartLink storeId={store.id} storeSlug={store.slug} market={market.slug} lang={market.lang} href={marketPath(store.slug, market.slug, "/cart")} variant="bar" hinted={store.markets.length > 1} />
           </>

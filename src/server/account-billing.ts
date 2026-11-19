@@ -202,6 +202,15 @@ export function accountLock<T>(organisationId: string, work: () => Promise<T>): 
   });
 }
 
+/** The account a store is billed through, when its account has a row: the platform's plan actions on that store act on the account. */
+export async function billedAccountOf(storeId: string): Promise<string | null> {
+  const row = await typedRow(
+    z.object({ organisation_id: col.uuid }),
+    sql`select ob.organisation_id from commerce.stores s join commerce.organisation_billing ob on ob.organisation_id = s.organisation_id where s.id = ${storeId}::uuid`,
+  );
+  return row?.organisation_id ?? null;
+}
+
 /** The account's first open store (its oldest): its Stripe account is the account's customer, its country the VAT's. */
 async function firstStore(organisationId: string) {
   const row = await typedRow(z.object({ slug: col.text }), sql`

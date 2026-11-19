@@ -287,6 +287,11 @@ export const staffEmailsNb: StaffEmailsMessages = {
     ended: "Abonnementene til {stores} er avsluttet, og tiden du hadde betalt for og ikke brukt, er kreditert.",
     limits: "Det abonnementet ditt gir, som produkter og lagring, gjelder nå for butikkene dine samlet. Endre abonnementet her:",
   },
+  extensionTrialEnding: {
+    subject: "Prøveperioden din slutter om {days} dager",
+    ends: "Den gratis prøveperioden for {extensions} slutter {date}.",
+    keep: "For å beholde den, legg den til på siden Utvidelser i kontoen din. Gjør du ingenting, virker den i {grace} dager til og blir så skrivebeskyttet: du kan fortsatt lese og eksportere alt, og ingenting går tapt.",
+  },
   planReminder: {
     line: "Kaizena Flow {plan}, betalt {interval}",
     yearly: "årlig",

@@ -130,4 +130,20 @@ describe("commerce.store_plans (D748 E4)", () => {
       await db.query("update commerce.platform_settings set extensions_launched_at = null");
     }
   });
+
+  it("gives an account made after the launch its row as it is made, never Kaizena Flow's own (E5)", async () => {
+    const before = await account();
+    expect((await db.query("select 1 from commerce.organisation_billing where organisation_id = $1", [before.organisation])).rows).toEqual([]);
+    await db.query("update commerce.platform_settings set extensions_launched_at = now()");
+    try {
+      const after = await account();
+      expect(await planOf(after.stores[0])).toMatchObject({ plan_id: null, by_account: true });
+      // An account made before stays as it was: the launch itself moves it.
+      expect((await db.query("select 1 from commerce.organisation_billing where organisation_id = $1", [before.organisation])).rows).toEqual([]);
+      const platform = await one<{ id: string } | undefined>("select id from commerce.organisations where platform");
+      if (platform) expect((await db.query("select 1 from commerce.organisation_billing where organisation_id = $1", [platform.id])).rows).toEqual([]);
+    } finally {
+      await db.query("update commerce.platform_settings set extensions_launched_at = null");
+    }
+  });
 });
