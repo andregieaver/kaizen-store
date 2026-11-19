@@ -28,7 +28,15 @@ export default async function SupportWidgetsPage({ params }: PageProps<"/admin/[
   return (
     <AdminTextScope texts={adminTexts(lang, ["support"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={w.description} />
+        <PageHeader
+          title={w.title}
+          description={
+            <>
+              <span className="sm:hidden">{w.phoneLead}</span>
+              <span className="max-sm:hidden">{w.description}</span>
+            </>
+          }
+        />
         <WidgetsList
           widgets={widgets}
           base={`/admin/${slug}/support/widgets`}

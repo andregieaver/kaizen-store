@@ -13,7 +13,7 @@ import { linksIn } from "@/lib/platform-links";
 import { siteUrl } from "@/lib/site";
 import { pageJsonLd } from "@/lib/structured-data";
 import type { ThemeStorePart } from "@/lib/theme-store-parts";
-import type { PublishedPage } from "@/server/pages";
+import type { PublishedPage } from "@/server/page-reads";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
 import { siteLayoutFor } from "@/server/site-layouts";
 

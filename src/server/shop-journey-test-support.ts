@@ -27,7 +27,7 @@ import { checkoutGiftCards } from "./gift-card-cart";
 import { legalLinksFor } from "./legal-links";
 import { LISTING_LIMIT, listingFacets, listingPage } from "./listing";
 import { getOrder } from "./orders";
-import { productsPageOf, publishedPageById } from "./pages";
+import { productsPageOf, publishedPageById } from "./page-reads";
 import { productLayoutForVisitor } from "./product-layouts";
 import { understandQuery } from "./query-understanding";
 import { queryVector } from "./query-vector";

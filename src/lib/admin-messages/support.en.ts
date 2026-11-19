@@ -9,6 +9,12 @@ export const supportEn = {
     title: "Website chat",
     description:
       "Put this chat on other websites you run, such as your company site or blog. Each widget has its own look to match its site, and can go on several sites; conversations come to this inbox.",
+    /** Round 61 (D822): the page on a phone. */
+    phoneLead: "Put this chat on your other websites; conversations come here.",
+    phoneNone: "No widgets yet.",
+    phoneKnowledge: "What it answers from",
+    phoneKnowledgeSub: "Your knowledge base",
+    phoneOpen: "Open",
     knowledge: "On other websites the chat answers only from your knowledge base, so add what your visitors ask about.",
     knowledgeLink: "Open the knowledge base",
     chatOff: "The chat is off on this desk, so a widget shows nothing until you choose who answers in the support settings.",

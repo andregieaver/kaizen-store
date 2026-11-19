@@ -7,7 +7,9 @@ import { db, readDb } from "@/db/client";
 import { PLATFORM_ROLE_COPY, platformStarterPage, isPlatformRole, isThemeStoreRole, THEME_STORE_ROLES, type PlatformRole, type ThemeStoreRole } from "@/lib/platform-roles";
 
 import { audit, type Account } from "./auth";
-import { listPages, publishedPageById, pagesTag, savePage, type PageSummary, type PublishedPage } from "./pages";
+import { listPages, savePage, type PageSummary } from "./pages";
+import { publishedPageById, type PublishedPage } from "./page-reads";
+import { pagesTag } from "@/lib/cache-tags";
 
 type Row = Record<string, unknown>;
 type Result = { ok: true } | { ok: false; problems: string[] };

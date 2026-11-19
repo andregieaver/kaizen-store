@@ -60,6 +60,7 @@ export const draftsEn = {
     phoneLead: "An order you make for a customer, who pays it through a link.",
     newTitle: "New draft order",
     newDescription: "Choose where the order is for first: it decides the currency, the prices, the VAT and the shipping rate.",
+    phoneNewLead: "Where it is for decides the currency, the VAT and the shipping.",
     newNoWrite: "You can look at draft orders but not make one: that needs the right to change orders.",
     draftTitle: "Draft {number}",
     loadingList: "Loading the draft orders…",
@@ -100,6 +101,8 @@ export const draftsEn = {
     language: "Language",
     currency: "Currency",
     hint: "The draft is priced in this currency, with the VAT of this country and its shipping rate; the customer's page and emails are in this language. You can change the market later, and the editor says which prices moved.",
+    /** Round 61 (D822): the hint on a phone. */
+    phoneHint: "You can change it later; the editor says which prices moved.",
     address: "The shop address of this view is",
     start: "Start the draft",
   },

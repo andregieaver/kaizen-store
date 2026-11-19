@@ -21,7 +21,7 @@ import { deviceCartIds, getCart } from "./cart";
 import { gridScope, productItem, storeAndMarket, withTileFields } from "./content-grid";
 import { getCustomer } from "./customers";
 import { fieldsTag, shownFieldsFor } from "./custom-fields";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { convertedSql, inStockNow, OFFERED } from "./product-conditions";
 import { queryVector } from "./query-vector";
 import { getRecommendSettings, recommendTag, tokensUsedThisMonth } from "./recommend-settings";

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { requireFeature } from "@/components/admin/feature-off";
 import { aiFor } from "@/server/ai";
 import { listProductChoices } from "@/server/discounts";
-import { publishedPageIndex } from "@/server/pages";
+import { publishedPageIndex } from "@/server/page-reads";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { SEARCH_LOG_DAYS, searchStats } from "@/server/search";
 import { listRules } from "@/server/search-rules";

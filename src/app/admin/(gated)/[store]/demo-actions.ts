@@ -9,7 +9,7 @@ import { removalWords } from "@/lib/demo-content";
 import { redirectsTag } from "@/lib/redirects";
 import { catalogTag } from "@/server/catalog";
 import { removeDemoContent } from "@/server/demo-content";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { checkOwnerRole } from "@/server/permissions";
 import { storeTag } from "@/server/stores";
 import { termsTag } from "@/server/taxonomy";

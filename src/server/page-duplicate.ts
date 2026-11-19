@@ -9,7 +9,8 @@ import { copySlug, copyTitle } from "@/lib/page-duplicate";
 import { type PageType } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
-import { getPageForEdit, savePage, type PageOwner, type PageResult } from "./pages";
+import { getPageForEdit, savePage, type PageResult } from "./pages";
+import { type PageOwner } from "./page-reads";
 import { owned } from "./owned";
 
 /**

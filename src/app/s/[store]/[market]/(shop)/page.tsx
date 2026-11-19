@@ -13,7 +13,7 @@ import { featureOn } from "@/lib/store-features";
 import { storeHomeJsonLd } from "@/lib/structured-data";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listProducts } from "@/server/catalog";
-import { publishedPageById } from "@/server/pages";
+import { publishedPageById } from "@/server/page-reads";
 import { placePageForVisitor } from "@/server/role-pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { marketMoved, resolveShop } from "@/server/shop";

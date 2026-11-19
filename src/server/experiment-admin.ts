@@ -38,7 +38,8 @@ import { limitFor } from "./limits";
 import { owned } from "./owned";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
-import { ownerLanguages, pagesTag, savePage } from "./pages";
+import { ownerLanguages, savePage } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 
 type Row = Record<string, unknown>;
 

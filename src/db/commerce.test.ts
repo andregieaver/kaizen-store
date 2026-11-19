@@ -2897,6 +2897,23 @@ describe("cookie scans and notes (D58)", () => {
   });
 });
 
+describe("the document jobs' indexes (bloat review steps 3.6 and 3.7)", () => {
+  it("fit each job's window with the reading statement's own predicate", async () => {
+    const { rows } = await db.query<{ indexname: string; indexdef: string }>(
+      "select indexname, indexdef from pg_indexes where schemaname = 'commerce' and tablename in ('invoices', 'credit_notes', 'work_invoices', 'work_credit_notes', 'order_events', 'order_edits')",
+    );
+    const def = (name: string) => rows.find((r) => r.indexname === name)?.indexdef ?? "";
+    expect(def("invoices_issued_at_idx")).toMatch(/\(issued_at\)$/);
+    expect(def("credit_notes_issued_at_idx")).toMatch(/\(issued_at\)$/);
+    for (const name of ["invoices_business_issued_idx", "credit_notes_business_issued_idx"]) expect(def(name)).toMatch(/\(issued_on\) WHERE .*'buyer'.*'type'.*= 'business'/);
+    expect(def("work_invoices_business_issued_idx")).toMatch(/\(issued_on\) WHERE .*'draft'.*NOT imported.*'business'.*IS TRUE/);
+    expect(def("work_credit_notes_business_issued_idx")).toMatch(/\(issued_on\) WHERE .*'business'.*IS TRUE/);
+    expect(def("order_events_invoice_failed_idx")).toMatch(/\(created_at\) WHERE .*= 'invoice\.failed'/);
+    expect(def("order_edits_documents_waiting_idx")).toMatch(/\(store_id\) WHERE .*'applied'.*documents = 'waiting'/);
+    for (const name of ["invoices_pdf_waiting_idx", "credit_notes_pdf_waiting_idx"]) expect(def(name)).toMatch(/\(issued_at\) WHERE \(\(pdf_path IS NULL\) AND \(anonymised_at IS NULL\)\)/);
+  });
+});
+
 describe("fonts (D59)", () => {
   it("keep each family and file once, and give new stores the template's fonts", async () => {
     const file = "0123456789abcdef0123456789abcdef.woff2";

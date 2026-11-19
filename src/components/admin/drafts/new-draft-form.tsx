@@ -39,7 +39,8 @@ export function NewDraftForm({
     <ActionForm action={action} className="flex max-w-xl flex-col gap-4">
       {carry.customer && <input type="hidden" name="customer" value={carry.customer} />}
       {carry.deal && <input type="hidden" name="deal" value={carry.deal} />}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Round 61 (D822): on a phone the language and currency share a line under the country, and the hint is one line. */}
+      <div className="grid gap-4 max-sm:grid-cols-2 max-sm:[&>*:first-child]:col-span-2 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm font-medium">
           {w.country}
           <select
@@ -82,7 +83,10 @@ export function NewDraftForm({
         </label>
       </div>
       <p className={hint}>
-        {w.hint} {slug ? <>{w.address} <span className="font-mono">/{slug}</span>.</> : null}
+        <span className="sm:hidden">{w.phoneHint}</span>
+        <span className="max-sm:hidden">
+          {w.hint} {slug ? <>{w.address} <span className="font-mono">/{slug}</span>.</> : null}
+        </span>
       </p>
       <div>
         <SubmitButton>{w.start}</SubmitButton>

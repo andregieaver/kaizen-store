@@ -5889,6 +5889,8 @@ export const orderEvents = commerce.table(
   (t) => [
     orderRef("order_events_order_fk", t),
     index("order_events_order_idx").on(t.storeId, t.orderId, t.createdAt),
+    // Bloat review step 3.6: the document jobs' windows, each with the reading statement's own predicate.
+    index("order_events_invoice_failed_idx").on(t.createdAt).where(sql`${t.type} = 'invoice.failed'`),
   ],
 );
 
@@ -7318,6 +7320,10 @@ export const invoices = commerce.table(
       .on(t.storeId, t.orderEditId)
       .where(sql`${t.kind} = 'order_edit'`),
     index("invoices_order_idx").on(t.storeId, t.orderId),
+    // Bloat review step 3.6: the document jobs' windows, each with the reading statement's own predicate.
+    index("invoices_issued_at_idx").on(t.issuedAt),
+    index("invoices_business_issued_idx").on(t.issuedOn).where(sql`(${t.snapshot} -> 'buyer' ->> 'type') = 'business'`),
+    index("invoices_pdf_waiting_idx").on(t.issuedAt).where(sql`${t.pdfPath} is null and ${t.anonymisedAt} is null`),
     foreignKey({
       name: "invoices_order_edit_fk",
       columns: [t.storeId, t.orderEditId],
@@ -7396,6 +7402,10 @@ export const creditNotes = commerce.table(
     unique("credit_notes_document_number_key").on(t.storeId, t.documentNumber),
     unique("credit_notes_refund_key").on(t.storeId, t.refundId),
     unique("credit_notes_public_token_key").on(t.publicToken),
+    // Bloat review step 3.6: the document jobs' windows, each with the reading statement's own predicate.
+    index("credit_notes_issued_at_idx").on(t.issuedAt),
+    index("credit_notes_business_issued_idx").on(t.issuedOn).where(sql`(${t.snapshot} -> 'buyer' ->> 'type') = 'business'`),
+    index("credit_notes_pdf_waiting_idx").on(t.issuedAt).where(sql`${t.pdfPath} is null and ${t.anonymisedAt} is null`),
     foreignKey({
       name: "credit_notes_invoice_fk",
       columns: [t.storeId, t.invoiceId],
@@ -12666,6 +12676,10 @@ export const workInvoices = commerce.table(
       .on(t.storeId, t.legacyNumber)
       .where(sql`${t.legacyNumber} is not null`),
     unique("work_invoices_recurring_period_key").on(t.storeId, t.recurringInvoiceId, t.recurringPeriod),
+    // Bloat review step 3.6: the document jobs' windows, each with the reading statement's own predicate.
+    index("work_invoices_business_issued_idx")
+      .on(t.issuedOn)
+      .where(sql`${t.status} <> 'draft' and not ${t.imported} and (${t.buyer} ->> 'business')::boolean is true`),
     foreignKey({
       name: "work_invoices_client_fk",
       columns: [t.storeId, t.clientId],
@@ -12984,6 +12998,8 @@ export const workCreditNotes = commerce.table(
     seriesRef("work_credit_notes_series_fk", t),
     index("work_credit_notes_invoice_idx").on(t.storeId, t.invoiceId),
     index("work_credit_notes_created_by_idx").on(t.createdBy),
+    // Bloat review step 3.6: the document jobs' windows, each with the reading statement's own predicate.
+    index("work_credit_notes_business_issued_idx").on(t.issuedOn).where(sql`(${t.buyer} ->> 'business')::boolean is true`),
     check("work_credit_notes_series", sql`${t.series} = 'work_credit_note'`),
     check("work_credit_notes_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
     check("work_credit_notes_amounts", sql`${t.subtotalMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.totalMinor} > 0 and ${t.totalMinor} = ${t.subtotalMinor} + ${t.vatMinor}`),
@@ -16097,6 +16113,8 @@ export const orderEdits = commerce.table(
   (t): PgTableExtraConfigValue[] => [
     unique("order_edits_store_id_key").on(t.storeId, t.id),
     unique("order_edits_order_seq_key").on(t.storeId, t.orderId, t.seq),
+    // Bloat review step 3.6: the document jobs' windows, each with the reading statement's own predicate.
+    index("order_edits_documents_waiting_idx").on(t.storeId).where(sql`${t.status} = 'applied' and ${t.documents} = 'waiting'`),
     orderRef("order_edits_order_fk", t).onDelete("restrict"),
     foreignKey({
       name: "order_edits_payment_fk",

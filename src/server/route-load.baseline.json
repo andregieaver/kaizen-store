@@ -18,7 +18,9 @@
     "platform-admin-layout": 1067,
     "platform-admin-home": 1064,
     "site-front-page": 488,
-    "docs-feedback": 282
+    "docs-feedback": 282,
+    "page-reads": 72,
+    "page-article": 430
   },
   "exceptions": {
     "proxy": [],
@@ -52,7 +54,9 @@
     "platform-admin-layout": [],
     "platform-admin-home": [],
     "site-front-page": [],
-    "docs-feedback": []
+    "docs-feedback": [],
+    "page-reads": [],
+    "page-article": []
   },
   "heavyHandlers": {
     "src/app/api/cron/cart-reminders/route.ts": {

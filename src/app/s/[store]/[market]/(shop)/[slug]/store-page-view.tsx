@@ -20,7 +20,7 @@ import { adminOrigin, marketHome, marketMetaPath, marketPath, storeSiteUrl } fro
 import { pageJsonLd } from "@/lib/structured-data";
 import { experimentOfPage } from "@/server/experiments";
 import { findEntryPage } from "@/server/content-site";
-import { findPublishedPage, type PublishedPage } from "@/server/pages";
+import { findPublishedPage, type PublishedPage } from "@/server/page-reads";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { marketMoved, resolveShop } from "@/server/shop";

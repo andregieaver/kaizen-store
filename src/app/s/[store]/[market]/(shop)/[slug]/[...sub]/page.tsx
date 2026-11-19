@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { publishedPageIndex } from "@/server/pages";
+import { publishedPageIndex } from "@/server/page-reads";
 import { resolveShop } from "@/server/shop";
 
 import { StorePageView, storePageMetadata, type StorePageQuery } from "../store-page-view";

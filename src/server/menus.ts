@@ -22,7 +22,7 @@ import {
 } from "@/lib/navigation";
 
 import { audit, type Account, type Membership } from "./auth";
-import { publishedPageNames } from "./pages";
+import { publishedPageNames } from "./page-reads";
 import { getPlatformChrome } from "./platform-navigation";
 import type { Store } from "./stores";
 import { siteTerms } from "./taxonomy";

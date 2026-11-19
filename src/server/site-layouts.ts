@@ -9,7 +9,7 @@ import { parsePageContent, type PageContent } from "@/lib/page-content";
 import { audit, type Account } from "./auth";
 import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
 import { withPageAlts } from "./media-alts";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { refreshStoreById } from "./stores";
 
 type Row = Record<string, unknown>;

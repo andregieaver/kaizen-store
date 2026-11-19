@@ -824,6 +824,9 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D819 | **Admin redesign round 59: add a customer, bring a domain here and recordings on a phone** | 2026-11-19 | [text](decisions/D819.md) |
 | D820 | **Admin redesign round 60: move a domain, footers and draft orders on a phone** | 2026-11-19 | [text](decisions/D820.md) |
 | D821 | **Each admin page hands cuts of the word areas its parts read** | 2026-11-19 | [text](decisions/D821.md) |
+| D822 | **Admin redesign round 61: website chat, new draft order and privacy requests on a phone** | 2026-11-19 | [text](decisions/D822.md) |
+| D823 | **Admin redesign round 62: Kaizena Flow's VAT rates, accounts and data retention on a phone** | 2026-11-19 | [text](decisions/D823.md) |
+| D824 | **Reading a page loads the page reader alone** | 2026-11-19 | [text](decisions/D824.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

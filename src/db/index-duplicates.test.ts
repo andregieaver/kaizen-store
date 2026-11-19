@@ -38,6 +38,9 @@ const ALLOWED: Record<string, string> = {
   order_events_restock_idx: "a selective condition: few rows match",
   price_lists_exclusive_idx: "a selective condition: few rows match",
   payments_captured_idx: "a selective condition: few rows match",
+  invoices_pdf_waiting_idx: "a selective condition: only documents whose PDF waits (bloat review 3.7)",
+  credit_notes_pdf_waiting_idx: "a selective condition: only documents whose PDF waits (bloat review 3.7)",
+  order_edits_documents_waiting_idx: "a selective condition: only changes whose documents wait (bloat review 3.6)",
   orders_list_placed_idx: "another sort order for the orders list",
   orders_list_archived_idx: "another sort order for the orders list",
 };

@@ -50,6 +50,12 @@ export const privacyEn = {
   list: {
     description:
       "People may ask what the store holds about them, or ask for it to be erased. Log a request when it arrives, and answer it within one month. This is not legal advice.",
+    /** Round 61 (D822): the list on a phone. */
+    phoneLead: "Log a request when it arrives and answer it within one month.",
+    phoneClock: "How the month is counted",
+    phoneClockSub: "To the same day; up to two more if complex",
+    phoneRead: "Read",
+    phoneClose: "Close",
     logRequest: "Log a request",
     overdue: { one: "{n} request is past its day.", many: "{n} requests are past its day." },
     lawAsks: "The law asks for an answer within one month.",

@@ -12,7 +12,7 @@ import type { TextStyle } from "@/lib/text-styles";
 import { audit, getAccount, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { keepVersion } from "./page-versions";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { checkPageTypeAccess, checkPassPageTypeAccess } from "./permissions";
 import { refreshTagNow } from "./refresh";
 import { listTextStyles } from "./text-styles";

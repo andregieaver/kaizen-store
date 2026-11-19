@@ -28,7 +28,8 @@ import { marketUrl } from "@/lib/paths";
 
 import { audit, type Account } from "./auth";
 import { owned } from "./owned";
-import { articleCards, articleInBlog, pagesTag } from "./pages";
+import { articleCards, articleInBlog } from "./page-reads";
+import { pagesTag } from "@/lib/cache-tags";
 import { resolveShop } from "./shop";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";

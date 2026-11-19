@@ -179,7 +179,7 @@ commit as the fix.
 | 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | Done | 19 Nov, 38759d01, D780: platform frame 17 to 11 statements, cookie scan 14 to 7. |
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
 | 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | In progress | D816: proxy files 321 to 57, chunk 2,253,770 to 585,983 B, trace 60.7 to 2.1 MB; live 19 Nov, smoke clean. Cold-start p50 reading due. |
-| 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | Open | |
+| 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | In progress | D824: page reader 72 files, no path to pages.ts; article 467 to 431. Pages, menus and blog on production to check. |
 | 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | Open | |
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
@@ -219,8 +219,8 @@ commit as the fix.
 | 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 | Open | |
 | 3.4 | Give every daily function a ledger row of its own | CR-17, GAP-scheduled-s6 | M | review | 3.3, 3.1, 1.22, 1.26, 0.31 | Open | |
 | 3.5 | Give every table that grows by time a delete rule | DS-13, CR-10, GAP-database-s6 | M | strong | 0.2, 3.4 | Open | |
-| 3.6 | Indexes that fit the document jobs' windows |  | S | review |  | Open | |
-| 3.7 | Call the PDF route when a document waits | CR-11, DD-12 | S | review | 3.1 | Open | Part 2026-11-19 (D807): the dispatcher asks the route; commit 1 done; left: cron_due() and its indexes, commit 3 |
+| 3.6 | Indexes that fit the document jobs' windows |  | S | review |  | Done | 19 Nov, migration 20261119202909_document_job_indexes: the eight and step 3.7's two PDF-waiting indexes; EXPLAIN uses each for its job's statement. |
+| 3.7 | Call the PDF route when a document waits | CR-11, DD-12 | S | review | 3.1 | Open | Part 2026-11-19 (D807): the dispatcher asks the route; commit 1 done; its two indexes in 3.6's migration; left: cron_due(), commit 3 |
 | 3.8 | Drop the duplicate idempotency table and the leftover schema, after a verified dump | DS-14 | S | review | 0.2 | Open | |
 | 3.9 | Keep one kaizenaflow.com | FM-3, FT-5, DS-6 | L | strong |  | Open | |
 | 3.10 | Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope | CP-4, FM-4, FM-5 | M | strong | 1.17 | Open | |
@@ -350,6 +350,8 @@ Change log:
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 - 19 Nov 2026: step 2.20 carried out locally in five commits (the tag leaf, the shared short memory, the leaf readers, the proxy on
   them, the docs): the proxy 321 to 57 source files and 2,200.9 to 572.2 KB of chunks; waiting for review, the D-row and the hosts job.
+- 19 Nov 2026: step 2.21 carried out locally in three commits (the reads to page-reads.ts, the importers split, the renderer held):
+  reading a page 183 to 72 source files, the renderer 467 to 430 with no path to pages.ts; waiting for review and the D-row.
 
 
 **Notes on the steps**

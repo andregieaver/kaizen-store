@@ -4,7 +4,7 @@ import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { marketPath } from "@/lib/paths";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor, type ChatWidgetProfile } from "@/server/chat-agent";
-import { publishedPageIndex } from "@/server/pages";
+import { publishedPageIndex } from "@/server/page-reads";
 import type { Shop } from "@/server/shop";
 import { PANEL_WIDTH } from "@/lib/support-widget-style";
 import type { FrameWidget } from "@/server/support-widgets";

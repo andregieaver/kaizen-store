@@ -6,7 +6,8 @@ import { PageDrawing } from "@/app/admin/(gated)/[store]/pages/drawing";
 import { adminText } from "@/lib/admin-text";
 import { sandboxBase } from "@/lib/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
-import { getPageForEdit, publishedPageById } from "@/server/pages";
+import { getPageForEdit } from "@/server/pages";
+import { publishedPageById } from "@/server/page-reads";
 
 import { isPageId, sandboxAndKind } from "../../../params";
 
