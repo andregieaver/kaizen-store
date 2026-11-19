@@ -38,7 +38,14 @@ export default async function NewDraftPage({ params, searchParams }: PageProps<"
   const forWhom = [customer ? customer.shippingAddress.name || customer.email : null, deal ? fillWords(w.forDeal, { title: deal.title }) : null].filter(Boolean).join(" · ");
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/orders/drafts`, label: w.listTitle }} title={w.newTitle} description={w.newDescription} />
+      <PageHeader back={{ href: `/admin/${store.slug}/orders/drafts`, label: w.listTitle }} title={w.newTitle}
+        description={
+          <>
+            <span className="sm:hidden">{w.phoneNewLead}</span>
+            <span className="max-sm:hidden">{w.newDescription}</span>
+          </>
+        }
+      />
       {forWhom && <p className="text-sm" data-draft-for>{fillWords(w.forWhom, { who: forWhom })}</p>}
       {memberCan(member, "orders:write") ? (
         <AdminTextScope texts={adminTexts(lang, ["drafts"])}>

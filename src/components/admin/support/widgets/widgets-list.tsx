@@ -27,7 +27,10 @@ export function WidgetsList({ widgets, base, create, chatOn, knowledgeHref }: { 
         </p>
       )}
       {widgets.length === 0 ? (
-        <p className="text-body text-muted">{w.none}</p>
+        <p className="text-body text-muted">
+          <span className="sm:hidden">{w.phoneNone}</span>
+          <span className="max-sm:hidden">{w.none}</span>
+        </p>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {widgets.map((widget) => {
@@ -55,7 +58,8 @@ export function WidgetsList({ widgets, base, create, chatOn, knowledgeHref }: { 
         </ul>
       )}
       {create && (
-        <Card title={w.newTitle}>
+        // Round 61 (D822): on a phone the form's card has no heading and what the chat answers from is a row under it.
+        <Card title={w.newTitle} className="max-sm:p-4 max-sm:[&>header]:sr-only">
           <ActionForm action={create}>
             <div className="flex flex-col gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
@@ -75,7 +79,14 @@ export function WidgetsList({ widgets, base, create, chatOn, knowledgeHref }: { 
           </ActionForm>
         </Card>
       )}
-      <p className="text-sm text-muted">
+      <Link href={knowledgeHref} className="flex min-h-14 items-center justify-between gap-3 rounded-panel bg-card px-4 py-2 sm:hidden">
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-body text-ink">{w.phoneKnowledge}</span>
+          <span className="text-caption text-ink-2">{w.phoneKnowledgeSub}</span>
+        </span>
+        <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{w.phoneOpen}</span>
+      </Link>
+      <p className="text-sm text-muted max-sm:hidden">
         {w.knowledge}{" "}
         <Link href={knowledgeHref} className="underline">
           {w.knowledgeLink}

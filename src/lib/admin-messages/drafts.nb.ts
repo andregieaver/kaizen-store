@@ -52,6 +52,7 @@ export const draftsNb: DraftsMessages = {
     phoneLead: "En bestilling du lager for en kunde, som betaler den via en lenke.",
     newTitle: "Nytt utkast til bestilling",
     newDescription: "Velg først hvor bestillingen er for: det avgjør valutaen, prisene, merverdiavgiften og fraktprisen.",
+    phoneNewLead: "Hvor den er for avgjør valutaen, merverdiavgiften og frakten.",
     newNoWrite: "Du kan se utkast til bestillinger, men ikke lage ett: det krever retten til å endre bestillinger.",
     draftTitle: "Utkast {number}",
     loadingList: "Henter utkastene…",
@@ -93,6 +94,8 @@ export const draftsNb: DraftsMessages = {
     language: "Språk",
     currency: "Valuta",
     hint: "Utkastet prises i denne valutaen, med merverdiavgiften i dette landet og fraktprisen der; kundens side og e-poster er på dette språket. Du kan endre markedet senere, og redigeringen sier hvilke priser som endret seg.",
+    /** Runde 61 (D822): hintet på en telefon. */
+    phoneHint: "Du kan endre det senere; redigeringen sier hvilke priser som endret seg.",
     address: "Butikkadressen for denne visningen er",
     start: "Start utkastet",
   },

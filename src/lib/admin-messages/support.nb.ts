@@ -6,6 +6,12 @@ export const supportNb: SupportMessages = {
     title: "Chat på nettsider",
     description:
       "Sett denne chatten på andre nettsider dere driver, som firmasiden eller bloggen. Hver widget har sitt eget utseende som passer siden, og kan stå på flere sider; samtalene kommer til denne innboksen.",
+    /** Runde 61 (D822): siden på en telefon. */
+    phoneLead: "Sett denne chatten på de andre nettstedene dine; samtalene kommer hit.",
+    phoneNone: "Ingen moduler ennå.",
+    phoneKnowledge: "Hva den svarer ut fra",
+    phoneKnowledgeSub: "Kunnskapsbasen din",
+    phoneOpen: "Åpne",
     knowledge: "På andre nettsider svarer chatten bare fra kunnskapsbasen, så legg inn det besøkende spør om.",
     knowledgeLink: "Åpne kunnskapsbasen",
     chatOff: "Chatten er av her, så en widget viser ingenting før dere velger hvem som svarer i kundeserviceinnstillingene.",
