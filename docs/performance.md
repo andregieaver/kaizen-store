@@ -434,7 +434,7 @@ translated text read at start. Platform, Usage and limits, under `#cold-starts`,
 95th percentile by kind, against three lines: the proxy within 150 ms of the health check's median, a store page within 400 ms and
 an admin page within 600 ms. Rows go after 30 days. Next's own loading of its route list is not in these figures;
 `scripts/route-budget.mjs` times it on every build. A kind is recorded where its first request of an instance reaches it: the
-`store` kind only on a store with several markets (its per-request part is the country hint), and Kaizena Flow's own pages (`site`)
+`store` kind when an instance first answers `/api/shop/mine` (a store page is a static file since step 2.4), and Kaizena Flow's own pages (`site`)
 are not recorded by this step.
 
 The megabytes traced beside a function (`node scripts/trace-sizes.mjs`, after `pnpm build`; 883 traces):
@@ -675,19 +675,29 @@ the build in the e2e job and fails on a regression or on a gain not yet written 
 | /docs | static | 0 | 3600 | platform-navigation | yes |
 | /docs/owners/getting-started/create-your-store | static | 0 | 3600 | platform-navigation | yes |
 | /themes | resuming | 4 | 3600 | design-presets, platform-navigation, platform-pages, platform-seo, referrals, site-from-store, store-starters | yes |
-| /s/demo/no | resuming | 3 | 900 | catalog | yes |
-| /s/demo/no/om-oss | resuming | 3 | 3600 | none | yes |
-| /s/demo/no/blog/nye-produkter | resuming | 3 | 3600 | none | yes |
-| /s/demo/no/products | resuming | 4 | 900 | catalog | yes |
-| /s/demo/no/category/belysning | resuming | 4 | 3600 | catalog | yes |
-| /s/demo/no/p/demo-keramikkopp | resuming | 4 | 3600 | catalog | yes |
-| /s/demo/no/search | resuming | 4 | 3600 | none | yes |
-| /s/demo/no/cart | resuming | 3 | 3600 | none | yes |
+| /s/demo/no | static | 0 | 900 | catalog | yes |
+| /s/demo/no/om-oss | static | 0 | 3600 | none | yes |
+| /s/demo/no/blog/nye-produkter | static | 0 | 3600 | none | yes |
+| /s/demo/no/products | resuming | 1 | 900 | catalog | yes |
+| /s/demo/no/category/belysning | resuming | 1 | 3600 | catalog | yes |
+| /s/demo/no/p/demo-keramikkopp | resuming | 1 | 3600 | buy-platform, catalog | yes |
+| /s/demo/no/search | resuming | 1 | 3600 | none | yes |
+| /s/demo/no/cart | resuming | 1 | 3600 | none | yes |
 <!-- render-modes:end -->
 
 A hole is a boundary that is not in the prerendered file (it streams at request time). What makes a page per-request: the cart cookie,
 the country header, `searchParams`, stock, sign-in. The rule in one sentence: a new `cookies()`, `headers()` or `connection()` in a layout
 or a shared part moves every page under it to per-request, and `scripts/render-modes.mjs` says so in CI.
+
+Since bloat review step 2.4 nothing per visitor is in the store's frame: the cart's count, the saved products and the country suggestion
+come from one small call, `/api/shop/mine` (`src/components/shopper-own.tsx`), made only when the marker cookie `kaizen_mine_{storeId}` is
+there or the store sells in several countries. The home, built pages and the blog moved from resuming to static (holes 3 to 0), every
+other store page lost its three frame holes, and the manifest's resuming routes fell from 268 to 211 (static 570 to 627); /s/demo/no
+answers `x-nextjs-cache: HIT` with `s-maxage=900`. An add answers the cart's count and redraws the page only when the form sends `redraw`
+(a basket note, the cart's upsells): an add with a cart already made is one request with a 104-byte answer (16 requests and 193 KB
+before; the first add, which sets the cart's cookies, still makes Next empty its router cache: 13 requests). Measured locally: a store
+page with a further dynamic segment (a built page, the blog) that Next regenerates at run time (its revalidate time passed, or a tag was
+refreshed) is served per request again, with its metadata at the end of the body; the home stays static.
 
 ## A store on a launch theme (bloat review step 1.6)
 

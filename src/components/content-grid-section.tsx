@@ -41,12 +41,12 @@ export async function ContentGridSection({ block, place, eager = false }: { bloc
   const notices = products && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
   if (block.filters && products && place.owner && listing) {
     return (
-      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} />}>
-        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} eager={eager} tiles={tiles} />
+      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} redraw={place.redraw} />}>
+        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} eager={eager} tiles={tiles} redraw={place.redraw} />
       </Suspense>
     );
   }
-  return <ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} />;
+  return <ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} redraw={place.redraw} />;
 }
 
 /** The grid's products as the shopper filters and sorts them, with the controls to do so. */
@@ -59,8 +59,10 @@ async function FilterableGrid({
   notices,
   eager,
   tiles,
+  redraw,
 }: {
   tiles: TileAsk | null;
+  redraw?: boolean;
   block: ContentGridBlock;
   owner: string;
   market: string | undefined;
@@ -115,7 +117,7 @@ async function FilterableGrid({
       {items.length === 0 && !unfiltered ? (
         <p>{m.listing.none}</p>
       ) : (
-        <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} tiles={tiles} />
+        <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} tiles={tiles} redraw={redraw} />
       )}
       {more && page < LISTING_PAGES_MAX && (
         <div className="flex flex-col items-center gap-2 pt-2">
