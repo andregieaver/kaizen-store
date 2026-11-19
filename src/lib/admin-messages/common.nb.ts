@@ -109,6 +109,16 @@ export const commonNb: CommonMessages = {
     saved: "Sparte {size} ({percent} %)",
     unreadable: "{name} kunne ikke leses som et bilde. Bruk JPEG, PNG, WebP eller AVIF.",
   },
+  unsaved: {
+    title: "Gå uten å lagre?",
+    text: "Endringene dine er ikke lagret ennå. Går du nå, blir de borte.",
+    stay: "Fortsett å redigere",
+    leave: "Gå uten å lagre",
+    kept: "Endringer fra {when} ble ikke lagret. De er tatt vare på i denne nettleseren.",
+    restore: "Gjenopprett endringer som ikke er lagret",
+    discard: "Forkast",
+    restored: "Endringene er gjenopprettet. Lagre for å beholde dem.",
+  },
   dataJobs: {
     statuses: {
       uploaded: "Filen er mottatt",

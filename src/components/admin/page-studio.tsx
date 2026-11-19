@@ -19,6 +19,7 @@ import {
 import { CARD_CLASS } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { useAdminText } from "./admin-text";
+import { useLeaveGuard } from "./leave-guard";
 
 /** The studio's steps on the server, bound to the owner by the route. */
 export type StudioActions = {
@@ -113,13 +114,8 @@ export function PageStudio({
     logRef.current?.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages]);
 
-  // Leaving while the page is being built would stop its pictures.
-  useEffect(() => {
-    if (phase !== "building") return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [phase]);
+  // Leaving while the page is being built would stop its pictures: it asks first, by a link in the admin too (`useLeaveGuard`, D787).
+  const guard = useLeaveGuard(phase === "building");
 
   const say = async (text: string) => {
     if (!aloud || !actions.speak) return;
@@ -330,6 +326,7 @@ export function PageStudio({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      {guard.dialog}
       <section aria-labelledby={`${inputId}-talk`} className={`flex min-h-[32rem] flex-col ${CARD_CLASS}`}>
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <h2 id={`${inputId}-talk`} className="text-title text-ink">

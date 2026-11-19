@@ -16,11 +16,11 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { PhoneRow } from "@/components/admin/phone-row";
+import { useLeaveGuard } from "@/components/admin/leave-guard";
 import { useRouter } from "next/navigation";
 import {
   createContext,
   useContext,
-  useEffect,
   useId,
   useMemo,
   useState,
@@ -134,13 +134,8 @@ export function MenuEditor({
   const [announcement, setAnnouncement] = useState("");
   const main = languages[0];
 
-  // Leaving with unsaved changes asks first.
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  // Leaving with unsaved changes asks first, by a link in the admin and the browser's Back too (`useLeaveGuard`, D787).
+  const guard = useLeaveGuard(dirty);
 
   const change = (next: Item[]) => {
     setItems(next);
@@ -188,13 +183,11 @@ export function MenuEditor({
       router.refresh();
     });
 
-  const choose = (id: string) => {
-    if (dirty && !window.confirm(w.leave)) return;
-    router.push(id ? `${basePath}?menu=${id}` : `${basePath}?menu=new`);
-  };
+  const choose = (id: string) => guard.leave(() => router.push(id ? `${basePath}?menu=${id}` : `${basePath}?menu=new`));
 
   return (
     <div className="flex flex-col gap-6">
+      {guard.dialog}
       <div className={`flex flex-wrap items-center gap-2 p-4 text-sm ${CARD_CLASS}`}>
         {menus.length > 0 && (
           <>
@@ -212,13 +205,7 @@ export function MenuEditor({
             <span className="max-sm:hidden">{w.or}</span>
           </>
         )}
-        <Link
-          href={`${basePath}?menu=new`}
-          onClick={(event) => {
-            if (dirty && !window.confirm(w.leave)) event.preventDefault();
-          }}
-          className="underline"
-        >
+        <Link href={`${basePath}?menu=new`} className="underline">
           <span className="max-sm:hidden">{w.createNew}</span>
           <span className="sm:hidden">{w.newMenu}</span>
         </Link>

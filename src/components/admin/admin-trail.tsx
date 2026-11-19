@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 import { forgetAdminPages, handoffHash, rememberAdminPage } from "@/lib/admin-return";
+import { forgetDrafts } from "@/lib/browser-draft";
 
 /**
  * Remembers the store admin page being viewed, for the storefront's "Back to
@@ -38,10 +39,19 @@ export function AdminTrail({ storeSlug, storeOrigins }: { storeSlug: string; sto
   return null;
 }
 
-/** The sign-out form; it also forgets the admin pages, so the storefront stops offering a way back. */
+/**
+ * The sign-out form; it also forgets the admin pages, so the storefront stops offering a way back, and the editors' unsaved changes
+ * kept in this browser (D787), so the next person at a shared computer finds none.
+ */
 export function SignOutForm({ action, label = "Sign out" }: { action: () => Promise<void>; /** In the account's language (D312 A0). */ label?: string }) {
   return (
-    <form action={action} onSubmit={forgetAdminPages}>
+    <form
+      action={action}
+      onSubmit={() => {
+        forgetAdminPages();
+        forgetDrafts();
+      }}
+    >
       <button type="submit" className="underline">
         {label}
       </button>

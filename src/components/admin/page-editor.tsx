@@ -43,6 +43,7 @@ import { DualCreateDialog, DualOpenDialog } from "./dual-page-dialogs";
 import { PAGE_TYPE_COPY } from "./page-type-copy";
 import { emptyHistory, historyKey, record, redo as redoStep, undo as undoStep, type History as EditHistory } from "@/lib/edit-history";
 import type { PageVersionItem } from "@/lib/page-versions";
+import { draftKey } from "@/lib/browser-draft";
 
 import { MakeCoolDialog } from "./make-cool-dialog";
 import { AiChangeDialog } from "./ai-change-dialog";
@@ -89,6 +90,8 @@ import { FindReplaceDialog } from "./find-replace-dialog";
 import { PageVersionsDialog } from "./page-versions-dialog";
 import { SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 import { ScheduleButton } from "./schedule-dialog";
+import { DraftOffer, useLeaveGuard } from "./leave-guard";
+import { useBrowserDraft } from "./use-browser-draft";
 import { ShareButton } from "./share-links";
 import { TextStylesProvider, useTextStylesState } from "./text-styles";
 
@@ -210,6 +213,7 @@ export function PageEditor({
 }) {
   const { actions, origin, defaultDescription, upload, reserved, adminBase, siteBase } = context;
   const w = useAdminText("builder");
+  const unsavedWords = useAdminText("common").unsaved;
   const ew = w.editor;
   // Round 27 (D700): the page's settings as rows on a phone.
   const pw = w.phone;
@@ -279,6 +283,17 @@ export function PageEditor({
   const [fieldData, setFieldData] = useState(initialFieldData);
   const [problems, setProblems] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(notice);
+  // The changes kept in this browser (code review 1.16, D787), per owner and page, offered back after a crash, a closed tab or a session
+  // that timed out; a saved template of a dual page keeps none. A draft is of the version saved when it was made (`updatedAt`).
+  const [opened] = useState(() => ({ content, fields: initialFieldData, slugFollows }));
+  const keptValue = useMemo(() => ({ content, fields: fieldData, slugFollows }), [content, fieldData, slugFollows]);
+  const browserDraft = useBrowserDraft({
+    key: template ? null : draftKey("page", context.owner ?? "platform", context.type, saved?.id ?? "new"),
+    base: () => saved?.updatedAt ?? "new",
+    value: keptValue,
+    dirty,
+    opened: () => opened,
+  });
   const [busy, startBusy] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Publishing with a blocking problem asks first (wave 1, 1e): the problems the owner is being asked about, or none.
@@ -392,6 +407,17 @@ export function PageEditor({
       }),
     );
   };
+  /** The changes kept in this browser, back in the editor as unsaved changes: one step Undo takes back. */
+  const restoreDraft = () => {
+    const kept = browserDraft.restore();
+    if (!kept) return;
+    remember("restore");
+    setContent(refreshUses(kept.content, known.current, (id) => !known.current.has(id)));
+    setFieldData(kept.fields);
+    setSlugFollows(kept.slugFollows);
+    setDirty(true);
+    setMessage(unsavedWords.restored);
+  };
   /** The page as the language being written reads. */
   const view = translating ? localizePage(content, locale) : content;
   /** Replaces the words in the texts chosen, in the language being written: one step of its own (never joined to typing), which Undo takes back. */
@@ -428,13 +454,8 @@ export function PageEditor({
   // The Theme tab keeps its own changes with Save theme; Save and Publish keep them too (D195), so nothing set there stays only on the canvas.
   const theme = useRef<{ dirty: boolean; save: () => Promise<string[] | null> }>({ dirty: false, save: async () => null });
   const [themeDirty, setThemeDirty] = useState(false);
-  // Leaving with unsaved changes asks first.
-  useEffect(() => {
-    if (!dirty && !themeDirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, themeDirty]);
+  // Leaving with unsaved changes asks first, by a link in the admin and the browser's Back too (`useLeaveGuard`, D787).
+  const guard = useLeaveGuard(dirty || themeDirty);
 
   // The page checker (wave 1, 1e): what a reader, a screen reader or the checkout's policy would meet, as the page stands now. A checker that
   // throws on odd content is not allowed to stop the editor: the tab then says it is not available, and the server asks again on publish.
@@ -690,8 +711,12 @@ export function PageEditor({
       }
     : null;
 
-  // Leaving for another editor asks first about changes not saved: nothing here is kept on the way.
-  const mayLeave = () => !(dual ? dual.dirtyAny : dirty || themeDirty) || window.confirm(dw.leaveUnsaved);
+  // Leaving for another editor asks first about changes not saved, on either page of a dual page (`guard.leave`): nothing here is kept on the way.
+  const leaveFor = (address: string) =>
+    guard.leave(() => {
+      setDirty(false);
+      router.push(address);
+    });
   const openBeside = (doc: DualWith) => {
     setBesideOpen(false);
     setCreateOpen(false);
@@ -699,20 +724,13 @@ export function PageEditor({
       dual.openSecond(doc);
       return;
     }
-    if (!mayLeave()) return;
-    setDirty(false);
-    router.push(`${adminBase}/${saved?.id ?? "new"}?with=${encodeURIComponent(formatDualWith(doc))}`);
+    leaveFor(`${adminBase}/${saved?.id ?? "new"}?with=${encodeURIComponent(formatDualWith(doc))}`);
   };
-  const openMirror = () => {
-    if (!mayLeave()) return;
-    setDirty(false);
-    router.push(`${adminBase}/${saved?.id ?? "new"}?with=mirror`);
-  };
+  const openMirror = () => leaveFor(`${adminBase}/${saved?.id ?? "new"}?with=mirror`);
   const createAlone = (kind: DualWith["kind"]) => {
     setCreateOpen(false);
-    if (kind === "template" || !context.dualPages || !mayLeave()) return;
-    setDirty(false);
-    router.push(`${context.dualPages.root}/${PAGE_TYPE_COPY[kind].segment}/new`);
+    if (kind === "template" || !context.dualPages) return;
+    leaveFor(`${context.dualPages.root}/${PAGE_TYPE_COPY[kind].segment}/new`);
   };
 
   return (
@@ -779,6 +797,8 @@ export function PageEditor({
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
         // The Theme tab (D182): a store's own pages only.
         onThemeState={(state) => {
+          // A change on the Theme tab is a change not saved too: *Saved* gives way to *Unsaved changes* at once (D787).
+          if (state.dirty && !theme.current.dirty) setMessage(null);
           theme.current = state;
           setThemeDirty(state.dirty);
         }}
@@ -1168,6 +1188,8 @@ export function PageEditor({
         />
       )}
 
+      {guard.dialog}
+
       {asking && (
         <PublishWithIssuesDialog
           issues={asking}
@@ -1184,6 +1206,11 @@ export function PageEditor({
       {/* A dual page shows the active page's bar only, with Save both and Publish both (D412). */}
       {(!dual || dual.active) && (
       <div data-editor-bar="" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 backdrop-blur">
+        {browserDraft.offer && (
+          <div className="px-4 pt-3">
+            <DraftOffer at={browserDraft.offer.at} onRestore={restoreDraft} onDiscard={browserDraft.discard} />
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           {dual ? (
             <>
@@ -1281,7 +1308,7 @@ export function PageEditor({
             {barOpen ? <ChevronDown aria-hidden className="size-5" /> : <ChevronUp aria-hidden className="size-5" />}
           </button>
           <p role="status" aria-live="polite" className={`text-sm ${barOpen ? "" : "max-md:sr-only"}`}>
-            {message ?? (dirty ? ew.unsaved : template ? w.dual.templateSaved : context.draftOnly ? (saved ? ew.savedInProfile : ew.notSavedYet) : state ? ew.states[state] : ew.notSavedYet)}
+            {message ?? (dirty || themeDirty ? ew.unsaved : template ? w.dual.templateSaved : context.draftOnly ? (saved ? ew.savedInProfile : ew.notSavedYet) : state ? ew.states[state] : ew.notSavedYet)}
             {/* One undo, only while nothing else has been changed since. */}
             {coolUndo && coolUndo.after === content.rows && (
               <button type="button" onClick={undoCool} className="ml-2 underline">

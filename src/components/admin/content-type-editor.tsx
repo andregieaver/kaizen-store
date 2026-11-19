@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import {
-  useEffect,
   useRef,
   useState,
   useTransition,
@@ -10,6 +9,7 @@ import {
 } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
+import { useLeaveGuard } from "@/components/admin/leave-guard";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -95,12 +95,8 @@ export function ContentTypeEditor({
   const [preview, setPreview] = useState<FieldData>(EMPTY_DATA);
   const problemsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  // Leaving with unsaved changes asks first, by a link in the admin and the browser's Back too (`useLeaveGuard`, D787).
+  const guard = useLeaveGuard(dirty);
 
   const fields = draft.fields as FieldDef[];
   const names = fields.map((f) => f.name);
@@ -238,6 +234,7 @@ export function ContentTypeEditor({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      {guard.dialog}
       <form
         onInvalidCapture={(event) => {
           // A field the browser flags inside a closed phone row opens it (the row follows its anchor).

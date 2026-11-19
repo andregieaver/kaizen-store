@@ -145,6 +145,23 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   Server actions that change a store call `updateTag()` for its store and
   catalogue tags.
 
+## Unsaved work: one leave guard, and drafts kept in the browser (code review 1.16, D787)
+
+- An editor that holds changes until Save asks before they are left with `useLeaveGuard(dirty)` (`src/components/admin/leave-guard.tsx`,
+  decisions in `src/lib/leave-guard.ts`), never a `beforeunload` listener or `window.confirm` of its own. It covers the browser's own
+  leaving (`beforeunload`), a click on any link in the admin (a capture-phase click listener on the window, before Next's `<Link>`) and
+  Back and Forward (a capture-phase `popstate` listener, before the router's), and asks in the admin's dialog (`leave-dialogs.tsx`,
+  loaded once the editor is dirty). Draw its `dialog`; an editor's own `router.push` goes through `leave(go)`; a link that says it
+  leaves without saving carries `data-leave-anyway`. An editor that saves by itself passes `links` (only a failed save asks).
+- The page builder and the product editor also keep their unsaved changes in `localStorage` (`useBrowserDraft`,
+  `src/lib/browser-draft.ts`): per owner and page, or store and product, written a moment after each change, offered back with
+  *Restore unsaved changes* only onto the saved version they were made from (a page's `updatedAt`; a product's stamp without its stock,
+  `src/lib/product-draft.ts`, and a restore takes the stock as it is now), removed by a save, by *Leave without saving*, after two
+  weeks and at sign-out. Every read and write is tried. The other six editors keep no draft: menus, content types and field groups are
+  short work; content entries may hold people's details, kept out of the browser; invoice drafts save themselves and hold a client's;
+  the AI page studio's page is kept by the server.
+- *Saved* gives way to *Not saved* (or the editor's word for it) on the first change, wherever an editor shows a save state.
+
 ## Server actions run through `storeAction()` / `platformAction()` (code review 1.4, `src/server/store-action.ts`): guard, language, one logged failure as a plain line
 
 - A server action runs through `storeAction({ store, key, action, answer }, handler)` (or, on the platform,
