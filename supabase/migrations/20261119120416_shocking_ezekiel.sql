@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."flows" DROP CONSTRAINT "flows_trigger";--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD CONSTRAINT "flows_trigger" CHECK ("commerce"."flows"."trigger" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'customer.lapsed'));

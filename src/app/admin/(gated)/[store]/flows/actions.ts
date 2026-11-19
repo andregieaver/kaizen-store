@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
-import { flowFromAutomation, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
+import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
+import { FLOW_TRIGGERS } from "@/lib/flow-triggers";
 import { insertStep, newStep, removeStep, withCondition, withEmailWords, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
@@ -20,12 +21,16 @@ import { storeAction } from "@/server/store-action";
 const refusal = (message: string): FormState => ({ status: "error", messages: [message] });
 
 /** Makes a flow from a goal's recipe (D767 slice 3, M3.1) in the store's first language, switched off, and opens it. */
-export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey): Promise<FormState> {
+export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey | "own"): Promise<FormState> {
   const made = await storeAction(
     { store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" },
     async (member, lang) => {
       const locale = member.store.localization.locales[0] ?? "en-GB";
       // The owner's own automation, when they wrote one, keeps its words, days and follow-ups (slice 3, M2.2); else the recipe.
+      if (key === "own") {
+        const saved = await saveFlow(member.store.id, member.account.id, null, ownFlow(locale));
+        return saved.ok ? { status: "ok" as const, messages: [saved.id] } : refusal(saved.problem);
+      }
       const own = key in RECIPES ? await getAutomation(member.store, key) : null;
       const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key]?.(locale);
       if (!recipe) return refusal(adminText(lang, "flows").problems.missing);
@@ -104,7 +109,7 @@ async function saveTree(
   storeSlug: string,
   flowId: string,
   change: (flow: Flow, storeId: string) => Promise<FlowStep[] | null> | FlowStep[] | null,
-  triggerDays?: number,
+  over: { trigger?: string; triggerDays?: number | null } = {},
 ): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
     const w = adminText(lang, "flows");
@@ -114,8 +119,8 @@ async function saveTree(
     if (!steps) return refusal(w.problems.step);
     const saved = await saveFlow(member.store.id, member.account.id, flowId, {
       name: flow.name,
-      trigger: flow.trigger,
-      triggerDays: triggerDays ?? flow.triggerDays,
+      trigger: over.trigger ?? flow.trigger,
+      triggerDays: over.triggerDays !== undefined ? over.triggerDays : flow.triggerDays,
       steps,
       goals: flow.goals,
     });
@@ -164,5 +169,12 @@ export async function changeFlowConditionAction(storeSlug: string, flowId: strin
 /** Saves a lapse flow's days without an order (slice 4): a new version, switched off until tested again. */
 export async function changeFlowLapseAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
   const days = Number(form.get("days"));
-  return saveTree(storeSlug, flowId, (flow) => flow.steps, days);
+  return saveTree(storeSlug, flowId, (flow) => flow.steps, { triggerDays: days });
+}
+
+/** Changes what starts a flow (slice 4, M2.3): one of `FLOW_TRIGGERS`; a lapse starts at 90 days. A new version, off until tested. */
+export async function changeFlowTriggerAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const trigger = FLOW_TRIGGERS.find((t) => t === form.get("trigger"));
+  // No such trigger: the tree change is refused in the owner's words (`problems.step`).
+  return saveTree(storeSlug, flowId, (flow) => (trigger ? flow.steps : null), trigger ? { trigger, triggerDays: trigger === "customer.lapsed" ? 90 : null } : {});
 }

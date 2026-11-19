@@ -63,7 +63,8 @@ describe("every sender of a catalogue kind asks notificationOn()", () => {
       .sort();
     // The change emails go through `orderNotice()` in shopper-emails.ts, which asks; notifications.ts names the kinds for the preview and sends only the
     // test email; a test fixture is not the app.
-    const NOT_SENDERS = ["src/server/order-edit-emails.ts", "src/server/notifications.ts"];
+    // flows.ts names `order.sent` as an event a flow starts from (D767 slice 4); its emails are a flow's own, through the marketing path.
+    const NOT_SENDERS = ["src/server/order-edit-emails.ts", "src/server/notifications.ts", "src/server/flows.ts"];
     expect(naming.filter((f) => !SENDERS.includes(f) && !NOT_SENDERS.includes(f) && !f.endsWith("-fixture.ts"))).toEqual([]);
   });
 

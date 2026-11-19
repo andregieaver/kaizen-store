@@ -112,7 +112,7 @@ const savedRow = z.object({ id: col.uuid, version: col.int });
 
 export type SaveFlowResult = { ok: true; id: string; version: number } | { ok: false; problem: string };
 
-/** Saves a flow as a new version, switched off until that version is tested. */
+/** Saves a flow as a new version, switched off until that version is tested. A new trigger ends what it replaced (it no longer does that work). */
 export async function saveFlow(storeId: string, accountId: string | null, id: string | null, input: unknown): Promise<SaveFlowResult> {
   const parsed = flowInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false, problem: parsed.error.issues[0]?.message ?? "Check the flow." };
@@ -123,7 +123,8 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
   const saved = await db().transaction(async (tx) => {
     const [raw] = id
       ? await tx.execute(sql`
-          update commerce.flows set name = ${name}, trigger = ${trigger}, trigger_days = ${days}, enabled = false, version = version + 1, updated_at = now()
+          update commerce.flows set name = ${name}, trigger = ${trigger}, trigger_days = ${days}, enabled = false, version = version + 1, updated_at = now(),
+                 replaces = case when trigger = ${trigger} then replaces end
            where store_id = ${storeId}::uuid and id = ${id}::uuid returning id, version`)
       : await tx.execute(sql`
           insert into commerce.flows (store_id, name, trigger, trigger_days, replaces)
@@ -209,9 +210,38 @@ export async function flowReplacing(storeId: string, kind: string): Promise<stri
 // ---------------------------------------------------------------------------
 
 /**
+ * The address an event's subject is about (slice 4, M2.3), as one `email` column: the order's, the cart's, the subscription's, a form's
+ * contact address, a quote's, a signed-in reviewer's. An erased person's order is never read (`restricted_at`). Null for an event with
+ * no person (or a guest's review, kept only as a hash).
+ */
+function emailOfSubject(event: string, storeId: string, subjectId: string) {
+  const store = sql`${storeId}::uuid`;
+  const id = sql`${subjectId}::uuid`;
+  switch (event) {
+    case "order.paid":
+    case "order.sent":
+      return sql`select o.email from commerce.orders o where o.store_id = ${store} and o.id = ${id} and o.restricted_at is null`;
+    case "checkout.abandoned":
+      return sql`select a.email from commerce.abandoned_checkouts a where a.store_id = ${store} and a.id = ${id}`;
+    case "subscription.started":
+    case "subscription.cancelled":
+      return sql`select u.email from commerce.subscriptions u where u.store_id = ${store} and u.id = ${id} and u.email <> ''`;
+    case "form.response":
+      return sql`select r.contact_email as email from commerce.form_responses r where r.store_id = ${store} and r.id = ${id} and r.contact_email is not null`;
+    case "quote.requested":
+      return sql`select d.email from commerce.draft_orders d where d.store_id = ${store} and d.id = ${id} and d.email is not null`;
+    case "review.created":
+      return sql`select c.email from commerce.product_reviews r join commerce.customers c on c.store_id = r.store_id and c.id = r.customer_id
+                  where r.store_id = ${store} and r.id = ${id}`;
+    default:
+      return null;
+  }
+}
+
+/**
  * Reads the event log's new trigger events (reader `flows`) and makes a run for the subscribed person each names, in every switched-on flow
  * of that store and trigger: once per event, and never a second while one is running. The person is the subscriber the event names, or the
- * subscribed address of the order or cart. Returns how many runs began.
+ * subscribed address its subject is about (`emailOfSubject()`). Returns how many runs began.
  */
 export async function enterFlows(): Promise<number> {
   const batch = await readEventsAfter(READER, { events: EVENT_TRIGGERS, limit: 500 });
@@ -219,14 +249,14 @@ export async function enterFlows(): Promise<number> {
   let entered = 0;
   for (const event of batch.events) {
     if (!event.storeId || !event.subjectId) continue;
+    const email = emailOfSubject(event.event, event.storeId, event.subjectId);
     const person =
       event.event === "subscriber.subscribed"
         ? sql`select s.id from commerce.marketing_subscribers s where s.store_id = ${event.storeId}::uuid and s.id = ${event.subjectId}::uuid`
-        : event.event === "order.paid"
-          ? sql`select s.id from commerce.orders o join commerce.marketing_subscribers s on s.store_id = o.store_id and lower(s.email) = lower(o.email)
-                 where o.store_id = ${event.storeId}::uuid and o.id = ${event.subjectId}::uuid`
-          : sql`select s.id from commerce.abandoned_checkouts a join commerce.marketing_subscribers s on s.store_id = a.store_id and lower(s.email) = lower(a.email)
-                 where a.store_id = ${event.storeId}::uuid and a.id = ${event.subjectId}::uuid`;
+        : email
+          ? sql`select s.id from (${email}) e join commerce.marketing_subscribers s on s.store_id = ${event.storeId}::uuid and lower(s.email) = lower(e.email)`
+          : null;
+    if (!person) continue;
     const rows = await db().execute(sql`
       insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, path)
       select f.store_id, f.id, f.version, p.id, ${String(event.id)}, '0'

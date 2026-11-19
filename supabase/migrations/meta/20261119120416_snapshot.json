@@ -1,6 +1,6 @@
 {
-  "id": "f0eeee74-ee7f-4f53-8476-b6ca0c4fac67",
-  "prevId": "60d5c16c-bed8-47c1-8950-9a576096105b",
+  "id": "6c628259-45f2-4509-9754-b7ab539bf849",
+  "prevId": "f0eeee74-ee7f-4f53-8476-b6ca0c4fac67",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -36982,7 +36982,7 @@
         },
         "flows_trigger": {
           "name": "flows_trigger",
-          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'customer.lapsed')"
+          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'customer.lapsed')"
         },
         "flows_on_when_tested": {
           "name": "flows_on_when_tested",
