@@ -44,8 +44,8 @@ export function PriceDisplayForm({
   canEdit: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
 }) {
-  const w = useAdminText("settings").prices;
-  const common = useAdminText("settings").common;
+  const w = useAdminText("settingsPrices").prices;
+  const common = useAdminText("settingsPrices").common;
   const [main, ...others] = places.languages;
   const [decimals, setDecimals] = useState<PriceDecimals>(display.decimals);
   const [mainWords, setMainWords] = useState<PriceWords>((main && display.words[main.locale]) || NO_WORDS);
@@ -235,7 +235,7 @@ function WordFields({
   onChange?: (words: PriceWords) => void;
   onType?: () => void;
 }) {
-  const w = useAdminText("settings").prices;
+  const w = useAdminText("settingsPrices").prices;
   const field = (place: keyof PriceWords) => (
     <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
       {place === "prefix" ? w.before : w.after}

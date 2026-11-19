@@ -29,7 +29,7 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
   const countries = await listCountries();
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsHours"])}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/settings/company`, label: w.title }} title={<>{w.addTitle[kind]}</>} description={<>{w.addText[kind]}</>} />
       <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>

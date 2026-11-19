@@ -27,7 +27,7 @@ type Props = PriceRuleActions & {
 };
 
 export function MarketPriceRules({ markets, rules, locale, editable, preview, save, remove }: Props) {
-  const w = useAdminText("settings").priceRules;
+  const w = useAdminText("settingsPriceRules").priceRules;
   return (
     <Card title={w.title} description={w.intro}>
       <div className="flex flex-col divide-y divide-line">
@@ -50,7 +50,7 @@ export function MarketPriceRules({ markets, rules, locale, editable, preview, sa
 }
 
 function RuleRow({ market, markets, rules, locale, editable, preview, save, remove }: Omit<Props, "markets"> & { market: Market; markets: Market[] }) {
-  const w = useAdminText("settings").priceRules;
+  const w = useAdminText("settingsPriceRules").priceRules;
   const saved = rules.find((r) => r.market === market.code) ?? null;
   // A base is a country whose own prices are typed by hand (rules never chain), and never a country another takes its prices from.
   const bases = markets.filter((m) => m.code !== market.code && !rules.some((r) => r.market === m.code));

@@ -56,6 +56,8 @@ export const draftsEn = {
     listTitle: "Draft orders",
     listDescription:
       "A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe's page, or record that they paid you outside Kaizena Flow.",
+    /** Round 60 (D820): the line under the title on a phone. */
+    phoneLead: "An order you make for a customer, who pays it through a link.",
     newTitle: "New draft order",
     newDescription: "Choose where the order is for first: it decides the currency, the prices, the VAT and the shipping rate.",
     newNoWrite: "You can look at draft orders but not make one: that needs the right to change orders.",
@@ -74,6 +76,9 @@ export const draftsEn = {
     all: "All",
     newDraft: "New draft order",
     openCount: "{count} of {max} open drafts. A draft holds no stock and takes no order number until it is sent; a sent draft holds its stock until its link ends.",
+    /** Round 60 (D820): the limit on a phone, and the empty list in a line. */
+    phoneOpenCount: "{count} of {max} open drafts. A draft holds no stock until it is sent.",
+    phoneNone: "No draft orders yet.",
     noneOfStatus: "No {status} drafts.",
     none: "No draft orders yet. A draft is an order you make for a customer, who pays it through a link.",
     showAll: "Show all drafts",

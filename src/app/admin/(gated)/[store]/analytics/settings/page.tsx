@@ -41,7 +41,7 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
   const owner = ctx.owner;
   const w = analyticsWords().settings;
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
     <ExportScope base={ctx.base} query="" owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-6">
         <AnalyticsHeader

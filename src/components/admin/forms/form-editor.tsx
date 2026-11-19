@@ -428,7 +428,7 @@ export function FormEditor({
 /** Every word of the form in the site's other languages (F3): beside its main words, empty showing them. */
 function TranslationsCard({ draft, languages, onChange }: { draft: FormDraft; languages: { code: string; name: string }[]; onChange: (patch: Partial<FormDraft>) => void }) {
   const e = useAdminText("forms").editor;
-  const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
+  const usual = useAdminText("blocksForm").form.labelHints as Partial<Record<FormFieldKind, string>>;
   const [lang, setLang] = useState(languages[0].code);
   type Entry = { key: string; main: string; words: Words | undefined; put: (w: Words) => void };
   const setQuestion = (i: number, patch: Partial<FormQuestion>) => onChange({ questions: draft.questions.map((q, n) => (n === i ? { ...q, ...patch } : q)) });
@@ -507,8 +507,8 @@ function QuestionFields({
   onRemove: () => void;
 }) {
   const e = useAdminText("forms").editor;
-  const kinds = useAdminText("blocks").lists.formFieldKinds as Record<FormFieldKind, string>;
-  const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
+  const kinds = useAdminText("blocksForm").lists.formFieldKinds as Record<FormFieldKind, string>;
+  const usual = useAdminText("blocksForm").form.labelHints as Partial<Record<FormFieldKind, string>>;
   const labelled = LABELLED_KINDS.includes(q.kind);
   const hidden = q.kind === "hidden";
   const hasOptions = OPTION_FIELD_KINDS.includes(q.kind);
@@ -738,7 +738,7 @@ function PaymentCard({
 /** One condition: a question above, what is asked of its answer and, for a choice, which options. */
 function ConditionRow({ condition: c, earlier, onChange, onRemove }: { condition: ShowWhen; earlier: FormQuestion[]; onChange: (c: ShowWhen) => void; onRemove: () => void }) {
   const e = useAdminText("forms").editor;
-  const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
+  const usual = useAdminText("blocksForm").form.labelHints as Partial<Record<FormFieldKind, string>>;
   const target = earlier.find((q) => q.id === c.question);
   const ops = SHOW_WHEN_OPS.filter((op) => {
     if (!target) return op === "answered";

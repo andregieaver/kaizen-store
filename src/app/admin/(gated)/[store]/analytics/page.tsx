@@ -49,7 +49,7 @@ export default async function AnalyticsOverviewPage({ params, searchParams }: Pa
   const loading = w.loading;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         {/* Round 3 (D603): the answer in a sentence, the period as one button, then what needs doing, four figures, the chart and what sells;

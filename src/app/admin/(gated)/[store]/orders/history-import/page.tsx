@@ -69,7 +69,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </p>
         </Notice>
       ) : (
-        <AdminTextScope texts={adminTexts(lang, ["inventory", "customers"])}>
+        <AdminTextScope texts={adminTexts(lang, ["customersStaff", "inventoryImport"])}>
           <CustomerUpload
             slug={store.slug}
             rowsMax={HISTORY_ORDERS_MAX}

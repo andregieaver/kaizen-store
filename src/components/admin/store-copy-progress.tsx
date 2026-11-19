@@ -20,7 +20,7 @@ const MARKS = { done: "✓", current: "→", waiting: "○", stopped: "✕" } as
  */
 export function StoreCopyProgressView({ progress, trouble = false }: { progress: Progress; trouble?: boolean }) {
   const { status } = progress;
-  const w = useAdminText("platform").copyProgress;
+  const w = useAdminText("platformCopy").copyProgress;
   const lang = useAdminLang();
   const num = (n: number) => n.toLocaleString(lang === "en" ? "en" : ADMIN_LANG_FACTS[lang].locale);
   const rows = countRows(progress.counts);

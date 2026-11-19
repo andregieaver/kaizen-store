@@ -12,7 +12,7 @@ type AsyncAnswer = Promise<Answer>;
 
 /** Makes a storefront token (D362) for one of the store's countries. Public by design, so the list shows it in full. */
 export function MakeStorefrontToken({ markets, make }: { markets: { slug: string; name: string }[]; make: (form: FormData) => AsyncAnswer }) {
-  const w = useAdminText("notifications").storefrontTokens;
+  const w = useAdminText("notificationsTokens").storefrontTokens;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const [key, setKey] = useState(0);
@@ -60,7 +60,7 @@ export function MakeStorefrontToken({ markets, make }: { markets: { slug: string
 
 /** Revokes a storefront token, after asking. */
 export function RevokeStorefrontToken({ name, revoke }: { name: string; revoke: () => AsyncAnswer }) {
-  const w = useAdminText("notifications").storefrontTokens;
+  const w = useAdminText("notificationsTokens").storefrontTokens;
   const [pending, start] = useTransition();
   return (
     <Button

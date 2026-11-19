@@ -88,7 +88,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   const count = type === "page" ? choices.length : total;
   const offered = (role: PlatformRole) => choices.filter((p) => (!placedIds.has(p.id) || p.id === roleOf[role]) && (p.state !== "draft" || p.id === roleOf[role]));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["websiteList", "platformSite"])}>
+    <AdminTextScope texts={adminTexts(lang, ["websiteList"])}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title={<>{tw.list}</>}
@@ -99,7 +99,16 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
                 legal: platformLegalLead(legal, adminText(lang, "platformLegal")),
               }),
           ]}
-          description={<>{tw.intro}</>}
+          description={<>
+              {type === "header" || type === "footer" ? (
+                <>
+                  <span className="sm:hidden">{adminText(lang, "websiteList").list.phoneIntro[type]}</span>
+                  <span className="max-sm:hidden">{tw.intro}</span>
+                </>
+              ) : (
+                tw.intro
+              )}
+            </>}
         />
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
@@ -149,7 +158,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           </span>
         </section>
       ) : pages.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS} max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none`}>
           {tw.none}
         </p>
       ) : type === "header" || type === "footer" ? (

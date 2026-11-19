@@ -34,7 +34,7 @@ export default async function PlatformApiPage() {
   const base = `${siteUrl()}/api/platform/v1`;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsTokens"])}>
       <div className="flex flex-col gap-6">
         <div>
           <Link href="/admin/platform/integrations" className="text-sm underline">

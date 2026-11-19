@@ -16,8 +16,8 @@ export async function platformSiteWords(): Promise<{ lang: AdminLang; w: Platfor
   return { lang, w: PLATFORM_SITE_WORDS[lang] };
 }
 
-/** The areas a theme's or Kaizena Flow's own page hands its client parts: its own, and the shared builder's and theme editor's (A7). */
-export const PLATFORM_SITE_AREAS = ["platformSite", "designEditor", "builder", "blocks", "fieldsEditor", "productsEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick"] as const;
+/** The areas Kaizena Flow's own page editor hands its client parts: the shared builder's and theme editor's (A7). Its own words (`platformSite`) are read by the theme pages, which hand them (bloat review step 2.27). */
+export const PLATFORM_SITE_AREAS = ["designEditor", "builder", "blocks", "fieldsEditor", "productsEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions"] as const;
 
 /** What a platform site or theme action answers, in the account's language (`actionAdminLang()`: English when no request is known). */
 export async function platformActionWords(): Promise<PlatformSiteMessages["actions"]> {

@@ -126,13 +126,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/(owner)/stores/copies/[copyId]/page.tsx#platform": {
+    "src/app/admin/(gated)/(owner)/stores/copies/[copyId]/page.tsx#platformCopy": {
       "areas": [
-        "platform"
+        "platformCopy"
       ],
       "handed": {
-        "en": 52962,
-        "nb": 57598
+        "en": 5578,
+        "nb": 6584
       },
       "named": {
         "en": 1358,
@@ -141,13 +141,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/(owner)/stores/copy/[store]/page.tsx#platform": {
+    "src/app/admin/(gated)/(owner)/stores/copy/[store]/page.tsx#platformCopy": {
       "areas": [
-        "platform"
+        "platformCopy"
       ],
       "handed": {
-        "en": 52962,
-        "nb": 57598
+        "en": 5578,
+        "nb": 6584
       },
       "named": {
         "en": 4189,
@@ -171,49 +171,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/customers/page.tsx#reports+analytics": {
+    "src/app/admin/(gated)/[store]/analytics/customers/page.tsx#analyticsExport": {
       "areas": [
-        "reports",
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 111567,
-        "nb": 115385
-      },
-      "named": {
-        "en": 295,
-        "nb": 301
-      },
-      "whole": [],
-      "unnamed": [
-        "reports"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/finance/page.tsx#finance+analytics": {
-      "areas": [
-        "finance",
-        "analytics"
-      ],
-      "handed": {
-        "en": 78132,
-        "nb": 82203
-      },
-      "named": {
-        "en": 295,
-        "nb": 301
-      },
-      "whole": [],
-      "unnamed": [
-        "finance"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/heatmaps/page.tsx#analytics": {
-      "areas": [
-        "analytics"
-      ],
-      "handed": {
-        "en": 46002,
-        "nb": 48182
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
@@ -222,31 +186,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/inventory/page.tsx#reports+analytics": {
+    "src/app/admin/(gated)/[store]/analytics/finance/page.tsx#analyticsExport": {
       "areas": [
-        "reports",
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 111567,
-        "nb": 115385
-      },
-      "named": {
-        "en": 295,
-        "nb": 301
-      },
-      "whole": [],
-      "unnamed": [
-        "reports"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/live/page.tsx#analytics": {
-      "areas": [
-        "analytics"
-      ],
-      "handed": {
-        "en": 46002,
-        "nb": 48182
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
@@ -255,14 +201,59 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx#reports+analytics": {
+    "src/app/admin/(gated)/[store]/analytics/heatmaps/page.tsx#analyticsExport": {
       "areas": [
-        "reports",
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 111567,
-        "nb": 115385
+        "en": 312,
+        "nb": 318
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/inventory/page.tsx#analyticsExport": {
+      "areas": [
+        "analyticsExport"
+      ],
+      "handed": {
+        "en": 312,
+        "nb": 318
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/live/page.tsx#analyticsExport": {
+      "areas": [
+        "analyticsExport"
+      ],
+      "handed": {
+        "en": 312,
+        "nb": 318
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx#analyticsExport+reportsCampaigns": {
+      "areas": [
+        "analyticsExport",
+        "reportsCampaigns"
+      ],
+      "handed": {
+        "en": 2570,
+        "nb": 2633
       },
       "named": {
         "en": 2527,
@@ -271,13 +262,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/page.tsx#analytics": {
+    "src/app/admin/(gated)/[store]/analytics/page.tsx#analyticsExport": {
       "areas": [
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 46002,
-        "nb": 48182
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
@@ -286,102 +277,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/payouts/page.tsx#finance+analytics": {
+    "src/app/admin/(gated)/[store]/analytics/payouts/page.tsx#analyticsExport": {
       "areas": [
-        "finance",
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 78132,
-        "nb": 82203
-      },
-      "named": {
-        "en": 295,
-        "nb": 301
-      },
-      "whole": [],
-      "unnamed": [
-        "finance"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/products/page.tsx#reports+analytics": {
-      "areas": [
-        "reports",
-        "analytics"
-      ],
-      "handed": {
-        "en": 111567,
-        "nb": 115385
-      },
-      "named": {
-        "en": 295,
-        "nb": 301
-      },
-      "whole": [],
-      "unnamed": [
-        "reports"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/recordings/page.tsx#analytics": {
-      "areas": [
-        "analytics"
-      ],
-      "handed": {
-        "en": 46002,
-        "nb": 48182
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "analytics"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/reports/view/page.tsx#analytics+customReports": {
-      "areas": [
-        "analytics",
-        "customReports"
-      ],
-      "handed": {
-        "en": 54398,
-        "nb": 56849
-      },
-      "named": {
-        "en": 295,
-        "nb": 301
-      },
-      "whole": [],
-      "unnamed": [
-        "customReports"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/sales/page.tsx#reports+analytics": {
-      "areas": [
-        "reports",
-        "analytics"
-      ],
-      "handed": {
-        "en": 111567,
-        "nb": 115385
-      },
-      "named": {
-        "en": 295,
-        "nb": 301
-      },
-      "whole": [],
-      "unnamed": [
-        "reports"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/analytics/settings/page.tsx#analytics": {
-      "areas": [
-        "analytics"
-      ],
-      "handed": {
-        "en": 46002,
-        "nb": 48182
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
@@ -390,13 +292,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/speed/page.tsx#analytics": {
+    "src/app/admin/(gated)/[store]/analytics/products/page.tsx#analyticsExport": {
       "areas": [
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 46002,
-        "nb": 48182
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
@@ -405,61 +307,110 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/subscriptions/page.tsx#reports+analytics": {
+    "src/app/admin/(gated)/[store]/analytics/reports/view/page.tsx#analyticsExport": {
       "areas": [
-        "reports",
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 111567,
-        "nb": 115385
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
         "nb": 301
       },
       "whole": [],
-      "unnamed": [
-        "reports"
-      ]
+      "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/tax/page.tsx#taxReports+analytics": {
+    "src/app/admin/(gated)/[store]/analytics/sales/page.tsx#analyticsExport": {
       "areas": [
-        "taxReports",
-        "analytics"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 70323,
-        "nb": 73995
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
         "nb": 301
       },
       "whole": [],
-      "unnamed": [
-        "taxReports"
-      ]
+      "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/analytics/traffic/page.tsx#reports+analytics+finance": {
+    "src/app/admin/(gated)/[store]/analytics/settings/page.tsx#analyticsExport": {
       "areas": [
-        "reports",
-        "analytics",
-        "finance"
+        "analyticsExport"
       ],
       "handed": {
-        "en": 143697,
-        "nb": 149406
+        "en": 312,
+        "nb": 318
       },
       "named": {
         "en": 295,
         "nb": 301
       },
       "whole": [],
-      "unnamed": [
-        "reports",
-        "finance"
-      ]
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/speed/page.tsx#analyticsExport": {
+      "areas": [
+        "analyticsExport"
+      ],
+      "handed": {
+        "en": 312,
+        "nb": 318
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/subscriptions/page.tsx#analyticsExport": {
+      "areas": [
+        "analyticsExport"
+      ],
+      "handed": {
+        "en": 312,
+        "nb": 318
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/tax/page.tsx#analyticsExport": {
+      "areas": [
+        "analyticsExport"
+      ],
+      "handed": {
+        "en": 312,
+        "nb": 318
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/traffic/page.tsx#analyticsExport": {
+      "areas": [
+        "analyticsExport"
+      ],
+      "handed": {
+        "en": 312,
+        "nb": 318
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/articles/authors/page.tsx#blog+websitePick": {
       "areas": [
@@ -577,31 +528,28 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/bookings/page.tsx#bookings+orders": {
+    "src/app/admin/(gated)/[store]/bookings/page.tsx#bookings": {
       "areas": [
-        "bookings",
-        "orders"
+        "bookings"
       ],
       "handed": {
-        "en": 62415,
-        "nb": 67079
+        "en": 42839,
+        "nb": 45621
       },
       "named": {
         "en": 367,
         "nb": 376
       },
       "whole": [],
-      "unnamed": [
-        "orders"
-      ]
+      "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/bookings/staff/[staffId]/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/bookings/staff/[staffId]/page.tsx#settingsHours": {
       "areas": [
-        "settings"
+        "settingsHours"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 987,
+        "nb": 1009
       },
       "named": {
         "en": 977,
@@ -610,13 +558,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/bookings/staff/new/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/bookings/staff/new/page.tsx#settingsHours": {
       "areas": [
-        "settings"
+        "settingsHours"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 987,
+        "nb": 1009
       },
       "named": {
         "en": 977,
@@ -708,13 +656,13 @@
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/cart-reminders/reminder-form.tsx#platform": {
+    "src/app/admin/(gated)/[store]/cart-reminders/reminder-form.tsx#platformReminders": {
       "areas": [
-        "platform"
+        "platformReminders"
       ],
       "handed": {
-        "en": 52962,
-        "nb": 57598
+        "en": 1829,
+        "nb": 1913
       },
       "named": {
         "en": 1810,
@@ -813,16 +761,15 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/customers/[customerId]/page.tsx#customers+privacy+loyalty+builderText": {
+    "src/app/admin/(gated)/[store]/customers/[customerId]/page.tsx#privacy+loyalty+builderText": {
       "areas": [
-        "customers",
         "privacy",
         "loyalty",
         "builderText"
       ],
       "handed": {
-        "en": 74991,
-        "nb": 81431
+        "en": 45473,
+        "nb": 51277
       },
       "named": {
         "en": 5050,
@@ -830,58 +777,40 @@
       },
       "whole": [],
       "unnamed": [
-        "customers",
         "builderText"
       ]
     },
-    "src/app/admin/(gated)/[store]/customers/import/[jobId]/page.tsx#inventory+customers": {
+    "src/app/admin/(gated)/[store]/customers/import/[jobId]/page.tsx#customersStaff+inventoryImport": {
       "areas": [
-        "inventory",
-        "customers"
+        "customersStaff",
+        "inventoryImport"
       ],
       "handed": {
-        "en": 61360,
-        "nb": 62972
+        "en": 13204,
+        "nb": 13361
       },
       "named": {
-        "en": 12925,
-        "nb": 13076
+        "en": 13183,
+        "nb": 13340
       },
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/customers/import/page.tsx#inventory+customers": {
+    "src/app/admin/(gated)/[store]/customers/import/page.tsx#customersStaff+inventoryImport": {
       "areas": [
-        "inventory",
-        "customers"
+        "customersStaff",
+        "inventoryImport"
       ],
       "handed": {
-        "en": 61360,
-        "nb": 62972
+        "en": 13204,
+        "nb": 13361
       },
       "named": {
-        "en": 12925,
-        "nb": 13076
+        "en": 13183,
+        "nb": 13340
       },
       "whole": [],
       "unnamed": []
-    },
-    "src/app/admin/(gated)/[store]/customers/new/page.tsx#customers": {
-      "areas": [
-        "customers"
-      ],
-      "handed": {
-        "en": 29518,
-        "nb": 30154
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "customers"
-      ]
     },
     "src/app/admin/(gated)/[store]/discounts/[discountId]/page.tsx#discounts": {
       "areas": [
@@ -932,76 +861,22 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home": {
+    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#builderVersions": {
       "areas": [
-        "home"
+        "builderVersions"
       ],
       "handed": {
-        "en": 33467,
-        "nb": 35108
+        "en": 1836,
+        "nb": 1909
       },
       "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "home"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home#2": {
-      "areas": [
-        "home"
-      ],
-      "handed": {
-        "en": 33467,
-        "nb": 35108
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "home"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home#3": {
-      "areas": [
-        "home"
-      ],
-      "handed": {
-        "en": 33467,
-        "nb": 35108
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "home"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home+builder": {
-      "areas": [
-        "home",
-        "builder"
-      ],
-      "handed": {
-        "en": 111818,
-        "nb": 117050
-      },
-      "named": {
-        "en": 78351,
-        "nb": 81942
+        "en": 1836,
+        "nb": 1909
       },
       "whole": [
-        "builder"
+        "builderVersions"
       ],
-      "unnamed": [
-        "home"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/experiments/[id]/page.tsx#experiments": {
       "areas": [
@@ -1142,15 +1017,15 @@
         "builderText"
       ]
     },
-    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
+    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocksForm+formTemplates": {
       "areas": [
         "forms",
-        "blocks",
+        "blocksForm",
         "formTemplates"
       ],
       "handed": {
-        "en": 65283,
-        "nb": 68400
+        "en": 13282,
+        "nb": 13869
       },
       "named": {
         "en": 13264,
@@ -1213,13 +1088,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/integrations/[provider]/page.tsx#notifications": {
+    "src/app/admin/(gated)/[store]/integrations/[provider]/page.tsx#notificationsIntegrations": {
       "areas": [
-        "notifications"
+        "notificationsIntegrations"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 35586,
+        "nb": 36970
       },
       "named": {
         "en": 35569,
@@ -1228,13 +1103,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/integrations/ebay/page.tsx#notifications": {
+    "src/app/admin/(gated)/[store]/integrations/ebay/page.tsx#notificationsIntegrations": {
       "areas": [
-        "notifications"
+        "notificationsIntegrations"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 35586,
+        "nb": 36970
       },
       "named": {
         "en": 35569,
@@ -1243,13 +1118,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/integrations/endpoints/page.tsx#notifications": {
+    "src/app/admin/(gated)/[store]/integrations/endpoints/page.tsx#notificationsIntegrations": {
       "areas": [
-        "notifications"
+        "notificationsIntegrations"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 35586,
+        "nb": 36970
       },
       "named": {
         "en": 35569,
@@ -1258,83 +1133,51 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/integrations/google-reviews/page.tsx#notifications": {
+    "src/app/admin/(gated)/[store]/integrations/google-reviews/page.tsx#notificationsGoogle": {
       "areas": [
-        "notifications"
+        "notificationsGoogle"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 2125,
+        "nb": 2275
       },
       "named": {
-        "en": 1773,
-        "nb": 1889
+        "en": 2114,
+        "nb": 2264
       },
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/integrations/instagram/page.tsx#notifications": {
+    "src/app/admin/(gated)/[store]/inventory/import/[jobId]/page.tsx#inventory+inventoryImport": {
       "areas": [
-        "notifications"
+        "inventory",
+        "inventoryImport"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 37963,
+        "nb": 39041
       },
       "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "notifications"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/integrations/tripletex/page.tsx#notifications": {
-      "areas": [
-        "notifications"
-      ],
-      "handed": {
-        "en": 80417,
-        "nb": 84006
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "notifications"
-      ]
-    },
-    "src/app/admin/(gated)/[store]/inventory/import/[jobId]/page.tsx#inventory": {
-      "areas": [
-        "inventory"
-      ],
-      "handed": {
-        "en": 31842,
-        "nb": 32818
-      },
-      "named": {
-        "en": 31842,
-        "nb": 32818
+        "en": 37952,
+        "nb": 39030
       },
       "whole": [
         "inventory"
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/inventory/import/page.tsx#inventory": {
+    "src/app/admin/(gated)/[store]/inventory/import/page.tsx#inventory+inventoryImport": {
       "areas": [
-        "inventory"
+        "inventory",
+        "inventoryImport"
       ],
       "handed": {
-        "en": 31842,
-        "nb": 32818
+        "en": 37963,
+        "nb": 39041
       },
       "named": {
-        "en": 31842,
-        "nb": 32818
+        "en": 37952,
+        "nb": 39030
       },
       "whole": [
         "inventory"
@@ -1486,14 +1329,14 @@
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/media/page.tsx#website+websitePick": {
+    "src/app/admin/(gated)/[store]/media/page.tsx#websitePick+websiteMedia": {
       "areas": [
-        "website",
-        "websitePick"
+        "websitePick",
+        "websiteMedia"
       ],
       "handed": {
-        "en": 50213,
-        "nb": 52258
+        "en": 10631,
+        "nb": 11063
       },
       "named": {
         "en": 10594,
@@ -1502,14 +1345,14 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/menus/page.tsx#website+websitePick": {
+    "src/app/admin/(gated)/[store]/menus/page.tsx#websitePick+websiteMenus": {
       "areas": [
-        "website",
-        "websitePick"
+        "websitePick",
+        "websiteMenus"
       ],
       "handed": {
-        "en": 50213,
-        "nb": 52258
+        "en": 4692,
+        "nb": 4796
       },
       "named": {
         "en": 4655,
@@ -1604,34 +1447,34 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/orders/history-import/[jobId]/page.tsx#inventory+customers": {
+    "src/app/admin/(gated)/[store]/orders/history-import/[jobId]/page.tsx#customersStaff+inventoryImport": {
       "areas": [
-        "inventory",
-        "customers"
+        "customersStaff",
+        "inventoryImport"
       ],
       "handed": {
-        "en": 61360,
-        "nb": 62972
+        "en": 13204,
+        "nb": 13361
       },
       "named": {
-        "en": 12925,
-        "nb": 13076
+        "en": 13183,
+        "nb": 13340
       },
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/orders/history-import/page.tsx#inventory+customers": {
+    "src/app/admin/(gated)/[store]/orders/history-import/page.tsx#customersStaff+inventoryImport": {
       "areas": [
-        "inventory",
-        "customers"
+        "customersStaff",
+        "inventoryImport"
       ],
       "handed": {
-        "en": 61360,
-        "nb": 62972
+        "en": 13204,
+        "nb": 13361
       },
       "named": {
-        "en": 12925,
-        "nb": 13076
+        "en": 13183,
+        "nb": 13340
       },
       "whole": [],
       "unnamed": []
@@ -1679,22 +1522,24 @@
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "builderVersions"
       ],
       "handed": {
-        "en": 169647,
-        "nb": 177509
+        "en": 171483,
+        "nb": 179418
       },
       "named": {
-        "en": 165882,
-        "nb": 173634
+        "en": 167718,
+        "nb": 175543
       },
       "whole": [
         "builder",
         "blocks",
         "fieldsEditor",
         "storeParts",
-        "animation"
+        "animation",
+        "builderVersions"
       ],
       "unnamed": [
         "backdrops"
@@ -1713,22 +1558,24 @@
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "builderVersions"
       ],
       "handed": {
-        "en": 169647,
-        "nb": 177509
+        "en": 171483,
+        "nb": 179418
       },
       "named": {
-        "en": 165882,
-        "nb": 173634
+        "en": 167718,
+        "nb": 175543
       },
       "whole": [
         "builder",
         "blocks",
         "fieldsEditor",
         "storeParts",
-        "animation"
+        "animation",
+        "builderVersions"
       ],
       "unnamed": [
         "backdrops"
@@ -1747,22 +1594,24 @@
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "builderVersions"
       ],
       "handed": {
-        "en": 169647,
-        "nb": 177509
+        "en": 171483,
+        "nb": 179418
       },
       "named": {
-        "en": 165882,
-        "nb": 173634
+        "en": 167718,
+        "nb": 175543
       },
       "whole": [
         "builder",
         "blocks",
         "fieldsEditor",
         "storeParts",
-        "animation"
+        "animation",
+        "builderVersions"
       ],
       "unnamed": [
         "backdrops"
@@ -2162,13 +2011,13 @@
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/ai/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/ai/page.tsx#settingsAi": {
       "areas": [
-        "settings"
+        "settingsAi"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 10583,
+        "nb": 11138
       },
       "named": {
         "en": 10566,
@@ -2177,13 +2026,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/api/page.tsx#notifications": {
+    "src/app/admin/(gated)/[store]/settings/api/page.tsx#notificationsTokens": {
       "areas": [
-        "notifications"
+        "notificationsTokens"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 7781,
+        "nb": 8031
       },
       "named": {
         "en": 7733,
@@ -2209,23 +2058,6 @@
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/automation/page.tsx#notifications": {
-      "areas": [
-        "notifications"
-      ],
-      "handed": {
-        "en": 80417,
-        "nb": 84006
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "notifications"
-      ]
-    },
     "src/app/admin/(gated)/[store]/settings/checkout/page.tsx#shipping": {
       "areas": [
         "shipping"
@@ -2241,13 +2073,14 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/company/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/company/page.tsx#settingsCompany+settingsHours": {
       "areas": [
-        "settings"
+        "settingsCompany",
+        "settingsHours"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 6165,
+        "nb": 6369
       },
       "named": {
         "en": 6143,
@@ -2256,13 +2089,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/company/places/[placeId]/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/company/places/[placeId]/page.tsx#settingsHours": {
       "areas": [
-        "settings"
+        "settingsHours"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 987,
+        "nb": 1009
       },
       "named": {
         "en": 977,
@@ -2271,13 +2104,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/company/places/new/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/company/places/new/page.tsx#settingsHours": {
       "areas": [
-        "settings"
+        "settingsHours"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 987,
+        "nb": 1009
       },
       "named": {
         "en": 977,
@@ -2286,13 +2119,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/countries/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/countries/page.tsx#settingsPriceRules": {
       "areas": [
-        "settings"
+        "settingsPriceRules"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 1886,
+        "nb": 1940
       },
       "named": {
         "en": 1871,
@@ -2300,23 +2133,6 @@
       },
       "whole": [],
       "unnamed": []
-    },
-    "src/app/admin/(gated)/[store]/settings/customs/page.tsx#settings": {
-      "areas": [
-        "settings"
-      ],
-      "handed": {
-        "en": 56782,
-        "nb": 58868
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "settings"
-      ]
     },
     "src/app/admin/(gated)/[store]/settings/design/page.tsx#design+designEditor+schedules": {
       "areas": [
@@ -2357,13 +2173,13 @@
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/features/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/features/page.tsx#settingsFeatures": {
       "areas": [
-        "settings"
+        "settingsFeatures"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 11536,
+        "nb": 12100
       },
       "named": {
         "en": 11523,
@@ -2468,13 +2284,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/prices/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/prices/page.tsx#settingsPrices": {
       "areas": [
-        "settings"
+        "settingsPrices"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 3307,
+        "nb": 3310
       },
       "named": {
         "en": 3286,
@@ -2483,13 +2299,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/producer-responsibility/page.tsx#settings": {
+    "src/app/admin/(gated)/[store]/settings/producer-responsibility/page.tsx#settingsProducer": {
       "areas": [
-        "settings"
+        "settingsProducer"
       ],
       "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 3865,
+        "nb": 3992
       },
       "named": {
         "en": 3852,
@@ -2573,13 +2389,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/workflows/page.tsx#notifications": {
+    "src/app/admin/(gated)/[store]/settings/workflows/page.tsx#notificationsWorkflows": {
       "areas": [
-        "notifications"
+        "notificationsWorkflows"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 6893,
+        "nb": 7290
       },
       "named": {
         "en": 6879,
@@ -2618,22 +2434,22 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/staging/page.tsx#website+builder+schedules": {
+    "src/app/admin/(gated)/[store]/staging/page.tsx#schedules+builderVersions+websiteStaging": {
       "areas": [
-        "website",
-        "builder",
-        "schedules"
+        "schedules",
+        "builderVersions",
+        "websiteStaging"
       ],
       "handed": {
-        "en": 132589,
-        "nb": 138626
+        "en": 10593,
+        "nb": 11298
       },
       "named": {
-        "en": 82648,
-        "nb": 86557
+        "en": 6133,
+        "nb": 6524
       },
       "whole": [
-        "builder"
+        "builderVersions"
       ],
       "unnamed": []
     },
@@ -2669,23 +2485,6 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/support/reports/page.tsx#support": {
-      "areas": [
-        "support"
-      ],
-      "handed": {
-        "en": 36399,
-        "nb": 38554
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "support"
-      ]
-    },
     "src/app/admin/(gated)/[store]/support/requests/page.tsx#support": {
       "areas": [
         "support"
@@ -2701,14 +2500,14 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/support/settings/page.tsx#support+settings": {
+    "src/app/admin/(gated)/[store]/support/settings/page.tsx#settingsHours+supportSettings": {
       "areas": [
-        "support",
-        "settings"
+        "settingsHours",
+        "supportSettings"
       ],
       "handed": {
-        "en": 93181,
-        "nb": 97422
+        "en": 7564,
+        "nb": 8501
       },
       "named": {
         "en": 7541,
@@ -2869,30 +2668,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/ai/dream/[runId]/page.tsx#home": {
+    "src/app/admin/(gated)/platform/ai/page.tsx#settingsAi": {
       "areas": [
-        "home"
+        "settingsAi"
       ],
       "handed": {
-        "en": 33467,
-        "nb": 35108
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "home"
-      ]
-    },
-    "src/app/admin/(gated)/platform/ai/page.tsx#settings": {
-      "areas": [
-        "settings"
-      ],
-      "handed": {
-        "en": 56782,
-        "nb": 58868
+        "en": 10583,
+        "nb": 11138
       },
       "named": {
         "en": 10566,
@@ -2980,15 +2762,15 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/docs/guide/page.tsx#platform+platformTools+websitePick": {
+    "src/app/admin/(gated)/platform/docs/guide/page.tsx#platformTools+websitePick+platformDocsGuide": {
       "areas": [
-        "platform",
         "platformTools",
-        "websitePick"
+        "websitePick",
+        "platformDocsGuide"
       ],
       "handed": {
-        "en": 82731,
-        "nb": 88249
+        "en": 31630,
+        "nb": 32640
       },
       "named": {
         "en": 7991,
@@ -3013,15 +2795,15 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
+    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocksForm+formTemplates": {
       "areas": [
         "forms",
-        "blocks",
+        "blocksForm",
         "formTemplates"
       ],
       "handed": {
-        "en": 65283,
-        "nb": 68400
+        "en": 13282,
+        "nb": 13869
       },
       "named": {
         "en": 13264,
@@ -3084,45 +2866,28 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/google-reviews/page.tsx#notifications": {
+    "src/app/admin/(gated)/platform/google-reviews/page.tsx#notificationsGoogle": {
       "areas": [
-        "notifications"
+        "notificationsGoogle"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 2125,
+        "nb": 2275
       },
       "named": {
-        "en": 1773,
-        "nb": 1889
+        "en": 2114,
+        "nb": 2264
       },
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/instagram/page.tsx#notifications": {
+    "src/app/admin/(gated)/platform/integrations/[provider]/page.tsx#notificationsIntegrations": {
       "areas": [
-        "notifications"
+        "notificationsIntegrations"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "notifications"
-      ]
-    },
-    "src/app/admin/(gated)/platform/integrations/[provider]/page.tsx#notifications": {
-      "areas": [
-        "notifications"
-      ],
-      "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 35586,
+        "nb": 36970
       },
       "named": {
         "en": 35569,
@@ -3131,13 +2896,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/integrations/api/page.tsx#notifications": {
+    "src/app/admin/(gated)/platform/integrations/api/page.tsx#notificationsTokens": {
       "areas": [
-        "notifications"
+        "notificationsTokens"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 7781,
+        "nb": 8031
       },
       "named": {
         "en": 5181,
@@ -3146,13 +2911,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/integrations/endpoints/page.tsx#notifications": {
+    "src/app/admin/(gated)/platform/integrations/endpoints/page.tsx#notificationsIntegrations": {
       "areas": [
-        "notifications"
+        "notificationsIntegrations"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 35586,
+        "nb": 36970
       },
       "named": {
         "en": 35569,
@@ -3193,14 +2958,14 @@
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/media/page.tsx#website+websitePick": {
+    "src/app/admin/(gated)/platform/media/page.tsx#websitePick+websiteMedia": {
       "areas": [
-        "website",
-        "websitePick"
+        "websitePick",
+        "websiteMedia"
       ],
       "handed": {
-        "en": 50213,
-        "nb": 52258
+        "en": 10631,
+        "nb": 11063
       },
       "named": {
         "en": 10594,
@@ -3209,14 +2974,14 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/menus/page.tsx#website+websitePick": {
+    "src/app/admin/(gated)/platform/menus/page.tsx#websitePick+websiteMenus": {
       "areas": [
-        "website",
-        "websitePick"
+        "websitePick",
+        "websiteMenus"
       ],
       "handed": {
-        "en": 50213,
-        "nb": 52258
+        "en": 4692,
+        "nb": 4796
       },
       "named": {
         "en": 4655,
@@ -3257,7 +3022,6 @@
     },
     "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS": {
       "areas": [
-        "platformSite",
         "designEditor",
         "builder",
         "blocks",
@@ -3267,31 +3031,31 @@
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "builderVersions"
       ],
       "handed": {
-        "en": 212903,
-        "nb": 222485
+        "en": 168461,
+        "nb": 176190
       },
       "named": {
-        "en": 162900,
-        "nb": 170446
+        "en": 164736,
+        "nb": 172355
       },
       "whole": [
         "builder",
         "blocks",
         "fieldsEditor",
         "storeParts",
-        "animation"
+        "animation",
+        "builderVersions"
       ],
       "unnamed": [
-        "platformSite",
         "backdrops"
       ]
     },
     "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#2": {
       "areas": [
-        "platformSite",
         "designEditor",
         "builder",
         "blocks",
@@ -3301,31 +3065,31 @@
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "builderVersions"
       ],
       "handed": {
-        "en": 212903,
-        "nb": 222485
+        "en": 168461,
+        "nb": 176190
       },
       "named": {
-        "en": 162900,
-        "nb": 170446
+        "en": 164736,
+        "nb": 172355
       },
       "whole": [
         "builder",
         "blocks",
         "fieldsEditor",
         "storeParts",
-        "animation"
+        "animation",
+        "builderVersions"
       ],
       "unnamed": [
-        "platformSite",
         "backdrops"
       ]
     },
     "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#3": {
       "areas": [
-        "platformSite",
         "designEditor",
         "builder",
         "blocks",
@@ -3335,71 +3099,66 @@
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "builderVersions"
       ],
       "handed": {
-        "en": 212903,
-        "nb": 222485
+        "en": 168461,
+        "nb": 176190
       },
       "named": {
-        "en": 162900,
-        "nb": 170446
+        "en": 164736,
+        "nb": 172355
       },
       "whole": [
         "builder",
         "blocks",
         "fieldsEditor",
         "storeParts",
-        "animation"
+        "animation",
+        "builderVersions"
       ],
       "unnamed": [
-        "platformSite",
         "backdrops"
       ]
     },
-    "src/app/admin/(gated)/platform/pages/terms-views.tsx#productsEditor+platformSite": {
+    "src/app/admin/(gated)/platform/pages/terms-views.tsx#productsEditor": {
       "areas": [
-        "productsEditor",
-        "platformSite"
+        "productsEditor"
       ],
       "handed": {
-        "en": 51905,
-        "nb": 54119
+        "en": 5627,
+        "nb": 5915
       },
       "named": {
         "en": 5567,
         "nb": 5855
       },
       "whole": [],
-      "unnamed": [
-        "platformSite"
-      ]
+      "unnamed": []
     },
-    "src/app/admin/(gated)/platform/pages/views.tsx#websiteList+platformSite": {
+    "src/app/admin/(gated)/platform/pages/views.tsx#websiteList": {
       "areas": [
-        "websiteList",
-        "platformSite"
+        "websiteList"
       ],
       "handed": {
-        "en": 49817,
-        "nb": 51830
+        "en": 3539,
+        "nb": 3626
       },
       "named": {
         "en": 2773,
         "nb": 2883
       },
       "whole": [],
-      "unnamed": [
-        "platformSite"
-      ]
+      "unnamed": []
     },
-    "src/app/admin/(gated)/platform/plan-reminders/reminder-form.tsx#platform": {
+    "src/app/admin/(gated)/platform/plan-reminders/reminder-form.tsx#platformReminders": {
       "areas": [
-        "platform"
+        "platformReminders"
       ],
       "handed": {
-        "en": 52962,
-        "nb": 57598
+        "en": 1829,
+        "nb": 1913
       },
       "named": {
         "en": 1810,
@@ -3440,15 +3199,14 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/site-design/[install]/page.tsx#design+designEditor+platformSite": {
+    "src/app/admin/(gated)/platform/site-design/[install]/page.tsx#design+designEditor": {
       "areas": [
         "design",
-        "designEditor",
-        "platformSite"
+        "designEditor"
       ],
       "handed": {
-        "en": 74535,
-        "nb": 78505
+        "en": 28257,
+        "nb": 30301
       },
       "named": {
         "en": 26245,
@@ -3457,28 +3215,7 @@
       "whole": [
         "design"
       ],
-      "unnamed": [
-        "platformSite"
-      ]
-    },
-    "src/app/admin/(gated)/platform/site-design/page.tsx#design+platformSite": {
-      "areas": [
-        "design",
-        "platformSite"
-      ],
-      "handed": {
-        "en": 71482,
-        "nb": 75136
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "design",
-        "platformSite"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/platform/support/page.tsx#support": {
       "areas": [
@@ -3512,31 +3249,14 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/support/reports/page.tsx#support": {
+    "src/app/admin/(gated)/platform/support/settings/page.tsx#settingsHours+supportSettings": {
       "areas": [
-        "support"
+        "settingsHours",
+        "supportSettings"
       ],
       "handed": {
-        "en": 36399,
-        "nb": 38554
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "support"
-      ]
-    },
-    "src/app/admin/(gated)/platform/support/settings/page.tsx#support+settings": {
-      "areas": [
-        "support",
-        "settings"
-      ],
-      "handed": {
-        "en": 93181,
-        "nb": 97422
+        "en": 7564,
+        "nb": 8501
       },
       "named": {
         "en": 7541,
@@ -3544,23 +3264,6 @@
       },
       "whole": [],
       "unnamed": []
-    },
-    "src/app/admin/(gated)/platform/support/stores/page.tsx#support": {
-      "areas": [
-        "support"
-      ],
-      "handed": {
-        "en": 36399,
-        "nb": 38554
-      },
-      "named": {
-        "en": 0,
-        "nb": 0
-      },
-      "whole": [],
-      "unnamed": [
-        "support"
-      ]
     },
     "src/app/admin/(gated)/platform/support/widgets/[id]/page.tsx#support+designEditor": {
       "areas": [
@@ -3593,9 +3296,8 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/themes/[presetId]/shell.tsx#platformSite+designEditor+builder+blocks+fieldsEditor+productsEditor+storeParts+backdrops+animation+builderText+websitePick+design": {
+    "src/app/admin/(gated)/platform/themes/[presetId]/shell.tsx#designEditor+builder+blocks+fieldsEditor+productsEditor+storeParts+backdrops+animation+builderText+websitePick+builderVersions+platformSite+design": {
       "areas": [
-        "platformSite",
         "designEditor",
         "builder",
         "blocks",
@@ -3606,11 +3308,13 @@
         "animation",
         "builderText",
         "websitePick",
+        "builderVersions",
+        "platformSite",
         "design"
       ],
       "handed": {
-        "en": 238107,
-        "nb": 249417
+        "en": 239943,
+        "nb": 251326
       },
       "named": {
         "en": 0,
@@ -3618,7 +3322,6 @@
       },
       "whole": [],
       "unnamed": [
-        "platformSite",
         "designEditor",
         "builder",
         "blocks",
@@ -3629,6 +3332,8 @@
         "animation",
         "builderText",
         "websitePick",
+        "builderVersions",
+        "platformSite",
         "design"
       ]
     },
@@ -3647,13 +3352,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/workflows/page.tsx#notifications": {
+    "src/app/admin/(gated)/platform/workflows/page.tsx#notificationsWorkflows": {
       "areas": [
-        "notifications"
+        "notificationsWorkflows"
       ],
       "handed": {
-        "en": 80417,
-        "nb": 84006
+        "en": 6893,
+        "nb": 7290
       },
       "named": {
         "en": 6879,
@@ -3770,22 +3475,24 @@
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "builderVersions"
       ],
       "handed": {
-        "en": 169647,
-        "nb": 177509
+        "en": 171483,
+        "nb": 179418
       },
       "named": {
-        "en": 165882,
-        "nb": 173634
+        "en": 167718,
+        "nb": 175543
       },
       "whole": [
         "builder",
         "blocks",
         "fieldsEditor",
         "storeParts",
-        "animation"
+        "animation",
+        "builderVersions"
       ],
       "unnamed": [
         "backdrops"

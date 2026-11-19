@@ -87,7 +87,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["inventory", "customers"])}>
+    <AdminTextScope texts={adminTexts(lang, ["customersStaff", "inventoryImport"])}>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={shared.job.file}>
         <span className="font-medium break-all">{job.inputName ?? adminText(lang, "customers").staff.import.job.title}</span>
         <span className="text-muted">{fillWords(shared.job.uploaded, { when: momentIn(job.createdAt, store.timeZone, ADMIN_LANG_FACTS[lang].locale) })}</span>

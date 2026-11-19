@@ -20,7 +20,7 @@ export default async function NewStaffPage({ params }: PageProps<"/admin/[store]
   const lang = adminLangOf(current.account.adminLocale);
   const t = adminText(lang, "bookings");
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsHours"])}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/bookings/staff`, label: t.staff.title }} title={t.staff.add} />
       <StaffForm staff={null} words={t.staffForm} action={saveStaffAction.bind(null, store.slug, null)} />

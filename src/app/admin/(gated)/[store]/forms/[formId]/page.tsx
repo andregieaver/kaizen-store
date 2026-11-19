@@ -43,7 +43,7 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
   const names = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
   const languages = langs.slice(1).map((code) => ({ code, name: names.of(code) ?? code }));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms", "blocks", "formTemplates"])}>
+    <AdminTextScope texts={adminTexts(lang, ["forms", "blocksForm", "formTemplates"])}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: w.title }}

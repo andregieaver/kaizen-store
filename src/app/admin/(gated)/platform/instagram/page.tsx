@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AdminAreas } from "@/components/admin/admin-areas";
 import { InstagramSettings, instagramReturned } from "@/components/admin/instagram-settings";
 import { PageHeader } from "@/components/admin/ui";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
@@ -19,7 +18,7 @@ export default async function PlatformInstagramPage({ searchParams }: PageProps<
   const lang = adminLangOf(admin.adminLocale);
   const w = adminText(lang, "notifications").instagram;
   return (
-    <AdminAreas areas={["notifications"]}>
+    <>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={w.description} />
         <InstagramSettings
@@ -34,6 +33,6 @@ export default async function PlatformInstagramPage({ searchParams }: PageProps<
           disconnect={disconnectPlatformInstagramAction}
         />
       </div>
-    </AdminAreas>
+    </>
   );
 }

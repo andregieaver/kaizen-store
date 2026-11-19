@@ -67,7 +67,7 @@ export function ReminderEditor({
   purpose?: "cart" | "plan";
 }) {
   const router = useRouter();
-  const w = useAdminText("platform").reminderEditor;
+  const w = useAdminText("platformReminders").reminderEditor;
   const id = useId();
   const start = split(initial.delayMinutes);
   const [amount, setAmount] = useState(start.amount);

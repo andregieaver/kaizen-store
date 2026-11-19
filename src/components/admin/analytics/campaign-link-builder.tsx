@@ -20,7 +20,7 @@ const label = "flex flex-col gap-1 text-sm";
  * channel the visit will count in. Only the store's own addresses (`origins`). Nothing is saved.
  */
 export function CampaignLinkBuilder({ origins, start }: { origins: string[]; start: string }) {
-  const w = useAdminText("reports");
+  const w = useAdminText("reportsCampaigns");
   const c = w.campaigns;
   const [address, setAddress] = useState(start);
   const [source, setSource] = useState("");
@@ -81,7 +81,7 @@ export function CampaignLinkBuilder({ origins, start }: { origins: string[]; sta
 
 /** The spend import: a CSV file with day, channel, campaign and amount. */
 export function SpendImportForm({ action, currency }: { action: FormAction; currency: string }) {
-  const c = useAdminText("reports").campaigns;
+  const c = useAdminText("reportsCampaigns").campaigns;
   return (
     <ActionForm action={action} className="flex flex-col gap-2 rounded-panel border border-line p-4">
       <h3 className="text-body-strong text-ink">{c.importTitle}</h3>

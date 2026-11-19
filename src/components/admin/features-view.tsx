@@ -29,7 +29,7 @@ export type FeaturesViewProps = {
  * only. Drawn in the admin's semantic tokens (D149), full width, with large targets for a phone.
  */
 export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: FeaturesViewProps) {
-  const w = useAdminText("settings").features;
+  const w = useAdminText("settingsFeatures").features;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -74,7 +74,7 @@ type ItemProps = {
 };
 
 function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) {
-  const w = useAdminText("settings").features;
+  const w = useAdminText("settingsFeatures").features;
   const [confirming, setConfirming] = useState(false);
   // Round 34 (D708): on a phone what a feature does waits behind a small i.
   const [about, setAbout] = useState(false);
@@ -202,7 +202,7 @@ type PanelProps = {
 
 /** The confirmation under a feature being switched off: what disappears, then what blocks it (with links, and no way on) or what to confirm. */
 export function OffPanel({ id, row, base, blockers, warnings, pending, problems, onConfirm, onCancel }: PanelProps) {
-  const w = useAdminText("settings").features;
+  const w = useAdminText("settingsFeatures").features;
   const blocked = blockers.length > 0;
   return (
     <div id={id} role="region" aria-label={fillWords(w.switchOffRegion, { label: row.label })} className="flex flex-col gap-3 rounded-md border border-line bg-card p-4 text-sm">

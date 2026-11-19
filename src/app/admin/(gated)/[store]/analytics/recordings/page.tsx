@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { RecordingsList } from "@/components/admin/analytics/recordings-view";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 import { formatCount } from "@/lib/analytics-core";
 import { HEAT_DEVICES, type HeatDevice } from "@/lib/page-heat";
 import { analyticsContext } from "@/server/analytics-context";
@@ -51,7 +50,7 @@ export default async function RecordingsPage({ params, searchParams }: PageProps
   const experimentWords = adminText(ctx.lang, "experiments");
   const versions = tests.flatMap((t) => t.versions.map((v) => ({ tag: `${t.id}:${v.key}`, label: `${t.name}: ${variantNameText(v.name, experimentWords)}` })));
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
+    <>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
@@ -83,6 +82,6 @@ export default async function RecordingsPage({ params, searchParams }: PageProps
           versions={versions}
         />
       </div>
-    </AdminTextScope>
+    </>
   );
 }

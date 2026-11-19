@@ -41,7 +41,7 @@ const SIGNAL = { delivered: "positive", pending: "warning", failed: "danger" } a
 
 /** A secret shown once (D354), with a copy button; it is gone from the page when the person is done. */
 function SecretOnce({ secret, onDone }: { secret: string; onDone: () => void }) {
-  const w = useAdminText("notifications").integrations.endpoints;
+  const w = useAdminText("notificationsIntegrations").integrations.endpoints;
   const [copied, setCopied] = useState(false);
   return (
     <div role="status" className="flex flex-col gap-2 rounded-panel border border-warning-line bg-warning-soft p-4 text-sm">
@@ -65,7 +65,7 @@ function SecretOnce({ secret, onDone }: { secret: string; onDone: () => void }) 
 }
 
 function EndpointFields({ topics, chosen, name = "", hint }: { topics: Topic[]; chosen: ReadonlySet<string>; name?: string; hint?: string }) {
-  const w = useAdminText("notifications").integrations.endpoints;
+  const w = useAdminText("notificationsIntegrations").integrations.endpoints;
   // Round 33 (D707): on a phone the events are one row saying how many are chosen and which, opened to the list.
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(topics.filter((topic) => chosen.has(topic.id)).map((topic) => topic.id)));
   const names = topics.filter((topic) => picked.has(topic.id)).map((topic) => topic.label);
@@ -120,7 +120,7 @@ function EndpointFields({ topics, chosen, name = "", hint }: { topics: Topic[]; 
 
 /** Adds an endpoint and shows its secret once. */
 export function AddEndpoint({ topics, defaults, add }: { topics: Topic[]; defaults: string[]; add: EndpointActions["add"] }) {
-  const w = useAdminText("notifications").integrations.endpoints;
+  const w = useAdminText("notificationsIntegrations").integrations.endpoints;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
@@ -159,7 +159,7 @@ export function AddEndpoint({ topics, defaults, add }: { topics: Topic[]; defaul
 
 /** One endpoint: its state, its topics, its actions and its log. */
 export function EndpointCard({ endpoint, topics, owner, actions }: { endpoint: EndpointView; topics: Topic[]; owner: boolean; actions: EndpointActions }) {
-  const all = useAdminText("notifications").integrations;
+  const all = useAdminText("notificationsIntegrations").integrations;
   const w = all.endpoints;
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);

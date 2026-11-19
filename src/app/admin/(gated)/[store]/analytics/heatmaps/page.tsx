@@ -44,7 +44,7 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
   const words = adminText(ctx.lang, "heatmaps");
   const page = one(query.page);
   const scope = (children: React.ReactNode) => (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
       <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
         <div className="flex flex-col gap-8">{children}</div>
       </ExportScope>

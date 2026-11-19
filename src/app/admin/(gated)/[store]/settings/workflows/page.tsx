@@ -74,7 +74,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
       : Object.fromEntries((await listProductChoices(store.id, store.markets[0]?.ownLocale ?? "en-GB")).filter((p) => productIds.has(p.id)).map((p) => [p.id, p.title]));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsWorkflows"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         {moved.length > 0 && (

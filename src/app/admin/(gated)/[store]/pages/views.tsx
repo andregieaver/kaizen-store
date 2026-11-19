@@ -177,7 +177,16 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         </div>
       ) : (
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <PageHeader title={tw.list} description={tw.intro} />
+          <PageHeader title={tw.list} description={<>
+              {type === "header" || type === "footer" ? (
+                <>
+                  <span className="sm:hidden">{site.list.phoneIntro[type]}</span>
+                  <span className="max-sm:hidden">{tw.intro}</span>
+                </>
+              ) : (
+                tw.intro
+              )}
+            </>} />
           <div className="flex flex-wrap gap-2">
             {!LAYOUT_TYPES.includes(type) && (
               <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
@@ -242,7 +251,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           />
         </>
       ) : pages.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS} max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none`}>
           {tw.none}
         </p>
       ) : type === "product_layout" ? (

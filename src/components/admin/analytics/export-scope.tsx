@@ -49,7 +49,7 @@ export type LeftOut = { orders: number; currencies: readonly string[] };
 /** One table's download: the label repeats what the page leaves out (a currency with no rate), so the file never states more than the page does. */
 export function ExportButton({ exportId, leftOut }: { exportId: string; leftOut?: LeftOut | null }) {
   const scope = useContext(ExportContext);
-  const w = useAdminText("analytics").exportButton;
+  const w = useAdminText("analyticsExport").exportButton;
   if (!scope || !scope.canExport || (OWNER_ONLY_TABLES.has(exportId) && !scope.owner)) return null;
   const label = downloadLabel(leftOut ?? { orders: 0, currencies: [] }, w);
   const caption = scope.captions?.[exportId] ?? ANALYTICS_TABLES[exportId]?.caption;

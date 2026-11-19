@@ -37,7 +37,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
   await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
-    <AdminAreas areas={["website", "websitePick"]}>
+    <AdminAreas areas={["websitePick", "websiteMedia"]}>
     <>
       <PageHeader
         title={w.misc.media.title}

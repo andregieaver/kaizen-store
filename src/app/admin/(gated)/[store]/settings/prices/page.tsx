@@ -32,7 +32,7 @@ export default async function PriceDisplayPage({ params }: PageProps<"/admin/[st
   const languageNames = new Intl.DisplayNames([names], { type: "language" });
   const home = store.markets[0];
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["settingsPrices"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         <PriceDisplayForm

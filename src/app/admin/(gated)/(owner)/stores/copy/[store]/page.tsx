@@ -52,7 +52,7 @@ export default async function DuplicateStorePage({
       </div>
       {result?.ok ? (
         <AdminTextScope
-          texts={adminTexts(lang, ["platform"])}
+          texts={adminTexts(lang, ["platformCopy"])}
         >
           <StoreCopyWizard
             choices={result.choices}

@@ -80,7 +80,7 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
   const sw = w.schedule;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics", "customReports"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
       <div className="flex flex-col gap-8">
         <PageHeader back={{ href: `${ctx.base}/analytics/reports`, label: w.page.title }} title={title} description={description} />
 

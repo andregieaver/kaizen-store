@@ -46,7 +46,7 @@ export function MakeApiToken({
   /** Round 27 (D700): start from the ready kinds of token (a store's); Choose yourself shows every scope. */
   kinds?: boolean;
 }) {
-  const w = useAdminText("notifications").apiTokens;
+  const w = useAdminText("notificationsTokens").apiTokens;
   const wordsOf = (scope: string) => scopeWords?.[scope] ?? w.scopeWords[scope] ?? scope;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
@@ -157,7 +157,7 @@ export function MakeApiToken({
 
 /** Revokes one token after asking. */
 export function RevokeApiToken({ name, revoke }: { name: string; revoke: () => Async }) {
-  const w = useAdminText("notifications").apiTokens;
+  const w = useAdminText("notificationsTokens").apiTokens;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   return (

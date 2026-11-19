@@ -10,7 +10,7 @@ const AUDIENCES: readonly StoreAudience[] = ["consumers", "businesses", "both"];
 
 /** Who the store sells to (B2B), and for stores selling to both, whether first-time visitors are asked. */
 export function AudienceFields({ audience, businessPopup }: { audience: StoreAudience; businessPopup: boolean }) {
-  const w = useAdminText("settings").company.audience;
+  const w = useAdminText("settingsCompany").company.audience;
   const [chosen, setChosen] = useState(audience);
   return (
     <>

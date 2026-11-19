@@ -93,7 +93,7 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
         </Card>
       )}
 
-      <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+      <AdminTextScope texts={adminTexts(lang, ["settingsProducer"])}>
         <div className={registrations.length === 0 ? "max-sm:hidden" : ""}>
         <Card title={w.listTitle}>
           {registrations.length === 0 ? (

@@ -27,7 +27,14 @@ export default async function DraftsPage({ params, searchParams }: Props) {
   const w = adminText(adminLangOf(member.account.adminLocale), "drafts").pages;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/orders`, label: w.orders }} title={w.listTitle} description={w.listDescription} />
+      <PageHeader back={{ href: `/admin/${store.slug}/orders`, label: w.orders }} title={w.listTitle}
+        description={
+          <>
+            <span className="sm:hidden">{w.phoneLead}</span>
+            <span className="max-sm:hidden">{w.listDescription}</span>
+          </>
+        }
+      />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-card" />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>

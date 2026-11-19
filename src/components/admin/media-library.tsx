@@ -133,7 +133,7 @@ export function MediaLibrary({
   /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own library: when each file was added, on that clock (D812). */
   timeZone: string;
 }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const open = items.find((item) => item.id === openId) ?? null;
@@ -429,7 +429,7 @@ export function MediaLibrary({
 
 /** The files as a list, a row each with its details, alt text and uses; a row's name opens it. */
 function FileList({ items, onOpen, chosen, onPick, timeZone }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void; timeZone: string }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const lang = useAdminLang();
   const cell = "px-3 py-2 align-middle";
   return (
@@ -565,7 +565,7 @@ function Details({
   onClose: () => void;
   onDeleted: () => void;
 }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const lang = useAdminLang();
   const id = useId();
   const [confirming, setConfirming] = useState(false);
@@ -700,7 +700,7 @@ export type PictureTools = {
  * picture in the library, which opens; this one stays as it is. Without a model that edits pictures it says so, with the way to the settings.
  */
 function EditWithAi({ item, pictures, onOpen }: { item: MediaItem; pictures: PictureTools; onOpen: (id: string) => void }) {
-  const w = useAdminText("website").media.edit;
+  const w = useAdminText("websiteMedia").media.edit;
   const id = useId();
   const [action, setAction] = useState<EditAction>("remove_background");
   const [brief, setBrief] = useState("");
@@ -808,7 +808,7 @@ function outcomeWords(outcome: CompressOutcome, w: Words): string {
  * this browser; anything that keeps it as it is says why.
  */
 function CompressOne({ item, compress, onCompressed }: { item: MediaItem; compress: CompressActions; onCompressed: () => void }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const id = useId();
   const plan = compressPlan(item);
   const [state, setState] = useState<{ busy: string | null; said: string | null; failed: boolean }>({ busy: null, said: null, failed: false });
@@ -849,7 +849,7 @@ function CompressOne({ item, compress, onCompressed }: { item: MediaItem; compre
  * (each takes a few seconds; a video longer), with what was saved so far and a Stop.
  */
 function CompressAll({ waiting, compress, onChanged }: { waiting: number; compress: CompressActions; onChanged: () => void }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ done: number; of: number; saved: number; kept: number; now: string | null } | null>(null);
   const stop = useRef(false);
@@ -913,7 +913,7 @@ function CompressAll({ waiting, compress, onChanged }: { waiting: number; compre
  * `BULK_AT_ONCE`, with the progress, and stops at the first request that fails.
  */
 function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: MediaItem[]; chosenCount: number; actions: MediaActions; onClose: () => void; onDone: () => void }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
@@ -994,7 +994,7 @@ function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: M
 
 /** Where a file is used, each with a link to change it there and, while visitors see it, its address on the site (D89). */
 function Uses({ item }: { item: MediaItem }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   if (item.uses.length === 0) return <p className="text-sm text-muted">{w.notUsedAnywhere}</p>;
   return (
     <ul className="flex flex-col gap-2 text-sm">
@@ -1036,7 +1036,7 @@ function AltTextForm({
   altAi: boolean;
   actions: MediaActions;
 }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const router = useRouter();
   const id = useId();
   const main = languages[0]?.locale ?? "";
@@ -1149,7 +1149,7 @@ function AltTexts({
   writeAlts: MediaActions["writeAlts"];
   onChanged: () => void;
 }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const [rewrite, setRewrite] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ written: number; failed: number; remaining: number; problem: string | null } | null>(null);
@@ -1230,7 +1230,7 @@ type Job = { key: string; name: string; state: "waiting" | "uploading" | "done" 
  * what that saved, then uploaded; videos straight to Storage.
  */
 function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; startVideo: StartVideo | null; onDone: () => void }) {
-  const w = useAdminText("website").media;
+  const w = useAdminText("websiteMedia").media;
   const ui = useAdminText("common").ui;
   const inputId = useId();
   const [jobs, setJobs] = useState<Job[]>([]);

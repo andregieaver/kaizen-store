@@ -17,7 +17,7 @@ export default async function PlatformGoogleReviewsPage() {
   const { w, lang } = await platformSiteWords();
   const settings = await getGoogleSettings(null);
   return (
-    <AdminAreas areas={["notifications"]}>
+    <AdminAreas areas={["notificationsGoogle"]}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.misc.googleReviews.title}

@@ -21,7 +21,7 @@ export default async function StoreGoogleReviewsPage({ params }: PageProps<"/adm
   const w = adminText(lang, "notifications").google;
   const settings = await getGoogleSettings(store.id);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsGoogle"])}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/integrations`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       {memberCan(current, "owner") ? (

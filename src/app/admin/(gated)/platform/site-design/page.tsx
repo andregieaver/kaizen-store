@@ -7,10 +7,8 @@ import { requirePlatformReader } from "@/server/auth";
 import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { THEME_UPDATE_KEEP_DAYS, listOfferedDesigns, platformThemeUpdates } from "@/server/design-presets";
 import { listPlatformInstalls } from "@/server/platform-theme-installs";
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { adminTexts } from "@/lib/admin-text";
 import { platformSiteWords } from "@/server/platform-site-words";
 
 import {
@@ -37,7 +35,7 @@ export default async function PlatformThemesPage() {
   const [installs, offered, updates] = await Promise.all([listPlatformInstalls(), listOfferedDesigns(), platformThemeUpdates()]);
   const installed = new Set(installs.map((install) => install.presetId).filter(Boolean));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["design", "platformSite"])}>
+    <>
       <PageHeader title={d.title} description={d.description} />
       <Card title={d.installed}>
         <List label={d.installedList}>
@@ -121,6 +119,6 @@ export default async function PlatformThemesPage() {
           </List>
         )}
       </Card>
-    </AdminTextScope>
+    </>
   );
 }

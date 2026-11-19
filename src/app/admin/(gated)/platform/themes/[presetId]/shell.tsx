@@ -35,10 +35,10 @@ export async function DesignShell({
   const shown = shownDesignDetails(design);
   const { lang, w } = await platformSiteWords();
   const s = w.shell;
-  // The platform site's areas and the whole of `design`: the Theme tab's editor reads all of it (`theme-editor.tsx`), the page editor's
-  // cut (`designEditor`) is not enough there (bloat review step 2.27).
+  // The platform site's areas, its own words (`platformSite`, read by the theme's details and content tabs) and the whole of `design`:
+  // the Theme tab's editor reads all of it (`theme-editor.tsx`), the page editor's cut (`designEditor`) is not enough there (step 2.27).
   return (
-    <AdminTextScope texts={adminTexts(lang, [...PLATFORM_SITE_AREAS, "design"])}>
+    <AdminTextScope texts={adminTexts(lang, [...PLATFORM_SITE_AREAS, "platformSite", "design"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: facts.archivedAt ? "/admin/platform/themes?show=archived" : "/admin/platform/themes", label: s.back }}

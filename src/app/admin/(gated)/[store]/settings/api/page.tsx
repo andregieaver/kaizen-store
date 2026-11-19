@@ -66,7 +66,7 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const row = { change: w.phoneOpen, done: w.phoneClose, flat: true } as const;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsTokens"])}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

@@ -93,7 +93,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const chip = "rounded-full border border-line px-3 py-1 text-sm";
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["bookings", "orders"])}>
+    <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader title={w.title} description={fillWords(w.weekOf, { day: longDay.format(noon(monday)), zone: tz.replace("_", " ") })} />

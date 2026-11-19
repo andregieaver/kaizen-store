@@ -58,7 +58,7 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
   ) : undefined;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics", "finance"])}>
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader

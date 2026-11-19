@@ -130,7 +130,7 @@ export function WorkflowEditor({
   /** The triggers this store offers (D748: a paid extension's events only while the account has it); not given, every one. */
   offeredTriggers?: readonly string[];
 }) {
-  const w = useAdminText("notifications").workflows;
+  const w = useAdminText("notificationsWorkflows").workflows;
   const kit = kitOf(scope);
   const triggers = offeredTriggers ? kit.triggers.filter((t) => offeredTriggers.includes(t) || t === start?.trigger) : kit.triggers;
   const [pending, run] = useTransition();
@@ -344,7 +344,7 @@ export function NewWorkflow(props: {
   segments?: SegmentChoice[];
   offeredTriggers?: readonly string[];
 }) {
-  const w = useAdminText("notifications").workflows;
+  const w = useAdminText("notificationsWorkflows").workflows;
   const [key, setKey] = useState(0);
   const [saved, setSaved] = useState(false);
   return (
@@ -388,7 +388,7 @@ export function WorkflowCard({
   valueLabels?: Record<string, string>;
   segments?: SegmentChoice[];
 }) {
-  const w = useAdminText("notifications").workflows;
+  const w = useAdminText("notificationsWorkflows").workflows;
   const fieldOf = (key: string) => kitOf(scope).fieldsFor(flow.trigger).find((f) => f.key === key);
   const [pending, run] = useTransition();
   const [editing, setEditing] = useState(false);

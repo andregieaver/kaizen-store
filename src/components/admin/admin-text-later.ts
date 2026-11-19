@@ -13,6 +13,10 @@ import type { AdminAreaMessages, ClientArea } from "@/lib/admin-text";
  * (`window.__adminTextFallbacks`), and `e2e/signed-in/admin-text-fallbacks.spec.ts` visits the admin's screens and fails on any. The fix
  * is to hand the area down where the page is drawn, never to put the English back.
  */
+/** Some groups of an area's English, as `cut()` in `admin-text.ts` picks them. */
+const pick = <T extends object, K extends keyof T>(words: T, keys: readonly K[]): Pick<T, K> =>
+  Object.fromEntries(keys.map((key) => [key, words[key]])) as Pick<T, K>;
+
 export type LaterArea = Exclude<ClientArea, "common" | "signIn">;
 const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   domains: () => import("@/lib/admin-messages/domains.en").then((m) => m.domainsEn),
@@ -94,6 +98,30 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   blogEditor: () => import("@/lib/admin-messages/blog.en").then((m) => ({ editor: m.blogEn.editor })),
   schedulesEditor: () =>
     import("@/lib/admin-messages/schedules.en").then((m) => ({ dialog: m.schedulesEn.dialog, nouns: m.schedulesEn.nouns, share: m.schedulesEn.share })),
+  notificationsIntegrations: () => import("@/lib/admin-messages/notifications.en").then((m) => pick(m.notificationsEn, ["integrations"])),
+  notificationsGoogle: () => import("@/lib/admin-messages/notifications.en").then((m) => pick(m.notificationsEn, ["google"])),
+  notificationsTokens: () => import("@/lib/admin-messages/notifications.en").then((m) => pick(m.notificationsEn, ["apiTokens", "customApps", "storefrontTokens"])),
+  notificationsWorkflows: () => import("@/lib/admin-messages/notifications.en").then((m) => pick(m.notificationsEn, ["workflows"])),
+  settingsHours: () => import("@/lib/admin-messages/settings.en").then((m) => pick(m.settingsEn, ["hours"])),
+  settingsAi: () => import("@/lib/admin-messages/settings.en").then((m) => pick(m.settingsEn, ["ai", "common"])),
+  settingsProducer: () => import("@/lib/admin-messages/settings.en").then((m) => pick(m.settingsEn, ["producer"])),
+  settingsCompany: () => import("@/lib/admin-messages/settings.en").then((m) => pick(m.settingsEn, ["company"])),
+  settingsPriceRules: () => import("@/lib/admin-messages/settings.en").then((m) => pick(m.settingsEn, ["priceRules"])),
+  settingsFeatures: () => import("@/lib/admin-messages/settings.en").then((m) => pick(m.settingsEn, ["features"])),
+  settingsPrices: () => import("@/lib/admin-messages/settings.en").then((m) => pick(m.settingsEn, ["common", "prices"])),
+  supportSettings: () => import("@/lib/admin-messages/support.en").then((m) => pick(m.supportEn, ["settings"])),
+  analyticsExport: () => import("@/lib/admin-messages/analytics.en").then((m) => pick(m.analyticsEn, ["exportButton"])),
+  reportsCampaigns: () => import("@/lib/admin-messages/reports.en").then((m) => pick(m.reportsEn, ["campaigns", "channels"])),
+  platformCopy: () => import("@/lib/admin-messages/platform.en").then((m) => pick(m.platformEn, ["copyWizard", "copyProgress"])),
+  platformDocsGuide: () => import("@/lib/admin-messages/platform.en").then((m) => pick(m.platformEn, ["docsGuide"])),
+  platformReminders: () => import("@/lib/admin-messages/platform.en").then((m) => pick(m.platformEn, ["reminderEditor"])),
+  builderVersions: () => import("@/lib/admin-messages/builder.en").then((m) => pick(m.builderEn, ["differences", "blockNames"])),
+  websiteStaging: () => import("@/lib/admin-messages/website.en").then((m) => pick(m.websiteEn, ["staging"])),
+  websiteMedia: () => import("@/lib/admin-messages/website.en").then((m) => pick(m.websiteEn, ["media"])),
+  websiteMenus: () => import("@/lib/admin-messages/website.en").then((m) => pick(m.websiteEn, ["menus"])),
+  inventoryImport: () => import("@/lib/admin-messages/inventory.en").then((m) => pick(m.inventoryEn, ["import"])),
+  customersStaff: () => import("@/lib/admin-messages/customers.en").then((m) => pick(m.customersEn, ["staff"])),
+  blocksForm: () => import("@/lib/admin-messages/blocks.en").then((m) => pick(m.blocksEn, ["form", "lists"])),
 };
 
 /** A fetch React can read with `use()`; one that is already settled (`settledEnglish()`) is read at once. */

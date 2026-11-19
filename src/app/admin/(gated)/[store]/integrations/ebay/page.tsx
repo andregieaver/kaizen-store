@@ -76,7 +76,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const setCount = ["fulfillmentPolicyId", "paymentPolicyId", "returnPolicyId", "merchantLocationKey", "categoryId"].filter((k) => (settings[k] ?? "").trim() !== "").length;
   const market = EBAY_MARKETPLACES[(settings.marketplace ?? "EBAY_DE") as keyof typeof EBAY_MARKETPLACES]?.name ?? settings.marketplace;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
       <div className="flex flex-col gap-6">
         <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-sm font-medium">{connection.state === "connected" ? w.connected : w.refused}</span>

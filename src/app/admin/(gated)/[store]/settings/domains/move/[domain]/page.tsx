@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { AdminLink as Link } from "@/components/admin/ui/link";
+import { ChevronRight } from "lucide-react";
 
 import { DomainMoveSteps } from "@/components/admin/domain-move-steps";
 import { ButtonLink, PageHeader } from "@/components/admin/ui";
@@ -32,15 +34,44 @@ export default async function MoveDomainPage({ params, searchParams }: PageProps
   const here = `${base}/move/${encodeURIComponent(apex)}`;
   const date = (iso: string | null) => (iso ? adminDate(member.store, iso, "long", lang) : null);
 
-  const header = <PageHeader back={{ href: base, label: words.back }} title={fillWords(words.title, { domain: apex })} description={words.intro} />;
+  const header = (
+    <PageHeader
+      back={{ href: base, label: words.back }} title={fillWords(words.title, { domain: apex })}
+      description={
+        <>
+          <span className="sm:hidden">{words.phone.lead}</span>
+          <span className="max-sm:hidden">{words.intro}</span>
+        </>
+      }
+    />
+  );
+  // Round 60 (D820): on a phone the choices are rows of one card that wrap, each saying what it involves; from sm up the buttons as before.
   const choices = (
-    <nav className="flex flex-wrap gap-2" aria-label={words.open}>
+    <>
+    <nav className="flex flex-col overflow-hidden rounded-panel bg-card sm:hidden" aria-label={words.open}>
+      {GOALS.map((g) => (
+        <Link
+          key={g}
+          href={`${here}?goal=${g}`}
+          aria-current={g === goal ? "page" : undefined}
+          className={`flex min-h-14 items-center justify-between gap-3 border-line px-4 py-2 [&:not(:last-child)]:border-b ${g === goal ? "bg-sunken" : ""}`}
+        >
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-body text-ink">{words.goals[g]}</span>
+            <span className="text-caption text-ink-2">{words.phone.subs[g]}</span>
+          </span>
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-2" />
+        </Link>
+      ))}
+    </nav>
+    <nav className="flex flex-wrap gap-2 max-sm:hidden" aria-label={words.open}>
       {GOALS.map((g) => (
         <ButtonLink key={g} href={`${here}?goal=${g}`} kind={g === goal ? "strong" : "secondary"} aria-current={g === goal ? "page" : undefined}>
           {words.goals[g]}
         </ButtonLink>
       ))}
     </nav>
+    </>
   );
   if (!goal) {
     return (

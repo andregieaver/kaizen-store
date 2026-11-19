@@ -41,8 +41,8 @@ export function CustomerUpload({
   words?: Pick<ImportWords, "fileLabel" | "hint"> & { phoneHint?: string };
 }) {
   const router = useRouter();
-  const w = useAdminText("inventory").import.upload;
-  const customers = useAdminText("customers").staff.import;
+  const w = useAdminText("inventoryImport").import.upload;
+  const customers = useAdminText("customersStaff").staff.import;
   const own = words ?? customers;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const input = useRef<HTMLInputElement>(null);
@@ -108,7 +108,7 @@ export function CustomerUpload({
 
 /** The dry run's button: *Check the file*, or *Check the file again* after a check. Nothing about anyone is written. */
 export function CustomerCheck({ check, checked }: { check: () => Promise<Step>; checked: boolean }) {
-  const w = useAdminText("inventory").import.check;
+  const w = useAdminText("inventoryImport").import.check;
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
@@ -149,8 +149,8 @@ export function CustomerImportApply({
   cancel: () => Promise<Step>;
   words?: Pick<ImportWords, "ready" | "counts" | "skippedRows" | "confirm">;
 }) {
-  const shared = useAdminText("inventory").import.apply;
-  const customers = useAdminText("customers").staff.import;
+  const shared = useAdminText("inventoryImport").import.apply;
+  const customers = useAdminText("customersStaff").staff.import;
   const w = words ?? customers;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const n = (value: number) => numberIn(value, locale);

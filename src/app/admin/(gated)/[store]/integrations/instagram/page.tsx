@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { InstagramSettings, instagramReturned } from "@/components/admin/instagram-settings";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 import { instagramAppOn, instagramStatus } from "@/server/instagram";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -20,7 +19,7 @@ export default async function StoreInstagramPage({ params, searchParams }: PageP
   const w = adminText(lang, "notifications").instagram;
   const status = await instagramStatus(store.id);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `/admin/${store.slug}/integrations`, label: w.back }} title={w.title} description={<>{w.description}</>} />
         <InstagramSettings
@@ -35,6 +34,6 @@ export default async function StoreInstagramPage({ params, searchParams }: PageP
           timeZone={store.timeZone}
         />
       </div>
-    </AdminTextScope>
+    </>
   );
 }

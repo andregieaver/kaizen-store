@@ -55,7 +55,7 @@ export default async function PlatformWorkflowsPage() {
   const endpointChoices = endpoints.map((e) => ({ id: e.id, name: e.name }));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsWorkflows"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{own.workflows.description}</span></>} />
         {/* Round 49 (D762), as the store's page: on a phone the workflows come first and a new one is a row under them. */}

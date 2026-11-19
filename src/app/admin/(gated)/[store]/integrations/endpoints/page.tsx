@@ -76,7 +76,7 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
       <div className="flex flex-col gap-6">
         <div>
           <Link href={`/admin/${slug}/integrations`} className="text-sm underline">

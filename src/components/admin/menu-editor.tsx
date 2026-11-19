@@ -122,7 +122,7 @@ export function MenuEditor({
   /** Uploads a link's picture (D87); null where uploads are not set up. */
   upload: Upload | null;
 }) {
-  const w = useAdminText("website").menus;
+  const w = useAdminText("websiteMenus").menus;
   const router = useRouter();
   const [name, setName] = useState(menu.name);
   const [items, setItems] = useState<Item[]>(() => menu.items.map(keyed));
@@ -377,7 +377,7 @@ function AddItems({
   full: boolean;
   onAdd: (links: AnyMenuLink[], label?: Record<string, string>) => void;
 }) {
-  const w = useAdminText("website").menus;
+  const w = useAdminText("websiteMenus").menus;
   const targetKinds = kinds.filter((k): k is KindOption & { kind: TargetKind } => k.kind in TARGET_NOUNS);
   const own = kinds.filter((k) => !(k.kind in TARGET_NOUNS) && k.kind !== "url");
   return (
@@ -425,7 +425,7 @@ function AddSection({
   disabled: boolean;
   onAdd: (values: string[]) => void;
 }) {
-  const w = useAdminText("website").menus;
+  const w = useAdminText("websiteMenus").menus;
   const id = useId();
   const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -521,7 +521,7 @@ function CustomLink({
   disabled: boolean;
   onAdd: (url: string, text: string) => void;
 }) {
-  const w = useAdminText("website").menus;
+  const w = useAdminText("websiteMenus").menus;
   const id = useId();
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
@@ -600,7 +600,7 @@ function Structure({
   copy: MenuEditorCopy;
   upload: Upload | null;
 }) {
-  const w = useAdminText("website").menus;
+  const w = useAdminText("websiteMenus").menus;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -748,7 +748,7 @@ function MenuItemRow({
   upload: Upload | null;
   inMega: boolean;
 }) {
-  const w = useAdminText("website").menus;
+  const w = useAdminText("websiteMenus").menus;
   const id = useId();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
   const target = targetOf(item.link);
@@ -950,7 +950,7 @@ function MenuItemRow({
  */
 function CountryLabels({ label, onChange }: { label: Record<string, string>; onChange: (label: Record<string, string>) => void }) {
   const countries = useContext(MenuCountries);
-  const w = useAdminText("website").menus;
+  const w = useAdminText("websiteMenus").menus;
   if (countries.length < 2) return null;
   const own = countries.filter((c) => label[countryLabelKey(c.locale, c.code)]?.trim()).length;
   return (
