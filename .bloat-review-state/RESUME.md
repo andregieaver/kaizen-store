@@ -349,3 +349,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 19 Nov ~13: PRODUCTION FROZEN on c0d23751b: release needs agent-eval replay green; other session's AI prompt (ff3c235dc plan-extensions) + tools (1ea4c6956 D785 etc.) changed since recording 8a407b36f; pending migration account_plan_moves at head blocks quick-gate deploys. Other session is iterating (ffbcf1fd1 held signup_rate_30d out). I tried reverting ff3c235dc: prompt matched but tools still mismatch -> dropped. Owner/other session must resolve.
 - 1b3774aca run all green; release applied E4's 2 migrations then timed out.
 - 2.26 (kz-c, 6 commits, rebased) full unit test running (bash bwr1ic2er), then push.
+- 2.26 pushed 589fb73de. kz-c: 2.29 (then 2.27).
+- 2.4 + fix pushed 71d57a9a2 (cause: (shop)/@drawer/[...rest] catch-all param unknown on regeneration -> metadata held back -> truncated RSC; fix: removed catch-all, CartDrawer self-closes; render-modes hard-fails unknown params; new e2e forces redraw). Follow-ups: D-row (changes D64, D592), optimisticRouting:false may go (prefetch.spec), commit 4 (/wishlist/saved). 2.5 WIP at wip-2.5.
+- 2.4+fix pushed 97a95b1d1, CI watched bsd6wl0mo. kz-b: 2.5 (from wip-2.5) then 2.6 (a5b40f759d5c15584). kz-c 2.29 (a8d3298207ebce518), kz-d 2.31 (aa65fbaf78f417439).
