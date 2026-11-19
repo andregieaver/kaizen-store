@@ -1,5 +1,7 @@
 import "server-only";
 
+import { withPicks } from "@/lib/automations";
+import { picksFor } from "./automations";
 import { refreshBuyFacts } from "./buy-facts";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -171,7 +173,6 @@ export async function testFlow(storeId: string, id: string): Promise<FlowTest> {
   return { ok: true, person: person?.email ?? null, emails, ends };
 }
 
-/** Switches a flow on (only once its saved version is tested) or off; off stops nobody already in it. */
 /**
  * Switches a flow on (only once its saved version is tested) or off. On, a flow that does an automation's work (`replaces`, slice 3) switches
  * that automation off in the same transaction, so nobody gets both: "replaced" says it did. Off leaves the automation off.
@@ -406,9 +407,23 @@ async function moveOn(
   const held = await heldBy(run, store, now, policy, rooms);
   const key = `flow:${run.id}:${move.step.id}`;
   let outcome: "sent" | "logged" | "failed" | "suppressed" = "suppressed";
-  if (!held) {
-    const facts = await factsForEmail(store, move.step.content, run.locale, run.market_code);
-    const email = marketingEmail({ store, content: move.step.content, locale: run.locale, marketCode: run.market_code, token: run.token, facts });
+  // Products picked for this reader by code (slice 4, D653): from their latest paid order, or what they looked at; with none, no email.
+  let content = move.step.content;
+  let picked = true;
+  if (!held && move.step.picks) {
+    const kind = move.step.picks;
+    const order = await typedRow(
+      z.object({ id: col.uuid }),
+      sql`select o.id from commerce.orders o where o.store_id = ${run.store_id}::uuid and lower(o.email) = lower(${run.email})
+            and o.restricted_at is null and ${PAID} order by o.placed_at desc limit 1`,
+    );
+    const picks = order || kind === "browse" ? await picksFor(run.store_id, kind, order?.id ?? null, run.email) : [];
+    if (picks.length === 0) picked = false;
+    else content = withPicks(content, picks);
+  }
+  if (!held && picked) {
+    const facts = await factsForEmail(store, content, run.locale, run.market_code);
+    const email = marketingEmail({ store, content, locale: run.locale, marketCode: run.market_code, token: run.token, facts });
     const sent = email
       ? await sendEmail({
           storeId: run.store_id,

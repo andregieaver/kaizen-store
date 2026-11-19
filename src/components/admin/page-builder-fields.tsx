@@ -5,15 +5,15 @@ import { type Size } from "@/lib/breakpoints";
 import { type ThemeTabValue } from "@/lib/theme";
 import { rowWidthPatch } from "@/lib/theme-elements";
 import { sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
-import { MarkupInput } from "@/components/admin/markup-input";
+import { MarkupInput } from "@/components/admin/lazy/editors";
 import { carouselAnywhere, carouselAt, clearAt, inheritedAt, setAt, sizeSource, stackAt, stackPatchAt, valueAt } from "@/lib/responsive";
 import { createContext, useContext, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
 import { SETTINGS_TABS, type SettingsTab } from "@/lib/settings-memory";
 import { useRememberedScroll, useRememberedTab } from "./settings-panel-parts";
 import dynamic from "next/dynamic";
 import { Link2 } from "lucide-react";
-import { ContentGridView } from "@/components/content-grid";
-import { t } from "@/lib/i18n";
+import { ContentGridTiles } from "@/components/content-grid-tiles";
+import { useSiteWords } from "@/components/admin/site-words";
 import { PartBackground } from "@/components/page-parts";
 import { useAdminText } from "./admin-text";
 import { fillWords } from "@/lib/admin-fill";
@@ -1686,6 +1686,8 @@ export function GridPreview({ block, grid, lang }: { block: ContentGridBlock; gr
   const gw = useAdminText("builder").grid;
   const note = (text: string) => <p className="rounded-md bg-surface p-3 text-sm text-muted">{text}</p>;
   const shown = own ?? result;
+  // The grid's language, fetched on demand (never imported: the admin's scripts hold no storefront language). Hooks stay above the returns.
+  const m = useSiteWords(shown && !("problem" in shown.data) ? shown.data.lang : "en");
   if (!shown) return note(gw.finding);
   const data = shown.data;
   if ("problem" in data) return note(fillWords(gw.problem, { problem: data.problem }));
@@ -1693,7 +1695,7 @@ export function GridPreview({ block, grid, lang }: { block: ContentGridBlock; gr
   if (data.items.length === 0) {
     return note(custom ? gw.noItems : block.emptyText ? fillWords(gw.nothingShows, { text: block.emptyText }) : gw.nothing);
   }
-  const m = t(data.lang);
+  if (!m) return note(gw.finding);
   return (
     <div className={stale ? "opacity-60 transition-opacity" : undefined}>
       {/* The site's controls over a grid shoppers filter (D83), as they will look; they work on the site. */}
@@ -1705,7 +1707,7 @@ export function GridPreview({ block, grid, lang }: { block: ContentGridBlock; gr
           </span>
         </div>
       )}
-      <ContentGridView block={block} data={data} />
+      <ContentGridTiles block={block} data={data} m={m} />
     </div>
   );
 }

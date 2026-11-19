@@ -36,7 +36,7 @@ export default async function LocationsPage({ params }: Props) {
   const w = adminText(lang, "inventory").pages.locations;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead slug={store.slug} active="locations" title={w.title} intro={w.intro} lang={lang} />
+      <InventoryHead slug={store.slug} active="locations" title={w.title} intro={<><span className="sm:hidden">{adminText(lang, "inventory").phone.locationsLead}</span><span className="max-sm:hidden">{w.intro}</span></>} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>

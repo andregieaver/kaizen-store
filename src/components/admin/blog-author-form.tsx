@@ -5,6 +5,7 @@ import { useState, type ComponentProps } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { useAdminText } from "@/components/admin/admin-text";
 import { ImageUploadButton, type Upload } from "@/components/admin/image-upload";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { AUTHOR_BIO_MAX, AUTHOR_LINK_MAX, AUTHOR_NAME_MAX, type BlogAuthor } from "@/lib/blogs";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
@@ -35,32 +36,37 @@ export function BlogAuthorForm({
         {w.name}
         <input name="name" required defaultValue={author?.name ?? ""} maxLength={AUTHOR_NAME_MAX} className={input} />
       </label>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">{w.picture}</legend>
-        <div className="flex flex-wrap items-center gap-3">
-          {picture ? (
-            // eslint-disable-next-line @next/next/no-img-element -- the store's own small picture
-            <img src={picture} alt="" className="size-16 rounded-full object-cover" />
-          ) : (
-            <span className="text-caption text-muted">{w.noPicture}</span>
-          )}
-          <ImageUploadButton upload={upload} label={picture ? w.replacePicture : w.addPicture} make={false} onUploaded={(image) => setPicture(image.url)} />
-          {picture && (
-            <button type="button" onClick={() => setPicture(null)} className={button}>
-              {w.removePicture}
-            </button>
-          )}
+      {/* Round 53 (D798): on a phone only the name is open; the picture, the words and the link are one row. From `sm` up as before. */}
+      <PhoneRow inset title={w.phone.more} sub={w.phone.optional} change={w.phone.open} done={w.phone.done} defaultOpen={Boolean(author)}>
+        <div className="flex flex-col gap-4">
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium">{w.picture}</legend>
+            <div className="flex flex-wrap items-center gap-3">
+              {picture ? (
+                // eslint-disable-next-line @next/next/no-img-element -- the store's own small picture
+                <img src={picture} alt="" className="size-16 rounded-full object-cover" />
+              ) : (
+                <span className="text-caption text-muted">{w.noPicture}</span>
+              )}
+              <ImageUploadButton upload={upload} label={picture ? w.replacePicture : w.addPicture} make={false} onUploaded={(image) => setPicture(image.url)} />
+              {picture && (
+                <button type="button" onClick={() => setPicture(null)} className={button}>
+                  {w.removePicture}
+                </button>
+              )}
+            </div>
+          </fieldset>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {w.bio}
+            <textarea name="bio" rows={3} defaultValue={author?.bio ?? ""} maxLength={AUTHOR_BIO_MAX} className={`${input} py-2`} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {w.link}
+            <input name="link" defaultValue={author?.link ?? ""} maxLength={AUTHOR_LINK_MAX} className={input} inputMode="url" />
+            <span className="text-caption font-normal text-muted">{w.linkHint}</span>
+          </label>
         </div>
-      </fieldset>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        {w.bio}
-        <textarea name="bio" rows={3} defaultValue={author?.bio ?? ""} maxLength={AUTHOR_BIO_MAX} className={`${input} py-2`} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        {w.link}
-        <input name="link" defaultValue={author?.link ?? ""} maxLength={AUTHOR_LINK_MAX} className={input} inputMode="url" />
-        <span className="text-caption font-normal text-muted">{w.linkHint}</span>
-      </label>
+      </PhoneRow>
       <div className="flex flex-wrap gap-2">
         <SubmitButton>{w.save}</SubmitButton>
         {author && (

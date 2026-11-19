@@ -219,6 +219,25 @@ VALUES ('<file>.sql', '<sha256sum of the file>', 'manual');
 
 (only once the baseline has created the table).
 
+## When main is red (D803)
+
+A dozen sessions push to main at once and a run takes about 30 minutes, so the commit that broke a check is usually under several
+others when its run fails, and every later run fails with it. CI's last job, `main-health` (`scripts/main-health.mjs`), keeps one
+open GitHub issue labelled `ci-red` for the newest finished run on main. It lists the failed checks and the failing tests, and the
+commits since the last green run with the Claude session of each one. It closes itself when the newest finished run is green.
+
+- After a push, follow its run (GitHub tools: `actions_list` for `ci.yml` on main). While main is red, read the open `ci-red`
+  issue (`list_issues` with the label) before starting more work on top of it.
+- Your session is listed and a failing test touches what you changed: fixing it, or reverting your commit, is the next thing you
+  push. Say so in a comment on the issue. A budget's number rises only as its row in `docs/rules/budgets.md` says.
+- A failure that no commit in the range explains, or that passes on the next run, is a flake. Fix the test so it cannot fail that
+  way (a fixed clock passed in, a wait on the real condition), with a note on the issue. Never skip, quarantine or retry it into
+  green.
+- Before pushing a change to the storefront, the builder or a budget's subject, run the checks CI would fail it on, not only lint,
+  the type check and the unit tests. Run the spec of the area (`pnpm build`, then `pnpm exec playwright test e2e/<spec>`) and the
+  area's integration tests against a local database (`bash scripts/ensure-postgres.sh`, `export DATABASE_URL=$(pnpm -s db:clone
+  <lane> | tail -1)`, `pnpm test:int <files>`). Merge `origin/main` first, so what you test is what you push.
+
 ## The template database
 
 `scripts/db-template.mjs` builds one database with every migration and the demo seed applied, and

@@ -97,6 +97,9 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
                   <div className="min-w-0 flex-1 rounded-lg border border-line bg-card px-4 py-3 shadow-sm" aria-label={`${w.emailLabel}: ${line.subject}`}>
                     <p className="text-body-strong text-ink">{line.subject}</p>
                     {words?.text && <p className="mt-1 line-clamp-2 text-caption text-muted">{words.text}</p>}
+                    {emails.get(line.stepId)?.picks && (
+                      <p className="mt-1 text-caption text-muted">{w.picksNote[emails.get(line.stepId)?.picks ?? "cross_sell"]}</p>
+                    )}
                     {missing.length > 0 && (
                       <p className="mt-1 text-caption text-muted">
                         {/* languageFor() (D767): a reader without their language gets the store's first language, or nothing without it. */}

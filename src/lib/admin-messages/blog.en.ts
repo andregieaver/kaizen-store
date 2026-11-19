@@ -88,6 +88,13 @@ export const blogEn = {
     saved: "The author is saved.",
     remove: "Delete the author",
     removed: "The author is deleted. Their articles show the name typed on them.",
+    phone: {
+      lead: "Who writes your articles, shown under each one.",
+      more: "Picture, a few words and a link",
+      optional: "Optional",
+      open: "Open",
+      done: "Done",
+    },
     cancel: "Cancel",
     problems: {
       name_missing: "Write the author's name.",

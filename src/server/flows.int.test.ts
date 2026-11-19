@@ -25,7 +25,7 @@ let storeId: string;
 let owner: string;
 let n = 0;
 
-const email = (id: string, subject: string): FlowStep => ({
+const email = (id: string, subject: string): Extract<FlowStep, { kind: "email" }> => ({
   id,
   kind: "email",
   content: { "nb-NO": { subject, preview: "", blocks: [{ type: "paragraph", text: subject }] } },
@@ -230,5 +230,28 @@ describe("flows (D767)", () => {
     if (!welcome.ok) throw new Error(welcome.problem);
     await fl.saveFlow(storeId, owner, welcome.id, { ...welcomeSeries("nb-NO"), trigger: "order.sent", replaces: undefined });
     expect((await fl.getFlow(storeId, welcome.id))?.replaces).toBeNull();
+  });
+
+  it("skips a picked email for a reader with nothing to show, and goes on to the next step (slice 4)", async () => {
+    const tove = await subscriber(`picks-tove-${run}@example.com`);
+    await paidOrder(`picks-tove-${run}@example.com`, new Date(Date.now() - HOUR));
+    const steps: FlowStep[] = [{ ...email("together", "Passer sammen"), picks: "cross_sell" }, email("plain", "Takk")];
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Picks ${run}`, trigger: "order.sent", steps, goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    await fl.switchFlow(storeId, owner, saved.id, true);
+    const [order] = await db().execute<Row>(sql`select id from commerce.orders where store_id = ${storeId}::uuid and email = ${`picks-tove-${run}@example.com`}`);
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'order.sent', ${String(order.id)}::uuid)`);
+    await fl.enterFlows();
+    const [entered] = await db().execute<Row>(sql`select id from commerce.flow_runs where flow_id = ${saved.id}::uuid and subscriber_id = ${tove}::uuid`);
+    const later = Date.now() + 5000;
+    await fl.runFlows({ only: storeId, now: new Date(later) });
+    await fl.runFlows({ only: storeId, now: new Date(later + 1000) });
+    // Nothing was bought with the order by anyone else: no products to show, so no email; the plain one still goes.
+    expect(await stepsOf(String(entered.id))).toEqual([
+      ["together", "suppressed"],
+      ["plain", "logged"],
+    ]);
+    await fl.switchFlow(storeId, owner, saved.id, false);
   });
 });

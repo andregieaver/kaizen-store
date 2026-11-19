@@ -62,3 +62,6 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    *Part b:* six more events start a flow (`EVENT_TRIGGERS`: an order sent, a subscription started or ended, a form sent, a quote asked
    for, a signed-in customer's review), the person found by the address their subject is about (`emailOfSubject()`); Customise says what
    starts a flow and changes it with one press (a new trigger stops replacing an automation), and Your own flow starts from one email.
+   *Part c:* an email may carry products picked for each reader by code (`picks`: bought together, buy again, looked at; `picksFor()`,
+   D653, D691), from their latest paid order; with none to show it is not sent and the run goes on. Customise sets it per email; the goals
+   Sell more to buyers and Remind them to buy again (`crossSell()`, `restock()`) replace those automations. Texts (M2.7) wait for 46elks.

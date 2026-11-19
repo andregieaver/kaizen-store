@@ -32,6 +32,12 @@ export const inventoryNb: InventoryMessages = {
     addSupplierSub: "Et navn og hvor den sender fra",
     waitSub: "{minutes} min, for en rask kansellering",
     seller: "Du er selgeren: mva, fakturaer, angrerett og refusjoner er dine.",
+    locationsLead: "Hvor lageret ditt holdes. Ordrer tas fra den øverste først.",
+    pickRow: "Hvordan ordrer velger lager",
+    pickRank: "Øverst først, samlet der det går",
+    pickNearest: "Leveringslandets først",
+    addLocation: "Legg til et lager",
+    addLocationSub: "Et navn og landet",
   },
   pages: {
     list: {

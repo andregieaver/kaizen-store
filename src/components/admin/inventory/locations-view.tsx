@@ -11,6 +11,8 @@ import { deactivationIn, heldIn } from "@/lib/inventory-words";
 import type { DeactivateResult } from "@/server/inventory-locations";
 import type { LocationImpact } from "@/server/inventory";
 
+import { PhoneRow } from "../phone-row";
+
 export type LocationRowView = {
   id: string;
   name: string;
@@ -127,29 +129,112 @@ export function LocationsView({
   const confirmingRow = confirming ? rows.find((r) => r.id === confirming.id) : undefined;
   const words = confirming ? deactivationIn(confirming.impact, t, locale) : null;
 
+  // The buttons of a location's row, in the table from `sm` up and under its line on a phone (round 53, D798).
+  const actionsFor = (row: (typeof rows)[number]) => {
+    const activeRows = rows.filter((r) => r.active);
+    const at = activeRows.findIndex((r) => r.id === row.id);
+    return (
+    <span className="flex flex-wrap justify-end gap-2">
+      {canWrite && row.active && (
+        <>
+          <button type="button" disabled={pending || at <= 0} onClick={() => run(async () => void show(await tools.move(row.id, "up"), w.movedUp))} aria-label={fillWords(w.moveUpLabel, { name: row.name })} className="min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40">
+            {w.moveUp}
+          </button>
+          <button type="button" disabled={pending || at < 0 || at >= activeRows.length - 1} onClick={() => run(async () => void show(await tools.move(row.id, "down"), w.movedDown))} aria-label={fillWords(w.moveDownLabel, { name: row.name })} className="min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40">
+            {w.moveDown}
+          </button>
+        </>
+      )}
+      {canWrite && (
+        <button type="button" disabled={pending} onClick={() => setRenaming({ id: row.id, name: row.name, country: row.country })} aria-label={fillWords(w.renameLabel, { name: row.name })} className="min-h-9 rounded-pill border border-line px-2 text-xs">
+          {w.rename}
+        </button>
+      )}
+      {isOwner && row.active && (
+        <button
+          type="button"
+          disabled={pending || activeCount <= 1 || row.impact === null}
+          onClick={() => row.impact && setConfirming({ id: row.id, impact: row.impact })}
+          aria-label={fillWords(w.deactivateLabel, { name: row.name })}
+          title={activeCount <= 1 ? w.keepOne : undefined}
+          className="min-h-9 rounded-pill border border-line px-2 text-xs disabled:opacity-40"
+        >
+          {w.deactivate}
+        </button>
+      )}
+      {isOwner && row.active && (
+        <button
+          type="button"
+          disabled={pending || (row.fulfilsOnline && onlineCount <= 1)}
+          onClick={() =>
+            run(async () => void show(await tools.online(row.id, !row.fulfilsOnline), fillWords(row.fulfilsOnline ? w.onlineOffDone : w.onlineOnDone, { name: row.name })))
+          }
+          aria-label={fillWords(row.fulfilsOnline ? w.onlineOffLabel : w.onlineOnLabel, { name: row.name })}
+          className="min-h-9 rounded-pill border border-line px-2 text-xs disabled:opacity-40"
+        >
+          {row.fulfilsOnline ? w.onlineOff : w.onlineOn}
+        </button>
+      )}
+      {isOwner && !row.active && (
+        <button type="button" disabled={pending} onClick={() => reactivate(row.id)} aria-label={fillWords(w.reactivateLabel, { name: row.name })} className="min-h-9 rounded-pill border border-edge px-2 text-xs">
+          {w.reactivate}
+        </button>
+      )}
+    </span>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-4" aria-busy={pending}>
-      <p className="max-w-3xl text-sm text-muted">{w.takenFirst}</p>
-      {tools.routing && rows.filter((r) => r.active).length > 1 && (
-        <fieldset className={`${card} flex flex-col gap-2`}>
-          <legend className="text-sm font-medium">{w.routingTitle}</legend>
-          {(["rank", "nearest"] as const).map((choice) => (
-            <label key={choice} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="stock-routing"
-                value={choice}
-                defaultChecked={routing === choice}
-                disabled={pending}
-                onChange={() => run(async () => void show(await tools.routing!(choice), w.routingSaved))}
-              />
-              {choice === "rank" ? w.routingRank : w.routingNearest}
-            </label>
-          ))}
-          <p className={hint}>{w.routingHint}</p>
-        </fieldset>
-      )}
-      <div className={tableShell}>
+      {/* Round 53 (D798): on a phone how orders pick a location is a row at the end; the locations are lines. From `sm` up as before. */}
+      <div className="flex flex-col gap-4 max-sm:order-last max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow title={t.phone.pickRow} sub={routing === "nearest" ? t.phone.pickNearest : t.phone.pickRank} change={t.phone.open} done={t.phone.done} last>
+          <div className="flex flex-col gap-4">
+          <p className="max-w-3xl text-sm text-muted">{w.takenFirst}</p>
+          {tools.routing && rows.filter((r) => r.active).length > 1 && (
+            <fieldset className={`${card} flex flex-col gap-2`}>
+              <legend className="text-sm font-medium">{w.routingTitle}</legend>
+              {(["rank", "nearest"] as const).map((choice) => (
+                <label key={choice} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="stock-routing"
+                    value={choice}
+                    defaultChecked={routing === choice}
+                    disabled={pending}
+                    onChange={() => run(async () => void show(await tools.routing!(choice), w.routingSaved))}
+                  />
+                  {choice === "rank" ? w.routingRank : w.routingNearest}
+                </label>
+              ))}
+              <p className={hint}>{w.routingHint}</p>
+            </fieldset>
+          )}
+          </div>
+        </PhoneRow>
+      </div>
+      <ul className="flex flex-col overflow-hidden rounded-panel bg-card sm:hidden" aria-label={w.caption}>
+        {rows.map((row, index) => (
+          <li key={row.id} className="border-b border-line px-4 last:border-0">
+            <details className="group">
+              <summary className="flex min-h-15 cursor-pointer list-none items-center gap-3 py-2 [&::-webkit-details-marker]:hidden">
+                <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sunken text-sm tabular-nums">
+                  {row.active ? index + 1 : "-"}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-body text-ink">{row.name}</span>
+                  <span className="text-caption text-ink-2">
+                    {[countryName(row.country), row.active ? w.active : w.inactive, row.fulfilsOnline ? w.onlineYes : w.onlineNo, heldWords(row.units, row.variants)].join(" · ")}
+                  </span>
+                </span>
+                {canWrite || isOwner ? <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2 group-open:no-underline">{t.phone.change}</span> : null}
+              </summary>
+              {canWrite || isOwner ? <div className="pb-3 [&>span]:justify-start">{actionsFor(row)}</div> : null}
+            </details>
+          </li>
+        ))}
+      </ul>
+      <div className={`${tableShell} max-sm:hidden`}>
         <table className="w-full text-sm">
           <caption className="sr-only">{w.caption}</caption>
           <thead>
@@ -179,8 +264,6 @@ export function LocationsView({
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const activeRows = rows.filter((r) => r.active);
-              const at = activeRows.findIndex((r) => r.id === row.id);
               return (
                 <tr key={row.id} className="border-b border-line last:border-0">
                   <td className={`${td} tabular-nums`}>{row.active ? index + 1 : <span className={hint}>-</span>}</td>
@@ -197,53 +280,7 @@ export function LocationsView({
                     ) : null}
                   </td>
                   <td className={`${td} whitespace-nowrap text-right`}>
-                    <span className="flex flex-wrap justify-end gap-2">
-                      {canWrite && row.active && (
-                        <>
-                          <button type="button" disabled={pending || at <= 0} onClick={() => run(async () => void show(await tools.move(row.id, "up"), w.movedUp))} aria-label={fillWords(w.moveUpLabel, { name: row.name })} className="min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40">
-                            {w.moveUp}
-                          </button>
-                          <button type="button" disabled={pending || at < 0 || at >= activeRows.length - 1} onClick={() => run(async () => void show(await tools.move(row.id, "down"), w.movedDown))} aria-label={fillWords(w.moveDownLabel, { name: row.name })} className="min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40">
-                            {w.moveDown}
-                          </button>
-                        </>
-                      )}
-                      {canWrite && (
-                        <button type="button" disabled={pending} onClick={() => setRenaming({ id: row.id, name: row.name, country: row.country })} aria-label={fillWords(w.renameLabel, { name: row.name })} className="min-h-9 rounded-pill border border-line px-2 text-xs">
-                          {w.rename}
-                        </button>
-                      )}
-                      {isOwner && row.active && (
-                        <button
-                          type="button"
-                          disabled={pending || activeCount <= 1 || row.impact === null}
-                          onClick={() => row.impact && setConfirming({ id: row.id, impact: row.impact })}
-                          aria-label={fillWords(w.deactivateLabel, { name: row.name })}
-                          title={activeCount <= 1 ? w.keepOne : undefined}
-                          className="min-h-9 rounded-pill border border-line px-2 text-xs disabled:opacity-40"
-                        >
-                          {w.deactivate}
-                        </button>
-                      )}
-                      {isOwner && row.active && (
-                        <button
-                          type="button"
-                          disabled={pending || (row.fulfilsOnline && onlineCount <= 1)}
-                          onClick={() =>
-                            run(async () => void show(await tools.online(row.id, !row.fulfilsOnline), fillWords(row.fulfilsOnline ? w.onlineOffDone : w.onlineOnDone, { name: row.name })))
-                          }
-                          aria-label={fillWords(row.fulfilsOnline ? w.onlineOffLabel : w.onlineOnLabel, { name: row.name })}
-                          className="min-h-9 rounded-pill border border-line px-2 text-xs disabled:opacity-40"
-                        >
-                          {row.fulfilsOnline ? w.onlineOff : w.onlineOn}
-                        </button>
-                      )}
-                      {isOwner && !row.active && (
-                        <button type="button" disabled={pending} onClick={() => reactivate(row.id)} aria-label={fillWords(w.reactivateLabel, { name: row.name })} className="min-h-9 rounded-pill border border-edge px-2 text-xs">
-                          {w.reactivate}
-                        </button>
-                      )}
-                    </span>
+                    {actionsFor(row)}
                   </td>
                 </tr>
               );
@@ -330,40 +367,44 @@ export function LocationsView({
       )}
 
       {canWrite && (
-        <form
-          className={`${card} flex flex-wrap items-end gap-3`}
-          onSubmit={(e) => {
-            e.preventDefault();
-            add();
-          }}
-          aria-label={w.addForm}
-        >
-          <div className="flex flex-col gap-1">
-            <label htmlFor="location-name" className="text-sm font-medium">
-              {w.newLocation}
-            </label>
-            <input id="location-name" value={name} maxLength={LOCATION_NAME_MAX} onChange={(e) => setName(e.target.value)} placeholder={w.namePlaceholder} className={`${field} w-64`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="location-country" className="text-sm font-medium">
-              {w.country}
-            </label>
-            <select id="location-country" value={country} onChange={(e) => setCountry(e.target.value)} className={field}>
-              {countries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" disabled={pending || name.trim() === "" || rows.length >= LOCATIONS_MAX} className={primary}>
-            {w.add}
-          </button>
-          <p className={`${hint} w-full`}>
-            {fillWords(w.addHint, { max: LOCATIONS_MAX })}
-            {rows.length >= LOCATIONS_MAX ? w.atLimit : ""}
-          </p>
-        </form>
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+          <PhoneRow title={t.phone.addLocation} sub={t.phone.addLocationSub} change={t.phone.open} done={t.phone.done} flat last>
+            <form
+              className={`${card} flex flex-wrap items-end gap-3`}
+              onSubmit={(e) => {
+                e.preventDefault();
+                add();
+              }}
+              aria-label={w.addForm}
+            >
+              <div className="flex flex-col gap-1">
+                <label htmlFor="location-name" className="text-sm font-medium">
+                  {w.newLocation}
+                </label>
+                <input id="location-name" value={name} maxLength={LOCATION_NAME_MAX} onChange={(e) => setName(e.target.value)} placeholder={w.namePlaceholder} className={`${field} w-64`} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="location-country" className="text-sm font-medium">
+                  {w.country}
+                </label>
+                <select id="location-country" value={country} onChange={(e) => setCountry(e.target.value)} className={field}>
+                  {countries.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" disabled={pending || name.trim() === "" || rows.length >= LOCATIONS_MAX} className={primary}>
+                {w.add}
+              </button>
+              <p className={`${hint} w-full`}>
+                <span className="max-sm:hidden">{fillWords(w.addHint, { max: LOCATIONS_MAX })}</span>
+                {rows.length >= LOCATIONS_MAX ? w.atLimit : ""}
+              </p>
+            </form>
+          </PhoneRow>
+        </div>
       )}
 
       <div role="status" aria-live="polite">

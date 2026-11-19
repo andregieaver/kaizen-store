@@ -34,9 +34,9 @@ export default async function AuthorsPage({ params, searchParams }: PageProps<"/
         <PageHeader
           back={{ href: `${base}/blogs`, label: w.links.blogs }}
           title={w.authors.title}
-          description={w.authors.description}
+          description={<><span className="sm:hidden">{w.authors.phone.lead}</span><span className="max-sm:hidden">{w.authors.description}</span></>}
         />
-        <Card title={w.authors.yours}>
+        <Card title={w.authors.yours} className={authors.length === 0 ? "max-sm:p-4 max-sm:[&>header]:sr-only" : undefined}>
           {authors.length === 0 ? (
             <p className="text-sm text-muted">{w.authors.none}</p>
           ) : (

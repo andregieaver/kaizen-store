@@ -680,6 +680,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/runner-minutes.mjs >> "$GITHUB_STEP_SUMMARY"
 
+  # Who turned main red (scripts/main-health.mjs): after every check of a push to main, the newest finished run keeps one open issue
+  # labelled `ci-red` naming the failing tests and the commits (and Claude sessions) since the last green run, and closes it once green.
+  # Many sessions push at once; this is how the one whose commit broke a check hears of it. It never fails the run.
+  main-health:
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [pending, static, audit, integration, e2e, hosts, signed-in]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Keep the ci-red issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/main-health.mjs >> "$GITHUB_STEP_SUMMARY"
+
   baseline:
     if: github.event_name == 'workflow_dispatch' && inputs.baseline_through != ''
     runs-on: ubuntu-latest

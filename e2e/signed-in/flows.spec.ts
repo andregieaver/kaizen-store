@@ -185,3 +185,20 @@ test("your own flow starts from one email, and what starts it is chosen under Cu
   await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
   await page.screenshot({ path: "test-results/flow-starts-when.png", fullPage: true });
 });
+
+test("sell more to buyers shows products picked for each reader, chosen per email under Customise (slice 4)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("group", { name: "Sell more to buyers" }).getByRole("button", { name: "Start" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
+  const story = page.locator("[data-flow-story]");
+  await expect(story).toContainText("When an order is sent:");
+  await expect(story.getByLabel("Email: Goes well together")).toContainText("With what others bought with their order.");
+  const canvas = page.locator("[data-flow-canvas]");
+  await canvas.getByText("Customise", { exact: true }).click();
+  await canvas.getByRole("group", { name: "Products for each reader" }).getByRole("button", { name: "Buy again" }).click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("[data-flow-story]").getByLabel("Email: Goes well together")).toContainText("With their order's products that customers buy again.");
+  await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
+  await page.screenshot({ path: "test-results/flow-picks.png", fullPage: true });
+});

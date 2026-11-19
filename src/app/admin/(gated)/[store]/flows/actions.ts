@@ -7,7 +7,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { FLOW_TRIGGERS } from "@/lib/flow-triggers";
-import { insertStep, newStep, removeStep, withCondition, withEmailWords, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { PICK_KINDS } from "@/lib/automation-kinds";
+import { insertStep, newStep, removeStep, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -177,4 +178,11 @@ export async function changeFlowTriggerAction(storeSlug: string, flowId: string,
   const trigger = FLOW_TRIGGERS.find((t) => t === form.get("trigger"));
   // No such trigger: the tree change is refused in the owner's words (`problems.step`).
   return saveTree(storeSlug, flowId, (flow) => (trigger ? flow.steps : null), trigger ? { trigger, triggerDays: trigger === "customer.lapsed" ? 90 : null } : {});
+}
+
+/** Puts products picked for each reader in one email (slice 4, D653): `cross_sell`, `replenish`, `browse`, or `none`. A new version, off until tested. */
+export async function changeFlowPicksAction(storeSlug: string, flowId: string, stepId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const value = form.get("picks");
+  const picks = PICK_KINDS.find((k) => k === value) ?? null;
+  return saveTree(storeSlug, flowId, (flow) => (picks || value === "none" ? withStepPicks(flow.steps, stepId, picks) : null));
 }
