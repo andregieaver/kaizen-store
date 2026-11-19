@@ -31,7 +31,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
   await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
-    <AdminAreas areas={["website"]}>
+    <AdminAreas areas={["website", "websitePick"]}>
     <>
       <PageHeader
         title={w.misc.menus.title}

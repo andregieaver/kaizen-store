@@ -32,7 +32,7 @@ const EMPTY = { title: "", description: "" };
  * term's draft.
  */
 export function TermSeoFields({ setup, name, kind, slug, value, onChange }: { setup: TermSeoSetup; name: string; kind: "category" | "tag"; slug: string; value: TermSeo; onChange: (value: TermSeo) => void }) {
-  const w = useAdminText("products").termSeo;
+  const w = useAdminText("productsEditor").termSeo;
   const [locale, setLocale] = useState(setup.locales[0] ?? "");
   const current = value[locale] ?? EMPTY;
   const set = (next: { title: string; description: string }) => onChange({ ...value, [locale]: { title: next.title.slice(0, TITLE_MAX), description: next.description.slice(0, DESCRIPTION_MAX) } });

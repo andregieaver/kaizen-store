@@ -33,7 +33,7 @@ export async function StaffFieldsSection({
   const lang = await requestAdminLang();
   const w = adminText(lang, "fields").form;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
+    <AdminTextScope texts={adminTexts(lang, ["fieldsEditor"])}>
     <EntityFieldsCard
       groups={editor.groups}
       data={editor.data}

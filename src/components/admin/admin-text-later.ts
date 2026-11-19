@@ -71,6 +71,29 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   setup: () => import("@/lib/admin-messages/setup.en").then((m) => m.setupEn),
   shell: () => import("@/lib/admin-messages/shell.en").then((m) => m.shellEn),
   moving: () => import("@/lib/admin-messages/moving.en").then((m) => m.movingEn),
+  // Cuts (bloat review step 2.27): the same groups as `cut()` in `admin-text.ts` picks.
+  builderText: () =>
+    import("@/lib/admin-messages/builder.en").then((m) => ({ richText: m.builderEn.richText, textStyles: m.builderEn.textStyles, responsive: m.builderEn.responsive })),
+  websitePick: () => import("@/lib/admin-messages/website.en").then((m) => ({ picker: m.websiteEn.picker, pictureMaker: m.websiteEn.pictureMaker })),
+  assistantBar: () =>
+    import("@/lib/admin-messages/assistant.en").then((m) => ({ name: m.assistantEn.name, launcher: m.assistantEn.launcher, notices: m.assistantEn.notices })),
+  homeDrafts: () => import("@/lib/admin-messages/home.en").then((m) => ({ drafts: m.homeEn.drafts })),
+  websiteList: () =>
+    import("@/lib/admin-messages/website.en").then((m) => ({ list: m.websiteEn.list, pageJobs: m.websiteEn.pageJobs, demoHomes: m.websiteEn.demoHomes })),
+  fieldsEditor: () =>
+    import("@/lib/admin-messages/fields.en").then((m) => ({ form: m.fieldsEn.form, pickers: m.fieldsEn.pickers, linkKinds: m.fieldsEn.linkKinds })),
+  productsEditor: () =>
+    import("@/lib/admin-messages/products.en").then((m) => ({
+      terms: m.productsEn.terms,
+      termFields: m.productsEn.termFields,
+      termPage: m.productsEn.termPage,
+      termRules: m.productsEn.termRules,
+      termSeo: m.productsEn.termSeo,
+    })),
+  designEditor: () => import("@/lib/admin-messages/design.en").then((m) => ({ fonts: m.designEn.fonts, changes: m.designEn.changes })),
+  blogEditor: () => import("@/lib/admin-messages/blog.en").then((m) => ({ editor: m.blogEn.editor })),
+  schedulesEditor: () =>
+    import("@/lib/admin-messages/schedules.en").then((m) => ({ dialog: m.schedulesEn.dialog, nouns: m.schedulesEn.nouns, share: m.schedulesEn.share })),
 };
 
 /** A fetch React can read with `use()`; one that is already settled (`settledEnglish()`) is read at once. */

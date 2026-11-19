@@ -41,7 +41,7 @@ export async function pickedFrom(item: PickerPicture): Promise<PickedPicture> {
 
 /** The button that opens the library to choose a picture; draws nothing where the editor has no library to list. */
 export function LibraryButton({ label, onPicked }: { label?: string; onPicked: (picture: PickedPicture) => void }) {
-  const w = useAdminText("website").picker;
+  const w = useAdminText("websitePick").picker;
   const list = useMediaPicker();
   const [open, setOpen] = useState(false);
   if (!list) return null;
@@ -60,7 +60,7 @@ export function LibraryButton({ label, onPicked }: { label?: string; onPicked: (
 }
 
 function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose: () => void; onPicked: (picture: PickedPicture) => void }) {
-  const w = useAdminText("website").picker;
+  const w = useAdminText("websitePick").picker;
   const searchId = useId();
   const [text, setText] = useState("");
   const [query, setQuery] = useState("");

@@ -19,7 +19,7 @@ export default async function PlatformFontsPage() {
   const { w } = await platformSiteWords();
   const chrome = await getPlatformChrome();
   return (
-    <AdminAreas areas={["design"]}>
+    <AdminAreas areas={["design", "designEditor"]}>
     <>
       <PageHeader
         title={w.misc.fonts.title}

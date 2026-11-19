@@ -53,7 +53,7 @@ function SingleSelect({
   value: string;
   onChange: (id: string) => void;
 }) {
-  const w = useAdminText("fields").pickers;
+  const w = useAdminText("fieldsEditor").pickers;
   const [query, setQuery] = useState("");
   const matches = filterOptions(options, query);
   const missing = value !== "" && !options.some((option) => option.id === value);
@@ -97,7 +97,7 @@ function MultiSelect({
   ids: string[];
   onChange: (ids: string[]) => void;
 }) {
-  const w = useAdminText("fields").pickers;
+  const w = useAdminText("fieldsEditor").pickers;
   const [query, setQuery] = useState("");
   const [pick, setPick] = useState("");
   const [status, setStatus] = useState("");
@@ -255,7 +255,7 @@ export function LinkField({
   lookups: FieldLookups;
   onChange: (value: FieldLink | undefined) => void;
 }) {
-  const w = useAdminText("fields");
+  const w = useAdminText("fieldsEditor");
   const p = w.pickers;
   const words = useId();
   const tab = useId();
@@ -363,7 +363,7 @@ export function FileField({
   onChange: (value: FieldFile | undefined) => void;
   upload: FieldFileUploader | null;
 }) {
-  const w = useAdminText("fields").pickers;
+  const w = useAdminText("fieldsEditor").pickers;
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const choose = async (file: File | undefined) => {

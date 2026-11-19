@@ -135,7 +135,7 @@ export function FieldsForm({
   /** A language's name, for the hint on a text left empty. */
   languageName?: (locale: string) => string;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   if (groups.length === 0) return null;
   const ctx: Ctx = {
     locale,
@@ -697,7 +697,7 @@ function RowButtons({
   onMove: (to: number) => void;
   onRemove: () => void;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   return (
     <div className="flex items-center gap-1">
       <button
@@ -1085,7 +1085,7 @@ function MoneyInput({
   placeholder?: string;
   onChange: (value: FieldMoney | undefined) => void;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   const key = value ? `${value.amountMinor}|${value.currency}` : "";
   const [text, setText] = useState(value ? amountText(value.amountMinor, value.currency) : "");
   const [currency, setCurrency] = useState(value?.currency ?? currencies[0] ?? "");
@@ -1210,7 +1210,7 @@ function PictureField({
   onChange: (value: FieldImage | undefined) => void;
   upload: PictureUpload | null;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const alt = useId();
@@ -1279,7 +1279,7 @@ function GalleryField({
   onChange: (value: FieldImage[] | undefined) => void;
   upload: PictureUpload | null;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   const [busy, setBusy] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const most = def.maxItems ?? 20;
@@ -1391,7 +1391,7 @@ function PictureButton({
   onFile?: (file: File | undefined) => void;
   onFiles?: (files: FileList | null) => void;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   return (
     <label
       className={`w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2 ${disabled ? "opacity-50" : ""}`}

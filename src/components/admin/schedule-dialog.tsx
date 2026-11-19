@@ -39,7 +39,7 @@ export function ScheduleButton({
   /** Saves the draft as Save draft does; false when it could not. */
   saveDraft: SaveDraft;
 }) {
-  const all = useAdminText("schedules");
+  const all = useAdminText("schedulesEditor");
   const w = all.dialog;
   const id = useId();
   // Moves by its title and resizes from its edges, as every dialog in the builder does.

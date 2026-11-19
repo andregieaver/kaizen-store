@@ -22,7 +22,7 @@ export function DemoHomeTakeLine({
   editBase: string;
   undo: (state: FormState, data: FormData) => Promise<FormState>;
 }) {
-  const w = useAdminText("website").demoHomes;
+  const w = useAdminText("websiteList").demoHomes;
   const [state, formAction, pending] = useActionState(undo, idle);
   if (state.status === "ok") {
     return (

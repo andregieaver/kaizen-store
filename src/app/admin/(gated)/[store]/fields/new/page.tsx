@@ -27,7 +27,7 @@ export default async function NewFieldGroupPage({ params, searchParams }: PagePr
   const start = typeof entity === "string" && isFieldEntity(entity) ? entity : "product";
   const base = `/admin/${store.slug}/fields`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
+    <AdminTextScope texts={adminTexts(lang, ["fields", "fieldsEditor"])}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: base, label: t.title }} title={t.newGroup} />
       <ContentTypeChoices types={await contentTypeChoices(store.id)}>

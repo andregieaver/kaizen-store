@@ -20,7 +20,7 @@ type Noun = "page" | "article" | "theme";
  * builder's *Share* dialog and on an installed theme's page.
  */
 export function ShareLinks({ id, noun, actions }: { id: string; noun: Noun; actions: PreviewLinkActions }) {
-  const all = useAdminText("schedules");
+  const all = useAdminText("schedulesEditor");
   const w = all.share;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const when = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
@@ -131,7 +131,7 @@ export function ShareLinks({ id, noun, actions }: { id: string; noun: Noun; acti
 
 /** The builder's *Share* (D340): opens the page's or article's preview links in a dialog, once the page has been saved. */
 export function ShareButton({ id, noun, actions }: { id: string; noun: "page" | "article"; actions: PreviewLinkActions }) {
-  const w = useAdminText("schedules").share;
+  const w = useAdminText("schedulesEditor").share;
   const [open, setOpen] = useState(false);
   return (
     <>

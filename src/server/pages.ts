@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
+import { pagesTag } from "@/lib/cache-tags";
 import {
   pageBlocks,
   pageExcerpt,
@@ -67,10 +68,7 @@ type Row = Record<string, unknown>;
 /** Whose pages: a store's id, or null for Kaizen's own. */
 export type PageOwner = string | null;
 
-/** Revalidate after one of Kaizen's pages is published, unpublished or deleted. */
-export const PAGES_TAG = "platform-pages";
-/** The same for an owner: Kaizen's, or a store's. */
-export const pagesTag = (owner: PageOwner) => (owner === null ? PAGES_TAG : `pages:${owner}`);
+export { PAGES_TAG, pagesTag } from "@/lib/cache-tags";
 
 const ownedBy = (owner: PageOwner, type: PageType) => sql`${owned(owner)} and type = ${type}`;
 

@@ -42,7 +42,7 @@ export default async function CustomisePlatformThemePage({ params }: PageProps<"
   ];
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["design", "platformSite"])}>
+    <AdminTextScope texts={adminTexts(lang, ["design", "designEditor", "platformSite"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: "/admin/platform/site-design", label: d.title }}

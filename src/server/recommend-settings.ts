@@ -6,6 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, readDb } from "@/db/client";
 import { DEFAULT_SETTINGS, settingsProblems, type RecommendSettings } from "@/lib/recommendations";
 import { parseRecommendSettings } from "@/lib/recommendations-schema";
+import { recommendTag } from "@/lib/cache-tags";
 
 import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 import { audit, type Account } from "./auth";
@@ -18,7 +19,7 @@ type Row = Record<string, unknown>;
  * products go with which, never go together, or are never recommended.
  */
 
-export const recommendTag = (storeId: string) => `recommend:${storeId}`;
+export { recommendTag } from "@/lib/cache-tags";
 
 const toSettings = (row: Row | undefined): RecommendSettings =>
   row

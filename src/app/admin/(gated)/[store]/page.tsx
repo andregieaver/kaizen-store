@@ -486,7 +486,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
       )}
       {/* A store drafted from one description (D351): its drafts, or the form while it is being set up; read after the page is shown. */}
       {memberCan(current, "website:write") && (
-        <AdminTextScope texts={adminTexts(lang, ["home"])}>
+        <AdminTextScope texts={adminTexts(lang, ["homeDrafts"])}>
           <Suspense fallback={null}>
             <StoreDraftsSection storeId={store.id} storeSlug={store.slug} offerStart={!store.setupCompletedAt} />
           </Suspense>

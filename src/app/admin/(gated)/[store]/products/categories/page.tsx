@@ -52,7 +52,7 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
     base: `${storeOrigin(store.slug) ? "" : siteUrl()}${market ? storeHref(store.slug, marketPath(store.slug, market.slug)) : `/s/${store.slug}`}`.replace(/\/$/, ""),
   };
   return (
-    <AdminTextScope texts={adminTexts(lang, ["products", "fields", "builder"])}>
+    <AdminTextScope texts={adminTexts(lang, ["productsEditor", "fieldsEditor", "builderText"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `/admin/${store.slug}/products`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         <TermsManager

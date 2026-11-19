@@ -22,7 +22,7 @@ export async function PageTermsView({ type }: { type: PageType }) {
   const copy = PAGE_TYPE_COPY[type];
   const terms = await listTerms({ storeId: null, contentType: termContentOf(type) });
   return (
-    <AdminTextScope texts={adminTexts(lang, ["products", "platformSite"])}>
+    <AdminTextScope texts={adminTexts(lang, ["productsEditor", "platformSite"])}>
       <div className="flex flex-col gap-1">
         <Link href={`/admin/platform/${copy.segment}`} className="w-fit text-sm underline">
           {tw.list}

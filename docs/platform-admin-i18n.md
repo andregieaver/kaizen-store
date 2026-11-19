@@ -231,6 +231,17 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   read lives in a `-english.ts` twin (`return-admin-english.ts`), which no admin client module may reach (`admin-bundle.scan.test.ts`,
   bloat review step 2.26). Where the server writes English sentences (a saver's refusal, a check's finding), they are turned into the
   account's language on the server, in the page or the action's answer (`redirectAnswer()`, `experimentAnswer()`), never in the browser.
+- **Cuts:** a page hands its parts the groups they read, not a whole area, where they read few of them (bloat review step 2.27). A cut
+  is some top-level groups of an area, the same objects in each language (`cut()` in `src/lib/admin-text.ts`), so no string moves and
+  no catalogue file is added; a part reads it by its own name (`useAdminText("builderText")`), and a group outside the cut does not
+  compile. The cuts and their areas: `builderText` (builder: richText, textStyles, responsive), `websitePick` (website: picker,
+  pictureMaker), `assistantBar` (assistant: name, launcher, notices), `homeDrafts` (home: drafts), `websiteList` (website: list,
+  pageJobs, demoHomes), and the page editor's `fieldsEditor` (fields: form, pickers, linkKinds), `productsEditor` (products: terms,
+  termFields, termPage, termRules, termSeo), `designEditor` (design: fonts, changes), `blogEditor` (blog: editor) and `schedulesEditor`
+  (schedules: dialog, nouns, share). A screen whose other parts read more of the area hands the area and the cut (the payload carries
+  the shared objects once). The AI manager's chat gets the whole `assistant` area with its start call, not with the screen. A part
+  drawn where only its cut is handed is listed in `src/components/admin/admin-cuts.scan.test.ts`, which fails if it asks for the
+  whole area again; "read" means named in source, as `admin-words-handed.scan.test.ts` counts it.
 - **Outside the admin:** code that is not under `src/app/admin` or `src/components/admin` (emails, cron jobs, routes, `src/lib`) never
   imports `src/lib/admin-text.ts`, which loads every area in both languages. It reads its area from `src/lib/admin-words/{stem}.ts`
   (`STAFF_EMAILS_WORDS[lang]`); a new area read outside the admin gets such a module and its `CATALOGUES` entry becomes that pair.

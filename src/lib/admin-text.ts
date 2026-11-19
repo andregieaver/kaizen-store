@@ -1,4 +1,4 @@
-import type { AdminLang } from "./admin-lang";
+import { ADMIN_LANGS, type AdminLang } from "./admin-lang";
 import type { CommonMessages } from "./admin-messages/common.en";
 import { COMMON_WORDS } from "./admin-words/common";
 import { domainsEn, type DomainsMessages } from "./admin-messages/domains.en";
@@ -232,6 +232,19 @@ export type AdminAreaMessages = {
   oauth: OauthMessages;
   sandbox: SandboxMessages;
   houseAutopilot: HouseAutopilotMessages;
+  /** Cuts (bloat review step 2.27, `cut()` below): some groups of an area, the same objects, for screens whose parts read only those. */
+  builderText: Pick<BuilderMessages, "richText" | "textStyles" | "responsive">;
+  websitePick: Pick<WebsiteMessages, "picker" | "pictureMaker">;
+  /** The AI manager's button and notices, on every screen; the chat's words (`assistant`) come with its start call. */
+  assistantBar: Pick<AssistantMessages, "name" | "launcher" | "notices">;
+  homeDrafts: Pick<HomeMessages, "drafts">;
+  websiteList: Pick<WebsiteMessages, "list" | "pageJobs" | "demoHomes">;
+  /** The page editor's cuts: the groups its parts read, also handed where those parts are drawn on their own (a product, a category). */
+  fieldsEditor: Pick<FieldsMessages, "form" | "pickers" | "linkKinds">;
+  productsEditor: Pick<ProductsMessages, "terms" | "termFields" | "termPage" | "termRules" | "termSeo">;
+  designEditor: Pick<DesignMessages, "fonts" | "changes">;
+  blogEditor: Pick<BlogMessages, "editor">;
+  schedulesEditor: Pick<SchedulesMessages, "dialog" | "nouns" | "share">;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -253,6 +266,17 @@ export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
  * that part, in another language than English.
  */
 export type HandedArea = "storeParts" | "backdrops" | "animation";
+
+/**
+ * A cut of an area (bloat review step 2.27, `docs/platform-admin-i18n.md` 3.3): some of its top-level groups, the same objects in each
+ * language, so no string moves and no catalogue file is added. A cut is handed where a page's parts read only those groups; a part that
+ * reads a group outside its cut does not compile.
+ */
+const cut = <T extends object, K extends keyof T>(source: Record<AdminLang, T>, keys: readonly K[]): Record<AdminLang, Pick<T, K>> =>
+  Object.fromEntries(ADMIN_LANGS.map((lang) => [lang, Object.fromEntries(keys.map((key) => [key, source[lang][key]])) as Pick<T, K>])) as Record<
+    AdminLang,
+    Pick<T, K>
+  >;
 
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: COMMON_WORDS,
@@ -330,6 +354,16 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   oauth: OAUTH_WORDS,
   sandbox: SANDBOX_WORDS,
   houseAutopilot: HOUSE_AUTOPILOT_WORDS,
+  builderText: cut({ en: builderEn, nb: builderNb }, ["richText", "textStyles", "responsive"]),
+  websitePick: cut(WEBSITE_WORDS, ["picker", "pictureMaker"]),
+  assistantBar: cut(ASSISTANT_WORDS, ["name", "launcher", "notices"]),
+  homeDrafts: cut({ en: homeEn, nb: homeNb }, ["drafts"]),
+  websiteList: cut(WEBSITE_WORDS, ["list", "pageJobs", "demoHomes"]),
+  fieldsEditor: cut({ en: fieldsEn, nb: fieldsNb }, ["form", "pickers", "linkKinds"]),
+  productsEditor: cut({ en: productsEn, nb: productsNb }, ["terms", "termFields", "termPage", "termRules", "termSeo"]),
+  designEditor: cut({ en: designEn, nb: designNb }, ["fonts", "changes"]),
+  blogEditor: cut({ en: blogEn, nb: blogNb }, ["editor"]),
+  schedulesEditor: cut({ en: schedulesEn, nb: schedulesNb }, ["dialog", "nouns", "share"]),
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

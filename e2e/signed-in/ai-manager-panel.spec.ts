@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+import { assistantNb } from "../../src/lib/admin-messages/assistant.nb";
 import { encryptSecret, parseKey } from "../../src/lib/secret-box";
 import { testDb } from "../db";
 
-import { E2E_STORE, OWNER } from "./accounts";
+import { E2E_STORE, E2E_STORE_NB, OWNER, OWNER_NB } from "./accounts";
 
 /**
  * The AI manager's chat is fetched when its panel is first opened, not with every admin screen (`ai-manager-launcher.tsx`, D444): the
@@ -32,6 +33,21 @@ test("the AI manager's panel fetches its chat when opened and draws it", async (
   const total = (await Promise.all(sizes)).reduce((sum, size) => sum + size, 0);
   console.log(`the chat's scripts on first opening: ${total} bytes in ${scripts.length} files`);
   expect(total, "the chat's scripts on first opening").toBeLessThanOrEqual(130_000);
+});
+
+test.describe("for a Norwegian owner", () => {
+  test.use({ storageState: OWNER_NB.state });
+  // The screens hand only the button's and the notices' words (`assistantBar`); the chat's arrive with its start call (bloat review step
+  // 2.27), so the panel never draws the chat in English or from a noted fallback.
+  test("the chat opens in Norwegian, with the words its start call brought", async ({ page }) => {
+    await page.goto(`/admin/${E2E_STORE_NB}`);
+    await expect(page.locator("main").first()).toBeVisible();
+    await page.getByRole("button", { name: new RegExp(assistantNb.name) }).first().click();
+    const panel = page.getByRole("complementary", { name: assistantNb.name });
+    await expect(panel.getByPlaceholder(assistantNb.chat.placeholder).or(panel.getByText(assistantNb.chat.noModelStore))).toBeVisible();
+    const fallbacks = await page.evaluate(() => (window as unknown as { __adminTextFallbacks?: string[] }).__adminTextFallbacks ?? []);
+    expect(fallbacks, "words the panel read that nothing handed down").toEqual([]);
+  });
 });
 
 test("the AI manager's first suggestion names the page the owner is on, and follows a move to another page", async ({ page }) => {

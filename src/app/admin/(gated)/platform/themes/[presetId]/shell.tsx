@@ -15,6 +15,7 @@ import { PLATFORM_SITE_AREAS, platformSiteWords } from "@/server/platform-site-w
 
 import { archiveDesignAction, deleteDesignAction, publishDesignAction, unarchiveDesignAction, unpublishDesignAction } from "../actions";
 
+
 /**
  * A design profile's own pages (D177): its title and state, Publish / Unpublish / Archive / Restore / Delete, the previews (as published,
  * and the draft), and the tabs where its whole look is edited (details, theme, header, footer, product page, CSS). Each page checks the
@@ -34,8 +35,10 @@ export async function DesignShell({
   const shown = shownDesignDetails(design);
   const { lang, w } = await platformSiteWords();
   const s = w.shell;
+  // The platform site's areas and the whole of `design`: the Theme tab's editor reads all of it (`theme-editor.tsx`), the page editor's
+  // cut (`designEditor`) is not enough there (bloat review step 2.27).
   return (
-    <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
+    <AdminTextScope texts={adminTexts(lang, [...PLATFORM_SITE_AREAS, "design"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: facts.archivedAt ? "/admin/platform/themes?show=archived" : "/admin/platform/themes", label: s.back }}

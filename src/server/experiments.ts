@@ -16,12 +16,11 @@ import {
   decodeAssignments,
   isUuid,
   OUTSIDE,
-  parseAudience,
   type Assignments,
-  type Audience,
   type Device,
   type Goal,
 } from "@/lib/experiments";
+import { experimentsTag } from "@/lib/cache-tags";
 
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
@@ -36,94 +35,12 @@ type Row = Record<string, unknown>;
  * as claims to check, and nothing records anyone who has not accepted statistics cookies.
  */
 
-/** Refreshed when a test starts, stops or changes: the pages that show a test's marker are drawn again. */
-/**
- * The cache tag of a store's tests. Every storefront read of running tests also asks `commerce.extension_on(store, 'ab_testing')` (D748): while
- * the account does not have A/B testing, visitors see the original; `refreshExtensionFacts()` refreshes this tag with the store's.
- */
-export const experimentsTag = (storeId: string) => `experiments:${storeId}`;
+export { experimentsTag } from "@/lib/cache-tags";
 
 /** The slug of a variant's page (type `variant`, which has no address on the site): a key, not a place. */
 export const variantSlug = (experimentId: string, key: string) => `ab-${experimentId.slice(0, 8)}-${key}`;
 
-export type RunningVariant = { key: string; share: number; pageId: string | null };
-export type RunningExperiment = {
-  id: string;
-  storeId: string;
-  /** What is tested: a page, the product layout, the header, the footer (D148, phase 3) or a working page (phase 9). */
-  kind: TargetKind;
-  /** The working page under test, for a test of one. */
-  role: TestedPlace | null;
-  targetPageId: string;
-  /** The address of the page under test, as it is now. */
-  slug: string;
-  trafficShare: number;
-  audience: Audience;
-  goal: Goal;
-  goalBlock: string | null;
-  variants: RunningVariant[];
-};
-
-// ---------------------------------------------------------------------------
-// What runs now
-// ---------------------------------------------------------------------------
-
-const MEMO_MS = 20_000;
-const memo = new Map<string, { at: number; value: unknown }>();
-
-async function remembered<T>(key: string, ms: number, load: () => Promise<T>): Promise<T> {
-  const hit = memo.get(key);
-  if (hit && Date.now() - hit.at < ms) return hit.value as T;
-  const value = await load();
-  memo.set(key, { at: Date.now(), value });
-  return value;
-}
-
-/** Forgets what this server knows of a store's tests (others catch up within `MEMO_MS`). */
-export function forgetRunning(storeId: string): void {
-  memo.delete(`running:${storeId}`);
-}
-
-/**
- * The tests running for a store, for the proxy and the assignment: a short memory in the server, so enrolled visitors'
- * requests do not each ask the database.
- */
-export function runningExperiments(storeId: string): Promise<RunningExperiment[]> {
-  return remembered(`running:${storeId}`, MEMO_MS, async () => {
-    const rows = await db().execute<Row>(sql`
-      select e.id, e.target_page_id, p.slug, p.type as target_type, e.traffic_share::float8 as traffic_share, e.audience, e.primary_goal, e.goal_params,
-        commerce.page_place(e.store_id, e.target_page_id) as target_role,
-        (select jsonb_agg(jsonb_build_object('key', v.key, 'share', v.share::float8, 'pageId', v.page_id) order by v.key)
-         from commerce.experiment_variants v where v.experiment_id = e.id) as variants
-      from commerce.experiments e
-      join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
-      where e.store_id = ${storeId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing')
-    `);
-    return rows.map(
-      (r): RunningExperiment => ({
-        id: String(r.id),
-        storeId,
-        kind: targetKindOf(String(r.target_type), r.target_role ? String(r.target_role) : null) ?? "page",
-        role: isTestedPlace(r.target_role) ? r.target_role : null,
-        targetPageId: String(r.target_page_id),
-        slug: String(r.slug),
-        trafficShare: Number(r.traffic_share),
-        audience: parseAudience(r.audience),
-        goal: r.primary_goal as Goal,
-        goalBlock: typeof (r.goal_params as { block?: unknown })?.block === "string" ? String((r.goal_params as { block: string }).block) : null,
-        variants: ((r.variants ?? []) as { key: string; share: number; pageId: string | null }[]).map((v) => ({ key: v.key, share: Number(v.share), pageId: v.pageId })),
-      }),
-    );
-  });
-}
-
-/** The store an address names, for the proxy: the id of an open store by its slug. */
-export function storeIdOfSlug(slug: string): Promise<string | null> {
-  return remembered(`store:${slug}`, 60_000, async () => {
-    const [row] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug} and status = 'active' and not (is_template or starter or sandbox) limit 1`);
-    return row ? String(row.id) : null;
-  });
-}
+export { forgetRunning, runningExperiments, storeIdOfSlug, type RunningExperiment, type RunningVariant } from "./experiments-running";
 
 export type PageExperiment = {
   id: string;

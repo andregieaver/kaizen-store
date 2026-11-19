@@ -4,10 +4,11 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
+import { SITE_STORE_TAG } from "@/lib/cache-tags";
+
 import { col, typedRow } from "./typed-rows";
 
-/** The tag of every cached read of whether Kaizena Flow's site is served from its store (D484): the switch refreshes it. */
-export const SITE_STORE_TAG = "site-from-store";
+export { SITE_STORE_TAG } from "@/lib/cache-tags";
 
 /**
  * Kaizena Flow's own store while its site is served from it (D484), else null: for what Kaizena Flow's host draws once and keeps, its

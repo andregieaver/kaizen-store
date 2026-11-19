@@ -415,7 +415,7 @@ export function ResponsiveBar({
 
 /** The builder's toolbar button that turns responsive mode on and off. */
 export function ResponsiveToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  const w = useAdminText("builder").responsive;
+  const w = useAdminText("builderText").responsive;
   return (
     <button
       type="button"
@@ -436,7 +436,7 @@ export function ResponsiveToggle({ on, onToggle }: { on: boolean; onToggle: () =
 
 /** The toolbar switch for parts hidden at the size shown: faded with an eye (the default), or left out as on the site. */
 export function HiddenPartsToggle({ hide, onChange }: { hide: boolean; onChange: (hide: boolean) => void }) {
-  const w = useAdminText("builder").responsive;
+  const w = useAdminText("builderText").responsive;
   return (
     <button
       type="button"

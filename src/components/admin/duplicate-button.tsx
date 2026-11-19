@@ -22,7 +22,7 @@ export function DuplicateButton({
   adminBase: string;
   duplicate: (id: string) => Promise<DuplicateResult>;
 }) {
-  const w = useAdminText("website").list;
+  const w = useAdminText("websiteList").list;
   const router = useRouter();
   const [busy, startBusy] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);

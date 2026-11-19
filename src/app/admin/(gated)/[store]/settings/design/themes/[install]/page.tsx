@@ -68,7 +68,7 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
   const switchName = fillWords(w.switchTo, { name: install.title });
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["design", "schedules"])}>
+    <AdminTextScope texts={adminTexts(lang, ["design", "designEditor", "schedules", "schedulesEditor"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: design, label: w.back }}

@@ -4,7 +4,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { catalogTag } from "@/server/catalog";
 import { redirectsTag } from "@/lib/redirects";
-import { recordNotFound } from "@/server/not-found";
+import { recordNotFound } from "@/server/not-found-record";
 import { legacyAnswerOf } from "@/server/redirect-resolve";
 import { getOpenStore } from "@/server/stores";
 

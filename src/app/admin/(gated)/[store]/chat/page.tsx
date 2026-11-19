@@ -15,7 +15,7 @@ export default async function StoreChatPage({ params }: PageProps<"/admin/[store
   const { store: slug } = await params;
   const { store, account } = await requirePermission(slug, "support:read");
   return (
-    <AdminAreas areas={["website"]}>
+    <AdminAreas areas={["websitePick"]}>
     <ChatAgentView
       storeId={store.id}
       siteName={store.name}

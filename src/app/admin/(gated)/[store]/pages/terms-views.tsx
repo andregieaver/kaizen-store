@@ -27,7 +27,7 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
   const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
   return (
     // The categories manager's words are the products' (it is the same manager as theirs).
-    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["products"])}>
+    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["productsEditor"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Link href={storePagesBase(store, type)} className="w-fit text-sm underline">
