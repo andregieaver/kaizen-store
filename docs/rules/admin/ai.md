@@ -619,7 +619,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   a SKU with an open purchase order. Since D675 a confirmed exchange is an `exchange_confirmed` event (tools `get_order`,
   `process_exchange`, `add_order_note`), and in challenge mode `autonomyDecision()` runs `process_exchange` itself only when
   `exchangeRefundOf()` (the refund of `exchangeOutcome()` on the exchange as confirmed) is 0, area `messages`; one that refunds is
-  kept for the owner.
+  kept for the owner. D804: so too `change_order` when `orderChangeMoneyOf()` is `none`, and `set_market_price_rule` within
+  `priceChangePercent` and the margin floor (`priceRuleAutopilotFacts()`).
 
 ## The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)
 

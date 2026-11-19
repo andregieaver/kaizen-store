@@ -15,6 +15,7 @@ const { getEditorContext, getProductForEdit, saveProduct } = await import("./pro
 const { getStore } = await import("./stores");
 const { backToRule, deriveForProducts, marketPriceRules, removeMarketPriceRule, saveMarketPriceRule } = await import("./market-prices");
 const { preflightOwnerTool, runOwnerTool } = await import("./owner-tools");
+const { priceRuleAutopilotFacts } = await import("./market-price-tools");
 
 type Row = Record<string, unknown>;
 
@@ -202,5 +203,21 @@ describe("the AI manager's price rules", () => {
     expect(se.prices).toMatch(/^Worked out from NO/);
     expect(se.prices_by_rule).toBe(0);
     expect(read.countries.find((x) => x.country === "NO")!.prices).toBe("Set by hand.");
+  });
+
+  it("measures a rule for the autopilot in the challenge: the largest price change and the lowest margin it would leave (A2, D804)", async () => {
+    const [c] = products[1].skus;
+    const store = await storeOf(fx);
+    // The variant follows the +5 % rule again: 500 × 1.05 = 525 → 529 kr.
+    await savePrices(products[1].id, {}, { [c]: "" });
+    expect((await pricesIn("SE", products[1].id))[c]).toEqual({ amount: 52_900, derived: true });
+    await db().execute(sql`update commerce.product_variants set cost_minor = 20000 where store_id = ${fx.storeId}::uuid and sku = ${c}`);
+    // +20 %: 600 → 609 kr, 15.1 % more than 529; 609 with VAT is 487.20 without, against a cost of 200: a margin of 58.9 %.
+    const facts = await priceRuleAutopilotFacts(store, { country: "SE", from: "NO", percent: 20, vat: "net", round_to: 10, ending: 9 });
+    expect(facts.priceChangePercent).toBeCloseTo(15.12, 1);
+    expect(facts.lowestMarginPercent).toBeCloseTo(58.95, 1);
+    // Taking the rule away changes no price; a rule that cannot be read is not measured.
+    expect(await priceRuleAutopilotFacts(store, { country: "SE", from: null })).toEqual({ priceChangePercent: 0, marginUntouched: true });
+    expect(await priceRuleAutopilotFacts(store, { country: "XX", from: "NO", percent: 0, vat: "net" })).toEqual({ priceChangePercent: null });
   });
 });

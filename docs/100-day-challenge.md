@@ -600,7 +600,7 @@ Each item of section 4 moves here when it is built, with its decision.
 | Item | State | Decision |
 |---|---|---|
 | A1 Challenge mode | Built: the dates and budgets, the preset, the lock with the pause audited as an intervention, a third failure and a question skipped. Set, changed and ended on the challenge console (H2); the dates are UTC. | D604, D614 |
-| A2 Never automatic, re-sorted | Partly: broadcasts within a week's budget, support answers on a daily budget, money back to customers kept for the person. The money-free order change and price rules are still to do. | D604 |
+| A2 Never automatic, re-sorted | Built: broadcasts within a week's budget, support answers on a daily budget, money back to customers kept for the person; a change to an order that moves no money, and a country's price rule within the largest price change and the margin floor, run by themselves. | D604, D804 |
 | F2 Limits for a business | Built: the AI budget from the challenge, the autopilot's turns apart from the owner's, events limited per kind, plans paused by the budget started again. | D604 |
 | D5 Margin floor | Built: prices, discounts and campaigns under the owner's lowest margin wait for a yes; the challenge's own floor is 10 % by default. | D605 |
 | E2 Profit goals | Built: contribution and margin over 30 days, net sales and contribution since a first day. | D606 |

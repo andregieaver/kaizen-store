@@ -6,7 +6,10 @@ import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import type { Account } from "./auth";
 import { catalogTag } from "./catalog";
-import { derivedCounts, marketPriceRules, previewRule, rateProblem, removeMarketPriceRule, saveMarketPriceRule } from "./market-prices";
+import { lowestMargin, type MarginRow } from "@/lib/margin-floor";
+
+import { toMainOne } from "./analytics-sql";
+import { derivedCounts, marketPriceRules, previewRule, rateProblem, removeMarketPriceRule, ruleEffect, saveMarketPriceRule } from "./market-prices";
 import { OwnerToolError } from "./owner-tool-error";
 import { storeTag, type Store } from "./stores";
 
@@ -68,6 +71,38 @@ export async function preflightPriceRuleTool({ store }: Ctx, raw: Record<string,
   const rule = asRule(store, input);
   const problem = ruleProblem(rule, store.keptMarkets.map((m) => m.code), rules) ?? (await rateProblem(store.id, rule));
   if (problem) fail(problem);
+}
+
+/**
+ * A rule's facts for the autopilot in the challenge (A2, D804): the largest change to a price it would make, in percent of the price before (a
+ * price where there was none counts as no change), and the lowest margin it would leave a product with a cost (the margin floor, D5). Taking a
+ * rule away changes no price. Null facts when it cannot be measured, so it waits.
+ */
+export async function priceRuleAutopilotFacts(store: Store, raw: Record<string, unknown>): Promise<{ priceChangePercent: number | null; lowestMarginPercent?: number | null; marginUntouched?: boolean }> {
+  try {
+    const input = raw as OwnerToolInput<"set_market_price_rule">;
+    if (input.from === null) return { priceChangePercent: 0, marginUntouched: true };
+    const rule = asRule(store, input);
+    const effect = await ruleEffect(store.id, rule);
+    if (!effect) return { priceChangePercent: null };
+    let largest = 0;
+    const rows: MarginRow[] = [];
+    for (const price of effect.prices) {
+      // A price the rule ends (no base price, no rate) stops selling the variant there: measured as a full change.
+      if (price.after === null) {
+        largest = Math.max(largest, 100);
+        continue;
+      }
+      if (price.before !== null && price.before > 0) largest = Math.max(largest, (Math.abs(price.after - price.before) / price.before) * 100);
+      if (price.costMinor === null) continue;
+      const main = toMainOne(store, effect.currency, price.after);
+      if (main !== null) rows.push({ priceMinor: main, vatRate: price.vatRate, costMinor: price.costMinor });
+    }
+    if (rows.length === 0 && effect.prices.length === 0) return { priceChangePercent: largest, marginUntouched: true };
+    return { priceChangePercent: largest, lowestMarginPercent: lowestMargin(rows) };
+  } catch {
+    return { priceChangePercent: null };
+  }
 }
 
 /** Saves or takes away the rule, then says what it did and shows five prices as they are now. */
