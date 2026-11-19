@@ -2,8 +2,8 @@
   "chunkBytes": {
     "beacon": {
       "route": "/api/visit/speed/route",
-      "bytes": 997844,
-      "max": 1037758
+      "bytes": 913718,
+      "max": 950267
     },
     "api": {
       "route": "/api/cron/cart-reminders/route",

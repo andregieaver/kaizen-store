@@ -3,18 +3,15 @@ import {
   themeElementSchema,
   type Border,
   type ColorBackground,
-  type PageBlock,
-  type PageColumn,
-  type PageRow,
-  type PartBase,
   type PartSizeSettings,
   type Shadow,
   type Sides,
   type SizeOverrides,
   type Spacing,
   type ThemeElement,
-  mapChildBlocks,
-} from "./page-content";
+} from "./part-styles";
+import { mapChildBlocks } from "./block-walk";
+import type { PageBlock, PageColumn, PageRow, PartBase } from "./page-content";
 import { spacingAt, valueAt } from "./responsive";
 import { siteFontFamilies } from "./fonts";
 import { type SiteFonts } from "./fonts-schema";

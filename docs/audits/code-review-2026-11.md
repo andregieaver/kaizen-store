@@ -190,6 +190,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 19 November 2026: step 1.15 done (D829, finding FS6): a refused field shows its problem under it, *Saved* goes on the next edit, every admin form is busy while it works; 77 raw action forms are `QuietActionForm`; the ratchet's `rawActionForms` fell from 107 to 29, each kept one named.
 - 20 November 2026: step 3.11's card query part done with bloat review step 3.16 (D833); the storefront file splits stay open.
 - 20 November 2026: step 1.13 done (D834, finding FS2): Customers, Products, Invoices and Returns, and the platform's Customers, show a hundred a page with "100 of 150" on `Pager` and search with `ListSearch`; the products table says whether a choice is this page or every match; row 2.10's note corrected (the Stores search and filters remain).
+- 20 November 2026: bloat review step 2.22 (local, not yet pushed): a constraint under step 3.2 (the part-style schemas in a leaf with no block schema; `stores.ts` and the beacons reach none) and `stripe-keys.ts` under step 4.2.
 
 **Notes on the steps**
 
@@ -743,6 +744,10 @@ up on long pages; editors open sooner; cart, checkout and admin pages answer fas
 
 1. **Split the page builder.** After 1.11. Follow FB1's fix. Closes FB1. L. Done when: no builder file is over about 1,500 lines, the 30 props are gone, and the seven signed-in builder specs pass unchanged. Platform: the same builder.
 2. **One definition per block.** Move the hand-wired blocks into `BLOCK_EDITORS`; turn `src/lib/page-content.ts` into a folder with the same exports. Closes FB6, FB9. M. Done when: no importer of `@/lib/page-content` changed, and the scan test proves every block type has its editor, icon, renderer and message.
+   A constraint from bloat review step 2.22 (19 November 2026), for this step and findings FB6 and FB9: the part-style schemas
+   and `themeElementSchema` live in a leaf that imports no block schema (`src/lib/part-styles.ts` today, the folder's
+   `part-styles.ts` once the module is a folder), and `src/server/stores.ts` and the visit beacons may not reach a block schema
+   (`src/server/route-load.graph.test.ts` forbids them `page-content.ts`, and then every file of the folder but `part-styles`).
 3. **Stop re-drawing the canvas.** After 3.1. Follow FB2's fix. Closes FB2. M. Done when: the profiler on a 30-row page shows a keystroke rendering only the edited block's path, with the figures before and after in the commit.
 4. **Load the builder's dialogs on demand.** After 3.1. Follow FB8's fix. Closes FB8. M. Done when: the page editor is in the budgets of `e2e/signed-in/admin-scripts.spec.ts` and its first scripts are smaller than today's measure.
 5. **Split the product editor.** One file per section, memoised. Closes FB10. M. Done when: the existing product-editor unit tests pass unchanged and typing in the title does not render `VariantRow`.
@@ -772,6 +777,8 @@ language, and little else. The point of this phase is that nothing above comes b
 
 1. **Lint rules for the boundaries.** Add `no-restricted-imports` for `src/lib/**` and move the import and call bans from scan tests to `eslint.config.mjs`. Closes FH7, FH8. M. Done when: a new `@/server` import in `src/lib` fails `pnpm lint` in the editor, and the allow-list of offenders only shrinks.
 2. **All environment reads through `env.ts`.** Closes FD12. S. Done when: `env.scan.test.ts` passes with its short allow-list.
+   Files that read the environment besides `env.ts` (bloat review step 2.22): `src/server/stripe-keys.ts` reads the four
+   `STRIPE_*_KEY_*` variables without the Stripe SDK (made by step 0.6), and a store is read through it.
 3. **Generate the navigation doc.** After 1.18. A script and a CI check for `docs/admin-navigation.md`, as `parity:check` works. Closes FN11. S. Done when: CI fails when the doc and the nav data differ. The audit's phase 4 item.
 4. **The small ones.** Tab titles from the navigation data and the account's language (FS11); the decision number out of
    `domains.en.ts:213`, with a scan for `D` and digits in catalogue values; the AI panel's first paragraph into the catalogue

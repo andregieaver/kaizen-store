@@ -28,7 +28,9 @@ import { cleanRichText, isLinkAddress, richTextIsEmpty, richTextPlain, type Rich
 export { RESERVED_STORE_PAGE_SLUGS, RESERVED_ARTICLE_SLUGS } from "./reserved-slugs";
 import { RESERVED_ARTICLE_SLUGS, RESERVED_STORE_PAGE_SLUGS } from "./reserved-slugs";
 export { CONTENT_MAX_MIN, CONTENT_MAX_MAX } from "./content-width";
-import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./content-width";
+export { BACKDROP_BLUR_MAX, BORDER_MAX, BORDER_STYLES, COLUMN_SHARE_MAX, GRID_COLUMNS_MAX, GRID_GAP_MAX, IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, RADIUS_MAX, ROW_HEIGHT_VH, SHADOWS, SPACING_MAX, themeElementSchema, type Border, type BorderStyle, type Color, type ColorBackground, type PartSizeSettings, type Shadow, type Sides, type SizeOverrides, type Spacing, type SwitcherLayout, type SwitcherText, type TextAlign, type ThemeElement } from "./part-styles";
+import { BACKDROP_BLUR_MAX, backdropBlur, borderSchema, color, colorBackground, columnOrder, columnShare, contentMaxWidth, GRID_GAP_MAX, gridColumnCount, partGap, pictureWidth, radiusSchema, rowHeightVh, shadowOpacitySchema, SHADOWS, shadowSchema, side, sizeOverrides, spacing, SPACING_MAX, textAlign, type Border, type Color, type ColorBackground, type Shadow, type Sides, type SizeOverrides, type Spacing, type SwitcherLayout, type SwitcherText, type TextAlign, type ThemeElement } from "./part-styles";
+export { mapChildBlocks, mapInnerColumns } from "./block-walk";
 import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
 import { inlinePlain } from "./inline-text";
@@ -42,8 +44,8 @@ import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
 import { QUANTITY_PICKERS, type QuantityPicker } from "./quantity-stepper";
 import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
 import { withoutIcons } from "./table-icons";
-import { foldTypography, textGradientSchema, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TextGradient, type TypographyGroups, type TypographyGroupsAt } from "./typography";
-import { SIZES, type Size, type SmallerSize } from "./breakpoints";
+import { foldTypography, textGradientSchema, typographyFamilies, typographyGroupsSchema, type TextGradient, type TypographyGroups } from "./typography";
+import { SIZES, type Size } from "./breakpoints";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import type { ShopTiles } from "./shop-tiles";
@@ -150,11 +152,6 @@ export const ROW_LINES_MAX = 6;
 // Pages
 // ---------------------------------------------------------------------------
 
-/** Space on each side, in pixels (D47). */
-export type Sides = { top: number; right: number; bottom: number; left: number };
-/** A row's, column's or block's margin (outside) and padding (inside); none when left out. */
-export type Spacing = { margin?: Sides; padding?: Sides };
-export const SPACING_MAX = 240;
 /**
  * A row's padding until it is given its own: 20 px on each side, so rows
  * keep off the window's edges now that the page adds no room of its own at
@@ -164,31 +161,8 @@ export const ROW_PADDING: Sides = { top: 20, right: 20, bottom: 20, left: 20 };
 /** Where a picture or video background is anchored when it is cut to fit (D184). */
 export const BACKGROUND_ALIGNS = ["top", "middle", "bottom"] as const;
 export type BackgroundAlign = (typeof BACKGROUND_ALIGNS)[number];
-/** A row's height as a share of the screen's, in per cent (D184). */
-export const ROW_HEIGHT_VH = { min: 5, max: 300 } as const;
-/** A column's share is a whole number up to this; dragging the edges between columns makes shares of 100 (a percent each). */
-export const COLUMN_SHARE_MAX = 100;
 /** A row's spacing as drawn: its own, with the default padding where it has none. */
 export const rowSpacing = (style: Spacing | undefined): Spacing => ({ ...style, padding: style?.padding ?? ROW_PADDING });
-
-/** A colour as `#rrggbb`. */
-export type Color = string;
-
-export const BORDER_STYLES = { solid: "Solid", dashed: "Dashed", dotted: "Dotted" } as const;
-export type BorderStyle = keyof typeof BORDER_STYLES;
-/** A border (D49): its width on each side, in pixels, its colour and its line. */
-export type Border = { width: Sides; color: Color; style: BorderStyle };
-export const BORDER_MAX = 20;
-export const RADIUS_MAX = 200;
-
-/** Shadows to choose from (D49), each with its CSS. */
-export const SHADOWS = {
-  sm: { label: "Small", css: "0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08)" },
-  md: { label: "Medium", css: "0 4px 12px rgb(0 0 0 / 0.12)" },
-  lg: { label: "Large", css: "0 10px 30px rgb(0 0 0 / 0.15)" },
-  xl: { label: "Extra large", css: "0 20px 50px rgb(0 0 0 / 0.2)" },
-} as const;
-export type Shadow = keyof typeof SHADOWS;
 
 /** A shadow's opacity as a slider shows it, in per cent: its darkest layer's (D262). */
 export const shadowOpacityOf = (shadow: Shadow): number => Math.round(Math.max(...shadowAlphas(SHADOWS[shadow].css)) * 100);
@@ -245,59 +219,6 @@ export type PartBase = {
   typography?: TypographyGroups;
 };
 
-/** The one kind of background a part can take per screen size (D179): a colour; a picture, video or gradient is the part's own. */
-export type ColorBackground = { type: "color"; color: Color; opacity?: number };
-
-/**
- * What a part can set per screen size (D179, `docs/responsive-editing.md` 3): its spacing, frame and colour; a row's
- * stacking, order and gap; a column's share of the row and its place; a block's alignment, a picture's width, a grid's
- * columns, gap and carousel, a dual button's stacking. Each kind of part reads the keys that concern it.
- */
-export type PartSizeSettings = {
-  style?: Spacing;
-  /** `null` at a size: none there, though a larger size has one (D179 phase 2); the same for a shadow, colour, blur and width. */
-  border?: Border | null;
-  radius?: number;
-  shadow?: Shadow | null;
-  shadowOpacity?: number;
-  background?: ColorBackground | null;
-  backdropBlur?: number | null;
-  /** A row's columns (or a dual button's two) one under another. */
-  stack?: boolean;
-  /** A row's stacked columns, last first. */
-  reverse?: boolean;
-  /** Pixels between a row's columns, or a grid's tiles. */
-  gap?: number;
-  /** A column's share of its row (as a layout's widths: 0 is as wide as what it holds); the row's layout unless set. */
-  width?: number;
-  /** A column's place in its row. */
-  order?: number;
-  align?: TextAlign;
-  maxWidth?: number | null;
-  /** A row's content width in pixels, over the theme's (null: the theme's, though a larger size sets one). */
-  contentMax?: number | null;
-  /** A row's height as a share of the screen's, in per cent (D184); at least that tall. null: as tall as its content. */
-  height?: number | null;
-  /** A grid's columns. */
-  columns?: number;
-  /** A grid shown as a grid or as a carousel. */
-  display?: "grid" | "carousel";
-  /** The language switcher's languages side by side, one under another or in a drop-down list (D479). */
-  switcher?: SwitcherLayout;
-  /** The language switcher's words for each language: its name, its short code, or none beside its flag (D479). */
-  langText?: SwitcherText;
-  /** The language switcher shows each language's flag (D479). */
-  langFlag?: boolean;
-  /** Its typography at the size, per kind of text: what differs (D179 phase 3). */
-  typography?: TypographyGroupsAt;
-};
-
-/** How the language switcher lays its languages out (D479): side by side (the default), one under another, or a drop-down list. */
-export type SwitcherLayout = "row" | "column" | "dropdown";
-/** The words the language switcher gives each language (D479): its name in itself (the default), its short code (`EN`), or none. */
-export type SwitcherText = "name" | "code" | "none";
-/** Per smaller size, what differs from the size above (D179). */
-export type SizeOverrides = Partial<Record<SmallerSize, PartSizeSettings>>;
 /** Where a part shows (D179 6): by screen size for now. */
 /**
  * Where a part shows (D179): `hideAt` leaves it out at those sizes (CSS); `show` is who sees it (phase 4, `src/lib/visibility.ts`):
@@ -344,8 +265,6 @@ export type GradientBackground = {
 };
 /** How soft a background picture or video may be drawn, in pixels. */
 export const BLUR_MAX = 100;
-/** How much what is behind a part may be blurred (D86): kept low, as a large backdrop blur is costly for the browser to draw. */
-export const BACKDROP_BLUR_MAX = 20;
 /**
  * A row's background video: plays without sound, on a loop, with a colour
  * and blur over it as a picture takes. `poster` is a still from it, shown
@@ -361,7 +280,6 @@ export type VideoBackground = {
 /** A row's background: a column's, or a video (rows only). */
 export type RowBackground = Background | VideoBackground;
 
-export type TextAlign = "left" | "center" | "right";
 /**
  * Text alignment by screen as pages had it before D179 (D48): phones, from tablets (768 px) and from computers (1024 px) up;
  * each unset follows the smaller. Read on load into a part's `align` and its overrides (`upgradeBlock()`); the editor's
@@ -379,10 +297,6 @@ export const IMAGE_SHAPES = {
 } as const;
 export type ImageShape = keyof typeof IMAGE_SHAPES;
 
-/** A picture is drawn at its own size and never larger (D151); `maxWidth` makes it narrower, in pixels. */
-export const IMAGE_WIDTH_MIN = 16;
-/** The bound `image.width` already has. */
-export const IMAGE_WIDTH_MAX = 10_000;
 /** Each crop's width over its height. Kept in step with the aspect classes in `SHAPES` (page-block.tsx); a test holds them. */
 export const IMAGE_SHAPE_RATIO: Record<ImageShape, number> = { landscape: 4 / 3, portrait: 3 / 4, panorama: 3, square: 1, circle: 1 };
 /** A picture taken from a custom field is not known by its size where it is drawn (`field-binding.ts`); this stands in for it. */
@@ -627,8 +541,6 @@ export const PRODUCT_SORTS: readonly GridSort[] = [...PRICE_SORTS, "manual"];
 export const GRID_LIMIT_MAX = 48;
 /** The most custom fields a content grid's tile shows (D120). */
 export const TILE_FIELDS_MAX = 3;
-export const GRID_GAP_MAX = 96;
-export const GRID_COLUMNS_MAX = { mobile: 2, tablet: 4, desktop: 8 } as const;
 /** A grid's columns by screen as pages had them before D179: now its `columns` (Extra large) and overrides (`upgradeBlock()`). */
 export type GridColumns = { mobile: number; tablet: number; desktop: number };
 /** A tile's parts, each on or off per grid. */
@@ -1345,18 +1257,6 @@ export const innerColumns = (block: PageBlock): PageColumn[] => (block.type === 
 export function childBlocks(block: PageBlock): PageBlock[] {
   if (block.type === "columns") return block.columns.flatMap((column) => column.blocks);
   return block.type === "faq" ? block.items.flatMap((item) => item.blocks ?? []) : [];
-}
-
-/** The block with each component it holds changed by `change` (D208, D294); the block itself when it holds none. */
-export function mapChildBlocks(block: PageBlock, change: (child: PageBlock) => PageBlock): PageBlock {
-  if (block.type === "columns") return mapInnerColumns(block, (column) => ({ ...column, blocks: column.blocks.map(change) }));
-  if (block.type !== "faq" || !block.items.some((item) => item.blocks?.length)) return block;
-  return { ...block, items: block.items.map((item) => (item.blocks?.length ? { ...item, blocks: item.blocks.map(change) } : item)) };
-}
-
-/** A Columns component with each of its columns changed by `change` (D294); any other block as it is. */
-export function mapInnerColumns(block: PageBlock, change: (column: PageColumn) => PageColumn): PageBlock {
-  return block.type === "columns" ? { ...block, columns: block.columns.map(change) } : block;
 }
 
 /**
@@ -2590,21 +2490,6 @@ const itemId = z
   .string()
   .regex(/^[A-Za-z0-9_-]{1,64}$/, "Part of the page could not be read. Reload the page and try again.");
 
-const side = z
-  .number()
-  .int("Spacing is whole pixels.")
-  .min(0, "Spacing cannot be below 0.")
-  .max(SPACING_MAX, `Keep spacing at ${SPACING_MAX} pixels or less.`);
-const sides = z.object({ top: side, right: side, bottom: side, left: side });
-// A margin may be negative, to pull a part over its neighbour (D197).
-const marginSide = z
-  .number()
-  .int("Spacing is whole pixels.")
-  .min(-SPACING_MAX, `Keep a margin at -${SPACING_MAX} pixels or more.`)
-  .max(SPACING_MAX, `Keep spacing at ${SPACING_MAX} pixels or less.`);
-const marginSides = z.object({ top: marginSide, right: marginSide, bottom: marginSide, left: marginSide });
-const spacing = z.object({ margin: marginSides.optional(), padding: sides.optional() }).optional();
-
 /** Ids the site's own layout uses, which a part of a page cannot take. */
 export const RESERVED_HTML_IDS: readonly string[] = ["main"];
 export const HTML_ID_MAX = 64;
@@ -2634,95 +2519,6 @@ export function classNameProblem(value: string): string | null {
 const optionalText = <T extends z.ZodType>(schema: T) =>
   z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema.optional());
 
-const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.");
-
-const borderWidth = z
-  .number()
-  .int("A border is whole pixels.")
-  .min(0, "A border cannot be below 0.")
-  .max(BORDER_MAX, `Keep a border at ${BORDER_MAX} pixels or less.`);
-
-const borderSchema = z
-  .object({
-    width: z.object({ top: borderWidth, right: borderWidth, bottom: borderWidth, left: borderWidth }),
-    color,
-    style: z.enum(Object.keys(BORDER_STYLES) as [BorderStyle, ...BorderStyle[]]),
-  })
-  .optional();
-const radiusSchema = z
-  .number()
-  .int("Rounded corners are whole pixels.")
-  .min(0)
-  .max(RADIUS_MAX, `Keep rounded corners at ${RADIUS_MAX} pixels or less.`)
-  .optional();
-const shadowSchema = z.enum(Object.keys(SHADOWS) as [Shadow, ...Shadow[]]).optional();
-const shadowOpacitySchema = z.number().int("A shadow's opacity is whole per cents.").min(0).max(100, "A shadow's opacity is 0 to 100%.").optional();
-const colorBackground = z.object({ type: z.literal("color"), color, opacity: z.number().int().min(0).max(99).optional() });
-/** How much what is behind a part is blurred (D86), with no background or a colour. */
-const backdropBlur = z.number().int().min(1).max(BACKDROP_BLUR_MAX).optional();
-const textAlign = z.enum(["left", "center", "right"]).optional();
-const pictureWidth = z
-  .number()
-  .int("A picture's width is whole pixels.")
-  .min(IMAGE_WIDTH_MIN, `Make a picture at least ${IMAGE_WIDTH_MIN} pixels wide.`)
-  .max(IMAGE_WIDTH_MAX, `Keep a picture at most ${IMAGE_WIDTH_MAX} pixels wide.`)
-  .optional();
-const gridColumnCount = z.number().int().min(1, "A grid has at least one column.").max(GRID_COLUMNS_MAX.desktop, `A grid has at most ${GRID_COLUMNS_MAX.desktop} columns.`);
-/** Pixels between a row's columns or a grid's tiles. */
-const partGap = z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space at ${GRID_GAP_MAX} pixels or less.`).optional();
-
-/** A column's share of its row and its place among the others (D179); dragging its edge in the canvas gives shares of 100. */
-const columnShare = z.number().int().min(0).max(COLUMN_SHARE_MAX, `A column's share is 0 to ${COLUMN_SHARE_MAX}.`).optional();
-/** A row's height in per cent of the screen's (`PageRow.height`). */
-const rowHeightVh = z.number().int("A height is whole per cents.").min(ROW_HEIGHT_VH.min, `Make a row at least ${ROW_HEIGHT_VH.min}% of the screen high.`).max(ROW_HEIGHT_VH.max, `Keep a row at most ${ROW_HEIGHT_VH.max}% of the screen high.`);
-/** How wide a row's content may be (`PageRow.contentMax`), in pixels. */
-const contentMaxWidth = z
-  .number()
-  .int("A width is whole pixels.")
-  .min(CONTENT_MAX_MIN, `Make the content at least ${CONTENT_MAX_MIN} pixels wide.`)
-  .max(CONTENT_MAX_MAX, `Keep the content at most ${CONTENT_MAX_MAX} pixels wide.`);
-const columnOrder = z.number().int().min(-12).max(12, "A column's place is -12 to 12.").optional();
-
-/** What a part may set at a smaller size (D179): the same rules as its own settings, each optional. */
-const sizeSettings = z.object({
-  style: spacing,
-  // `null`: none at this size, though a larger size has one (D179 phase 2).
-  border: borderSchema.or(z.null()),
-  radius: radiusSchema,
-  shadow: shadowSchema.or(z.null()),
-  shadowOpacity: shadowOpacitySchema,
-  background: colorBackground.nullable().optional(),
-  backdropBlur: backdropBlur.or(z.null()),
-  stack: z.boolean().optional(),
-  reverse: z.boolean().optional(),
-  gap: partGap,
-  width: columnShare,
-  order: columnOrder,
-  align: textAlign,
-  maxWidth: pictureWidth.or(z.null()),
-  contentMax: contentMaxWidth.or(z.null()).optional(),
-  height: rowHeightVh.or(z.null()).optional(),
-  columns: gridColumnCount.optional(),
-  display: z.enum(["grid", "carousel"]).optional(),
-  switcher: z.enum(["row", "column", "dropdown"]).optional(),
-  langText: z.enum(["name", "code", "none"]).optional(),
-  langFlag: z.boolean().optional(),
-  typography: typographyAtSchema,
-});
-/** A part's overrides by size, with sizes that set nothing left out. */
-const sizeOverrides = z
-  .object({ lg: sizeSettings.optional(), md: sizeSettings.optional(), sm: sizeSettings.optional() })
-  .optional()
-  .transform((at) => {
-    if (!at) return undefined;
-    const kept = Object.fromEntries(
-      Object.entries(at).flatMap(([size, settings]) => {
-        const own = settings ? Object.fromEntries(Object.entries(settings).filter(([, v]) => v !== undefined)) : {};
-        return Object.keys(own).length > 0 ? [[size, own]] : [];
-      }),
-    ) as SizeOverrides;
-    return Object.keys(kept).length > 0 ? kept : undefined;
-  });
 const visibility = z
   .object({ hideAt: z.array(z.enum(SIZES)).max(SIZES.length).optional(), show: showSchema.optional() })
   .optional()
@@ -2731,45 +2527,6 @@ const visibility = z
     // Always is what nothing set means (D179 phase 4), so it is not stored.
     const show = value?.show === "always" ? undefined : value?.show;
     const kept: Visibility = { ...(hideAt.length > 0 && { hideAt }), ...(show !== undefined && { show }) };
-    return Object.keys(kept).length > 0 ? kept : undefined;
-  });
-
-/**
- * What the theme says for a kind of element (`ThemeSettings.elements`, `src/lib/theme-elements.ts`): the settings of a part
- * that make sense for every row, heading, paragraph, list or button of a store, each at the sizes a part can set them at.
- */
-export type ThemeElement = {
-  style?: Spacing;
-  border?: Border;
-  radius?: number;
-  shadow?: Shadow;
-  shadowOpacity?: number;
-  /** A row's colour behind it. */
-  background?: ColorBackground;
-  /** A row's width (D190): the content's (the default) or the whole screen's, as `PageRow.width`; a row's own choice wins. */
-  width?: "content" | "full";
-  /** In a full-width row, whether what is in it spreads too (D190), as `PageRow.contentWidth`; a row's own choice wins. */
-  contentWidth?: "content" | "full";
-  at?: SizeOverrides;
-  typography?: TypographyGroups;
-};
-
-/** Settings left out are none; an element with nothing set is left out. */
-export const themeElementSchema = z
-  .object({
-    style: spacing,
-    border: borderSchema,
-    radius: radiusSchema,
-    shadow: shadowSchema,
-    shadowOpacity: shadowOpacitySchema,
-    background: colorBackground.optional(),
-    width: z.enum(["content", "full"]).optional(),
-    contentWidth: z.enum(["content", "full"]).optional(),
-    at: sizeOverrides,
-    typography: typographyGroupsSchema,
-  })
-  .transform((value) => {
-    const kept = Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as ThemeElement;
     return Object.keys(kept).length > 0 ? kept : undefined;
   });
 

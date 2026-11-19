@@ -9,7 +9,7 @@ const ROUTES = [
   "/s/[store]/[market]", "/s/[store]/[market]/p/[handle]", "/s/[store]/[market]/category/[slug]", "/s/[store]/[market]/cart", "/s/[store]/[market]/checkout",
   "/", "/docs", "/admin/sign-in",
   "/admin/[store]", "/admin/[store]/orders", "/admin/[store]/products/[productId]", "/admin/[store]/pages/[pageId]", "/admin/[store]/settings", "/admin/platform",
-  "/api/visit", "/api/health", "/api/cron/cart-reminders", "/api/cron/page-jobs", "/api/shop/tiles",
+  "/api/visit", "/api/visit/touch", "/api/visit/speed", "/api/visit/speed/own", "/api/recommendations/events", "/api/health", "/api/cron/cart-reminders", "/api/cron/page-jobs", "/api/shop/tiles",
 ];
 const kb = (n) => (n / 1024).toFixed(0);
 const pkgOf = (path) => {

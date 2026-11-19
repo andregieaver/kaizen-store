@@ -180,7 +180,7 @@ commit as the fix.
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
 | 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | In progress | D816: proxy files 321 to 57, chunk 2,253,770 to 585,983 B, trace 60.7 to 2.1 MB; live 19 Nov, smoke clean. Cold-start p50 reading due. |
 | 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | In progress | D824: page reader 72 files; article 467 to 431; live 19 Nov, pages read as before. Follow-up: admin chunks +12.6 KB median (issue 26). |
-| 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | In progress | Commit 1: stores.ts already reads modes from stripe-keys.ts (0.6); graph test forbids stripe to stores (102 files) and beacons. |
+| 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | In progress | Local: stores.ts 102 to 72 files; beacons 431-477 modules, 784-914 KB, no stripe; store home 1,538, 4,995 KB (over bar). |
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
 | 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Open | |
@@ -352,6 +352,8 @@ Change log:
   them, the docs): the proxy 321 to 57 source files and 2,200.9 to 572.2 KB of chunks; waiting for review, the D-row and the hosts job.
 - 19 Nov 2026: step 2.21 carried out locally in three commits (the reads to page-reads.ts, the importers split, the renderer held):
   reading a page 183 to 72 source files, the renderer 467 to 430 with no path to pages.ts; waiting for review and the D-row.
+- 20 Nov 2026: step 2.22 carried out locally in three commits (the graph test's stores entry, the role names and reserved slugs,
+  the part styles in a leaf): stores.ts 102 to 72 files with no path to stripe.ts or page-content.ts; waiting for review and the D-row.
 
 
 **Notes on the steps**
