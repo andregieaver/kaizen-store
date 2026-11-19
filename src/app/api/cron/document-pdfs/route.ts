@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { contractJob } from "@/server/contract-jobs";
+import { signedPdfJob } from "@/server/contract-jobs";
 import { cronAuthorised } from "@/server/cron-auth";
 import { pdfJob, renderPdf } from "@/server/invoice-pdf";
 
@@ -17,8 +17,8 @@ async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
   const pdfs = await pdfJob();
-  // Contracts (D695 step 3): their signed PDFs with this route's Chromium, expiries, reminders, codes and retention.
-  const contracts = await contractJob({ render: renderPdf });
+  // Contracts (D695 step 3): their sealed PDFs with this route's Chromium. The dispatcher asks for this when one waits (D795).
+  const contracts = await signedPdfJob({ render: renderPdf });
   return Response.json({ pdfs, contracts }, { headers: { "Cache-Control": "no-store" } });
 }
 

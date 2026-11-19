@@ -31,6 +31,7 @@ import { measureAutopilotEffects } from "@/server/autopilot-effects";
 import { sendAutopilotReports } from "@/server/autopilot-reports";
 import { sendScheduledReports } from "@/server/report-schedules";
 import { invoiceJobs } from "@/server/invoice-issue";
+import { runContractUpkeep } from "@/server/contract-upkeep";
 import { readDueLegalSources } from "@/server/legal-sources";
 import { runLegalUpkeep, runLegalWrites } from "@/server/legal-writer";
 import { runPaymentJobs } from "@/server/payment-disputes";
@@ -134,6 +135,8 @@ export const DISPATCHER_JOBS = {
   experiments: () => runExperimentJobs(),
   returns: () => runReturnJobs(),
   invoices: () => invoiceJobs(),
+  // Contracts (D695, D795): expiry, reminders, codes and retention; the PDF route asked when a signed contract waits for its seal.
+  contracts: () => runContractUpkeep(),
   // A Shopify move due now starts, a running one goes on (D445 step 7a); before the imports it hands work to.
   shopMoves: () => runDueMoves(),
   dataJobs: () => runDataJobs(),
