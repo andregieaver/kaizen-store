@@ -25,6 +25,10 @@ import { type CarouselSettings } from "./carousel-settings";
 import { carouselSettingsSchema } from "./carousel-settings-schema";
 export * from "./rich-text-doc";
 import { cleanRichText, isLinkAddress, richTextIsEmpty, richTextPlain, type RichTextDoc } from "./rich-text-doc";
+export { RESERVED_STORE_PAGE_SLUGS, RESERVED_ARTICLE_SLUGS } from "./reserved-slugs";
+import { RESERVED_ARTICLE_SLUGS, RESERVED_STORE_PAGE_SLUGS } from "./reserved-slugs";
+export { CONTENT_MAX_MIN, CONTENT_MAX_MAX } from "./content-width";
+import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./content-width";
 import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
 import { inlinePlain } from "./inline-text";
@@ -162,9 +166,6 @@ export const BACKGROUND_ALIGNS = ["top", "middle", "bottom"] as const;
 export type BackgroundAlign = (typeof BACKGROUND_ALIGNS)[number];
 /** A row's height as a share of the screen's, in per cent (D184). */
 export const ROW_HEIGHT_VH = { min: 5, max: 300 } as const;
-/** How wide a row's content may be made, in pixels (`PageRow.contentMax`, the theme's `layout.maxWidth`). */
-export const CONTENT_MAX_MIN = 320;
-export const CONTENT_MAX_MAX = 3200;
 /** A column's share is a whole number up to this; dragging the edges between columns makes shares of 100 (a percent each). */
 export const COLUMN_SHARE_MAX = 100;
 /** A row's spacing as drawn: its own, with the default padding where it has none. */
@@ -2500,41 +2501,6 @@ export const pageFonts = (content: Pick<PageContent, "rows">) => [...new Set(pag
 export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
   return content.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks)));
 }
-
-/**
- * Kept in step with the `pages_store_slug_not_reserved` check: a store's own
- * routes inside each of its markets (`/s/{store}/{market}/…`), D53. `blogs`
- * (the store's other blogs, D341) is refused here only, not by the check, so
- * a page a store already has at that address is not refused by the database.
- */
-export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
-  "account",
-  "blog",
-  "blogs",
-  "cart",
-  "category",
-  "checkout",
-  "cookies",
-  "deliveries",
-  "download",
-  "order",
-  "p",
-  "products",
-  "request",
-  "returns",
-  "search",
-  "subscription",
-  "tag",
-  "unsubscribe",
-  "wishlist",
-  "withdraw",
-];
-
-/**
- * Kept in step with the `pages_article_slug_not_reserved` check: the blog's
- * own routes under `/blog/` (D57), Kaizen's and every store's.
- */
-export const RESERVED_ARTICLE_SLUGS: readonly string[] = ["category", "page", "tag"];
 
 /**
  * What is built in the page builder: pages, articles in the blog (D57), product layouts (D79), the site's headers and footers (D80), A/B test

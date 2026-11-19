@@ -5,7 +5,7 @@ import { landingKind, type LandingKind } from "./analytics-traffic";
 import { parseMarketSlug } from "./market-slug";
 import { PLATFORM_SEGMENTS } from "./redirect-path";
 import { afterMarket, type StoreAddress } from "./store-address";
-import { RESERVED_ARTICLE_SLUGS, RESERVED_STORE_PAGE_SLUGS } from "./page-content";
+import { RESERVED_ARTICLE_SLUGS, RESERVED_STORE_PAGE_SLUGS } from "./reserved-slugs";
 
 /**
  * What the visit endpoint accepts and what it makes of a path (D152, docs/analytics.md, "Visit counting"). Pure and shared
