@@ -217,7 +217,7 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
     source: "Bokføringsloven § 13(2): contracts, correspondence and the like are kept 3 years and 6 months after the end of the financial year (read for D162, quoted in docs/own-books-and-sales.md 5)",
     sourceUrl: "https://lovdata.no/lov/2004-11-19-73/§13",
     basis: "read",
-    enforcedBy: "pruneContracts() (src/server/contract-upkeep.ts)",
+    enforcedBy: "pruneContracts() (src/server/contract-signing.ts)",
     note: "A signed contract, its signers, its events and its two PDFs, counted from the day it was signed: 54 months covers the law's 42 after the end of the year it was signed in (signed on 1 January, that is 53); for an accountant to review.",
     checkedOn: "2026-11-17",
   }),
