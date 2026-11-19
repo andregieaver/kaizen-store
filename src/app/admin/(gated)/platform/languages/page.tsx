@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import Link from "next/link";
 import { connection } from "next/server";
 
@@ -44,13 +46,17 @@ export default async function LanguagesPage() {
         title={w.title}
         description={
           <>
-            <p>{w.intro}</p>
+            <span className="sm:hidden">{w.phoneLead}</span>
+            <span className="block max-sm:hidden">{w.intro}</span>
             {/* D436: what the night does for the translated languages, said once. */}
-            <p className="mt-2">{fillWords(w.nightly, { n: UI_NIGHT_KEYS_PER_LANGUAGE })}</p>
+            <span className="mt-2 block max-sm:hidden">{fillWords(w.nightly, { n: UI_NIGHT_KEYS_PER_LANGUAGE })}</span>
           </>
         }
       />
 
+      {/* Round 64 (D830): on a phone the site's languages and adding one are rows, and each language one row saying how far its interface is. */}
+      <PhoneRows className="sm:gap-8">
+      <PhoneRow flat title={w.site} sub={siteLangs.map((lang) => PLATFORM_LANG_FACTS[lang].name).join(" · ")} change={w.phoneOpen} done={w.phoneClose}>
       <Card
         title={w.site}
         description={w.siteText}
@@ -80,7 +86,8 @@ export default async function LanguagesPage() {
           })}
         </ul>
       </Card>
-
+      </PhoneRow>
+      <PhoneRow flat last title={w.add} change={w.phoneOpen} done={w.phoneClose}>
       <Card title={w.add} className="flex flex-col gap-3" compact>
         <ActionForm action={addLanguageAction} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -95,26 +102,37 @@ export default async function LanguagesPage() {
           <SubmitButton>{w.addButton}</SubmitButton>
         </ActionForm>
       </Card>
+      </PhoneRow>
+      </PhoneRows>
 
       <section aria-labelledby="list-heading" className="flex flex-col gap-3">
         <h2 id="list-heading" className="sr-only">{w.list}</h2>
-        <ul className="flex flex-col gap-3">
-          {languages.map((language) => {
+        <ul className="flex flex-col gap-3 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+          {languages.map((language, index) => {
             const c = coverage[language.lang];
             const builtIn = isBuiltIn(language.lang);
+            const state = builtIn
+              ? w.byHand
+              : c
+                ? fillWords(w.coverage, { translated: c.translated, total, stale: c.stale > 0 ? fillWords(w.outOfDate, { n: c.stale }) : "", reviewed: c.reviewed })
+                : w.notTranslated;
             return (
-              <li key={language.lang} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between">
+              <li key={language.lang}>
+              <PhoneRow
+                last={index === languages.length - 1}
+                title={`${language.name} · ${nativeName(language.lang)} · ${language.lang}`}
+                sub={`${state} ${countWords(uses.get(language.lang) ?? 0, w.uses)}`}
+                change={w.phoneOpen}
+                done={w.phoneClose}
+              >
+              <div className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex flex-col gap-1 text-sm">
-                  <span className="font-medium">
+                  <span className="font-medium max-sm:hidden">
                     {language.name} <span className="font-normal text-muted">· {nativeName(language.lang)} · {language.lang}</span>
                     {language.direction === "rtl" && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">{w.rtl}</span>}
                   </span>
-                  <span className="text-muted">
-                    {builtIn
-                      ? w.byHand
-                      : c
-                        ? fillWords(w.coverage, { translated: c.translated, total, stale: c.stale > 0 ? fillWords(w.outOfDate, { n: c.stale }) : "", reviewed: c.reviewed })
-                        : w.notTranslated}
+                  <span className="text-muted max-sm:hidden">
+                    {state}
                     {" "}
                     {countWords(uses.get(language.lang) ?? 0, w.uses)}
                   </span>
@@ -136,6 +154,8 @@ export default async function LanguagesPage() {
                     <SubmitButton variant={language.enabled ? "secondary" : "primary"}>{language.enabled ? w.switchOff : w.switchOn}</SubmitButton>
                   </ActionForm>
                 </div>
+              </div>
+              </PhoneRow>
               </li>
             );
           })}

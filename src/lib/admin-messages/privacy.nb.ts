@@ -317,6 +317,13 @@ export const privacyNb: PrivacyMessages = {
     title: "Behandlingsprotokoll",
     description:
       "Hva Kaizena Flow gjør med personopplysninger, formål for formål, slik GDPR art. 30 krever: behandlingsgrunnlaget og hvorfor, hvem som bestemmer formålet, hvem opplysningene gjelder, hvor de lagres og hvor lenge. Laget fra registeret over personopplysninger, så den aldri henger etter koden. Grunnlagene er forslag som advokaten skal bekrefte; en rad merket for gjennomgang er en vurdering, ikke en klar sak. Dette er ikke juridisk rådgivning.",
+    /** Runde 64 (D830): protokollen på en telefon, hvert formål en rad. */
+    phone: {
+      lead: "Hva Kaizena Flow gjør med personopplysninger, formål for formål (GDPR art. 30). Ikke juridisk rådgivning.",
+      review: "for advokaten",
+      open: "Åpne",
+      close: "Lukk",
+    },
     purpose: "Formål",
     basis: "Behandlingsgrunnlag",
     controller: "Hvem bestemmer",

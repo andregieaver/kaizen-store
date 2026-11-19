@@ -294,6 +294,10 @@ export const platformToolsNb: PlatformToolsMessages = {
   },
   languages: {
     title: "Språk",
+    /** Runde 64 (D830): språkene på en telefon. */
+    phoneLead: "Språkene eiere kan tilby; grensesnittet oversettes av AI og gjennomgås her.",
+    phoneOpen: "Åpne",
+    phoneClose: "Lukk",
     intro:
       "Språkene butikkeiere kan tilby under Språk og valutaer. Produkter, sider og menyer kan skrives eller oversettes til alle; grensesnittet (knapper, handlekurv, kasse og e-postene kundene får) er skrevet for hånd på norsk, svensk, dansk og engelsk, og oversatt av KI og gjennomgått her for de andre. Et språk uten grensesnittekst viser engelsk der.",
     site: "Kaizena Flows eget nettsted",

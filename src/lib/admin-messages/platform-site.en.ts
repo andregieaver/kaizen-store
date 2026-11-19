@@ -49,6 +49,9 @@ export const platformSiteEn = {
     title: "Themes",
     description:
       "A theme is a whole look (colours, fonts, buttons, corners, light and dark, a header and footer, a product page and CSS) with up to five presets over it, and its own content: the pages, products and pictures it is shown with, which a new store started from it begins with. Owners apply a theme from their store's Design settings, which never changes their words; people creating a store choose one. Every change is a draft until you publish it.",
+    /** Round 64 (D830): the themes on a phone. */
+    phoneLead: "Whole looks owners apply from Design settings; every change is a draft until you publish it.",
+    phoneMore: "More",
     which: "Which themes",
     tabThemes: "Themes",
     tabArchived: "Archived",
