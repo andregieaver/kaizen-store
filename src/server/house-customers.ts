@@ -123,14 +123,19 @@ function people(runner: Tx): Promise<Person[]> {
   return typedRows(
     personRow,
     sql`
+      -- A store's plan is commerce.store_plans' rule (D748 E4: the account's row when it has one, else the store's own), written out
+      -- beside the store this read already holds: through the view each owned store would be read a second time (query budget).
       with owned as (
         select a.id as account_id, lower(a.email) as email, coalesce(a.name, '') as name, a.admin_locale as lang, s.id as store_id,
-               s.setup_completed_at is not null as opened, b.status, b.trial_ends_at, p.name as plan
+               s.setup_completed_at is not null as opened,
+               case when ob.organisation_id is not null then ob.status else sb.status end as status,
+               case when ob.organisation_id is not null then ob.trial_ends_at else sb.trial_ends_at end as trial_ends_at, p.name as plan
         from commerce.accounts a
         join commerce.store_members m on m.account_id = a.id and m.role = 'owner' and m.disabled_at is null
         join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
-        left join commerce.store_plans b on b.store_id = s.id
-        left join commerce.plans p on p.id = b.plan_id
+        left join commerce.organisation_billing ob on ob.organisation_id = s.organisation_id
+        left join commerce.store_billing sb on sb.store_id = s.id
+        left join commerce.plans p on p.id = case when ob.organisation_id is not null then ob.plan_id else sb.plan_id end
         where a.disabled_at is null and a.email not like '%.invalid'
       ),
       owners as (
@@ -144,9 +149,18 @@ function people(runner: Tx): Promise<Person[]> {
       requests as (
         select distinct on (lower(r.email)) r.id as request_id, lower(r.email) as email, coalesce(r.name, '') as name, r.locale as lang,
                r.store_name, r.status::text as status,
-               coalesce((select s.setup_completed_at is not null from commerce.stores s where s.id = r.store_id), false) as store_opened,
-               coalesce((select b.status in ('active', 'past_due') and b.mode = 'live' from commerce.store_plans b where b.store_id = r.store_id), false) as plan_paid
+               coalesce(x.opened, false) as store_opened, coalesce(x.paid, false) as plan_paid
         from commerce.access_requests r
+        -- The request's store, read once for both: opened, and paying (store_plans' rule, as above).
+        left join lateral (
+          select s.setup_completed_at is not null as opened,
+                 case when ob.organisation_id is not null then ob.status in ('active', 'past_due') and ob.mode = 'live'
+                      else sb.status in ('active', 'past_due') and sb.mode = 'live' end as paid
+            from commerce.stores s
+            left join commerce.organisation_billing ob on ob.organisation_id = s.organisation_id
+            left join commerce.store_billing sb on sb.store_id = s.id
+           where s.id = r.store_id
+        ) x on true
         where r.email not like '%.invalid' and (not r.self_serve or r.confirmed_at is not null)
         order by lower(r.email), r.created_at desc, r.id
       )

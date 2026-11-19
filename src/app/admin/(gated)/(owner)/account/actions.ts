@@ -4,6 +4,8 @@ import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { z } from "zod";
+
 import type { FormState } from "@/components/admin/action-form";
 import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
@@ -21,6 +23,8 @@ import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepR
 import { adminText } from "@/lib/admin-text";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
 import { ownedAccount, setOfficer } from "@/server/privacy-officers";
+import { accountPortalUrl, cancelAccountPlan, chooseAccountPlan } from "@/server/account-billing";
+import { NO_COUNTRY } from "@/server/billing";
 
 async function origin(): Promise<string> {
   const header = (await headers()).get("origin");
@@ -175,4 +179,46 @@ export async function setAccountOfficerAction(_state: FormState, form: FormData)
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return { status: "ok", messages: [w.saved] };
+}
+
+/** The account the signed-in person owns: the account Billing page's plan actions (D748 E4) act on it alone, and only its owner reaches them. */
+async function ownAccount() {
+  const account = await requireAccount();
+  const owned = await ownedAccount(account.id);
+  return { account, organisationId: owned?.id ?? null, words: adminText(adminLangOf(account.adminLocale), "billing").actions };
+}
+
+/** The owner chooses the account's plan: the first time through Stripe Checkout, later at once; the extensions it pays for come along. */
+export async function chooseAccountPlanAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const { account, organisationId, words } = await ownAccount();
+  if (!organisationId) return { status: "error", messages: [words.ownerOnly] };
+  const priceId = z.uuid().safeParse(formData.get("priceId"));
+  if (!priceId.success) return { status: "error", messages: [words.choosePlan] };
+  const result = await chooseAccountPlan(account, organisationId, { planPriceId: priceId.data, extensionPriceIds: "kept" }, await origin());
+  // Without a country no plan is chosen (it decides the VAT): said in the owner's language.
+  if (!result.ok) return { status: "error", messages: result.problems.map((p) => (p === NO_COUNTRY ? words.noCountry : p)) };
+  if (result.checkoutUrl) redirect(result.checkoutUrl);
+  refresh();
+  return { status: "ok", messages: [words.changed] };
+}
+
+/** The owner ends the account's plan at the end of its period, or keeps it after all. */
+export async function cancelAccountPlanAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const { account, organisationId, words } = await ownAccount();
+  if (!organisationId) return { status: "error", messages: [words.ownerOnly] };
+  const when = z.enum(["period_end", "undo"]).safeParse(formData.get("when"));
+  if (!when.success) return { status: "error", messages: [words.unknown] };
+  const result = await cancelAccountPlan(account, organisationId, when.data);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [when.data === "undo" ? words.continues : words.ends] };
+}
+
+/** Sends the owner to Stripe's page for the account's invoices and how it pays. */
+export async function accountPortalAction(): Promise<FormState> {
+  const { organisationId, words } = await ownAccount();
+  if (!organisationId) return { status: "error", messages: [words.ownerOnly] };
+  const result = await accountPortalUrl(organisationId, `${await origin()}/admin/account/billing`);
+  if (!result.ok) return { status: "error", messages: [result.problem] };
+  redirect(result.url);
 }
