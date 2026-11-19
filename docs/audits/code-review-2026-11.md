@@ -183,6 +183,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 19 November 2026: step 1.9 done (D794); the money and permission modules still without a test are listed in D794.
 - 19 November 2026: step 1.20 done (D796, finding FS12): the dates shoppers read are on the store's clock; experiments' exposures by UTC day, the platform activity filter and 39 zoneless admin dates are left (D796).
 - 19 November 2026: bloat review step 2.29 (local, not yet pushed): row 3.4's Tiptap part is done (the rich text editor, markup field and inline editors load after the builder's first paint); FB8's fix names them; the dialogs remain.
+- 19 November 2026: FH9's next (D811): `payment-session.ts`, `payment-providers/stripe.ts`, `draft-sessions.ts`, `billing-tools.ts`, `api-idempotency.ts` and `stripe.ts` (`createPlatformWebhooks()`) have tests, on one Stripe stand-in (`stripe-test-support.ts`); still without: `limits-admin.ts`, `house-switch.ts`, `admin-api-orders.ts` (reached only through the Admin API's route) and most of `market-price-tools.ts`.
 
 **Notes on the steps**
 
