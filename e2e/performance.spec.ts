@@ -929,6 +929,8 @@ test.describe("a store on a launch theme (Orbit)", () => {
  * page's lower links into view after the form showed (2 to 5 router requests in 4 runs of 11). The stand-in's form shows at once, before
  * Stripe's real one could, so a prefetch the page's hydration starts can still land between the form showing and the page settling (two
  * for the cart's link in 2 runs of 2 on a busy machine): those count in the total, and the window held at none starts once it settles.
+ * Bloat review step 2.6 (links state what they may fetch ahead): router requests measured on 19 November 2026 at 7 for the cart (15 before
+ * it, after step 2.4's fix) and 3 for the checkout (18), twice the same; each is held at the count plus 2, as e2e/prefetch.spec.ts's rows are.
  * After phase 2
  * the two-line cart is judged against the bare store's bars, and the checkout at its payment step has first scripts of at most 670,000
  * bytes (docs/rules/budgets.md). `E2E_MEASURE=1` prints each figure as `[money] <page> <measure> <value>`, holds none, and keeps the
@@ -939,8 +941,8 @@ const MONEY_BASE = process.env.E2E_MONEY_BASE;
 type MoneyPage = "cart" | "checkout";
 
 const MONEY_BUDGETS: Record<MoneyPage, { firstScripts: number; document: number; payload: number; main: number; routerRequests: number; thirdParty: number }> = {
-  cart: { firstScripts: 766_500, document: 104_500, payload: 73_000, main: 500, routerRequests: 20, thirdParty: 0 },
-  checkout: { firstScripts: 766_500, document: 94_000, payload: 68_000, main: 500, routerRequests: 19, thirdParty: 1 },
+  cart: { firstScripts: 766_500, document: 104_500, payload: 73_000, main: 500, routerRequests: 9, thirdParty: 0 },
+  checkout: { firstScripts: 766_500, document: 94_000, payload: 68_000, main: 500, routerRequests: 5, thirdParty: 1 },
 };
 
 test.describe("the money path", () => {

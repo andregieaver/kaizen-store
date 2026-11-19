@@ -152,8 +152,8 @@ chunks (`route.mjs`) from 223,068 to 216,992.
     351,687), the late script files (one more fails) and their bytes with room of max(2,000, 2 %) (the front page 3 files, 61,416 bytes), the page's own calls, no other host;
   - no zod, lightbox or checkout form in the front page's scripts; no language's whole interface text; the first grid's and the first
     row's pictures eager and the next ones lazy; a blurred background from its small copy; an embedded frame named.
-- `e2e/prefetch.spec.ts` holds a table of five pages' router requests on a phone, each the measured count plus 2 (the front page 21, a product page
-  20, a listing 22, the cart 22, the front door 0).
+- `e2e/prefetch.spec.ts` holds a table of six pages' router requests on a phone (the front page, a product page, a content page, a listing and
+  the cart 6 each since step 2.6, the front door 0; *What the router fetches ahead*).
 - A budget only falls: a change that lowers a figure by more than its room lowers the budget in the same change, and a change that needs one
   raised says why in docs/decisions.md.
 - These run in CI's full checks, which report beside the deploy of a push without a migration (D526), not before it.
@@ -712,6 +712,27 @@ and none in the next 2 s. At each Next upgrade read `optimistic-routes.js` for t
 
 `partialPrefetching` is false as a recorded choice: unset, Next treats it as false and prints a warning on every build and start,
 and the next major release turns it on for everyone. Step 2.8 of the bloat review decides adoption by trial.
+
+## What the router fetches ahead (bloat review step 2.6)
+
+A link states what it may fetch ahead through `PolicyLink` (`src/components/policy-link.tsx`) or, in the admin, `AdminLink`; each takes one of
+three policies. `e2e/prefetch.spec.ts` holds the counts per page.
+
+| Policy | What it does | Links |
+| --- | --- | --- |
+| sight | Next's default: fetched when it scrolls into view | the cart link on phones, a header menu's top links, product tiles (bounded by step 2.8), the site's sign-up button |
+| intent | fetched when the pointer, a touch or the focus reaches it | the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, every admin link (`AdminLink`) |
+| never | not fetched ahead | countries, languages and currencies, links that leave their root layout, file links, the cart link from 768 px (a plain anchor) |
+
+A link states its policy through `PolicyLink` or `AdminLink` and `next/link` is imported only by them (ratchet count `directLinks`, in
+`src/server/ratchet.baseline.json`: a new file may not import it, and the old ones move as they are touched). A server action that sets a
+cookie or revalidates makes the router ask again for every link in view, so the number of sight links is also the cost of every such action.
+
+Measured on 19 November 2026 on a phone, read to the footer (two runs, the same but where noted): the front page, a product page and a
+content page 3 router requests each (19, 18 and 20 before), the listing 4 (20), the cart 5 (20); the first Add to cart 7 in the next 4 s (32
+before), the second 0; the home at 1280 px 6 and 7 (47 on the phone home before step 0.12). The money path of `e2e/performance.spec.ts`: the
+two-line cart 7 (15 before), the checkout 3 (18). Held at 6 on each phone page, 8 on the home at 1280 px and 10 after the first add (the
+step's figures), and 9 and 5 on the money path (the count plus 2).
 
 ## What is static (bloat review step 1.11)
 
