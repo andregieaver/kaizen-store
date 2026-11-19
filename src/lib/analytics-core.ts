@@ -1,6 +1,7 @@
 import { fillWords } from "./admin-fill";
 import { convertMinor, type Rates } from "./currency";
 import { analyticsWords } from "./analytics-words";
+import { safeRatio } from "./analytics-ratio";
 
 /**
  * The arithmetic every analytics figure shares (D152, docs/analytics.md):
@@ -28,11 +29,7 @@ export function withMinus(text: string): string {
 
 const finite = (n: number | null | undefined): n is number => typeof n === "number" && Number.isFinite(n);
 
-/** `a / b`, or null when either is missing or `b` is zero: never 0 or Infinity for "unknown". */
-export function safeRatio(a: number | null | undefined, b: number | null | undefined): number | null {
-  if (!finite(a) || !finite(b) || b === 0) return null;
-  return a / b;
-}
+export { safeRatio };
 
 /** A figure's change since the comparison. */
 export type Delta = {

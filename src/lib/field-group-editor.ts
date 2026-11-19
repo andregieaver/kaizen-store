@@ -28,7 +28,7 @@ import {
   type RuleGroups,
 } from "./custom-fields";
 import { countWords, fillWords } from "./admin-fill";
-import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
+import type { FieldsMessages } from "./admin-messages/fields.en";
 import { moveItem } from "./move-item";
 
 export { moveItem } from "./move-item";
@@ -45,38 +45,43 @@ export { moveItem } from "./move-item";
 // Where a group applies
 // ---------------------------------------------------------------------------
 
-/** What rules can ask about, for the kinds of thing chosen: each param once. */
-export function locationParamsFor(entities: readonly FieldEntity[], w: FieldsMessages = fieldsEn): { param: string; label: string }[] {
+/** What rules can ask about, for the kinds of thing chosen: each param once, with its English label. */
+function locationParams(entities: readonly FieldEntity[]): { param: string; label: string }[] {
   const seen = new Set<string>();
   const out: { param: string; label: string }[] = [];
   for (const entity of entities) {
     for (const p of LOCATION_PARAMS[entity]) {
       if (seen.has(p.param)) continue;
       seen.add(p.param);
-      out.push({ param: p.param, label: paramWord(p.label, w) });
+      out.push({ param: p.param, label: p.label });
     }
   }
   return out;
 }
 
+/** What rules can ask about, for the kinds of thing chosen: each param once, in the admin's words. */
+export function locationParamsFor(entities: readonly FieldEntity[], w: FieldsMessages): { param: string; label: string }[] {
+  return locationParams(entities).map((p) => ({ param: p.param, label: paramWord(p.label, w) }));
+}
+
 /** What a rule asks about in the admin's words, by the English label `LOCATION_PARAMS` gives it (D312). */
-export const paramWord = (label: string, w: FieldsMessages = fieldsEn): string =>
+export const paramWord = (label: string, w: FieldsMessages): string =>
   (w.params as Record<string, string>)[label] ?? label;
 
 /** A fixed answer of a rule (`LOCATION_CHOICES`) in the admin's words. */
-export const choiceWord = (param: string, value: string, w: FieldsMessages = fieldsEn): string | undefined =>
+export const choiceWord = (param: string, value: string, w: FieldsMessages): string | undefined =>
   (w.choices as Record<string, Record<string, string> | undefined>)[param]?.[value] ??
   LOCATION_CHOICES[param]?.find((c) => c.value === value)?.label;
 
 /** Whether a rule asks about something the chosen kinds of thing have. */
 export const ruleFits = (rule: LocationRule, entities: readonly FieldEntity[]): boolean =>
-  locationParamsFor(entities).some((p) => p.param === rule.param);
+  locationParams(entities).some((p) => p.param === rule.param);
 
 /** The value a rule starts with: the first of a fixed list, else nothing (the editor lists categories and tags). */
 export const startValue = (param: string): string => LOCATION_CHOICES[param]?.[0]?.value ?? "";
 
 export function newLocationRule(entities: readonly FieldEntity[]): LocationRule {
-  const param = locationParamsFor(entities)[0]?.param ?? "kind";
+  const param = locationParams(entities)[0]?.param ?? "kind";
   return { param, operator: "==", value: startValue(param) };
 }
 
@@ -84,7 +89,7 @@ export function newLocationRule(entities: readonly FieldEntity[]): LocationRule 
 export function describeRule(
   rule: LocationRule,
   lookup: { term: (id: string) => string | undefined; role: (role: string) => string | undefined },
-  w: FieldsMessages = fieldsEn,
+  w: FieldsMessages,
 ): string {
   const found = Object.values(LOCATION_PARAMS)
     .flat()
@@ -101,13 +106,13 @@ export function describeRule(
 export function describeLocation(
   location: RuleGroups<LocationRule>,
   lookup: Parameters<typeof describeRule>[1],
-  w: FieldsMessages = fieldsEn,
+  w: FieldsMessages,
 ): string {
   return location.map((all) => all.map((rule) => describeRule(rule, lookup, w)).join(w.text.and)).join(w.text.or);
 }
 
 /** The kinds of thing a group is on, as words: "Products and pages". */
-export function entitiesText(entities: readonly FieldEntity[], w: FieldsMessages = fieldsEn): string {
+export function entitiesText(entities: readonly FieldEntity[], w: FieldsMessages): string {
   const words = entities.map((entity) => w.entities[entity].toLowerCase());
   const list = words.length > 1 ? `${words.slice(0, -1).join(", ")}${w.text.listAnd}${words[words.length - 1]}` : (words[0] ?? "");
   return list.charAt(0).toUpperCase() + list.slice(1);
@@ -344,7 +349,7 @@ export function duplicateLayout(
   fields: readonly FieldDef[],
   parentId: string,
   key: string,
-  copyOf: string = fieldsEn.text.copyOf,
+  copyOf: string,
 ): { fields: FieldDef[]; copy: FieldLayout } | null {
   const parent = fields.find((f) => f.id === parentId);
   const source = parent?.layouts?.find((l) => l.key === key);
@@ -382,7 +387,7 @@ export const withHeldFields = (layout: FieldLayout, holder: Pick<FieldDef, "subF
 });
 
 /** What a flexible field's layouts are, in a line for the list: "3 layouts: Text, Picture, Quote". */
-export function layoutsSummary(field: Pick<FieldDef, "layouts">, w: FieldsMessages = fieldsEn): string {
+export function layoutsSummary(field: Pick<FieldDef, "layouts">, w: FieldsMessages): string {
   const layouts = field.layouts ?? [];
   if (layouts.length === 0) return w.text.noLayouts;
   const names = layouts.slice(0, 3).map((l) => l.label || l.key);
@@ -390,7 +395,7 @@ export function layoutsSummary(field: Pick<FieldDef, "layouts">, w: FieldsMessag
 }
 
 /** What a group, repeater or flexible content holds, in a line for the list: "3 fields: Title, Text, Picture". */
-export function subFieldsSummary(field: Pick<FieldDef, "type" | "subFields" | "layouts">, w: FieldsMessages = fieldsEn): string {
+export function subFieldsSummary(field: Pick<FieldDef, "type" | "subFields" | "layouts">, w: FieldsMessages): string {
   if (field.type === "flexible") return layoutsSummary(field, w);
   const subs = subFieldsOf(field);
   if (subs.length === 0) return w.text.noFields;
@@ -431,7 +436,7 @@ export function newCondition(above: readonly FieldDef[]): Condition | null {
   return settleCondition({ field: trigger.id, operator: operatorsFor(trigger.type)[0] }, trigger);
 }
 
-export const operatorLabel = (operator: ConditionOperator, w: FieldsMessages = fieldsEn): string =>
+export const operatorLabel = (operator: ConditionOperator, w: FieldsMessages): string =>
   w.operators[operator] ?? CONDITION_OPERATORS[operator];
 
 // ---------------------------------------------------------------------------
@@ -457,7 +462,7 @@ export function fieldsWithBrokenLogic(fields: readonly FieldDef[]): Set<string> 
 }
 
 /** What is wrong with a group that the editor can tell without the server: the server checks the rest. */
-export function draftProblems(draft: FieldGroupInput, w: FieldsMessages = fieldsEn): string[] {
+export function draftProblems(draft: FieldGroupInput, w: FieldsMessages): string[] {
   const p = w.problems;
   const problems: string[] = [];
   const misfits = draft.location.flat().filter((rule) => !ruleFits(rule, draft.entities));
@@ -509,7 +514,7 @@ export function fieldProblems(
   field: FieldDef,
   otherNames: readonly string[],
   above: readonly FieldDef[],
-  w: FieldsMessages = fieldsEn,
+  w: FieldsMessages,
 ): string[] {
   const p = w.problems;
   const problems: string[] = [];

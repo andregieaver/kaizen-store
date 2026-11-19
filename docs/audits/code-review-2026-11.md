@@ -72,9 +72,9 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
 | 1.12 | Build the admin kit | FS4 | L | Open | |
 | 1.13 | One way to search and page a list | FS2 | M | Open | Paged at 100 with a count: Stores (2.10; bloat 0.19, 14 Nov), Pages and Articles of stores and platform (bloat 2.17, 18 Nov, local). Products and Customers not yet (redesign); the shared kit remains. |
-| 1.14 | One date formatter | FS5 | M | Open | |
+| 1.14 | One date formatter | FS5 | M | Done | 19 Nov 2026, 9cec7211, b1b85b24, D786: `adminDate()`/`adminDay()` in `src/lib/admin-date.ts`; `admin-dates.scan.test.ts`; see Notes below |
 | 1.15 | Forms that answer | FS6 | M | Open | |
-| 1.16 | Unsaved work survives | FB5 | M | Open | |
+| 1.16 | Unsaved work survives | FB5 | M | Done | 19 Nov 2026, 45b40b6d, 27683588, D787: one leave guard in eight editors; drafts in the builder and product editor; see Notes below |
 | 1.17 | Free a page's permission from its place in the menu | FN2 | M | Open | |
 | 1.18 | One structure for the platform's navigation | FN9 | M | Open | |
 | 1.19 | One source for a page's name | FN8 | M | Open | |
@@ -178,6 +178,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 16 November 2026: notes moved out of the table into Notes on the steps; a row is at most 300 characters (bloat review step 0.41).
 - 18 November 2026: bloat review step 2.1: CLAUDE.md keeps a map of the rule files, its how-to in `.claude/rules`; step 1.10 In progress (decisions split waits on 2.40); question 5 answered.
 - 18 November 2026: bloat review step 2.17: the Pages and Articles lists of a store and of the platform read and show 100 a page with a count (`ListPager`, the Stores list's markup); 1.13 stays Open (the shared ListSearch is not built).
+- 19 November 2026: steps 1.14 (D786) and 1.16 (D787) done; the shoppers' own dates (storefront, shopper and contract emails) are a new step after 1.14, not yet numbered.
 
 **Notes on the steps**
 
@@ -330,6 +331,23 @@ from the baseline give the same `pg_dump`, the schema line by line (63 checks di
 the data row by row. The old files are in `supabase/archive/20261111172838/`; the tests that read one (`commerce.test.ts`'s two,
 the plan-features tests, the VAT replay and others) go through `src/db/migration-files.ts`. `pnpm db:check` passes. A fresh
 database with the demo catalogue takes about five seconds.
+
+**Step 1.14.** 19 Nov 2026, D786: one pure formatter, `adminDate(where, instant, style, lang)` and `adminDay(day, style, lang)` for a
+calendar day, never shifted (`src/lib/admin-date.ts`, reusing `dayIn`/`todayIn`). Of 77 `Europe/Oslo` lines in admin code 51 now use
+the store's zone and 24 the platform's (`PLATFORM_TIME_ZONE`); of 67 `.slice(0, 10)` cuts 31 use the store's or the row's store zone,
+20 the platform's, 5 became day arithmetic and 11 are kept on the scan test's list (form text, file names). Tripletex, Fiken and the
+platform's books keep Norway's legal time (`NORWAY_TIME_ZONE`). The control center and the platform's store lists show each row on its
+own store's day. `admin-dates.scan.test.ts` fails on a new Oslo literal or UTC cut in admin code; the ratchet's `osloFiles` is 0. Left:
+the dates shoppers see (articles, blog comments, campaign notices, the plans page, shopper and contract emails) and about 40
+`?? "Europe/Oslo"` fallbacks in `src/server`.
+
+**Step 1.16.** 19 Nov 2026, D787: `useLeaveGuard()` in all eight editors (`beforeunload` gone from them): a capture-phase click
+listener holds in-app links before Next's `<Link>` sees them, the Navigation API's `navigate` event holds Back and Forward, and a
+`popstate` listener added in the admin layout before Next's scripts covers browsers without it. The admin's `Modal` asks *Keep editing*
+or *Leave without saving*, only while there are changes, its code loaded once there are. The page builder (stores' and Kaizena Flow's)
+and the product editor keep a draft in `localStorage`, offered as *Restore unsaved changes* only while the saved version is the one it
+started from; stock always comes from the saved product. `e2e/signed-in/leave-guard.spec.ts` holds a menu link, Back, and Back without
+the Navigation API. Left: the dual page's four close-half confirms, and an edit made during a save is unguarded until the next change.
 
 ## 1. The headline
 

@@ -14,6 +14,7 @@ import { textToRichText } from "./simple-rich-text";
 import { EN } from "./platform-legal/en";
 import { NB } from "./platform-legal/nb";
 import { PLATFORM_LEGAL_KINDS, PLATFORM_LEGAL_SLUGS, type PlatformLegalKind } from "./platform-legal-slugs";
+import { adminDate, PLATFORM_TIME_ZONE } from "./admin-date";
 
 export { PLATFORM_LEGAL_KINDS, PLATFORM_LEGAL_SLUGS, type PlatformLegalKind };
 
@@ -56,7 +57,7 @@ export function feeWords(bps: number, lang: "en" | "nb"): string {
 }
 
 function dateWords(date: Date, lang: "en" | "nb"): string {
-  return date.toLocaleDateString(lang === "nb" ? "nb-NO" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Oslo" });
+  return adminDate(PLATFORM_TIME_ZONE, date, "long", lang);
 }
 
 /** The business details with a placeholder in each that is not filled in. */

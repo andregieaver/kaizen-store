@@ -84,7 +84,7 @@ describe("the A/B test catalogue", () => {
       currency: "NOK",
       locale: "nb-NO",
     };
-    expect(verdictOf(input).headline).toBe("Too early to say.");
+    expect(verdictOf({ ...input, words: experimentsEn }).headline).toBe("Too early to say.");
     const nb = verdictOf({ ...input, words: experimentsNb, numberLocale: "nb-NO" });
     expect(nb.headline).toBe("For tidlig å si.");
     expect(nb.detail).toContain("Vent på");

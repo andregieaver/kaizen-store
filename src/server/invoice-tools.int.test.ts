@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { attentionFor } from "@/lib/control-center";
 import { storeToday } from "./test-days";
+import { homeEn } from "@/lib/admin-messages/home.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -167,7 +168,7 @@ describe("the store checkup and the control center", () => {
     const before = await center.controlCenter(member.account);
     const figures = before.stores.find((s) => s.slug === waitingStore.slug)!;
     expect(figures.invoices).toEqual({ waiting: 2, overdue: 0 });
-    expect(attentionFor([figures]).map((i) => i.text)).toContain(`${figures.name}: 2 paid orders are waiting for an invoice.`);
+    expect(attentionFor([figures], undefined, homeEn.attention).map((i) => i.text)).toContain(`${figures.name}: 2 paid orders are waiting for an invoice.`);
     // The owner fills in the details; the job issues what waited, and the item is gone.
     await db().execute(sql`
       update commerce.stores set legal_name = 'Fixture AS', organisation_number = '923456789', postal_address = 'Storgata 1\n0155 Oslo', country = 'NO' where id = ${waitingStore.storeId}::uuid

@@ -1,3 +1,4 @@
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
 import { moneyIn, refundNotes, type OrderBonus } from "@/lib/bonus-admin";
@@ -34,18 +35,21 @@ export function BonusEarnedRow({
   locale,
   now = new Date(),
   words: w = orderEn.bonus,
+  timeZone,
 }: {
   bonus: OrderBonus | null;
   currency: string;
   locale: string;
   now?: Date;
   words?: Words;
+  /** The store's time zone: the day the bonus can be used is the store's (D786). */
+  timeZone: string;
 }) {
   if (!bonus || bonus.earnedMinor <= 0) return null;
   const from = bonus.availableAt ? new Date(bonus.availableAt) : null;
   const when =
     from && from.getTime() > now.getTime()
-      ? fillWords(w.usableFrom, { date: from.toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }) })
+      ? fillWords(w.usableFrom, { date: adminDate(timeZone, from, "day", locale) })
       : "";
   return (
     <div className="flex justify-between text-muted">

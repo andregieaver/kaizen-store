@@ -95,6 +95,10 @@ import { GRID_FROM, filterVariants, setForShown, skuPatternProblem, type GridCha
 import { useVirtualRows } from "@/components/admin/virtual-rows";
 import { MAX_MODELS, MAX_VIDEOS, MODEL_MAX_MB, PRODUCT_VIDEO_MAX_MB, pictureItem } from "@/lib/product-media";
 import { AddMedia, OtherLanguageWords, kindWords } from "@/components/admin/product-media-tools";
+import { DraftOffer, useLeaveGuard } from "@/components/admin/leave-guard";
+import { useBrowserDraft } from "@/components/admin/use-browser-draft";
+import { draftKey } from "@/lib/browser-draft";
+import { productDraftBase, withSavedStock, type ProductDraft } from "@/lib/product-draft";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -156,7 +160,8 @@ const variantKey = (variant: { id: string | null; options: Record<string, string
 
 /**
  * The whole product on one page, saved in one go. State lives here until
- * Save; leaving with unsaved changes asks first.
+ * Save; leaving with unsaved changes asks first, and the changes are kept
+ * in this browser until then (code review 1.16, D787).
  */
 export function ProductEditor(props: Props) {
   const { storeSlug, languageNames, uploads, productId } = props;
@@ -183,12 +188,29 @@ export function ProductEditor(props: Props) {
     () => false,
   );
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  // Leaving with unsaved changes asks first, by a link in the admin and the browser's Back too (`useLeaveGuard`, D787).
+  const guard = useLeaveGuard(dirty);
+  // The changes kept in this browser (D787), per store and product, made from the product as last saved: a draft of another saved
+  // version (someone saved since) is never offered. Stock is left out of the version, as sales change it, and comes from the saved product.
+  const [saved, setSaved] = useState(() => ({ product: props.initial, fieldData: props.fields.data, variantData: props.fields.variants?.data ?? {} }));
+  const base = useMemo(() => {
+    let stamp: string | null = null;
+    return () => (stamp ??= productDraftBase(saved.product, saved.fieldData, saved.variantData));
+  }, [saved]);
+  const [opened] = useState<ProductDraft>(() => ({ ...saved, handleTouched }));
+  const keptValue = useMemo<ProductDraft>(() => ({ product, fieldData, variantData, handleTouched }), [product, fieldData, variantData, handleTouched]);
+  const browserDraft = useBrowserDraft({ key: draftKey("product", storeSlug, productId ?? "new"), base, value: keptValue, dirty, opened: () => opened });
+  const restoreDraft = () => {
+    const kept = browserDraft.restore();
+    if (!kept) return;
+    setProduct(withSavedStock(kept.product, saved.product));
+    setFieldData(kept.fieldData);
+    setVariantData(kept.variantData);
+    setHandleTouched(kept.handleTouched);
+    setDirty(true);
+    setResult({ status: "idle" });
+    forgetCreated();
+  };
 
   const update = (change: (p: ProductInput) => ProductInput) => {
     setProduct((p) => change(p));
@@ -252,6 +274,7 @@ export function ProductEditor(props: Props) {
         setContext(outcome.context);
         setFieldData(outcome.fieldData);
         setVariantData(outcome.variantFieldData);
+        setSaved({ product: outcome.product, fieldData: outcome.fieldData, variantData: outcome.variantFieldData });
         setDirty(false);
         setHandleTouched(true);
         if (!productId) {
@@ -307,6 +330,7 @@ export function ProductEditor(props: Props) {
               </label>
             ))}
           </fieldset>
+          {dirty && <span className="hidden text-caption text-ink-2 md:inline">{w.top.notSaved}</span>}
           <button
             type="submit"
             disabled={saving}
@@ -326,6 +350,8 @@ export function ProductEditor(props: Props) {
         </button>
       </div>
 
+      {guard.dialog}
+      {browserDraft.offer && <DraftOffer at={browserDraft.offer.at} onRestore={restoreDraft} onDiscard={browserDraft.discard} />}
       <div role="status" aria-live="polite">
         {(result.status === "saved" || justCreated) && !dirty && (
           <p className="rounded-md border border-line bg-card p-3 text-sm">

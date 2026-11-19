@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { field } from "@/components/admin/data/ui";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -664,7 +665,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                 <span>
                   {w.waiting.kinds[item.kind] ?? item.kind}: {w.waiting.problems[item.problem] ?? item.problem}
                 </span>
-                <span className="text-muted">{fillWords(w.waiting.since, { day: day(item.since.slice(0, 10)) })}</span>
+                <span className="text-muted">{fillWords(w.waiting.since, { day: adminDate(store, item.since, "long", lang) })}</span>
               </li>
             ))}
           </ul>

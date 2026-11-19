@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
+import { useLeaveGuard } from "@/components/admin/leave-guard";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { EntityFields } from "@/components/admin/entity-fields";
 import {
@@ -111,12 +112,8 @@ export function EntryEditor({
   const [busy, start] = useTransition();
   const group = typeAsGroup(type);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  // Leaving with unsaved changes asks first, by a link in the admin and the browser's Back too (`useLeaveGuard`, D787).
+  const guard = useLeaveGuard(dirty);
 
   const touched = () => {
     setDirty(true);
@@ -170,6 +167,7 @@ export function EntryEditor({
       }}
       className="flex max-w-4xl flex-col gap-6"
     >
+      {guard.dialog}
       {problems.length > 0 && (
         <div
           role="alert"

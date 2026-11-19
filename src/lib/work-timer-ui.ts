@@ -3,7 +3,7 @@ import type { RunningTimer, TimerEstimate } from "@/server/work-time";
 import { ALERT_CHIME_NOTES, alertToRaise, timerAlertStorageKey, type EstimateStage } from "./work-estimate";
 import { MAX_ENTRY_MINUTES, formatDuration } from "./work-time";
 import { fillWords } from "./admin-fill";
-import { workEn, type WorkMessages } from "./admin-messages/work.en";
+import type { WorkMessages } from "./admin-messages/work.en";
 
 /**
  * The running timer as the browser holds it (docs/work.md 1.7, 1.8, WP6), from
@@ -183,7 +183,7 @@ export function chimeFrequencies(stage: "near" | "over"): number[] {
 export function alertMessage(
   stage: "near" | "over",
   timer: Pick<ClientTimer, "taskTitle" | "assignmentName" | "estimate">,
-  words: WorkMessages["labels"]["alert"] = workEn.labels.alert,
+  words: WorkMessages["labels"]["alert"],
 ): { title: string; body: string } {
   const what = timer.taskTitle ?? timer.assignmentName;
   const estimate = timer.estimate ? formatDuration(timer.estimate.estimatedMinutes) : "";

@@ -98,6 +98,19 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   at the sections' stroke). The platform and the owner's level have no views. The rail shows its sections' names on screens
   `RAIL_NAMES_WIDE` and wider until the person narrows it, which is kept.
 
+## Dates in the admin (code review 1.14, D786, `src/lib/admin-date.ts`)
+
+- An instant (a `timestamptz`) is shown with `adminDate(zone, at, style, lang)`: the store's zone on a store's screens (`adminDate(store, …)`),
+  each row's own store where a screen spans stores (the control center's latest orders, the platform's lists of stores, an account's
+  stores), and `PLATFORM_TIME_ZONE` for Kaizena Flow's own figures and records and an account's own. Styles: `day`, `long`, `short`,
+  `dayMonth`, `dayTime`, `time`, `iso`.
+- A calendar day (a `date` column, or a `YYYY-MM-DD` already worked out in its zone) is shown with `adminDay(day, style, lang)` and never
+  moved; `adminDate` shows a bare day as that day too.
+- Norway-only features whose days the law or the partner sets (Tripletex, Fiken, Kaizena Flow's own books) use `NORWAY_TIME_ZONE`.
+- A store's today for a field or a file name is `todayIn(store.timeZone)` (`src/lib/work-dates.ts`); a typed `datetime-local` is read on
+  the store's clock (`storeLocalTime()`, `src/server/discounts.ts`) and written back with `wallClock()`.
+- Admin code writes no zone and cuts no date from a UTC string: `src/lib/admin-dates.scan.test.ts`.
+
 ## `/admin` has its own root layout
 
 - `/admin` has its own root layout. People sign in with email and password, or
@@ -144,6 +157,26 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - Forms use `ActionForm`, which keeps what was typed when validation fails.
   Server actions that change a store call `updateTag()` for its store and
   catalogue tags.
+
+## Unsaved work: one leave guard, and drafts kept in the browser (code review 1.16, D787)
+
+- An editor that holds changes until Save asks before they are left with `useLeaveGuard(dirty)` (`src/components/admin/leave-guard.tsx`,
+  listeners in `leave-listeners.ts`, decisions in `src/lib/leave-guard.ts`), never a `beforeunload` listener or `window.confirm` of
+  its own. It covers the browser's own leaving (`beforeunload`), a click on any link in the admin (a capture-phase click listener on
+  the window, before Next's link) and Back and Forward (the Navigation API's `navigate` event, cancelled before anything moves; else
+  a `popstate` listener the admin's first script adds before the router's, `leavePopScript()`, as a window's listeners run in the
+  order added), and asks in the
+  admin's dialog (`leave-dialogs.tsx`, loaded once the editor is dirty). Draw its `dialog`; an editor's own `router.push` goes through
+  `leave(go)`; a link that says it leaves without saving carries `data-leave-anyway`. An editor that saves by itself passes `links`
+  (only a failed save asks).
+- The page builder and the product editor also keep their unsaved changes in `localStorage` (`useBrowserDraft`,
+  `src/lib/browser-draft.ts`): per owner and page, or store and product, written a moment after each change, offered back with
+  *Restore unsaved changes* only onto the saved version they were made from (a page's `updatedAt`; a product's stamp without its stock,
+  `src/lib/product-draft.ts`, and a restore takes the stock as it is now), removed by a save, by *Leave without saving*, after two
+  weeks and at sign-out. Every read and write is tried. The other six editors keep no draft: menus, content types and field groups are
+  short work; content entries may hold people's details, kept out of the browser; invoice drafts save themselves and hold a client's;
+  the AI page studio's page is kept by the server.
+- *Saved* gives way to *Not saved* (or the editor's word for it) on the first change, wherever an editor shows a save state.
 
 ## Server actions run through `storeAction()` / `platformAction()` (code review 1.4, `src/server/store-action.ts`): guard, language, one logged failure as a plain line
 

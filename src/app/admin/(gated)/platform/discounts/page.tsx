@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { platformDiscountSummary } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
 import { listPlans, planCurrencies } from "@/server/billing";
@@ -35,14 +36,15 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
-  const t = adminText(adminLangOf(account.adminLocale), "platform");
+  const lang = adminLangOf(account.adminLocale);
+  const t = adminText(lang, "platform");
   const w = t.discounts;
   const [discounts, currencies, plans] = await Promise.all([listPlatformDiscounts(), planCurrencies(), listPlans()]);
   const modes = platformModes();
   const offered = plans.filter((plan) => plan.active).map((plan) => ({ id: plan.id, name: plan.name }));
   // A campaign's state (D524): coming up, running or ended.
   const now = new Date();
-  const day = (iso: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date(iso));
+  const day = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const stateOf = (d: (typeof discounts)[number]) =>
     !d.campaign || !d.expiresAt
       ? null
@@ -126,7 +128,7 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
                   }
                 />
                 <RowFact className="hidden md:block">
-                  {[d.expiresAt && fillWords(w.until, { date: d.expiresAt.slice(0, 10) }), d.maxRedemptions && fillWords(w.uses, { n: d.maxRedemptions })].filter(Boolean).join(" · ") || w.noLimits}
+                  {[d.expiresAt && fillWords(w.until, { date: day(d.expiresAt) }), d.maxRedemptions && fillWords(w.uses, { n: d.maxRedemptions })].filter(Boolean).join(" · ") || w.noLimits}
                 </RowFact>
                 <RowFact>{d.stores === 1 ? w.oneStore : fillWords(w.stores, { n: d.stores })}</RowFact>
                 <Chip signal={d.active ? "positive" : "neutral"} dot>

@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { bpsToPercentText } from "@/lib/bonus-admin";
 import { money } from "@/lib/control-center";
 import { bpsText, type AdminReferrer } from "@/lib/referrals";
@@ -27,7 +28,6 @@ import {
 
 export const metadata: Metadata = { title: "Referrals" };
 
-const date = (iso: string) => iso.slice(0, 10);
 const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
@@ -95,6 +95,7 @@ export default async function PlatformReferralsPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").referrals;
   const locale = ADMIN_LANG_FACTS[lang].locale;
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const [settings, totals, referrers, referrals] = await Promise.all([getReferralSettings(), referralTotals(), listReferrers(), listReferrals()]);
 
   return (

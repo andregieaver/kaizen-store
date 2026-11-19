@@ -19,7 +19,7 @@ import {
   type DurationResult,
 } from "./work-time";
 import { fillWords } from "./admin-fill";
-import { workEn, type WorkMessages } from "./admin-messages/work.en";
+import type { WorkMessages } from "./admin-messages/work.en";
 
 /**
  * What the Work screens do with what is typed and what is shown (docs/work.md
@@ -362,7 +362,7 @@ export const ASSIGNMENT_STATUS_LABELS = { active: "Active", paused: "Paused", do
 export const BILLING_TYPE_LABELS = { hourly: "Hourly", fixed_fee: "Fixed fee" } as const;
 
 /** What is left of an estimate, in words: "1h 30m left", "15m over", "Used up". */
-export function remainingLabel(remaining: number | null, words: WorkMessages["labels"]["remaining"] = workEn.labels.remaining): string {
+export function remainingLabel(remaining: number | null, words: WorkMessages["labels"]["remaining"]): string {
   if (remaining === null) return "";
   if (remaining === 0) return words.usedUp;
   return remaining > 0
@@ -398,7 +398,7 @@ export function progressView(
   loggedMinutes: number,
   estimatedMinutes: number | null,
   thresholdMinutes: number | null,
-  words: WorkMessages["labels"]["remaining"] = workEn.labels.remaining,
+  words: WorkMessages["labels"]["remaining"],
 ): ProgressView {
   const remaining = remainingMinutes(estimatedMinutes, loggedMinutes);
   const stage = stageOf(remaining, thresholdMinutes);
@@ -524,7 +524,7 @@ export function parseClientListParams(params: Params): { show: ClientShow; query
 /** "3 active assignments · 12h 30m unbilled", the line under a client in the list. */
 export function clientFigures(
   client: { activeAssignments: number; unbilledMinutes: number },
-  words: WorkMessages["labels"]["clientFigures"] = workEn.labels.clientFigures,
+  words: WorkMessages["labels"]["clientFigures"],
 ): string {
   const assignments =
     client.activeAssignments === 0

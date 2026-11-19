@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { PLATFORM_BASE } from "@/lib/platform-nav";
 import { ratePercent } from "@/lib/vat";
 import type { VatRateRow } from "@/server/vat-admin";
@@ -150,7 +151,7 @@ export function RateHistory({ rows, categoryName, verify, words: w = VAT_EN, loc
                         {w.verified}
                         <span className="block text-xs text-muted">
                           {row.verified.by ? `${row.verified.by}, ` : ""}
-                          {dayText(row.verified.at.slice(0, 10), locale)}
+                          {adminDate(PLATFORM_TIME_ZONE, row.verified.at, "day", locale ?? "en")}
                         </span>
                       </span>
                     ) : row.state === "ended" ? (

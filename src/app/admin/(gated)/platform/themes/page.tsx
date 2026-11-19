@@ -5,6 +5,8 @@ import { connection } from "next/server";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-buttons";
 import { PreviewLink } from "@/components/admin/preview-link";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import type { AdminLang } from "@/lib/admin-lang";
 import { DESIGN_LIMITS, designPreviewPath, designTabHref, type DesignRow } from "@/lib/design-presets";
 import { listFilterOf, type LifecycleFacts } from "@/lib/lifecycle";
 import { requirePlatformReader } from "@/server/auth";
@@ -140,12 +142,13 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
               last={index === designs.length - 1}
               archived={filter === "archived"}
               w={w}
+              lang={lang}
             />
           ))}
         </ol>
       )}
 
-      {current && <ThemeStorePagesCard states={storePages} w={w} />}
+      {current && <ThemeStorePagesCard states={storePages} w={w} lang={lang} />}
 
       {current && <LiveDemoStoresCard demos={demos} w={w} />}
 
@@ -266,6 +269,7 @@ function DesignItem({
   last,
   archived,
   w,
+  lang,
 }: {
   design: DesignRow;
   facts: LifecycleFacts & { used: boolean };
@@ -275,6 +279,7 @@ function DesignItem({
   last: boolean;
   archived: boolean;
   w: PlatformSiteMessages;
+  lang: AdminLang;
 }) {
   const t = w.themes;
   const shown = shownDesignDetails(design);
@@ -296,7 +301,7 @@ function DesignItem({
         </span>
         <span className="text-muted">
           {!archived && fillWords(t.position, { n: design.position })}
-          {design.publishedAt ? fillWords(t.publishedOn, { date: design.publishedAt.slice(0, 10) }) : t.neverPublished}
+          {design.publishedAt ? fillWords(t.publishedOn, { date: adminDate(PLATFORM_TIME_ZONE, design.publishedAt, "day", lang) }) : t.neverPublished}
           {countWords(design.storesUsing, t.applied)}
           {design.requests > 0 && countWords(design.requests, t.chosen)}
         </span>

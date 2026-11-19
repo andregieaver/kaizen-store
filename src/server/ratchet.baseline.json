@@ -1704,8 +1704,8 @@
     "unwrappedActionFiles": 232,
     "tables": 163,
     "nativeSelects": 468,
-    "osloFiles": 68,
-    "confirmFiles": 44
+    "osloFiles": 0,
+    "confirmFiles": 42
   },
   "pageDocumentReads": {
     "src/server/accessibility.ts": 1,

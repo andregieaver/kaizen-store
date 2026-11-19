@@ -5,8 +5,9 @@ import { connection } from "next/server";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
 import { Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { PLATFORM_API_OPERATIONS, PLATFORM_API_SCOPES } from "@/lib/platform-api";
 import { siteUrl } from "@/lib/site";
@@ -29,7 +30,7 @@ export default async function PlatformApiPage() {
   const own = adminText(lang, "platform");
   const owner = platformCan(admin, "settings");
   const tokens = await listPlatformTokens();
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const base = `${siteUrl()}/api/platform/v1`;
 
   return (

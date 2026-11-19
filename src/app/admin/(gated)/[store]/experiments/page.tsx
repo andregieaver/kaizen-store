@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { adminDate } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
@@ -70,8 +71,8 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "experiments");
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
-  const day = (iso: string) => date.format(new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso));
+  // A test's days on the store's clock; a day already worked out (`readyAround`) is shown as it is (D786).
+  const day = (iso: string) => adminDate(store, iso, "day", lang);
   const { tests, ideas } = await experimentList(store, { words: w, numberLocale: locale });
   const base = `/admin/${store.slug}/experiments`;
   const lead = leadText(listLead(tests), w, day);

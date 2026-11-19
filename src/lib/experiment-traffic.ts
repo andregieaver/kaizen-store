@@ -54,7 +54,7 @@ export function goalEstimate(input: {
   versions: number;
   relativeChange?: number;
   minDays?: number;
-  words?: ExperimentsMessages;
+  words: ExperimentsMessages;
   numberLocale?: string;
 }): RuntimeEstimate | null {
   if (!isCountedGoal(input.goal)) return null;
@@ -78,11 +78,11 @@ export function goalEstimate(input: {
  * (usually adding to the cart, which has a higher rate; on Kaizena Flow's own store, which sells nothing, its sign-ups), else orders. A small
  * store learns sooner from the cart than from orders.
  */
-export function recommendedGoal(facts: TrafficFacts, targetId: string, trafficShare = 1, versions = 2): Goal {
-  const orders = goalEstimate({ facts, targetId, goal: "orders", trafficShare, versions });
+export function recommendedGoal(facts: TrafficFacts, targetId: string, words: ExperimentsMessages, trafficShare = 1, versions = 2): Goal {
+  const orders = goalEstimate({ facts, targetId, goal: "orders", trafficShare, versions, words });
   if (orders && !orders.tooLong) return "orders";
   const others = (["cart", "checkout", "signup"] as const)
-    .map((goal) => ({ goal, estimate: goalEstimate({ facts, targetId, goal, trafficShare, versions }) }))
+    .map((goal) => ({ goal, estimate: goalEstimate({ facts, targetId, goal, trafficShare, versions, words }) }))
     .filter((g): g is { goal: "cart" | "checkout" | "signup"; estimate: RuntimeEstimate } => g.estimate !== null)
     .sort((a, b) => a.estimate.days - b.estimate.days);
   return others[0]?.goal ?? "orders";
@@ -95,7 +95,7 @@ export const CHANGES = [0.1, 0.2, 0.3, 0.5] as const;
  * The smallest change a test of the target could find within six weeks at today's traffic, and how long that takes; null when even a bold
  * change would take longer, or nothing is counted. A small shop's way to an answer: change more at once.
  */
-export function findableChange(input: { facts: TrafficFacts; targetId: string; goal: Goal; trafficShare: number; versions: number; minDays?: number }): { change: number; estimate: RuntimeEstimate } | null {
+export function findableChange(input: { facts: TrafficFacts; targetId: string; goal: Goal; trafficShare: number; versions: number; minDays?: number; words: ExperimentsMessages }): { change: number; estimate: RuntimeEstimate } | null {
   for (const change of CHANGES) {
     const estimate = goalEstimate({ ...input, relativeChange: change });
     if (estimate && !estimate.tooLong) return { change, estimate };

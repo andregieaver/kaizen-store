@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 
 import { AdminLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import type { AutomaticMessages } from "@/lib/admin-messages/automatic.en";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { activeLines, lineHref, whenPaidSteps, type ActiveLine, type AutomaticOverview, type PaidStep } from "@/lib/automatic";
 import type { AutomationKind } from "@/lib/automation-kinds";
@@ -35,7 +36,7 @@ export default async function AutomaticPage({ params }: PageProps<"/admin/[store
   const steps = whenPaidSteps(overview);
   const lines = activeLines(overview);
   const trigger = (id: string) => all.integrations.events[id]?.label ?? EVENTS.find((e) => e.id === id)?.label ?? id;
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   /** When it last did something: never for what keeps its own runs, or not within the 30 days an email is looked for. */
   const last = (at: string | null, kept: boolean) => fillWords(w.last, { when: at ? when(at) : kept ? w.notYet : w.notLately });
   const keepsRuns = (kind: (ActiveLine | PaidStep)["kind"]) => kind === "workflow" || kind === "rule" || kind === "endpoint" || kind === "integration" || kind === "autopilot";

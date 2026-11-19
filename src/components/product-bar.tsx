@@ -49,6 +49,7 @@ export function ProductBar({
   store,
   market,
   cartHref,
+  redraw = false,
   currency,
   locale,
   vat,
@@ -64,6 +65,8 @@ export function ProductBar({
   store: string;
   market: string;
   cartHref: string;
+  /** The page draws the cart (a basket note, the cart's own upsells): the add redraws it (bloat review step 2.4). */
+  redraw?: boolean;
   currency: string;
   locale: string;
   /** Prices as the store shows them (B2B): businesses see them without VAT. */
@@ -126,6 +129,7 @@ export function ProductBar({
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variant.id} />
+        {redraw && <input type="hidden" name="redraw" value="1" />}
         {!counted && <input type="hidden" name="quantity" value="1" />}
         <AffiliateField store={store} />
         <RecommendField />

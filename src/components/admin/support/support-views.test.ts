@@ -11,6 +11,7 @@ import { ConversationContext, ConversationView, SummaryPanel } from "./conversat
 import { conversationHref } from "./desk-context";
 import { PartnerPanel } from "./partner-panel";
 import { SupportSettingsForm } from "./settings-form";
+import { supportEn } from "@/lib/admin-messages/support.en";
 
 /** What a person reads: comment markers out, entities made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -82,29 +83,29 @@ const conversation = (over: Partial<StaffConversation> = {}): StaffConversation 
 
 describe("the inbox's words (D216, 2.4)", () => {
   it("says how long ago in the shortest words", () => {
-    expect(agoWords("2026-10-13T12:00:00Z", now)).toBe("just now");
-    expect(agoWords("2026-10-13T11:57:00Z", now)).toBe("3 min");
-    expect(agoWords("2026-10-13T10:00:00Z", now)).toBe("2 h");
-    expect(agoWords("2026-10-10T12:00:00Z", now)).toBe("3 d");
+    expect(agoWords("2026-10-13T12:00:00Z", now, supportEn.lib)).toBe("just now");
+    expect(agoWords("2026-10-13T11:57:00Z", now, supportEn.lib)).toBe("3 min");
+    expect(agoWords("2026-10-13T10:00:00Z", now, supportEn.lib)).toBe("2 h");
+    expect(agoWords("2026-10-10T12:00:00Z", now, supportEn.lib)).toBe("3 d");
   });
 
   it("says who answers: the AI, waiting and for how long, the person who has it, or ended", () => {
-    expect(handlerWords(row(), now)).toBe("Waiting 5 min");
-    expect(handlerWords(row({ handler: "ai" }), now)).toBe("AI");
-    expect(handlerWords(row({ handler: "human", assignee: { id: "a", name: "Ola" } }), now)).toBe("Ola");
-    expect(handlerWords(row({ status: "ended" }), now)).toBe("Ended");
+    expect(handlerWords(row(), now, supportEn.lib)).toBe("Waiting 5 min");
+    expect(handlerWords(row({ handler: "ai" }), now, supportEn.lib)).toBe("AI");
+    expect(handlerWords(row({ handler: "human", assignee: { id: "a", name: "Ola" } }), now, supportEn.lib)).toBe("Ola");
+    expect(handlerWords(row({ status: "ended" }), now, supportEn.lib)).toBe("Ended");
   });
 
   it("words system lines, and says nothing of a kind it does not know", () => {
-    expect(systemWords("joined", { name: "Ola" })).toBe("Ola joined the conversation");
-    expect(systemWords("queued", null)).toBe("Waiting for a person");
-    expect(systemWords("something_new", null)).toBeNull();
+    expect(systemWords("joined", { name: "Ola" }, supportEn.lib)).toBe("Ola joined the conversation");
+    expect(systemWords("queued", null, supportEn.lib)).toBe("Waiting for a person");
+    expect(systemWords("something_new", null, supportEn.lib)).toBeNull();
   });
 
   it("gives a tone its band in words and its score, never colour alone", () => {
-    expect(toneWords(-45)).toEqual({ band: "bad", words: "Bad (-45)", level: 2 });
-    expect(toneWords(70)).toEqual({ band: "very_good", words: "Very good (+70)", level: 5 });
-    expect(toneWords(null)).toBeNull();
+    expect(toneWords(-45, supportEn.lib)).toEqual({ band: "bad", words: "Bad (-45)", level: 2 });
+    expect(toneWords(70, supportEn.lib)).toEqual({ band: "very_good", words: "Very good (+70)", level: 5 });
+    expect(toneWords(null, supportEn.lib)).toBeNull();
   });
 
   it("opens a conversation through its own store at the owner's level", () => {
@@ -224,20 +225,20 @@ describe("what a person may do with a conversation (step 4)", () => {
   const base = { status: "open" as const, handler: "ai" as const, assignee: null, me: "me", canWrite: true, mode: "ai_first" as const, store: { slug: "demo", name: "Demo" }, signedIn: false, source: "site" as const };
 
   it("offers Take over while the AI or the queue has it, and the rest once it is yours", () => {
-    expect(availableActs(base)).toMatchObject({ claim: true, reply: false, note: true, handBack: false, why: null });
-    expect(availableActs({ ...base, handler: "queue" }).claim).toBe(true);
-    const mine = availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" } });
+    expect(availableActs(base, supportEn.actions.why)).toMatchObject({ claim: true, reply: false, note: true, handBack: false, why: null });
+    expect(availableActs({ ...base, handler: "queue" }, supportEn.actions.why).claim).toBe(true);
+    const mine = availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" } }, supportEn.actions.why);
     expect(mine).toMatchObject({ claim: false, reply: true, transfer: true, end: true, handBack: true, askSignIn: true });
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, mode: "people" }).handBack).toBe(false);
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, signedIn: true }).askSignIn).toBe(false);
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, store: null }).askSignIn).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, mode: "people" }, supportEn.actions.why).handBack).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, signedIn: true }, supportEn.actions.why).askSignIn).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, store: null }, supportEn.actions.why).askSignIn).toBe(false);
   });
 
   it("says who has it, and why nothing can be done", () => {
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "ola", name: "Ola" } })).toMatchObject({ claim: false, reply: false, note: true, why: "Ola has this conversation." });
-    expect(availableActs({ ...base, mode: "off" })).toMatchObject({ claim: false, note: true, why: expect.stringContaining("switched off") });
-    expect(availableActs({ ...base, canWrite: false })).toMatchObject({ note: false, why: expect.stringContaining("not answer") });
-    expect(availableActs({ ...base, status: "ended" })).toMatchObject({ claim: false, reply: false, why: "This conversation has ended." });
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "ola", name: "Ola" } }, supportEn.actions.why)).toMatchObject({ claim: false, reply: false, note: true, why: "Ola has this conversation." });
+    expect(availableActs({ ...base, mode: "off" }, supportEn.actions.why)).toMatchObject({ claim: false, note: true, why: expect.stringContaining("switched off") });
+    expect(availableActs({ ...base, canWrite: false }, supportEn.actions.why)).toMatchObject({ note: false, why: expect.stringContaining("not answer") });
+    expect(availableActs({ ...base, status: "ended" }, supportEn.actions.why)).toMatchObject({ claim: false, reply: false, why: "This conversation has ended." });
   });
 
   it("draws the buttons and a composer that says when a text is an internal note", () => {
@@ -349,9 +350,9 @@ describe("summaries, briefs and ratings (step 7)", () => {
 
   it("offers a brief while open and correcting the summary once ended", () => {
     const base = { status: "open" as const, handler: "ai" as const, assignee: null, me: "me", canWrite: true, mode: "ai_first" as const, store: { slug: "demo", name: "Demo" }, signedIn: false, source: "site" as const };
-    expect(availableActs(base)).toMatchObject({ brief: true, editSummary: false });
-    expect(availableActs({ ...base, status: "ended" })).toMatchObject({ brief: false, editSummary: true });
-    expect(availableActs({ ...base, status: "ended", canWrite: false })).toMatchObject({ editSummary: false });
+    expect(availableActs(base, supportEn.actions.why)).toMatchObject({ brief: true, editSummary: false });
+    expect(availableActs({ ...base, status: "ended" }, supportEn.actions.why)).toMatchObject({ brief: false, editSummary: true });
+    expect(availableActs({ ...base, status: "ended", canWrite: false }, supportEn.actions.why)).toMatchObject({ editSummary: false });
   });
 });
 

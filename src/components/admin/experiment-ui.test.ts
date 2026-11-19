@@ -242,7 +242,7 @@ describe("a started test's header (D659)", () => {
 describe("what a started test found (D659)", () => {
   const rate = (key: string, visitors: number, conversions: number) => ({ key, name: key, visitors, conversions, money: null });
   const results = (figures: ReturnType<typeof rate>[], days: number) => {
-    const verdict = verdictOf({ goal: "cart", figures, splitP: 0.6, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
+    const verdict = verdictOf({ words: experimentsEn, goal: "cart", figures, splitP: 0.6, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
     const funnel = Object.fromEntries(figures.map((f) => [f.key, { visitors: f.visitors, carts: f.conversions, checkouts: Math.round(f.conversions / 2), buyers: 0, clicks: 0, forms: 0, signups: 0, pages: 0 }]));
     const daily = Array.from({ length: days }, (_, i) => ({
       day: `2026-11-${String(i + 1).padStart(2, "0")}`,

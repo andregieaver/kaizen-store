@@ -1,3 +1,4 @@
+import { adminDate } from "@/lib/admin-date";
 import { platformDiscountSummary } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
 import type { StoreBilling } from "@/server/billing";
@@ -21,6 +22,7 @@ export function PlanDiscount({
   canEdit,
   words,
   locale = "nb-NO",
+  timeZone,
 }: {
   discount: StoreBilling["discount"];
   apply: Action;
@@ -30,6 +32,8 @@ export function PlanDiscount({
   words?: BillingMessages;
   /** How amounts are written. */
   locale?: string;
+  /** The store's time zone: the day the code was applied is the store's (D786). */
+  timeZone: string;
 }) {
   const w = (words ?? billingEn).discount;
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
@@ -40,7 +44,7 @@ export function PlanDiscount({
           <p>
             <span className="rounded-full border border-line px-3 py-1 font-mono font-medium">{discount.code}</span>{" "}
             {platformDiscountSummary(discount, money, words?.discount)}
-            {discount.appliedAt ? fillWords(w.applied, { date: discount.appliedAt.slice(0, 10) }) : w.applies}
+            {discount.appliedAt ? fillWords(w.applied, { date: adminDate(timeZone, discount.appliedAt, "day", locale) }) : w.applies}
           </p>
           {remove && !discount.appliedAt && canEdit && (
             <ActionForm action={remove}>

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { adminDate } from "@/lib/admin-date";
 import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CustomerForm, CustomerNotes, EMPTY_CUSTOMER_FORM } from "@/components/admin/customer-staff";
@@ -135,7 +136,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
     salesOn && customer.customerId
       ? await Promise.all([activitiesOf(store.id, { customerId: customer.customerId }), mayTag ? activityTeam(store.id) : Promise.resolve([])])
       : [[], []];
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(store, iso, "day", locale);
   const base = `/admin/${store.slug}`;
   const spent = moneyByCurrency(customer.spentMinor, locale, { whole: true });
 
@@ -353,6 +354,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
           {customer.customerId && bonusSettings && bonus && showsBonus(bonusSettings.enabled, bonus.entries) && (
             <CustomerBonus
+              timeZone={store.timeZone}
               enabled={bonusSettings.enabled}
               balance={bonus.balance}
               entries={bonus.entries}
@@ -367,6 +369,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
           {customer.customerId && affiliate && showsAffiliate(affiliate) && (
             <CustomerAffiliateSection
+              timeZone={store.timeZone}
               data={affiliate}
               storeSlug={store.slug}
               locale={locale}

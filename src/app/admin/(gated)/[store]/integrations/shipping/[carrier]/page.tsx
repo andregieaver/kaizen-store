@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { IntegrationMark } from "@/components/admin/integration-mark";
+import { adminDate } from "@/lib/admin-date";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING } from "@/lib/delivery-options";
 import { canCheck, carrierInfo } from "@/lib/shipping-carriers";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -65,7 +66,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const own = adminText(lang, "carriers")[info.id];
   const ownFields: Record<string, { label: string; help: string; placeholder: string }> = own.fields;
   const feature = (f: keyof typeof w.features) => w.features[f];
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
 
   return (
     <div className="flex flex-col gap-6">

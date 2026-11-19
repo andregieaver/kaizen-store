@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { PhoneRow } from "@/components/admin/phone-row";
+import { adminDate } from "@/lib/admin-date";
 import { describeDelay } from "@/lib/cart-reminders";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
@@ -15,7 +16,7 @@ import {
 } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
@@ -52,7 +53,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
   const base = `/admin/${store.slug}/cart-reminders`;
   const firstLocale = store.markets[0]?.locale ?? "";
   const codeOf = (id: string | null) => discounts.find((d) => d.id === id)?.code ?? null;
-  const date = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const recovered = Object.entries(stats.recoveredMinor)
     .map(([currency, minor]) => formatMoney(minor, currency, locale))
     .join(" + ");

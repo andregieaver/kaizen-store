@@ -3,7 +3,8 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
-import { adminLangOf } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
@@ -19,13 +20,14 @@ export const metadata: Metadata = { title: "Content notices" };
 const field = "flex flex-col gap-1 text-sm";
 const control = "min-h-10 rounded-md border border-line bg-card px-3";
 type Words = PlatformMessages["reports"];
-const when = (at: string) => at.slice(0, 16).replace("T", " ");
 
 /** Notices of illegal content on stores (DSA art. 16, D411): those waiting first, each decided here with its reason. */
 export default async function PlatformReportsPage() {
   await connection();
   const admin = await requirePlatformReader();
-  const w = adminText(adminLangOf(admin.adminLocale), "platform").reports;
+  const lang = adminLangOf(admin.adminLocale);
+  const w = adminText(lang, "platform").reports;
+  const when = (at: string) => adminDate(PLATFORM_TIME_ZONE, at, "dayTime", lang);
   const [reports, screening] = await Promise.all([listContentReports(), screeningOn()]);
   const waiting = reports.filter((r) => r.status === "received");
   const decided = reports.filter((r) => r.status !== "received");
@@ -39,7 +41,7 @@ export default async function PlatformReportsPage() {
           <ul className="flex flex-col gap-6">
             {waiting.map((report) => (
               <li key={report.id} className="flex flex-col gap-3 border-b border-line pb-6 last:border-b-0 last:pb-0">
-                <Facts report={report} w={w} />
+                <Facts report={report} w={w} lang={lang} />
                 <Reading report={report} w={w} />
                 <ActionForm id={`decide-${report.id}`} action={decideReportAction.bind(null, report.id)} className="flex flex-col gap-3" replaceOnSuccess>
                   <fieldset className="flex flex-wrap gap-4 text-sm">
@@ -91,7 +93,7 @@ export default async function PlatformReportsPage() {
           <ul className="flex flex-col gap-4">
             {decided.map((report) => (
               <li key={report.id} className="flex flex-col gap-2 border-b border-line pb-4 last:border-b-0 last:pb-0">
-                <Facts report={report} w={w} />
+                <Facts report={report} w={w} lang={lang} />
                 <p className="text-sm">
                   <Chip signal={report.status === "actioned" ? "danger" : "neutral"}>{report.status === "actioned" ? w.actioned : w.noAction}</Chip>{" "}
                   {report.decidedAt && <span className="text-muted">{fillWords(w.decidedAt, { at: when(report.decidedAt) })}</span>}
@@ -108,7 +110,7 @@ export default async function PlatformReportsPage() {
 }
 
 /** What a notice says, as the sender wrote it (shown as text, never as HTML). */
-function Facts({ report, w }: { report: ContentReport; w: Words }) {
+function Facts({ report, w, lang }: { report: ContentReport; w: Words; lang: AdminLang }) {
   const sender = report.reporterName || report.reporterEmail
     ? [report.reporterName, report.reporterEmail].filter(Boolean).join(" · ")
     : report.status === "received"
@@ -119,7 +121,7 @@ function Facts({ report, w }: { report: ContentReport; w: Words }) {
       <p className="flex flex-wrap items-center gap-2">
         <Chip signal="neutral">{w.categories[report.category]}</Chip>
         {report.source === "screening" && <Chip signal="neutral">{w.fromCheck}</Chip>}
-        <span className="text-muted">{fillWords(w.received, { at: when(report.createdAt) })}</span>
+        <span className="text-muted">{fillWords(w.received, { at: adminDate(PLATFORM_TIME_ZONE, report.createdAt, "dayTime", lang) })}</span>
       </p>
       <a href={report.url} target="_blank" rel="noopener noreferrer nofollow" className="w-fit break-all underline">
         {report.url}

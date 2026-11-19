@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { PhoneRow } from "@/components/admin/phone-row";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
 import { FOOTER_NOTE_MAX } from "@/lib/invoice-settings";
@@ -99,12 +100,15 @@ export function InvoiceSettingsForm({
   paymentsHref,
   saveAction,
   words: w = invoicesEn,
+  timeZone,
 }: {
   settings: InvoiceSettings;
   readiness: InvoiceReadiness;
   paymentsHref: string;
   saveAction: Action;
   words?: InvoicesMessages;
+  /** The store's time zone: the day invoices were switched on is the store's (D786). */
+  timeZone: string;
 }) {
   const t = w.settings;
   const p = w.phone;
@@ -126,7 +130,7 @@ export function InvoiceSettingsForm({
             {t.makeInvoice}
             <span className={`block ${hint}`}>
               {t.fromNow}
-              {settings.enabled && settings.enabledFrom ? fillWords(t.switchedOn, { day: dayLabel(settings.enabledFrom.slice(0, 10), w) }) : ""}
+              {settings.enabled && settings.enabledFrom ? fillWords(t.switchedOn, { day: dayLabel(adminDate(timeZone, settings.enabledFrom, "iso", "en"), w) }) : ""}
               {!settings.enabled && settings.saved ? t.offNow : ""}
             </span>
           </span>

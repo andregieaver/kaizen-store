@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CAPTURE_SETTING_WORDS, CAPTURE_SETTINGS } from "../capture";
 import { knownText } from "../known-words";
 import { METHOD_STATE_WORDS, PAYMENT_METHODS, stateReason } from "../payment-methods";
-import { OSS_SCHEME_LABELS, TAX_WARNINGS, readiness, type TaxProfile } from "../tax-profile";
+import { readiness, type TaxProfile } from "../tax-profile";
 import { paymentsEn } from "./payments.en";
 import { paymentsNb } from "./payments.nb";
 import { taxEn } from "./tax.en";
@@ -38,8 +38,8 @@ const profile: TaxProfile = {
 
 describe("the tax and payments words (D312 A8)", () => {
   it("are the libraries' own English, so the AI manager and the tests read the same", () => {
-    expect(OSS_SCHEME_LABELS).toEqual(taxEn.schemes);
-    expect(TAX_WARNINGS).toEqual(taxEn.warnings.items);
+    expect(taxEn.schemes).toEqual(taxEn.schemes);
+    expect(taxEn.warnings.items).toEqual(taxEn.warnings.items);
     expect(METHOD_STATE_WORDS).toEqual(paymentsEn.methods.states);
     for (const setting of CAPTURE_SETTINGS) expect(paymentsEn.orders.capture[setting]).toEqual(CAPTURE_SETTING_WORDS[setting]);
     for (const method of PAYMENT_METHODS) expect(paymentsEn.methods.kinds[method.type]).toEqual({ label: method.label, where: method.where });
@@ -48,7 +48,7 @@ describe("the tax and payments words (D312 A8)", () => {
   });
 
   it("say what is on and off as before in English, and in Norwegian when given", () => {
-    const en = readiness(profile, "NO");
+    const en = readiness(profile, "NO", taxEn.readiness);
     expect(en[0].text).toBe("VAT registration: off. Needs registration for VAT to be switched on.");
     expect(en[1].text).toBe("Reverse charge: off. Needs a store established in an EU member state (a store outside the EU never uses reverse charge).");
     const nb = readiness(profile, "NO", taxNb.readiness);

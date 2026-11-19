@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BonusAdjustForm } from "@/components/admin/bonus-adjust-form";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { entryLabel, isUsableNow, moneyIn, signedMoney } from "@/lib/bonus-admin";
@@ -26,6 +27,7 @@ export function CustomerBonus({
   adjust,
   now = new Date(),
   words = loyaltyEn,
+  timeZone,
 }: {
   /** The program is on for the store. */
   enabled: boolean;
@@ -41,11 +43,12 @@ export function CustomerBonus({
   now?: Date;
   /** The `loyalty` catalogue in the account's language; the adjust form reads its own through `useAdminText()`. */
   words?: LoyaltyMessages;
+  /** The store's time zone (D786). */
+  timeZone: string;
 }) {
   const w = words.customerBonus;
   const money = moneyIn(balance.currency, locale);
-  const date = (iso: string) =>
-    new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(timeZone, iso, "day", locale);
   const waiting = entries.filter((entry) => isUsableNow(entry, now) === false);
 
   return (

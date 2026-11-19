@@ -1,9 +1,9 @@
 "use client";
 
 import type { PageSummary } from "@/server/pages";
+import { adminDate } from "@/lib/admin-date";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import { ROLE_COPY, type PageRole } from "@/lib/page-role-copy";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import type { ScheduleChip } from "@/lib/page-schedules";
 
@@ -30,6 +30,7 @@ export function PagesTable({
   placed = {},
   schedules = {},
   duplicate,
+  timeZone,
 }: {
   pages: PageSummary[];
   adminBase: string;
@@ -46,9 +47,11 @@ export function PagesTable({
   schedules?: Record<string, ScheduleChip>;
   /** Makes a copy as a draft (D126), bound to the owner and kind of page; without it the list offers no Duplicate. */
   duplicate?: (id: string) => Promise<DuplicateResult>;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
 }) {
   const w = useAdminText("website").list;
-  const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[useAdminLang()].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const lang = useAdminLang();
   return (
         <Card compact>
           <List label={w.pages}>
@@ -80,7 +83,7 @@ export function PagesTable({
                   }
                 />
                 <RowFact className="hidden md:block" sub={`${page.searchEngines ? w.searchListed : w.searchNotListed} · ${page.aiAssistants ? w.aiOpen : w.aiClosed}`}>
-                  {fillWords(w.changed, { date: date.format(new Date(page.updatedAt)) })}
+                  {fillWords(w.changed, { date: adminDate(timeZone, page.updatedAt, "dayTime", lang) })}
                 </RowFact>
                 <Chip signal={page.state === "draft" ? "neutral" : page.state === "changed" ? "warning" : "positive"} dot>
                   {w.states[page.state]}

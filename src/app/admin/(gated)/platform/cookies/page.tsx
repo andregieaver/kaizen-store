@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { reviewFindings } from "@/lib/cookie-scan";
@@ -40,6 +41,7 @@ export default async function PlatformCookiesPage() {
       />
       <TrackingForm tracking={chrome.tracking} action={savePlatformTrackingAction} cookiePage="/cookies" words={words} />
       <CookieScanPanel
+        timeZone={PLATFORM_TIME_ZONE}
         scans={scans}
         lastDone={lastDone}
         findings={lastDone ? reviewFindings(lastDone.items, notes) : []}
@@ -49,7 +51,7 @@ export default async function PlatformCookiesPage() {
         locale={locale}
         purposeLang={lang}
       />
-      <ConsentLog consents={consents} words={words} locale={locale} />
+      <ConsentLog timeZone={PLATFORM_TIME_ZONE} consents={consents} words={words} locale={locale} />
     </>
   );
 }

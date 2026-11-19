@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
@@ -50,7 +51,7 @@ import { OPEN_QUESTION } from "./unanswered-questions";
  * `platformBriefing` job emails to the platform's owners and its finance role, daily or weekly, once a period. Live payments only; Oslo's day.
  */
 
-const OSLO = "Europe/Oslo";
+const OSLO = PLATFORM_TIME_ZONE;
 
 const TARGET = z.object({ id: col.uuid, metric: col.text, month: col.text, currency: z.string().nullable(), target_value: col.minor });
 

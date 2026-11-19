@@ -8,7 +8,6 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import type { Finding } from "@/lib/data-job";
 import type { OldKind } from "@/lib/old-shop";
 import { suggestionKind, suggestionWords } from "@/lib/redirect-admin";
-import { redirectProblems } from "@/lib/redirect-words";
 
 import { useAdminText } from "../admin-text";
 
@@ -227,7 +226,7 @@ function OldRow({ row, redirect, canWrite }: { row: NeedingRow; redirect: OldSho
       setFindings([]);
       const result = await redirect(row.path, to);
       if (!result.ok) {
-        setProblems(redirectProblems(result.problems, words));
+        setProblems(result.problems);
         setFindings(result.findings ?? []);
         return;
       }

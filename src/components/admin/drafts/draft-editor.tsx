@@ -742,6 +742,7 @@ export function DraftEditor({
           onResult={onResult}
         />
         <PaidOutsideBox
+          timeZone={timeZone}
           allowed={mayRecordOutside}
           hasEmail={!emailMissing}
           blockedReason={status === "invalid" ? w.fixFirst : form.lines.length === 0 ? w.addLine : status === "conflict" ? w.reload : blocking.length > 0 ? fillWords(w.cannotOrder, { problem: blocking[0].text }) : null}

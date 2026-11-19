@@ -1,17 +1,16 @@
 import { fillWords } from "./admin-fill";
-import { supportEn, type SupportMessages } from "./admin-messages/support.en";
+import type { SupportMessages } from "./admin-messages/support.en";
 import type { Handler, MessageAuthor } from "./support-rules";
 import { bandOf, TONE_BANDS, type ToneBand } from "./support-tone";
 
 /**
  * The inbox's words (D216, `docs/support.md` 2.4), pure, for the admin. Each takes the `support` catalogue's `lib` words (D312 A10;
- * English unless given). The views draw these and `support-inbox-text.test.ts` holds them.
+ * the AI manager's English ones are in `support-inbox-text-english.ts`). The views draw these and `support-inbox-text.test.ts` holds them.
  */
 type LibWords = SupportMessages["lib"];
-const EN: LibWords = supportEn.lib;
 
 /** "Just now", "3 min", "2 h", "4 d": how long ago, in the shortest words. */
-export function agoWords(at: string, now: Date, w: LibWords = EN): string {
+export function agoWords(at: string, now: Date, w: LibWords): string {
   const minutes = Math.max(
     0,
     Math.floor((now.getTime() - Date.parse(at)) / 60_000),
@@ -32,7 +31,7 @@ export function handlerWords(
     queuedAt: string | null;
   },
   now: Date,
-  w: LibWords = EN,
+  w: LibWords,
 ): string {
   if (row.status === "ended") return w.handler.ended;
   if (row.handler === "ai") return w.handler.ai;
@@ -47,7 +46,7 @@ export function handlerWords(
 export function systemWords(
   kind: string | null,
   data: unknown,
-  w: LibWords = EN,
+  w: LibWords,
 ): string | null {
   const text = (key: string) =>
     data &&
@@ -103,7 +102,7 @@ export function systemWords(
 export function authorWords(
   author: MessageAuthor,
   by: string | null,
-  w: LibWords = EN,
+  w: LibWords,
 ): string {
   const a = w.author;
   switch (author) {
@@ -125,7 +124,7 @@ export function authorWords(
 /** A tone in words: its band and the score (never colour alone). */
 export function toneWords(
   score: number | null,
-  w: LibWords = EN,
+  w: LibWords,
 ): { band: ToneBand; words: string; level: number } | null {
   if (score === null) return null;
   const band = bandOf(score);
@@ -136,17 +135,8 @@ export function toneWords(
   };
 }
 
-/** What the inbox's tabs are called. */
-export const TAB_WORDS = EN.tabs;
-
-/** Why a conversation went to a person, for the header. */
-export const HANDOFF_WORDS: Record<string, string> = EN.handoff;
-
-/** An outcome of a summary, in words (2.7). */
-export const OUTCOME_WORDS: Record<string, string> = EN.outcomes;
-
 /** A topic of the closed lists in words: `order_status` is "Order status", `ai` "AI". */
-export function topicWords(topic: string, w: LibWords = EN): string {
+export function topicWords(topic: string, w: LibWords): string {
   const own = (w.topics as Record<string, string>)[topic];
   if (own) return own;
   if (topic === "ai") return "AI";
@@ -157,7 +147,7 @@ export function topicWords(topic: string, w: LibWords = EN): string {
 /** Why an ended conversation shows no summary, in words; null when it has one or is still open. */
 export function summaryStatusWords(
   status: string,
-  w: LibWords = EN,
+  w: LibWords,
 ): string | null {
   switch (status) {
     case "pending":
@@ -173,7 +163,7 @@ export function summaryStatusWords(
 export function durationWords(
   from: string,
   to: string,
-  w: LibWords = EN,
+  w: LibWords,
 ): string {
   const minutes = Math.max(
     0,

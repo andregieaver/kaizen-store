@@ -12,6 +12,7 @@ import {
   saveDraftInvoiceAction,
 } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
 import { Modal } from "@/components/admin/modal";
+import { useLeaveGuard } from "@/components/admin/leave-guard";
 import { AutosaveQueue, type SaveState } from "@/lib/work-autosave";
 import { ROUND_UP_STEPS_MINUTES, roundUpHours, type RoundUpStep } from "@/lib/work-calc";
 import { dueOn, formatDay } from "@/lib/work-dates";
@@ -219,12 +220,8 @@ export function DraftEditor(props: DraftEditorProps) {
   }, [queue]);
   const unsaved =
     save.state === "pending" || save.state === "saving" || save.state === "error" || save.state === "invalid";
-  useEffect(() => {
-    if (!unsaved) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [unsaved]);
+  // A link in the admin or Back asks only when a save failed or cannot be made: what is waiting is saved on the way out (above).
+  const guard = useLeaveGuard(unsaved, { links: save.state === "error" || save.state === "invalid" });
 
   // --- What the person reads ------------------------------------------------------------------------------
   const currency = header.currency;
@@ -389,6 +386,7 @@ export function DraftEditor(props: DraftEditorProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      {guard.dialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1" aria-live="polite">
           <p className="text-sm" role="status" data-testid="save-status">

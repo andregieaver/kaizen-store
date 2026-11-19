@@ -1,5 +1,7 @@
-import { CHANNELS, isChannel, type Channel } from "./analytics-channels";
-import { safeRatio } from "./analytics-core";
+import { CHANNELS, EXCHANGE_CHANNEL, STAFF_CHANNEL, UNKNOWN_CHANNEL, channelLabel, isChannel, isNoVisit, isNotAChannel, type Channel } from "./analytics-channels";
+
+export { EXCHANGE_CHANNEL, STAFF_CHANNEL, UNKNOWN_CHANNEL, channelLabel, isNoVisit, isNotAChannel };
+import { safeRatio } from "./analytics-ratio";
 import { splitSiteVersions } from "./ab-site";
 import { parseMarketSlug } from "./market-slug";
 
@@ -259,33 +261,6 @@ export function classifyChannel(input: ClassifyInput): Classified {
   if (referrerKnown?.kind === "social") return done("organic_social");
   return done("referral");
 }
-
-/** The channel names (and `unknown`, for orders with no visit) as the admin shows them. */
-export const UNKNOWN_CHANNEL = "unknown";
-/**
- * Orders staff made from a draft order (D173, `orders.source = 'draft'`): not a visit, so no channel earns them and they have no sessions, no
- * conversion and no spend. They are a row of their own in the channel table so its revenue adds up to the period's, and the blended conversion leaves them out.
- */
-export const STAFF_CHANNEL = "staff";
-/**
- * Exchange orders (D239, `orders.source = 'exchange'`): the replacement goods of a return, paid by its credit. Not a visit either, so like the staff-made
- * row they have no sessions, no conversion and no spend, and the blended conversion leaves them out.
- */
-export const EXCHANGE_CHANNEL = "exchange";
-/** Rows that are not a place visitors come from: their sessions are not known and they are never a channel to compare or spend on. */
-export const isNotAChannel = (key: string): boolean => key === UNKNOWN_CHANNEL || key === STAFF_CHANNEL || key === EXCHANGE_CHANNEL;
-/** Rows of orders that were never a visit (made by staff, or an exchange): the blended conversion counts the others only. */
-export const isNoVisit = (key: string): boolean => key === STAFF_CHANNEL || key === EXCHANGE_CHANNEL;
-export const channelLabel = (key: string): string =>
-  key === UNKNOWN_CHANNEL
-    ? "Unknown"
-    : key === STAFF_CHANNEL
-      ? "Staff-made"
-      : key === EXCHANGE_CHANNEL
-        ? "Exchanges"
-        : key === "blended"
-          ? "Blended"
-          : (CHANNELS.find((c) => c.key === key)?.label ?? key);
 
 // ---------------------------------------------------------------------------
 // Landing pages

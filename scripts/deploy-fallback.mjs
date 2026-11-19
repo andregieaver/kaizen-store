@@ -5,9 +5,14 @@
  *
  * It waits, reading what production runs (`/api/health`) and CI's newer push runs on main:
  *   - production runs this commit, or a later one that includes it: done;
- *   - a newer run is still going: wait (it may deploy);
- *   - every newer run has finished and production still lacks this commit: deploy THIS commit, which passed every check, through Vercel's
- *     API (`gitSource` with its sha; the deploy hook would build the head of main, the newer code that failed), then wait for it to be live.
+ *   - a newer run's deploying job (`pending` or `release`, past its own wait) is going: wait, however long it takes (up to `GRACE_SECONDS`
+ *     past the wait), as it is about to put out code that includes this commit;
+ *   - a newer run is still going: wait (it may deploy), until `FALLBACK_WAIT_SECONDS`;
+ *   - every newer run has finished, or the wait is over, and production still lacks this commit: deploy THIS commit through Vercel's API
+ *     (`gitSource` with its sha; the deploy hook would build the head of main, the newer code that failed), then wait for it to be live.
+ * D793: until 19 November 2026 the wait running out failed the job (runs 44492850303 and 44506837136), leaving production's code behind
+ * migrations already applied while pushes kept coming, as a run takes about 30 minutes and a newer one was always going. A release has
+ * passed every check and applied its files, so its code goes out rather than wait for newer runs without end.
  * Without `VERCEL_TOKEN` it fails the job, saying what to do, so the gap is never silent.
  *
  *   GITHUB_SHA, GITHUB_REPOSITORY, GITHUB_TOKEN, GITHUB_RUN_ID  from Actions
@@ -15,7 +20,8 @@
  *   VERCEL_TOKEN            a Vercel token able to create deployments (a secret; optional)
  *   VERCEL_PROJECT          default kaizen-store
  *   VERCEL_TEAM_ID          default team_ZYCx8tB4iwp6cBCeHKPTAjj8
- *   FALLBACK_WAIT_SECONDS   how long to wait for a decision (default 2400)
+ *   FALLBACK_WAIT_SECONDS   how long to wait for newer runs (default 2400)
+ *   GRACE_SECONDS           how much longer to wait while a newer run is deploying (default 600)
  *   GITHUB_OUTPUT           `deployed=true` is appended when this run deployed its commit
  *
  * Prints only commits, run numbers and statuses.
@@ -24,13 +30,27 @@ import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 /**
- * What to do now: `done` when production includes this commit; `wait` while any newer run is not finished; `deploy` when every newer run
- * has finished and production still lacks it. Pure.
+ * What to do now: `done` when production includes this commit; `wait` while a newer run is deploying, or, until the wait is over, while
+ * any newer run is not finished; `deploy` otherwise. Pure.
  */
-export function fallbackDecision({ live, newerRuns }) {
+export function fallbackDecision({ live, newerRuns, waited = false }) {
   if (live) return "done";
-  if (newerRuns.some((r) => r.status !== "completed")) return "wait";
+  if (newerRuns.some((r) => r.deploying)) return "wait";
+  if (!waited && newerRuns.some((r) => r.status !== "completed")) return "wait";
   return "deploy";
+}
+
+/** The fallback's own step: a job in it is waiting on others, not deploying. */
+export const FALLBACK_STEP = "A newer run was to deploy";
+
+/** Whether one of a run's jobs is putting code out now: `pending` or `release` going, and not in its own fallback wait. Pure. */
+export function isDeploying(jobs) {
+  return jobs.some(
+    (j) =>
+      (j.name === "pending" || j.name === "release") &&
+      j.status !== "completed" &&
+      !(j.steps ?? []).some((s) => s.status === "in_progress" && String(s.name).startsWith(FALLBACK_STEP)),
+  );
 }
 
 /** Vercel's create-deployment body for one commit of the GitHub repository, to production. Pure. */
@@ -52,6 +72,7 @@ async function main() {
   const runId = Number(process.env.GITHUB_RUN_ID);
   const site = (process.env.PRODUCTION_URL || "https://kaizenaflow.com").replace(/\/$/, "");
   const waitSeconds = Number(process.env.FALLBACK_WAIT_SECONDS || 2400);
+  const graceSeconds = Number(process.env.GRACE_SECONDS || 600);
   if (!sha || !repository || !token) {
     console.log("Not in Actions: nothing to do.");
     return;
@@ -75,28 +96,40 @@ async function main() {
     const list = Array.isArray(runs.body?.workflow_runs) ? runs.body.workflow_runs : [];
     const mine = list.find((r) => r.id === runId);
     const after = mine ? mine.run_number : Number.POSITIVE_INFINITY;
-    return list.filter((r) => r.run_number > after).map((r) => ({ number: r.run_number, status: r.status, conclusion: r.conclusion }));
+    const newer = list.filter((r) => r.run_number > after);
+    return Promise.all(
+      newer.map(async (r) => {
+        const jobs = r.status === "completed" ? null : await gh(`/actions/runs/${r.id}/jobs?per_page=50`).catch(() => null);
+        const list = Array.isArray(jobs?.body?.jobs) ? jobs.body.jobs : [];
+        return { number: r.run_number, status: r.status, conclusion: r.conclusion, deploying: isDeploying(list) };
+      }),
+    );
   }
 
   const until = Date.now() + waitSeconds * 1000;
+  const last = until + graceSeconds * 1000;
   let decision = "wait";
-  while (Date.now() < until) {
+  while (Date.now() < last) {
     const { live, reported } = await isLive();
     const newer = await newerRuns();
-    decision = fallbackDecision({ live, newerRuns: newer });
-    console.log(`Production runs ${reported?.slice(0, 8) ?? "?"}; newer runs ${newer.map((r) => `${r.number} ${r.conclusion ?? r.status}`).join(", ") || "none"}: ${decision}`);
+    decision = fallbackDecision({ live, newerRuns: newer, waited: Date.now() >= until });
+    console.log(
+      `Production runs ${reported?.slice(0, 8) ?? "?"}; newer runs ${newer.map((r) => `${r.number} ${r.deploying ? "deploying" : (r.conclusion ?? r.status)}`).join(", ") || "none"}: ${decision}`,
+    );
     if (decision !== "wait") break;
     await new Promise((resolve) => setTimeout(resolve, 60_000));
   }
   if (decision === "done") return;
   if (decision === "wait") {
-    console.error(`::error::After ${waitSeconds} s the newer runs had not finished and production still lacks ${sha.slice(0, 8)}. Deploy it with the CI workflow's redeploy input once main passes.`);
+    console.error(`::error::A newer run was still deploying after ${waitSeconds + graceSeconds} s and production still lacks ${sha.slice(0, 8)}. Deploy it with the CI workflow's redeploy input.`);
     process.exit(1);
   }
+  // A last look: a newer run may have put this commit out while the newer runs were read.
+  if ((await isLive()).live) return;
 
   const vercelToken = process.env.VERCEL_TOKEN;
   if (!vercelToken) {
-    console.error(`::error::Every newer run finished and none deployed ${sha.slice(0, 8)}, which passed every check. Add the secret VERCEL_TOKEN so CI deploys this commit itself, or run the CI workflow with redeploy once main passes.`);
+    console.error(`::error::No newer run deployed ${sha.slice(0, 8)}, which passed its checks. Add the secret VERCEL_TOKEN so CI deploys this commit itself, or run the CI workflow with redeploy once main passes.`);
     process.exit(1);
   }
   const project = process.env.VERCEL_PROJECT || "kaizen-store";

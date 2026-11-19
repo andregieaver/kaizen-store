@@ -1,5 +1,6 @@
 import { DiscountEditor, type DiscountDraft } from "@/components/admin/discount-editor";
 import type { StoreDiscount } from "@/lib/discounts";
+import { wallClock } from "@/lib/page-schedules";
 import { formatPriceInput } from "@/lib/product-input";
 import { mainCurrency } from "@/lib/markets";
 import type { Store } from "@/server/stores";
@@ -12,18 +13,11 @@ import { saveDiscountAction } from "./actions";
 import { featureOn } from "@/lib/store-features";
 import { endsAtLocal, OFFERS, type OfferKey } from "@/lib/discount-offers";
 
-/** `datetime-local` text for a time, in Norwegian time. */
-function osloLocal(iso: string | null): string {
+/** `datetime-local` text for a time on the store's clock, as `saveDiscount()` reads it back (D786). */
+function localText(iso: string | null, timeZone: string): string {
   if (!iso) return "";
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Oslo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-  return parts.replace(" ", "T");
+  const { day, time } = wallClock(iso, timeZone);
+  return `${day}T${time}`;
 }
 
 /** The editor for a new code or an existing one, with the store's markets and products. */
@@ -56,8 +50,8 @@ export async function DiscountForm({
         minSubtotals: texts(discount.minSubtotals),
         productIds: discount.productIds,
         recurring: discount.recurring,
-        startsAt: osloLocal(discount.startsAt),
-        endsAt: osloLocal(discount.endsAt),
+        startsAt: localText(discount.startsAt, store.timeZone),
+        endsAt: localText(discount.endsAt, store.timeZone),
         usageLimit: discount.usageLimit === null ? "" : String(discount.usageLimit),
         oncePerCustomer: discount.oncePerCustomer,
         active: discount.active,
@@ -121,6 +115,6 @@ function offerDraft(o: (typeof OFFERS)[OfferKey], store: Store): Partial<Discoun
     ...(o.amountMajor !== undefined && { amounts: inMain(o.amountMajor) }),
     ...(o.minSubtotalMajor !== undefined && { minSubtotals: inMain(o.minSubtotalMajor) }),
     ...(o.oncePerCustomer && { oncePerCustomer: true }),
-    ...(o.endsInDays !== undefined && { endsAt: endsAtLocal(o.endsInDays) }),
+    ...(o.endsInDays !== undefined && { endsAt: endsAtLocal(o.endsInDays, store.timeZone) }),
   };
 }

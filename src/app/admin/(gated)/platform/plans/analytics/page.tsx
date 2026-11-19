@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ShareBar } from "@/components/admin/ui/bars";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -22,6 +23,7 @@ import { BRIEFING_KINDS, monthOf, TARGET_METRICS } from "@/lib/platform-briefing
 import { platformSalesView } from "@/server/platform-sales";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { SalesMonth } from "@/lib/platform-sales";
+import { addCalendarDays, todayIn } from "@/lib/work-dates";
 
 import { postBooksAction, readSalesAction, removePlatformSpendAction, savePlatformSpendAction, setBooksStoreAction, setBriefingAction, setTargetAction } from "./actions";
 
@@ -43,9 +45,9 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const year = new Date().getUTCFullYear();
   // Where owners come from and what they are worth (C2, D522): the period's days in Oslo, to tomorrow.
-  const todayOslo = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
-  const tomorrow = new Date(Date.parse(`${todayOslo}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
-  const periodFrom = new Date(Date.parse(`${tomorrow}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  const todayOslo = todayIn(PLATFORM_TIME_ZONE);
+  const tomorrow = addCalendarDays(todayOslo, 1);
+  const periodFrom = addCalendarDays(tomorrow, -days);
   const [cohorts, channels, spend, adCounts, adConnections] = await Promise.all([
     platformOwnerCohorts(),
     platformChannels(periodFrom, tomorrow),
@@ -198,7 +200,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
       </span>
     );
   const moved = (list: MovementFigure[]) => list.filter((m) => m.count > 0);
-  const since = a.since ? new Date(a.since).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }) : null;
+  const since = a.since ? adminDate(PLATFORM_TIME_ZONE, a.since, "day", lang) : null;
 
   const summary = (s: PlanSummary) => (
     <StatGrid>

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { DisputeEvidenceForm } from "@/components/admin/orders/dispute-evidence-form";
 import { CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -34,7 +35,7 @@ export default async function DisputeEvidencePage({ params }: PageProps<"/admin/
   if (!view) notFound();
   const { dispute } = view;
   const locale = store.markets[0]?.locale ?? ADMIN_LANG_FACTS[lang].locale;
-  const when = (iso: string) => new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" }).format(new Date(iso));
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const canSend = memberCan(member, "orders:write") && dispute.answerable;
   return (
     <div className="flex max-w-3xl flex-col gap-6">

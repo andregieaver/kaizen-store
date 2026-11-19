@@ -23,7 +23,7 @@ const page: PageSummary = {
 
 const render = (props: Record<string, unknown> = {}) =>
   renderToString(
-    createElement(PagesTable, { pages: [page], adminBase: "/admin/x/pages", siteBase: "/s/x/no", ...props }),
+    createElement(PagesTable, { timeZone: "Europe/Oslo", pages: [page], adminBase: "/admin/x/pages", siteBase: "/s/x/no", ...props }),
   );
 
 describe("the pages list", () => {

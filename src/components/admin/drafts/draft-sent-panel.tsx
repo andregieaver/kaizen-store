@@ -161,6 +161,7 @@ export function DraftSentPanel({
 
         {canWrite && status === "sent" && (
           <PaidOutsideBox
+            timeZone={timeZone}
             allowed={mayRecordOutside}
             hasEmail={Boolean(draft.email && draft.email.trim() !== "")}
             blockedReason={null}

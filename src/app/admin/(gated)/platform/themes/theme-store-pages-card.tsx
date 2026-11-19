@@ -1,5 +1,7 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import type { AdminLang } from "@/lib/admin-lang";
 import { PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
 import { themeStorePageHref } from "@/lib/theme-admin-paths";
 import type { ThemeStorePageState } from "@/server/platform-roles";
@@ -15,7 +17,7 @@ const STATE_SIGNALS = { published: "positive", changed: "warning", draft: "neutr
  * Kaizena Flow's page builder around the theme store's components, kept apart from its other pages. Until one is made and published, the
  * standard page shows; *Build it in the page builder* starts from a page that looks like it.
  */
-export function ThemeStorePagesCard({ states, w }: { states: ThemeStorePageState[]; w: PlatformSiteMessages }) {
+export function ThemeStorePagesCard({ states, w, lang }: { states: ThemeStorePageState[]; w: PlatformSiteMessages; lang: AdminLang }) {
   const p = w.storePages;
   return (
     <div id="theme-store-pages" className="scroll-mt-4">
@@ -32,7 +34,7 @@ export function ThemeStorePagesCard({ states, w }: { states: ThemeStorePageState
                 <RowLead
                   title={copy.name}
                   href={page ? themeStorePageHref(page.id) : undefined}
-                  sub={`${copy.address} · ${page ? fillWords(p.edited, { date: page.updatedAt.slice(0, 10) }) : fillWords(p.shows, { standard: copy.standard })}`}
+                  sub={`${copy.address} · ${page ? fillWords(p.edited, { date: adminDate(PLATFORM_TIME_ZONE, page.updatedAt, "day", lang) }) : fillWords(p.shows, { standard: copy.standard })}`}
                 />
                 {state && (
                   <Chip signal={state.signal} dot>

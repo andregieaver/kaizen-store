@@ -80,6 +80,7 @@ const props = (over: Partial<OssViewProps> & { view?: ReturnView } = {}): OssVie
   const view = over.view ?? viewOf();
   return {
     base: "/admin/shop",
+    timeZone: "Europe/Oslo",
     locale: "en",
     scheme: view.data.scheme,
     mode: view.data.mode,

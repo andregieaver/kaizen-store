@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { Button, ButtonLink } from "@/components/admin/ui";
-import { giftCardsEn, type GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
+import type { GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
 
 import type { IssueState } from "../actions";
 
@@ -17,14 +17,14 @@ export function IssueGiftCardForm({
   currencies,
   languages,
   base,
-  words: w = giftCardsEn.issue,
+  words: w,
 }: {
   action: (state: IssueState, form: FormData) => Promise<IssueState>;
   currencies: string[];
   languages: { code: string; label: string }[];
   base: string;
   /** The `giftCards` catalogue's `issue` words in the account's language (D312 A5). */
-  words?: GiftCardsMessages["issue"];
+  words: GiftCardsMessages["issue"];
 }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
   const [copied, setCopied] = useState(false);

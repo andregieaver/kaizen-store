@@ -7,6 +7,7 @@ import { listStaff } from "@/server/settings";
 import { ensureStoreRoles, listStoreRoles } from "@/server/store-roles";
 import { twoStepRequired } from "@/server/team";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { zoneOf } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -78,7 +79,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
           roles={roles}
           viewerId={account.id}
           now={new Date()}
-          zone={store.timeZone || "Europe/Oslo"}
+          zone={zoneOf(store)}
           words={words}
           locale={ADMIN_LANG_FACTS[lang].locale}
           actions={{

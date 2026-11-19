@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import type { TargetKind } from "@/lib/ab-site";
+import { adminDate, adminDay, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { STATE_SIGNAL } from "@/lib/experiment-list";
 import { targetLabelText } from "@/lib/experiment-words";
 import { GOAL_WORDS } from "@/lib/experiments";
@@ -29,7 +30,6 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "platformTools").experiments;
   const ex = adminText(lang, "experiments");
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const { show } = await searchParams;
   const everything = show === "all";
   const [{ tests, overview, truncated }, own] = await Promise.all([platformExperiments(everything), platformUnitTests()]);
@@ -96,7 +96,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                 />
                 <RowFact
                   className="hidden sm:block"
-                  sub={t.card.state === "learning" && t.status === "running" && t.card.progress.readyAround ? fillWords(ex.list.readyAround, { date: date.format(new Date(`${t.card.progress.readyAround}T12:00:00Z`)) }) : undefined}
+                  sub={t.card.state === "learning" && t.status === "running" && t.card.progress.readyAround ? fillWords(ex.list.readyAround, { date: adminDay(t.card.progress.readyAround, "day", lang) }) : undefined}
                 >
                   {t.card.state === "learning" && t.status === "running" ? (
                     <span className="flex items-center gap-2" aria-label={ex.list.progress}>
@@ -106,7 +106,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                   ) : t.startedAt ? (
                     fillWords(w.days, { n: daysBetween(t.startedAt, t.stoppedAt ?? now) })
                   ) : t.scheduledStart ? (
-                    fillWords(w.starts, { date: date.format(t.scheduledStart) })
+                    fillWords(w.starts, { date: adminDate(PLATFORM_TIME_ZONE, t.scheduledStart, "day", lang) })
                   ) : (
                     w.notStarted
                   )}
@@ -154,7 +154,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                     )}
                   </span>
                   <span className="text-xs text-muted">
-                    {t.kind === "search" ? (t.status === "running" ? fillWords(w.runningSince, { date: date.format(t.startedAt ?? now) }) : w.ended) : w.allTheTime}
+                    {t.kind === "search" ? (t.status === "running" ? fillWords(w.runningSince, { date: adminDate(PLATFORM_TIME_ZONE, t.startedAt ?? now, "day", lang) }) : w.ended) : w.allTheTime}
                   </span>
                 </div>
                 <span>{t.headline}</span>

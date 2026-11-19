@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { OSS_SCHEMES, formOf, type OssScheme, type ReadinessLine, type TaxProfile } from "@/lib/tax-profile";
@@ -41,7 +42,6 @@ const regionName = (code: string, locale: string): string => {
 const euByName = (locale: string) =>
   [...EU_COUNTRIES].map((code) => ({ code, name: regionName(code, locale) })).sort((a, b) => a.name.localeCompare(b.name, locale));
 
-const when = (iso: string, locale: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 
 /** The admin's locale, for names, dates and numbers in the browser. */
 const useLocale = () => ADMIN_LANG_FACTS[useAdminLang()].locale;
@@ -236,17 +236,20 @@ export function OwnNumberCheckCard({
   check,
   canEdit,
   action,
+  timeZone,
 }: {
   /** The saved number, or null. */
   number: string | null;
   check: OwnNumberCheck | null;
   canEdit: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
+  /** The store's time zone: when the number was checked, on the store's clock (D786). */
+  timeZone: string;
 }) {
   const w = useAdminText("tax").check;
   const locale = useLocale();
   const source = check?.source === "brreg" ? w.brreg : w.vies;
-  const at = check ? when(check.checkedAt, locale) : "";
+  const at = check ? adminDate(timeZone, check.checkedAt, "dayTime", locale) : "";
   return (
     <section aria-labelledby="check" className={card}>
       <h2 id="check" className="text-title text-ink">

@@ -1,5 +1,5 @@
 import { fillWords } from "./admin-fill";
-import { shippingEn, type ShippingMessages } from "./admin-messages/shipping.en";
+import type { ShippingMessages } from "./admin-messages/shipping.en";
 import { minorUnitDigits } from "./money";
 import { TIERS_MAX } from "./shipping-limits";
 import { tierProblems, type MethodRate, type RateBasis, type TierProblem, type TierRow } from "./shipping-methods";
@@ -107,7 +107,7 @@ export type MethodFormWords = Pick<ShippingMessages["method"], "problems" | "not
  * What the grid saves: one group per block that is offered (a block *Not offered* sends no rows, and the save replaces every group of the method),
  * with what is wrong with each block in words. Nothing is saved while any block has a problem.
  */
-export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string, words: MethodFormWords = shippingEn.method): { groups: GroupOut[]; problems: BlockProblem[] } {
+export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string, words: MethodFormWords): { groups: GroupOut[]; problems: BlockProblem[] } {
   const w = words.problems;
   const tierWords = (problem: TierProblem) => (problem === "too_many" ? fillWords(w.too_many, { max: TIERS_MAX }) : w[problem]);
   const groups: GroupOut[] = [];
@@ -158,6 +158,6 @@ export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string
 }
 
 /** The sentence beside a block left *Not offered*: what the shopper's basket meets. */
-export function notOfferedWords(zoneName: string, profileName: string, words: MethodFormWords = shippingEn.method): string {
+export function notOfferedWords(zoneName: string, profileName: string, words: MethodFormWords): string {
   return fillWords(words.notOffered, { profile: profileName, zone: zoneName });
 }

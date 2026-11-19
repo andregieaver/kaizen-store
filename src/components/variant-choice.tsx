@@ -117,6 +117,7 @@ export function VariantPurchase({
   store,
   market,
   cartHref,
+  redraw = false,
   openCart,
   labels,
   delivery,
@@ -134,6 +135,8 @@ export function VariantPurchase({
   store: string;
   market: string;
   cartHref: string;
+  /** The page holds a basket note, which an add redraws (bloat review step 2.4). */
+  redraw?: boolean;
   openCart: boolean;
   labels: AddToCartLabels & { chooseVariant: string; variantUnavailable?: string };
   /** Weekly deliveries (D102): the variants that can go on the list, and where the list is. */
@@ -193,6 +196,7 @@ export function VariantPurchase({
             store={store}
             market={market}
             cartHref={cartHref}
+            redraw={redraw}
             variantId={variant.id}
             disabled={!variant.available}
             openCart={openCart}

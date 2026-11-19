@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { zoneOf } from "@/lib/admin-date";
 import { writeCsv } from "@/lib/csv";
 import { codeAllowed, codeRuleFor, type CodeRule } from "@/lib/discount-combinations";
 import {
@@ -26,6 +27,7 @@ import {
   type DiscountProblem,
   type StoreDiscount,
 } from "@/lib/discounts";
+import { localInstant } from "@/lib/follow-ups";
 import { shown, type Market } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";
 import { planPrice } from "@/lib/subscriptions";
@@ -168,19 +170,18 @@ function discountFacts(
   };
 }
 
-/** An ISO time from the admin's `datetime-local`, read as Norwegian time. */
-export function osloTime(value: string | null): string | null {
+/**
+ * An ISO time from the admin's `datetime-local`, read on the store's clock (D786: it was read as Norwegian time for every store), summer or
+ * winter time as it is that day; a full ISO time is taken as it is.
+ */
+export function storeLocalTime(value: string | null, timeZone: string): string | null {
   if (!value) return null;
-  const local = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? value : null;
-  if (!local) {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    const at = localInstant(value, zoneOf(timeZone));
+    return at === null ? null : new Date(at).toISOString();
   }
-  // The offset Oslo has at that moment (summer or winter time).
-  const guess = new Date(`${local}:00Z`);
-  const oslo = new Date(guess.toLocaleString("en-US", { timeZone: "Europe/Oslo" }));
-  const utc = new Date(guess.toLocaleString("en-US", { timeZone: "UTC" }));
-  return new Date(guess.getTime() - (oslo.getTime() - utc.getTime())).toISOString();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 /**
@@ -214,8 +215,8 @@ export async function saveDiscount(
   if (d.kind === "fixed" && Object.keys(amounts).length === 0 && problems.length === 0) {
     problems.push("Give the amount off in at least one country's currency.");
   }
-  const startsAt = osloTime(d.startsAt);
-  const endsAt = osloTime(d.endsAt);
+  const startsAt = storeLocalTime(d.startsAt, store.timeZone);
+  const endsAt = storeLocalTime(d.endsAt, store.timeZone);
   if (startsAt && endsAt && startsAt >= endsAt) problems.push("The code must end after it starts.");
   // A code on categories alone has an empty product list: nothing to look up.
   if (d.productIds && d.productIds.length > 0) {

@@ -1,13 +1,29 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { CART_DRAWER_LOOK, type MenuLook } from "@/lib/menu-drawer";
 
 import { DrawerPanel } from "./drawer-panel";
+import { setCart } from "./shopper-own";
 
 const DESKTOP = "(min-width: 768px)";
+
+type CartDrawerProps = {
+  title: string;
+  labels: { close: string };
+  look?: MenuLook;
+  surface?: string;
+  blur?: number;
+  background?: ReactNode;
+  children: ReactNode;
+};
+
+/** Whether an address is a market's cart (`/s/{store}/{market}/cart`, `/s/{store}/cart`, or `/cart` on a store's own host). */
+export function isCartAddress(pathname: string): boolean {
+  return pathname === "/cart" || pathname.endsWith("/cart");
+}
 
 /**
  * The slide-out cart on phones: the cart, opened over the page the shopper
@@ -17,24 +33,19 @@ const DESKTOP = "(min-width: 768px)";
  * header's Cart component says (D571, `src/lib/menu-drawer.ts`): a side panel
  * from the right unless set, the whole screen, under the header or a floating
  * card, on its own background (`background`, with `surface` and `blur`).
+ *
+ * It is drawn only while the address is the cart's. A link inside it (a product, checkout) leaves the `@drawer` slot on `(.)cart`, as
+ * Next keeps a slot's page when the next address has none for it; the drawer then draws nothing, and coming back (the browser's back
+ * button) mounts it afresh, so it opens again as a modal. The slot has no catch-all page to close it (`@drawer/[...rest]` until bloat
+ * review step 2.4): its `rest` param can never be prerendered, so a store page regenerated after its revalidate time left its metadata
+ * waiting on it, and a client navigation to that page met a cut-off answer (React error 412, the global error page).
  */
-export function CartDrawer({
-  title,
-  labels,
-  look = CART_DRAWER_LOOK,
-  surface,
-  blur,
-  background,
-  children,
-}: {
-  title: string;
-  labels: { close: string };
-  look?: MenuLook;
-  surface?: string;
-  blur?: number;
-  background?: ReactNode;
-  children: ReactNode;
-}) {
+export function CartDrawer(props: CartDrawerProps) {
+  const pathname = usePathname();
+  return isCartAddress(pathname) ? <OpenCartDrawer {...props} /> : null;
+}
+
+function OpenCartDrawer({ title, labels, look = CART_DRAWER_LOOK, surface, blur, background, children }: CartDrawerProps) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
@@ -124,13 +135,15 @@ export function CartDrawer({
  * store has chosen so (`stores.open_cart_on_add`). `state` is the add
  * action's latest outcome; each new one is looked at once.
  */
-export function useOpenCartAfterAdd(enabled: boolean, cartHref: string, outcome: { outcome: string }) {
+export function useOpenCartAfterAdd(enabled: boolean, cartHref: string, outcome: { outcome: string; count?: number }) {
   const router = useRouter();
   // Coming back to the page later runs effects again: the same outcome opens nothing.
   const seen = useRef(outcome);
   useEffect(() => {
     if (seen.current === outcome) return;
     seen.current = outcome;
+    // The add answers the cart's units, which the header's count shows (bloat review step 2.4).
+    if (typeof outcome.count === "number") setCart(outcome.count);
     if (!enabled || (outcome.outcome !== "added" && outcome.outcome !== "capped")) return;
     if (window.matchMedia(DESKTOP).matches) return;
     router.push(cartHref);

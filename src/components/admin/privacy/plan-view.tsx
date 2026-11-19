@@ -1,9 +1,10 @@
+import { adminDay } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
 import type { ErasurePlan } from "@/lib/erasure-plan";
 import { formatMoney } from "@/lib/money";
 
-import { card, dayText } from "./styles";
+import { card } from "./styles";
 
 /**
  * Step 1 of the erase page (wave 1, 1g, D162, `docs/wave-1g-gdpr.md` 2.3 item 3): one row for every kind of data the store holds about the
@@ -24,7 +25,8 @@ export function ErasurePlanView({
   dateLocale?: string;
 }) {
   const w = words.plan;
-  const day = (value: string) => dayText(value, undefined, dateLocale);
+  // Calendar days (how long orders are kept), never moved by a zone.
+  const day = (value: string) => adminDay(value, "day", dateLocale);
   const also = plan.alsoHappens;
   const lines: string[] = [];
   if (also.subscriptionsCancelled > 0) lines.push(countWords(also.subscriptionsCancelled, w.subscriptions));

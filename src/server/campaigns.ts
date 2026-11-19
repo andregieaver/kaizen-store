@@ -19,7 +19,7 @@ import { parsePrice } from "@/lib/product-input";
 import { audit, type Membership } from "./auth";
 import { customerTierIds } from "./customer-tiers";
 import { segmentsOfBuyer } from "./segment-membership";
-import { osloTime } from "./discounts";
+import { storeLocalTime } from "./discounts";
 import type { SaveResult } from "./settings";
 
 type Row = Record<string, unknown>;
@@ -222,8 +222,8 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
   if (bxgy && c.getKind === "amount" && !someMarket(getAmounts) && problems.length === 0) problems.push("Say how much comes off each item, in at least one country's currency.");
   const getProductIds = bxgy && c.getScope === "some" ? [...new Set(c.getProductIds)] : [];
   const getTermIds = bxgy && c.getScope === "some" ? [...new Set(c.getTermIds)] : [];
-  const startsAt = osloTime(c.startsAt);
-  const endsAt = osloTime(c.endsAt);
+  const startsAt = storeLocalTime(c.startsAt, store.timeZone);
+  const endsAt = storeLocalTime(c.endsAt, store.timeZone);
   if (startsAt && endsAt && startsAt >= endsAt) problems.push("The campaign must end after it starts.");
 
   const productIds = c.scope === "all" ? [] : [...new Set(c.productIds)];

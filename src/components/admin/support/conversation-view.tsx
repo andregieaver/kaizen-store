@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { formatMoney } from "@/lib/money";
@@ -292,6 +293,9 @@ export function ConversationContext({
   conversation: StaffConversation & { customer?: ConversationCustomer | null };
 }) {
   const w = useAdminText("support").context;
+  const lang = useAdminLang();
+  // The conversation's store's clock; Kaizena Flow's own desk has none and reads the platform's (D786).
+  const when = (iso: string) => adminDate(conversation.store ?? PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const rows: [string, string][] = [
     [w.who, conversation.who],
     // An address a visitor typed is no proof of who they are (2.3): never put an order's details in an answer to it.
@@ -313,9 +317,9 @@ export function ConversationContext({
     ...(conversation.pagePath
       ? ([[conversation.source === "form" ? w.formPage : w.startedOn, conversation.pagePath]] as [string, string][])
       : []),
-    [w.started, conversation.startedAt.slice(0, 16).replace("T", " ")],
+    [w.started, when(conversation.startedAt)],
     ...(conversation.endedAt
-      ? ([[w.ended, conversation.endedAt.slice(0, 16).replace("T", " ")]] as [
+      ? ([[w.ended, when(conversation.endedAt)]] as [
           string,
           string,
         ][])

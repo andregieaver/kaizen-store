@@ -3,7 +3,8 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
-import { adminLangOf } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
@@ -46,13 +47,13 @@ export default async function PlatformStatusPage() {
             <li key={c.id} className="flex flex-wrap items-center gap-2">
               <span className="text-body-strong text-ink">{names[c.id]}</span>
               <Chip signal={c.state === "ok" ? "positive" : c.state === "degraded" ? "danger" : "neutral"}>{w.state[c.state]}</Chip>
-              {c.checkedAt && <span className="text-muted">{fillWords(w.checkedAt, { at: c.checkedAt.slice(0, 16).replace("T", " ") })}</span>}
+              {c.checkedAt && <span className="text-muted">{fillWords(w.checkedAt, { at: adminDate(PLATFORM_TIME_ZONE, c.checkedAt, "dayTime", lang) })}</span>}
             </li>
           ))}
         </ul>
       </Card>
       <Card title={w.openTitle}>
-        {view.open.length === 0 ? <p className="text-sm text-muted">{w.none}</p> : view.open.map((i) => <IncidentAdmin key={i.id} incident={i} w={w} names={names} />)}
+        {view.open.length === 0 ? <p className="text-sm text-muted">{w.none}</p> : view.open.map((i) => <IncidentAdmin key={i.id} incident={i} w={w} names={names} lang={lang} />)}
       </Card>
       <Card title={w.postTitle}>
         <ActionForm action={postIncidentAction} className="flex flex-col gap-3" replaceOnSuccess>
@@ -100,7 +101,7 @@ export default async function PlatformStatusPage() {
           <ul className="flex flex-col gap-1 text-sm">
             {view.recent.map((i) => (
               <li key={i.id}>
-                {i.title} <span className="text-muted">· {w.impacts[i.impact]} · {i.startedAt.slice(0, 10)}</span>
+                {i.title} <span className="text-muted">· {w.impacts[i.impact]} · {adminDate(PLATFORM_TIME_ZONE, i.startedAt, "day", lang)}</span>
               </li>
             ))}
           </ul>
@@ -112,7 +113,7 @@ export default async function PlatformStatusPage() {
 
 type W = PlatformMessages["status"];
 
-function IncidentAdmin({ incident, w, names }: { incident: IncidentView; w: W; names: Record<string, string> }) {
+function IncidentAdmin({ incident, w, names, lang }: { incident: IncidentView; w: W; names: Record<string, string>; lang: AdminLang }) {
   return (
     <div className="flex flex-col gap-3 border-b border-line py-3 last:border-0">
       <p className="text-body-strong text-ink">
@@ -122,7 +123,7 @@ function IncidentAdmin({ incident, w, names }: { incident: IncidentView; w: W; n
       <ol className="flex flex-col gap-1 text-sm">
         {incident.updates.map((u, n) => (
           <li key={n}>
-            <span className="text-body-strong">{w.statuses[u.status]}</span> <span className="text-muted">{u.at.slice(0, 16).replace("T", " ")}</span> {u.body}
+            <span className="text-body-strong">{w.statuses[u.status]}</span> <span className="text-muted">{adminDate(PLATFORM_TIME_ZONE, u.at, "dayTime", lang)}</span> {u.body}
           </li>
         ))}
       </ol>

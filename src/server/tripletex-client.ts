@@ -1,5 +1,6 @@
 import "server-only";
 
+import { NORWAY_TIME_ZONE } from "@/lib/admin-date";
 import { tripletexConsumerToken } from "@/lib/env";
 import { TRIPLETEX_BASE, type TripletexMode, type TripletexTokenKind } from "@/lib/tripletex";
 import { classifyFailure, networkFailure, type TripletexFailure } from "@/lib/tripletex-errors";
@@ -98,7 +99,7 @@ function unwrap<T extends object>(answer: unknown): Partial<T> {
 /** Tomorrow in Oslo, as Tripletex's session expiry wants it: the token stops at midnight before that date. */
 function tomorrow(now: Date): string {
   const day = new Date(now.getTime() + 24 * 3600 * 1000);
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).format(day);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: NORWAY_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(day);
 }
 
 /** One open session with Tripletex: the calls, signed in as the company the token belongs to (`0`). */

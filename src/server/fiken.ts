@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { BOOKING_KEYS, norwegianOrgNumber } from "@/lib/accounting-docs";
+import { NORWAY_TIME_ZONE } from "@/lib/admin-date";
 import { todayIn } from "@/lib/analytics-period";
 import { accessDue, codeChallenge, fikenAuthorizeUrl, isFikenSlug, openFikenState, randomToken, sealFikenState } from "@/lib/fiken";
 import { type FikenFailure } from "@/lib/fiken-errors";
@@ -374,7 +375,7 @@ export async function startFiken(
   if (!connection.settings) return { ok: false, problem: "settings" };
   if (options.problems && options.problems.length > 0) return { ok: false, problem: "problems" };
   const zone = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  const today = todayIn(options.now ?? new Date(), zone?.time_zone ?? "Europe/Oslo");
+  const today = todayIn(options.now ?? new Date(), zone?.time_zone ?? NORWAY_TIME_ZONE);
   const syncFrom = options.syncFrom ?? connection.syncFrom ?? today;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(syncFrom) || syncFrom > today) return { ok: false, problem: "future_day" };
   await db().execute(sql`
@@ -433,7 +434,7 @@ export async function setFikenSyncFrom(accountId: string, storeId: string, day: 
   const connection = await getFikenConnection(storeId);
   if (!connection) return { ok: false, problem: "not_connected" };
   const zone = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > todayIn(now, zone?.time_zone ?? "Europe/Oslo")) return { ok: false, problem: "future_day" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > todayIn(now, zone?.time_zone ?? NORWAY_TIME_ZONE)) return { ok: false, problem: "future_day" };
   if (connection.state === "setup" || connection.state === "choose") return { ok: true, syncFrom: day };
   await db().execute(sql`update commerce.fiken_connections set sync_from = ${day}::date, updated_at = now(), updated_by = ${accountId}::uuid where store_id = ${storeId}::uuid`);
   await audit(accountId, storeId, "integration.fiken_sync_from_changed", { before: connection.syncFrom, after: day });

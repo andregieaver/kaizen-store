@@ -17,6 +17,7 @@ import {
   type ReportFixture,
 } from "./work-reports-test-support";
 import { workBase } from "@/lib/work-paths";
+import { homeEn } from "@/lib/admin-messages/home.en";
 
 vi.mock("next/cache", () => ({
   cacheLife: () => {},
@@ -94,7 +95,7 @@ describe("Work in the control center", () => {
     expect(work[1].href).toBe(`${workBase(slug)}/invoices`);
     expect(work[2].href).toBe(`${workBase(slug)}/invoices?show=drafts`);
     // and they are among the store's other items in the list
-    const items = attentionFor(view.stores);
+    const items = attentionFor(view.stores, undefined, homeEn.attention);
     expect(items.filter((i) => i.href.includes("/work"))).toHaveLength(3);
     expect(items[0].href).toBe(`${workBase(slug)}/invoices?show=overdue`);
   });
@@ -102,13 +103,13 @@ describe("Work in the control center", () => {
   it("says nothing for a store that has Work switched off, whatever data it holds", async () => {
     const view = await center.controlCenter(await accountOf(off.f));
     expect(view.stores[0].work).toBeUndefined();
-    expect(attentionFor(view.stores).some((i) => i.href.includes("/work"))).toBe(false);
+    expect(attentionFor(view.stores, undefined, homeEn.attention).some((i) => i.href.includes("/work"))).toBe(false);
   });
 
   it("says nothing when there is nothing to do", async () => {
     const view = await center.controlCenter(await accountOf(empty));
     expect(view.stores[0].work).toEqual([]);
-    expect(attentionFor(view.stores).some((i) => i.href.includes("/work"))).toBe(false);
+    expect(attentionFor(view.stores, undefined, homeEn.attention).some((i) => i.href.includes("/work"))).toBe(false);
   });
 
   it("counts several stores together and keeps each store's items to its own", async () => {

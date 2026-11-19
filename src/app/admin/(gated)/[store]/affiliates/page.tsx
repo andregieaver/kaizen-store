@@ -74,7 +74,7 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
           <h2 id="attributions-heading" className="text-title text-ink">
             {w.attributions}
           </h2>
-          <AttributionsTable rows={attributions} storeSlug={store.slug} locale={locale} words={words} />
+          <AttributionsTable timeZone={store.timeZone} rows={attributions} storeSlug={store.slug} locale={locale} words={words} />
         </section>
       </div>
     </AdminTextScope>

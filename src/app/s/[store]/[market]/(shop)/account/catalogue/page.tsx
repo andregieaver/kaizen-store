@@ -9,6 +9,8 @@ import { shown } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { lineMax, ruleWords } from "@/lib/quantity-rules";
 import { marketPath } from "@/lib/paths";
+import { CartCountSeed } from "@/components/cart-count-seed";
+import { getCartCount } from "@/server/cart";
 import { getCustomer } from "@/server/customers";
 import { buyerCatalogue } from "@/server/price-lists";
 import { resolveSellingShop } from "@/server/shop";
@@ -48,11 +50,13 @@ async function Catalogue({ params }: { params: Props["params"] }) {
   if (!customer) redirect(account);
   const messages = t(market.lang);
   const m = messages.buyerCatalogue;
-  const items = await buyerCatalogue(store.id, customer.id, market.code, market.locale);
+  // The cart's count beside the list: adding here redraws the page (`refresh()`), and the header's count follows (bloat review step 2.4).
+  const [items, count] = await Promise.all([buyerCatalogue(store.id, customer.id, market.code, market.locale), getCartCount({ storeId: store.id, market })]);
   const money = (nativeMinor: number) => formatMoney(shown(market, nativeMinor), market.currency, market.locale, market.priceStyle);
 
   return (
     <>
+      <CartCountSeed count={count} />
       <div>
         <Link href={account} className="text-sm underline">
           ← {messages.account.title}

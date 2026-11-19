@@ -40,7 +40,7 @@ export default async function InvoiceSettingsPage({ params }: PageProps<"/admin/
         }
       />
       <InvoiceReadinessList base={base} readiness={readiness} words={words} />
-      <InvoiceSettingsForm settings={settings} readiness={readiness} paymentsHref={`${base}/settings/payments`} saveAction={saveInvoiceSettingsAction.bind(null, store.slug)} words={words} />
+      <InvoiceSettingsForm timeZone={store.timeZone} settings={settings} readiness={readiness} paymentsHref={`${base}/settings/payments`} saveAction={saveInvoiceSettingsAction.bind(null, store.slug)} words={words} />
       <PhoneRows>
         {series.map((state) => (
           <SeriesForm key={state.series} state={state} action={setSeriesAction.bind(null, store.slug)} words={words} />

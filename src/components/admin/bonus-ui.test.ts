@@ -13,6 +13,7 @@ import { BonusOverviewCard } from "./bonus-overview";
 import { BonusSettingsForm, BonusSettingsView, type BonusSettingsViewProps } from "./bonus-settings-form";
 import { CustomerBonus, showsBonus } from "./customer-bonus";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "./order-bonus";
+import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
 
 /** What a person reads before any script runs: tags out of the way, entities and no-break spaces made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -130,7 +131,7 @@ const view = (over: Partial<BonusSettingsViewProps> = {}) => {
 describe("the bonus settings form after a try", () => {
   it("puts each problem beside its field and in the live region, and marks the fields", () => {
     const values = { ...formFromSettings(settings({ enabled: true }), "NOK"), earnPercent: "60", pendingDays: "soon" };
-    const read = readBonusForm(values, "NOK");
+    const read = readBonusForm(values, "NOK", loyaltyEn.bonus.errors);
     expect(read.ok).toBe(false);
     if (read.ok) return;
     const out = view({ values, errors: read.errors, complete: false });
@@ -251,6 +252,7 @@ describe("a customer's credits", () => {
   const section = (props: Record<string, unknown> = {}) =>
     html(
       createElement(CustomerBonus, {
+        timeZone: "Europe/Oslo",
         enabled: true,
         balance,
         entries,
@@ -355,7 +357,7 @@ describe("an order's credits", () => {
     expect(used).toContain("Bonus credits used");
     expect(used).toContain("−NOK 50.00");
     const earned = inList(
-      createElement(BonusEarnedRow, { bonus, currency: "NOK", locale: "en-GB", now: new Date("2026-10-01T00:00:00Z") }),
+      createElement(BonusEarnedRow, { timeZone: "Europe/Oslo", bonus, currency: "NOK", locale: "en-GB", now: new Date("2026-10-01T00:00:00Z") }),
     );
     expect(earned).toContain("Bonus credits earned (usable from 15 Oct 2026)");
     expect(earned).toContain("NOK 20.00");
@@ -363,6 +365,7 @@ describe("an order's credits", () => {
     expect(
       inList(
         createElement(BonusEarnedRow, {
+          timeZone: "Europe/Oslo",
           bonus,
           currency: "NOK",
           locale: "en-GB",
@@ -375,7 +378,7 @@ describe("an order's credits", () => {
   it("shows nothing for an order with no credits, or a copied one", () => {
     for (const none of [null, { usedMinor: 0, earnedMinor: 0, availableAt: null }]) {
       expect(inList(createElement(BonusUsedRow, { bonus: none, currency: "NOK", locale: "en-GB" }))).toBe("<dl></dl>");
-      expect(inList(createElement(BonusEarnedRow, { bonus: none, currency: "NOK", locale: "en-GB" }))).toBe(
+      expect(inList(createElement(BonusEarnedRow, { timeZone: "Europe/Oslo", bonus: none, currency: "NOK", locale: "en-GB" }))).toBe(
         "<dl></dl>",
       );
       expect(html(createElement(BonusRefundNote, { bonus: none, currency: "NOK", locale: "en-GB" }))).toBe("");

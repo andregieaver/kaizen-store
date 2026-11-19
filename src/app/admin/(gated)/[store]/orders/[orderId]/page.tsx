@@ -32,6 +32,7 @@ import { sendDocumentAgainAction } from "../../invoices/actions";
 import { helthjemBookAction } from "../helthjem-actions";
 import { porterbuddyBookAction } from "../porterbuddy-actions";
 import { carrierDeliveryBookAction } from "../carrier-delivery-actions";
+import { zoneOf } from "@/lib/admin-date";
 import { answerText } from "@/lib/checkout-rules";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
@@ -116,6 +117,7 @@ import { einvoiceLines } from "@/server/einvoice-sending";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { dealsOn } from "@/lib/extensions";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -230,8 +232,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // Bonus credits on an order (D130) are in the order's own currency; null for an order with none and for copied history.
   const bonusCurrency = order.currency;
   const bonus = order.copied ? null : order.bonus;
-  // Times in the store's own time zone, as its dispute and terms pages write them (Oslo only for a store that has none).
-  const zone = store.timeZone || "Europe/Oslo";
+  // Times in the store's own time zone, as its dispute and terms pages write them (D786).
+  const zone = zoneOf(store);
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: zone });
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
   // A card held to be charged when the order is sent (D289): it is sent (or handed over) as a paid one is, and the first parcel captures it.
@@ -715,7 +717,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               {order.balanceMinor > 0 && (
                 <div className="flex justify-between"><dt>{w.payAtAppointment}</dt><dd>{money(order.balanceMinor)}</dd></div>
               )}
-              <BonusEarnedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
+              <BonusEarnedRow timeZone={zone} bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
               {order.company && (
                 <div className="flex justify-between text-muted"><dt>{w.totalExVat}</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
               )}
@@ -767,6 +769,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {!order.copied && (
             <VatTreatmentPanel
+              timeZone={zone}
               treatment={treatment}
               kind={order.vatKind}
               reliefMinor={order.vatReliefMinor}
@@ -1119,7 +1122,7 @@ function EventLine({ event, money, currency, base, locationNames, words }: { eve
   if (isReturnEvent(event.type)) {
     return (
       <>
-        {eventSentence(event.type, data, currency)}
+        {eventSentence(event.type, data, currency, undefined, returnsEn)}
         {typeof data.returnId === "string" && typeof data.number === "string" && (
           <>
             {" · "}

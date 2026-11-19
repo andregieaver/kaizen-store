@@ -1,3 +1,4 @@
+import { adminDate } from "@/lib/admin-date";
 import type { DomainsMessages } from "@/lib/admin-messages/domains.en";
 import type { Signal } from "@/lib/admin-schemes";
 import { formatMoney } from "@/lib/money";
@@ -48,6 +49,7 @@ export function DomainRegistrationsCard({
   words,
   locale,
   actions,
+  timeZone,
 }: {
   registrations: RegistrationRow[];
   purchases: PurchaseRow[];
@@ -55,9 +57,11 @@ export function DomainRegistrationsCard({
   words: Pick<DomainsMessages, "registrations" | "purchases" | "get">;
   locale: string;
   actions: { renewal: DomainAction; renew: DomainAction };
+  /** The store's time zone, or the platform's for an account's own domains (D786). */
+  timeZone: string;
 }) {
   if (registrations.length === 0 && purchases.length === 0) return null;
-  const date = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }).format(new Date(iso));
+  const date = (iso: string) => adminDate(timeZone, iso, "day", locale);
   const r = words.registrations;
   const years = (n: number) => (n === 1 ? words.get.year.one : words.get.year.many.replace("{n}", String(n)));
   return (

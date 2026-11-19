@@ -1,4 +1,5 @@
 import type { FormState } from "@/components/admin/action-form";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { PERSONAL_DATA } from "@/lib/personal-data";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
@@ -99,7 +100,8 @@ export function RetentionView({
   locale?: string;
 }) {
   const w = words.retention;
-  const day = (value: string | null) => dayText(value, undefined, locale);
+  // The platform's retention: its runs and checks on Kaizena Flow's clock (D786).
+  const day = (value: string | null) => dayText(value, PLATFORM_TIME_ZONE, locale);
   const current = overview.rules.filter((r) => r.validTo === null);
   const history = overview.rules.filter((r) => r.validTo !== null);
   const byKind = new Map<RetentionKind, StoredRule[]>();
@@ -223,7 +225,7 @@ export function RetentionView({
                     .reduce((sum, [, n]) => sum + n, 0);
                   return (
                     <tr key={run.at} className="border-t border-line">
-                      <td className="py-2 pr-3 whitespace-nowrap">{day(run.at.slice(0, 10))}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{day(run.at)}</td>
                       <td className="py-2 pr-3 text-right">{run.counts.orders ?? 0}</td>
                       <td className="py-2 pr-3 text-right">{removed}</td>
                       <td className="py-2">

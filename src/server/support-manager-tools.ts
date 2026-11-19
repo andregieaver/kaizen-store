@@ -8,7 +8,8 @@ import { supportSummary } from "@/lib/approval-summaries";
 import { findClaims } from "@/lib/claims";
 import type { PermissionHolder } from "@/lib/permissions";
 import { transcriptOf, type TranscriptLine } from "@/lib/support-summary";
-import { HANDOFF_WORDS, OUTCOME_WORDS, topicWords } from "@/lib/support-inbox-text";
+import { topicWords } from "@/lib/support-inbox-text";
+import { HANDOFF_WORDS, OUTCOME_WORDS } from "@/lib/support-inbox-text-english";
 import { durationFigureWords, rateWords, type SupportReport } from "@/lib/support-reports";
 import { MIN_SUPPORT_SAMPLE } from "@/lib/support-rules";
 
@@ -20,6 +21,7 @@ import { agentAct } from "./support-agent";
 import { managerDesk, managerStaffDesk, type Desk } from "./support-desk";
 import { storeTotals } from "./support-platform";
 import { KAIZEN_TIME_ZONE, deskReport, supportNow } from "./support-reports";
+import { supportEn } from "@/lib/admin-messages/support.en";
 
 type Row = Record<string, unknown>;
 
@@ -53,7 +55,7 @@ function figures(report: SupportReport) {
     missed: `${report.missed.count} (ended while waiting, no answer)`,
     time_to_end: durationFigureWords(report.timeToEnd, false),
     said_we_helped: rateWords(report.rating),
-    top_topics: report.topics.slice(0, 5).map((t) => `${topicWords(t.topic)}: ${t.count}`),
+    top_topics: report.topics.slice(0, 5).map((t) => `${topicWords(t.topic, supportEn.lib)}: ${t.count}`),
     requests: { opened: report.requests.opened, done: report.requests.done, declined: report.requests.declined, still_open: report.requests.open },
   };
 }
@@ -103,7 +105,7 @@ export async function listSupportConversationsTool({ store }: { store: Store }, 
       summary: r.text ? String(r.text) : null,
       status: r.status === "open" ? (r.handler === "queue" ? "waiting for a person" : r.handler === "human" ? "with a person" : "with the AI") : "ended",
       outcome: r.outcome ? (OUTCOME_WORDS[String(r.outcome)] ?? String(r.outcome)) : null,
-      topics: Array.isArray(r.topics) ? (r.topics as unknown[]).filter((t): t is string => typeof t === "string").map((topic) => topicWords(topic)) : [],
+      topics: Array.isArray(r.topics) ? (r.topics as unknown[]).filter((t): t is string => typeof t === "string").map((topic) => topicWords(topic, supportEn.lib)) : [],
       tone_alert: Boolean(r.tone_alert_at),
       rating: r.rating === "good" ? "said we helped" : r.rating === "bad" ? "said we did not help" : null,
       started: new Date(String(r.created_at)).toISOString().slice(0, 16).replace("T", " "),

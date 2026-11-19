@@ -25,6 +25,7 @@ import {
   type AssignmentFormValues,
   type ClientFormValues,
 } from "./work-ui";
+import { workEn } from "@/lib/admin-messages/work.en";
 
 const ID = "3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b";
 const ID2 = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -309,30 +310,30 @@ describe("moving a task with the keyboard", () => {
 
 describe("the estimate bar", () => {
   it("has nothing to say without an estimate", () => {
-    expect(progressView(300, null, 10)).toEqual({ stage: "ok", fill: 0, percent: null, remaining: null, label: "" });
-    expect(progressView(300, 0, 10).percent).toBeNull();
+    expect(progressView(300, null, 10, workEn.labels.remaining)).toEqual({ stage: "ok", fill: 0, percent: null, remaining: null, label: "" });
+    expect(progressView(300, 0, 10, workEn.labels.remaining).percent).toBeNull();
   });
 
   it("is on track, nearly used up, and over, by the warning threshold", () => {
-    expect(progressView(60, 120, 10)).toMatchObject({ stage: "ok", percent: 50, fill: 50, label: "1h left" });
+    expect(progressView(60, 120, 10, workEn.labels.remaining)).toMatchObject({ stage: "ok", percent: 50, fill: 50, label: "1h left" });
     // Exactly the threshold left has not fired: strictly less does.
-    expect(progressView(110, 120, 10).stage).toBe("ok");
-    expect(progressView(111, 120, 10)).toMatchObject({ stage: "near", label: "9m left" });
-    expect(progressView(120, 120, 10)).toMatchObject({ stage: "over", percent: 100, label: "Used up" });
-    expect(progressView(150, 120, 10)).toMatchObject({ stage: "over", percent: 125, fill: 100, label: "30m over" });
+    expect(progressView(110, 120, 10, workEn.labels.remaining).stage).toBe("ok");
+    expect(progressView(111, 120, 10, workEn.labels.remaining)).toMatchObject({ stage: "near", label: "9m left" });
+    expect(progressView(120, 120, 10, workEn.labels.remaining)).toMatchObject({ stage: "over", percent: 100, label: "Used up" });
+    expect(progressView(150, 120, 10, workEn.labels.remaining)).toMatchObject({ stage: "over", percent: 125, fill: 100, label: "30m over" });
   });
 
   it("does not call it nearly used up when warnings are off, but an estimate used up is still over", () => {
-    expect(progressView(119, 120, null).stage).toBe("ok");
-    expect(progressView(130, 120, null).stage).toBe("over");
+    expect(progressView(119, 120, null, workEn.labels.remaining).stage).toBe("ok");
+    expect(progressView(130, 120, null, workEn.labels.remaining).stage).toBe("over");
     expect(stageOf(null, 10)).toBe("ok");
   });
 
   it("words what is left", () => {
-    expect(remainingLabel(null)).toBe("");
-    expect(remainingLabel(90)).toBe("1h 30m left");
-    expect(remainingLabel(-15)).toBe("15m over");
-    expect(remainingLabel(0)).toBe("Used up");
+    expect(remainingLabel(null, workEn.labels.remaining)).toBe("");
+    expect(remainingLabel(90, workEn.labels.remaining)).toBe("1h 30m left");
+    expect(remainingLabel(-15, workEn.labels.remaining)).toBe("15m over");
+    expect(remainingLabel(0, workEn.labels.remaining)).toBe("Used up");
   });
 });
 
@@ -421,10 +422,10 @@ describe("the client list", () => {
   });
 
   it("says what is going on for a client in a line", () => {
-    expect(clientFigures({ activeAssignments: 0, unbilledMinutes: 0 })).toBe(
+    expect(clientFigures({ activeAssignments: 0, unbilledMinutes: 0 }, workEn.labels.clientFigures)).toBe(
       "No active assignments · nothing unbilled",
     );
-    expect(clientFigures({ activeAssignments: 1, unbilledMinutes: 90 })).toBe("1 active assignment · 1h 30m unbilled");
-    expect(clientFigures({ activeAssignments: 3, unbilledMinutes: 45 })).toBe("3 active assignments · 45m unbilled");
+    expect(clientFigures({ activeAssignments: 1, unbilledMinutes: 90 }, workEn.labels.clientFigures)).toBe("1 active assignment · 1h 30m unbilled");
+    expect(clientFigures({ activeAssignments: 3, unbilledMinutes: 45 }, workEn.labels.clientFigures)).toBe("3 active assignments · 45m unbilled");
   });
 });

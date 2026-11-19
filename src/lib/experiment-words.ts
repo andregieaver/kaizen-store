@@ -78,3 +78,11 @@ export function experimentProblemText(text: string, words: ExperimentsMessages =
 }
 
 export const experimentProblems = (problems: readonly string[], words: ExperimentsMessages = experimentsEn): string[] => problems.map((p) => experimentProblemText(p, words));
+
+/** An action's answer with its refusals said in the language; the rest as it was. Run on the server, so no client module holds the English to match. */
+export function experimentAnswer<T>(answer: T, words: ExperimentsMessages): T {
+  if (answer === null || typeof answer !== "object") return answer;
+  const said: Record<string, unknown> = { ...(answer as Record<string, unknown>) };
+  if (Array.isArray(said.problems)) said.problems = experimentProblems(said.problems as string[], words);
+  return said as T;
+}

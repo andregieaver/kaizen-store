@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-buttons";
 import { PreviewLink } from "@/components/admin/preview-link";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { DESIGN_TABS, designPreviewPath, designTabHref, type DesignRow, type DesignTab } from "@/lib/design-presets";
 import type { LifecycleFacts } from "@/lib/lifecycle";
 import { shownDesignDetails } from "@/server/design-presets";
@@ -41,7 +42,7 @@ export async function DesignShell({
         title={shown.title}
         status={<LifecycleBadge facts={facts} words={w.lifecycle} />}
         meta={[
-          design.publishedAt ? fillWords(s.lastPublished, { date: design.publishedAt.slice(0, 10) }) : s.neverPublished,
+          design.publishedAt ? fillWords(s.lastPublished, { date: adminDate(PLATFORM_TIME_ZONE, design.publishedAt, "day", lang) }) : s.neverPublished,
           countWords(design.storesUsing, s.applied),
           design.requests > 0 && countWords(design.requests, s.chosen),
           design.recommendedBy.length > 0 && fillWords(s.recommended, { names: design.recommendedBy.join(", ") }),

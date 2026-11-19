@@ -4,7 +4,8 @@ import type { Finding } from "./data-job";
 /**
  * The redirect manager's sentences in a person's language (D312 A7). The checks (`FINDINGS` in `src/lib/data-job.ts`) and the service
  * (`REDIRECT_PROBLEMS`) write English, as the import's stored findings, the AI manager and the tests read it; the manager's form, table and the
- * report say it in the account's language through these. A sentence no template matches stays as it was written.
+ * report say it in the account's language through these. A sentence no template matches stays as it was written. They run on the server
+ * (the pages, and `redirectAnswer()` in each action's answer), so no admin client module holds the English to match (bloat review step 2.26).
  */
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -61,3 +62,13 @@ export function redirectProblemText(text: string, words: RedirectsMessages = red
 }
 
 export const redirectProblems = (problems: readonly string[], words: RedirectsMessages = redirectsEn): string[] => problems.map((p) => redirectProblemText(p, words));
+
+/** An action's answer with its refusals (`problems`, `problem`) and its check's findings said in the language; the rest as it was. */
+export function redirectAnswer<T>(answer: T, words: RedirectsMessages): T {
+  if (answer === null || typeof answer !== "object") return answer;
+  const said: Record<string, unknown> = { ...(answer as Record<string, unknown>) };
+  if (Array.isArray(said.problems)) said.problems = redirectProblems(said.problems as string[], words);
+  if (typeof said.problem === "string") said.problem = redirectProblemText(said.problem, words);
+  if (Array.isArray(said.findings)) said.findings = redirectFindings(said.findings as Pick<Finding, "code" | "text">[], words);
+  return said as T;
+}

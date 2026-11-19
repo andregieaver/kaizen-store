@@ -17,12 +17,13 @@ import {
   toggleId,
   wizardProblems,
 } from "./store-copy-wizard";
+import { platformEn } from "@/lib/admin-messages/platform.en";
 
 const choices = choicesOf();
 
 describe("the copy wizard's choices", () => {
   it("opens with pages, products and posts, and no people or orders", () => {
-    const state = initialWizard("Kaffe & Co");
+    const state = initialWizard("Kaffe & Co", platformEn.copyWizard.lib);
     expect(state.name).toBe("Copy of Kaffe & Co");
     expect(state.options).toMatchObject({
       pages: { mode: "all" },
@@ -31,11 +32,11 @@ describe("the copy wizard's choices", () => {
       customers: false,
       orders: false,
     });
-    expect(wizardProblems(state)).toEqual([]);
+    expect(wizardProblems(state, platformEn.copyWizard.lib)).toEqual([]);
   });
 
   it("keeps ticked ids when the choice moves away and back", () => {
-    let state = setMode(initialWizard("X"), "products", "selected");
+    let state = setMode(initialWizard("X", platformEn.copyWizard.lib), "products", "selected");
     state = toggleId(state, "products", idOf(100), true);
     state = toggleId(state, "products", idOf(101), true);
     expect(state.options.products).toEqual({ mode: "selected", ids: [idOf(100), idOf(101)] });
@@ -48,13 +49,13 @@ describe("the copy wizard's choices", () => {
   });
 
   it("ticks only what is added, never twice, and clears a list", () => {
-    let state = setMode(initialWizard("X"), "pages", "selected");
+    let state = setMode(initialWizard("X", platformEn.copyWizard.lib), "pages", "selected");
     state = addIds(state, "pages", [idOf(1), idOf(2)]);
     state = addIds(state, "pages", [idOf(2), idOf(3)]);
     expect(state.picked.pages).toEqual([idOf(1), idOf(2), idOf(3)]);
     expect(clearIds(state, "pages").options.pages).toEqual({ mode: "selected", ids: [] });
     // Ticking in a list that is not the chosen one only remembers.
-    const all = toggleId(initialWizard("X"), "posts", idOf(200), true);
+    const all = toggleId(initialWizard("X", platformEn.copyWizard.lib), "posts", idOf(200), true);
     expect(all.options.posts).toEqual({ mode: "all" });
     expect(all.picked.posts).toEqual([idOf(200)]);
   });
@@ -69,70 +70,70 @@ describe("the copy wizard's choices", () => {
   });
 
   it("counts the selection for the live line", () => {
-    expect(selectedLine(12, 40)).toBe("12 of 40 selected");
-    expect(selectedLine(1200, 5000)).toBe("1,200 of 5,000 selected");
+    expect(selectedLine(12, 40, platformEn.copyWizard.lib)).toBe("12 of 40 selected");
+    expect(selectedLine(1200, 5000, platformEn.copyWizard.lib)).toBe("1,200 of 5,000 selected");
   });
 });
 
 describe("what needs another look", () => {
-  const base = () => initialWizard("Kaffe & Co");
+  const base = () => initialWizard("Kaffe & Co", platformEn.copyWizard.lib);
 
   it("asks for a name and an address that can be used", () => {
-    expect(wizardProblems({ ...base(), name: "  " }).map((p) => p.field)).toEqual(["name"]);
-    expect(wizardProblems({ ...base(), name: "x".repeat(81) }).map((p) => p.field)).toEqual(["name"]);
-    expect(wizardProblems({ ...base(), slug: "-bad" })[0]).toMatchObject({ field: "slug" });
-    expect(wizardProblems({ ...base(), slug: "no" })[0]).toMatchObject({ field: "slug" });
-    expect(wizardProblems({ ...base(), slug: "good-one" })).toEqual([]);
+    expect(wizardProblems({ ...base(), name: "  " }, platformEn.copyWizard.lib).map((p) => p.field)).toEqual(["name"]);
+    expect(wizardProblems({ ...base(), name: "x".repeat(81) }, platformEn.copyWizard.lib).map((p) => p.field)).toEqual(["name"]);
+    expect(wizardProblems({ ...base(), slug: "-bad" }, platformEn.copyWizard.lib)[0]).toMatchObject({ field: "slug" });
+    expect(wizardProblems({ ...base(), slug: "no" }, platformEn.copyWizard.lib)[0]).toMatchObject({ field: "slug" });
+    expect(wizardProblems({ ...base(), slug: "good-one" }, platformEn.copyWizard.lib)).toEqual([]);
     // A name that gives no address needs one typed.
-    expect(wizardProblems({ ...base(), name: "!!" })[0]).toMatchObject({ field: "slug" });
-    expect(wizardProblems({ ...base(), name: "!!", slug: "fine" })).toEqual([]);
+    expect(wizardProblems({ ...base(), name: "!!" }, platformEn.copyWizard.lib)[0]).toMatchObject({ field: "slug" });
+    expect(wizardProblems({ ...base(), name: "!!", slug: "fine" }, platformEn.copyWizard.lib)).toEqual([]);
   });
 
   it("does not accept Selected with nothing ticked, or too many", () => {
     const empty = setMode(base(), "products", "selected");
-    expect(wizardProblems(empty)).toEqual([
+    expect(wizardProblems(empty, platformEn.copyWizard.lib)).toEqual([
       { field: "products", message: "Tick at least one product, or choose All or None." },
     ]);
     const ids = Array.from({ length: COPY_IDS_MAX + 1 }, (_, i) => idOf(i));
     const many = addIds(setMode(base(), "pages", "selected"), "pages", ids);
-    expect(wizardProblems(many)[0]).toMatchObject({ field: "pages" });
-    expect(wizardProblems(addIds(setMode(base(), "pages", "selected"), "pages", [idOf(1)]))).toEqual([]);
+    expect(wizardProblems(many, platformEn.copyWizard.lib)[0]).toMatchObject({ field: "pages" });
+    expect(wizardProblems(addIds(setMode(base(), "pages", "selected"), "pages", [idOf(1)]), platformEn.copyWizard.lib)).toEqual([]);
   });
 
   it("needs the confirmation with customers or orders", () => {
     const withCustomers = { ...base(), options: { ...base().options, customers: true } };
     expect(needsDataConfirmation(withCustomers.options)).toBe(true);
-    expect(wizardProblems(withCustomers)).toEqual([
+    expect(wizardProblems(withCustomers, platformEn.copyWizard.lib)).toEqual([
       { field: "confirmDataUse", message: "Confirm that you may use this customer data in the new store." },
     ]);
     const orders = { ...base(), options: { ...base().options, orders: true, confirmDataUse: true } };
-    expect(wizardProblems(orders)).toEqual([]);
+    expect(wizardProblems(orders, platformEn.copyWizard.lib)).toEqual([]);
     expect(needsDataConfirmation(base().options)).toBe(false);
   });
 });
 
 describe("the summary and the input", () => {
   it("sums it up in one sentence", () => {
-    const base = initialWizard("X");
-    expect(summarySentence(base, choices)).toBe(
+    const base = initialWizard("X", platformEn.copyWizard.lib);
+    expect(summarySentence(base, choices, platformEn.copyWizard.lib)).toBe(
       "Copies the store's settings, plus all 3 pages, all 40 products and 1 post.",
     );
     let state = setMode(base, "products", "selected");
     state = addIds(state, "products", [idOf(100), idOf(101)]);
     state = setMode(state, "pages", "none");
     state = { ...state, options: { ...state.options, customers: true, orders: true } };
-    expect(summarySentence(state, choices)).toBe(
+    expect(summarySentence(state, choices, platformEn.copyWizard.lib)).toBe(
       "Copies the store's settings, plus 2 of 40 products, 1 post, 210 customers and 128 orders as read-only history.",
     );
     const nothing = ["pages", "products", "posts"].reduce((s, k) => setMode(s, k as "pages", "none"), base);
-    expect(summarySentence(nothing, choices)).toBe("Copies the store's settings only.");
-    expect(summarySentence(base, choicesOf({ pages: [], products: [], posts: [] }))).toBe(
+    expect(summarySentence(nothing, choices, platformEn.copyWizard.lib)).toBe("Copies the store's settings only.");
+    expect(summarySentence(base, choicesOf({ pages: [], products: [], posts: [] }), platformEn.copyWizard.lib)).toBe(
       "Copies the store's settings only.",
     );
   });
 
   it("builds the input the server takes", () => {
-    let state = { ...initialWizard("Kaffe & Co"), name: "  Nord Kaffe ", slug: " Nord-Kaffe " };
+    let state = { ...initialWizard("Kaffe & Co", platformEn.copyWizard.lib), name: "  Nord Kaffe ", slug: " Nord-Kaffe " };
     state = setMode(state, "products", "selected");
     state = addIds(state, "products", [idOf(100)]);
     const input = buildInput("kaffe", state);
@@ -141,7 +142,7 @@ describe("the summary and the input", () => {
   });
 
   it("never sends a confirmation nobody needs", () => {
-    const state = initialWizard("X");
+    const state = initialWizard("X", platformEn.copyWizard.lib);
     expect(
       buildInput("kaffe", { ...state, options: { ...state.options, confirmDataUse: true } }).options.confirmDataUse,
     ).toBe(false);

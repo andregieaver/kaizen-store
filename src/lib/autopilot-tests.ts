@@ -3,6 +3,7 @@ import type { Guardrail, GuardrailState } from "./experiment-guardrails";
 import { COUNTED_GOALS, goalEstimate, isCountedGoal, type CountedGoal, type TrafficFacts } from "./experiment-traffic";
 import type { VerdictKind } from "./experiment-results";
 import { isGoal, type ExperimentStatus } from "./experiments";
+import type { ExperimentsMessages } from "./admin-messages/experiments.en";
 
 /**
  * The autopilot tests its page changes first (ecosystem plan E4.1, D729): when it would publish a change to a live page by itself and the
@@ -33,8 +34,8 @@ export type NotTested = "off" | "not_live" | "not_testable" | "no_room" | "not_c
  * store learns sooner from it). Two versions, everyone who accepts statistics cookies. Kaizena Flow's own store sells nothing, so its only
  * counted goal is its sign-ups per visit (ecosystem plan E5.3, D757), sized from its own sign-up rate the same way.
  */
-export function chooseTest(facts: TrafficFacts, targetId: string, maxDays = AUTOPILOT_TEST_MAX_DAYS): TestChoice | { none: "not_counted" | "too_slow" } {
-  const estimates = COUNTED_GOALS.map((goal) => ({ goal, estimate: goalEstimate({ facts, targetId, goal, trafficShare: 1, versions: 2, relativeChange: AUTOPILOT_TEST_CHANGE }) }));
+export function chooseTest(facts: TrafficFacts, targetId: string, words: ExperimentsMessages, maxDays = AUTOPILOT_TEST_MAX_DAYS): TestChoice | { none: "not_counted" | "too_slow" } {
+  const estimates = COUNTED_GOALS.map((goal) => ({ goal, estimate: goalEstimate({ facts, targetId, goal, trafficShare: 1, versions: 2, relativeChange: AUTOPILOT_TEST_CHANGE, words }) }));
   const known = estimates.filter((e): e is { goal: CountedGoal; estimate: NonNullable<typeof e.estimate> } => e.estimate !== null);
   if (known.length === 0) return { none: "not_counted" };
   const soon = known.filter((e) => e.estimate.days <= maxDays);

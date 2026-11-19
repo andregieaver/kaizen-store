@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 
 import { DomainMoveSteps } from "@/components/admin/domain-move-steps";
 import { ButtonLink, PageHeader } from "@/components/admin/ui";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { MOVE_KEEP_DAYS, type MoveGoal } from "@/lib/domain-move";
@@ -23,14 +24,13 @@ export default async function MoveDomainPage({ params, searchParams }: PageProps
   const { store: slug, domain } = await params;
   const member = await requireOwnerRole(slug);
   const lang = adminLangOf(member.account.adminLocale);
-  const locale = ADMIN_LANG_FACTS[lang].locale;
   const words = adminText(lang, "domains").move;
   const apex = decodeURIComponent(domain).toLowerCase();
   const goalParam = (await searchParams).goal;
   const goal = GOALS.find((g) => g === goalParam) ?? null;
   const base = `/admin/${slug}/settings/domains`;
   const here = `${base}/move/${encodeURIComponent(apex)}`;
-  const date = (iso: string | null) => (iso ? new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" }).format(new Date(iso)) : null);
+  const date = (iso: string | null) => (iso ? adminDate(member.store, iso, "long", lang) : null);
 
   const header = <PageHeader back={{ href: base, label: words.back }} title={fillWords(words.title, { domain: apex })} description={words.intro} />;
   const choices = (

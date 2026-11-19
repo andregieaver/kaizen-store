@@ -7,6 +7,7 @@ import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { ListPager } from "@/components/admin/list-pager";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { LAYOUT_TYPES, type PageType } from "@/lib/page-content";
 import { isThemeStoreRole, PLATFORM_ROLE_COPY, SPECIAL_ROLES, type PlatformRole } from "@/lib/platform-roles";
 import { requirePlatformReader } from "@/server/auth";
@@ -155,6 +156,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         <SiteLayoutsTable layouts={pages} adminBase={base} current={layoutCurrent} />
       ) : (
         <PagesTable
+          timeZone={PLATFORM_TIME_ZONE}
           pages={pages}
           adminBase={base}
           siteBase={copy.sitePrefix}

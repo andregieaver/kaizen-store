@@ -162,7 +162,7 @@ commit as the fix.
 | 2.1 | Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB | DC-1 | M | review | 1.1, 0.43, 0.41, 0.40 | Done | 18 Nov, 7742afff, D774: CLAUDE.md 10,102 bytes, 134 lines; both proofs of path loading passed. |
 | 2.2 | Send the store's layout once | SC-8, PL-2, PM-1, CS-5, SC-7, PF-7, GAP-page-model-s6 | M | review | 0.1, 1.3 | Done | 18 Nov, b3a90442, D776: home 135,935 to 105,599 bytes; duplicate rows 27,226 to 1,768. |
 | 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | Done | 18 Nov, d0aa131f, D777: breakpoint sheet once; six-row page's part sheets 6 to 1. |
-| 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | Open | |
+| 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | In progress | Local, commits 1-3: home, om-oss, blog static; resuming 268 to 211; an add 1 request, 104 B. Commit 4 later. |
 | 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | Open | |
 | 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | Open | |
 | 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Open | |
@@ -184,7 +184,7 @@ commit as the fix.
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
 | 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Open | |
-| 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | Open | |
+| 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | In progress | 19 Nov local: catalogue sites 35 to 0; 83 routes fell (Work 54 KB each); five screens 634-664 KB; admin median 643,240 B; builderEnglish 26 to 0 routes. |
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | Open | |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Open | |
 | 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | Open | |

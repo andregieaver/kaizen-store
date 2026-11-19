@@ -255,7 +255,8 @@ describe("helpers", () => {
     expect(lastSeenText("2026-10-01T22:30:00.000Z", "Europe/Oslo")).toMatch(/^2 Oct/);
     expect(lastSeenText("2026-10-01T22:30:00.000Z", "UTC")).toMatch(/^1 Oct/);
     expect(lastSeenText("not a date", "UTC")).toBe("–");
-    expect(lastSeenText("2026-10-01T22:30:00.000Z", "Not/AZone")).toMatch(/^1 Oct/);
+    // A zone the runtime does not know reads the platform's, as every admin date does (D786).
+    expect(lastSeenText("2026-10-01T22:30:00.000Z", "Not/AZone")).toMatch(/^2 Oct/);
   });
 
   it("names a product landing page by its handle and every other by its address", () => {

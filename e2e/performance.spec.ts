@@ -476,13 +476,15 @@ test("a product tile takes the 800 px copy on a 3x phone, and no tile or gallery
  * `lateScriptBytes`, decoded: one file more fails, and the bytes have room of max(2,000, 2 %), as everyday code moves shared chunks by a few bytes), the page's own fetches that are not the router's
  * (`ownFetches`: the visit count, the tiles' call) and every request to another host (none is allowed). `wire` is its figure plus 4 %,
  * rounded up to the next 1,000. Measured on the build of 17 November 2026 (three runs: the largest wire of each page is the figure: the front page 351,687, the product page 370,098, /products 360,361, /om-oss 405,020 and the cart 410,890 bytes; the late scripts, 3, 4, 3, 7 and 5 files, were the same each time). A budget only falls.
+ * `ownFetches` is 1 since bloat review step 2.4: the demo store sells in three countries, so each page asks `/api/shop/mine` once for the
+ * country suggestion, which the page drew per request before (a store in one country with no marker cookie asks nothing: wishlist.spec).
  */
 const WIRE_BUDGETS: Record<string, { wire: number; lateScripts: number; lateScriptBytes: number; ownFetches: number }> = {
-  "/s/demo/no": { wire: 366_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 0 },
-  "/s/demo/no/p/demo-keramikkopp": { wire: 385_000, lateScripts: 4, lateScriptBytes: 65_979, ownFetches: 0 },
-  "/s/demo/no/products": { wire: 375_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 0 },
-  "/s/demo/no/om-oss": { wire: 422_000, lateScripts: 7, lateScriptBytes: 197_608, ownFetches: 0 },
-  "/s/demo/no/cart": { wire: 428_000, lateScripts: 5, lateScriptBytes: 81_954, ownFetches: 0 },
+  "/s/demo/no": { wire: 366_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 1 },
+  "/s/demo/no/p/demo-keramikkopp": { wire: 385_000, lateScripts: 4, lateScriptBytes: 65_979, ownFetches: 1 },
+  "/s/demo/no/products": { wire: 375_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 1 },
+  "/s/demo/no/om-oss": { wire: 422_000, lateScripts: 7, lateScriptBytes: 197_608, ownFetches: 1 },
+  "/s/demo/no/cart": { wire: 428_000, lateScripts: 5, lateScriptBytes: 81_954, ownFetches: 1 },
 };
 
 const QUIET_MS = 3_000;

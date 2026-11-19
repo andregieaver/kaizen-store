@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { fillWords } from "./admin-fill";
-import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
+import type { DiscountsMessages } from "./admin-messages/discounts.en";
 import { planPrice } from "./subscriptions";
 
 /**
@@ -386,7 +386,7 @@ export function reaches(discount: Pick<StoreDiscount, "productIds" | "termIds">,
 export function describeDiscount(
   discount: Pick<StoreDiscount, "kind" | "percent" | "amounts" | "recurring">,
   money: (minor: number, marketCode: string) => string,
-  words: DiscountsMessages["describe"] = discountsEn.describe,
+  words: DiscountsMessages["describe"],
 ): string {
   if (discount.kind === "free_shipping") return words.freeShipping;
   if (discount.kind === "percent") return fillWords(discount.recurring ? words.everyRenewal : words.percentOff, { percent: discount.percent });

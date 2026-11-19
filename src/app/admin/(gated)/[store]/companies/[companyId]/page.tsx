@@ -19,6 +19,7 @@ import { activityActions, activityTeam } from "../../deals/activity-actions-of";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
 import { companyOwes } from "@/server/payment-terms";
 import { readTimeline } from "@/server/customer-timeline";
+import { adminDate } from "@/lib/admin-date";
 import { TIMELINE_KINDS, askedKind } from "@/lib/customer-timeline";
 import { normaliseEmail } from "@/lib/email-address";
 import { mainCurrency } from "@/lib/markets";
@@ -84,7 +85,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
   const people = Object.fromEntries(members.map((m) => [normaliseEmail(m.email), { name: m.name || m.email, href: `${base}/customers/${m.id}` }]));
   const currency = mainCurrency(store);
   const locale = store.markets[0]?.locale ?? "nb-NO";
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(store, iso, "day", locale);
   const employees = employeePercent(company);
   // Deals (S2, D464): the company's, while Deals is on.
   const salesOn = dealsOn(store);

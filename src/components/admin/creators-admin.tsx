@@ -168,6 +168,7 @@ function CreatorItem({
   row,
   w,
   locale,
+  today,
   isOwner,
   decide,
   setRate,
@@ -176,6 +177,8 @@ function CreatorItem({
   row: CreatorRow;
   w: Words;
   locale: string;
+  /** The store's day today (D786), the paid-on field's first value. */
+  today: string;
   isOwner: boolean;
   decide: (id: string, decision: "approve" | "decline" | "stop") => Promise<CreatorResult>;
   setRate: (id: string, bps: number | null) => Promise<CreatorResult>;
@@ -186,7 +189,7 @@ function CreatorItem({
   const owedIn = row.balances.filter((b) => b.owedMinor > 0);
   const [currency, setCurrency] = useState(owedIn[0]?.currency ?? row.balances[0]?.currency ?? "");
   const [amount, setAmount] = useState("");
-  const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
+  const [paidOn, setPaidOn] = useState(today);
   const [reference, setReference] = useState("");
   const erased = row.email === null;
 
@@ -308,6 +311,7 @@ function CreatorItem({
 export function CreatorsList({
   rows,
   locale,
+  today,
   isOwner,
   decide,
   setRate,
@@ -315,6 +319,8 @@ export function CreatorsList({
 }: {
   rows: CreatorRow[];
   locale: string;
+  /** The store's day today (D786), a payout's paid-on field's first value. */
+  today: string;
   isOwner: boolean;
   decide: (id: string, decision: "approve" | "decline" | "stop") => Promise<CreatorResult>;
   setRate: (id: string, bps: number | null) => Promise<CreatorResult>;
@@ -328,7 +334,7 @@ export function CreatorsList({
       ) : (
         <List label={w.listHeading}>
           {rows.map((row) => (
-            <CreatorItem key={row.id} row={row} w={w} locale={locale} isOwner={isOwner} decide={decide} setRate={setRate} recordPayout={recordPayout} />
+            <CreatorItem key={row.id} row={row} w={w} locale={locale} today={today} isOwner={isOwner} decide={decide} setRate={setRate} recordPayout={recordPayout} />
           ))}
         </List>
       )}

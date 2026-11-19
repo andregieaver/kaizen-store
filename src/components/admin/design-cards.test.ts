@@ -68,6 +68,7 @@ describe("the themes on a store's Design settings (D176)", () => {
     // Without React's text markers, so sentences read as they show.
     renderToString(
       createElement(DesignProfilePanel, {
+        timeZone: "Europe/Oslo",
         designs: [{ ...calm, previewHref: calm.previewHref! }],
         latest: null,
         apply: async () => ({ status: "ok" as const, messages: [] }),

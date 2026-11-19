@@ -4,9 +4,9 @@ import { MoreHorizontal, Plus } from "lucide-react";
 import { useState } from "react";
 
 import type { PageSummary } from "@/server/pages";
+import { adminDate } from "@/lib/admin-date";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import type { PageRole } from "@/lib/page-role-copy";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import type { ScheduleChip } from "@/lib/page-schedules";
 
@@ -37,6 +37,7 @@ export function PageCards({
   label,
   newLabel,
   newSub,
+  timeZone,
 }: {
   pages: PageSummary[];
   adminBase: string;
@@ -50,13 +51,13 @@ export function PageCards({
   label?: string;
   newLabel?: string;
   newSub?: string;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
 }) {
   const w = useAdminText("website");
   const list = w.list;
   const c = w.storePages.cards;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
-  const phoneDate = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "Europe/Oslo" });
+  const lang = useAdminLang();
   // Round 28 (D701): on a phone the pages are one card of lines, with a search once there are more than a screen of them.
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
@@ -119,10 +120,10 @@ export function PageCards({
                 </span>
                 {/* Round 33 (D707): on a phone the state, its place in the shop and the day as one line of words, never cut off. */}
                 <span className={`min-w-0 text-caption sm:hidden ${page.state === "draft" ? "text-ink-2" : page.state === "changed" ? "text-warning-text" : "text-positive-text"}`}>
-                  {[list.states[page.state], place, phoneDate.format(new Date(page.updatedAt))].filter(Boolean).join(" · ")}
+                  {[list.states[page.state], place, adminDate(timeZone, page.updatedAt, "short", lang)].filter(Boolean).join(" · ")}
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
-                  <span className="text-caption text-muted max-sm:hidden">{date.format(new Date(page.updatedAt))}</span>
+                  <span className="text-caption text-muted max-sm:hidden">{adminDate(timeZone, page.updatedAt, "day", lang)}</span>
                   <details className="relative">
                     <summary
                       aria-label={fillWords(c.moreFor, { title })}

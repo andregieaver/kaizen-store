@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 import { adminText } from "@/lib/admin-text";
@@ -67,6 +68,7 @@ export function CartAddTable({
   showCustomer = true,
   words: w = ENGLISH(),
   dateLocale = locale,
+  timeZone,
 }: {
   rows: CartAddRow[];
   storeSlug: string;
@@ -76,10 +78,11 @@ export function CartAddTable({
   /** The table's words and date format (D312 A11); English when none are given. */
   words?: WishlistWords;
   dateLocale?: string;
+  /** The store's time zone (D786). */
+  timeZone: string;
 }) {
   const base = `/admin/${storeSlug}`;
-  const date = (iso: string) =>
-    new Date(iso).toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(timeZone, iso, "dayTime", dateLocale);
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">

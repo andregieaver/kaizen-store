@@ -94,7 +94,7 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
           <FoldRow title={w.readiness.names.vat} sub={vatSub} action={profile.vatRegistered ? w.page.change : w.page.add}>
             <div className="flex flex-col gap-4">
               {form("vat")}
-              <OwnNumberCheckCard number={profile.vatNumber} check={check} canEdit={canEdit} action={checkVatNumberAction.bind(null, store.slug)} />
+              <OwnNumberCheckCard timeZone={store.timeZone} number={profile.vatNumber} check={check} canEdit={canEdit} action={checkVatNumberAction.bind(null, store.slug)} />
             </div>
           </FoldRow>
           <FoldRow title={w.form.ossTitle} sub={ossSub} action={w.page.change}>

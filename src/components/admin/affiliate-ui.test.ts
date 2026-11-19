@@ -14,6 +14,7 @@ import { AffiliateSettingsForm, AffiliateSettingsView, type AffiliateSettingsVie
 import { AttributionsTable, ReferrersTable } from "./affiliate-tables";
 import { CustomerAffiliateSection, showsAffiliate } from "./customer-affiliate";
 import { OrderAttributionCard, ReferralDiscountRow } from "./order-affiliate";
+import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
 
 /** What a person reads before any script runs: tags out of the way, entities and no-break spaces made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -79,7 +80,7 @@ describe("the referral settings form", () => {
 
   it("says what is wrong beside each field, and what the server refused", () => {
     const values = { ...formFromSettings(settings(), "NOK"), friendPercent: "ten", cookieDays: "91" };
-    const read = readAffiliateForm(values, "NOK");
+    const read = readAffiliateForm(values, "NOK", loyaltyEn.affiliate.errors);
     expect(read.ok).toBe(false);
     if (read.ok) return;
     const props: AffiliateSettingsViewProps = {
@@ -171,7 +172,7 @@ const attribution = (over: Partial<AffiliateAttributionRow> = {}): AffiliateAttr
 
 describe("the orders that came through links", () => {
   it("lists the order, who shared the link, the friend, what each got and the status", () => {
-    const out = html(createElement(AttributionsTable, { rows: [attribution(), attribution({ id: "a2", orderId: "o2", orderNumber: "1002", status: "rejected", reason: "self", rewardMinor: 0, discountMinor: 0, friendId: null })], storeSlug: "kaffe", locale: "en-GB" }));
+    const out = html(createElement(AttributionsTable, { timeZone: "Europe/Oslo", rows: [attribution(), attribution({ id: "a2", orderId: "o2", orderNumber: "1002", status: "rejected", reason: "self", rewardMinor: 0, discountMinor: 0, friendId: null })], storeSlug: "kaffe", locale: "en-GB" }));
     expect(out).toContain("#1001");
     expect(out).toContain('href="/admin/kaffe/orders/o1"');
     expect(out).toContain("Bob Buyer (bob@example.com)");
@@ -180,7 +181,7 @@ describe("the orders that came through links", () => {
     expect(out).toContain("Rewarded");
     expect(out).toContain("No reward: The friend is the referrer");
     expect(out).toContain("Deleted customer");
-    expect(html(createElement(AttributionsTable, { rows: [], storeSlug: "kaffe", locale: "en-GB" }))).toContain("No order has come through a link yet.");
+    expect(html(createElement(AttributionsTable, { timeZone: "Europe/Oslo", rows: [], storeSlug: "kaffe", locale: "en-GB" }))).toContain("No order has come through a link yet.");
   });
 });
 
@@ -237,6 +238,7 @@ describe("a customer's page", () => {
   it("shows their link, friends and earnings, who referred them and the orders through links", () => {
     const out = html(
       createElement(CustomerAffiliateSection, {
+        timeZone: "Europe/Oslo",
         data: data({ referredBy: { customerId: "c9", name: "Rita Referrer", email: "rita@example.com", code: "qqqqqq22" } }),
         storeSlug: "kaffe",
         locale: "en-GB",
@@ -255,7 +257,7 @@ describe("a customer's page", () => {
   });
 
   it("says when they are blocked, and why", () => {
-    const out = html(createElement(CustomerAffiliateSection, { data: data({ blocked: true, blockedReason: "Referred herself" }), storeSlug: "kaffe", locale: "en-GB", who: "Lisa", block: act }));
+    const out = html(createElement(CustomerAffiliateSection, { timeZone: "Europe/Oslo", data: data({ blocked: true, blockedReason: "Referred herself" }), storeSlug: "kaffe", locale: "en-GB", who: "Lisa", block: act }));
     expect(out).toContain("Blocked: they earn nothing new.");
     expect(out).toContain("Reason: Referred herself");
     expect(out).toContain(">Unblock Lisa<");

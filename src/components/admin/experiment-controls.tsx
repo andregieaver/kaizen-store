@@ -20,7 +20,6 @@ import {
 } from "@/app/admin/(gated)/[store]/experiments/actions";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { experimentProblems } from "@/lib/experiment-words";
 import { DEVICES, GOAL_WORDS, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
 import { Button, ButtonLink, Card, CARD_CLASS } from "@/components/admin/ui";
@@ -40,7 +39,6 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 
 /** Runs a server action from a click: shows what it says is wrong, refreshes the page on success. */
 function useRun() {
-  const words = useAdminText("experiments");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -51,7 +49,7 @@ function useRun() {
       if (result.ok) {
         then?.();
         router.refresh();
-      } else setProblems(experimentProblems(result.problems, words));
+      } else setProblems(result.problems);
     });
   };
   return { pending, problems, run, router, setProblems };

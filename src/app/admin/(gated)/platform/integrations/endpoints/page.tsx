@@ -6,8 +6,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } from "@/components/admin/webhook-endpoints";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { DEFAULT_PLATFORM_EVENTS, PLATFORM_EVENTS } from "@/lib/platform-integrations";
 import { ID_HEADER, SIGNATURE_HEADER, TIMESTAMP_HEADER } from "@/lib/webhook-signature";
@@ -39,8 +40,7 @@ export default async function PlatformEndpointsPage() {
   const own = adminText(lang, "platform").integrations;
   const owner = platformCan(admin, "settings");
   const topics = PLATFORM_EVENTS.map((event) => ({ id: event, label: own.events[event]?.label ?? event, hint: own.events[event]?.hint ?? "" }));
-  const locale = ADMIN_LANG_FACTS[lang].locale;
-  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const endpoints = await listPlatformEndpoints();
   const views: EndpointView[] = await Promise.all(
     endpoints.map(async (endpoint) => ({

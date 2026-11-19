@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
@@ -31,7 +32,7 @@ export async function alertFailingJob(job: string, facts: { failedAt: Date; last
       if (!emails.has(lang)) {
         const words = STAFF_EMAILS_WORDS[lang];
         const w = words.jobFailing;
-        const when = (at: Date) => at.toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+        const when = (at: Date) => adminDate(PLATFORM_TIME_ZONE, at, "dayTime", lang);
         const values = {
           job,
           n: FAILING_AFTER,

@@ -21,6 +21,7 @@ import {
   type RedirectEnv,
   type RedirectIndex,
 } from "./redirects";
+import { redirectsEn } from "@/lib/admin-messages/redirects.en";
 
 const ctx: AddressContext = { store: "demo", countries: ["no", "se"], ownHosts: ["shop.demo.no"] };
 const live = liveAddresses({
@@ -220,10 +221,10 @@ describe("the status of a row in the list", () => {
     expect(redirectStatus({ kind: "product", source: "/p/old", target: null }, e(index({}, { "/p/old": "/p/lamp" })))).toEqual({ status: "active", more: 0 });
   });
   it("has words", () => {
-    expect(redirectStatusWords("active")).toBe("Active");
-    expect(redirectStatusWords("chain", 1)).toBe("Goes through 1 more redirect");
-    expect(redirectStatusWords("chain", 3)).toBe("Goes through 3 more redirects");
-    expect(redirectStatusWords("not_used")).toMatch(/live/);
+    expect(redirectStatusWords("active", redirectsEn)).toBe("Active");
+    expect(redirectStatusWords("chain", redirectsEn, 1)).toBe("Goes through 1 more redirect");
+    expect(redirectStatusWords("chain", redirectsEn, 3)).toBe("Goes through 3 more redirects");
+    expect(redirectStatusWords("not_used", redirectsEn)).toMatch(/live/);
     expect(redirectSentences.count(12, 100_000)).toBe("12 of 100,000 manual redirects");
     expect(redirectSentences.permanent).toMatch(/permanent/);
   });
