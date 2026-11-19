@@ -14,7 +14,7 @@ export function utcOffset(instant: Instant, timeZone: string): string {
   return `UTC${offset === "" ? "+00:00" : offset}`;
 }
 
-/** `2. oktober 2026 kl. 22:30 (UTC+02:00, Europe/Oslo)`: the declaration's moment in the store's time zone. */
+/** `2. oktober 2026 kl. 22:30 (UTC+02:00, Europe/Berlin)`: the declaration's moment in the store's time zone. */
 export function formatDeclaration(instant: Instant, locale: string, timeZone: string): string {
   let tag = locale;
   try {

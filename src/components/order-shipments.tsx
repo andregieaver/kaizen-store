@@ -1,3 +1,4 @@
+import { dateIn } from "@/lib/dates";
 import type { Messages } from "@/lib/i18n";
 import type { ShopperFulfilment } from "@/server/fulfilment";
 import type { ParcelTracking as ParcelTrackingRow } from "@/server/shipment-tracking";
@@ -26,7 +27,8 @@ export function OrderShipments({
   fulfilment: ShopperFulfilment | null;
   m: Pick<Messages, "fulfilment" | "backorder" | "tracking">;
   locale: string;
-  timeZone?: string;
+  /** The store's zone, which each parcel's day is read in (D796). */
+  timeZone: string;
   /** Bought for a business: no statutory right of withdrawal, so no sentence about when it counts from. */
   business?: boolean;
   /** Each parcel's stored carrier events (D238 2.7, `parcelTrackingFor()`), drawn under the parcel by `ParcelTracking`; none: the parcels as before. */
@@ -34,7 +36,7 @@ export function OrderShipments({
 }) {
   if (!fulfilment || fulfilment.parcels.length === 0) return null;
   const f = m.fulfilment;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "long", ...(timeZone ? { timeZone } : {}) });
+  const date = (iso: string) => dateIn(timeZone, iso, "long", locale);
   const inParts = fulfilment.stillToCome.length > 0 || fulfilment.parcels.length > 1;
   return (
     <section aria-labelledby="order-shipments" className="flex flex-col gap-4 rounded-lg border border-border p-4" data-order-shipments={fulfilment.state}>

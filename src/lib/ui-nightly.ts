@@ -1,3 +1,4 @@
+import { PLATFORM_TIME_ZONE } from "./dates";
 import { localNow } from "./staff-alerts";
 import { isHandWrittenOnly } from "./ui-catalog";
 
@@ -10,7 +11,7 @@ import { isHandWrittenOnly } from "./ui-catalog";
  */
 
 /** The platform's clock: Kaizena Flow keeps Oslo time, as on its own pages. */
-export const UI_NIGHT_TIME_ZONE = "Europe/Oslo";
+export const UI_NIGHT_TIME_ZONE = PLATFORM_TIME_ZONE;
 
 /** The hour from which a day's run may start: the first run of the five-minute dispatcher at or after 02:00 Oslo time, once a day. */
 export const UI_NIGHT_HOUR = 2;

@@ -1,6 +1,7 @@
 import { withoutVat } from "./b2b";
 import { isGrantKind, type BonusEntry, type CartBonus } from "./bonus";
 import { minorUnitDigits } from "./money";
+import { dayIn } from "./work-dates";
 
 /**
  * What a shopper's screens do with the bonus program (D130): which state the credits control is in, what an amount typed
@@ -123,17 +124,19 @@ export function earnedText(
 /**
  * What of a balance's pending credits becomes usable when, as amounts by day: the grants in the history that are not
  * usable yet, soonest first, never more in all than the balance says is pending (a refund may have taken some back).
+ * A day is the store's own (`timeZone`, D796), the day the page shows, never UTC's.
  */
 export function pendingParts(
   entries: BonusEntry[],
   pendingMinor: number,
-  now: Date = new Date(),
+  now: Date,
+  timeZone: string,
 ): { availableAt: string; amountMinor: number }[] {
   const byDay = new Map<string, { availableAt: string; amountMinor: number }>();
   for (const entry of entries) {
     if (!isGrantKind(entry.kind) || !entry.availableAt || entry.amountMinor <= 0) continue;
-    if (new Date(entry.availableAt).getTime() <= now.getTime()) continue;
-    const day = entry.availableAt.slice(0, 10);
+    if (!(new Date(entry.availableAt).getTime() > now.getTime())) continue;
+    const day = dayIn(entry.availableAt, timeZone);
     const part = byDay.get(day);
     if (part) part.amountMinor += entry.amountMinor;
     else byDay.set(day, { availableAt: entry.availableAt, amountMinor: entry.amountMinor });

@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { adminLangOf } from "@/lib/admin-lang";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
+import { storeZoneOf } from "@/lib/dates";
 import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 import {
@@ -55,6 +56,8 @@ export type StoreStateInfo = {
   reason: string | null;
   closedAt: Date | null;
   isTemplate: boolean;
+  /** The store's zone: the day it may be reopened until is read in it (D796). */
+  timeZone: string;
 };
 
 const fail = (...problems: string[]): ClosureResult => ({
@@ -68,7 +71,7 @@ export async function storeState(
   executor: Executor = db(),
 ): Promise<StoreStateInfo | null> {
   const [row] = await executor.execute<Row>(sql`
-    select id, slug, name, status, status_reason, closed_at, is_template from commerce.stores where id = ${storeId}::uuid
+    select id, slug, name, status, status_reason, closed_at, is_template, time_zone from commerce.stores where id = ${storeId}::uuid
   `);
   if (!row) return null;
   return {
@@ -79,6 +82,7 @@ export async function storeState(
     reason: row.status_reason ? String(row.status_reason) : null,
     closedAt: row.closed_at ? new Date(String(row.closed_at)) : null,
     isTemplate: Boolean(row.is_template),
+    timeZone: storeZoneOf(row.time_zone),
   };
 }
 
@@ -419,6 +423,7 @@ async function notifyOwners(
       reason,
       url: `${siteUrl()}/admin/${state.slug}`,
       reopenUntil: reopenUntil(closedAt),
+      timeZone: state.timeZone,
     };
     // Each owner reads it in their own admin language (D312 A10).
     const emailIn = (stored: unknown) => {

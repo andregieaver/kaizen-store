@@ -193,7 +193,7 @@ describe("the checks", () => {
 describe("the page", () => {
   it("fills every token from the store's facts, and lists the passages cited with the day each was read", () => {
     const plan = planFor("returns_policy", "en");
-    const page = renderLegalPage({ plan, sections: goodReturns(), sheet: sheetFor("en"), starterForm: null, writtenAt: new Date("2026-10-25T12:00:00Z") });
+    const page = renderLegalPage({ plan, sections: goodReturns(), sheet: sheetFor("en"), starterForm: null, writtenAt: new Date("2026-10-25T12:00:00Z"), timeZone: "Europe/Oslo" });
     const text = JSON.stringify(page.sections);
     expect(text).toContain("With us you have 30 days to return goods.");
     expect(text).toContain("kontakt@demo.example");
@@ -211,7 +211,7 @@ describe("the page", () => {
     const facts = assembleLegalFacts(input({ returnSettings: { ...DEFAULT_RETURN_SETTINGS, instructions: "" } }));
     const sheet = factSheet(facts, starterFactWords(facts, "en"), "en");
     const plan = planLegalPage({ role: "returns_policy", language: "en", facts, sheet, jurisdictions: jurisdictionsFor(facts), texts: TEXTS });
-    const page = renderLegalPage({ plan, sections: goodReturns(), sheet, starterForm: null, writtenAt: READ });
+    const page = renderLegalPage({ plan, sections: goodReturns(), sheet, starterForm: null, writtenAt: READ, timeZone: "Europe/Oslo" });
     expect(page.missing).toEqual([expect.stringMatching(/^\[\[Add: /)]);
   });
 
@@ -228,11 +228,11 @@ describe("the page", () => {
   it("puts the form in the withdrawal information: the directive's in English, the starter's in Norwegian", () => {
     const writtenAt = READ;
     const en = planFor("withdrawal_info", "en");
-    const enPage = renderLegalPage({ plan: en, sections: [], sheet: sheetFor("en"), starterForm: null, writtenAt });
+    const enPage = renderLegalPage({ plan: en, sections: [], sheet: sheetFor("en"), starterForm: null, writtenAt, timeZone: "Europe/Oslo" });
     expect(JSON.stringify(enPage.sections.find((s) => s.topic === "model_form"))).toContain("B. Model withdrawal form");
     const nb = planFor("withdrawal_info", "nb");
     const starterForm = legalStarterSections("withdrawal_info", "nb", FACTS).find((s) => s.topic === "model_form")!;
-    const nbPage = renderLegalPage({ plan: nb, sections: [], sheet: sheetFor("nb"), starterForm, writtenAt });
+    const nbPage = renderLegalPage({ plan: nb, sections: [], sheet: sheetFor("nb"), starterForm, writtenAt, timeZone: "Europe/Oslo" });
     expect(nbPage.sections.find((s) => s.topic === "model_form")?.blocks).toEqual(starterForm.blocks);
     expect(nbPage.sections.at(-1)?.heading).toBe("Kilder");
   });

@@ -11,6 +11,7 @@
 import { z } from "zod";
 
 import { findClaims } from "./claims";
+import { dateIn } from "./dates";
 import type { LegalFacts } from "./legal-facts";
 import { normalisedLegalText, type Passage } from "./legal-passages";
 import {
@@ -552,7 +553,8 @@ export const LEGAL_AI_WORDS: Readonly<
 
 const LOCALES: Record<LegalLanguage, string> = { nb: "nb-NO", sv: "sv-SE", da: "da-DK", en: "en-GB" };
 
-const dateIn = (date: Date, language: LegalLanguage) => new Intl.DateTimeFormat(LOCALES[language], { dateStyle: "long", timeZone: "UTC" }).format(date);
+/** A day the page names (when it was written, when a source was read), on the store's own clock (D796), never UTC's. */
+const dayOf = (date: Date, language: LegalLanguage, timeZone: string) => dateIn(timeZone, date, "long", LOCALES[language]);
 
 const listIn = (items: readonly string[], language: LegalLanguage) => {
   try {
@@ -609,6 +611,8 @@ export function renderLegalPage(input: {
   /** The model withdrawal form as the starter has it (nb, or where the annex cannot be read). */
   starterForm: RenderedSection | null;
   writtenAt: Date;
+  /** The store's zone, which the days it names are read in. */
+  timeZone: string;
   /** The page is in English for a store whose main language is none of the four. */
   english?: boolean;
 }): { sections: RenderedSection[]; missing: string[]; cited: CitedPassage[] } {
@@ -659,12 +663,12 @@ export function renderLegalPage(input: {
     .sort((a, b) => a.c.source.localeCompare(b.c.source) || a.c.passage.localeCompare(b.c.passage, undefined, { numeric: true }))
     .map(({ c, o }) => {
       const source = LEGAL_SOURCES_BY_KEY[c.source];
-      return `${source.title}, ${o.title} (${w.read.replace("{date}", dateIn(o.readAt, language))}): [${source.url}](${source.url})`;
+      return `${source.title}, ${o.title} (${w.read.replace("{date}", dayOf(o.readAt, language, input.timeZone))}): [${source.url}](${source.url})`;
     });
   out.push({
     topic: "sources",
     heading: w.sources,
-    blocks: [{ p: w.prepared.replace("{date}", dateIn(input.writtenAt, language)) }, ...(input.english ? [{ p: w.englishPage }] : []), ...(sourceLines.length > 0 ? [{ ul: sourceLines }] : [])],
+    blocks: [{ p: w.prepared.replace("{date}", dayOf(input.writtenAt, language, input.timeZone)) }, ...(input.english ? [{ p: w.englishPage }] : []), ...(sourceLines.length > 0 ? [{ ul: sourceLines }] : [])],
   });
   return { sections: out, missing: [...missing], cited: [...cited.values()] };
 }

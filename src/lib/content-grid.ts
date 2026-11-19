@@ -48,6 +48,8 @@ export type GridData = {
   items: GridItem[];
   lang: string;
   locale: string;
+  /** A grid of articles: the zone their days are read in, the store's own or the platform's on Kaizena Flow's pages (D796). */
+  timeZone?: string;
   /** A grid of a store's products (D557): the store's and market's address parts and its cart, for what a tile buys. */
   shop?: { store: string; market: string; cart: string };
 };

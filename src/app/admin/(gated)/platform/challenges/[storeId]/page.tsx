@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -126,7 +127,7 @@ export default async function ChallengeScoreboardPage({ params }: PageProps<"/ad
           <p className="max-w-3xl text-body text-ink-2">
             {s.challenge.baseline
               ? fillWords(w.baseline.frozen, {
-                  when: new Date(s.challenge.baseline.frozenAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }),
+                  when: adminDate(PLATFORM_TIME_ZONE, s.challenge.baseline.frozenAt, "dayTime", lang),
                   fee: `${formatPercent(s.challenge.baseline.costs.paymentFeeBps / 10_000, 2)} + ${formatAmount(s.challenge.baseline.costs.paymentFeeFixedMinor, s.challenge.baseline.currency, locale)}`,
                   shipping: formatAmount(s.challenge.baseline.costs.shippingCostMinor, s.challenge.baseline.currency, locale),
                   handling: formatAmount(s.challenge.baseline.costs.handlingCostMinor, s.challenge.baseline.currency, locale),

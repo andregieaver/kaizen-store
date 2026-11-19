@@ -467,7 +467,7 @@ export async function stockHistory(store: Pick<Store, "id" | "timeZone" | "local
   const storeId = store.id;
   const limit = Math.min(Math.max(Math.floor(filter.limit ?? HISTORY_PAGE_SIZE), 1), 200);
   const locale = store.localization.locales[0] ?? "en";
-  const tz = store.timeZone || "Europe/Oslo";
+  const tz = store.timeZone;
   const afterId = filter.after && /^\d{1,18}$/.test(filter.after) ? filter.after : null;
   const reason = filter.reason && isMovementReason(filter.reason) ? filter.reason : null;
   const from = filter.from && DAY.test(filter.from) ? filter.from : null;

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { StorePageArticle } from "@/components/store-page-article";
+import { dateIn } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import { isLegalRole } from "@/lib/legal-roles";
 import { marketPath } from "@/lib/paths";
@@ -39,7 +40,7 @@ async function Snapshot({ params, searchParams }: Pick<Props, "params" | "search
   const snapshot = await snapshotForOrder(store.id, orderId, role, key);
   if (!snapshot) notFound();
   const m = t(market.lang);
-  const date = snapshot.acceptedAt.toLocaleDateString(market.locale, { dateStyle: "long" });
+  const date = dateIn(store, snapshot.acceptedAt, "long", market.locale);
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <p className="text-sm text-muted">{m.terms.snapshotNote(date)}</p>

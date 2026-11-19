@@ -1,3 +1,4 @@
+import { dateIn, PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { limitUnit, type LimitKey } from "@/lib/limits";
 import { EURO_MONEY, formatLimit, type AiMoney } from "@/lib/usage-format";
 import { t } from "@/lib/i18n";
@@ -58,9 +59,10 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
     </div>
   );
   const yearly = block.switcher ? planCards(data, { ...options, interval: "year" }).cards : [];
-  // A campaign running (D524): its name and last day over the cards, when it gives on any of them.
+  // A campaign running (D524): its name and last day over the cards, when it gives on any of them. Kaizena Flow's own campaign, so its last
+  // day is the platform's, on its own site and on the house store's pages alike (D796).
   const campaign = data.campaign && [...cards, ...yearly].some((card) => card.campaign) ? data.campaign : null;
-  const lastDay = campaign ? new Date(campaign.expiresAt).toLocaleDateString(lang, { day: "numeric", month: "long", timeZone: "Europe/Oslo" }) : "";
+  const lastDay = campaign ? dateIn(PLATFORM_TIME_ZONE, campaign.expiresAt, "dayMonth", lang) : "";
 
   return (
     <div className="flex flex-col gap-10">

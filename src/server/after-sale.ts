@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { RETURN_STATUSES, isEnded } from "@/lib/return-status";
 import { afterSaleIsOpen, type AfterSale } from "@/lib/store-features";
 import { MAX_WINDOW_DAYS, lineEligibility, type WithdrawalOrder } from "@/lib/withdrawal";
@@ -54,7 +55,7 @@ export async function afterSaleOf(storeId: string, now: Date = new Date()): Prom
   ]);
   if (!counts) return { withdrawable: 0, openReturns: 0 };
   const settings = toSettings(counts.settings ? (counts.settings as Row) : undefined);
-  const timeZone = String(counts.time_zone ?? "Europe/Oslo");
+  const timeZone = storeZoneOf(counts.time_zone);
   const open = new Set<string>();
   for (const row of lines) {
     const orderId = String(row.order_id);

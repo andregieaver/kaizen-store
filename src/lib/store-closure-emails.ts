@@ -1,5 +1,6 @@
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
+import { dateIn } from "./dates";
 import {
   staffEmailsEn,
   type StaffEmailsMessages,
@@ -23,6 +24,8 @@ export type StatusEmailFacts = {
   url: string;
   /** The last day the owner may reopen, for a closing. */
   reopenUntil: Date | null;
+  /** The store's zone, which that day is read in (D796). */
+  timeZone: string;
 };
 
 /** Written from the `staffEmails` catalogue in the owner's admin language (D312 A10); English unless other words are given. */
@@ -40,13 +43,7 @@ export function statusEmail(
     : "";
   const button = { type: "button" as const, text: w.button, url: facts.url };
   if (facts.change === "closed") {
-    const day = (date: Date) =>
-      date.toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: "UTC",
-      });
+    const day = (date: Date) => dateIn(facts.timeZone, date, "long", lang);
     return {
       subject: fillWords(w.closedSubject, { name }),
       preview: fillWords(w.closedPreview, { name }),

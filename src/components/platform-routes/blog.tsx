@@ -5,6 +5,7 @@ import { ArticleView } from "@/components/article-view";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageEditLink } from "@/components/page-edit-link";
 import { inPlatformLang, PlatformPageView, platformPageMetadata } from "@/components/platform-page";
+import { PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
@@ -114,6 +115,7 @@ export async function ArticleRoute({ lang, slug }: { lang: PlatformLang; slug: s
         byline={c.author || "Kaizena Flow"}
         lang={facts.messages}
         locale={facts.locale}
+        timeZone={PLATFORM_TIME_ZONE}
         place={{ pageId: page.id, owner: null, lang }}
         editable={lang === "en"}
       />

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { storeZoneOf } from "@/lib/dates";
 import { alertAction, checkupAction, type BriefingAction } from "@/lib/briefing-actions";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -1049,7 +1050,7 @@ export async function sendDueSummaries(
         weekday: Number(row.summary_weekday),
         hour: Number(row.summary_hour),
         lastPeriod: row.summary_last_period ? String(row.summary_last_period) : null,
-        now: localNow(now, String(row.time_zone ?? "Europe/Oslo")),
+        now: localNow(now, storeZoneOf(row.time_zone)),
       });
       if (!due) continue;
       const [store, emailStore, targets] = await Promise.all([getStore(String(row.slug)), storeById(storeId), alertRecipients(storeId, "summary")]);
@@ -1158,7 +1159,7 @@ export async function sendAnalyticsAlertEmails(options: { now?: Date; send?: typ
   for (const row of rows) {
     const storeId = String(row.store_id);
     try {
-      const local = localNow(now, String(row.time_zone ?? "Europe/Oslo"));
+      const local = localNow(now, storeZoneOf(row.time_zone));
       if (local.hour < ALERT_EMAIL_HOUR || row.checked_on === local.date) continue;
       // The day is claimed before anything is worked out, so overlapping runs check a store once a day.
       const claimed = await db().execute<Row>(sql`

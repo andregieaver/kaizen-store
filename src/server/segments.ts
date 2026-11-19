@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { toMain } from "@/lib/analytics-core";
 import { amountCell, writeCsv } from "@/lib/csv";
 import { mainCurrency } from "@/lib/markets";
@@ -177,7 +178,7 @@ export async function segmentPeople(
 
 async function storeTimeZone(storeId: string): Promise<string> {
   const [row] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  return row?.time_zone ? String(row.time_zone) : "Europe/Oslo";
+  return storeZoneOf(row?.time_zone);
 }
 
 export type SegmentResult = SegmentCount & {

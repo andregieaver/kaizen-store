@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { convertCredits } from "@/lib/bonus";
+import { dateIn } from "@/lib/dates";
 import { renderEmail } from "@/lib/email-layout";
 import { affiliateRewardText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
@@ -58,7 +59,7 @@ export async function sendReferrerRewardEmail(storeId: string, orderId: string):
     store: store.name,
     customerName: String(row.name ?? ""),
     amount,
-    usableFrom: at && at.getTime() > Date.now() ? at.toLocaleDateString(market.locale, { dateStyle: "long" }) : null,
+    usableFrom: at && at.getTime() > Date.now() ? dateIn(store, at, "long", market.locale) : null,
     url: `${marketUrl(store.slug, market.slug, "/account/referrals")}`,
   });
   const email = renderEmail({

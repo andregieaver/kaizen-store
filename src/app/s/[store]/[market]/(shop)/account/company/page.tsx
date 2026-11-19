@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { ConfirmForm, InviteForm } from "@/components/company-forms";
 import { accountsShown } from "@/lib/customer-accounts";
 import { percentText } from "@/lib/customer-tiers";
+import { dateIn } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { companyOf, listInvites, listMembers } from "@/server/companies";
@@ -61,7 +62,7 @@ async function Company({ params, searchParams }: { params: Props["params"]; sear
   const [members, invites, discount] = owner
     ? await Promise.all([listMembers(store.id, mine.company.id), listInvites(store.id, mine.company.id), memberDiscountFor(db(), store.id, customer.id)])
     : [[], [], await memberDiscountFor(db(), store.id, customer.id)];
-  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  const date = (iso: string) => dateIn(store, iso, "day", market.locale);
   // Orders that wait (D321 C.2): those this member approves, and their own waiting for approval or for payment after it.
   const [toApprove, waiting] = await Promise.all([ordersToApprove(store.id, customer.id), myApprovalOrders(store.id, customer.id)]);
   const placed = String((await searchParams).placed ?? "").slice(0, 40);
@@ -90,6 +91,7 @@ async function Company({ params, searchParams }: { params: Props["params"]; sear
         toApprove={toApprove}
         mine={waiting}
         locale={market.locale}
+        timeZone={store.timeZone}
         decimals={market.priceStyle?.decimals}
         m={m}
         decide={(orderId, approve) => decideApprovalAction.bind(null, store.slug, market.slug, orderId, approve)}

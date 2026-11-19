@@ -8,6 +8,7 @@ import { BonusCard } from "@/components/bonus-account-view";
 import { PrivacyCard } from "@/components/privacy-account-view";
 import { ReferralCard } from "@/components/referrals-account-view";
 import { accountTab, accountTabHref, type AccountTabId } from "@/lib/account-tabs";
+import { dateIn } from "@/lib/dates";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
@@ -83,7 +84,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     // Marketing texts (D565): offered only by a store with SMS on.
     accountSms(store.id, customer.id),
   ]);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  const date = (iso: string) => dateIn(store, iso, "day", market.locale);
   const base = marketPath(store.slug, market.slug);
   const account = marketPath(store.slug, market.slug, "/account");
   const tabHref = (tab: AccountTabId) => accountTabHref(account, tab);

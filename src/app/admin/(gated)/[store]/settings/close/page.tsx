@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { REOPEN_DAYS, closureBlockers, closureWarnings, ownerMayReopen, reopenDeadline } from "@/lib/store-closure";
 import { signedInRecently } from "@/server/auth";
@@ -17,7 +18,6 @@ import { closeStoreAction, reopenStoreAction, signInAgainAction } from "./action
 export const metadata: Metadata = { title: "Close store" };
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
-const day = (date: Date, locale: string) => date.toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** Closing the store, or what a store that is closed or suspended can still do (D171). Owners only. */
 export default async function CloseStorePage({ params }: PageProps<"/admin/[store]/settings/close">) {
@@ -26,7 +26,6 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
   // Kaizena Flow's own store is never closed (D466): the database refuses it too.
   if (store.house) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "settings").close;
   const state = await storeState(store.id);
   if (!state) return null;
@@ -44,7 +43,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
         </div>
         {state.status === "closed" && state.closedAt && (
           <p className="text-sm">
-            {fillWords(mayReopen ? w.mayReopen : w.reopenEnded, { date: day(reopenDeadline(state.closedAt), locale) })}
+            {fillWords(mayReopen ? w.mayReopen : w.reopenEnded, { date: adminDate(store, reopenDeadline(state.closedAt), "long", lang) })}
           </p>
         )}
         {mayReopen && (

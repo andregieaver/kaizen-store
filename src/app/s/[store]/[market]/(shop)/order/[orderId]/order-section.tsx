@@ -18,6 +18,7 @@ import { LineUnitPrice } from "@/components/price";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { StaffDiscountRow } from "@/components/staff-discount-row";
 import { componentsText } from "@/lib/bundles";
+import { dateIn } from "@/lib/dates";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
@@ -432,10 +433,10 @@ function totalsList({ order, m, money, store, market }: OrderView) {
 }
 
 /** What the order earned in bonus credits (D130) and from when they can be used; nothing for an order that earned none. */
-function earnedNote({ market, order, m, money }: OrderView) {
+function earnedNote({ store, market, order, m, money }: OrderView) {
   const earned = earnedText(order.bonus, {
     money,
-    date: (iso) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" }),
+    date: (iso) => dateIn(store, iso, "long", market.locale),
     line: m.bonus.earnedLine,
     ready: m.bonus.earnedNow,
   });
@@ -489,6 +490,7 @@ function downloadsBlock({ store, market, order, m, digital, paid, downloads }: O
           base={marketPath(store.slug, market.slug, "/download")}
           m={m}
           locale={market.locale}
+          timeZone={store.timeZone}
         />
       ) : (
         <p className="text-sm text-muted">{m.downloadsAfterPayment}</p>
@@ -518,7 +520,7 @@ function addressBlock({ order, m }: OrderView) {
 
 function termsBlock({ store, market, order, sessionId, terms, m }: OrderView) {
   if (!terms || terms.snapshots.length === 0) return null;
-  const date = terms.acceptedAt.toLocaleDateString(market.locale, { dateStyle: "long" });
+  const date = dateIn(store, terms.acceptedAt, "long", market.locale);
   return (
     <section aria-labelledby="terms-heading">
       <h2 id="terms-heading" className="mb-1 font-medium">
@@ -555,13 +557,16 @@ function Downloads({
   base,
   m,
   locale,
+  timeZone,
 }: {
   downloads: OrderDownload[];
   base: string;
   m: Messages;
   locale: string;
+  /** The store's zone: a link's last day is the store's (D796). */
+  timeZone: string;
 }) {
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "long" });
+  const date = (iso: string) => dateIn(timeZone, iso, "long", locale);
   return (
     <ul className="divide-y divide-border">
       {downloads.map((file) => (

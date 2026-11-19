@@ -66,7 +66,8 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
   const cell = (metric: UsageMetric, value: number | undefined) => (value === undefined ? "" : formatUsage(metric, value, locale));
-  const current = new Date().toISOString().slice(0, 7);
+  // The metering's month (D314): usage is counted on UTC days, so the page's months are UTC's too, as `usageMonth()` reads them (D796).
+  const current = usageMonth(undefined, now);
   // One row per day, kind, family and caller, the subjects summed (bloat review step 1.25).
   const cacheRows = [
     ...cacheWeek.rows

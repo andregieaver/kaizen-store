@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql, type SQL } from "drizzle-orm";
 
+import { zoneOf } from "@/lib/dates";
 import { adminLangOf } from "@/lib/admin-lang";
 import { reportOfResult } from "@/lib/report-link";
 import { assistantLanguageLines } from "@/lib/assistant-lang";
@@ -422,7 +423,7 @@ export function managerPrompt(
 ): string {
   const { store, account } = p;
   const now = options.now ?? new Date();
-  const timeZone = store?.timeZone ?? "Europe/Oslo";
+  const timeZone = zoneOf(store);
   const today = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone }).format(now);
   const who = account.name ? `, ${account.name}` : "";
   const area = store ? "store" : "platform";

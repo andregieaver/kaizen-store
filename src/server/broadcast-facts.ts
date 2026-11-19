@@ -2,6 +2,7 @@ import "server-only";
 
 import { factIds, NO_FACTS, type BroadcastContent, type CampaignFact, type EmailFacts, type ProductFact } from "@/lib/broadcasts";
 import { noticeText } from "@/lib/campaign-notices";
+import { dateIn } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -50,13 +51,12 @@ export async function emailFactsFor(store: EmailStore, content: BroadcastContent
     ids.campaigns.length > 0 ? campaignNotices(store.id, market) : { items: [] },
   ]);
   const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
-  const date = new Intl.DateTimeFormat(market.locale, { dateStyle: "long" });
   return {
     products: new Map(products.map((p) => [p.id, { title: p.title, image: p.image?.url ?? null, alt: p.image?.alt || p.title, ...priceLines(p, market) }])),
     campaigns: new Map(
       notices.items
         .filter((notice) => ids.campaigns.includes(notice.id))
-        .map((notice) => [notice.id, { title: notice.name, text: noticeText(notice, m, money), until: notice.endsAt ? date.format(new Date(notice.endsAt)) : null }]),
+        .map((notice) => [notice.id, { title: notice.name, text: noticeText(notice, m, money), until: notice.endsAt ? dateIn(store, notice.endsAt, "long", market.locale) : null }]),
     ),
     linkText: m.viewProduct,
   };
@@ -87,7 +87,7 @@ export async function findProductFacts(store: Pick<EmailStore, "id">, market: Ma
 }
 
 /** `running_campaigns`: the campaigns the store announces in the market now (the same for every shopper), in the shop's words. */
-export async function campaignFacts(store: Pick<EmailStore, "id">, market: Market): Promise<CampaignFact[]> {
+export async function campaignFacts(store: Pick<EmailStore, "id" | "timeZone">, market: Market): Promise<CampaignFact[]> {
   const m = t(market.lang);
   const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
   const notices = await campaignNotices(store.id, market);
@@ -95,7 +95,8 @@ export async function campaignFacts(store: Pick<EmailStore, "id">, market: Marke
     id: notice.id,
     name: notice.name,
     offer: noticeText(notice, m, money),
-    ends: notice.endsAt ? notice.endsAt.slice(0, 10) : null,
+    // The last day on the store's clock (D796), as the email will say it: a campaign ending at 23:59 in New York ends that day.
+    ends: notice.endsAt ? dateIn(store, notice.endsAt, "iso", "en") : null,
     reaches: notice.productIds === null ? "every product" : `${notice.productIds.length} product${notice.productIds.length === 1 ? "" : "s"}`,
   }));
 }

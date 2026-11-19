@@ -2,6 +2,7 @@ import Image from "next/image";
 
 import { browserText } from "@/lib/browser-text";
 import type { BlogAuthor } from "@/lib/blogs";
+import { dateIn } from "@/lib/dates";
 import { isSafeAddress } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
 import type { PageContent } from "@/lib/page-content";
@@ -13,7 +14,7 @@ import { PageArticle } from "./page-article";
  * An article (D57): a header drawn from its settings (title, the day it was
  * first published, its author, its picture) above the rows built in the page
  * builder, so every article in the blog looks alike at the top. Kaizen's in
- * English, a store's in the market's language.
+ * English, a store's in the market's language. Its day is the store's own (D796): one published at 23:30 in New York reads that day.
  */
 export function ArticleView({
   content,
@@ -21,6 +22,7 @@ export function ArticleView({
   byline,
   lang,
   locale,
+  timeZone,
   place,
   inAdmin = false,
   editable = false,
@@ -33,6 +35,8 @@ export function ArticleView({
   byline: string;
   lang: string;
   locale: string;
+  /** The zone its day is read in: the store's (`store.timeZone`), or `PLATFORM_TIME_ZONE` on Kaizena Flow's own pages (D796). */
+  timeZone: string;
   place: GridPlace;
   /** Shown in the admin (a preview), where its own CSS stays inside it (D100). */
   inAdmin?: boolean;
@@ -42,7 +46,6 @@ export function ArticleView({
   author?: BlogAuthor | null;
 }) {
   const m = t(lang);
-  const day = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   return (
     <article className="flex flex-col gap-8">
       <header className="mx-auto flex w-full max-w-(--content-width) flex-col gap-4 px-4">
@@ -50,7 +53,7 @@ export function ArticleView({
         <p className="text-sm text-muted">
           {date && (
             <>
-              <time dateTime={date}>{day.format(new Date(date))}</time>
+              <time dateTime={date}>{dateIn(timeZone, date, "long", locale)}</time>
               {" · "}
             </>
           )}

@@ -1,3 +1,4 @@
+import { storeZoneOf } from "@/lib/dates";
 import { storeExtensionOn } from "@/lib/extensions";
 import "server-only";
 
@@ -310,9 +311,9 @@ export async function signedInRecently(): Promise<boolean> {
 }
 
 /** The account's stores that are closed (D171): kept out of the level switcher, listed on the stores page so an owner can open one to read its orders or reopen it. */
-export async function listClosedStores(account: Account): Promise<{ slug: string; name: string; role: Role; closedAt: Date | null }[]> {
+export async function listClosedStores(account: Account): Promise<{ slug: string; name: string; role: Role; closedAt: Date | null; timeZone: string }[]> {
   const rows = await db().execute<Row>(sql`
-    select s.slug, s.name, m.role, s.closed_at
+    select s.slug, s.name, m.role, s.closed_at, s.time_zone
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${account.id}::uuid and m.disabled_at is null
@@ -325,6 +326,8 @@ export async function listClosedStores(account: Account): Promise<{ slug: string
     name: String(row.name),
     role: row.role as Role,
     closedAt: row.closed_at ? new Date(String(row.closed_at)) : null,
+    // Each store's own zone: the day it closed is read on its clock (D796).
+    timeZone: storeZoneOf(row.time_zone),
   }));
 }
 

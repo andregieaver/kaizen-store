@@ -4,6 +4,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { toMarket } from "@/lib/markets";
 import { effectiveRate, type BillingType } from "@/lib/work-calc";
 import { isDay, daysOverdue, isOverdue, todayIn } from "@/lib/work-dates";
@@ -96,7 +97,7 @@ function toWorkStore(row: Row): WorkStore {
     id: String(row.id),
     slug: String(row.slug),
     name: String(row.name),
-    timeZone: String(row.time_zone ?? "Europe/Oslo"),
+    timeZone: storeZoneOf(row.time_zone),
     role: row.role as WorkRole,
     market: storeMarket,
     workOn: Boolean(row.work_on),

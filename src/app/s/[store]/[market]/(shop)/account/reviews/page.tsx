@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { StarRating } from "@/components/star-rating";
 import { accountsShown } from "@/lib/customer-accounts";
+import { dateIn } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { getCustomer } from "@/server/customers";
@@ -42,7 +43,7 @@ async function AccountReviews({ params, searchParams }: Pick<Props, "params" | "
   const r = t(market.lang).reviews;
   const query = await searchParams;
   const { open, lines } = await reviewsForAccount(store.id, customer.id);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  const date = (iso: string) => dateIn(store, iso, "day", market.locale);
   const done = query.done === "waiting" ? r.sentWaiting : query.done === "shown" ? r.sentShown : query.done === "deleted" ? r.deleted : null;
 
   return (

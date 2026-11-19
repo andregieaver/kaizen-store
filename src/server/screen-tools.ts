@@ -96,7 +96,7 @@ export async function receivePurchaseOrderTool(ctx: Ctx, input: OwnerToolInput<"
 
 /** Bonus credits and gift card balances owed now, and this month's movements, from `liabilityRows()` as Finance shows them. */
 export async function owedToCustomersTool(ctx: Ctx) {
-  const period = presetPeriod("month", todayIn(new Date(), ctx.store.timeZone || "Europe/Oslo"));
+  const period = presetPeriod("month", todayIn(new Date(), ctx.store.timeZone));
   const rows = await liabilityRows(ctx.store, period);
   return {
     owed: rows.map((r) => ({

@@ -16,6 +16,7 @@ import { countryName, supplierCountries } from "@/lib/drop-shipping";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { monthOf, todayIn } from "@/lib/work-dates";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSupplierOrders, owedToSupplier } from "@/server/supplier-orders";
 import { getDropShipSupplier, supplierVariants } from "@/server/suppliers";
@@ -44,7 +45,7 @@ export default async function SupplierPage({ params, searchParams }: Props) {
           id={id}
           search={typeof query.q === "string" ? query.q.slice(0, 100) : ""}
           added={query.added === "1"}
-          month={typeof query.month === "string" && /^\d{4}-\d{2}$/.test(query.month) ? query.month : new Date().toISOString().slice(0, 7)}
+          month={typeof query.month === "string" && /^\d{4}-\d{2}$/.test(query.month) ? query.month : monthOf(todayIn(store.timeZone))}
           back={w.suppliers.back}
         />
       </Suspense>
@@ -59,7 +60,7 @@ async function Body({ storeSlug, id, search, added, month, back }: { storeSlug: 
   const w = adminText(lang, "inventory").suppliers;
   const supplier = await getDropShipSupplier(store.id, id);
   if (!supplier) notFound();
-  const [variants, orders, owed] = await Promise.all([supplierVariants(store.id, supplier.id, search), listSupplierOrders(store.id, supplier.id), owedToSupplier(store.id, supplier.id, month)]);
+  const [variants, orders, owed] = await Promise.all([supplierVariants(store.id, supplier.id, search), listSupplierOrders(store.id, supplier.id), owedToSupplier(store.id, supplier.id, month, store.timeZone)]);
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), ADMIN_LANG_FACTS[lang].locale);
   const canWrite = memberCan(member, "products:write");
   const base = inventoryPaths(store.slug).suppliers;

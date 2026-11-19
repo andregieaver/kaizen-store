@@ -1,3 +1,4 @@
+import { dateIn } from "@/lib/dates";
 import { formatMoney, type PriceDecimals } from "@/lib/money";
 import type { Messages } from "@/lib/i18n";
 import type { ApprovalOrder } from "@/server/company-approvals";
@@ -13,6 +14,7 @@ export function CompanyApprovals({
   toApprove,
   mine,
   locale,
+  timeZone,
   m,
   decide,
   pay,
@@ -24,6 +26,8 @@ export function CompanyApprovals({
   toApprove: ApprovalOrder[];
   mine: ApprovalOrder[];
   locale: string;
+  /** The store's zone: an order's day is the store's own (D796). */
+  timeZone: string;
   /** The market's way with a whole amount's decimals (D429). */
   decimals?: PriceDecimals;
   m: Messages["companyAccount"];
@@ -35,7 +39,7 @@ export function CompanyApprovals({
   terms: { display: TermsDisplay; template: string; newTab: string } | null;
 }) {
   const box = "divide-y divide-border rounded-lg border border-border";
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium" });
+  const date = (iso: string) => dateIn(timeZone, iso, "day", locale);
   const facts = (order: ApprovalOrder) =>
     [formatMoney(order.totalMinor, order.currency, locale, { decimals }), order.location && m.forLocation(order.location), order.poNumber && m.poShown(order.poNumber), date(order.placedAt)]
       .filter(Boolean)

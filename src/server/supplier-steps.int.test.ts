@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { storeToday } from "@/server/test-days";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -160,8 +161,9 @@ describe("late suppliers, the owner's answers and what is owed (D553, steps 4 an
   });
 
   it("adds up what the shop owes for the month's parcels at the frozen cost", async () => {
-    const month = new Date().toISOString().slice(0, 7);
-    const owed = await orders.owedToSupplier(store.storeId, supplierId, month);
+    // The store's own month (D796): the test store keeps the template's zone.
+    const month = storeToday("Europe/Oslo").slice(0, 7);
+    const owed = await orders.owedToSupplier(store.storeId, supplierId, month, "Europe/Oslo");
     expect(owed.rows).toHaveLength(1);
     expect(owed.rows[0].units).toBe(2);
     const [line] = await db().execute<Row>(sql`
@@ -169,7 +171,7 @@ describe("late suppliers, the owner's answers and what is owed (D553, steps 4 an
       join commerce.order_lines ol on ol.id = l.order_line_id where so.supplier_id = ${supplierId}::uuid and so.state = 'shipped' limit 1`);
     expect(owed.totalMinor).toBe(2 * Number(line.unit_cost_minor ?? 0));
     expect(owed.rows[0].missingCost).toBe(line.unit_cost_minor === null);
-    expect(await orders.owedToSupplier(store.storeId, supplierId, "bad")).toEqual({ rows: [], totalMinor: 0 });
+    expect(await orders.owedToSupplier(store.storeId, supplierId, "bad", "Europe/Oslo")).toEqual({ rows: [], totalMinor: 0 });
   });
 
   it("keeps the store's wait between 0 and a day", async () => {

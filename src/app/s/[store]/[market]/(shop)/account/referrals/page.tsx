@@ -51,6 +51,7 @@ async function AccountReferrals({ params }: { params: Props["params"] }) {
       link={referrals.code ? affiliateLink(store.slug, referrals.code) : null}
       m={t(market.lang)}
       locale={market.locale}
+      timeZone={store.timeZone}
       base={base}
       decimals={market.priceStyle?.decimals}
     />

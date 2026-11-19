@@ -4,6 +4,7 @@ import { audienceClass } from "@/lib/b2b";
 import { snapAttribute } from "@/lib/carousel-settings";
 import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData, GridItem } from "@/lib/content-grid";
+import { dateIn } from "@/lib/dates";
 import { fontClass } from "@/lib/fonts";
 import { familyClassOf, textRoles } from "@/lib/typography";
 import { t } from "@/lib/i18n";
@@ -87,8 +88,6 @@ export function ContentGridView({
     cart: { addToCart: m.addToCart, adding: m.adding, added: m.added, capped: m.capped, unavailable: m.unavailable, planConflict: m.planConflict, tryAgain: m.tryAgain, goToCart: m.goToCart },
     quantity: { quantity: m.quantity, less: m.quantityLess, more: m.quantityMore },
   };
-  // Articles show the day they appeared (D57), in the grid's language.
-  const day = new Intl.DateTimeFormat(data.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   const tileStyle: CSSProperties = {
     ...frameStyle(tile ?? {}),
     ...(tile?.background && { backgroundColor: tile.background }),
@@ -175,9 +174,10 @@ export function ContentGridView({
               ))}
             </ul>
           )}
+          {/* Articles show the day they appeared (D57) on the store's own clock (D796), a custom item its typed day as it is, in the grid's language. */}
           {item.date && (
             <time dateTime={item.date} className="text-sm text-muted">
-              {day.format(new Date(item.date))}
+              {dateIn(data.timeZone, item.date, "long", data.locale)}
             </time>
           )}
           {block.show.excerpt && item.excerpt && (
