@@ -1,5 +1,7 @@
 import { vi } from "vitest";
 
+import { settleSiteWords } from "@/components/admin/site-words";
+
 /** A component of a module, or nothing when the module cannot load in a unit test (one that reaches server-only code). */
 async function pick(load: () => Promise<Record<string, unknown>>, name: string): Promise<unknown> {
   try {
@@ -69,3 +71,20 @@ vi.mock("@/components/admin/lazy/editors", async () => {
     EntityFieldsCard: (props: never) => card?.(props) ?? null,
   };
 });
+
+/**
+ * The builder's previews read one storefront language with `useSiteWords()`, which gives nothing until the language has been fetched
+ * (`components/admin/site-words.ts`): a unit test cannot wait, so the four languages are settled here and a preview draws their words at once.
+ */
+for (const [lang, load] of [
+  ["en", () => import("@/lib/messages/en").then((m) => m.en)],
+  ["nb", () => import("@/lib/messages/nb").then((m) => m.nb)],
+  ["sv", () => import("@/lib/messages/sv").then((m) => m.sv)],
+  ["da", () => import("@/lib/messages/da").then((m) => m.da)],
+] as const) {
+  try {
+    settleSiteWords(lang, await load());
+  } catch {
+    // A language that cannot load in a unit test stays unsettled: a preview of it draws nothing.
+  }
+}

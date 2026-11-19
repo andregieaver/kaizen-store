@@ -15,10 +15,10 @@ import {
 } from "@/components/page-parts";
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
-import { t } from "@/lib/i18n";
 import { blockHasContent, blockOwnContent, columnLines, columnsAsRow, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageRow } from "@/lib/page-content";
 import { modalSummary } from "@/lib/page-modal";
 import { useAdminText } from "@/components/admin/admin-text";
+import { useSiteWords } from "@/components/admin/site-words";
 
 /**
  * A modal's row on the builder's canvas (D121): it stays in the page, where
@@ -29,9 +29,10 @@ import { useAdminText } from "@/components/admin/admin-text";
 export function ModalBar({ row, lang }: { row: PageRow; lang: string | undefined }) {
   const [open, setOpen] = useState(false);
   const w = useAdminText("blocks").modal;
+  // The close button's words in the site's language, fetched when the bar is drawn (the modal below waits for them).
+  const site = useSiteWords(lang ?? "en");
   const modal = row.modal;
   if (!modal) return null;
-  const m = t(lang ?? "en").modal;
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-warning-soft px-2 py-1 text-xs text-warning-text">
@@ -50,16 +51,18 @@ export function ModalBar({ row, lang }: { row: PageRow; lang: string | undefined
           </p>
         )}
       </div>
-      <PageModal
-        config={modal}
-        storeId={null}
-        auto={false}
-        labels={{ close: m.close, dialog: m.dialog }}
-        panelClassName={modalPanelClass(row)}
-        preview={{ open, onClose: () => setOpen(false) }}
-      >
-        <PreviewRow row={{ ...row, width: undefined, contentWidth: undefined, fullHeight: undefined }} lang={lang} />
-      </PageModal>
+      {site && (
+        <PageModal
+          config={modal}
+          storeId={null}
+          auto={false}
+          labels={{ close: site.modal.close, dialog: site.modal.dialog }}
+          panelClassName={modalPanelClass(row)}
+          preview={{ open, onClose: () => setOpen(false) }}
+        >
+          <PreviewRow row={{ ...row, width: undefined, contentWidth: undefined, fullHeight: undefined }} lang={lang} />
+        </PageModal>
+      )}
     </>
   );
 }
