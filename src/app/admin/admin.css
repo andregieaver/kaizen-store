@@ -291,11 +291,18 @@ html[data-admin] .an-hit:hover {
 
 /* ---------------------------------------------------------------- load states */
 
-/* Where a form is working: the pointer says so, and its button shows a spinner after its words. */
+/*
+ * Where a form is working: the pointer says so, its submit buttons take no second press, and the one pressed shows a spinner after its
+ * words. `ActionForm` and `QuietActionForm` set `aria-busy` while their action runs and mark the button pressed `data-submitting` (code
+ * review 1.15, D829), so the kit's `Button`, which a server page draws and which reads no form state of its own, is busy with its form.
+ */
 html[data-admin] [aria-busy="true"] {
   cursor: progress;
 }
-html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([type])):disabled::after {
+html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([type])) {
+  pointer-events: none;
+}
+html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([type])):is(:disabled, [data-submitting])::after {
   content: "";
   display: inline-block;
   width: 0.85em;
@@ -446,7 +453,7 @@ html[data-admin] details[open] > :not(summary):not(:is([data-theme-canvas], [dat
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([type])):disabled::after {
+  html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([type])):is(:disabled, [data-submitting])::after {
     animation-duration: 1.6s !important;
     animation-iteration-count: infinite !important;
   }

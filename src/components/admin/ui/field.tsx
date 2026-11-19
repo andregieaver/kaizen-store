@@ -51,8 +51,9 @@ export type FieldControl = { id: string; required?: true; "aria-invalid"?: true;
 /**
  * A labelled field. `children` draws the control with the props it must carry (`{(control) => <TextInput name="email" {...control} />}`),
  * so the label is really its label and the problem is read with it; a control drawn another way takes `id` and is passed as it is.
- * `required` marks the label and makes the control required; `problem` is what is wrong with what was typed, shown under the field
- * (code review step 1.15 fills it from the form's answer).
+ * `required` marks the label and makes the control required; `problem` is what is wrong with what was typed, shown under the field.
+ * Inside `ActionForm` or `QuietActionForm` a refusal's problem for the control's `name` is put at the foot of this box by the form itself
+ * (`data-field`, code review step 1.15, D829), so a server page's field needs no state to show it.
  */
 export function Field({
   label,
@@ -84,7 +85,7 @@ export function Field({
     ...(describedBy ? { "aria-describedby": describedBy } : {}),
   };
   return (
-    <div className={join("flex min-w-0 flex-col gap-1", className)}>
+    <div data-field="" className={join("flex min-w-0 flex-col gap-1", className)}>
       <label htmlFor={id} className="text-sm font-medium">
         {label}
         {required && (

@@ -1,8 +1,11 @@
 "use client";
 
-import { lazy, Suspense, useRef, useState, useTransition, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { lazy, Suspense, useContext, useRef, useState, useTransition, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { createPortal, useFormStatus } from "react-dom";
 
+import { refusalOf } from "@/lib/form-problems";
+
+import { FormWorkContext } from "../form-work";
 import { buttonClass, type ButtonKind, type ButtonSize } from "./button";
 
 /**
@@ -25,16 +28,6 @@ export function splitQuestion(question: string): { title: string; detail: string
   const at = question.search(/[?!](\s|$)/);
   if (at === -1 || at === question.length - 1) return { title: question.trim(), detail: "" };
   return { title: question.slice(0, at + 1).trim(), detail: question.slice(at + 1).trim() };
-}
-
-/** What a refused action said, from the shapes the admin's actions answer with (`{ ok: false, problems }`, `{ ok: false, problem }`, `{ ok: false, message }`). */
-export function refusalOf(result: unknown): string | null {
-  if (!result || typeof result !== "object" || !("ok" in result) || result.ok !== false) return null;
-  const answer = result as { problems?: unknown; problem?: unknown; message?: unknown };
-  if (Array.isArray(answer.problems) && answer.problems.length > 0) return answer.problems.join(" ");
-  if (typeof answer.problem === "string") return answer.problem;
-  if (typeof answer.message === "string") return answer.message;
-  return null;
 }
 
 export type ConfirmButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "type" | "children"> & {
@@ -85,11 +78,15 @@ export function ConfirmButton({
   const [running, start] = useTransition();
   const [refusal, setRefusal] = useState<string | null>(null);
   const status = useFormStatus();
+  // `ActionForm` and `QuietActionForm` run their action themselves, so `useFormStatus` does not see their work: they hand it down (D829).
+  const own = useContext(FormWorkContext);
+  const posting = status.pending || own.pending;
+  const sent = status.pending ? status.data : own.data;
   // The form is working on this button's submission (its own action, or its name and value), not another button's.
   const submitting =
     !action &&
-    status.pending &&
-    (rest.formAction ? status.action === rest.formAction : rest.name ? status.data?.get(rest.name) === String(rest.value ?? "") : true);
+    posting &&
+    (rest.formAction ? status.pending && status.action === rest.formAction : rest.name ? sent?.get(rest.name) === String(rest.value ?? "") : true);
   const working = running || submitting;
   const classes = kind === "none" ? className : [buttonClass(kind, size, full), className].filter(Boolean).join(" ");
   const warm = () => void loadDialog().catch(() => undefined);

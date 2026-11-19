@@ -6,8 +6,9 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { adminText } from "@/lib/admin-text";
+import { refusalOf } from "@/lib/form-problems";
 
-import { ConfirmButton, refusalOf, splitQuestion } from "./confirm-button";
+import { ConfirmButton, splitQuestion } from "./confirm-button";
 import { fieldClass, TextArea, type FieldControl } from "./field";
 import { pageAddress } from "./pager";
 import ConfirmDialog from "./confirm-dialog";
