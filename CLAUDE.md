@@ -16,6 +16,7 @@ built is in `docs/platform.md`: read it before architectural work (`docs/plan.md
   of `*.md` and `docs/**` alone run nothing, except the docs portal's articles under `content/` (D442), which are
   checked and deployed like code. Each deploy then waits until `/api/health` reports the commit (D389,
   `scripts/await-deploy.mjs`), then requests two pages (`SMOKE_PAGES`) and every challenge store's front page and cart (`/api/health/smoke`, D625), and fails the job when the commit does not arrive or a page does not answer 200.
+- Many sessions push at once: after a push follow its run; while main is red read the open `ci-red` issue, and if your change broke it fix that before any other push (D803).
 - The owner loves to see frequent screenshots and graphics of what is built: send screenshots of new or changed
   screens (and a diagram where it explains how something works) as the work goes, not only at the end.
 
