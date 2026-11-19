@@ -1,5 +1,5 @@
 {
-  "dispatcherJobs": 84,
+  "dispatcherJobs": 85,
   "minuteRoutes": 9,
   "pages": 594,
   "routeHandlers": 288,
@@ -171,6 +171,12 @@
       "from": 56,
       "to": 57,
       "decision": "D748"
+    },
+    {
+      "count": "dispatcherJobs",
+      "from": 84,
+      "to": 85,
+      "decision": "D807"
     }
   ]
 }

@@ -682,6 +682,10 @@
         "statements": 2,
         "rowsRead": 1
       },
+      "dispatcher.document-pdfs": {
+        "statements": 1,
+        "rowsRead": 0
+      },
       "dispatcher.domain-watch": {
         "statements": 1,
         "rowsRead": 0
@@ -1056,6 +1060,10 @@
         "statements": 2,
         "rowsRead": 21
       },
+      "dispatcher.document-pdfs": {
+        "statements": 1,
+        "rowsRead": 0
+      },
       "dispatcher.domain-watch": {
         "statements": 1,
         "rowsRead": 0
@@ -1429,6 +1437,10 @@
       "dispatcher.docs-index": {
         "statements": 0,
         "rowsRead": 20
+      },
+      "dispatcher.document-pdfs": {
+        "statements": 0,
+        "rowsRead": 0
       },
       "dispatcher.domain-watch": {
         "statements": 0,

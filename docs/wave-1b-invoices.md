@@ -955,7 +955,7 @@ versions).
   if the tool refuses them, the owner runs exactly those two statements in the SQL editor, then the rest of the file applies), and
   `DROP FUNCTION` for nothing (no function is dropped; replaced functions use `CREATE OR REPLACE`).
 - **Stripe's webhook endpoint** must send `refund.created` and `refund.updated` for the platform's snapshot endpoint in each mode. The code adds them (5.2), but it can only do so when the platform key is configured; after deploy the lead checks the endpoint in Stripe's Dashboard (events list) in test and live. Until it does, refunds Stripe reports later or makes in the Dashboard are not seen, and the five-minute job's `issueMissingCreditNotes()` only covers what Kaizen recorded.
-- **The PDF job** `/api/cron/document-pdfs` is a new route: schedule it where the five-minute job is scheduled (the repository's `vercel.json` lists only the daily job; the five-minute one is called from outside). Without it nothing breaks: a PDF is made on first download.
+- **The PDF job** `/api/cron/document-pdfs` is asked by the five-minute dispatcher's `documentPdfs` job while a document waits for its PDF (D807; step 3.7 of the bloat review moves this into the one-minute tick); a PDF is also made on first download.
 - **Chromium on Vercel** for the three routes: confirm in a preview deployment that a PDF is produced (the cookie scan's and the replicator's routes already prove the files are traced; the new globs are new).
 - The `documents` bucket is created by the migration when the `storage` schema exists; check in the Supabase dashboard that it is **private** and has no policy.
 

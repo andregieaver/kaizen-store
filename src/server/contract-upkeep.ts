@@ -5,10 +5,8 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { cutoffInstant } from "@/lib/retention";
-import { siteUrl } from "@/lib/site";
 
 import { notifyNext, type Mailer } from "./contract-signing";
-import { cronBearer } from "./cron-auth";
 import { documentStorage, type DocumentStorage } from "./invoice-storage";
 import { log } from "./log";
 import { retentionRule } from "./retention";
@@ -17,20 +15,17 @@ import { col, typedRow, typedRows } from "./typed-rows";
 /**
  * The contracts' upkeep (D695 step 3, D795), a job of the five-minute dispatcher (`DISPATCHER_JOBS.contracts`): the contracts whose
  * time to sign has passed, reminders to a signer who has not signed, used and lapsed codes, and signed contracts past their retention
- * period with their files. No Chromium and no seal here: when a signed contract waits for its sealed PDF, it asks the PDF route
- * (`/api/cron/document-pdfs`, `signedPdfJob()`), which nothing else calls. One cheap question first, so an idle run is one statement.
+ * period with their files. No Chromium and no seal here: a signed contract's sealed PDF is the PDF route's (`signedPdfJob()`), asked
+ * for by the dispatcher's `documentPdfs` job (`runDocumentPdfAsk()`, D807). One cheap question first, so an idle run is one statement.
  */
 
 const REMINDER_DAYS = 3;
 const MAX_REMINDERS = 3;
-const ATTEMPTS = 5;
-/** The PDF route may take a while on a cold start with Chromium; the dispatcher waits for it, as `triggerLook()` waits for a look. */
-const ROUTE_MS = 110_000;
 
 export type UpkeepDeps = { mail?: Mailer; now?: Date; storage?: DocumentStorage | null };
 export type UpkeepResult = { expired: number; reminded: number; codes: number; pruned: number };
 
-const WORK = z.object({ sent: col.bool, seal: col.bool, codes: col.bool, signed: col.bool });
+const WORK = z.object({ sent: col.bool, codes: col.bool, signed: col.bool });
 
 /** The upkeep's parts, each caught on its own so one failing leaves the rest done. */
 export async function contractUpkeep(deps: UpkeepDeps, work = { sent: true, codes: true, signed: true }): Promise<UpkeepResult> {
@@ -110,39 +105,17 @@ export async function pruneContracts(now: Date, storage: Pick<DocumentStorage, "
 }
 
 /**
- * The dispatcher's run (D795): one question says what waits; only that is done. A signed contract without its sealed PDF has the PDF
- * route asked to make it; the route's own run decides which, so two asks make no second file (the database sets it once). Retention
- * is looked at in the first five minutes of each hour only.
+ * The dispatcher's run (D795): one question says what waits; only that is done. Retention is looked at in the first five minutes of
+ * each hour only. A signed contract waiting for its seal is the PDF job's, asked for by `runDocumentPdfAsk()` (D807).
  */
-export async function runContractUpkeep(now = new Date()): Promise<UpkeepResult & { sealAsked: boolean }> {
+export async function runContractUpkeep(now = new Date()): Promise<UpkeepResult> {
   const work = await typedRow(
     WORK,
     sql`select
           exists (select 1 from commerce.contracts where status = 'sent') as sent,
-          exists (select 1 from commerce.contracts where status = 'signed' and signed_pdf_path is null and signed_pdf_attempts < ${ATTEMPTS}) as seal,
           exists (select 1 from commerce.contract_codes) as codes,
           exists (select 1 from commerce.contracts where status = 'signed') as signed`,
   );
-  if (!work) return { expired: 0, reminded: 0, codes: 0, pruned: 0, sealAsked: false };
-  const result = await contractUpkeep({ now }, { sent: work.sent, codes: work.codes, signed: work.signed && now.getUTCMinutes() < 5 });
-  let sealAsked = false;
-  if (work.seal) sealAsked = await askForSeal();
-  return { ...result, sealAsked };
-}
-
-async function askForSeal(): Promise<boolean> {
-  const bearer = await cronBearer();
-  if (!bearer) return false;
-  try {
-    const answer = await fetch(`${siteUrl()}/api/cron/document-pdfs`, {
-      method: "POST",
-      headers: { authorization: bearer },
-      signal: AbortSignal.timeout(ROUTE_MS),
-    });
-    if (!answer.ok) log("warn", "contracts.seal_ask_failed", { status: answer.status });
-    return answer.ok;
-  } catch (error) {
-    log("warn", "contracts.seal_ask_failed", {}, error);
-    return false;
-  }
+  if (!work) return { expired: 0, reminded: 0, codes: 0, pruned: 0 };
+  return contractUpkeep({ now }, { sent: work.sent, codes: work.codes, signed: work.signed && now.getUTCMinutes() < 5 });
 }
