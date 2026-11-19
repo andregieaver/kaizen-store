@@ -53,3 +53,14 @@ describe("a goal's flow from the owner's own automation (slice 3, M2.2)", () => 
     expect(flowFromAutomation("welcome", { delayDays: 0, content: null, followUps: [] }, "nb-NO")).toBeNull();
   });
 });
+
+describe("win-back from the owner's own automation (slice 4)", () => {
+  it("makes its days the lapse, sends the first email at once, and ends at an order", async () => {
+    const { flowFromAutomation } = await import("./flow-recipes");
+    const words = { "en-GB": { subject: "Come back", preview: "", blocks: [{ type: "paragraph" as const, text: "We miss you" }] } };
+    const flow = flowFromAutomation("win_back", { delayDays: 120, content: words, followUps: [] }, "en-GB");
+    expect(flow).toMatchObject({ trigger: "customer.lapsed", triggerDays: 120, replaces: "win_back", goals: [{ kind: "ordered" }] });
+    expect(flow?.steps.map((s) => s.id)).toEqual(["email-1"]);
+    expect(flowInputSchema.safeParse(flow).success).toBe(true);
+  });
+});

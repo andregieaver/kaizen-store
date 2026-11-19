@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AUTOMATION_KINDS } from "./automation-kinds";
 import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
-import { FLOW_TRIGGERS } from "./flow-triggers";
+import { FLOW_TRIGGERS, LAPSE_DAYS } from "./flow-triggers";
 
 /**
  * Flows (D767, `docs/flows.md`, email plan M2.1): a trigger, a tree of steps a person moves along, and goals that end it early. This file is
@@ -53,6 +53,11 @@ export const flowInputSchema = z.object({
   goals: z.array(z.object({ kind: z.literal("ordered") })).max(1),
   /** The automation a recipe does the work of (slice 3): set when the flow is made, kept through every save. */
   replaces: z.enum(AUTOMATION_KINDS).nullish(),
+  /** A lapse trigger's days (slice 4): required for `customer.lapsed`, refused for any other trigger. */
+  triggerDays: z.number().int().min(LAPSE_DAYS.min).max(LAPSE_DAYS.max).nullish(),
+}).refine((f) => (f.trigger === "customer.lapsed") === (f.triggerDays != null), {
+  message: `Choose from ${LAPSE_DAYS.min} to ${LAPSE_DAYS.max} days without an order.`,
+  path: ["triggerDays"],
 });
 export type FlowInput = z.infer<typeof flowInputSchema>;
 

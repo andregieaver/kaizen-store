@@ -185,4 +185,29 @@ describe("flows (D767)", () => {
     expect(await au.switchAutomation(store, owner, "welcome", true)).toEqual({ ok: false, problem: "The flow \"Velkomstserie\" sends this now. Switch it off under Flows first." });
     expect(await fl.switchFlow(storeId, owner, saved.id, false)).toBe("ok");
   });
+
+  it("enters a person once when their latest paid order is the lapse flow's days old, and not after a later order (slice 4)", async () => {
+    const { winBack } = await import("@/lib/flow-recipes");
+    const DAY = 24 * HOUR;
+    const now = new Date();
+    const kari = await subscriber(`lapsed-kari-${run}@example.com`);
+    const per = await subscriber(`lapsed-per-${run}@example.com`);
+    await paidOrder(`lapsed-kari-${run}@example.com`, new Date(now.getTime() - 91 * DAY));
+    await paidOrder(`lapsed-per-${run}@example.com`, new Date(now.getTime() - 91 * DAY));
+    await paidOrder(`lapsed-per-${run}@example.com`, new Date(now.getTime() - 10 * DAY));
+    const saved = await fl.saveFlow(storeId, owner, null, winBack("nb-NO"));
+    if (!saved.ok) throw new Error(saved.problem);
+    expect(await fl.saveFlow(storeId, owner, null, { ...winBack("nb-NO"), triggerDays: null })).toMatchObject({ ok: false });
+    await fl.testFlow(storeId, saved.id);
+    await fl.switchFlow(storeId, owner, saved.id, true);
+    // Switched on now: a lapse from yesterday is before it and enters nobody.
+    expect(await fl.enterLapsed(now)).toBe(0);
+    await db().execute(sql`update commerce.flows set enabled_at = ${new Date(now.getTime() - 2 * DAY).toISOString()}::timestamptz where id = ${saved.id}::uuid`);
+    expect(await fl.enterLapsed(now)).toBe(1);
+    expect(await fl.enterLapsed(now)).toBe(0);
+    const entered = await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(entered.map((r) => String(r.subscriber_id))).toEqual([kari]);
+    expect(entered.map((r) => String(r.subscriber_id))).not.toContain(per);
+    await fl.switchFlow(storeId, owner, saved.id, false);
+  });
 });

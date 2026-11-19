@@ -91,7 +91,7 @@ export function storyLines(steps: readonly FlowStep[], w: StoryWords, segmentNam
 }
 
 /** The story's first sentence: what starts it, and what ends it early. */
-export function storyLead(trigger: string, goals: readonly FlowGoal[], w: StoryWords): string {
-  const start = w.triggers[trigger] ?? trigger;
+export function storyLead(trigger: string, goals: readonly FlowGoal[], w: StoryWords, days: number | null = null): string {
+  const start = fill(w.triggers[trigger] ?? trigger, { n: days ?? "?" });
   return goals.length > 0 ? `${start} ${w.goal}` : start;
 }

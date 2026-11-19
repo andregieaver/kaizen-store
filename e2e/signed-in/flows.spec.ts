@@ -154,3 +154,19 @@ test("a goal whose automation the owner already wrote starts from their words, d
   await expect(story).toContainText("5 days later:");
   await expect(story.getByLabel("Email: How was it?")).toContainText("Tell us how your order went.");
 });
+
+test("bring back customers starts from 90 days without an order, and its days are changed where they are said (slice 4)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("group", { name: "Bring back customers" }).getByRole("button", { name: "Start" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
+  const story = page.locator("[data-flow-story]");
+  await expect(story).toContainText("When someone has not ordered for 90 days: It stops when they order.");
+  await expect(story.getByLabel("Email: We miss you")).toBeVisible();
+  await story.getByText("Change", { exact: true }).first().click();
+  await page.getByLabel("Days without an order").fill("120");
+  await page.getByRole("button", { name: "Save" }).first().click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("[data-flow-story]")).toContainText("When someone has not ordered for 120 days:");
+  await page.screenshot({ path: "test-results/flow-win-back.png", fullPage: true });
+});

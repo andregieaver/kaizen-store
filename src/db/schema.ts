@@ -8598,11 +8598,16 @@ export const flows = commerce.table(
     // The automation this flow does the work of (D767 slice 3): switching the flow on switches that one off, and it stays off while the
     // flow is on, so nobody gets both. Null for a flow of the owner's own.
     replaces: text("replaces"),
+    // A lapse trigger's days (slice 4): how long after a person's latest paid order, with nothing since, the flow starts. Null for others.
+    triggerDays: integer("trigger_days"),
+    // When it was last switched on: a date trigger counts only from then, so switching one on never emails everyone at once.
+    enabledAt: timestamp("enabled_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("flows_store_id_key").on(t.storeId, t.id),
+    check("flows_trigger_days", sql`(${t.trigger} = 'customer.lapsed') = (${t.triggerDays} is not null) and (${t.triggerDays} is null or ${t.triggerDays} between 30 and 730)`), // LAPSE_DAYS
     check("flows_replaces", sql`${t.replaces} is null or ${t.replaces} in (${sqlList(AUTOMATION_KINDS)})`),
     index("flows_store_trigger_idx").on(t.storeId, t.trigger).where(sql`${t.enabled}`),
     check("flows_name", sql`char_length(${t.name}) between 1 and 120`),
