@@ -794,6 +794,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D789 | **Database tests share a worker; component tests keep a fresh one** | 2026-11-19 | [text](decisions/D789.md) |
 | D790 | **One file per decision, with a generated index** | 2026-11-19 | [text](decisions/D790.md) |
 | D791 | **The migrations ledger is the record** | 2026-11-19 | [text](decisions/D791.md) |
+| D792 | **Mail to reserved test domains is logged, never sent** | 2026-11-19 | [text](decisions/D792.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
