@@ -4,14 +4,16 @@ import { notFound } from "next/navigation";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireExtension } from "@/components/admin/extension-off";
 import { AdminLink, Card, Chip, PageHeader } from "@/components/admin/ui";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { flowSuggestion } from "@/lib/flow-report";
+import { formatMoney } from "@/lib/money";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
-import { drawFlowEmails, flowReach, getFlow } from "@/server/flows";
+import { drawFlowEmails, flowReach, flowReport, getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
@@ -57,7 +59,11 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
   const mayWrite = memberCan(member, "marketing:write");
   const languages = store.localization.locales.length > 0 ? store.localization.locales : ["en-GB"];
   const checks = flowChecks(flow.steps, languages[0]);
-  const reach = mayWrite ? await flowReach(store.id, flow.trigger, flow.triggerDays) : 0;
+  const [reach, report] = await Promise.all([mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays) : Promise.resolve(0), flowReport(store.id, flow.id)]);
+  const numbers = ADMIN_LANG_FACTS[lang].locale;
+  const money = Object.entries(report.minor).map(([cur, minor]) => formatMoney(minor, cur, numbers)).join(" + ") || formatMoney(0, store.markets[0]?.currency ?? "EUR", numbers);
+  const suggestion = w.report.suggestions[flowSuggestion(report)];
+  const topSubject = report.topStep ? emails.get(report.topStep.id) : undefined;
   // The emails drawn for the person tested (M3.5), only when asked for: each is a full email to draw.
   const drawn = mayWrite && see ? await drawFlowEmails(store.id, flow.id) : null;
   const firstLocale = Object.keys([...emails.values()][0]?.content ?? {})[0] ?? store.localization.locales[0] ?? "en-GB";
@@ -198,6 +204,26 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
                 </li>
               ))}
             </ul>
+          </div>
+        </Card>
+      )}
+      {/* The report in words (M3.8): the last 30 days, each order credited to the latest message its buyer got (D761), one suggestion. */}
+      {(flow.enabled || report.entered > 0) && (
+        <Card compact>
+          <div className="flex flex-col gap-1.5" data-flow-report>
+            <p className="text-body-strong text-ink">{w.report.title}</p>
+            <p className="text-body text-ink-2">
+              {report.entered === 0
+                ? w.report.nobody
+                : w.report.line
+                    .replace("{entered}", report.entered.toLocaleString(numbers))
+                    .replace("{sent}", report.sent.toLocaleString(numbers))
+                    .replace("{orders}", report.orders.toLocaleString(numbers))
+                    .replace("{money}", money)}
+            </p>
+            {topSubject && <p className="text-body text-ink-2">{w.report.top.replace("{subject}", Object.values(topSubject.content)[0]?.subject ?? "")}</p>}
+            {report.left > 0 && <p className="text-body text-ink-2">{w.report.left.replace("{left}", report.left.toLocaleString(numbers))}</p>}
+            {suggestion && <p className="text-body text-ink">{suggestion}</p>}
           </div>
         </Card>
       )}

@@ -355,4 +355,26 @@ describe("flows (D767)", () => {
     const runs = await db().execute<Row>(sql`select id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
     expect(runs).toHaveLength(0);
   });
+
+  it("reports the orders after its emails, credited to the step their buyer got last (M3.8, D761)", async () => {
+    const address = `report-${run}@example.com`;
+    const steps: FlowStep[] = [email("first", "Hei fra oss")];
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Report ${run}`, trigger: "subscriber.subscribed", steps, goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    await fl.switchFlow(storeId, owner, saved.id, true);
+    const person = await subscriber(address);
+    await joined(person);
+    await fl.enterFlows();
+    await fl.runFlows({ only: storeId, now: new Date() });
+    await new Promise((r) => setTimeout(r, 50));
+    await paidOrder(address, new Date());
+    const report = await fl.flowReport(storeId, saved.id);
+    // Earlier tests' sign-ups still in the log enter it too: each who entered got the email; only this buyer ordered after it.
+    expect(report).toMatchObject({ orders: 1, topStep: { id: "first", orders: 1 }, left: 0 });
+    expect(report.entered).toBeGreaterThanOrEqual(1);
+    expect(report.sent).toBe(report.entered);
+    expect(report.minor).toEqual({ NOK: 10000 });
+    await fl.switchFlow(storeId, owner, saved.id, false);
+  });
 });

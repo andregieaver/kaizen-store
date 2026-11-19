@@ -23,11 +23,13 @@ import {
   type FlowStep,
 } from "@/lib/flows";
 import { linkTarget } from "@/lib/broadcasts";
+import type { FlowReport } from "@/lib/flow-report";
 import { roomLeft } from "@/lib/limits";
 import { siteUrl } from "@/lib/site";
 import { nextSendTime } from "@/lib/sms";
 
 import { PAID } from "./analytics-sql";
+import { orderCredit } from "./order-credit";
 import { audit } from "./auth";
 import { getContactPolicy, recentContacts } from "./contact-policy";
 import { sendEmail } from "./email";
@@ -737,4 +739,40 @@ export async function flowReach(storeId: string, trigger: string, triggerDays: n
       join commerce.marketing_subscribers s on s.store_id = e.store_id and lower(s.email) = lower(em.email) and s.status = 'subscribed'
      where e.store_id = ${store} and e.event = ${trigger} and e.at > now() - make_interval(days => ${REACH_DAYS})`);
   return row?.n ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// The report in words (email plan M3.8)
+// ---------------------------------------------------------------------------
+
+/**
+ * A flow's last `REACH_DAYS` days (M3.8): who started it, its emails sent, the paid orders credited to them by the one rule (each order to
+ * the latest message its buyer got, D761, `orderCredit()`), the step that took the most, and who left the list on the way (runs ended as
+ * stopped). The page says it in words with one suggestion (`flowSuggestion()`).
+ */
+export async function flowReport(storeId: string, flowId: string): Promise<FlowReport> {
+  const now = new Date();
+  const from = new Date(now.getTime() - REACH_DAYS * 86_400_000);
+  const [counts, credit] = await Promise.all([
+    typedRow(
+      z.object({ entered: col.int, left: col.int, sent: col.int }),
+      sql`select
+            (select count(*)::int from commerce.flow_runs r where r.store_id = ${storeId}::uuid and r.flow_id = ${flowId}::uuid and r.entered_at >= ${from.toISOString()}::timestamptz) as entered,
+            (select count(*)::int from commerce.flow_runs r where r.store_id = ${storeId}::uuid and r.flow_id = ${flowId}::uuid and r.status = 'stopped' and r.ended_at >= ${from.toISOString()}::timestamptz) as left,
+            (select count(*)::int from commerce.flow_run_steps st join commerce.flow_runs r on r.store_id = st.store_id and r.id = st.run_id
+              where st.store_id = ${storeId}::uuid and r.flow_id = ${flowId}::uuid and st.outcome in ('sent', 'logged') and st.created_at >= ${from.toISOString()}::timestamptz) as sent`,
+    ),
+    orderCredit(storeId, from, now),
+  ]);
+  const prefix = `flow:${flowId}:`;
+  let orders = 0;
+  const minor: Record<string, number> = {};
+  let topStep: FlowReport["topStep"] = null;
+  for (const [key, c] of credit) {
+    if (!key.startsWith(prefix)) continue;
+    orders += c.orders;
+    for (const [cur, amount] of Object.entries(c.minor)) minor[cur] = (minor[cur] ?? 0) + amount;
+    if (!topStep || c.orders > topStep.orders) topStep = { id: key.slice(prefix.length), orders: c.orders };
+  }
+  return { entered: counts?.entered ?? 0, sent: counts?.sent ?? 0, orders, minor, topStep, left: counts?.left ?? 0 };
 }

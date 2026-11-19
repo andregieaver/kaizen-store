@@ -10,8 +10,9 @@ import { col, typedRows } from "./typed-rows";
 
 /**
  * Orders after a store's emails and texts (email plan M1.4, D761): the database finds each paid order placed in the period and every message
- * that reached the same person (their address, or their customer account) in the `ORDER_AFTER_DAYS` before it, from all three senders at
- * once; `creditOrders()` gives each order to the latest one. Keys: `broadcast:{id}`, `automation:{kind}` and `text:{campaign}`.
+ * that reached the same person (their address, or their customer account) in the `ORDER_AFTER_DAYS` before it, from all four senders at
+ * once; `creditOrders()` gives each order to the latest one. Keys: `broadcast:{id}`, `automation:{kind}`, `flow:{flow}:{step}` (D767) and
+ * `text:{campaign}`.
  */
 
 /** A paid order as D152 counts it, still the person's (never restricted or anonymised), not cancelled. */
@@ -54,6 +55,12 @@ export async function orderCredit(storeId: string, from: Instant, to: Instant): 
           join commerce.marketing_subscribers m on m.store_id = s.store_id and m.id = s.subscriber_id
          where s.store_id = ${storeId}::uuid and s.outcome in ('sent', 'logged') and s.created_at >= ${since} and s.created_at <= ${until}
         union all
+        select 'flow:' || r.flow_id::text || ':' || st.step_id, st.created_at, lower(m.email), m.customer_id
+          from commerce.flow_run_steps st
+          join commerce.flow_runs r on r.store_id = st.store_id and r.id = st.run_id
+          join commerce.marketing_subscribers m on m.store_id = r.store_id and m.id = r.subscriber_id
+         where st.store_id = ${storeId}::uuid and st.outcome in ('sent', 'logged') and st.created_at >= ${since} and st.created_at <= ${until}
+        union all
         select 'text:' || t.campaign_id::text, t.sent_at, lower(p.email), p.customer_id
           from commerce.sms_messages t
           join commerce.sms_subscribers p on p.store_id = t.store_id and p.id = t.subscriber_id
@@ -80,8 +87,8 @@ export async function sendCredit(storeId: string, key: string, startedAt: string
   return creditOf(await orderCredit(storeId, new Date(startedAt), new Date(end)), key);
 }
 
-/** The three senders a store's messages come from. */
-export const SOURCES = ["broadcast", "automation", "text"] as const;
+/** The four senders a store's messages come from (flows since D767). */
+export const SOURCES = ["broadcast", "automation", "flow", "text"] as const;
 export type CreditSource = (typeof SOURCES)[number];
 
 /** The credit of a period summed per sender kind (Analytics → Marketing): each order still counted once, for the latest message before it. */

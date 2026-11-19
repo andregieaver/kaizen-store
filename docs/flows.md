@@ -100,3 +100,11 @@ for an event, the people on the list behind its events of the last 30 days (the 
 lapse falls in the next 30; for browsing, the signed-in subscribers with views kept now. Test walks the newest subscriber through it,
 sending nothing. See the emails (`?see=1`, `drawFlowEmails()`) draws each email the newest subscriber would get, in their language and
 market with their picks and plain links, only when asked; nothing is sent, entered or marked tested. Still to come: each step's reach.
+
+## The report in words (19 November 2026, email plan M3.8 in part)
+
+A flow's page says its last 30 days (`flowReport()`): who started it, its emails sent, the paid orders after them and their money,
+the email that brought the most, who left the list on the way (runs ended as stopped), and one suggestion chosen in code
+(`flowSuggestion()`: space out when more than one in twenty leave, picks when emails bring nothing, build on the step that works).
+Orders are credited by D761's one rule, flows now a fourth sender (`flow:{flow}:{step}` in `orderCredit()`, Flows in Analytics →
+Marketing). Home and the morning briefing come with E2.1's one source.

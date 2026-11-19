@@ -166,7 +166,8 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
             <dl className="flex flex-col" data-message-orders>
               {SOURCES.map((src) => (
                 <div key={src} className="flex justify-between gap-4 border-b border-line py-2 last:border-b-0">
-                  <dt className="text-body text-ink-2">{w.marketing.messages.sources[src]}</dt>
+                  {/* Flows' name from the server-only flows area (D767): nothing more handed to the browser. */}
+                  <dt className="text-body text-ink-2">{src === "flow" ? adminText(ctx.lang, "flows").title : w.marketing.messages.sources[src]}</dt>
                   <dd className="text-right text-body-strong tabular-nums text-ink">
                     {messages[src].orders === 0
                       ? w.marketing.messages.none

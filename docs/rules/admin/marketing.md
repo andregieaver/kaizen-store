@@ -161,9 +161,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `List-Unsubscribe`/`List-Unsubscribe-Post` in every one. A hard bounce or a complaint unsubscribes the address
   (`applyEmailEvent()`). Links go through `/api/marketing/c/…`, which redirects only to the content's own links and counts a press
   (`broadcast_link_clicks`); a recipient's own links carry their signed reference (`p`, D754, `src/lib/email-clicks.ts`), and a
-  press with a genuine one by a subscriber still on the list is kept as theirs (`email_clicks`, only through `keepClick()`: export,
+  press with a genuine one by a subscriber still on the list is kept as theirs (`email_clicks`, only through `keepClick()` and `keepFlowClick()`: export,
   erasure, 180 days, said in the privacy notice); never add an open pixel. Orders after any message (a broadcast, an automation
-  email, a text) are counted only through `orderCredit()`/`creditOrders()` (D761): each paid order once, for the latest message
+  email, a flow's email, a text) are counted only through `orderCredit()`/`creditOrders()` (D761): each paid order once, for the latest message
   its buyer got in the 7 days before it, so no screen counts an order twice. Every marketing message (broadcast, automation email,
   text) asks the contact policy first (D764, `policyVerdict()` with `recentContacts()`, `src/server/contact-policy.ts`): a held one
   is suppressed or skipped with `cap` or `spacing`, never sent later; a welcome, a cart reminder and back in stock always go, and
