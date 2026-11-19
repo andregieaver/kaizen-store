@@ -798,6 +798,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D793 | **A stale eval recording or a long wait never holds back a release that passed** | 2026-11-19 | [text](decisions/D793.md) |
 | D794 | **Tests for how owners get paid** | 2026-11-19 | [text](decisions/D794.md) |
 | D795 | **Contracts' upkeep runs in the five-minute dispatcher, and it calls the PDF route only when a signed contract waits for its seal** | 2026-11-19 | [text](decisions/D795.md) |
+| D796 | **Dates shoppers see in the store's own time zone: storefront, shopper emails and contracts (code review 1.14's next, FS11** | 2026-11-19 | [text](decisions/D796.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
