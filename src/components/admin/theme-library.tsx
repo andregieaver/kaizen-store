@@ -1,6 +1,7 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -27,12 +28,15 @@ export function ThemeLibrary({
   base,
   schedules = {},
   lang = "en",
+  timeZone,
 }: {
   installs: LibraryInstall[];
   /** What is planned for each install or did not happen (D340), by install id. */
   schedules?: Record<string, ScheduleChip>;
   /** The admin's language (D312 A7); English unless given. */
   lang?: AdminLang;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
   /** The Design settings page's address, under which each theme's page and preview are (D244); none: no links. */
   base?: string;
   /** Null for someone who may only look. */
@@ -52,8 +56,8 @@ export function ThemeLibrary({
               sub={
                 <>
                   {install.version !== null && <>{fillWords(c.version, { n: install.version })} · </>}
-                  {install.live ? c.live : fillWords(w.installed, { date: install.installedAt.slice(0, 10) })}
-                  {!install.live && install.switchedAt && fillWords(w.lastLive, { date: install.switchedAt.slice(0, 10) })}
+                  {install.live ? c.live : fillWords(w.installed, { date: adminDate(timeZone, install.installedAt, "day", lang) })}
+                  {!install.live && install.switchedAt && fillWords(w.lastLive, { date: adminDate(timeZone, install.switchedAt, "day", lang) })}
                 </>
               }
             />

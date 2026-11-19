@@ -103,7 +103,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
         </Suspense>
       )}
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
-        <DomainHealth storeId={store.id} lang={lang} />
+        <DomainHealth storeId={store.id} timeZone={store.timeZone} lang={lang} />
       </Suspense>
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <KeptDns member={current} lang={lang} />
@@ -113,6 +113,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
       </Suspense>
       {memberCan(current, "owner") && <MoveLinks storeId={store.id} slug={store.slug} hosts={domains.map((d) => d.hostname)} lang={lang} />}
       <DomainsPanel
+        timeZone={store.timeZone}
         address={storeHref(store.slug, storeBase(store.slug))}
         hostAddress={hostOrigin(`${store.slug}.${domain.split(":")[0]}`)}
         domains={domains}
@@ -137,10 +138,11 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
 }
 
 /** Each domain's health (D315 5.3), read as the owner opens the page: DNS and RDAP lookups stream in after the rest. */
-async function DomainHealth({ storeId, lang }: { storeId: string; lang: ReturnType<typeof adminLangOf> }) {
+async function DomainHealth({ storeId, timeZone, lang }: { storeId: string; timeZone: string; lang: ReturnType<typeof adminLangOf> }) {
   const rows = await storeDomainHealth(storeId, { registrations: registrationFacts });
   return (
     <DomainHealthCard
+      timeZone={timeZone}
       rows={rows.map((r) => ({
         hostname: r.facts.hostname,
         registrar: r.facts.registration.registrar,
@@ -168,6 +170,7 @@ async function GetADomain({ member, lang }: { member: Membership; lang: ReturnTy
   return (
     <>
       <DomainRegistrationsCard
+        timeZone={store.timeZone}
         registrations={registrations.map((r, i) => ({
           apex: r.apex,
           status: r.status,
@@ -215,6 +218,7 @@ async function KeptDns({ member, lang }: { member: Membership; lang: ReturnType<
       {cards.map(({ zone, read, history }) =>
         read.ok ? (
           <DnsZoneCard
+            timeZone={store.timeZone}
             key={zone.id}
             apex={zone.apex}
             records={read.records.map((r) => ({

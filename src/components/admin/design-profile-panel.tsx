@@ -1,5 +1,6 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import type { OfferedDesign } from "@/lib/design-presets";
 import type { ThemeSwatch } from "@/lib/theme-store";
 import type { LookThumb } from "@/server/theme-store";
@@ -74,6 +75,7 @@ export function DesignProfilePanel({
   canChange,
   closedNote,
   lang = "en",
+  timeZone,
 }: {
   designs: PanelDesign[];
   /** The latest profile applied whose look from before can be put back. */
@@ -87,6 +89,8 @@ export function DesignProfilePanel({
   closedNote?: string;
   /** The admin's language (D312 A7); English unless given. */
   lang?: AdminLang;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
 }) {
   const all = adminText(lang, "design");
   const { common: c, add: w } = all;
@@ -98,7 +102,7 @@ export function DesignProfilePanel({
       {latest && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
           <p>
-            {fillWords(w.appliedLast, { name: latest.presetTitle, date: latest.appliedAt.slice(0, 10) })}
+            {fillWords(w.appliedLast, { name: latest.presetTitle, date: adminDate(timeZone, latest.appliedAt, "day", lang) })}
             {latest.previousInstall
               ? fillWords(w.beforeInstall, { name: latest.previousInstall })
               : latest.savedTheme && fillWords(w.beforeSaved, { name: latest.savedTheme })}

@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { ConsoleMessages } from "@/lib/admin-messages/console.en";
@@ -134,7 +135,7 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
             <ul className="flex flex-col gap-2 text-sm text-ink-2">
               {s.rolledBack.slice(0, 5).map((r) => (
                 <li key={`${r.at}:${r.tool}`}>
-                  <span className="tabular-nums">{r.at.slice(0, 16).replace("T", " ")}</span> · <span className="font-mono">{r.tool}</span> · {r.words}{" "}
+                  <span className="tabular-nums">{adminDate(PLATFORM_TIME_ZONE, r.at, "dayTime", lang)}</span> · <span className="font-mono">{r.tool}</span> · {r.words}{" "}
                   <span className={r.undone.length > 0 ? "text-ink" : "text-warning-text"}>
                     {r.undone.length > 0 ? fillWords(w.watch.undone, { what: r.undone.join(", ") }) : w.watch.notUndone}
                   </span>
@@ -150,7 +151,7 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
             <>
               <p className="text-body text-ink-2">
                 {fillWords(w.pin.pinned, {
-                  date: s.challenge.pinned.at.slice(0, 10),
+                  date: adminDate(PLATFORM_TIME_ZONE, s.challenge.pinned.at, "day", lang),
                   model: s.challenge.pinned.model ?? w.pin.noModel,
                   tools: s.challenge.pinned.tools,
                 })}
@@ -163,7 +164,7 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
                   <ul className="mt-1 flex flex-col gap-0.5 text-sm text-ink-2">
                     {s.challenge.versionLog.slice(-5).map((entry) => (
                       <li key={`${entry.at}:${entry.what}`}>
-                        <span className="tabular-nums">{entry.at.slice(0, 16).replace("T", " ")}</span> · {entry.what}
+                        <span className="tabular-nums">{adminDate(PLATFORM_TIME_ZONE, entry.at, "dayTime", lang)}</span> · {entry.what}
                       </li>
                     ))}
                   </ul>

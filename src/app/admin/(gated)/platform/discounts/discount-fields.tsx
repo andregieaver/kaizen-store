@@ -1,3 +1,4 @@
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { PlatformDiscount } from "@/lib/discounts";
 import type { PlanOfferDraft } from "@/lib/plan-offers";
 import { formatPriceInput } from "@/lib/product-input";
@@ -12,7 +13,8 @@ export const deleteQuestion = (code: string, stores: number, w: PlatformMessages
   fillWords(w.deleteQuestion, { code }) + (stores > 0 ? countWords(stores, w.deleteKeep) : "");
 
 /** `YYYY-MM-DD` of a time, in Norwegian time. */
-const osloDate = (iso: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date(iso));
+/** A platform code's days are Kaizena Flow's (`PLATFORM_TIME_ZONE`), as the server reads them back (D786). */
+const osloDate = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "iso", "en");
 
 /**
  * The fields of one of Kaizen's plan codes, empty for a new one or filled in to edit one (D31). A campaign (D524) has a name, a start, an

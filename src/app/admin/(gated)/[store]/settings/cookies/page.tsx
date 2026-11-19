@@ -85,6 +85,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
       </PhoneRow>
       <PhoneRow title={p.scan} sub={lastDone?.finishedAt ? fillWords(p.scannedOn, { day: new Date(lastDone.finishedAt).toLocaleDateString(locale, { dateStyle: "medium" }) }) : p.notScanned} {...look}>
       <CookieScanPanel
+        timeZone={store.timeZone}
         scans={scans}
         lastDone={lastDone}
         findings={lastDone ? reviewFindings(lastDone.items, notes) : []}
@@ -96,7 +97,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
       />
       </PhoneRow>
       <PhoneRow title={p.consents} sub={consents.length > 0 ? countWords(consents.length, p.consentsN, { n: String(consents.length) }) : p.noConsents} {...look}>
-        <ConsentLog consents={consents} words={words} locale={locale} />
+        <ConsentLog timeZone={store.timeZone} consents={consents} words={words} locale={locale} />
       </PhoneRow>
       </PhoneRows>
     </div>

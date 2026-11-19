@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { buttonClass, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { requirePlatformReader } from "@/server/auth";
 import { clientsSeen } from "@/server/oauth-clients";
@@ -22,7 +23,7 @@ export default async function PlatformOAuthPage() {
   const lang = adminLangOf(admin.adminLocale);
   const w = adminText(lang, "oauth").platform;
   const clients = await clientsSeen();
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.description} />

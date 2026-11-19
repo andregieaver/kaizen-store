@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
 import { buttonClass, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { API_POWERS, API_SCOPES, isApiPower } from "@/lib/admin-api";
 import { API_ROUTES } from "@/lib/admin-api-routes";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { scopeLabel } from "@/lib/oauth-words";
 import { siteUrl } from "@/lib/site";
@@ -59,7 +60,7 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const aw = adminText(lang, "notifications").customApps;
   const sw = adminText(lang, "notifications").storefrontTokens;
   const routeWords = adminText(lang, "screens").storefrontRoutes;
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const base = `${siteUrl()}/api/admin/v1`;
   // Round 27 (D700): on a phone what reaches the store is rows first, then making a token, then the rest as rows.
   const row = { change: w.phoneOpen, done: w.phoneClose, flat: true } as const;

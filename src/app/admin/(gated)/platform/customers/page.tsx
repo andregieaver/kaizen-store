@@ -7,8 +7,9 @@ import { listPlatformCustomers } from "@/server/platform-customers";
 import { requirePlatformReader } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { Card, CARD_CLASS, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Customers" };
@@ -25,7 +26,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
   const raw = (await searchParams).q;
   const q = typeof raw === "string" ? raw : "";
   const customers = await listPlatformCustomers({ q });
-  const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
 
   return (
     <div className="flex flex-col gap-6">

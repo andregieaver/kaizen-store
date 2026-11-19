@@ -11,7 +11,7 @@ import { DesignProfilePanel, lookThumb, type PanelDesign } from "./design-profil
 const design: PanelDesign = { id: "p1", title: "Hearth", summary: "Warm.", description: "", pictureUrl: null, previewHref: "/preview" };
 const action = async () => ({ status: "idle" as const, messages: [] });
 const draw = (props: Partial<Parameters<typeof DesignProfilePanel>[0]>) =>
-  renderToString(createElement(DesignProfilePanel, { designs: [design], latest: null, apply: action, restore: null, canChange: true, ...props }));
+  renderToString(createElement(DesignProfilePanel, { timeZone: "Europe/Oslo", designs: [design], latest: null, apply: action, restore: null, canChange: true, ...props }));
 
 describe("the themes panel", () => {
   it("offers adding a theme to the library, naming it, and links the theme store", () => {

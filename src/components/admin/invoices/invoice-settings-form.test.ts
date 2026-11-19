@@ -60,7 +60,7 @@ describe("what is missing before invoicing", () => {
 });
 
 describe("the switch, the note and the email option", () => {
-  const form = (s = settings(), r = readiness()) => drawn(h(InvoiceSettingsForm, { settings: s, readiness: r, paymentsHref: "/admin/s/settings/payments", saveAction: noop }));
+  const form = (s = settings(), r = readiness()) => drawn(h(InvoiceSettingsForm, { timeZone: "Europe/Oslo", settings: s, readiness: r, paymentsHref: "/admin/s/settings/payments", saveAction: noop }));
 
   it("shows the switch and the email option as they are, and the note", () => {
     const { html, text } = form(settings({ footerNote: "Bank 1234" }));

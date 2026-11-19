@@ -6,6 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { todayIn } from "@/lib/work-dates";
 import { getCreatorSettings, listCreatorPayouts, listCreators } from "@/server/creators";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
@@ -59,6 +60,7 @@ export default async function CreatorsPage({ params }: PageProps<"/admin/[store]
         {creators.length === 0 && payouts.length === 0 && <p className="text-body text-muted sm:hidden">{w.phone.none}</p>}
         <div className={creators.length === 0 && payouts.length === 0 ? "flex flex-col gap-6 max-sm:hidden" : "flex flex-col gap-6"}>
         <CreatorsList
+          today={todayIn(store.timeZone)}
           rows={creators}
           locale={locale}
           isOwner={isOwner}

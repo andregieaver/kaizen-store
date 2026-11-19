@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { formatPerMillion, formatUnitPrice } from "@/lib/ai-cost";
 import { requirePlatformReader } from "@/server/auth";
 import { listPrices, unpricedModels } from "@/server/ai-prices";
@@ -41,7 +42,6 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "platformTools").prices;
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const [prices, unpriced, query] = await Promise.all([listPrices(), unpricedModels(), searchParams]);
   const text = (key: string) => (typeof query[key] === "string" ? (query[key] as string) : "");
   const models = new Map<string, typeof prices>();
@@ -149,7 +149,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
                       <td className="px-2 py-2 text-right tabular-nums">{formatUnitPrice(line.perAudioMinute)}</td>
                       <td className="px-2 py-2 text-right tabular-nums">{formatUnitPrice(line.perMillionCharacters)}</td>
                       <td className="px-2 py-2 text-right tabular-nums">{formatUnitPrice(line.perThousandSearches)}</td>
-                      <td className="px-2 py-2">{line.effectiveFrom.startsWith("2000-01-01") ? w.beginning : date.format(new Date(line.effectiveFrom))}</td>
+                      <td className="px-2 py-2">{line.effectiveFrom.startsWith("2000-01-01") ? w.beginning : adminDate(PLATFORM_TIME_ZONE, line.effectiveFrom, "day", lang)}</td>
                       <td className="px-2 py-2">{line.note || "–"}</td>
                     </tr>
                   )),

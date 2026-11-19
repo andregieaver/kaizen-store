@@ -1,5 +1,6 @@
 import { CampaignEditor, type CampaignDraft } from "@/components/admin/campaign-editor";
 import type { Campaign } from "@/lib/campaigns";
+import { wallClock } from "@/lib/page-schedules";
 import { formatPriceInput } from "@/lib/product-input";
 import { mainCurrency } from "@/lib/markets";
 import { listGiftChoices } from "@/server/campaigns";
@@ -19,19 +20,11 @@ const NEW_TIERS: CampaignDraft["tiers"] = [
   { quantity: "4", amounts: {}, percent: "15", off: {} },
 ];
 
-/** `datetime-local` text for a time, in Norwegian time. */
-function osloLocal(iso: string | null): string {
+/** `datetime-local` text for a time on the store's clock, as `saveCampaign()` reads it back (D786). */
+function localText(iso: string | null, timeZone: string): string {
   if (!iso) return "";
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Oslo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-    .format(new Date(iso))
-    .replace(" ", "T");
+  const { day, time } = wallClock(iso, timeZone);
+  return `${day}T${time}`;
 }
 
 /** The editor for a new campaign or an existing one, with the store's markets, products, categories and tags. */
@@ -100,8 +93,8 @@ export async function CampaignForm({
         markets: campaign.markets,
         stacks: campaign.stacks,
         combinesWithCodes: campaign.combinesWithCodes,
-        startsAt: osloLocal(campaign.startsAt),
-        endsAt: osloLocal(campaign.endsAt),
+        startsAt: localText(campaign.startsAt, store.timeZone),
+        endsAt: localText(campaign.endsAt, store.timeZone),
         active: campaign.active,
       }
     : {
@@ -173,6 +166,6 @@ function saleDraft(sale: { key: SaleKey; name: string }, store: Store): Partial<
       ),
     }),
     ...(shape.some && { scope: "some" as const }),
-    ...(shape.weekend && nextWeekend()),
+    ...(shape.weekend && nextWeekend(store.timeZone)),
   };
 }

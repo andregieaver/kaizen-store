@@ -1,6 +1,7 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -22,10 +23,13 @@ export function ThemeFollow({
   run,
   undo,
   lang = "en",
+  timeZone,
 }: {
   runs: FollowRun[];
   /** The admin's language (D312 A7); English unless given. */
   lang?: AdminLang;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
   keepDays: number;
   /** Null for someone who may only look. */
   count: Action | null;
@@ -56,18 +60,18 @@ export function ThemeFollow({
           {runs.map((r) => (
             <ListRow key={r.runId}>
               <RowLead
-                title={fillWords(w.runTitle, { date: r.at.slice(0, 10), settings: settings(r.followed), pages: pages(r.pages) })}
+                title={fillWords(w.runTitle, { date: adminDate(timeZone, r.at, "day", lang), settings: settings(r.followed), pages: pages(r.pages) })}
                 sub={r.kept > 0 ? fillWords(w.keptOwn, { settings: settings(r.kept) }) : w.nothingOwn}
               />
               {r.undoneAt ? (
-                <Chip signal="neutral">{fillWords(c.undone, { date: r.undoneAt.slice(0, 10) })}</Chip>
+                <Chip signal="neutral">{fillWords(c.undone, { date: adminDate(timeZone, r.undoneAt, "day", lang) })}</Chip>
               ) : (
                 undo && (
                   <RowActions>
                     <ActionForm action={undo}>
                       <input type="hidden" name="run" value={r.runId} />
                       <SubmitButton variant="secondary">
-                        {c.undo}<span className="sr-only"> {fillWords(w.undoName, { date: r.at.slice(0, 10) })}</span>
+                        {c.undo}<span className="sr-only"> {fillWords(w.undoName, { date: adminDate(timeZone, r.at, "day", lang) })}</span>
                       </SubmitButton>
                     </ActionForm>
                   </RowActions>

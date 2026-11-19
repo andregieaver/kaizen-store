@@ -5,7 +5,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { PLATFORM_EVENTS } from "@/lib/platform-integrations";
 import { platformCan, requirePlatformReader } from "@/server/auth";
@@ -30,7 +31,7 @@ export default async function PlatformWorkflowsPage() {
   const own = adminText(lang, "platform");
   const canWrite = platformCan(admin, "settings");
   const triggerLabels = Object.fromEntries(PLATFORM_EVENTS.map((event) => [event, own.integrations.events[event]?.label ?? event]));
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const [flows, endpoints] = await Promise.all([listPlatformWorkflows(), listPlatformEndpoints()]);
   const views: WorkflowView[] = await Promise.all(
     flows.map(async (flow) => ({

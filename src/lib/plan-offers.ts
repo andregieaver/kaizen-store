@@ -1,4 +1,5 @@
 import { nextWeekend } from "./campaign-offers";
+import { PLATFORM_TIME_ZONE } from "./admin-date";
 
 /**
  * Ready offers on Kaizena Flow's Discounts page (round 16, D650): three plan codes and a weekend campaign, each opening its form filled in
@@ -35,7 +36,7 @@ export function planOfferDraft(key: PlanOfferKey, now = new Date()): PlanOfferDr
     case "partner":
       return { code: "PARTNER10", campaign: false, percent: 10, duration: "forever" };
     case "weekend": {
-      const { startsAt, endsAt } = nextWeekend(now);
+      const { startsAt, endsAt } = nextWeekend(PLATFORM_TIME_ZONE, now);
       return { campaign: true, percent: 30, duration: "once", startsAt: startsAt.slice(0, 10), expiresAt: endsAt.slice(0, 10) };
     }
   }

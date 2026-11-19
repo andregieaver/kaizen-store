@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
+import { adminDate } from "@/lib/admin-date";
 import { LEGAL_ROLE_COPY, isLegalRole } from "@/lib/legal-roles";
 import { blockText } from "@/lib/page-content";
 import { requirePermission } from "@/server/permissions";
 import { snapshotForOrder } from "@/server/checkout-terms";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Terms as shown" };
@@ -32,7 +33,7 @@ export default async function OrderTermsAsShownPage({ params }: PageProps<"/admi
   if (!z.uuid().safeParse(orderId).success || !isLegalRole(role)) notFound();
   const snapshot = await snapshotForOrder(store.id, orderId, role, null);
   if (!snapshot) notFound();
-  const when = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" }).format(snapshot.acceptedAt);
+  const when = adminDate(store, snapshot.acceptedAt, "dayTime", lang);
   const paragraphs = snapshot.content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.map((block) => blockText(block).trim()).filter(Boolean)));
   return (
     <div className="flex max-w-3xl flex-col gap-4">

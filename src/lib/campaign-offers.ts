@@ -1,3 +1,5 @@
+import { addCalendarDays, todayIn } from "./work-dates";
+
 /**
  * Ready sales on the Campaigns page (round 10, D633): four campaigns most shops run, each opening New campaign filled in so Homer
  * chooses what is left (a category, a gift) and presses Save. Pure: the form turns a sale into its draft with the store's markets.
@@ -27,14 +29,14 @@ export function isSaleKey(value: unknown): value is SaleKey {
   return typeof value === "string" && (SALE_KEYS as readonly string[]).includes(value);
 }
 
-/** The coming weekend as `datetime-local` texts: next Friday (today if it is Friday) 00:00 to the Sunday after, 23:59, Oslo time. */
-export function nextWeekend(now = new Date()): { startsAt: string; endsAt: string } {
-  const osloDay = (d: Date) =>
-    new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-  const weekday = new Date(`${osloDay(now)}T12:00:00Z`).getUTCDay();
+/**
+ * The coming weekend as `datetime-local` texts on a clock (the store's; the platform's for its own plans, D786): next Friday (today if it is
+ * Friday) 00:00 to the Sunday after, 23:59.
+ */
+export function nextWeekend(timeZone: string, now = new Date()): { startsAt: string; endsAt: string } {
+  const today = todayIn(timeZone, now);
+  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
   // Saturday and Sunday are already the weekend: the next one starts in six or five days.
-  const toFriday = (5 - weekday + 7) % 7;
-  const friday = new Date(now.getTime() + toFriday * 86_400_000);
-  const sunday = new Date(friday.getTime() + 2 * 86_400_000);
-  return { startsAt: `${osloDay(friday)}T00:00`, endsAt: `${osloDay(sunday)}T23:59` };
+  const friday = addCalendarDays(today, (5 - weekday + 7) % 7);
+  return { startsAt: `${friday}T00:00`, endsAt: `${addCalendarDays(friday, 2)}T23:59` };
 }

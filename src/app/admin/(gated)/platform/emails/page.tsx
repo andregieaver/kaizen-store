@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { EmailLog } from "@/components/admin/email-log";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
 import { platformCan, requirePlatformReader } from "@/server/auth";
@@ -127,7 +128,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
         {emailsShown(emails, show).length === 0 && show !== "all" ? (
           <p className="text-sm text-muted">{w.noneShown}</p>
         ) : (
-          <EmailLog emails={emailsShown(emails, show)} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={adminText(lang, "notifications")} now={drawnAt.getTime()} quietUnsent={!settings} />
+          <EmailLog timeZone={PLATFORM_TIME_ZONE} emails={emailsShown(emails, show)} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={adminText(lang, "notifications")} now={drawnAt.getTime()} quietUnsent={!settings} />
         )}
       </Card>
     </div>

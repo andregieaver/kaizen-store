@@ -3,8 +3,9 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { PLATFORM_ROLES } from "@/lib/platform-access";
 import { requirePlatformReader } from "@/server/auth";
@@ -28,7 +29,7 @@ export default async function PlatformTeamPage() {
   // Only an owner changes the team (D510); the others see who is on it.
   const owner = admin.platformAdmin;
   const select = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
-  const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={w.description} />

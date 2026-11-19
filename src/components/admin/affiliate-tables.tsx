@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
+import { adminDate } from "@/lib/admin-date";
 import { countWords } from "@/lib/admin-fill";
 import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
@@ -66,11 +67,14 @@ export function AttributionsTable({
   storeSlug,
   locale,
   words = loyaltyEn,
+  timeZone,
 }: {
   rows: AffiliateAttributionRow[];
   storeSlug: string;
   locale: string;
   words?: LoyaltyMessages;
+  /** The store's time zone: each order's day is the store's (D786). */
+  timeZone: string;
 }) {
   const w = words.affiliateTables;
   if (rows.length === 0) return <p className="text-sm text-muted">{w.noAttributions}</p>;
@@ -93,7 +97,7 @@ export function AttributionsTable({
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-line align-top last:border-0">
               <td className="py-2 pr-4 whitespace-nowrap">
-                <time dateTime={row.at}>{new Date(row.at).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" })}</time>
+                <time dateTime={row.at}>{adminDate(timeZone, row.at, "day", locale)}</time>
               </td>
               <td className="py-2 pr-4">
                 <Link href={`/admin/${storeSlug}/orders/${row.orderId}`} className="underline">

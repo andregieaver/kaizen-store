@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import type { CapacityMessages } from "@/lib/admin-messages/capacity.en";
 import { LIMIT_KEYS, limitUnit, type LimitKey } from "@/lib/limits";
 import { formatLimit } from "@/lib/usage-format";
@@ -19,6 +20,7 @@ export function LimitOverridesCard({
   locale,
   set,
   remove,
+  timeZone,
 }: {
   limits: Resolved;
   overrides: readonly { id: string; key: LimitKey; reason: string; expiresAt: string | null }[];
@@ -26,6 +28,8 @@ export function LimitOverridesCard({
   locale: string;
   set: PanelAction;
   remove: RowAction;
+  /** The store's time zone: an override ends on the store's day, as its other dates on this page (D786). */
+  timeZone: string;
 }) {
   const shown = (key: LimitKey) => (limits[key].value === null ? w.usage.noLimit : formatLimit(key, limits[key].value!, locale));
   return (
@@ -51,7 +55,7 @@ export function LimitOverridesCard({
                       {own && (
                         <span className="block text-caption text-muted">
                           {own.reason}
-                          {own.expiresAt ? ` · ${w.overrides.ends} ${own.expiresAt.slice(0, 10)}` : ""}
+                          {own.expiresAt ? ` · ${w.overrides.ends} ${adminDate(timeZone, own.expiresAt, "day", locale)}` : ""}
                         </span>
                       )}
                     </td>

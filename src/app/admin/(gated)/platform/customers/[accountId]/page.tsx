@@ -16,8 +16,9 @@ import { requirePlatformReader } from "@/server/auth";
 import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
 import { CARD_CLASS, List, ListRow, PageHeader, RowDate, RowFact, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 import { resetTwoStepAction } from "./actions";
@@ -54,7 +55,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
     ),
     listEmails({ storeId: null, to: customer.email, limit: 20 }),
   ]);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const kaizenEmails = emails.filter((e) => e.storeName === null);
   const twoStep = await twoStepOfAccount(accountId);
   // The same person as a customer of Kaizena Flow's own store (D467): its tags, deals, notes and timeline are kept there.
@@ -150,7 +151,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
                 >
                   {s.planName && s.status ? s.planName : w.noPlan}
                 </RowFact>
-                <RowDate>{s.currentPeriodEnd && s.status !== "canceled" ? fillWords(w.nextInvoice, { date: date(s.currentPeriodEnd) }) : w.noInvoiceDue}</RowDate>
+                <RowDate>{s.currentPeriodEnd && s.status !== "canceled" ? fillWords(w.nextInvoice, { date: adminDate(s, s.currentPeriodEnd, "day", lang) }) : w.noInvoiceDue}</RowDate>
               </ListRow>
             ))}
           </List>
@@ -166,7 +167,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
             {invoices.map(({ store, invoices: list }) => (
               <div key={store.slug}>
                 {owned.length > 1 && <h3 className="mb-1 text-body-strong text-ink">{store.name}</h3>}
-                <InvoiceList storeSlug={store.slug} invoices={list} date={date} words={invoiceWords} />
+                <InvoiceList storeSlug={store.slug} invoices={list} date={(iso) => adminDate(store, iso, "day", lang)} words={invoiceWords} />
               </div>
             ))}
           </div>

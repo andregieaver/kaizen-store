@@ -1,3 +1,4 @@
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { storeBase, storeHref } from "@/lib/paths";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -12,7 +13,7 @@ import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/pl
 import { designChoices } from "@/server/design-presets";
 import { CARD_CLASS, Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
@@ -32,7 +33,8 @@ export default async function PlatformPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
-  const w = adminText(adminLangOf(account.adminLocale), "platform").requests;
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platform").requests;
   // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
   const [requests, { cards }, selfServe, unconfirmed, sandbox, sandboxes] = await Promise.all([
     listAccessRequests(),
@@ -80,7 +82,7 @@ export default async function PlatformPage() {
         {pending.length === 0 ? (
           <p className="text-sm text-muted">{w.none}</p>
         ) : (
-          pending.map((request) => <PendingRequest key={request.id} request={request} designs={designs} w={w} />)
+          pending.map((request) => <PendingRequest key={request.id} request={request} designs={designs} w={w} lang={lang} />)
         )}
       </section>
 
@@ -115,7 +117,7 @@ export default async function PlatformPage() {
   );
 }
 
-async function PendingRequest({ request, designs, w }: { request: AccessRequest; designs: DesignCard[]; w: W }) {
+async function PendingRequest({ request, designs, w, lang }: { request: AccessRequest; designs: DesignCard[]; w: W; lang: AdminLang }) {
   // A theme the requester chose that is no longer offered (unpublished or archived, D177) gives way to the Standard store, and is said.
   const designGone = request.designPresetId && !designs.some((d) => d.id === request.designPresetId);
   // Suggest a free address; the admin can still change it.
@@ -137,7 +139,7 @@ async function PendingRequest({ request, designs, w }: { request: AccessRequest;
         <p className="text-sm">
           {request.name} · <a href={`mailto:${request.email}`} className="underline">{request.email}</a> ·{" "}
           <time dateTime={request.createdAt} className="text-muted">
-            {request.createdAt.slice(0, 10)}
+            {adminDate(PLATFORM_TIME_ZONE, request.createdAt, "day", lang)}
           </time>
           {request.hasAccount && <span className="text-muted">{w.hasAccount}</span>}
         </p>

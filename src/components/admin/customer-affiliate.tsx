@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
@@ -23,6 +24,7 @@ export function CustomerAffiliateSection({
   who,
   block,
   words = loyaltyEn,
+  timeZone,
 }: {
   data: CustomerAffiliate;
   storeSlug: string;
@@ -32,10 +34,12 @@ export function CustomerAffiliateSection({
   block: (blocked: boolean, note: string) => Promise<AffiliateResult>;
   /** The `loyalty` catalogue in the account's language; the block form reads its own through `useAdminText()`. */
   words?: LoyaltyMessages;
+  /** The store's time zone (D786). */
+  timeZone: string;
 }) {
   const w = words.customerAffiliate;
   const credits = moneyIn(data.currency, locale);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(timeZone, iso, "day", locale);
   return (
     <Card title={w.title} compact>
       {data.referredBy && (

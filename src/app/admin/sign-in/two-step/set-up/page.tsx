@@ -4,11 +4,13 @@ import { Suspense } from "react";
 
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { EnrolPanel } from "@/components/admin/two-step-panel";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS, enrolReasonText } from "@/lib/two-step";
+import { todayIn } from "@/lib/work-dates";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAssurance } from "@/server/auth";
 import { getStore } from "@/server/stores";
@@ -65,7 +67,7 @@ async function SetUp({ searchParams }: { searchParams: PageProps<"/admin/sign-in
           start={startEnrolmentAction}
           finish={finishEnrolmentAction}
           account={account.email}
-          madeOn={new Date().toISOString().slice(0, 10)}
+          madeOn={todayIn(PLATFORM_TIME_ZONE)}
           nextHref={next}
           why={why}
           alreadyOn={alreadyOn}

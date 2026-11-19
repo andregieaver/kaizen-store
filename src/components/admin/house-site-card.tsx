@@ -3,7 +3,8 @@ import type { ComponentProps } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
-import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import type { AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { countWords } from "@/lib/admin-fill";
 import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
@@ -17,9 +18,7 @@ type CopyAction = ComponentProps<typeof ActionForm>["action"];
  */
 export function HouseSiteCard({ lang, last, copy }: { lang: AdminLang; last: SiteCopy; copy: CopyAction }) {
   const w = adminText(lang, "console").houseSite;
-  const when = last.copiedAt
-    ? new Date(last.copiedAt).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" })
-    : null;
+  const when = last.copiedAt ? adminDate(PLATFORM_TIME_ZONE, last.copiedAt, "dayTime", lang) : null;
   return (
     <Card title={w.title} description={w.description}>
       <ActionForm action={copy} className="flex flex-col gap-4">

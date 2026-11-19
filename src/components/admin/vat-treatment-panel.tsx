@@ -1,3 +1,4 @@
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { orderEn } from "@/lib/admin-messages/order.en";
@@ -9,7 +10,6 @@ import { Card } from "@/components/admin/ui";
 /** The panel's words (`order.vatTreatment`): English unless the page hands in the admin's. */
 export type VatTreatmentWords = OrderMessages["vatTreatment"];
 
-const when = (iso: string, locale: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 
 /**
  * The row of an order's totals that gives back the VAT a reverse-charge order did not charge (D157). It is inside the order's discount,
@@ -40,6 +40,7 @@ export function VatTreatmentPanel({
   locale,
   typedCompany,
   words = orderEn.vatTreatment,
+  timeZone,
 }: {
   treatment: OrderVatTreatment | null;
   kind: VatKind;
@@ -50,6 +51,8 @@ export function VatTreatmentPanel({
   /** The company name the buyer typed at checkout, or null. */
   typedCompany: string | null;
   words?: VatTreatmentWords;
+  /** The store's time zone: when VIES was asked, on the store's clock (D786). */
+  timeZone: string;
 }) {
   if (!treatment) return null;
   const money = (minor: number) => formatMoney(minor, currency, locale);
@@ -58,7 +61,7 @@ export function VatTreatmentPanel({
   if (treatment.sellerVatNumber) rows.push({ term: words.sellerNumber, value: treatment.sellerVatNumber, mono: true });
   if (treatment.buyerVatNumber) {
     rows.push({ term: words.buyerNumber, value: treatment.buyerVatNumber, mono: true });
-    rows.push({ term: words.viesTerm, value: vies.checkedAt ? fillWords(words.checked, { status: words.vies[vies.status], when: when(vies.checkedAt, locale) }) : words.vies[vies.status] });
+    rows.push({ term: words.viesTerm, value: vies.checkedAt ? fillWords(words.checked, { status: words.vies[vies.status], when: adminDate(timeZone, vies.checkedAt, "dayTime", locale) }) : words.vies[vies.status] });
   }
   if (vies.requestIdentifier) rows.push({ term: words.consultation, value: vies.requestIdentifier, mono: true });
   if (vies.registeredName) rows.push({ term: words.registeredName, value: vies.registeredName });

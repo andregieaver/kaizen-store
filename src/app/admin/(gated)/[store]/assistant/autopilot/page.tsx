@@ -25,6 +25,7 @@ export default async function StoreAutopilotPage({ params, searchParams }: PageP
   return (
     <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
       <AutopilotPage
+        timeZone={member.store.timeZone}
         overview={overview}
         base={base}
         assistantHref={`/admin/${slug}/assistant`}

@@ -61,7 +61,7 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
         </p>
       ) : (
         <div className={`px-4 ${CARD_CLASS}`}>
-          <CartAddTable rows={rows} storeSlug={store.slug} locale={locale} words={w} dateLocale={lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale} />
+          <CartAddTable timeZone={store.timeZone} rows={rows} storeSlug={store.slug} locale={locale} words={w} dateLocale={lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale} />
         </div>
       )}
       {rows.length === 200 && <p className="text-sm text-muted">{w.activity.latest}</p>}

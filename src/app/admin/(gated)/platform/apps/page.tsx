@@ -3,8 +3,9 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { isApiPower } from "@/lib/admin-api";
 import { LISTING_NOTE_MAX } from "@/lib/apps";
@@ -30,7 +31,7 @@ export default async function PlatformAppsPage() {
   const w = ow.platformApps;
   const powerWords = adminText(lang, "notifications").apiTokens.scopeWords;
   const [waiting, decided] = await Promise.all([listingRequests(admin, "requested"), listingRequests(admin, "decided")]);
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const field = "min-h-10 rounded-md border border-line bg-card px-3 py-2 text-sm";
   return (
     <div className="flex flex-col gap-6">

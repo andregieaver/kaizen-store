@@ -86,6 +86,10 @@ describe("the control center (D107)", () => {
     expect(store.oldestToSend && Date.now() - Date.parse(store.oldestToSend) > 9 * 86_400_000).toBe(true);
     expect(store.lowStock).toBeGreaterThanOrEqual(1);
     expect(view.latest.map((o) => o.number)).toEqual([`${run}-1`, `${run}-2`, `${run}-3`]);
+    // Each order carries its own store's zone, so the owner's level shows it on that store's day (code review 1.14, D786).
+    await db().execute(sql`update commerce.stores set time_zone = 'America/New_York' where id = ${storeId}::uuid`);
+    expect(new Set((await center.controlCenter(account)).latest.map((o) => o.timeZone))).toEqual(new Set(["America/New_York"]));
+    await db().execute(sql`update commerce.stores set time_zone = 'Europe/Oslo' where id = ${storeId}::uuid`);
     const text = attentionFor(view.stores).map((i) => i.text).join("\n");
     expect(text).toContain("2 orders are waiting to be sent");
   });

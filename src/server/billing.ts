@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { PlatformDiscount } from "@/lib/discounts";
 import { effectiveFeeBps, isOnPlan, type PlanInterval } from "@/lib/plans";
 import { storeBase, storeOrigin } from "@/lib/paths";
@@ -398,6 +399,8 @@ export type StoreBilling = {
   name: string;
   country: string | null;
   status: string | null;
+  /** The store's time zone: its billing days are shown on the store's day, on its own billing page and in the platform's lists (D786). */
+  timeZone: string;
   /** The store's own status (D171): open, suspended or closed. */
   storeStatus: "active" | "suspended" | "closed";
   /**
@@ -429,7 +432,7 @@ export type StoreBilling = {
 };
 
 const billingQuery = (where: ReturnType<typeof sql>) => sql`
-  select s.id as store_id, s.slug, s.name, s.country, s.status as store_status, b.by_account,
+  select s.id as store_id, s.slug, s.name, s.country, s.time_zone, s.status as store_status, b.by_account,
          b.plan_id, p.name as plan_name, p.sale_fee_bps as plan_fee_bps, b.price_id,
          pp.currency, pp.interval, pp.amount_minor, b.mode, b.subscription_id, b.status,
          b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancel_at_period_end,
@@ -461,6 +464,7 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
     slug: String(row.slug),
     name: String(row.name),
     country: row.country ? String(row.country) : null,
+    timeZone: row.time_zone ? String(row.time_zone) : PLATFORM_TIME_ZONE,
     status,
     storeStatus: row.store_status === "closed" ? "closed" : row.store_status === "suspended" ? "suspended" : "active",
     byAccount: row.by_account === true,

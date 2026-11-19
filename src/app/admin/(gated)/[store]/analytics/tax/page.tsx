@@ -126,6 +126,7 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
     const keyed = (key: string) => (scheme === "oss" ? parseQuarterKey(key) : parseMonthKey(key));
     body = data ? (
       <OssView
+        timeZone={store.timeZone}
         base={ctx.base}
         locale={locale}
         scheme={scheme}

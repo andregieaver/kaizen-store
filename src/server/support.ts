@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { OpeningHours } from "@/lib/opening-hours";
 import { parseOpeningHours } from "@/lib/opening-hours-schema";
 import { deskAvailability, type AgentPresence, type Availability } from "@/lib/support-hours";
@@ -41,7 +42,7 @@ import type { Desk } from "./support-desk";
 import { owned } from "./owned";
 
 /** Kaizen's own desk keeps Norway's time (its company's). */
-export const KAIZEN_TIME_ZONE = "Europe/Oslo";
+export const KAIZEN_TIME_ZONE = PLATFORM_TIME_ZONE;
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -773,7 +774,8 @@ export type StaffMessage = {
 
 export type StaffConversation = {
   id: string;
-  store: { slug: string; name: string } | null;
+  /** Its store; `timeZone` is the store's, so its times are on the store's clock (D786). */
+  store: { slug: string; name: string; timeZone?: string } | null;
   status: ConversationStatus;
   handler: Handler;
   source: "site" | "admin" | "email" | "form";
@@ -816,7 +818,7 @@ export type StaffConversation = {
 /** A conversation on the desk for staff, with its messages after `after` (at most 200), or null when it is not the desk's or is gone. */
 export async function staffConversation(desk: Desk, conversationId: string, after = 0): Promise<StaffConversation | null> {
   const [c] = await db().execute<Row>(sql`
-    select c.*, s.slug as store_slug, s.name as store_name,
+    select c.*, s.slug as store_slug, s.name as store_name, s.time_zone as store_zone,
       coalesce(nullif(cu.name, ''), nullif(c.contact_name, ''), nullif(ra.name, '')) as who_name,
       coalesce(cu.email, c.contact_email, ra.email) as who_email,
       coalesce(nullif(a.name, ''), a.email) as assignee_name,
@@ -843,7 +845,7 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
   const brief = c.brief as { text?: unknown; seq?: unknown } | null;
   return {
     id: String(c.id),
-    store: c.store_slug ? { slug: String(c.store_slug), name: String(c.store_name) } : null,
+    store: c.store_slug ? { slug: String(c.store_slug), name: String(c.store_name), timeZone: c.store_zone ? String(c.store_zone) : undefined } : null,
     status: String(c.status) as ConversationStatus,
     handler: String(c.handler) as Handler,
     source: String(c.source) as StaffConversation["source"],

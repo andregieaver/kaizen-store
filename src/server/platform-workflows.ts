@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { renderEmail } from "@/lib/email-layout";
 import { PLATFORM_WORKFLOWS, platformWorkflowInputSchema, type PlatformWorkflowTrigger } from "@/lib/platform-workflows";
 import { siteUrl } from "@/lib/site";
@@ -36,7 +37,7 @@ import { localNow } from "./workflows";
  * itself; each is capped at `RUNS_PER_HOUR` runs an hour. A platform owner makes them (the settings area, D510).
  */
 
-const PLATFORM_ZONE = "Europe/Oslo";
+const PLATFORM_ZONE = PLATFORM_TIME_ZONE;
 
 export type PlatformWorkflow = AnyWorkflowInput & {
   id: string;

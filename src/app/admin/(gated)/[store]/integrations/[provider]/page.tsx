@@ -7,8 +7,9 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { EVENTS, INTEGRATIONS, isProvider, SERVICE_EVENTS } from "@/lib/integrations";
 import { featureOn } from "@/lib/store-features";
@@ -42,8 +43,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
   const [integration, deliveries] = await Promise.all([getIntegration(store.id, provider), listDeliveries(store.id, provider)]);
-  const locale = ADMIN_LANG_FACTS[lang].locale;
-  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const owner = memberCan(current, "owner");
   const chosen = new Set(integration?.events ?? DEFAULT_EVENTS);
   const slack = provider === "slack";

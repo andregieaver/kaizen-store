@@ -12,7 +12,7 @@ const made: UpdateMade = { id: "u1", title: "Calm", from: 1, to: 2, at: "2026-10
 const following: ThemeFollowing = { installId: "i1", title: "Calm", live: true, version: 2, followsUpdates: true };
 const draw = (props: Partial<Parameters<typeof ThemeUpdates>[0]>) =>
   renderToStaticMarkup(
-    createElement(ThemeUpdates, { available: [], made: [], installs: [], keepDays: 90, update: act, undo: act, follow: act, ...props }),
+    createElement(ThemeUpdates, { timeZone: "Europe/Oslo", available: [], made: [], installs: [], keepDays: 90, update: act, undo: act, follow: act, ...props }),
   ).replaceAll("<!-- -->", "");
 
 describe("Theme updates (D245)", () => {
@@ -35,12 +35,14 @@ describe("Theme updates (D245)", () => {
 
   it("lists the latest updates with what was kept, and Undo only until undone", () => {
     const html = draw({ made: [made] });
-    expect(html).toContain("2026-10-15, by itself");
+    expect(html).toContain("15 Oct 2026, by itself");
     expect(html).toContain("2 of your own settings kept");
     expect(html).toContain("your footer kept");
     expect(html).toContain("Undo");
     const undone = draw({ made: [{ ...made, undoneAt: "2026-10-16T08:00:00Z" }] });
-    expect(undone).toContain("Undone 2026-10-16");
+    expect(undone).toContain("Undone 16 Oct 2026");
+    // On the store's own day (D786): 05:00 UTC on 16 October is still the evening of the 15th in Los Angeles.
+    expect(draw({ made: [{ ...made, undoneAt: "2026-10-16T05:00:00Z" }], timeZone: "America/Los_Angeles" })).toContain("Undone 15 Oct 2026");
     expect(undone).not.toContain("Undo<");
   });
 

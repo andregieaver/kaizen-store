@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { adminDate } from "@/lib/admin-date";
 import { formatMoney } from "@/lib/money";
 import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requirePermission } from "@/server/permissions";
@@ -42,7 +43,7 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
   const subscriptions = await listSubscriptions(store.id);
   const locale = store.markets[0]?.locale ?? "en";
   const base = `/admin/${store.slug}/subscriptions`;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(store, iso, "day", lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale);
 
   if (subscriptions.length === 0) {
     return (

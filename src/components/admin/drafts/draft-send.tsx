@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from "react";
 
 import type { DraftActionResponse } from "@/app/admin/(gated)/[store]/orders/drafts/actions";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
+import { zoneOf } from "@/lib/admin-date";
 import { cashRuleWords } from "@/lib/cash-limits";
 import { MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@/lib/draft-input";
 import { DRAFT_REFERENCE_MAX, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
@@ -11,6 +12,7 @@ import { CARD_CLASS } from "@/components/admin/ui";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { cashWarningText, fillWords } from "@/lib/drafts-words";
+import { todayIn } from "@/lib/work-dates";
 
 /**
  * The cash warning beside the Cash method (wave 3, D173, `docs/wave-3-orders.md` section 8, items 6 and 7). English admin text, flagged for review. It names the cash register rules and the ceilings on cash
@@ -154,6 +156,7 @@ export function PaidOutsideBox({
   ensureSaved,
   record,
   onResult,
+  timeZone,
 }: {
   allowed: boolean;
   hasEmail: boolean;
@@ -161,6 +164,8 @@ export function PaidOutsideBox({
   ensureSaved: () => Promise<number | null>;
   record: (input: { version: number; method: ManualPaymentMethod; reference?: string; receivedOn?: string }) => Promise<DraftActionResponse>;
   onResult: (result: DraftActionResponse) => void;
+  /** The store's time zone: the latest day money can have come in is the store's today (D786). */
+  timeZone?: string;
 }) {
   const id = useId();
   const all = useAdminText("drafts");
@@ -201,7 +206,7 @@ export function PaidOutsideBox({
       )}
       <label className="flex flex-col gap-1 font-medium">
         {w.receivedOn} <span className="font-normal text-muted">{w.receivedHint}</span>
-        <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} max={new Date().toISOString().slice(0, 10)} className={`${field} w-44`} />
+        <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} max={todayIn(zoneOf(timeZone))} className={`${field} w-44`} />
         <span className={`${hint} font-normal`}>{fillWords(w.receivedRule, { max: MANUAL_RECEIVED_DAYS_MAX })}</span>
       </label>
       <label className="flex flex-col gap-1 font-medium">

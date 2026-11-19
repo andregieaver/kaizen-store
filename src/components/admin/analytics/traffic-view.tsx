@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { adminDate } from "@/lib/admin-date";
 import { bandHours, WEEKDAY_LABELS } from "@/lib/analytics-heatmap";
 import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
 import { formatDecimal } from "@/lib/analytics-format";
@@ -92,11 +93,7 @@ export function countingReason(traffic: Pick<TrafficReport, "counting" | "covera
 export function lastSeenText(iso: string, timeZone: string): string {
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) return NO_FIGURE;
-  try {
-    return dayText(new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(ms)));
-  } catch {
-    return dayText(new Date(ms).toISOString().slice(0, 10));
-  }
+  return dayText(adminDate(timeZone, ms, "iso", "en"));
 }
 
 // ---- devices ----

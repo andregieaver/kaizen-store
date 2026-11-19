@@ -7,6 +7,7 @@ import { moneyByCurrency } from "@/components/admin/customer-bar";
 import { WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listStoreWishlists, mostWishedProducts, wishlistFigures } from "@/server/wishlist-admin";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -30,14 +31,14 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const lang = adminLangOf(gated.account.adminLocale);
   const w = adminText(lang, "bookings").wishlists;
-  const dateLocale = lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale;
   const [lists, figures, top] = await Promise.all([
     listStoreWishlists(store.id, { q, customerId }),
     wishlistFigures(store.id),
     mostWishedProducts(store.id, locale),
   ]);
   const base = `/admin/${store.slug}`;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const dateLocale = lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale;
+  const date = (iso: string) => adminDate(store, iso, "day", dateLocale);
   const conversion = figures.toCart > 0 ? Math.round((figures.bought / figures.toCart) * 100) : null;
   const forCustomer = customerId ? lists[0]?.owner : null;
 

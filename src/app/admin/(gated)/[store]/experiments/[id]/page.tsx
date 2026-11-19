@@ -7,6 +7,7 @@ import { ExperimentShare } from "@/components/admin/experiment-share";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { StepPath, type PathStep } from "@/components/admin/home/home-parts";
+import { adminDate, adminDay } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -72,8 +73,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "experiments");
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
-  const date = (iso: string) => dateFormat.format(new Date(iso));
+  const date = (iso: string) => adminDate(store, iso, "day", lang);
   const test = await getExperiment(store.id, id);
   if (!test) notFound();
   const base = `/admin/${store.slug}/experiments`;
@@ -96,7 +96,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
         }
       : null;
   const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now });
-  const readyAround = card.progress.readyAround ? date(`${card.progress.readyAround}T12:00:00Z`) : null;
+  const readyAround = card.progress.readyAround ? adminDay(card.progress.readyAround, "day", lang) : null;
   const builder = adminText(lang, "builder");
   const differenceWords = Object.fromEntries(Object.entries(differences).map(([key, list]) => [key, list.map((d) => differenceLine(d, builder))]));
   const part = test.part ? partLabelText(test.part.label, w) : null;

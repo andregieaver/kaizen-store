@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { emailDays } from "@/lib/email-log";
@@ -14,6 +15,7 @@ export function EmailLog({
   words = notificationsEn,
   now,
   quietUnsent = false,
+  timeZone,
 }: {
   emails: EmailLogRow[];
   base: string;
@@ -25,13 +27,14 @@ export function EmailLog({
   now?: number;
   /** While email is not set up, a row leaves out "Not sent": the page's sentence says it once (round 17, D652). Failures still show. */
   quietUnsent?: boolean;
+  /** The days and times' zone: the store's, or the platform's on Kaizena Flow's own log (D786). */
+  timeZone: string;
 }) {
   const w = words.log;
   if (emails.length === 0) return <p className="text-sm text-muted">{w.none}</p>;
-  const when = (iso: string) =>
-    new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(timeZone, iso, "dayTime", locale);
   const quiet = (status: EmailLogRow["status"]) => quietUnsent && status === "logged";
-  const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { timeStyle: "short", timeZone: "Europe/Oslo" });
+  const time = (iso: string) => adminDate(timeZone, iso, "time", locale);
   const list = (rows: EmailLogRow[]) => (
     <ul className="flex flex-col divide-y divide-line text-sm">
       {rows.map((email) => (
@@ -67,7 +70,7 @@ export function EmailLog({
   if (now === undefined) return list(emails);
   return (
     <div className="flex flex-col gap-4">
-      {emailDays(emails, now, w, locale).map((day) => (
+      {emailDays(emails, now, w, timeZone, locale).map((day) => (
         <section key={day.label} className="flex flex-col gap-1">
           <h3 className="text-eyebrow text-muted uppercase">{day.label}</h3>
           {list(day.rows)}

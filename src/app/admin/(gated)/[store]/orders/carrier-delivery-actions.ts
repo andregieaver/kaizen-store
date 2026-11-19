@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { zoneOf } from "@/lib/admin-date";
 import { parcelLinesInput } from "@/lib/parcel-input";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -50,7 +51,7 @@ export async function carrierDeliveryBookAction(storeSlug: string, carrier: stri
   const name = carrierInfo(carrier)?.name ?? carrier;
   const booked = await bookCarrierDelivery(member.account.id, member.store.id, orderId, carrier, {
     ...input.data,
-    collect: input.data.collect ? { timeZone: member.store.timeZone || "Europe/Oslo" } : null,
+    collect: input.data.collect ? { timeZone: zoneOf(member.store) } : null,
   });
   if (!booked.ok) return { ok: false, message: booked.problem };
   // What the carrier said to the collection asked for (D459): booked with its day, or why not, so staff arrange it themselves.

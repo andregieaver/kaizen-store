@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireFeature } from "@/components/admin/feature-off";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { CartAddTable, variantText } from "@/components/admin/wishlist-admin";
+import { adminDate } from "@/lib/admin-date";
 import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
 import { customerSummary } from "@/server/customer-admin";
@@ -46,7 +47,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
   const w = t.list;
   const dateLocale = lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${store.slug}`;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(store, iso, "day", dateLocale);
   const totalMinor = list.items.reduce((sum, i) => sum + (i.priceMinor ?? 0) * i.quantity, 0);
   const currency = list.items.find((i) => i.currency)?.currency;
 
@@ -121,7 +122,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
         {adds.length === 0 ? (
           <p className="text-sm text-muted">{w.nothingToCart}</p>
         ) : (
-          <CartAddTable words={t} dateLocale={dateLocale} rows={adds} storeSlug={store.slug} locale={locale} showList={false} showCustomer={!customer} />
+          <CartAddTable timeZone={store.timeZone} words={t} dateLocale={dateLocale} rows={adds} storeSlug={store.slug} locale={locale} showList={false} showCustomer={!customer} />
         )}
       </section>
     </div>

@@ -208,6 +208,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
       )}
       {type === "page" ? (
         <PageCards
+          timeZone={store.timeZone}
           pages={pages}
           adminBase={base}
           siteBase={context.siteBase}
@@ -228,6 +229,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
             </p>
           )}
           <PageCards
+            timeZone={store.timeZone}
             pages={pages}
             adminBase={base}
             siteBase={context.siteBase}
@@ -256,6 +258,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         <SiteLayoutsTable layouts={pages} adminBase={base} current={current} schedules={schedules} />
       ) : (
         <PagesTable
+          timeZone={store.timeZone}
           pages={pages}
           adminBase={base}
           siteBase={context.siteBase}

@@ -6,6 +6,7 @@ import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { PlatformFlagsCard } from "@/components/admin/platform-flags-card";
 import { ColdStartsCard } from "@/components/admin/cold-starts-card";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
@@ -235,7 +236,8 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
                   {p.name}
                 </Link>
                 <span className="text-ink-2">
-                  {p.startsAt.slice(0, 10)} – {p.endsAt.slice(0, 10)} · {p.expected === "very_busy" ? w.peaks.veryBusy : w.peaks.busy}
+                  {/* A peak's days are kept as UTC midnight and 23:59:59 (`parsePeak()`): read in UTC, the days as typed. */}
+                  {adminDate("UTC", p.startsAt, "day", lang)} – {adminDate("UTC", p.endsAt, "day", lang)} · {p.expected === "very_busy" ? w.peaks.veryBusy : w.peaks.busy}
                   {p.note ? ` · ${p.note}` : ""}
                 </span>
               </li>

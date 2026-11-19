@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { DOMAIN_EMAIL_KINDS, domainEmail, reminderDue, type DomainEmailKind } from "@/lib/domain-emails";
 import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
@@ -18,8 +19,8 @@ type Row = Record<string, unknown>;
  */
 
 const langOf = (locale: unknown) => (locale === "nb-NO" ? "nb" : "en");
-const dateIn = (iso: string, lang: "en" | "nb") =>
-  new Intl.DateTimeFormat(lang === "nb" ? "nb-NO" : "en-GB", { dateStyle: "long", timeZone: "Europe/Oslo" }).format(new Date(iso));
+// An account's domains have no store's clock: the platform's (D786).
+const dateIn = (iso: string, lang: "en" | "nb") => adminDate(PLATFORM_TIME_ZONE, iso, "long", lang);
 const yourDomains = () => `${siteUrl()}/admin/account/domains`;
 
 async function send(kind: DomainEmailKind, to: string, key: string, email: ReturnType<typeof domainEmail>, storeId: string | null): Promise<boolean> {

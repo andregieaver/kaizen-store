@@ -4,7 +4,8 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AdminLink, Card, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { EVENTS } from "@/lib/integrations";
@@ -38,7 +39,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
   const triggerLabels = Object.fromEntries(EVENTS.map((e) => [e.id, all.integrations.events[e.id]?.label ?? e.label]));
   // A paid extension's events (D748) start a new workflow only while the account has it.
   const offeredTriggers = WORKFLOW_TRIGGERS.filter((t) => topicOffered(member.store, t));
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const [flows, endpoints, segments] = await Promise.all([listWorkflows(store.id), listEndpoints(store.id), listSegments(store.id)]);
   // *The customer is in segment X* (ecosystem plan E3.6, D718) chooses from the store's segments, by name.
   const segmentChoices = segments.map((s) => ({ id: s.id, name: s.name }));

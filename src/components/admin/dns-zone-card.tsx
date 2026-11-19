@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { adminDate } from "@/lib/admin-date";
 import type { DomainsMessages } from "@/lib/admin-messages/domains.en";
 import { RECIPES, RECIPE_IDS, type RecipeId } from "@/lib/dns-recipes";
 
@@ -27,6 +28,7 @@ export function DnsZoneCard({
   auto,
   locale,
   actions,
+  timeZone,
 }: {
   apex: string;
   records: ZoneRecordRow[];
@@ -36,6 +38,8 @@ export function DnsZoneCard({
   auto: boolean;
   locale: string;
   actions: { check: DnsCheckFn; apply: DnsApply; undo: DomainAction; auto: DomainAction };
+  /** The store's time zone, or the platform's for an account's own domains (D786). */
+  timeZone: string;
 }) {
   const [draft, setDraft] = useState<DnsDraftShape | null>(null);
   const [checked, setChecked] = useState<DnsCheckShape | null>(null);
@@ -45,7 +49,7 @@ export function DnsZoneCard({
   const [values, setValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<{ ok: boolean; messages: string[] } | null>(null);
   const [pending, start] = useTransition();
-  const date = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" }).format(new Date(iso));
+  const date = (iso: string) => adminDate(timeZone, iso, "dayTime", locale);
 
   const check = (next: DnsDraftShape) => {
     setDraft(next);

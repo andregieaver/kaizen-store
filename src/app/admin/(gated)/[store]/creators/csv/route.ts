@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { audit } from "@/server/auth";
 import { sameSite } from "@/lib/same-site";
+import { todayIn } from "@/lib/work-dates";
 import { creatorPayoutsCsv } from "@/server/creators";
 import { log } from "@/server/log";
 import { checkOwnerRole } from "@/server/permissions";
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   try {
     const csv = await creatorPayoutsCsv(member.store.id);
     await audit(member.account.id, member.store.id, "creator.payouts_exported", {}, { area: "marketing" });
-    const file = `creator-payouts-${new Date().toISOString().slice(0, 10)}.csv`;
+    const file = `creator-payouts-${todayIn(member.store.timeZone)}.csv`;
     return new NextResponse(csv, {
       headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${file}"`, "Cache-Control": "no-store" },
     });

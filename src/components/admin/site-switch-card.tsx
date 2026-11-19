@@ -3,7 +3,8 @@ import type { ComponentProps } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
-import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import type { AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
@@ -18,8 +19,7 @@ type SwitchAction = ComponentProps<typeof ActionForm>["action"];
  */
 export function SiteSwitchCard({ lang, state, on, off }: { lang: AdminLang; state: SiteSwitch; on: SwitchAction; off: SwitchAction }) {
   const w = adminText(lang, "console").siteSwitch;
-  const when = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" }) : "";
+  const when = (iso: string | null) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   if (state.on) {
     return (
       <Card title={w.title}>

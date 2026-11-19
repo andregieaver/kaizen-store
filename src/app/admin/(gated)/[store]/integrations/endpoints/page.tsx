@@ -5,8 +5,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } from "@/components/admin/webhook-endpoints";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { EVENTS } from "@/lib/integrations";
 import { featureOn } from "@/lib/store-features";
@@ -43,8 +44,7 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
     label: all.events[event.id]?.label ?? event.label,
     hint: all.events[event.id]?.hint ?? event.hint,
   }));
-  const locale = ADMIN_LANG_FACTS[lang].locale;
-  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const endpoints = await listEndpoints(store.id);
   const views: EndpointView[] = await Promise.all(
     endpoints.map(async (endpoint) => ({

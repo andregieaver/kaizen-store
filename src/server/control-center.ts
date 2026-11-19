@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { BOOKS_WORDS } from "@/lib/admin-words/books";
 import { todayIn } from "@/lib/analytics-period";
@@ -34,7 +35,8 @@ type Row = Record<string, unknown>;
 /** Paid: a captured payment. History copied from another store (D129) has none, and is left out by name as well. */
 const paid = sql`(o.copied_from is null and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured'))`;
 
-export type LatestOrder = { id: string; number: string; storeSlug: string; storeName: string; name: string | null; status: string; totalMinor: number; currency: string; placedAt: string };
+/** One of the latest orders across the member's stores; `timeZone` is its own store's, so its day is that store's (D786). */
+export type LatestOrder = { id: string; number: string; storeSlug: string; storeName: string; timeZone: string; name: string | null; status: string; totalMinor: number; currency: string; placedAt: string };
 
 export type ControlCenter = {
   stores: StoreFigures[];
@@ -93,7 +95,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   // Work's own attention items, for the stores that have it switched on (D122): one set of queries for them all.
   const workStores = storeRows
     .filter((r) => ((r.modules ?? []) as string[]).includes("work") && r.work_ext === true)
-    .map((r) => ({ id: String(r.id), slug: String(r.slug), name: String(r.name), timeZone: String(r.time_zone ?? "Europe/Oslo") }));
+    .map((r) => ({ id: String(r.id), slug: String(r.slug), name: String(r.name), timeZone: String(r.time_zone ?? PLATFORM_TIME_ZONE) }));
 
   // Invoices that wait are the owner's to fix (they change the seller's details or tax profile): other roles are not asked.
   const ownerIds = idsWith(storeRows, "owner");
@@ -163,7 +165,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       group by o.store_id
     `),
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select o.id, o.number, o.status, o.total_minor, o.currency, o.placed_at, s.slug, s.name as store_name,
+      select o.id, o.number, o.status, o.total_minor, o.currency, o.placed_at, s.slug, s.name as store_name, s.time_zone,
              nullif(o.shipping_address ->> 'name', '') as name
       from commerce.orders o
       join commerce.stores s on s.id = o.store_id
@@ -323,7 +325,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         storeRows
           .filter((r) => booksReaders.has(String(r.id)))
           .map(async (r) => {
-            const watch = await turnoverWatch(String(r.id), todayIn(new Date(), String(r.time_zone ?? "Europe/Oslo"))).catch(() => null);
+            const watch = await turnoverWatch(String(r.id), todayIn(new Date(), String(r.time_zone ?? PLATFORM_TIME_ZONE))).catch(() => null);
             return [String(r.id), (watch?.watches ?? []).map((w) => watchText(w, watchWords, ADMIN_LANG_FACTS[lang].locale))] as const;
           }),
       )
@@ -400,6 +402,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       number: String(r.number),
       storeSlug: String(r.slug),
       storeName: String(r.store_name),
+      timeZone: String(r.time_zone ?? PLATFORM_TIME_ZONE),
       name: r.name ? String(r.name) : null,
       status: String(r.status),
       totalMinor: Number(r.total_minor),

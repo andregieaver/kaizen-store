@@ -8,6 +8,7 @@ import { log } from "@/server/log";
 import { checkOwnerRole } from "@/server/permissions";
 import { getSegment, segmentCsv } from "@/server/segments";
 import { storeExtensionOn } from "@/lib/extensions";
+import { todayIn } from "@/lib/work-dates";
 
 /**
  * Everyone in a segment, or in one customer type from analytics, as a CSV (D380): a POST from the page's own button, for the owner only (the
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
       { segment: segmentId || null, customerType: segmentId ? null : group, rows },
       { area: "marketing", target: segmentId ? { type: "segment", id: segmentId } : undefined },
     );
-    const file = `${name}-${new Date().toISOString().slice(0, 10)}.csv`;
+    const file = `${name}-${todayIn(member.store.timeZone)}.csv`;
     return new NextResponse(csv, {
       headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${file}"`, "Cache-Control": "no-store" },
     });

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { CheckoutAsksCard } from "@/components/admin/checkout-asks-card";
 import { FieldList, RuleList, type CheckoutRuleActions, type FieldInputView, type RuleChoices, type RuleInputView } from "@/components/admin/checkout-rules";
+import { adminDate } from "@/lib/admin-date";
 import { accountsMode } from "@/lib/customer-accounts";
 import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
@@ -33,7 +34,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
   const facts = ADMIN_LANG_FACTS[lang];
   const canWrite = memberCan(member, "settings:write");
   const [rules, fields, found] = await Promise.all([listCheckoutRules(store.id), listCheckoutFields(db(), store.id), ruleChoices(store.id, store.localization.locales[0] ?? "en")]);
-  const when = (iso: string) => new Date(iso).toLocaleString(facts.locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const choices: RuleChoices = {
     ...found,
     options: [{ id: "flat", label: w.flat }, ...found.options],

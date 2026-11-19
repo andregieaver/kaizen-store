@@ -4,8 +4,9 @@ import { connection } from "next/server";
 import Link from "next/link";
 
 import { Card, CARD_CLASS, PageHeader, buttonClass, chipClass } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { HANDOFF_SIGNAL } from "@/lib/kaizen-life-handoffs";
 import { resourceUrl } from "@/lib/oauth";
@@ -38,7 +39,7 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
     kaizenLifeAppUrl(account.id),
     recentHandoffsOf(account.id),
   ]);
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.connected.title} description={w.connected.description} />

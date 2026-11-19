@@ -90,7 +90,7 @@ describe("TaxProfileForm", () => {
 
 describe("OwnNumberCheckCard", () => {
   const checked = { status: "valid" as const, source: "vies" as const, checkedAt: "2026-10-03T10:00:00Z", requestIdentifier: "WAPIAAAAZZZ", name: "Kaffe AB", address: "Storgatan 1\n111 22 Stockholm" };
-  const card = (props: Partial<Parameters<typeof OwnNumberCheckCard>[0]> = {}) => html(h(OwnNumberCheckCard, { number: "SE556677889901", check: checked, canEdit: true, action, ...props }));
+  const card = (props: Partial<Parameters<typeof OwnNumberCheckCard>[0]> = {}) => html(h(OwnNumberCheckCard, { timeZone: "Europe/Oslo", number: "SE556677889901", check: checked, canEdit: true, action, ...props }));
 
   it("asks for a number first when none is saved, with no button to check it", () => {
     const out = card({ number: null, check: null });

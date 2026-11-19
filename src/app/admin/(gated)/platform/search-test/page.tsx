@@ -3,11 +3,12 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { MIN_PER_ARM, rate } from "@/lib/experiment-stats";
 import { experimentResults, listExperiments, type Comparison, type ExperimentResults, type Verdict } from "@/server/search-experiment";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
 import { requirePlatformReader } from "@/server/auth";
@@ -20,7 +21,6 @@ const card = "rounded-lg border border-line bg-card p-5";
 type Words = PlatformToolsMessages["searchTest"];
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)} %`;
 const points = (value: number, w: Words) => fillWords(w.points, { n: `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}` });
-const dateIn = (locale: string) => (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 const verdictWords = (verdict: Verdict, w: Words) => fillWords(w.verdicts[verdict], { n: MIN_PER_ARM });
 
 /**
@@ -32,7 +32,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").searchTest;
-  const date = dateIn(ADMIN_LANG_FACTS[lang].locale);
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const { id } = await searchParams;
   const experiments = await listExperiments();
   const running = experiments.find((e) => e.endedAt === null) ?? null;

@@ -7,6 +7,7 @@ import { DnsZoneCard } from "@/components/admin/dns-zone-card";
 import { DomainRegistrationsCard } from "@/components/admin/domain-registrations-card";
 import { HolderAssistant } from "@/components/admin/holder-assistant";
 import { ButtonLink, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
@@ -161,6 +162,7 @@ async function Registrations({ account, lang }: { account: Account; lang: AdminL
   );
   return (
     <DomainRegistrationsCard
+      timeZone={PLATFORM_TIME_ZONE}
       registrations={registrations.map((r, i) => ({
         apex: r.apex,
         status: r.status,
@@ -196,6 +198,7 @@ async function KeptDns({ account, lang }: { account: Account; lang: AdminLang })
       {cards.map(({ zone, read, history }) =>
         read.ok ? (
           <DnsZoneCard
+            timeZone={PLATFORM_TIME_ZONE}
             key={zone.id}
             apex={zone.apex}
             records={read.records.map((r) => ({

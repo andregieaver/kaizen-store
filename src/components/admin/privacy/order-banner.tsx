@@ -1,11 +1,11 @@
 "use client";
 
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { adminDay } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import type { OrderPrivacy } from "@/server/privacy-pages";
 
-import { dayText } from "./styles";
 
 /**
  * The banner on an order whose personal data was restricted or made anonymous (wave 1, 1g, D162, `docs/wave-1g-gdpr.md` 2.3 item 5): a
@@ -15,7 +15,8 @@ import { dayText } from "./styles";
 export function OrderPrivacyBanner({ privacy }: { privacy: OrderPrivacy | null }) {
   const staff = useAdminText("privacy").staff;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
-  const day = (value: string) => dayText(value, undefined, locale);
+  // Calendar days (`restricted_on`, `kept_until`, `anonymised_on`), never moved by a zone.
+  const day = (value: string) => adminDay(value, "day", locale);
   if (!privacy) return null;
   if (privacy.anonymisedOn) {
     return (

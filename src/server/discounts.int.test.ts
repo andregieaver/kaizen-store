@@ -149,6 +149,21 @@ describe("making codes (D31)", () => {
     ).toMatchObject({ ok: false, problems: ["The code must end after it starts."] });
   });
 
+  it("reads the times typed on the store's own clock, summer or winter (D786)", async () => {
+    const startsAt = async (zone: string | undefined, text: string, codeText: string) => {
+      const id = await saveDiscount({ ...member, store: { ...member.store, timeZone: zone } } as Membership, null, { code: codeText, kind: "percent", percent: 5, startsAt: text });
+      if (!id.ok) throw new Error(id.problems.join(" "));
+      const [row] = await db().execute<Row>(sql`select starts_at from commerce.discount_codes where store_id = ${storeId}::uuid and id = ${id.id!}::uuid`);
+      // The codes made here are taken away again: the tests after read the store's codes.
+      expect(await deleteDiscount(member, id.id!)).toEqual({ ok: true });
+      return new Date(String(row.starts_at)).toISOString();
+    };
+    expect(await startsAt("America/New_York", "2026-12-01T10:00", "NYWINTER")).toBe("2026-12-01T15:00:00.000Z");
+    expect(await startsAt("America/New_York", "2026-07-01T10:00", "NYSUMMER")).toBe("2026-07-01T14:00:00.000Z");
+    // A store that names no zone has the column's default, Oslo's.
+    expect(await startsAt(undefined, "2026-12-01T10:00", "OSLOWINTER")).toBe("2026-12-01T09:00:00.000Z");
+  });
+
   it("keeps codes in capitals, one of each per store", async () => {
     await code({ code: " sommer ", kind: "percent", percent: 20 });
     const [row] = await db().execute<Row>(sql`select code, amounts from commerce.discount_codes where store_id = ${storeId}::uuid`);

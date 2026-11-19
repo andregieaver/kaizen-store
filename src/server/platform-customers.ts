@@ -19,6 +19,8 @@ const onPlan = sql.raw(ON_PLAN_STATUSES.map((s) => `'${s}'`).join(", "));
 export type PlatformCustomerStore = {
   slug: string;
   name: string;
+  /** The store's time zone: its plan's and invoices' days are the store's (D786). */
+  timeZone: string;
   role: string;
   planName: string | null;
   status: string | null;
@@ -40,7 +42,7 @@ export type PlatformCustomerRow = {
 };
 
 const storesJson = sql`coalesce(json_agg(json_build_object(
-    'slug', s.slug, 'name', s.name, 'role', m.role, 'planName', p.name, 'status', b.status,
+    'slug', s.slug, 'name', s.name, 'timeZone', s.time_zone, 'role', m.role, 'planName', p.name, 'status', b.status,
     'currentPeriodEnd', b.current_period_end, 'cancelAtPeriodEnd', coalesce(b.cancel_at_period_end, false), 'mode', b.mode
   ) order by lower(s.name)) filter (where s.id is not null), '[]')`;
 

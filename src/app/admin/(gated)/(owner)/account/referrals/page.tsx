@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ReferralLink } from "@/components/admin/referral-link";
 import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -17,7 +18,6 @@ import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowDate, RowLea
 
 export const metadata: Metadata = { title: "Referrals" };
 
-const date = (iso: string) => iso.slice(0, 10);
 
 /**
  * A store owner's referrals (D131, `docs/referrals.md`): their link and code, how many came by it, the stores that opened,
@@ -31,6 +31,7 @@ export default async function ReferralsPage() {
   const { settings } = overview;
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const w = adminText(lang, "loyalty").referrals;
   const money = (minor: number, currency: string) => moneyIn(minor, currency, locale);
 

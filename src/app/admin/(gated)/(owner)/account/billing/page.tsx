@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
+import { adminDate } from "@/lib/admin-date";
 import { money } from "@/lib/control-center";
 import { requireAccount } from "@/server/auth";
 import { ownedStores } from "@/server/ai-usage";
@@ -26,8 +27,9 @@ const monthly = (price: NonNullable<StoreBilling["price"]>) => Math.round(price.
 export default async function OwnerBillingPage() {
   await connection();
   const account = await requireAccount();
-  const b = adminText(adminLangOf(account.adminLocale), "billing");
-  const w = adminText(adminLangOf(account.adminLocale), "screens").ownerBilling;
+  const lang = adminLangOf(account.adminLocale);
+  const b = adminText(lang, "billing");
+  const w = adminText(lang, "screens").ownerBilling;
   const per = (price: NonNullable<StoreBilling["price"]>) =>
     fillWords(w.per, { price: money(price.amountMinor, price.currency), interval: b.intervals[price.interval as keyof typeof b.intervals] ?? price.interval });
   const owned = await ownedStores(account.id);
@@ -60,7 +62,7 @@ export default async function OwnerBillingPage() {
                   </span>
                   <span className={row.status && ["past_due", "unpaid"].includes(row.status) ? "font-medium text-danger-text" : "text-muted"}>{row.status ? (b.statuses[row.status] ?? row.status) : w.noPlan}</span>
                   <span className="text-muted">
-                    {row.currentPeriodEnd ? fillWords(row.cancelAtPeriodEnd ? w.ends : w.renews, { date: row.currentPeriodEnd.slice(0, 10) }) : ""}
+                    {row.currentPeriodEnd ? fillWords(row.cancelAtPeriodEnd ? w.ends : w.renews, { date: adminDate(row, row.currentPeriodEnd, "day", lang) }) : ""}
                   </span>
                   <span className="text-muted">{fillWords(w.fee, { fee: (row.feeBps / 100).toFixed(row.feeBps % 100 === 0 ? 0 : 1) })}</span>
                   <Link href={`/admin/${row.slug}/billing`} className="underline">

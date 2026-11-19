@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { describeDelay } from "@/lib/cart-reminders";
 import { formatMoney } from "@/lib/money";
 import {
@@ -16,7 +17,7 @@ import { setPlanRemindersAction } from "./actions";
 import { requirePlatformReader } from "@/server/auth";
 import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Plan reminders" };
@@ -44,7 +45,7 @@ export default async function PlanRemindersPage() {
   ]);
   const base = "/admin/platform/plan-reminders";
   const codeOf = (id: string | null) => discounts.find((d) => d.id === id)?.code ?? null;
-  const date = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const active = settings.steps.filter((s) => s.active).length;
 
   return (

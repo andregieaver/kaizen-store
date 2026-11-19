@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PlanDiscount } from "@/components/admin/plan-discount";
 import { PlanFeatureTable } from "@/components/plan-feature-table";
+import { adminDate } from "@/lib/admin-date";
 import { formatMoney } from "@/lib/money";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { mainCurrency } from "@/lib/markets";
@@ -109,7 +110,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
     ? fillWords(w.campaign, {
         name: campaign.name,
         gives: platformDiscountSummary(campaign, (minor, cur) => formatMoney(minor, cur, moneyLocale), words.discount),
-        date: new Date(campaign.expiresAt).toLocaleDateString(locale, { day: "numeric", month: "long", timeZone: "Europe/Oslo" }),
+        date: adminDate(store, campaign.expiresAt, "dayMonth", lang),
       }) +
       (campaign.planIds.length > 0
         ? fillWords(w.campaignPlans, {
@@ -119,6 +120,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
     : null;
   const codeField = (
     <PlanDiscount
+      timeZone={store.timeZone}
       discount={billing?.discount ?? null}
       apply={applyPlanDiscountAction.bind(null, store.slug)}
       remove={removePlanDiscountAction.bind(null, store.slug)}
@@ -136,7 +138,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         ? priceLabel(billing.price.amountMinor, billing.price.currency, billing.price.interval)
         : `${formatMoney(billing.price.amountMinor, billing.price.currency, moneyLocale)} / ${words.intervals[billing.price.interval]}`
       : null;
-  const periodEnd = billing?.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Oslo" }) : null;
+  const periodEnd = billing?.currentPeriodEnd ? adminDate(store, billing.currentPeriodEnd, "long", lang) : null;
   const sentence = onPlan && billing?.planName ? (
     <>
       <span className="text-ink">{fillWords(sw.onPlan, { store: store.name, plan: billing.planName })}</span>
@@ -146,7 +148,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
     <>
       <span className="text-ink">{fillWords(sw.none, { store: store.name })}</span>
       {trialEnd && trialEnd > new Date()
-        ? fillWords(sw.trial, { date: trialEnd.toLocaleDateString(locale, { day: "numeric", month: "long", timeZone: "Europe/Oslo" }) })
+        ? fillWords(sw.trial, { date: adminDate(store, trialEnd, "dayMonth", lang) })
         : offered.length > 0 && mode
           ? sw.choose
           : ""}
@@ -174,7 +176,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
               {billing.currentPeriodEnd && (
                 <>
                   <dt className="text-muted">{billing.cancelAtPeriodEnd ? w.ends : w.renews}</dt>
-                  <dd>{billing.currentPeriodEnd.slice(0, 10)}</dd>
+                  <dd>{adminDate(store, billing.currentPeriodEnd, "day", lang)}</dd>
                 </>
               )}
             </>
@@ -184,11 +186,11 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         </dl>
         {/* A store that began on a trial goes private when a cancelled plan ends (D420), so its owner is told before. */}
         {onPlan && billing?.cancelAtPeriodEnd && billing.currentPeriodEnd && trialEnd && (
-          <p className="mt-3">{fillWords(w.endsPrivate, { date: billing.currentPeriodEnd.slice(0, 10) })}</p>
+          <p className="mt-3">{fillWords(w.endsPrivate, { date: adminDate(store, billing.currentPeriodEnd, "day", lang) })}</p>
         )}
         {/* A self-serve store's trial (D359), while no plan is running. */}
         {trialEnd && !onPlan && (
-          <p className="mt-3">{fillWords(trialEnd > new Date() ? w.trial : w.trialEnded, { date: trialEnd.toISOString().slice(0, 10) })}</p>
+          <p className="mt-3">{fillWords(trialEnd > new Date() ? w.trial : w.trialEnded, { date: adminDate(store, trialEnd, "day", lang) })}</p>
         )}
         {mode === "test" && <p className="mt-3 text-muted">{w.testMode}</p>}
       </Card>
@@ -287,7 +289,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         </div>
       </details>
 
-      {themes.length > 0 && <ThemePurchases purchases={themes} words={words} lang={lang} />}
+      {themes.length > 0 && <ThemePurchases purchases={themes} words={words} lang={lang} timeZone={store.timeZone} />}
 
       {onPlan && isOwner && (
         <Card title={w.invoicesTitle} compact>
@@ -443,7 +445,7 @@ function WithCode({
  * The premium themes the store has or owes (D286): each paid once, without VAT, when it went live on the open store (one chosen before the
  * store opened is paid when it opens), invoiced by Kaizena Flow like the plan.
  */
-function ThemePurchases({ purchases, words, lang }: { purchases: ThemePurchase[]; words: BillingMessages; lang: "en" | "nb" }) {
+function ThemePurchases({ purchases, words, lang, timeZone }: { purchases: ThemePurchase[]; words: BillingMessages; lang: "en" | "nb"; timeZone: string }) {
   const w = words.themes;
   return (
     <Card title={w.title} description={w.description} compact>
@@ -454,7 +456,7 @@ function ThemePurchases({ purchases, words, lang }: { purchases: ThemePurchase[]
             <ListRow key={purchase.id}>
               <RowLead
                 title={purchase.title}
-                sub={purchase.paidAt ? fillWords(w.paid, { date: purchase.paidAt.slice(0, 10) }) : fillWords(w.chosen, { date: purchase.createdAt.slice(0, 10) })}
+                sub={purchase.paidAt ? fillWords(w.paid, { date: adminDate(timeZone, purchase.paidAt, "day", lang) }) : fillWords(w.chosen, { date: adminDate(timeZone, purchase.createdAt, "day", lang) })}
               />
               <RowFact sub={w.exclVat}>{purchase.status === "granted" ? w.included : priceText(purchase.price, lang === "en" ? "en" : ADMIN_LANG_FACTS[lang].locale)}</RowFact>
               <Chip signal={status.signal} dot>

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 import { CustomerBar } from "@/components/admin/customer-bar";
+import { adminDate } from "@/lib/admin-date";
 import { formatMoney } from "@/lib/money";
 import { getStoreBilling, getStoreInvoice } from "@/server/billing";
 import { listStorePeople } from "@/server/platform-customers";
@@ -11,7 +12,7 @@ import { getStore } from "@/server/stores";
 import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Invoice" };
@@ -40,7 +41,8 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
   if (!invoice) notFound();
   const owner = people.find((p) => p.role === "owner") ?? people[0];
   const money = (minor: number) => formatMoney(minor, invoice.currency, "nb-NO");
-  const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  // The invoice's days on the store's own day, as its billing page shows them (D786).
+  const date = (iso: string) => adminDate(store, iso, "day", lang);
   const planPage = `/admin/platform/stores/${store.slug}`;
 
   return (

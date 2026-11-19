@@ -1,6 +1,8 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-buttons";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import type { AdminLang } from "@/lib/admin-lang";
 import { DEMO_STORES_HREF } from "@/lib/theme-admin-paths";
 import type { DemoStore } from "@/server/demo-stores";
 
@@ -33,6 +35,7 @@ export function DemoStoreView({
   preset,
   unthemed,
   w = platformSiteEn,
+  lang = "en",
 }: {
   demo: DemoStore;
   /** Whether its look can be a preset of the theme it wears, and why not. */
@@ -40,6 +43,7 @@ export function DemoStoreView({
   /** Just made, but its theme could not be applied. */
   unthemed: boolean;
   w?: PlatformSiteMessages;
+  lang?: AdminLang;
 }) {
   const d = w.demo;
   const facts = { published: demo.published, archivedAt: demo.archivedAt, publishedAt: demo.publishedAt, changed: false, used: false };
@@ -54,7 +58,7 @@ export function DemoStoreView({
         meta={[
           fillWords(d.wears, { look: wearsWords(wears, d.ownLook) }),
           demo.published ? fillWords(d.liveAt, { address: demo.address }) : fillWords(d.itsStore, { slug: demo.storeSlug }),
-          demo.publishedAt && fillWords(d.published, { date: demo.publishedAt.slice(0, 10) }),
+          demo.publishedAt && fillWords(d.published, { date: adminDate(PLATFORM_TIME_ZONE, demo.publishedAt, "day", lang) }),
         ]}
       />
 

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CustomerBar } from "@/components/admin/customer-bar";
 import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
+import { adminDate } from "@/lib/admin-date";
 import { designPreviewPath } from "@/lib/design-presets";
 import { latestDesignUse, listDesigns } from "@/server/design-presets";
 import { themeLookThumbs } from "@/server/theme-store";
@@ -66,7 +67,8 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
   const offer = await featureOffer(store.id);
   const blockers = closureBlockers(obligations, adminText(lang, "settings").close);
   const owner = people.find((p) => p.role === "owner");
-  const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  // The store's plan and invoices on the store's own day, as its billing page shows them (D786).
+  const date = (iso: string) => adminDate(store, iso, "day", lang);
   if (!billing) notFound();
   const mode = billingMode();
   const onPlan = isOnPlan(billing.status);
@@ -122,7 +124,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             {billing.currentPeriodEnd && billing.status !== "canceled" && (
               <>
                 <dt className="text-muted">{billing.cancelAtPeriodEnd ? w.ends : w.nextInvoice}</dt>
-                <dd>{billing.currentPeriodEnd.slice(0, 10)}</dd>
+                <dd>{date(billing.currentPeriodEnd)}</dd>
               </>
             )}
             {billing.subscriptionId && (
@@ -219,6 +221,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
 
       {mode && (
         <PlanDiscount
+          timeZone={store.timeZone}
           discount={billing.discount}
           apply={applyStoreDiscountAction.bind(null, store.slug)}
           remove={null}
@@ -247,6 +250,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         </ActionForm>
       </Card>
       <LimitOverridesCard
+        timeZone={store.timeZone}
         limits={limits.limits}
         overrides={overrides}
         words={adminText(lang, "capacity")}
@@ -321,6 +325,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
 
       {/* Design profiles (D176): a platform admin applies one to any store, a store template's included (an unpublished one only there). */}
       <DesignProfilePanel
+        timeZone={store.timeZone}
         designs={designs
           .filter((d) => d.readable && (d.published || store.starter))
           .map((d) => ({ ...d, previewHref: designPreviewPath(d.id, null, true), thumbs: thumbs.get(d.id) }))}

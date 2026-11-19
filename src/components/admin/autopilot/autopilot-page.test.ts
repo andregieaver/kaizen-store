@@ -20,7 +20,7 @@ const actions = { decide: action, answer: action, plan: action, dropGoal: action
 const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [], effects: null, tests: [], signups: null, site: null };
 
 const page = (overview: AutopilotOverview, tab: AutopilotTab = "decisions", lang: "en" | "nb" = "en") =>
-  html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments", tests: "/admin/demo/experiments" } }));
+  html(createElement(AutopilotPage, { timeZone: "Europe/Oslo", overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments", tests: "/admin/demo/experiments" } }));
 
 describe("follow-ups on the Autopilot page (PSI AGT-04)", () => {
   it("lists what the AI manager will come back to, when in the store's time, each with Cancel, and counts it as waiting", () => {

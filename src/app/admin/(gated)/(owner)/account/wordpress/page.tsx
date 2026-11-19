@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { primaryButton, secondaryButton } from "@/components/admin/work/work-parts";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "@/lib/wordpress-plugin";
 import { requireAccount } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -14,8 +15,6 @@ import { revokeConnectionAction } from "./actions";
 
 export const metadata: Metadata = { title: "WordPress" };
 
-const when = (iso: string | null, never: string) => (iso ? iso.slice(0, 16).replace("T", " ") : never);
-
 /**
  * The WordPress sites connected to the account's stores (D169, `docs/wordpress-plugin.md`): the plugin to download, and each site that
  * was approved, when it last read, and a way to disconnect it. A site reads the public catalogue of the stores the account belongs to,
@@ -25,7 +24,8 @@ export default async function WordpressPage() {
   await connection();
   const account = await requireAccount();
   const sites = await connectionsOf(account.id);
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").wordpress;
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "bookings").wordpress;
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
@@ -60,7 +60,7 @@ export default async function WordpressPage() {
                   <p className="truncate font-medium">{site.siteName}</p>
                   <p className="truncate text-sm text-muted">{site.siteUrl}</p>
                   <p className="text-xs text-muted">
-                    {fillWords(w.connected, { at: when(site.connectedAt, w.never), read: when(site.lastUsedAt, w.never) })}
+                    {fillWords(w.connected, { at: adminDate(PLATFORM_TIME_ZONE, site.connectedAt, "dayTime", lang) || w.never, read: adminDate(PLATFORM_TIME_ZONE, site.lastUsedAt, "dayTime", lang) || w.never })}
                   </p>
                 </div>
                 <form action={revokeConnectionAction.bind(null, site.id)}>
