@@ -13,6 +13,7 @@ import { listSegments, segmentNames, segmentPeople } from "@/server/segments";
 
 import { keepStarterAction } from "./actions";
 import { requireExtension } from "@/components/admin/extension-off";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 export const metadata: Metadata = { title: "Segments" };
 
@@ -101,7 +102,7 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
                   <span className="text-metric text-ink">
                     {s.count.toLocaleString(numbers)} <span className="text-caption text-muted">{countWords(s.count, w.segments.peopleNow)}</span>
                   </span>
-                  <form action={keepStarterAction.bind(null, store.slug, s.key)}>
+                  <QuietActionForm action={keepStarterAction.bind(null, store.slug, s.key)}>
                     <button
                       type="submit"
                       className={
@@ -113,7 +114,7 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
                       {w.segments.keep}
                       <span className="sr-only"> {s.name}</span>
                     </button>
-                  </form>
+                  </QuietActionForm>
                 </div>
               </li>
             ))}

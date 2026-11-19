@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
 import { adminText } from "@/lib/admin-text";
@@ -36,11 +37,11 @@ export default async function SubscriberPage({ params }: PageProps<"/admin/[stor
         meta={[subscriber.name, subscriber.customer ? ws.hasAccount : null, subscriber.locale]}
         actions={
           subscriber.status !== "unsubscribed" && memberCan(member, "marketing:write") ? (
-            <form action={unsubscribeAction.bind(null, store.slug, subscriber.id)}>
+            <QuietActionForm action={unsubscribeAction.bind(null, store.slug, subscriber.id)}>
               <Button type="submit" kind="danger">
                 {ws.unsubscribe}
               </Button>
-            </form>
+            </QuietActionForm>
           ) : undefined
         }
       />

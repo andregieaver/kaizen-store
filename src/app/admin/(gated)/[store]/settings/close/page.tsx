@@ -13,6 +13,7 @@ import { requireOwnerRole } from "@/server/permissions";
 import { storeObligations, storeState } from "@/server/store-closure";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { closeStoreAction, reopenStoreAction, signInAgainAction } from "./actions";
 
@@ -132,9 +133,9 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
             {w.signInTitle}
           </h2>
           <p className="text-sm text-muted">{w.signInText}</p>
-          <form action={signInAgainAction.bind(null, store.slug)}>
+          <QuietActionForm action={signInAgainAction.bind(null, store.slug)}>
             <SubmitButton>{w.signIn}</SubmitButton>
-          </form>
+          </QuietActionForm>
         </section>
       )}
 

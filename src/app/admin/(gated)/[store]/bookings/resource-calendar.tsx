@@ -5,6 +5,7 @@ import { siteUrl } from "@/lib/site";
 import type { ResourceKind } from "@/server/bookings";
 import { calendarPath, listBlocks, listFeeds } from "@/server/calendar-sync";
 import { Card } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -82,11 +83,11 @@ export async function ResourceCalendar({
                 {b.feed ? (
                   <span className="text-xs text-muted">{fillWords(w.goesWhen, { site: b.feed })}</span>
                 ) : (
-                  <form action={actions.removeBlock.bind(null, b.id)}>
+                  <QuietActionForm action={actions.removeBlock.bind(null, b.id)}>
                     <button type="submit" className={small}>
                       {w.openAgain} <span className="sr-only">{span(b.startsAt, b.endsAt)}</span>
                     </button>
-                  </form>
+                  </QuietActionForm>
                 )}
               </li>
             ))}
@@ -124,18 +125,18 @@ export async function ResourceCalendar({
                   <input readOnly value={address} className={`${control} font-mono text-xs`} />
                 </label>
                 <p className="text-muted">{w.addressHint}</p>
-                <form action={actions.resetCalendar}>
+                <QuietActionForm action={actions.resetCalendar}>
                   <button type="submit" className={small}>
                     {w.newAddress}
                   </button>
-                </form>
+                </QuietActionForm>
               </>
             ) : (
-              <form action={actions.resetCalendar}>
+              <QuietActionForm action={actions.resetCalendar}>
                 <button type="submit" className={small}>
                   {w.makeAddress}
                 </button>
-              </form>
+              </QuietActionForm>
             )}
           </div>
 
@@ -159,16 +160,16 @@ export async function ResourceCalendar({
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <form action={actions.syncFeed.bind(null, f.id)}>
+                      <QuietActionForm action={actions.syncFeed.bind(null, f.id)}>
                         <button type="submit" className={small}>
                           {w.readNow} <span className="sr-only">{f.name}</span>
                         </button>
-                      </form>
-                      <form action={actions.removeFeed.bind(null, f.id)}>
+                      </QuietActionForm>
+                      <QuietActionForm action={actions.removeFeed.bind(null, f.id)}>
                         <button type="submit" className={small}>
                           {w.remove} <span className="sr-only">{f.name}</span>
                         </button>
-                      </form>
+                      </QuietActionForm>
                     </div>
                   </li>
                 ))}

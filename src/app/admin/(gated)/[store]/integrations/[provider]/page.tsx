@@ -17,6 +17,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
 import { slackAppOn } from "@/server/slack";
 import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
 import { topicOffered } from "@/lib/extensions";
@@ -83,11 +84,11 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             {integration ? w.changeChannel : w.addToSlack}
           </h2>
           <p className="mb-3 text-sm text-muted">{w.slackAsks}</p>
-          <form action={connectSlackAction.bind(null, store.slug)}>
+          <QuietActionForm action={connectSlackAction.bind(null, store.slug)}>
             <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
               {integration ? w.otherChannel : w.addToSlack}
             </button>
-          </form>
+          </QuietActionForm>
         </section>
       )}
 

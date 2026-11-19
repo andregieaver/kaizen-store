@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
@@ -33,10 +34,24 @@ import {
 import { AddCustomApp, CustomAppCard } from "@/components/admin/custom-apps";
 import { listCustomApps } from "@/server/custom-apps";
 import { MakeStorefrontToken, RevokeStorefrontToken } from "@/components/admin/storefront-tokens";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { STOREFRONT_ROUTES } from "@/lib/storefront-api";
 import { listStorefrontTokens } from "@/server/storefront-api";
 
 export const metadata: Metadata = { title: "Apps and API" };
+
+/** A row's one action, which answers by what it does (code review 1.15, D829). */
+function RowAction({ action, kind, children }: { action: (formData: FormData) => Promise<unknown>; kind: "danger" | "secondary"; children: ReactNode }) {
+  return (
+    <RowActions>
+      <QuietActionForm action={action}>
+        <button type="submit" className={buttonClass(kind, "dense")}>
+          {children}
+        </button>
+      </QuietActionForm>
+    </RowActions>
+  );
+}
 
 /** Settings → Apps and API (D355): the Admin API's tokens, made and revoked by owners, and how to call it. */
 export default async function ApiTokensPage({ params }: PageProps<"/admin/[store]/settings/api">) {
@@ -105,11 +120,11 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
                               ))}
                             </ul>
                             {asks.get(grant.id)!.installerCan ? (
-                              <form action={approveInstallationScopesAction.bind(null, store.slug, grant.id)} className="mt-2">
+                              <QuietActionForm action={approveInstallationScopesAction.bind(null, store.slug, grant.id)} className="mt-2">
                                 <button type="submit" className={buttonClass("main", "dense")}>
                                   {ow.store.apps.approve}
                                 </button>
-                              </form>
+                              </QuietActionForm>
                             ) : (
                               <p className="mt-2 text-sm text-ink-2">{fillWords(ow.store.apps.installerCant, { person: grant.person.name ?? grant.person.email })}</p>
                             )}
@@ -118,13 +133,9 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
                       </>
                     }
                   />
-                  <RowActions>
-                    <form action={removeInstallationAction.bind(null, store.slug, grant.id)}>
-                      <button type="submit" className={buttonClass("danger", "dense")}>
-                        {ow.store.apps.remove}
-                      </button>
-                    </form>
-                  </RowActions>
+                  <RowAction action={removeInstallationAction.bind(null, store.slug, grant.id)} kind="danger">
+                    {ow.store.apps.remove}
+                  </RowAction>
                 </ListRow>
               ))}
             </List>
@@ -150,13 +161,9 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
                       </>
                     }
                   />
-                  <RowActions>
-                    <form action={cutGrantAction.bind(null, store.slug, grant.id)}>
-                      <button type="submit" className={buttonClass("danger", "dense")}>
-                        {ow.store.cut}
-                      </button>
-                    </form>
-                  </RowActions>
+                  <RowAction action={cutGrantAction.bind(null, store.slug, grant.id)} kind="danger">
+                    {ow.store.cut}
+                  </RowAction>
                 </ListRow>
               ))}
             </List>
@@ -178,13 +185,9 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
                       </>
                     }
                   />
-                  <RowActions>
-                    <form action={liftCutoffAction.bind(null, store.slug, cut.id)}>
-                      <button type="submit" className={buttonClass("secondary", "dense")}>
-                        {ow.store.letIn}
-                      </button>
-                    </form>
-                  </RowActions>
+                  <RowAction action={liftCutoffAction.bind(null, store.slug, cut.id)} kind="secondary">
+                    {ow.store.letIn}
+                  </RowAction>
                 </ListRow>
               ))}
             </List>

@@ -15,6 +15,7 @@ import { db } from "@/db/client";
 import { sendcloudSenders } from "@/server/sendcloud-shipping";
 import { getCarrier } from "@/server/shipping-carriers";
 import { PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -346,11 +347,11 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       )}
 
       {owner && saved && (
-        <form action={removeCarrierAction.bind(null, store.slug, info.id)}>
+        <QuietActionForm action={removeCarrierAction.bind(null, store.slug, info.id)}>
           <button type="submit" className="text-sm underline">
             {fillWords(w.forget, { name: info.name })}
           </button>
-        </form>
+        </QuietActionForm>
       )}
     </div>
   );

@@ -18,6 +18,7 @@ import { evaluateSegment, getSegment, segmentNames, segmentUses } from "@/server
 import { deleteSegmentAction, previewSegmentAction, saveSegmentAction } from "../actions";
 import { editorChoices } from "../editor-props";
 import { requireExtension } from "@/components/admin/extension-off";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 export const metadata: Metadata = { title: "Segment" };
 
@@ -64,11 +65,11 @@ export default async function SegmentPage({ params, searchParams }: PageProps<"/
         }
         actions={
           mayWrite ? (
-            <form action={deleteSegmentAction.bind(null, store.slug, segment.id)}>
+            <QuietActionForm action={deleteSegmentAction.bind(null, store.slug, segment.id)}>
               <Button type="submit" kind="danger">
                 {w.common.delete}
               </Button>
-            </form>
+            </QuietActionForm>
           ) : undefined
         }
       />

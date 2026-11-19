@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdminText } from "@/components/admin/admin-text";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { cancelBookingAction } from "./actions";
 
@@ -10,7 +11,7 @@ export function CancelBookingForm({ storeSlug, bookingId }: { storeSlug: string;
   return (
     <details className="text-left">
       <summary className="cursor-pointer text-right text-muted underline">{w.menu}</summary>
-      <form
+      <QuietActionForm
         action={cancelBookingAction.bind(null, storeSlug, bookingId)}
         className="mt-2 flex max-w-xs flex-col gap-2 rounded-md border border-line p-3"
       >
@@ -22,7 +23,7 @@ export function CancelBookingForm({ storeSlug, bookingId }: { storeSlug: string;
         <button type="submit" className="min-h-10 rounded-pill border border-edge px-3 font-medium">
           {w.submit}
         </button>
-      </form>
+      </QuietActionForm>
     </details>
   );
 }

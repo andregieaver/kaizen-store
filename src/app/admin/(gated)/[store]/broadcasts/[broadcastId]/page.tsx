@@ -32,6 +32,7 @@ import {
 } from "../actions";
 import { broadcastChoices } from "../editor-props";
 import { requireExtension } from "@/components/admin/extension-off";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 export const metadata: Metadata = { title: "Broadcast" };
 
@@ -76,15 +77,15 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
           actions={
             mayWrite ? (
               broadcast.status === "scheduled" ? (
-                <form action={unscheduleBroadcastAction.bind(null, store.slug, broadcast.id)}>
+                <QuietActionForm action={unscheduleBroadcastAction.bind(null, store.slug, broadcast.id)}>
                   <Button type="submit">{wb.dontSend}</Button>
-                </form>
+                </QuietActionForm>
               ) : (
-                <form action={deleteBroadcastAction.bind(null, store.slug, broadcast.id)}>
+                <QuietActionForm action={deleteBroadcastAction.bind(null, store.slug, broadcast.id)}>
                   <Button type="submit" kind="danger">
                     {w.common.delete}
                   </Button>
-                </form>
+                </QuietActionForm>
               )
             ) : undefined
           }
@@ -121,13 +122,13 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
               />
             </Card>
             <Card title={wb.saveAsTemplate} compact>
-              <form action={saveAsTemplateAction.bind(null, store.slug, broadcast.id)} className="flex flex-wrap items-end gap-3">
+              <QuietActionForm action={saveAsTemplateAction.bind(null, store.slug, broadcast.id)} className="flex flex-wrap items-end gap-3">
                 <label className="flex min-w-48 flex-1 flex-col gap-1 text-body">
                   {wb.templateName}
                   <input name="title" required maxLength={120} defaultValue={broadcast.title} className="min-h-10 rounded-md border border-line bg-card px-3" />
                 </label>
                 <Button type="submit">{wb.saveAsTemplate}</Button>
-              </form>
+              </QuietActionForm>
             </Card>
             <Card title={w.common.whatItSays} compact>
               <BroadcastEditor
@@ -175,11 +176,11 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
         description={broadcast.audienceWords ?? undefined}
         actions={
           mayWrite && broadcast.status === "sending" ? (
-            <form action={stopBroadcastAction.bind(null, store.slug, broadcast.id)}>
+            <QuietActionForm action={stopBroadcastAction.bind(null, store.slug, broadcast.id)}>
               <Button type="submit" kind="danger">
                 {wb.stopSending}
               </Button>
-            </form>
+            </QuietActionForm>
           ) : undefined
         }
       />
