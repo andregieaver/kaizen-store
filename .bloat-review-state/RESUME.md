@@ -365,3 +365,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 15:15 2.4 re-check on prod OK (5 pages PRERENDER, full payloads, real titles; mine private no-store). D805 written (ab13770c1, 1d4e9e889). 2.4 In progress till commit 4. Follow-up: drop optimisticRouting:false (D592). Owed D-row: 2.42.
 - 2.4 fix 2 pushed (8282a95b8 cart placeholder min-h-svh; e4e58f1eb theme-switch spec waits). Watch CI signed-in + money path on it; money path cart now 15 (budget 20, may drop to 16 after CI confirms).
 - kz-b: 2.5+2.6 resume from wip-2.5b, Opus a068d0b4b5412f9c2, brief $S/run/kz-b-25-26c.md.
+- 17:18 2.20 pushed 8af4efe0d..5f85cefad (reviewed, rebased, lint/tc/full unit 1393 pass). Check at 18:19 (trig_012U5rZQNiL7SKfMv7iXxWVL): CI hosts job, theme-switch, money path (lower 20->16 if 15), then D-row 2.20.
+- kz-d: 2.21 Opus ad1291ddd1d547e4b, brief $S/run/kz-d-2.21.md (ports 3300-3304, scripts in scratchpad/kzd-221/).
+- Note: another session pushed "bloat review step 3.7 commit 1" (332f47e30): someone else is on phase 3.
