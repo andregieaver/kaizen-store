@@ -20,27 +20,18 @@
     "site-front-page": 488,
     "docs-feedback": 282,
     "page-reads": 72,
-    "page-article": 430
+    "page-article": 430,
+    "stores": 102
   },
   "exceptions": {
     "proxy": [],
     "start-hook": [],
     "health": [],
-    "beacon-visit": [
-      "src/lib/admin-messages/"
-    ],
-    "beacon-touch": [
-      "src/lib/admin-messages/"
-    ],
-    "beacon-speed": [
-      "src/lib/admin-messages/"
-    ],
-    "beacon-own-speed": [
-      "src/lib/admin-messages/"
-    ],
-    "beacon-recommendation-events": [
-      "src/lib/admin-messages/"
-    ],
+    "beacon-visit": [],
+    "beacon-touch": [],
+    "beacon-speed": [],
+    "beacon-own-speed": [],
+    "beacon-recommendation-events": [],
     "shop-tiles": [
       "@supabase/supabase-js",
       "src/lib/admin-messages/",
@@ -56,7 +47,8 @@
     "site-front-page": [],
     "docs-feedback": [],
     "page-reads": [],
-    "page-article": []
+    "page-article": [],
+    "stores": []
   },
   "heavyHandlers": {
     "src/app/api/cron/cart-reminders/route.ts": {
