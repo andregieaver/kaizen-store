@@ -133,6 +133,17 @@ export async function preflightChangeOrder(ctx: Ctx, input: OrderChangeInput): P
   if (!preview.ok) fail(words(preview.problems) || "The order cannot be changed so.");
 }
 
+/** The money a change would move, for the autopilot in the challenge (A2, D804): null when it cannot be previewed or would be refused. */
+export async function orderChangeMoneyOf(ctx: Ctx, input: OrderChangeInput): Promise<"none" | "refund" | "charge" | null> {
+  try {
+    const { preview } = await previewOf(ctx, input);
+    if (!preview.ok) return null;
+    return preview.money === "charge" || preview.money === "refund" ? preview.money : "none";
+  } catch {
+    return null;
+  }
+}
+
 /** What the owner is asked, and the order's state it describes (kept with the call as `approved_base`). */
 export async function orderChangeApprovalDetails(ctx: Ctx, input: OrderChangeInput): Promise<{ summary: string; base: unknown } | null> {
   try {
