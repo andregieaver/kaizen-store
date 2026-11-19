@@ -568,24 +568,28 @@ step 3.7 for that part; a ceiling is never raised.
 | Statements per added line | 41, 43 and 49 for 1, 2 and 5 lines: +2 a line | +2 a line | (2) |
 | Trigger time, of the order's database time (`pg_stat_user_functions`, track_functions on) | 5.6 of 81.8 ms (7%) | under a fifth | (3) |
 | A visitor's first page view of the day (`recordVisit()`) | 5 statements, 3 rows | 5 statements, 3 rows | (4) |
-| Optional features' triggers on a shop-only store's paid order | 4.2 to 6.2 ms (four runs) | under 2 ms | not asserted yet |
+| Optional features' triggers on a shop-only store's paid order, warm connection | 1.44 to 1.88 ms (six runs) | under 2.9 ms | (5) |
 
 Case 2's ceiling is today's figure, so one more statement per line in `insertOrderLine()` fails it. Case 4's is today's figure too (the
 owner's rule from step 0.43): the store, whether the visitor is known today, the two rate-limit upserts of `takeNewVisit()`, which protect
 the counts against a script and stay, and the visit's upsert; a repeat page view sends 3 and writes 1. Case 3 sums each trigger
 function's total time, so a trigger fired inside another counts twice; it is skipped only where track_functions cannot be set.
 
-The fifth line is over: the trigger functions of bonus (`orders_bonus`), gift cards (`orders_issue_gift_cards`,
+The fifth line counts the trigger functions of bonus (`orders_bonus`), gift cards (`orders_issue_gift_cards`,
 `payments_issue_gift_cards`, `orders_gift_card_payments`, `payments_gift_card`, `orders_gift_card_people`), affiliates
-(`orders_affiliate`), creators (`orders_creator`, `payments_creator`) and bookings (`order_bookings_follow`) take that long on a paid
-order (standing orders and suppliers have no trigger on the order's tables; `payments_referral` is Kaizena Flow's own fee and
-`orders_deal_win` the CRM's). Each is measured on a fresh connection, where a function's first call also compiles it and plans its
-statements: paying two orders one after the other on one connection (psql, `pg_stat_xact_user_functions`, rolled back), the same
-functions took 3.7 ms for the first and 0.75 ms for the second. A first-line test of the store's switch was not made: with a feature off these functions still have work to do for a store
-that had it on (cards already sold are still spent and refunded, D178's gift card words; credits held come back on a cancel, as bonus is
-never blocked from switching off; an affiliate's or creator's attributed order is rewarded when due, the comment in
-`affiliate_order_paid()`; creators have no switch; `order_bookings_follow()` also confirms appointments, which are not the `bookings`
-feature). The assertion waits for the reviewer's decision on how to gate them.
+(`orders_affiliate`), creators (`orders_creator`, `payments_creator`) and bookings (`order_bookings_follow`); standing orders and
+suppliers have no trigger on the order's tables, `payments_referral` is Kaizena Flow's own fee and `orders_deal_win` the CRM's. They run
+when an order is paid. On a fresh connection they took 4.2 to 6.2 ms, as a function's first call there also compiles it and plans its
+statements: a cold start of the connection, not a cost of each order. So case 5 places two orders and pays both on one connection, in one
+transaction, as the checkout pays them (the payment row, then `complete_order_payment()`, constraints immediate as each of the checkout's
+statements is its own transaction), and measures the second from `pg_stat_xact_user_functions`: 1.44 to 1.88 ms, of which the gift card
+issue 0.67 to 0.98. Over 1.5 ms, so the ceiling held is today's worst plus a half (2.82, rounded up to 2.9) rather than the plan's 2 ms.
+
+None of these functions returns early on the store's switch, and none may: with a feature off they still have work for a store that had
+it on (cards already sold are still spent and refunded, D178's gift card words; credits held come back on a cancel, as bonus is never
+blocked from switching off; an attributed order is rewarded when due, the comment in `affiliate_order_paid()`; creators have no switch;
+`order_bookings_follow()` also confirms appointments, which are not the `bookings` feature). Even that unsafe gate, tried on a local
+copy, left 1.7 to 2.6 ms on a fresh connection.
 
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 

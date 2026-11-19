@@ -195,12 +195,37 @@ async function measureTriggers(run: () => Promise<unknown>): Promise<{ m: Measur
   return { m, moved };
 }
 
+/**
+ * Optional features' trigger functions: each reads a table of a feature a shop-only store has switched off (bonus, gift cards, affiliates,
+ * creators, bookings). Standing orders and suppliers have no trigger on the order's tables; payments_referral is Kaizena Flow's own fee and
+ * orders_deal_win the CRM's. None returns early on the store's switch, and none may: with the feature off each still has work for a store
+ * that had it on (D178).
+ */
+const OPTIONAL_TRIGGERS: Record<string, string> = {
+  orders_bonus: "bonus: earns credits on payment, and gives held credits back on a cancel even with bonus off",
+  orders_issue_gift_cards: "gift cards: issues the cards an order bought when it is paid",
+  payments_issue_gift_cards: "gift cards: the same issue when a payment is captured",
+  orders_gift_card_payments: "gift cards: captures or cancels the order's gift card payments (cards sold stay usable with the feature off)",
+  payments_gift_card: "gift cards: holds, spends or releases a card's amount for a gift card payment",
+  orders_gift_card_people: "gift cards: forgets a card's recipient with the order's anonymising",
+  orders_affiliate: "affiliates (referrals): rewards an attributed order when due, even with the program off since",
+  orders_creator: "creators: a creator's commission on a paid order (no store switch)",
+  payments_creator: "creators: the same commission when a payment is written",
+  order_bookings_follow: "bookings: confirms or cancels the order's bookings, appointments included",
+};
+
+/**
+ * The optional features' trigger functions on a warm connection, of one paid order. The plan's line is 2 ms; today's figure is 1.44 to
+ * 1.88 ms (six runs, 19 November 2026, the gift card issue 0.67 to 0.98 of it), over 1.5, so the ceiling held is today's worst plus a half
+ * (1.88 x 1.5 = 2.82, rounded up to 2.9), the reviewer's rule for step 2.48.
+ */
+const OPTIONAL_MS = 2.9;
+
 const sumMs = (times: { ms: number }[]) => times.reduce((sum, t) => sum + t.ms, 0);
 const round = (ms: number) => Math.round(ms * 1000) / 1000;
 
 /**
- * A placed order's ceilings (bloat review step 2.48, `docs/performance.md` What one placed order costs). The fifth, optional features'
- * triggers under 2 ms of a shop-only store's paid order, is measured there and not asserted yet: see that section.
+ * A placed order's ceilings (bloat review step 2.48, `docs/performance.md` What one placed order costs).
  */
 describe("a placed order's ceilings", () => {
   // track_functions is a superuser setting, and the app's pool is another connection: set for the database, and the pool reconnects.
@@ -319,4 +344,53 @@ describe("a placed order's ceilings", () => {
     expect(m.statements, `a counted visit sends ${m.statements} statements, ceiling ${VISIT.statements}: ${NEVER_RAISE}`).toBeLessThanOrEqual(VISIT.statements);
     expect(w.rowsInserted + w.rowsUpdated, `a counted visit writes ${w.rowsInserted + w.rowsUpdated} rows (${w.tables.join(", ")}), ceiling ${VISIT.rows}: ${NEVER_RAISE}`).toBeLessThanOrEqual(VISIT.rows);
   }, 120_000);
+  it("(5) spends under 2.9 ms in optional features' triggers on a shop-only store's paid order, on a warm connection", async (ctx) => {
+    if (!canTime) ctx.skip(whyNot);
+    const shop = await shopOnlyStore("ceiling-optional");
+    const lineSkus = (await simpleSkus(shop.storeId)).slice(0, 3);
+    const placed = async () => {
+      const cartId = await cartOf(shop, lineSkus.map((sku) => [sku, 1]));
+      const result = await placeOrder({ storeId: shop.storeId, market: NO }, cartId, {});
+      if (!result.ok) throw new Error(result.problem);
+      return result.order.orderId;
+    };
+    const [first, second] = [await placed(), await placed()];
+    // These functions run when an order is paid (placing it runs none of them: case 3's list). A fresh connection compiles each function
+    // and plans its statements on its first call: a cold start of the connection, not a cost of each order (4.2 to 6.2 ms measured on a fresh
+    // connection against 1.4 to 1.9 on a warm one, 19 November 2026). So both orders are paid on one connection, in one transaction, as the
+    // checkout pays them (the payment row, then complete_order_payment()): the first not measured, the second measured, read from
+    // pg_stat_xact_user_functions, which counts this transaction's calls. The checkout sends each statement as a transaction of its own, so
+    // the deferred triggers (the gift card issue) run at its end: constraints are set immediate here to run them at the same point.
+    type Times = Record<string, FunctionTime>;
+    const { before, after } = await side().begin(async (tx) => {
+      await tx`set local track_functions = 'all'`;
+      await tx`set constraints all immediate`;
+      const pay = async (orderId: string) => {
+        const reference = `cs_${orderId}`;
+        await tx`
+          insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
+          select store_id, id, 'stripe', ${reference}, ${shop.stripeAccount}, total_minor, currency, 'captured' from commerce.orders where id = ${orderId}::uuid
+        `;
+        const [row] = await tx`
+          select commerce.complete_order_payment(o.id, ${reference}) as completed from commerce.orders o
+          where o.store_id = ${shop.storeId}::uuid and o.id = ${orderId}::uuid
+        `;
+        expect(row?.completed).toBe(true);
+      };
+      const times = async (): Promise<Times> => {
+        const rows = await tx`select funcname, calls, total_time from pg_stat_xact_user_functions where schemaname = 'commerce'`;
+        return Object.fromEntries(rows.map((r) => [String(r.funcname), { calls: Number(r.calls), ms: Number(r.total_time) }]));
+      };
+      await pay(first);
+      const was = await times();
+      await pay(second);
+      return { before: was, after: await times() };
+    });
+    const optional = Object.keys(OPTIONAL_TRIGGERS)
+      .filter((name) => (after[name]?.calls ?? 0) > (before[name]?.calls ?? 0))
+      .map((name) => [name, round((after[name]?.ms ?? 0) - (before[name]?.ms ?? 0))] as const);
+    const ms = sumMs(optional.map(([, t]) => ({ ms: t })));
+    expect(optional.length, "the optional features' trigger functions ran on the paid order").toBeGreaterThan(0);
+    expect(ms, `optional features' triggers took ${round(ms)} ms of a paid order (${JSON.stringify(Object.fromEntries(optional))}), ceiling ${OPTIONAL_MS} ms: ${NEVER_RAISE}`).toBeLessThan(OPTIONAL_MS);
+  }, 300_000);
 });

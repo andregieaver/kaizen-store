@@ -206,7 +206,7 @@ commit as the fix.
 | 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
 | 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | Open | |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
-| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | In progress | 1) 41=41; 2) +2/line held; 3) 5.6/81.8 ms; 4) visit 5 stmts, 3 rows (0.43 rule); 5) 4.2-6.2 ms, no gate: unsafe when off |
+| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | In progress | 1) 41=41; 2) +2/line; 3) 5.6/81.8 ms; 4) visit 5 stmts, 3 rows (0.43 rule); 5) warm 1.44-1.88 ms, held 2.9; no gates |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
 | 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | Open | |
 
