@@ -374,6 +374,20 @@ export const platformToolsNb: PlatformToolsMessages = {
     title: "Mva-satser",
     intro:
       "Satsene alle butikker bruker. Prisene er inkl. mva., og hvert salg får merverdiavgiften i landet det går til. Satsene her er lest fra offentlige kilder og starter som ikke verifisert: de brukes likevel, så gå gjennom listen med en regnskapsfører. Dette er ikke skatterådgivning.",
+    /** Runde 62 (D823): satsene på en telefon, hvert land en rad. */
+    phone: {
+      lead: "Satsene alle butikker tar, lest fra offentlige kilder.",
+      toVerify: "{n} satser å bekrefte",
+      toVerifySub: "Brukes fortsatt; sjekk dem med en regnskapsfører",
+      verifyNext: "Bekreft neste",
+      countries: "Land",
+      rates: "{n} satser · {min} % til {max} %",
+      noRates: "Bare standardsatsen",
+      left: "{n} å bekrefte",
+      allVerified: "Alle bekreftet",
+      open: "Åpne",
+      close: "Lukk",
+    },
     countryIntro: "Satsene for merverdiavgift butikkene bruker på salg til {country}, og hvordan frakt avgiftsberegnes der.",
     today: "I dag",
     off: " (av)",

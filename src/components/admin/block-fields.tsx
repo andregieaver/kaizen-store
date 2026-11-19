@@ -28,6 +28,7 @@ import { iconToken } from "@/lib/table-icons";
 import { addColumn, addRowTo, entriesOf, moveEntry, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
 
 import { PixelRange } from "./pixel-range";
+import { Field, fieldClass as kitFieldClass, TextArea, TextInput } from "./ui/field";
 import { ColorField } from "./colour-field";
 import { GradientText } from "./typography-fields";
 import { inlinePlain } from "@/lib/inline-text";
@@ -354,7 +355,8 @@ export function editorFor(block: PageBlock, words?: BlocksMessages): BlockEditor
 // Shared fields
 // ---------------------------------------------------------------------------
 
-export const fieldClass = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
+/** The builder's field box: the admin kit's, as wide as its panel (code review 1.12, D818). */
+export const fieldClass = kitFieldClass({ full: true });
 export const smallButton = "min-h-9 rounded-pill border border-edge px-3 text-sm disabled:opacity-40";
 
 /** A labelled line of text. */
@@ -378,29 +380,18 @@ export function TextField({
   markup?: boolean;
   onChange: (value: string) => void;
 }) {
-  const id = useId();
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      {markup ? (
-        <MarkupInput id={id} label={label} value={value} max={max} placeholder={placeholder} multiline={multiline} onChange={onChange} />
-      ) : multiline ? (
-        <textarea
-          id={id}
-          value={value}
-          maxLength={max}
-          rows={3}
-          placeholder={placeholder}
-          onChange={(event) => onChange(event.target.value)}
-          className={`${fieldClass} py-2`}
-        />
-      ) : (
-        <input id={id} value={value} maxLength={max} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className={fieldClass} />
-      )}
-      {hint && <p className="text-xs text-muted">{hint}</p>}
-    </div>
+    <Field label={label} hint={hint}>
+      {(control) =>
+        markup ? (
+          <MarkupInput id={control.id} label={label} value={value} max={max} placeholder={placeholder} multiline={multiline} onChange={onChange} />
+        ) : multiline ? (
+          <TextArea {...control} full value={value} maxLength={max} rows={3} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+        ) : (
+          <TextInput {...control} full value={value} maxLength={max} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+        )
+      }
+    </Field>
   );
 }
 

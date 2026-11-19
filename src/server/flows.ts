@@ -177,6 +177,55 @@ export async function testFlow(storeId: string, id: string): Promise<FlowTest> {
   return { ok: true, person: person?.email ?? null, emails, ends };
 }
 
+/** One email of a flow drawn for the person tested (the dry run, M3.5). */
+export type DrawnEmail = { stepId: string; subject: string; html: string };
+
+/**
+ * Each email the store's newest subscriber would get from the flow as it is saved, drawn for them as it would be sent: in their language
+ * and market, with the products picked for them (D653) and the store's facts (D352), its links plain so nothing is counted (the dry run,
+ * M3.5). Nothing is sent, entered or marked tested. Their address is returned only to name them on the page; empty without a subscriber.
+ */
+export async function drawFlowEmails(storeId: string, id: string): Promise<{ person: string | null; emails: DrawnEmail[] }> {
+  const [flow, store] = await Promise.all([getFlow(storeId, id), storeById(storeId)]);
+  if (!flow || !store) return { person: null, emails: [] };
+  const person = await typedRow(
+    z.object({ email: col.text, locale: col.text, market_code: col.textOrNull, token: col.text }),
+    sql`select email, locale, market_code, token from commerce.marketing_subscribers
+         where store_id = ${storeId}::uuid and status = 'subscribed' order by created_at desc limit 1`,
+  );
+  if (!person) return { person: null, emails: [] };
+  const facts: FlowFacts = { orderedSinceEntry: false, clickedFlowEmail: false, segments: new Set() };
+  const emails: DrawnEmail[] = [];
+  let path: FlowPath | null = ["0"];
+  for (let guard = 0; guard < 100 && path; guard++) {
+    const move = advance(flow.steps, flow.goals, path, facts);
+    if (move.do === "end") break;
+    if (move.do === "email") {
+      let content = move.step.content;
+      if (move.step.picks) {
+        const order = await typedRow(
+          z.object({ id: col.uuid }),
+          sql`select o.id from commerce.orders o where o.store_id = ${storeId}::uuid and lower(o.email) = lower(${person.email})
+                and o.restricted_at is null and ${PAID} order by o.placed_at desc limit 1`,
+        );
+        const picks = order || move.step.picks === "browse" ? await picksFor(storeId, move.step.picks, order?.id ?? null, person.email) : [];
+        content = withPicks(content, picks);
+      }
+      const drawn = marketingEmail({
+        store,
+        content,
+        locale: person.locale,
+        marketCode: person.market_code,
+        token: person.token,
+        facts: await factsForEmail(store, content, person.locale, person.market_code),
+      });
+      if (drawn) emails.push({ stepId: move.step.id, subject: drawn.subject, html: drawn.html });
+    }
+    path = move.next;
+  }
+  return { person: person.email, emails };
+}
+
 /**
  * Switches a flow on (only once its saved version is tested) or off. On, a flow that does an automation's work (`replaces`, slice 3) switches
  * that automation off in the same transaction, so nobody gets both: "replaced" says it did. Off leaves the automation off.

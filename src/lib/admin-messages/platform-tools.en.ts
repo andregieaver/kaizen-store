@@ -380,6 +380,20 @@ export const platformToolsEn = {
     title: "VAT rates",
     intro:
       "The rates every store charges. Prices include VAT, and each sale takes the VAT of the country it goes to. The rates here were read from public sources and start unverified: they are still charged, so work through the list with an accountant. This is not tax advice.",
+    /** Round 62 (D823): the rates on a phone, each country a row. */
+    phone: {
+      lead: "The rates every store charges, read from public sources.",
+      toVerify: "{n} rates to verify",
+      toVerifySub: "Still charged; check them with an accountant",
+      verifyNext: "Verify next",
+      countries: "Countries",
+      rates: "{n} rates · {min} % to {max} %",
+      noRates: "The standard rate only",
+      left: "{n} to verify",
+      allVerified: "All verified",
+      open: "Open",
+      close: "Close",
+    },
     countryIntro: "The VAT rates stores charge on sales to {country}, and how shipping is taxed there.",
     today: "Today",
     off: " (off)",

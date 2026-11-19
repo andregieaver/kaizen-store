@@ -1,5 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip } from "@/components/admin/ui";
+import { ConfirmButton } from "@/components/admin/ui/confirm-button";
+import { submitClass } from "@/lib/submit-class";
 import { fillWords } from "@/lib/admin-fill";
 import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { MOLLIE_DASHBOARD, MOLLIE_LEFT_OUT } from "@/lib/mollie";
@@ -137,7 +139,9 @@ export function MollieCard({
         )}
         {isOwner && (
           <ActionForm action={disconnectAction}>
-            <SubmitButton variant="secondary">{w.disconnect}</SubmitButton>
+            <ConfirmButton kind="none" className={submitClass("secondary")} question={w.disconnectQuestion} confirm={w.disconnect}>
+              {w.disconnect}
+            </ConfirmButton>
           </ActionForm>
         )}
       </div>

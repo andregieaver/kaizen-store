@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."ledger_books" ADD COLUMN "checked_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."ledger_books" ADD COLUMN "behind" boolean DEFAULT false NOT NULL;

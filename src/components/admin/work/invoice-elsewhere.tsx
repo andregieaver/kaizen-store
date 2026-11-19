@@ -6,7 +6,8 @@ import { useState, useTransition } from "react";
 import { recordElsewhereAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
 import { useAdminText } from "@/components/admin/admin-text";
 
-import { card, control, Field, hintText, Problems, secondaryButton } from "./work-parts";
+import { card, control, hintText, Problems, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 
 /**
  * *Issued elsewhere already?* under a draft (D499): the draft's client and lines recorded as an invoice sent before from another system

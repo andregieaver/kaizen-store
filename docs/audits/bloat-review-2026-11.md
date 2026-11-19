@@ -235,7 +235,7 @@ commit as the fix.
 | 3.19 | Let a burst of pushes share one deploy | CA-2 | S | review | 0.38, 1.29, 0.43 | Open | |
 | 3.20 | Show how long due work waits, and say so when it is too long | GAP-scheduled-s4 | S | review | 3.1, 1.22 | Open | |
 | 3.21 | The invoice job reads what is marked as waiting, and keeps today's full check as an hourly net | DQ-15 | S | review | 3.6, 3.3, 1.10, 0.31, 1.18 | Open | |
-| 3.22 | Every book gets its turn, and an idle book is looked at hourly |  | S | review | 1.10 | Open | |
+| 3.22 | Every book gets its turn, and an idle book is looked at hourly |  | S | review | 1.10 | Done | 19 Nov (D828): idle tick with 20 books 52 to 2 statements, 240 to 20 rows; marks in one statement (busy tick 53, held as dispatcher.ledger.busy). |
 | 3.23 | Tripletex and Fiken skip a store with nothing new, and the registry labels the six per-store jobs | CR-16 | S | review | 3.3, 3.22, 1.10 | Open | |
 | 3.24 | The product-words sweep reads no product when no text changed |  | S | review | 0.28, 3.3, 1.10 | Open | |
 

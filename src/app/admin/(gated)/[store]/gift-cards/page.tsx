@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, EmptyState, KpiTile, List, ListRow, ListSearch, PageHeader, RowAmount, RowFact, RowLead, Select } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -132,23 +132,20 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
           compact
           title={state ? g.states[state] : w.allCards}
           aside={
-            <form method="get" action={base} className="flex flex-wrap items-center gap-2">
-              {state && <input type="hidden" name="state" value={state} />}
-              <input
-                type="search"
-                name="q"
-                defaultValue={q}
-                placeholder={people ? w.searchPeople : w.searchPlain}
-                aria-label={w.searchLabel}
-                className="min-h-10 w-64 rounded-md border border-line px-3"
-              />
-              <Button type="submit">{w.search}</Button>
-              {(q || state) && (
-                <Link href={base} className="text-body text-ink-2 underline-offset-2 hover:underline">
-                  {w.showAll}
-                </Link>
-              )}
-            </form>
+            <ListSearch
+              action={base}
+              value={q}
+              placeholder={people ? w.searchPeople : w.searchPlain}
+              words={{ label: w.searchLabel, button: w.search }}
+              keep={{ state }}
+              aside={
+                (q || state) && (
+                  <Link href={base} className="text-body text-ink-2 underline-offset-2 hover:underline">
+                    {w.showAll}
+                  </Link>
+                )
+              }
+            />
           }
         >
           <nav aria-label={w.filterLabel} className="mb-4 flex flex-wrap gap-2">
@@ -164,7 +161,7 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
             ))}
           </nav>
           {page.rows.length === 0 ? (
-            <p className="p-4 text-body text-muted">{w.noMatch}</p>
+            <EmptyState title={w.noMatch} action={(q || state) && <ButtonLink href={base}>{w.showAll}</ButtonLink>} />
           ) : (
             <List label={w.listLabel}>
               {page.rows.map((row) => (
@@ -221,7 +218,7 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
             <ActionForm action={saveGiftCardSettingsAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3 pb-5">
               <label className="flex flex-col gap-1 text-body">
                 <span className="text-caption text-muted">{w.newCardsLast}</span>
-                <select name="expiry" defaultValue={settings.expiryMonths === null ? "never" : String(settings.expiryMonths)} className="min-h-10 rounded-md border border-line px-3">
+                <Select name="expiry" defaultValue={settings.expiryMonths === null ? "never" : String(settings.expiryMonths)}>
                   {EXPIRY_CHOICES.map((months) => (
                     <option key={String(months)} value={months === null ? "never" : String(months)}>
                       {expiryWords(months, g.expiry)}
@@ -230,7 +227,7 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
                   {settings.expiryMonths !== null && !EXPIRY_CHOICES.includes(settings.expiryMonths) && (
                     <option value={String(settings.expiryMonths)}>{expiryWords(settings.expiryMonths, g.expiry)}</option>
                   )}
-                </select>
+                </Select>
               </label>
               <SubmitButton>{w.save}</SubmitButton>
             </ActionForm>

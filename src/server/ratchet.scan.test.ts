@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ANY_SUPPRESSED, CONFIRM_CALL, DIRECT_LINK, OSLO_ZONE, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ADMIN_KIT, adminSources, ANY_SUPPRESSED, CONFIRM_CALL, DIRECT_LINK, handMadePills, OSLO_ZONE, RAW_FIELD, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import { selectsDocument } from "./page-documents-test-support";
 import baseline from "./ratchet.baseline.json";
 
@@ -26,6 +26,7 @@ const now = ratchetCounts(process.cwd()) as {
   pagesTagRefreshes: Record<string, number>;
   directLinks: Record<string, number>;
   adminRepeats: Record<string, number>;
+  adminFiles: Record<string, Record<string, number>>;
 };
 const recorded: Record<string, number> = baseline.untypedReads;
 const recordedWrites: Record<string, number> = baseline.byIdWrites;
@@ -34,6 +35,7 @@ const recordedDocuments: Record<string, number> = baseline.pageDocumentReads;
 const recordedRefreshes: Record<string, number> = baseline.pagesTagRefreshes;
 const recordedRepeats: Record<string, number> = baseline.adminRepeats;
 const recordedLinks: Record<string, number> = baseline.directLinks;
+const recordedFiles: Record<string, Record<string, number>> = baseline.adminFiles;
 
 /** What to do instead, per count (bloat review step 1.17). A repeat made on purpose is accepted by `node scripts/ratchet.mjs --first`, shown in the diff. */
 const REPEAT_FIX: Record<string, string> = {
@@ -41,7 +43,13 @@ const REPEAT_FIX: Record<string, string> = {
   tables: "this count only falls until the admin kit of step 4.1 exists; reuse a list part from src/components/admin/ui",
   nativeSelects: "this count only falls until the admin kit of step 4.1 exists; reuse a list part from src/components/admin/ui",
   osloFiles: "format dates with the admin's date helper, not a literal time zone",
-  confirmFiles: "use the admin's confirm button, not window.confirm",
+  confirmFiles: "use the admin's ConfirmButton (src/components/admin/ui/confirm-button.tsx), not window.confirm",
+};
+
+/** What to do instead, per file list (code review step 1.12, D818): the admin kit's pieces in src/components/admin/ui. */
+const FILE_FIX: Record<string, string> = {
+  rawFields: "draw the field's box with TextInput, Select or TextArea (and its label with Field) from src/components/admin/ui",
+  pillLinks: "a link that is a button is ButtonLink (or buttonClass()), a state is a Chip, from src/components/admin/ui",
 };
 
 describe("the ratchet (code review 1.2)", () => {
@@ -91,6 +99,26 @@ describe("the ratchet (code review 1.2)", () => {
     expect(raised).toEqual([]);
   });
 
+  it("adds no hand-made field box or pill link in the admin (code review 1.12): a file has no more than its baseline, a file not in it has none", () => {
+    const raised = Object.keys(FILE_FIX).flatMap((key) =>
+      Object.entries(now.adminFiles[key])
+        .filter(([file, n]) => n > (recordedFiles[key][file] ?? 0))
+        .map(([file, n]) => `${file}: ${n} ${key}, baseline ${recordedFiles[key][file] ?? 0}. ${FILE_FIX[key]}. Accepting it on purpose: node scripts/ratchet.mjs --first, and commit the diff.`),
+    );
+    expect(raised).toEqual([]);
+  });
+
+  it("counts the repeats in every admin page and part: the store's, the platform's and the owner's level (code review 1.12)", () => {
+    const files: string[] = adminSources(process.cwd());
+    expect(files.some((file) => file.startsWith("src/app/admin/(gated)/platform/"))).toBe(true);
+    expect(files.some((file) => file.startsWith("src/app/admin/(gated)/[store]/"))).toBe(true);
+    expect(files.some((file) => file.startsWith("src/app/admin/(gated)/(owner)/"))).toBe(true);
+    expect(files.some((file) => file.startsWith("src/components/admin/"))).toBe(true);
+    expect(files.some((file) => file.endsWith(".ts"))).toBe(true);
+    // The kit is where the box and the pill are written once; it is never in the lists.
+    expect(Object.keys(now.adminFiles.rawFields).filter((file) => file.startsWith(ADMIN_KIT))).toEqual([]);
+  });
+
   it("adds no cast through unknown and no switched-off any", () => {
     expect(now.unknownCasts, "as unknown as in src, tests aside").toBeLessThanOrEqual(baseline.unknownCasts);
     expect(now.anySuppressed, "eslint-disable of no-explicit-any in src, tests aside").toBeLessThanOrEqual(baseline.anySuppressed);
@@ -132,6 +160,11 @@ describe("the ratchet (code review 1.2)", () => {
     ];
     if (pagesFell.length > 0) console.info(`ratchet: fell, lower with node scripts/ratchet.mjs: ${pagesFell.join("; ")}`);
     if (repeatsFell.length > 0) console.info(`ratchet: fell, lower with node scripts/ratchet.mjs: ${repeatsFell.join("; ")}`);
+    // The kit's file lists (step 1.12) fall as screens move onto it, here or in another change: a note, and node scripts/ratchet.mjs lowers them.
+    const filesFell = Object.keys(FILE_FIX).flatMap((key) =>
+      Object.entries(recordedFiles[key]).filter(([file, n]) => (now.adminFiles[key][file] ?? 0) < n).map(([file, n]) => `${file}: ${now.adminFiles[key][file] ?? 0} ${key}, baseline ${n}`),
+    );
+    if (filesFell.length > 0) console.info(`ratchet: fell, lower with node scripts/ratchet.mjs: ${filesFell.join("; ")}`);
     expect(lower).toEqual([]);
   });
 
@@ -172,6 +205,14 @@ describe("the ratchet (code review 1.2)", () => {
     expect("timeZone: \"UTC\"".includes(OSLO_ZONE)).toBe(false);
     expect(CONFIRM_CALL.test("if (!confirm(msg)) return;")).toBe(true);
     expect(CONFIRM_CALL.test("const confirmed = true; onConfirm(x)")).toBe(false);
+    // The kit's two lists (step 1.12): a field's box by hand, with a width between or dense; a link made a pill by hand.
+    expect(n('<input className="min-h-10 rounded-md border border-line bg-card px-3 text-sm" />', RAW_FIELD)).toBe(1);
+    expect(n('const field = "min-h-10 w-full max-w-md rounded-md border border-line bg-card px-3"; const s = "min-h-9 rounded-md border border-edge bg-card px-2";', RAW_FIELD)).toBe(2);
+    expect(n('<div className="rounded-md border border-line bg-card p-3" /> <TextInput name="q" />', RAW_FIELD)).toBe(0);
+    expect(handMadePills('<AdminLink href="/x" className="inline-flex h-11 items-center rounded-pill bg-brand px-5">Go</AdminLink>')).toBe(1);
+    expect(handMadePills('<Link\n  href={`/a/${b}`}\n  onClick={() => x > 1 && go()}\n  className={`rounded-full px-2 ${on ? "a" : "b"}`}\n>x</Link> <a href="/y" className="rounded-full">y</a>')).toBe(2);
+    expect(handMadePills('<ButtonLink kind="main" href="/x">Go</ButtonLink> <AdminLink href="/x" className={buttonClass("main")}>Go</AdminLink> <Chip>On</Chip>')).toBe(0);
+    expect(handMadePills('<a href="/x" className="underline">x</a> <aside className="rounded-full" /> <span className="rounded-pill" />')).toBe(0);
     const tables = new Set(["media", "experiments"]);
     expect(unscopedWrites("sql`delete from commerce.media where id = ${id}::uuid`", tables)).toBe(1);
     expect(unscopedWrites("sql`update commerce.experiments e set status = 'done' where e.id = ${id}::uuid`", tables)).toBe(1);

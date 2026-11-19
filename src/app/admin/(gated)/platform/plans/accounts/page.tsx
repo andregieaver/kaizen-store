@@ -34,7 +34,21 @@ export default async function AccountsPage() {
 
   return (
     <>
-      <PageHeader back={{ href: "/admin/platform/plans", label: w.plans }} title={w.title} description={w.description} />
+      <PageHeader back={{ href: "/admin/platform/plans", label: w.plans }} title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.phoneLead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
+      />
+      {/* Round 62 (D823): on a phone how many still need moving comes first, and each account is one row with Move behind it. */}
+      {previews.some((p) => !p.billed) && (
+        <section className="flex flex-col gap-0.5 rounded-panel bg-warning-soft px-4 py-3 sm:hidden">
+          <span className="text-body text-ink">{countWords(previews.filter((p) => !p.billed).length, w.phoneLeft, { n: previews.filter((p) => !p.billed).length })}</span>
+          <span className="text-caption text-ink-2">{w.phoneLeftSub}</span>
+        </section>
+      )}
       {previews.length === 0 ? (
         <p className="rounded-panel border border-line bg-card p-4 text-sm">{w.none}</p>
       ) : (
@@ -45,6 +59,17 @@ export default async function AccountsPage() {
                 title={p.name}
                 sub={[p.ownerEmail ? fillWords(w.owner, { email: p.ownerEmail }) : null, countWords(p.stores.length, w.stores, { n: p.stores.length })].filter(Boolean).join(" · ")}
               />
+              {!p.billed && (
+                <details className="group sm:hidden">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center text-sm font-medium text-ink underline underline-offset-2 [&::-webkit-details-marker]:hidden">
+                    {w.phoneMove}
+                  </summary>
+                  <div className="flex flex-col gap-3 pb-2 text-caption text-ink-2">
+                    <MoveFacts preview={p} w={w} day={day} money={money} />
+                    <MoveForm preview={p} w={w} />
+                  </div>
+                </details>
+              )}
               {p.billed ? (
                 <RowFact>
                   <Chip signal="positive" dot>
@@ -53,23 +78,14 @@ export default async function AccountsPage() {
                 </RowFact>
               ) : (
                 <>
-                  <RowFact sub={<MoveFacts preview={p} w={w} day={day} money={money} />}>
-                    <Chip dot>{w.storeByStore}</Chip>
-                  </RowFact>
-                  <RowActions>
-                    <ActionForm action={moveAccountAction.bind(null, p.organisationId)} className="flex flex-col items-end gap-2">
-                      {/* The box only where the move ends a store's plan; otherwise there is nothing to understand first. */}
-                      {p.ending.length > 0 ? (
-                        <label className="flex items-center gap-2 text-caption">
-                          <input type="checkbox" name="understand" required />
-                          {w.understand}
-                        </label>
-                      ) : (
-                        <input type="hidden" name="understand" value="on" />
-                      )}
-                      <SubmitButton variant="secondary">{w.move}</SubmitButton>
-                    </ActionForm>
-                  </RowActions>
+                  <div className="contents max-sm:hidden">
+                    <RowFact sub={<MoveFacts preview={p} w={w} day={day} money={money} />}>
+                      <Chip dot>{w.storeByStore}</Chip>
+                    </RowFact>
+                    <RowActions>
+                      <MoveForm preview={p} w={w} />
+                    </RowActions>
+                  </div>
                 </>
               )}
             </ListRow>
@@ -77,6 +93,23 @@ export default async function AccountsPage() {
         </List>
       )}
     </>
+  );
+}
+
+/** Move this account: the box only where the move ends a store's plan; otherwise there is nothing to understand first. */
+function MoveForm({ preview: p, w }: { preview: MovePreview; w: ScreensMessages["platformAccounts"] }) {
+  return (
+    <ActionForm action={moveAccountAction.bind(null, p.organisationId)} className="flex flex-col items-end gap-2 max-sm:items-start">
+      {p.ending.length > 0 ? (
+        <label className="flex items-center gap-2 text-caption">
+          <input type="checkbox" name="understand" required />
+          {w.understand}
+        </label>
+      ) : (
+        <input type="hidden" name="understand" value="on" />
+      )}
+      <SubmitButton variant="secondary">{w.move}</SubmitButton>
+    </ActionForm>
   );
 }
 

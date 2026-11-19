@@ -432,6 +432,18 @@ The same rules as D149: colour, opacity and small transforms only, 150–200 ms 
 `prefers-reduced-motion`. A main button lifts 1 px under the pointer. Cards do not move. A linked card shows `bg-sunken` on its
 header only.
 
+### 5.10 Fields, empty states, confirms and lists (code review 1.12, D818)
+
+- **Field**: the label (`text-sm`, medium), the control, a hint (`text-xs`, `muted`) and the problem (`text-sm`, `danger-text`) under
+  it; a required field's label carries a `*` in `danger-text`. The control's box (`TextInput`, `Select`, `TextArea`) is 40 px,
+  `rounded-md`, `border-line` on `bg-card`, 12 px side padding (36 px and 8 px dense), its border `danger-text` while it is invalid.
+- **Empty state**: a dashed `border-line` box, `rounded-panel`, centred: the title (`body-strong`, `ink`), a line (`body`, `muted`) and
+  one next step; small and left-aligned in a panel or a dialog.
+- **Confirm**: the admin's dialog, the question's first sentence its title and the rest under it, then *Cancel* (focused) and the
+  confirm word, `danger` for deleting, ending and refusing, `main` for sending.
+- **A list's search and pages**: the Orders bar (a pill of `bg-card` ringed in `edge`: the search icon, the field, the round arrow,
+  Filters), and under the list "100 of 150" in `muted` with underlined links to the pages before and after.
+
 ---
 
 ## 6. Layouts

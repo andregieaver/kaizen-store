@@ -101,6 +101,7 @@ export const commonNb: CommonMessages = {
   },
   form: {
     working: "Arbeider …",
+    cancel: "Avbryt",
     show: "Vis",
     hide: "Skjul",
     delete: "Slett",

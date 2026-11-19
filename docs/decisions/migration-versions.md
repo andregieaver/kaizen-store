@@ -284,6 +284,7 @@ The owner ran both in the SQL editor on 2026-10-04, and production was checked a
 | `20261004214349_ai_vision_model.sql` (ai_vision_model) | `20261004215434` |
 | `20261002165344_analytics_indexes.sql` | `20261002213235` |
 | `20261119202909_document_job_indexes.sql` (step 3.6, the document jobs' indexes) | applied by CI, 19 November 2026 |
+| `20261119212320_ledger_book_turns.sql` (step 3.22, D828) | applied by CI, 19 November 2026 |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

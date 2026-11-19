@@ -94,8 +94,8 @@ test("an owner switches Deals on, adds a deal for a customer, moves it, wins it 
   await expect(page.getByRole("button", { name: "Open again" })).toBeVisible();
   await expect(page.getByText("Entered Talking")).toBeVisible();
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete the deal" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete the deal" }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/deals$`), { timeout: 30_000 });
   await expect(page.getByRole("link", { name: `Tote bags ${run}` })).toHaveCount(0);
 });
@@ -129,8 +129,8 @@ test("an owner makes a deal of a lead from the leads inbox, and the deal opens",
     await page.getByRole("button", { name: `Make a deal of ${lead}` }).click();
     await expect(page.getByRole("heading", { level: 1, name: `${lead}: question` })).toBeVisible({ timeout: 30_000 });
 
-    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Delete the deal" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete the deal" }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/deals$`), { timeout: 30_000 });
   } finally {
     const cleanup = testDb();
