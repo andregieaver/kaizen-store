@@ -1,6 +1,6 @@
 {
-  "id": "d47a96fd-e9be-4673-860c-628543d4a1dd",
-  "prevId": "891dca38-23a9-461e-b410-4289388c989f",
+  "id": "30dab638-e75c-436d-9ddd-ea600275fc1d",
+  "prevId": "a9be54db-4971-4735-8009-880a824e3164",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -32668,6 +32668,12 @@
           "name": "email_clicks_flow_idx",
           "columns": [
             {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
               "expression": "flow_id",
               "isExpression": false,
               "asc": true,
@@ -45640,7 +45646,7 @@
         },
         "limit_overrides_known": {
           "name": "limit_overrides_known",
-          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned')"
+          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'contracts_sent_month', 'ab_tests_running', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -59204,7 +59210,7 @@
         },
         "plan_limits_known": {
           "name": "plan_limits_known",
-          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned')"
+          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'contracts_sent_month', 'ab_tests_running', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -86356,7 +86362,7 @@
         },
         "store_usage_daily_metric": {
           "name": "store_usage_daily_metric",
-          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros', 'recordings')"
+          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros', 'recordings', 'contracts_sent')"
         }
       },
       "isRLSEnabled": false

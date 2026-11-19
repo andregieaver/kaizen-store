@@ -378,7 +378,7 @@ other account its row (keeping its stores' latest trial), writes a 60-day trial 
 extension an account uses and its plan does not include, and sets `extensions_launched_at`; every store's cached read is refreshed. Use is
 an account's records in an open store: an A/B test; the desk on (`support_settings.mode` not `off`); a broadcast, automation or flow; a Work
 client, invoice or time entry, or books opened; a deal or contract (a pipeline or template a page makes on a visit is not use). From then on
-no account is billed store by store: an account made later gets its row as it is made (migration `20261119185908_accounts_billed_after_launch`,
+no account is billed store by store: an account made later gets its row as it is made (migration `20261119192530_accounts_billed_after_launch`,
 the trigger `organisation_billed_after_launch`), sign-up and the Dream Factory write the 14-day trial on it (`writeTrial()`), and the platform's
 plan buttons on a store act on its account. The daily run's `daily.extension-trials` (`src/server/extension-reminders.ts`) emails the owner
 30, 14 and 3 days before a trial ends (`trialReminderDue()`: only reminders shorter than the trial, the latest due after a missed day), one

@@ -7,7 +7,7 @@ import type { UsageMetric } from "@/lib/usage-metrics";
 
 import { pruneCacheEvents } from "./cache-events";
 import { log } from "./log";
-import { aiCostSql, domainsSql, emailsSql, productsSql, recordingsSql, staffSql } from "./usage-sql";
+import { aiCostSql, contractsSql, domainsSql, emailsSql, productsSql, recordingsSql, staffSql } from "./usage-sql";
 
 /**
  * The daily measuring of D314 (`docs/capacity.md` 3, step 1.3): what every store (templates and demo stores too) and Kaizena Flow's own
@@ -45,6 +45,7 @@ function counters(day: string): SQL[] {
     write(day, "marketing_emails", emailsSql(from, to, true)),
     write(day, "ai_cost_micros", aiCostSql(from, to)),
     write(day, "recordings", recordingsSql(from, to)),
+    write(day, "contracts_sent", contractsSql(from, to)),
   ];
 }
 

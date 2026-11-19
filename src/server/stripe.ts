@@ -110,31 +110,44 @@ export function connectWebhookUrl(origin: string, mode: PaymentModeName, kind: W
 
 export type CreatedWebhook = { kind: WebhookKind; endpointId: string; url: string; secret: string };
 
+/** The endpoints and event destinations at Kaizena Flow's addresses before a reconnect: retired once the new secrets are saved (D815). */
+export type EarlierWebhooks = { endpoints: string[]; destinations: string[] };
+
+const stripeProblem = (error: unknown) => (error instanceof Stripe.errors.StripeError ? error.message : "Stripe could not be reached.");
+
 /**
- * Creates Kaizen's three webhooks in its own Stripe account, replacing
- * earlier ones at the same addresses, and returns their signing secrets:
- * payment events from stores' accounts (snapshot), account events (thin,
- * Accounts v2), and Kaizen's own subscription events (billing).
+ * Creates Kaizena Flow's three webhooks in its own Stripe account and returns their signing secrets: payment events from stores'
+ * accounts (snapshot), account events (thin, Accounts v2), and Kaizena Flow's own subscription events (billing).
+ *
+ * New first (D815): the endpoints already at the same addresses are left working and only named in `earlier`, for
+ * `retirePlatformWebhooks()` once the caller has saved the new secrets. While both stand, Stripe sends each event to both and
+ * `claim_webhook_event()` handles it once (D529); a delivery signed with a secret not yet saved is refused and retried by Stripe.
+ * If a creation fails, or Stripe gives no secret, what this call made is deleted again and the earlier ones keep working, so
+ * Kaizena Flow is never left without its payment webhooks.
  */
 export async function createPlatformWebhooks(
   mode: PaymentModeName,
   origin: string,
-): Promise<{ ok: true; webhooks: CreatedWebhook[] } | { ok: false; problem: string }> {
+): Promise<{ ok: true; webhooks: CreatedWebhook[]; earlier: EarlierWebhooks } | { ok: false; problem: string }> {
   const stripe = platformStripe(mode);
   if (!stripe) return { ok: false, problem: `No ${mode} secret key is configured.` };
   const snapshotUrl = connectWebhookUrl(origin, mode, "snapshot");
   const thinUrl = connectWebhookUrl(origin, mode, "thin");
   const billingUrl = connectWebhookUrl(origin, mode, "billing");
+  const earlier: EarlierWebhooks = { endpoints: [], destinations: [] };
   try {
     for await (const endpoint of stripe.webhookEndpoints.list({ limit: 100 })) {
-      if (endpoint.url === snapshotUrl || endpoint.url === billingUrl) {
-        await stripe.webhookEndpoints.del(endpoint.id);
-      }
+      if (endpoint.url === snapshotUrl || endpoint.url === billingUrl) earlier.endpoints.push(endpoint.id);
     }
     for await (const destination of stripe.v2.core.eventDestinations.list({ include: ["webhook_endpoint.url"] })) {
-      if (destination.webhook_endpoint?.url === thinUrl) await stripe.v2.core.eventDestinations.del(destination.id);
+      if (destination.webhook_endpoint?.url === thinUrl) earlier.destinations.push(destination.id);
     }
+  } catch (error) {
+    return { ok: false, problem: stripeProblem(error) };
+  }
 
+  const made: EarlierWebhooks = { endpoints: [], destinations: [] };
+  try {
     const snapshot = await stripe.webhookEndpoints.create({
       url: snapshotUrl,
       connect: true,
@@ -142,12 +155,14 @@ export async function createPlatformWebhooks(
       enabled_events: WEBHOOK_EVENTS,
       description: "Kaizena Flow: payments in stores' accounts",
     });
+    made.endpoints.push(snapshot.id);
     const billing = await stripe.webhookEndpoints.create({
       url: billingUrl,
       api_version: STRIPE_API_VERSION,
       enabled_events: BILLING_EVENTS,
       description: "Kaizena Flow: stores' plans",
     });
+    made.endpoints.push(billing.id);
     const thin = await stripe.v2.core.eventDestinations.create({
       name: "Kaizena Flow: stores' Stripe accounts",
       type: "webhook_endpoint",
@@ -157,8 +172,10 @@ export async function createPlatformWebhooks(
       webhook_endpoint: { url: thinUrl },
       include: ["webhook_endpoint.signing_secret"],
     });
+    made.destinations.push(thin.id);
     const thinSecret = thin.webhook_endpoint?.signing_secret;
     if (!snapshot.secret || !billing.secret || !thinSecret) {
+      await retirePlatformWebhooks(mode, made);
       return { ok: false, problem: "Stripe did not return a signing secret." };
     }
     return {
@@ -168,11 +185,24 @@ export async function createPlatformWebhooks(
         { kind: "thin", endpointId: thin.id, url: thinUrl, secret: thinSecret },
         { kind: "billing", endpointId: billing.id, url: billingUrl, secret: billing.secret },
       ],
+      earlier,
     };
   } catch (error) {
-    return {
-      ok: false,
-      problem: error instanceof Stripe.errors.StripeError ? error.message : "Stripe could not be reached.",
-    };
+    await retirePlatformWebhooks(mode, made);
+    return { ok: false, problem: stripeProblem(error) };
   }
+}
+
+/**
+ * Deletes the named endpoints and event destinations from Kaizena Flow's Stripe account (D815): the earlier ones after a reconnect's
+ * secrets are saved, or what a failed reconnect made. Each is tried on its own; the count of those Stripe would not delete is returned
+ * (one left standing only receives events its saved secret no longer signs, which Stripe retries and then stops sending).
+ */
+export async function retirePlatformWebhooks(mode: PaymentModeName, which: EarlierWebhooks): Promise<number> {
+  const stripe = platformStripe(mode);
+  if (!stripe) return which.endpoints.length + which.destinations.length;
+  let left = 0;
+  for (const id of which.endpoints) await stripe.webhookEndpoints.del(id).catch(() => (left += 1));
+  for (const id of which.destinations) await stripe.v2.core.eventDestinations.del(id).catch(() => (left += 1));
+  return left;
 }

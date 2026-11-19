@@ -938,7 +938,7 @@
         "rowsRead": 1
       },
       "route.usage": {
-        "statements": 22,
+        "statements": 24,
         "rowsRead": 13
       },
       "siteCookies.store": {
@@ -1316,8 +1316,8 @@
         "rowsRead": 1
       },
       "route.usage": {
-        "statements": 22,
-        "rowsRead": 223
+        "statements": 24,
+        "rowsRead": 263
       },
       "siteCookies.store": {
         "statements": 1,
@@ -1695,7 +1695,7 @@
       },
       "route.usage": {
         "statements": 0,
-        "rowsRead": 210
+        "rowsRead": 250
       },
       "siteCookies.store": {
         "statements": 0,

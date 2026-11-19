@@ -563,6 +563,7 @@ export const customersNb: CustomersMessages = {
     newPage: {
       title: "Legg til en kunde",
       description: "Kunden får en konto uten passord. De logger inn med en kode sendt til e-posten sin; ingenting sendes nå.",
+      phoneLead: "De logger inn med en kode til e-posten sin. Ingenting sendes nå.",
       back: "Kunder",
       details: "Opplysninger",
     },

@@ -31,6 +31,8 @@ export const USAGE_METRICS = {
   ai_cost_micros: { kind: "counter", unit: "micros", source: "ai" },
   /** Recordings of visits started (D656). */
   recordings: { kind: "counter", unit: "count", source: "database" },
+  /** Contracts sent for signing (D695, D817), by when they were sent. */
+  contracts_sent: { kind: "counter", unit: "count", source: "database" },
 } as const satisfies Record<string, { kind: MetricKind; unit: MetricUnit; source: MetricSource }>;
 
 export type UsageMetric = keyof typeof USAGE_METRICS;

@@ -39,6 +39,13 @@ export const recordingsSql = (from: Date, to: Date, storeId?: string) => sql`
     ${only(sql`r.store_id`, storeId)}
   group by r.store_id`;
 
+/** Contracts sent for signing in a time span (D695, D817), by when they were sent: a contract sent again as a new version counts again. */
+export const contractsSql = (from: Date, to: Date, storeId?: string) => sql`
+  select k.store_id, count(*)::bigint as value from commerce.contracts k
+  where k.sent_at >= ${from.toISOString()}::timestamptz and k.sent_at < ${to.toISOString()}::timestamptz
+    ${only(sql`k.store_id`, storeId)}
+  group by k.store_id`;
+
 /** Emails of a time span. Rows only logged (no email service) or failed never reached anyone and are not counted. */
 export const emailsSql = (from: Date, to: Date, marketing: boolean, storeId?: string) => sql`
   select e.store_id, count(*)::bigint as value from commerce.email_messages e
