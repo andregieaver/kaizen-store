@@ -573,6 +573,8 @@ export const platformToolsNb: PlatformToolsMessages = {
   },
   dutyRates: {
     title: "Tollsatser",
+    /** Runde 65 (D832): radene på en telefon. */
+    phone: { lead: "Det alle tollestimater regnes ut fra. Ikke tollrådgivning.", open: "Åpne", close: "Lukk" },
     intro:
       "Satsene og grensene alle butikkers anslag for toll regnes ut fra. Hver rad viser adressen den er lest fra, og er et anslag til en person har kontrollert den mot kilden og merket den som bekreftet. En endring gjelder handlekurver og bestillinger fra nå av; bestillinger som er lagt inn, beholder anslaget sitt. Dette er ikke tollrådgivning.",
     tableTitle: "Rader",

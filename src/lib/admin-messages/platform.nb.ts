@@ -714,6 +714,8 @@ export const platformNb: PlatformMessages = {
   },
   reports: {
     title: "Meldinger om innhold",
+    /** Runde 65 (D832): varslene på en telefon. */
+    phone: { lead: "Varsler om innhold i butikker. Avsenderen får vite hva du bestemmer.", ai: "AI", decide: "Avgjør", close: "Lukk" },
     description: "Meldinger folk har sendt om innhold i butikker. Avgjør hver i tide, med begrunnelse: avsenderen får beskjed, og butikken også når du begrenser noe.",
     waiting: "Venter på avgjørelse",
     decided: "Avgjort",

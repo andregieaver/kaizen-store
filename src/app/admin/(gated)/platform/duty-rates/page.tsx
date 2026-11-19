@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -36,12 +37,47 @@ export default async function PlatformDutyRatesPage({ searchParams }: PageProps<
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.intro} />
-      <Card title={w.tableTitle}>
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.intro}</span>
+          </>
+        }
+      />
+      <Card title={w.tableTitle} className="max-sm:p-0 max-sm:[&>header]:sr-only">
         {rows.length === 0 ? (
-          <p className="text-sm text-muted">{w.empty}</p>
+          <p className="text-sm text-muted max-sm:p-4">{w.empty}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Round 65 (D832): on a phone each row is one line (who, the threshold, when, verified) opening its source and actions; from sm up the table. */}
+          <ul className="flex flex-col px-4 sm:hidden">
+            {rows.map((r, index) => (
+              <li key={r.id}>
+                <PhoneRow
+                  inset
+                  last={index === rows.length - 1}
+                  title={[`${r.destination} ${r.hsPrefix === "" ? w.base : r.hsPrefix}`, r.origin ?? w.anyOrigin, w.applies[r.appliesTo]].join(" · ")}
+                  sub={[
+                    r.dutyRateBps !== null ? percentOfBps(r.dutyRateBps) : r.thresholdMinor !== null ? fillWords(w.dutyAt, { amount: amount(r.thresholdMinor, r.thresholdCurrency) }) : null,
+                    r.validTo ? fillWords(w.until, { day: day(r.validTo) }) : r.validFrom ? fillWords(w.from, { day: day(r.validFrom) }) : w.always,
+                    r.verified ? w.verified : w.unverified,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  change={w.phone.open}
+                  done={w.phone.close}
+                >
+                  <div className="flex flex-col gap-3 text-sm">
+                    <Source row={r} w={w} day={day} />
+                    <RowActions row={r} w={w} here={here} />
+                  </div>
+                </PhoneRow>
+              </li>
+            ))}
+          </ul>
+          <div className="overflow-x-auto max-sm:hidden">
             <table className="w-full text-left text-sm" data-testid="duty-rates">
               <tbody className="divide-y divide-line">
                 {rows.map((r) => (
@@ -65,33 +101,17 @@ export default async function PlatformDutyRatesPage({ searchParams }: PageProps<
                       {r.validTo && <span className="block">{fillWords(w.until, { day: day(r.validTo) })}</span>}
                     </td>
                     <td className="max-w-80 py-2 pr-3">
-                      <a href={r.source} target="_blank" rel="noreferrer" className="break-all underline">
-                        {r.source}
-                      </a>
-                      <span className="block text-muted">
-                        {w.fields.checkedOn}: {day(r.checkedOn)}
-                      </span>
-                      {r.note && <span className="block text-muted">{r.note}</span>}
+                      <Source row={r} w={w} day={day} />
                     </td>
                     <td className="py-2">
-                      <div className="flex flex-col items-start gap-2">
-                        <Chip signal={r.verified ? "positive" : "warning"}>{r.verified ? w.verified : w.unverified}</Chip>
-                        <ActionForm action={setDutyRateVerifiedAction.bind(null, r.id, !r.verified)}>
-                          <SubmitButton variant="secondary">{r.verified ? w.unverify : w.verify}</SubmitButton>
-                        </ActionForm>
-                        <ButtonLink size="dense" href={`${here}?edit=${r.id}#duty-rate-form`}>
-                          {w.edit}
-                        </ButtonLink>
-                        <ActionForm action={removeDutyRateAction.bind(null, r.id)}>
-                          <SubmitButton variant="secondary">{w.remove}</SubmitButton>
-                        </ActionForm>
-                      </div>
+                      <RowActions row={r} w={w} here={here} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
       <div id="duty-rate-form">
@@ -104,6 +124,39 @@ export default async function PlatformDutyRatesPage({ searchParams }: PageProps<
 }
 
 type Words = PlatformToolsMessages["dutyRates"];
+
+/** A row's source, the day it was read and its note. */
+function Source({ row: r, w, day }: { row: DutyRateListed; w: Words; day: (iso: string) => string }) {
+  return (
+    <>
+      <a href={r.source} target="_blank" rel="noreferrer" className="break-all underline">
+        {r.source}
+      </a>
+      <span className="block text-muted">
+        {w.fields.checkedOn}: {day(r.checkedOn)}
+      </span>
+      {r.note && <span className="block text-muted">{r.note}</span>}
+    </>
+  );
+}
+
+/** Whether a row is verified, and verifying, editing and removing it. */
+function RowActions({ row: r, w, here }: { row: DutyRateListed; w: Words; here: string }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Chip signal={r.verified ? "positive" : "warning"}>{r.verified ? w.verified : w.unverified}</Chip>
+      <ActionForm action={setDutyRateVerifiedAction.bind(null, r.id, !r.verified)}>
+        <SubmitButton variant="secondary">{r.verified ? w.unverify : w.verify}</SubmitButton>
+      </ActionForm>
+      <ButtonLink size="dense" href={`${here}?edit=${r.id}#duty-rate-form`}>
+        {w.edit}
+      </ButtonLink>
+      <ActionForm action={removeDutyRateAction.bind(null, r.id)}>
+        <SubmitButton variant="secondary">{w.remove}</SubmitButton>
+      </ActionForm>
+    </div>
+  );
+}
 
 function Thresholds({ row, w, amount }: { row: DutyRateListed; w: Words; amount: (minor: number | null, currency: string | null) => string }) {
   if (row.hsPrefix !== "") return null;

@@ -74,6 +74,10 @@ export const capacityEn = {
   },
   platform: {
     title: "Usage and limits",
+    /** Round 65 (D832): the readings on a phone. */
+    phoneLead: "What every store used this month, measured each night.",
+    phoneOpen: "Open",
+    phoneClose: "Close",
     description: "What every store has used this month. Traffic comes from Vercel's log drain; everything else is measured each night.",
     store: "Store",
     plan: "Plan",
