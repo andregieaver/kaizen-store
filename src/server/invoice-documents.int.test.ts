@@ -16,6 +16,7 @@ const inv = await import("./invoices");
 const issue = await import("./invoice-issue");
 const settings = await import("./invoice-settings");
 const pdf = await import("./invoice-pdf");
+const { documentPdfsWaiting } = await import("./document-pdf-ask");
 const notices = await import("./invoice-notices");
 const documents = await import("./invoice-emails");
 const exporter = await import("./invoice-export");
@@ -229,7 +230,11 @@ describe("the PDF", () => {
     const broken = async () => {
       throw new Error("Chromium crashed\nwith a very long message ".repeat(20));
     };
+    // Made ahead (D807): an issued invoice with no PDF waits, so the dispatcher asks the PDF route.
+    expect(await documentPdfsWaiting(new Date(), own.storeId)).toEqual({ documents: true, seals: false });
     expect(await pdf.ensureInvoicePdf(own.storeId, invoice.id, { storage: mem.storage, render: broken })).toEqual({ ok: false, reason: "render_failed" });
+    // A failure a minute ago: not asked for again within five minutes.
+    expect(await documentPdfsWaiting(new Date(), own.storeId)).toEqual({ documents: false, seals: false });
     const [state] = await db().execute<Row>(sql`select attempts, last_error from commerce.document_pdf_state where document_id = ${invoice.id}::uuid`);
     expect(state.attempts).toBe(1);
     expect(String(state.last_error).length).toBeLessThanOrEqual(200);
@@ -243,6 +248,8 @@ describe("the PDF", () => {
     expect(render.mock.calls.length).toBe(0);
     expect(job.made).toBe(0);
     expect((await inv.invoiceCounts(own.storeId)).pdfFailing).toBe(1);
+    // Five failures: never asked for again until staff press Try again.
+    expect(await documentPdfsWaiting(new Date(), own.storeId)).toEqual({ documents: false, seals: false });
     expect((await inv.invoiceCheckupFindings(own.storeId)).map((f) => f.code)).toContain("pdf_failing");
     // *Try again* on the Waiting tab forgets the failures without rendering (the page's action stays free of Chromium), for the store's own
     // document alone, and the job makes it on its next run.
@@ -251,7 +258,9 @@ describe("the PDF", () => {
     expect(await issue.retryPdfLater(own.storeId, "invoice", invoice.id)).toBe(true);
     expect(render).not.toHaveBeenCalled();
     expect((await inv.invoiceCounts(own.storeId)).pdfFailing).toBe(0);
+    expect(await documentPdfsWaiting(new Date(), own.storeId)).toEqual({ documents: true, seals: false });
     expect(await pdf.pdfJob({ storeId: own.storeId, deps: { storage: mem.storage, render } })).toEqual({ made: 1, failed: 0, skipped: 0 });
+    expect(await documentPdfsWaiting(new Date(), own.storeId)).toEqual({ documents: false, seals: false });
     expect((await fx.invoiceOf(own.storeId, order.orderId))?.pdfPath).not.toBeNull();
   });
 

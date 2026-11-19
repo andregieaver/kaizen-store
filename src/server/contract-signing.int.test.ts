@@ -229,8 +229,8 @@ describe("the job", () => {
     expect(old.storage.files.has(`${store.storeId}/contracts/${old.contractId}.pdf`)).toBe(false);
   }, 60_000);
 
-  it("(D795) asks the PDF route only while a signed contract waits for its seal, and the route's run seals it", async () => {
-    const upkeep = await import("./contract-upkeep");
+  it("(D795, D807) has the PDF route asked while a signed contract waits for its seal, and the route's run seals it once", async () => {
+    const ask = await import("./document-pdf-ask");
     const asked: string[] = [];
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       asked.push(String(url));
@@ -239,21 +239,22 @@ describe("the job", () => {
     const secret = process.env.CRON_SECRET;
     process.env.CRON_SECRET = "test-secret";
     try {
-      // Other tests' contracts may wait too: seal them first, so the run sees only what this test leaves.
+      // Seal what this store's other tests left waiting, so the question sees only this test's contract.
       while ((await jobs.signedPdfJob({ render, storage: memoryStorage() })) > 0) {}
-      await db().execute(sql`update commerce.contracts set signed_pdf_attempts = 5 where status = 'signed' and signed_pdf_path is null`);
-      expect((await upkeep.runContractUpkeep()).sealAsked).toBe(false);
-      expect(asked).toEqual([]);
+      await db().execute(sql`update commerce.contracts set signed_pdf_attempts = 5 where store_id = ${store.storeId}::uuid and status = 'signed' and signed_pdf_path is null`);
+      expect((await ask.documentPdfsWaiting(new Date(), store.storeId))?.seals).toBe(false);
 
       const c = await signedContract("kari.dispatch@example.com");
       await db().execute(sql`update commerce.contracts set signed_pdf_path = null, signed_pdf_attempts = 0 where id = ${c.contractId}::uuid and signed_pdf_path is null`);
-      const run = await upkeep.runContractUpkeep();
-      expect(run.sealAsked).toBe(true);
+      expect((await ask.documentPdfsWaiting(new Date(), store.storeId))?.seals).toBe(true);
+      const run = await ask.runDocumentPdfAsk();
+      expect(run).toMatchObject({ seals: true, asked: true });
       expect(asked).toEqual([expect.stringMatching(/\/api\/cron\/document-pdfs$/)]);
-      // What the route then does: the seal is made once.
+      // What the route then does: the seal is made once, and nothing of this store waits any more.
       expect(await jobs.signedPdfJob({ render, storage: c.storage })).toBeGreaterThanOrEqual(1);
       const [row] = await db().execute<Row>(sql`select signed_pdf_path is not null as sealed from commerce.contracts where id = ${c.contractId}::uuid`);
       expect(row.sealed).toBe(true);
+      expect((await ask.documentPdfsWaiting(new Date(), store.storeId))?.seals).toBe(false);
     } finally {
       fetchSpy.mockRestore();
       if (secret === undefined) delete process.env.CRON_SECRET;

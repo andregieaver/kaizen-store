@@ -32,6 +32,7 @@ import { sendAutopilotReports } from "@/server/autopilot-reports";
 import { sendScheduledReports } from "@/server/report-schedules";
 import { invoiceJobs } from "@/server/invoice-issue";
 import { runContractUpkeep } from "@/server/contract-upkeep";
+import { runDocumentPdfAsk } from "@/server/document-pdf-ask";
 import { readDueLegalSources } from "@/server/legal-sources";
 import { runLegalUpkeep, runLegalWrites } from "@/server/legal-writer";
 import { runPaymentJobs } from "@/server/payment-disputes";
@@ -135,8 +136,10 @@ export const DISPATCHER_JOBS = {
   experiments: () => runExperimentJobs(),
   returns: () => runReturnJobs(),
   invoices: () => invoiceJobs(),
-  // Contracts (D695, D795): expiry, reminders, codes and retention; the PDF route asked when a signed contract waits for its seal.
+  // Contracts (D695, D795): expiry, reminders, codes and retention.
   contracts: () => runContractUpkeep(),
+  // The PDF route (Chromium) asked only while an invoice, a credit note or a signed contract waits for its PDF (D807).
+  documentPdfs: () => runDocumentPdfAsk(),
   // A Shopify move due now starts, a running one goes on (D445 step 7a); before the imports it hands work to.
   shopMoves: () => runDueMoves(),
   dataJobs: () => runDataJobs(),

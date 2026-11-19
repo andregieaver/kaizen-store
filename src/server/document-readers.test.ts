@@ -47,6 +47,8 @@ describe("who reads invoices and credit notes", () => {
         "src/server/invoice-notices.ts",
         // The job: which stores have something to issue.
         "src/server/invoice-issue.ts",
+        // Whether a document waits for its PDF, to ask the PDF route (D807): its path, anonymisation and attempts, nothing of a buyer.
+        "src/server/document-pdf-ask.ts",
         // A refund's credit note, to announce it.
         "src/server/stripe-refunds.ts",
         // The VAT report's reconciliation (D161): an invoice's order, supply date, VAT and currency, nothing personal. The reports themselves
