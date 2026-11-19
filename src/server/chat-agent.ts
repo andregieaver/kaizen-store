@@ -565,6 +565,8 @@ export async function runChat(
     email?: boolean;
     /** By email, from the address the customer's orders were placed with (`docs/100-day-challenge.md` B1). */
     emailOrders?: boolean;
+    /** By email on Kaizena Flow's own desks, from a Kaizena Flow account's address: its stores' tools (`emailAccount()`). */
+    emailAccount?: boolean;
     /**
      * The answer as it is written (PSI PERF-08): its finished sentences so far, cleaned (`shownSoFar()`), each time they grow; empty
      * again when the model turns to tools after all. The reply returned is the whole answer, cleaned, as without it.
@@ -587,11 +589,13 @@ export async function runChat(
         path: request.path ?? null,
         today: new Date().toISOString().slice(0, 10),
         handoff: options.handoff,
-        support: Boolean(options.support?.definitions.length) && !options.admin,
+        // The rules for a customer's orders belong to a store's desk; Kaizena Flow's own site has only an account's stores' tools.
+        support: Boolean(options.support?.definitions.length) && !options.admin && site.kind === "store",
         admin: options.admin,
         // A brand that cannot be read leaves the tone to the agent's own guidance; the chat never fails for it.
         email: options.email,
         emailOrders: Boolean(options.email && options.emailOrders),
+        emailAccount: Boolean(options.email && options.emailAccount),
         voice: brandVoiceGuide(await brandOf(site.kind === "store" ? site.store.id : null).catch(() => null)),
         embed: site.embed ? { host: site.embed.host } : null,
       }),

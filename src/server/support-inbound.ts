@@ -45,6 +45,7 @@ import { handOver } from "./support-route";
 import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
 import type { SupportCustomer } from "./support-tools";
+import type { Account } from "./auth";
 import { autonomyFor } from "./autopilot-settings";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { owned } from "./owned";
@@ -461,7 +462,8 @@ async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conver
     return;
   }
   const customer = await emailCustomer(desk, settings, conversationId);
-  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, customer, null, { email: true });
+  const account = await emailAccount(desk, settings, conversationId);
+  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, customer, null, { email: true, account });
   if (result.error) await handOver(desk, conversationId, "system", "no_ai");
   else if (result.handoff) await handOver(desk, conversationId, "ai", "ai", result.handoff, result.escalation);
 }
@@ -487,6 +489,31 @@ export async function emailCustomer(desk: Desk, settings: DeskSettings, conversa
     sql`select id, email from commerce.customers where store_id = ${desk.storeId}::uuid and lower(email) = ${address} limit 2`,
   );
   return found.length === 1 ? { id: found[0].id, email: found[0].email } : null;
+}
+
+/**
+ * The Kaizena Flow account an email conversation is from, for the AI to read that account's own stores (`my_stores`, `store_status`), or
+ * null: only on Kaizena Flow's own desks (the platform's, and the house store's, D484), never on a desk for sensitive information, and only
+ * the one account whose address is the conversation's own. As with `emailCustomer()`, the email reached the AI only with a DMARC check that
+ * did not fail and, in a thread, only from that address; every answer goes to that address alone, and the tools only read.
+ */
+export async function emailAccount(desk: Desk, settings: DeskSettings, conversationId: string): Promise<Account | null> {
+  if (settings.sensitive) return null;
+  if (desk.storeId) {
+    const store = await typedRow(z.object({ house: col.bool }), sql`select house from commerce.stores where id = ${desk.storeId}::uuid`);
+    if (!store?.house) return null;
+  }
+  const conversation = await typedRow(
+    z.object({ contact_email: col.textOrNull }),
+    sql`select contact_email from commerce.support_conversations where id = ${conversationId}::uuid and ${owned(desk.storeId)} and source = 'email'`,
+  );
+  const address = conversation?.contact_email ? normaliseEmail(conversation.contact_email) : "";
+  if (!address) return null;
+  const found = await typedRows(
+    z.object({ id: col.uuid, email: col.text, name: col.textOrNull }),
+    sql`select id, email, name from commerce.accounts where lower(email) = ${address} limit 2`,
+  );
+  return found.length === 1 ? { id: found[0].id, email: found[0].email, name: found[0].name, platformAdmin: false } : null;
 }
 
 /**

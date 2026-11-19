@@ -65,6 +65,22 @@ describe("the rules", () => {
     expect(text).toContain("The site's own guidance");
     expect(prompt("  ")).not.toContain("The site's own guidance");
   });
+
+  it("by email, answers in the email's language and, for a Kaizena Flow account's address, about its own stores", () => {
+    const kaizen = (extra: { email?: boolean; emailAccount?: boolean }) =>
+      systemPrompt({ site: "Kaizena Flow", kind: "kaizen", agentName: "", occupation: "", lang: "en", instructions: "", path: null, today: "2026-11-19", handoff: true, ...extra });
+    expect(kaizen({})).not.toContain("last email is written in");
+    const plain = kaizen({ email: true });
+    expect(plain).toContain("in the language the customer's last email is written in");
+    expect(plain).not.toContain("belongs to a Kaizena Flow account");
+    expect(plain).toContain("subscriptions or account, write one short sentence");
+    const account = kaizen({ email: true, emailAccount: true });
+    expect(account).toContain("belongs to a Kaizena Flow account");
+    expect(account).toContain("use my_stores and store_status");
+    expect(account).toContain("account that your tools do not answer");
+    // Without email, an account flag alone adds nothing.
+    expect(kaizen({ emailAccount: true })).not.toContain("belongs to a Kaizena Flow account");
+  });
 });
 
 describe("cleanReply", () => {
