@@ -5,7 +5,7 @@ import { useId, useState, useTransition } from "react";
 import type { ViewActionResponse } from "@/app/admin/(gated)/[store]/orders/list-actions";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import type { OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { VIEWS_MAX, VIEW_TITLE_MAX } from "@/lib/order-limits";
 
 export type ViewTool = { id: string; title: string };
@@ -26,13 +26,13 @@ export function ViewTools({
   views,
   query,
   actions,
-  words: w = ordersEn.saved,
+  words: w,
 }: {
   views: ViewTool[];
   query: string;
   actions: ViewToolActions;
   /** The `orders` catalogue's `saved` words in the account's language (D312 A4). */
-  words?: OrdersMessages["saved"];
+  words: OrdersMessages["saved"];
 }) {
   const id = useId();
   const [title, setTitle] = useState("");

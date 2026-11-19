@@ -55,6 +55,8 @@ import { senderFor } from "./sending-domains";
 import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
+import { marketingEn } from "@/lib/admin-messages/marketing.en";
+import { isReservedAddress, RESERVED_NOTE } from "@/lib/reserved-address";
 
 type Row = Record<string, unknown>;
 
@@ -270,7 +272,7 @@ async function audienceOf(store: EmailStore, broadcast: Broadcast): Promise<Audi
   const [tiers, names] = await Promise.all([listTiers(store.id), segmentNames(store, [rules])]);
   const emails = people.people.filter((p) => p.consent === "subscribed" && matches(rules, p, now)).map((p) => p.email);
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
-  return { emails, words: `${segment.name}: ${describeRules(rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, ...names })}` };
+  return { emails, words: `${segment.name}: ${describeRules(rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, ...names, words: marketingEn.describe })}` };
 }
 
 /** How many addresses a send would go to now (the editor's count): the audience's people who are `subscribed`. */
@@ -591,10 +593,13 @@ async function sendBatch(
       result.failed += 1;
       continue;
     }
-    // Kept first, under the recipient's own key: a batch that is tried again finds the same row and never sends twice.
+    // Kept first, under the recipient's own key: a batch that is tried again finds the same row and never sends twice. An address no person
+    // can have (D792) is kept as logged, so the branch below counts it sent and it is never delivered.
+    const reserved = isReservedAddress(r.email);
     await db().execute(sql`
-      insert into commerce.email_messages (store_id, kind, idempotency_key, to_address, subject, html, text)
-      values (${r.storeId}::uuid, 'marketing.broadcast', ${keyOf(r)}, ${r.email}, ${email.subject}, ${email.html}, ${email.text})
+      insert into commerce.email_messages (store_id, kind, idempotency_key, to_address, subject, html, text, status, error)
+      values (${r.storeId}::uuid, 'marketing.broadcast', ${keyOf(r)}, ${r.email}, ${email.subject}, ${email.html}, ${email.text},
+        ${reserved ? "logged" : "queued"}::commerce.email_status, ${reserved ? RESERVED_NOTE : null})
       on conflict (idempotency_key) do nothing
     `);
     const [kept] = await db().execute<Row>(sql`
@@ -937,6 +942,6 @@ async function audienceWords(store: EmailStore, segmentId: string | null): Promi
   if (!segment?.rules) return "It goes to everyone on the shop's list.";
   const tiers = await listTiers(store.id);
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
-  const rules = describeRules(segment.rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name });
+  const rules = describeRules(segment.rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, words: marketingEn.describe });
   return `It goes to the segment "${segment.name.replace(/[<>]/g, "")}": ${rules}. Write for them.`;
 }

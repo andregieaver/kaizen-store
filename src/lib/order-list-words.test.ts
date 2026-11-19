@@ -30,21 +30,21 @@ const refused: BulkRefusal[] = [
 
 describe("the Orders list's words (D312 A4)", () => {
   it("say in English exactly what the libraries say", () => {
-    expect(filterChips(busy)).toEqual(describeFilters(busy));
-    expect(filterChips({ ...DEFAULT_ORDER_LIST, from: "2026-01-01", archived: "yes" })).toEqual(describeFilters({ ...DEFAULT_ORDER_LIST, from: "2026-01-01", archived: "yes" }));
+    expect(filterChips(busy, ordersEn.filters, true)).toEqual(describeFilters(busy));
+    expect(filterChips({ ...DEFAULT_ORDER_LIST, from: "2026-01-01", archived: "yes" }, ordersEn.filters, true)).toEqual(describeFilters({ ...DEFAULT_ORDER_LIST, from: "2026-01-01", archived: "yes" }));
     for (const [count, capped] of [[0, false], [1, false], [37, false], [12_000, false], [10_001, true]] as const) {
-      expect(matchingWords(count, capped)).toBe(matchingText(count, capped));
+      expect(matchingWords(count, capped, ordersEn.list)).toBe(matchingText(count, capped));
     }
-    expect(appliedWords({ requested: 43, applied: 41 })).toBe(bulkSummary({ requested: 43, applied: 41 }));
-    expect(appliedWords({ requested: 1, applied: 1 })).toBe(bulkSummary({ requested: 1, applied: 1 }));
-    expect(refusalGroups(refused)).toEqual(groupRefusals(refused));
+    expect(appliedWords({ requested: 43, applied: 41 }, ordersEn.bulk)).toBe(bulkSummary({ requested: 43, applied: 41 }));
+    expect(appliedWords({ requested: 1, applied: 1 }, ordersEn.bulk)).toBe(bulkSummary({ requested: 1, applied: 1 }));
+    expect(refusalGroups(refused, ordersEn.bulk)).toEqual(groupRefusals(refused));
     for (const item of [
       { ship: "to_send", delivery: { method: "pickup", ready: true } },
       { ship: "sent", delivery: { method: "pickup" } },
       { ship: "partly_sent", delivery: { method: "local" } },
       { ship: "waiting" },
     ] as Parameters<typeof shipWords>[0][]) {
-      expect(shipCellWords(item)).toBe(shipWords(item));
+      expect(shipCellWords(item, ordersEn.table)).toBe(shipWords(item));
     }
   });
 

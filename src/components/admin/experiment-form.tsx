@@ -7,7 +7,6 @@ import { DEVICES, GOAL_WORDS, MAX_RUN_DAYS, MIN_DAYS, type Device, type Goal } f
 import { isTestedPlace, type TargetKind } from "@/lib/ab-site";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { experimentProblems } from "@/lib/experiment-words";
 import { CHANGES, eligiblePerDay, findableChange, goalEstimate, isCountedGoal, recommendedGoal, weeksOf, type TrafficFacts } from "@/lib/experiment-traffic";
 import type { PartInfo } from "@/lib/experiment-parts";
 import { Button, Card, Chip, CARD_CLASS } from "@/components/admin/ui";
@@ -93,7 +92,7 @@ export function ExperimentForm({
     [given, traffic],
   );
   const [pageId, setPageId] = useState(pages[0]?.id ?? "");
-  const [goal, setGoal] = useState<Goal>(() => (house ? "signup" : pages[0] ? recommendedGoal(traffic, pages[0].id) : "orders"));
+  const [goal, setGoal] = useState<Goal>(() => (house ? "signup" : pages[0] ? recommendedGoal(traffic, pages[0].id, w) : "orders"));
   const firstGoals = house ? HOUSE_FIRST_GOALS : FIRST_GOALS;
   const moreGoalList: readonly Goal[] = house ? ["page"] : MORE_GOALS;
   const [goalChosen, setGoalChosen] = useState(false);
@@ -112,7 +111,7 @@ export function ExperimentForm({
   // A part's buttons and forms are the ones inside it; a page's, all of its own.
   const buttons = part ? part.buttons : (page?.buttons ?? []);
   const forms = part ? (part.forms ?? []) : (page?.forms ?? []);
-  const recommended = house ? "signup" : page ? recommendedGoal(traffic, page.id, share) : null;
+  const recommended = house ? "signup" : page ? recommendedGoal(traffic, page.id, w, share) : null;
   const estimateOf = (g: Goal) =>
     page ? goalEstimate({ facts: traffic, targetId: page.id, goal: g, trafficShare: share, versions: 2, relativeChange: change, words: w, numberLocale }) : null;
   const estimate = useMemo(() => estimateOf(goal), [goal, pageId, share, change, traffic]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -126,7 +125,7 @@ export function ExperimentForm({
     setPageId(id);
     setButton("");
     // The recommendation follows the page until the owner picks a goal themselves.
-    if (!goalChosen && !house) setGoal(recommendedGoal(traffic, id, share));
+    if (!goalChosen && !house) setGoal(recommendedGoal(traffic, id, w, share));
   };
   const chooseGoal = (g: Goal) => {
     setGoal(g);
@@ -155,7 +154,7 @@ export function ExperimentForm({
         },
       });
       if (result.ok) router.push(`${base}/${result.id}`);
-      else setProblems(experimentProblems(result.problems, w));
+      else setProblems(result.problems);
     });
   };
 
@@ -172,7 +171,7 @@ export function ExperimentForm({
     const weeks = weeksOf(e);
     if (e.tooLong && page) {
       // Too slow for the change looked for: how soon a bolder one answers, if any does within six weeks.
-      const bold = findableChange({ facts: traffic, targetId: page.id, goal: g, trafficShare: share, versions: 2 });
+      const bold = findableChange({ facts: traffic, targetId: page.id, goal: g, trafficShare: share, versions: 2, words: w });
       if (bold && bold.change > change) return { text: fillWords(s.weeksBold, { n: weeksOf(bold.estimate), change: `${Math.round(bold.change * 100)} %` }), tone: "warning" as const };
     }
     if (e.days > MAX_RUN_DAYS) return { text: s.tooSlow, tone: "warning" as const };
@@ -225,7 +224,7 @@ export function ExperimentForm({
     : null;
   const span = estimate ? Math.max(42, estimate.days) : 42;
   // Too subtle a change for this traffic: the smallest one it could find within six weeks, offered in one press.
-  const bolder = estimate?.tooLong && page ? findableChange({ facts: traffic, targetId: page.id, goal, trafficShare: share, versions: 2 }) : null;
+  const bolder = estimate?.tooLong && page ? findableChange({ facts: traffic, targetId: page.id, goal, trafficShare: share, versions: 2, words: w }) : null;
   const pct = (c: number) => `${Math.round(c * 100)} %`;
   const bolderLine = estimate?.tooLong ? (
     bolder && bolder.change > change ? (

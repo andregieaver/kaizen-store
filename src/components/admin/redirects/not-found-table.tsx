@@ -8,7 +8,6 @@ import type { Finding } from "@/lib/data-job";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { requestsWords, suggestionKind, suggestionWords } from "@/lib/redirect-admin";
-import { redirectProblems } from "@/lib/redirect-words";
 
 import { useAdminLang, useAdminText } from "../admin-text";
 
@@ -94,7 +93,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
       setFindings([]);
       const result = await actions.redirect(row.path, to);
       if (!result.ok) {
-        setProblems(redirectProblems(result.problems, w));
+        setProblems(result.problems);
         setFindings(result.findings ?? []);
         return;
       }
@@ -107,7 +106,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
       setProblems([]);
       const result = await (ignored ? actions.restore(row.path) : actions.ignore(row.path));
       if (!result.ok) {
-        setProblems(redirectProblems(result.problems, w));
+        setProblems(result.problems);
         return;
       }
       setHiddenNow(!ignored);

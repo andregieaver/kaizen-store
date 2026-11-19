@@ -46,7 +46,7 @@ const person = (p: Partial<Person> = {}): Person => ({
   ...p,
 });
 
-const ctx = { money: (minor: number) => `${minor / 100} kr` };
+const ctx = { money: (minor: number) => `${minor / 100} kr`, words: marketingEn.describe };
 
 describe("a condition (D296)", () => {
   it("reads every fact as its words say", () => {

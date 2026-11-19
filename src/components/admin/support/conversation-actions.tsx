@@ -3,10 +3,7 @@
 import { useRef, useState } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import {
-  supportEn,
-  type SupportMessages,
-} from "@/lib/admin-messages/support.en";
+import type { SupportMessages } from "@/lib/admin-messages/support.en";
 import { topicWords } from "@/lib/support-inbox-text";
 import {
   insertReply,
@@ -43,7 +40,7 @@ export function availableActs(
     | "signedIn"
     | "source"
   >,
-  words: SupportMessages["actions"]["why"] = supportEn.actions.why,
+  words: SupportMessages["actions"]["why"],
 ): {
   claim: boolean;
   handBack: boolean;

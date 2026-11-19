@@ -22,6 +22,7 @@ export const flowsNb: FlowsMessages = {
     start: "Start",
     welcome: { title: "Ønsk nye abonnenter velkommen", text: "En velkomst samme dag; tre dager senere en takk eller bestselgerne dine." },
     after_purchase: { title: "Følg opp etter et kjøp", text: "En uke etter en bestilling, spør hvordan det går; tre uker senere, noe nytt." },
+    win_back: { title: "Hent tilbake kunder", text: "Når noen ikke har bestilt på 90 dager, vi savner deg; to uker senere, én til." },
   },
   emailLabel: "E-post",
   story: {
@@ -29,6 +30,7 @@ export const flowsNb: FlowsMessages = {
       "subscriber.subscribed": "Når noen melder seg på listen din:",
       "order.paid": "Når noen betaler for en bestilling:",
       "checkout.abandoned": "Når noen forlater kassen:",
+      "customer.lapsed": "Når noen ikke har bestilt på {n} dager:",
     },
     sameDay: "samme dag",
     after: { hours: { one: "en time senere", many: "{n} timer senere" }, days: { one: "en dag senere", many: "{n} dager senere" } },
@@ -45,6 +47,7 @@ export const flowsNb: FlowsMessages = {
   change: "Endre",
   subject: "Emne",
   words: "Tekst",
+  lapseDays: "Dager uten bestilling",
   days: "Dager senere",
   save: "Lagre",
   savedTestAgain: "Lagret. Forløpet er av til du tester det igjen.",

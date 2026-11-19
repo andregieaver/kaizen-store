@@ -6,7 +6,6 @@ import { useState, useTransition } from "react";
 import { useAdminText } from "@/components/admin/admin-text";
 import { Button, Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { experimentProblems } from "@/lib/experiment-words";
 
 type Outcome = { ok: true; url: string } | { ok: false; problems: string[] };
 
@@ -26,7 +25,7 @@ export function ExperimentShare({ versions, make }: { versions: { key: string; n
       setProblems([]);
       const result = await make(key);
       if (!result.ok) {
-        setProblems(experimentProblems(result.problems, w));
+        setProblems(result.problems);
         return;
       }
       setLinks((had) => ({ ...had, [key]: result.url }));

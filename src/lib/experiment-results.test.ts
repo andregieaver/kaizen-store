@@ -11,6 +11,7 @@ import {
   visitorsPerVersion,
   type VariantFigures,
 } from "./experiment-results";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 const fig = (key: string, visitors: number, conversions: number, money: VariantFigures["money"] = null): VariantFigures => ({ key, name: key.toUpperCase(), visitors, conversions, money });
 const base = { goal: "orders" as const, splitP: 0.5, days: 14, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" };
@@ -68,35 +69,35 @@ describe("the arithmetic", () => {
     expect(visitorsPerVersion(0.2, 0.2)!).toBeLessThan(3000);
     expect(visitorsPerVersion(0, 0.1)).toBeNull();
     expect(visitorsPerVersion(0.1, 0)).toBeNull();
-    const quick = estimateRuntime({ baseline: 0.2, relativeChange: 0.2, versions: 2, eligiblePerDay: 1000, trafficShare: 1 })!;
+    const quick = estimateRuntime({ words: experimentsEn, baseline: 0.2, relativeChange: 0.2, versions: 2, eligiblePerDay: 1000, trafficShare: 1 })!;
     expect(quick.days).toBe(14);
     expect(quick.tooLong).toBe(false);
     expect(quick.sentence).toMatch(/about 14 days/);
-    const slow = estimateRuntime({ baseline: 0.02, relativeChange: 0.1, versions: 2, eligiblePerDay: 1000, trafficShare: 1 })!;
+    const slow = estimateRuntime({ words: experimentsEn, baseline: 0.02, relativeChange: 0.1, versions: 2, eligiblePerDay: 1000, trafficShare: 1 })!;
     expect(slow.days % 7).toBe(0);
     expect(slow.days).toBeGreaterThan(90);
     expect(slow.sentence).toMatch(/more than 90 days/);
-    const medium = estimateRuntime({ baseline: 0.05, relativeChange: 0.2, versions: 2, eligiblePerDay: 300, trafficShare: 1 })!;
+    const medium = estimateRuntime({ words: experimentsEn, baseline: 0.05, relativeChange: 0.2, versions: 2, eligiblePerDay: 300, trafficShare: 1 })!;
     expect(medium.tooLong).toBe(true);
     expect(medium.sentence).toMatch(/That is long/);
-    expect(estimateRuntime({ baseline: 0.02, relativeChange: 0.1, versions: 2, eligiblePerDay: 0, trafficShare: 1 })).toBeNull();
+    expect(estimateRuntime({ words: experimentsEn, baseline: 0.02, relativeChange: 0.1, versions: 2, eligiblePerDay: 0, trafficShare: 1 })).toBeNull();
   });
 });
 
 describe("what the results say", () => {
   it("says nothing but 'too early' before the minimum, with what to wait for", () => {
-    const few = verdictOf({ ...base, figures: [fig("a", 120, 4), fig("b", 130, 9)] });
+    const few = verdictOf({ words: experimentsEn, ...base, figures: [fig("a", 120, 4), fig("b", 130, 9)] });
     expect(few.kind).toBe("few");
     expect(few.headline).toBe("Too early to say.");
     expect(few.detail).toMatch(/Wait for 80 more visitors/);
-    const early = verdictOf({ ...base, days: 5, figures: [fig("a", 4000, 80), fig("b", 4000, 120)] });
+    const early = verdictOf({ words: experimentsEn, ...base, days: 5, figures: [fig("a", 4000, 80), fig("b", 4000, 120)] });
     expect(early.kind).toBe("early");
     expect(early.detail).toMatch(/Wait for 9 more days/);
     expect(early.best).toBeNull();
   });
 
   it("names a better version once the minimum is reached, in the words the doc promises", () => {
-    const v = verdictOf({ ...base, figures: [fig("a", 4000, 80), fig("b", 4000, 130)] });
+    const v = verdictOf({ words: experimentsEn, ...base, figures: [fig("a", 4000, 80), fig("b", 4000, 130)] });
     expect(v.kind).toBe("better");
     expect(v.best).toBe("b");
     expect(v.headline).toBe("B is better than the original.");
@@ -106,16 +107,16 @@ describe("what the results say", () => {
   });
 
   it("says when the original is better, or when there is no clear difference", () => {
-    const worse = verdictOf({ ...base, figures: [fig("a", 4000, 130), fig("b", 4000, 70)] });
+    const worse = verdictOf({ words: experimentsEn, ...base, figures: [fig("a", 4000, 130), fig("b", 4000, 70)] });
     expect(worse.kind).toBe("worse");
     expect(worse.detail).toMatch(/Keep the original/);
-    const even = verdictOf({ ...base, figures: [fig("a", 4000, 100), fig("b", 4000, 104)] });
+    const even = verdictOf({ words: experimentsEn, ...base, figures: [fig("a", 4000, 100), fig("b", 4000, 104)] });
     expect(even.kind).toBe("even");
     expect(even.headline).toBe("No clear difference between the versions.");
   });
 
   it("puts a broken split before everything", () => {
-    const v = verdictOf({ ...base, splitP: 0.00001, figures: [fig("a", 4000, 80), fig("b", 4000, 130)] });
+    const v = verdictOf({ words: experimentsEn, ...base, splitP: 0.00001, figures: [fig("a", 4000, 80), fig("b", 4000, 130)] });
     expect(v.kind).toBe("broken");
     expect(v.headline).toMatch(/cannot be trusted/);
   });
@@ -123,15 +124,15 @@ describe("what the results say", () => {
   it("holds a lucky version to a stricter standard when there are several", () => {
     // B alone would pass at 95 %, but against three versions its interval is wider.
     const figures = [fig("a", 3000, 90), fig("b", 3000, 124), fig("c", 3000, 92), fig("d", 3000, 88)];
-    const one = verdictOf({ ...base, figures: figures.slice(0, 2) });
-    const three = verdictOf({ ...base, figures });
+    const one = verdictOf({ words: experimentsEn, ...base, figures: figures.slice(0, 2) });
+    const three = verdictOf({ words: experimentsEn, ...base, figures });
     expect(one.kind).toBe("better");
     expect(three.kind).toBe("even");
   });
 
   it("reads revenue per visitor in the store's money", () => {
     const money = (mean: number, n: number) => ({ sum: mean * n, sumSq: (900 + mean * mean) * n });
-    const v = verdictOf({ ...base, goal: "revenue", figures: [{ ...fig("a", 3000, 0), money: money(10_000, 3000) }, { ...fig("b", 3000, 0), money: money(12_000, 3000) }] });
+    const v = verdictOf({ words: experimentsEn, ...base, goal: "revenue", figures: [{ ...fig("a", 3000, 0), money: money(10_000, 3000) }, { ...fig("b", 3000, 0), money: money(12_000, 3000) }] });
     expect(v.kind).toBe("better");
     expect(v.detail).toMatch(/B earned 20 % more per visitor than the original/);
     expect(v.detail).toMatch(/kr|NOK/);

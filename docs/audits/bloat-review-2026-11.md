@@ -184,7 +184,7 @@ commit as the fix.
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
 | 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Open | |
-| 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | Open | |
+| 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | In progress | 19 Nov local: catalogue sites 35 to 0; 83 routes fell (Work 54 KB each); five screens 634-664 KB; admin median 643,240 B; builderEnglish 26 to 0 routes. |
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | Open | |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Open | |
 | 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | Open | |
@@ -198,11 +198,11 @@ commit as the fix.
 | 2.37 | Slim the tool schemas, so no first round is over 56,000 characters | AI-8 | M | strong | 1.19, 2.36 | Open | |
 | 2.38 | Use cached input | AI-3 | M | strong | 1.19, 2.36, 2.37 | Open | |
 | 2.39 | Give small jobs a quick model | AI-7, GAP-ai-s4 | M | strong | 1.19, 2.38 | Open | |
-| 2.40 | Keep one file per decision, with a generated index | DC-2, AS-8 | M | cheap | 0.41, 1.1 | Open | |
-| 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1, 0.43 | Open | |
+| 2.40 | Keep one file per decision, with a generated index | DC-2, AS-8 | M | cheap | 0.41, 1.1 | Done | 19 Nov, f8e36043, D790: 779 decisions one file each, every one word for word; index 83 KB (was 1.67 MB). |
+| 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1, 0.43 | Done | 19 Nov, 3fcc3d4e, D791: the ledger is the record; the Migration versions list is frozen. |
 | 2.42 | Shorten the gate's type check | TC-4, TC-9 | M | review | 0.38, 1.20 | In progress | Commit 1: native TS 7 trial in static until 25 Nov. Local: TS 7 via dlx 27 s, 11 errors tsc 6.0.3 lacks; tsc 0. |
 | 2.43 | Add a related test run for the push | TC-6, GAP-build-s4 | S | review | 0.38, 0.39, 1.20, 2.42 | Open | |
-| 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | Open | |
+| 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | In progress | 19 Nov, 9e6e0502, D789: db tests share a worker (150 to 108 s); components stay isolated; CI's unit ceiling to set. |
 | 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
 | 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | Open | |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
@@ -343,6 +343,7 @@ Change log:
 - 19 Nov 2026: step 2.13 Done (4cc84650, D779); step 2.18 Done (38759d01, D780); step 2.33 commit 1 on main (00d7bddd, D781), commit 2 waits for the owner.
 - 19 Nov 2026: step 2.48 Done (0e649cc0, D782): a placed order's ceilings held; no trigger gated, as each would change what an order writes.
 - 19 Nov 2026: step 2.34 on main (c30c7d23, D783): an untouched admin tab asks for notices every ten minutes; Done after a day's statistics.
+- 19 Nov 2026: step 2.40 Done (f8e36043, D790): one file per decision with a generated index; step 2.41 Done (3fcc3d4e, D791): the ledger is the record; step 2.44 on main (D789), the CI ceiling to set.
 - 18 Nov 2026: step 2.17 carried out locally in five commits (the Pages list in SQL with pageTitles(), pages of 100, the grid's and the
   feed's cards in SQL, the index for the static params and search picker, the pageDocuments list); waiting for review and the D-row.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.

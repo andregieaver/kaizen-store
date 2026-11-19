@@ -2,16 +2,16 @@
 
 import { useTransition } from "react";
 
-import { platformEn, type PlatformMessages } from "@/lib/admin-messages/platform.en";
+import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 /** Deletes a cart reminder after asking; carts already reminded keep their history. */
 export function DeleteReminderButton({
   action,
-  words = platformEn.deleteReminder,
+  words,
 }: {
   action: () => Promise<unknown>;
-  /** The account's words (D312 A11); English unless given. */
-  words?: PlatformMessages["deleteReminder"];
+  /** The account's words (D312 A11). */
+  words: PlatformMessages["deleteReminder"];
 }) {
   const [pending, start] = useTransition();
   return (

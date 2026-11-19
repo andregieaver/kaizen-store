@@ -2,8 +2,8 @@
 //
 //   node scripts/claim-decision.mjs "short title"
 //
-// It pushes ONE new commit on top of origin/main that adds a stub row to docs/decisions.md, built with git plumbing in a temporary
-// index: the working tree, the index and the session's branch are never touched, nothing is forced. A push that touches only docs
+// It pushes ONE new commit on top of origin/main that adds the decision's own file (docs/decisions/D<n>.md) and its row in the
+// index of docs/decisions.md, built with git plumbing in a temporary index: the working tree, the index and the session's branch are never touched, nothing is forced. A push that touches only docs
 // runs no CI and no deploy (ci.yml's paths, vercel.json's deploymentEnabled); the script checks both facts first. When main moved
 // since it read, the push is refused and it reads again and takes the next number. On success it prints one line, 'D<number>', on
 // standard output; every note goes to standard error.
@@ -32,13 +32,15 @@ function makeIo() {
       base = git(["rev-parse", "origin/main"]).trim();
       return git(["show", `${base}:docs/decisions.md`]);
     },
-    push: async (newText, message) => {
+    push: async (files, message) => {
       const dir = mkdtempSync(path.join(os.tmpdir(), "claim-"));
       const env = { ...process.env, GIT_INDEX_FILE: path.join(dir, "index") };
       try {
-        const blob = git(["hash-object", "-w", "--stdin"], { input: newText }).trim();
         git(["read-tree", base], { env });
-        git(["update-index", "--cacheinfo", `100644,${blob},docs/decisions.md`], { env });
+        for (const [file, text] of Object.entries(files)) {
+          const blob = git(["hash-object", "-w", "--stdin"], { input: text }).trim();
+          git(["update-index", "--add", "--cacheinfo", `100644,${blob},${file}`], { env });
+        }
         const tree = git(["write-tree"], { env }).trim();
         const commit = git(["commit-tree", tree, "-p", base, "-m", message]).trim();
         try {

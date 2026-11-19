@@ -1,6 +1,6 @@
 import { BONUS_KIND_LABELS, isGrantKind, earnAmount, restoreShare, type BonusEntry, type BonusOverview, type BonusSettings } from "./bonus";
 import { countWords, fillWords } from "./admin-fill";
-import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
+import type { LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { bonusSettingsInput } from "./bonus-schema";
 import { formatMoney, minorUnitDigits } from "./money";
 import { formatPriceInput, parsePrice } from "./product-input";
@@ -103,7 +103,7 @@ const wholeNumber = (text: string): number | null => (/^\d{1,9}$/.test(text.trim
 export function readBonusForm(
   values: BonusFormValues,
   currency: string,
-  w: LoyaltyMessages["bonus"]["errors"] = loyaltyEn.bonus.errors,
+  w: LoyaltyMessages["bonus"]["errors"],
 ): BonusFormRead {
   const errors: Partial<Record<BonusField, string>> = {};
 
@@ -230,7 +230,7 @@ export function earnExample(
   currency: string,
   locale: string,
   orderMajor = 1000,
-  template = loyaltyEn.bonus.example,
+  template: string,
 ): { orderLabel: string; earnLabel: string; sentence: string } {
   const orderMinor = orderMajor * 10 ** minorUnitDigits(currency);
   const orderLabel = formatMoney(orderMinor, currency, locale);
@@ -241,7 +241,7 @@ export function earnExample(
 type RuleWords = LoyaltyMessages["bonusRules"];
 
 /** The wait before credits can be used, as the shopper's texts say it ("right after you pay", "14 days after you pay"). */
-export function waitWords(pendingDays: number, w: RuleWords = loyaltyEn.bonusRules): string {
+export function waitWords(pendingDays: number, w: RuleWords): string {
   return pendingDays <= 0 ? w.rightAfter : fillWords(w.after, { days: countWords(pendingDays, w.days) });
 }
 
@@ -251,7 +251,7 @@ export function waitWords(pendingDays: number, w: RuleWords = loyaltyEn.bonusRul
  * owner sets: the limit on an order and the least to use. The admin's summary, the confirmation of a change and what
  * the AI manager says all come from here, so they never disagree.
  */
-export function rulesSummary(settings: BonusSettings, money: MoneyFormat, currency: string, w: RuleWords = loyaltyEn.bonusRules): string[] {
+export function rulesSummary(settings: BonusSettings, money: MoneyFormat, currency: string, w: RuleWords): string[] {
   const lines: string[] = [];
   lines.push(
     settings.earnBps > 0
@@ -272,21 +272,15 @@ export function rulesSummary(settings: BonusSettings, money: MoneyFormat, curren
 }
 
 /** A percentage's number with the words' own decimal mark: "2.5" in English, "2,5" in Norwegian. */
-export function percentNumber(bps: number, w: { decimal: string } = loyaltyEn.bonusRules): string {
+export function percentNumber(bps: number, w: { decimal: string }): string {
   return bpsToPercentText(bps).replace(".", w.decimal);
 }
-
-/** What the program is, for the owner who has not turned it on. */
-export const BONUS_EXPLANATION = loyaltyEn.bonus.explanation;
-
-/** The note for accountants that goes with the overview. */
-export const BONUS_ACCOUNTING_NOTE = loyaltyEn.bonus.accountingNote;
 
 /** The overview as rows of a list: label and amount. */
 export function overviewRows(
   overview: BonusOverview,
   money: MoneyFormat,
-  w: LoyaltyMessages["bonusOverview"] = loyaltyEn.bonusOverview,
+  w: LoyaltyMessages["bonusOverview"],
 ): { label: string; value: string; hint?: string }[] {
   return [
     { label: w.outstanding, value: money(overview.outstandingMinor), hint: w.outstandingHint },
@@ -335,7 +329,7 @@ export function readAdjustment(
   amountText: string,
   noteText: string,
   currency: string,
-  w: LoyaltyMessages["adjust"] = loyaltyEn.adjust,
+  w: LoyaltyMessages["adjust"],
 ): Adjustment {
   const text = amountText.replace(/[\s ]/g, "");
   const negative = /^[-−–]/.test(text);
@@ -352,7 +346,7 @@ export function readAdjustment(
 }
 
 /** The question before an adjustment is made. */
-export function adjustmentQuestion(amountMinor: number, who: string, money: MoneyFormat, w: LoyaltyMessages["adjust"] = loyaltyEn.adjust): string {
+export function adjustmentQuestion(amountMinor: number, who: string, money: MoneyFormat, w: LoyaltyMessages["adjust"]): string {
   return amountMinor > 0
     ? fillWords(w.addQuestion, { amount: money(amountMinor), who })
     : fillWords(w.takeQuestion, { amount: money(-amountMinor), who });

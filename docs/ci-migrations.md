@@ -174,7 +174,10 @@ own release because the head brings a migration, as run 1551 did) runs `scripts/
 one that includes it. When every newer run has finished and production still lacks the commit, it deploys THIS commit (which
 passed every check, and whose migrations are applied) through Vercel's API with its sha (the hook would build the failing head),
 then `await-deploy.mjs` verifies it. It needs the repository secret `VERCEL_TOKEN` (a Vercel token for the team that may create
-deployments); without it, or after 40 minutes (30 in `release`) of newer runs still going, the job fails red saying so.
+deployments); without it the job fails red saying so. Once it has waited 40 minutes (30 in `release`) it deploys this commit even
+while newer runs go on (D793: runs take about 30 minutes, so with pushes every few minutes a newer run was always going and the wait
+ran out, leaving production's code behind migrations already applied), unless a newer run's `pending` or `release` job is deploying
+right then: that one it waits for, ten minutes more at most.
 
 A deploy that should not have gone out: roll back in Vercel (*Deployments → the earlier one → Promote to
 Production*, seconds) and push the fix.
@@ -190,17 +193,19 @@ and set `DEPLOY_VIA_CI` to anything but `true`.
   or drop in the same change as the code that stops using them; do the removal in a later push.
 - A migration is plain SQL for a real Postgres: the production connection is not Supabase's migration
   tool, so `DROP` statements, triggers and multi-statement files run as written.
-- Advisors (RLS, search path, indexes) are still checked by hand after a migration that adds tables
-  or functions; record the result in `docs/decisions.md` as before.
+- Advisors (RLS, search path, indexes) are still checked by hand after every migration. A clean check is not written down. A new
+  finding is written as a line in `docs/audits/psi-followups.md` with the migration's file name. The ledger
+  `supabase_migrations.kaizen_files` is the record of what was applied and when; the Migration versions list in the decisions is
+  frozen (4 October 2026) and nothing is added to it.
 - A migration that adds a table, or an index or trigger on a hot table, raises the surface budget
   (`src/lib/surface-budget.scan.test.ts`); the scan runs with the full checks, so for a push without a migration it reports
   beside the deploy and does not hold it back.
 - If a migration fails, the job is red, nothing from that file is applied and later files wait; fix it
   with a new file (or, when it never ran, edit it: only a file that is not in the ledger may change).
-- Never change an AI prompt in the same push as a migration. The agents' eval replay (D391) fails until the eval is recorded
-  again with the new prompt, and that recording can only be made on production running it; a push with a migration deploys only
-  after the checks pass, so the two would wait on each other. Push the migration first, then the prompt change (a new admin page
-  is one: the AI manager's prompt lists the admin map), then record the eval on Platform → AI and commit its recording (D409).
+- A changed AI prompt or tool may go out beside a migration (D793). The agents' eval replay (D391) only warns while its recording is
+  behind (an annotation on the run): the recording can only be made on production running the change, so failing on it held every
+  release back. Once the change is live, record the eval on Platform → AI and commit its recording; while it matches, a replay that
+  fails still fails the checks.
 
 ### Until `AUTO_MIGRATE` is on
 

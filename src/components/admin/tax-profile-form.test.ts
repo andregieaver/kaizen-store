@@ -2,9 +2,10 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_TAX_PROFILE, TAX_WARNINGS, readiness, type TaxProfile } from "@/lib/tax-profile";
+import { DEFAULT_TAX_PROFILE, readiness, type TaxProfile } from "@/lib/tax-profile";
 
 import { OwnNumberCheckCard, ReadinessList, TaxProfileForm, TaxWarnings } from "./tax-profile-form";
+import { taxEn } from "@/lib/admin-messages/tax.en";
 
 const html = (element: Parameters<typeof renderToString>[0]) =>
   renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
@@ -131,18 +132,18 @@ describe("OwnNumberCheckCard", () => {
 
 describe("ReadinessList and TaxWarnings", () => {
   it("says On or Off in words for each of the four lines, and what is missing", () => {
-    const out = html(h(ReadinessList, { lines: readiness(DEFAULT_TAX_PROFILE, "SE") }));
+    const out = html(h(ReadinessList, { lines: readiness(DEFAULT_TAX_PROFILE, "SE", taxEn.readiness) }));
     expect((out.match(/>Off</g) ?? []).length).toBe(4);
     expect(out).toContain("Reverse charge: off. Needs");
     expect(out).toContain("IOSS: off. Needs an IOSS number");
-    const ready = html(h(ReadinessList, { lines: readiness(swedish, "SE") }));
+    const ready = html(h(ReadinessList, { lines: readiness(swedish, "SE", taxEn.readiness) }));
     expect(ready).toContain(">On<");
     expect(ready).toContain("Reverse charge: on.");
   });
 
   it("lists every warning for the accountant", () => {
-    const out = html(h(TaxWarnings, { warnings: TAX_WARNINGS }));
-    for (const warning of TAX_WARNINGS) expect(out).toContain(warning.slice(0, 40));
+    const out = html(h(TaxWarnings, { warnings: taxEn.warnings.items }));
+    for (const warning of taxEn.warnings.items) expect(out).toContain(warning.slice(0, 40));
     expect(out).toContain("not tax advice");
   });
 });

@@ -20,6 +20,7 @@ import {
 import { audit, type Membership } from "./auth";
 import { memberCan } from "./permissions";
 import { checkSellerNumber, getCheck, type SellerCheckDeps, type VatCheck } from "./vat-checks";
+import { taxEn } from "@/lib/admin-messages/tax.en";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -87,7 +88,7 @@ export type TaxProfileView = {
 export async function taxProfileView(storeId: string): Promise<TaxProfileView> {
   const [profile, country] = await Promise.all([getTaxProfile(storeId), storeCountry(storeId)]);
   const check = profile.vatNumberCheckId ? await getCheck(db(), storeId, profile.vatNumberCheckId) : null;
-  return { profile, country, readiness: readiness(profile, country), check };
+  return { profile, country, readiness: readiness(profile, country, taxEn.readiness), check };
 }
 
 /** What the store checkup reports about the profile (`checkupFindings()` of what is saved). */

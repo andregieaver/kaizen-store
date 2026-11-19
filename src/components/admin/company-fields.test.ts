@@ -4,13 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+import { customersEn } from "@/lib/admin-messages/customers.en";
+
 import { CompanyFields } from "./company-fields";
 
 const groups = [{ id: "g1", name: "Trade", percent: 10, active: true }];
 const lookup = vi.fn(async () => ({ ok: false as const, reason: "unavailable" as const }));
 const search = vi.fn(async () => ({ ok: false as const, reason: "unavailable" as const }));
 const render = (props: Record<string, unknown> = {}) =>
-  renderToString(createElement(CompanyFields, { groups, ...props }));
+  renderToString(createElement(CompanyFields, { groups, words: customersEn.fields, ...props }));
 
 describe("the company form", () => {
   it("offers the company register lookup when it is given the store's actions", () => {

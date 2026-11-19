@@ -7,6 +7,7 @@ import type { Finding } from "@/lib/data-job";
 import { REDIRECT_BULK_DELETE_MAX } from "@/lib/data-limits";
 import { checkRedirect, createRedirect, deleteRedirects, updateRedirect } from "@/server/redirects";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
+import { inAccountWords } from "./answer-words";
 
 /**
  * The redirect manager's actions (wave 2, second run, D168, `docs/wave-2-redirects.md` 2.2), each for a member with `website:write` and each taking the
@@ -33,7 +34,7 @@ const idList = z.array(z.uuid()).max(REDIRECT_BULK_DELETE_MAX);
 const unreadable: { ok: false; problems: string[] } = { ok: false, problems: ["The form could not be read. Reload the page and try again."] };
 
 /** Checks an address pair as it is typed; writes nothing. */
-export async function checkRedirectAction(storeSlug: string, input: unknown): Promise<CheckResult> {
+async function checkRedirectActionInEnglish(storeSlug: string, input: unknown): Promise<CheckResult> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   const parsed = pair.safeParse(input);
@@ -44,7 +45,7 @@ export async function checkRedirectAction(storeSlug: string, input: unknown): Pr
 }
 
 /** Adds a manual redirect (replacing the target of one from the same address), or, with an id, edits that one. */
-export async function saveRedirectAction(storeSlug: string, input: unknown, id?: string): Promise<SaveResult> {
+async function saveRedirectActionInEnglish(storeSlug: string, input: unknown, id?: string): Promise<SaveResult> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problems: [NO_ACCESS], findings: [] };
   const parsed = pair.safeParse(input);
@@ -56,7 +57,7 @@ export async function saveRedirectAction(storeSlug: string, input: unknown, id?:
 }
 
 /** Deletes redirects of any kind (the automatic ones too), at most 200 in one request; one entry in the activity log. */
-export async function deleteRedirectsAction(storeSlug: string, ids: unknown): Promise<DeleteResult> {
+async function deleteRedirectsActionInEnglish(storeSlug: string, ids: unknown): Promise<DeleteResult> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   const parsed = idList.safeParse(ids);
@@ -65,4 +66,15 @@ export async function deleteRedirectsAction(storeSlug: string, ids: unknown): Pr
   if (!result.ok) return { ok: false, problems: result.problems };
   refresh();
   return { ok: true, deleted: result.deleted };
+}
+
+// Each action's answer in the account's words (bloat review step 2.26): the browser draws what it is given, with no English to match.
+export async function checkRedirectAction(...args: Parameters<typeof checkRedirectActionInEnglish>): Promise<Awaited<ReturnType<typeof checkRedirectActionInEnglish>>> {
+  return inAccountWords(await checkRedirectActionInEnglish(...args));
+}
+export async function saveRedirectAction(...args: Parameters<typeof saveRedirectActionInEnglish>): Promise<Awaited<ReturnType<typeof saveRedirectActionInEnglish>>> {
+  return inAccountWords(await saveRedirectActionInEnglish(...args));
+}
+export async function deleteRedirectsAction(...args: Parameters<typeof deleteRedirectsActionInEnglish>): Promise<Awaited<ReturnType<typeof deleteRedirectsActionInEnglish>>> {
+  return inAccountWords(await deleteRedirectsActionInEnglish(...args));
 }

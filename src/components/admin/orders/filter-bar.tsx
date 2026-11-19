@@ -60,7 +60,8 @@ export function FilterBar({
   columnWords?: Record<OrderColumn, string>;
 }) {
   const state = expandShow(plainState(params));
-  const chips = filterChips(params, w);
+  // English (the catalogue itself, as the server hands it) names the codes as they are written: `partially refunded`.
+  const chips = filterChips(params, w, w === ordersEn.filters);
   const columns = columnsOf(params);
   const filtered = hasFilters(params);
   return (

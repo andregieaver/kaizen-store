@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { methodInput } from "./shipping-methods-schema";
 import { blocksFromRates, gramsOf, groupsFromBlocks, minorOf, tierStarts, typedAmount, typedKilograms, type BlockDraft } from "./shipping-method-form";
 import type { MethodRate } from "./shipping-methods";
+import { shippingEn } from "@/lib/admin-messages/shipping.en";
 
 const ZONE = "11111111-1111-4111-8111-111111111111";
 const PROFILE = "22222222-2222-4222-8222-222222222222";
@@ -47,7 +48,7 @@ describe("the method page's rate grid (D237 2.1)", () => {
     ]);
     expect(tierStarts(blocks[2])).toEqual(["0", "2"]);
     // What it reads, it writes again unchanged.
-    expect(groupsFromBlocks(blocks, "NOK")).toEqual({
+    expect(groupsFromBlocks(blocks, "NOK", shippingEn.method)).toEqual({
       groups: [
         { zoneId: null, profileId: null, tiers: [rates[0]].map(({ basis, minValue, maxValue, amountMinor }) => ({ basis, minValue, maxValue, amountMinor })) },
         { zoneId: ZONE, profileId: null, tiers: rates.slice(1).map(({ basis, minValue, maxValue, amountMinor }) => ({ basis, minValue, maxValue, amountMinor })) },
@@ -59,7 +60,7 @@ describe("the method page's rate grid (D237 2.1)", () => {
   it("makes tiers that meet without a gap, each from where the one before ends, and sends nothing for Not offered", () => {
     const { groups, problems } = groupsFromBlocks(
       [block({ basis: "value", tiers: [{ upTo: "500", price: "99" }, { upTo: "1000", price: "49" }, { upTo: "", price: "0" }] }), block({ profileId: PROFILE })],
-      "NOK",
+      "NOK", shippingEn.method
     );
     expect(problems).toEqual([]);
     expect(groups).toEqual([
@@ -78,7 +79,7 @@ describe("the method page's rate grid (D237 2.1)", () => {
   });
 
   it("allows a closed last tier (a basket above it is not offered this method)", () => {
-    const { groups, problems } = groupsFromBlocks([block({ basis: "weight", tiers: [{ upTo: "5", price: "99" }, { upTo: "20", price: "199" }] })], "NOK");
+    const { groups, problems } = groupsFromBlocks([block({ basis: "weight", tiers: [{ upTo: "5", price: "99" }, { upTo: "20", price: "199" }] })], "NOK", shippingEn.method);
     expect(problems).toEqual([]);
     expect(groups[0].tiers.at(-1)).toEqual({ basis: "weight", minValue: 5000, maxValue: 20000, amountMinor: 19900 });
   });
@@ -91,7 +92,7 @@ describe("the method page's rate grid (D237 2.1)", () => {
       block({ zoneId: ZONE, profileId: PROFILE, basis: "weight", tiers: [] }),
       block({ zoneId: null, profileId: "x", basis: "weight", tiers: [{ upTo: "2 kg", price: "" }] }),
     ];
-    const { groups, problems } = groupsFromBlocks(blocks, "NOK");
+    const { groups, problems } = groupsFromBlocks(blocks, "NOK", shippingEn.method);
     expect(groups).toEqual([]);
     expect(problems).toEqual([
       { block: 0, message: "Enter the price in NOK." },

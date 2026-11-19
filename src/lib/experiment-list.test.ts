@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { groupOf, listLead, testIdeas, type IdeaTarget } from "./experiment-list";
 import type { TrafficFacts } from "./experiment-traffic";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 const progress = (readyAround: string | null) => ({ progress: { days: 3, minDays: 14, visitors: 100, minVisitors: 200, share: 0.2, reached: false, readyAround } });
 
@@ -57,7 +58,7 @@ const targets: IdeaTarget[] = [
 
 describe("testIdeas", () => {
   it("puts the pages most visitors could take part on first, each with one change to try", () => {
-    const ideas = testIdeas({
+    const ideas = testIdeas({ words: experimentsEn,
       targets,
       facts: facts({ about: { visitsPerDay: 20, basis: "landing" }, front: { visitsPerDay: 400, basis: "landing" }, layout: { visitsPerDay: 250, basis: "product_viewers" }, header: { visitsPerDay: 600, basis: "site" } }),
       busy: new Set(),
@@ -76,17 +77,17 @@ describe("testIdeas", () => {
   });
 
   it("leaves out a page already in a test, a footer and a working page", () => {
-    const ideas = testIdeas({ targets, facts: facts({}), busy: new Set(["front"]), limit: 10 });
+    const ideas = testIdeas({ words: experimentsEn, targets, facts: facts({}), busy: new Set(["front"]), limit: 10 });
     expect(ideas.map((i) => i.targetId)).toEqual(["about", "layout", "header"]);
   });
 
   it("without counted traffic, starts from the front page and gives no weeks", () => {
-    const ideas = testIdeas({ targets, facts: facts({}, false), busy: new Set() });
+    const ideas = testIdeas({ words: experimentsEn, targets, facts: facts({}, false), busy: new Set() });
     expect(ideas[0]).toMatchObject({ targetId: "front", perDay: null, weeks: null, findable: null });
     expect(ideas.map((i) => i.targetId)).toEqual(["front", "about", "layout"]);
   });
 
   it("calls a page without buttons a heading to try", () => {
-    expect(testIdeas({ targets: [targets[0]], facts: facts({}), busy: new Set() })[0].change).toBe("heading");
+    expect(testIdeas({ words: experimentsEn, targets: [targets[0]], facts: facts({}), busy: new Set() })[0].change).toBe("heading");
   });
 });

@@ -1,6 +1,7 @@
 import type { OrderEditStatus } from "@/lib/order-edit-status";
 import { draftsEn, type DraftsMessages } from "@/lib/admin-messages/drafts.en";
-import { blockTextWords, fillWords } from "@/lib/drafts-words";
+import { fillWords } from "@/lib/drafts-words";
+import { blockTextWords } from "@/lib/drafts-words-english";
 
 import { AwaitingEditControls, type AwaitingEditActions } from "./order-edit-parts";
 import { ButtonLink, Card } from "@/components/admin/ui";

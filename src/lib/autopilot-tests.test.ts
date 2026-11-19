@@ -5,6 +5,7 @@ import { assistantNb } from "./admin-messages/assistant.nb";
 import { staffEmailsEn } from "./admin-messages/staff-emails.en";
 import { AUTOPILOT_TEST_MAX_DAYS, chooseTest, daysLeft, guardrailsToClear, testAction, testLine, testState } from "./autopilot-tests";
 import type { TrafficFacts } from "./experiment-traffic";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 /** A store that counts visits, where 60 % accept statistics cookies, 2 % of visits order, 10 % add to the cart and 5 % reach checkout. */
 const facts = (visitsPerDay: number | null, counting = true): TrafficFacts => ({
@@ -20,25 +21,25 @@ const NOW = new Date("2026-11-17T12:00:00Z");
 describe("which test the autopilot's change gets (E4.1)", () => {
   it("counts orders where they answer within three weeks, though the cart would answer sooner", () => {
     // 4,000 visits a day: 2,400 could take part, so orders answer in three weeks and the cart in two.
-    expect(chooseTest(facts(4000), "page")).toEqual({ goal: "orders", days: 21 });
+    expect(chooseTest(facts(4000), "page", experimentsEn)).toEqual({ goal: "orders", days: 21 });
   });
 
   it("counts what answers soonest when orders would take too long", () => {
     // 2,000 visits a day: orders would take six weeks, adding to the cart two.
-    expect(chooseTest(facts(2000), "page")).toEqual({ goal: "cart", days: 14 });
+    expect(chooseTest(facts(2000), "page", experimentsEn)).toEqual({ goal: "cart", days: 14 });
   });
 
   it("has no test when even the cart would take longer than three weeks, or nothing is counted", () => {
-    expect(chooseTest(facts(50), "page")).toEqual({ none: "too_slow" });
-    expect(chooseTest(facts(4000, false), "page")).toEqual({ none: "not_counted" });
-    expect(chooseTest(facts(null), "page")).toEqual({ none: "not_counted" });
-    expect(chooseTest({ ...facts(4000), consentShare: null }, "page")).toEqual({ none: "not_counted" });
-    expect(chooseTest(facts(4000), "another")).toEqual({ none: "not_counted" });
+    expect(chooseTest(facts(50), "page", experimentsEn)).toEqual({ none: "too_slow" });
+    expect(chooseTest(facts(4000, false), "page", experimentsEn)).toEqual({ none: "not_counted" });
+    expect(chooseTest(facts(null), "page", experimentsEn)).toEqual({ none: "not_counted" });
+    expect(chooseTest({ ...facts(4000), consentShare: null }, "page", experimentsEn)).toEqual({ none: "not_counted" });
+    expect(chooseTest(facts(4000), "another", experimentsEn)).toEqual({ none: "not_counted" });
   });
 
   it("holds a change back three weeks at most", () => {
     expect(AUTOPILOT_TEST_MAX_DAYS).toBe(21);
-    expect(chooseTest(facts(4000), "page", 14)).toEqual({ goal: "cart", days: 14 });
+    expect(chooseTest(facts(4000), "page", experimentsEn, 14)).toEqual({ goal: "cart", days: 14 });
   });
 });
 
@@ -48,14 +49,14 @@ describe("Kaizena Flow's own site: its sign-ups per visit (E5.3, D757)", () => {
 
   it("tests a change on sign-ups, sized from the site's own sign-up rate", () => {
     // 2,000 visits a day, 1,200 of whom could take part: a change of a fifth in one visit in ten answers in two weeks.
-    expect(chooseTest(house(2000), "page")).toEqual({ goal: "signup", days: 14 });
-    expect(chooseTest({ ...house(2000), baselines: { ...house(2000).baselines, signup: 0.02 } }, "page")).toEqual({ none: "too_slow" });
+    expect(chooseTest(house(2000), "page", experimentsEn)).toEqual({ goal: "signup", days: 14 });
+    expect(chooseTest({ ...house(2000), baselines: { ...house(2000).baselines, signup: 0.02 } }, "page", experimentsEn)).toEqual({ none: "too_slow" });
   });
 
   it("publishes as before where the site is too quiet, or no sign-up was counted", () => {
-    expect(chooseTest(house(50), "page")).toEqual({ none: "too_slow" });
-    expect(chooseTest({ ...house(2000), baselines: { orders: null, cart: null, checkout: null, signup: null } }, "page")).toEqual({ none: "not_counted" });
-    expect(chooseTest({ ...house(2000), counting: false }, "page")).toEqual({ none: "not_counted" });
+    expect(chooseTest(house(50), "page", experimentsEn)).toEqual({ none: "too_slow" });
+    expect(chooseTest({ ...house(2000), baselines: { orders: null, cart: null, checkout: null, signup: null } }, "page", experimentsEn)).toEqual({ none: "not_counted" });
+    expect(chooseTest({ ...house(2000), counting: false }, "page", experimentsEn)).toEqual({ none: "not_counted" });
   });
 
   it("needs the speed guardrail cleared before a sign-up test's change goes live, as nothing else watches a site that sells nothing", () => {

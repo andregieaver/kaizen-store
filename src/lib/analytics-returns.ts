@@ -2,7 +2,7 @@ import { countWords, fillWords } from "./admin-fill";
 import { screensEn } from "./admin-messages/screens.en";
 import { formatCount, formatNumber, safeRatio } from "./analytics-core";
 import { daysBetween } from "./analytics-period";
-import { REASON_LABELS } from "./return-admin";
+import { REASON_LABELS } from "./return-admin-english";
 import { isReturnReason, type ReturnReason } from "./withdrawal";
 
 /**

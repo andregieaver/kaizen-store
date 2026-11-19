@@ -1,54 +1,31 @@
 import { formatMoney } from "./money";
 import type { Refund, WorkingRow } from "./return-refund";
-import type { ReturnAction, ReturnKind, ReturnOutcome, ReturnStatus } from "./return-status";
-import type { ReturnCondition, ReturnQueueFilter } from "./return-input";
-import type { RefundDue, ReturnReason } from "./withdrawal";
+import type { ReturnQueueFilter } from "./return-input";
+import type { RefundDue } from "./withdrawal";
 import { countWords, fillWords } from "./admin-fill";
-import { returnsEn, type ReturnsMessages } from "./admin-messages/returns.en";
+import type { ReturnsMessages } from "./admin-messages/returns.en";
 
 /**
  * The words of the returns screens in the admin (D153, `docs/returns.md`): labels, the "refund due" and "overdue" marks,
- * the timeline's sentences and the queue's addresses. Pure; the words are the `returns` catalogue (D312 A4), English
- * unless another language's is passed. The shopper's texts are in `i18n.ts` and `email-text.ts`.
+ * the timeline's sentences and the queue's addresses. Pure; the words are the `returns` catalogue (D312 A4), passed by
+ * the caller; the English constants are in `return-admin-english.ts`. The shopper's texts are in `i18n.ts` and `email-text.ts`.
  */
-
-/** The English words; another language's are its catalogue (`returnsNb`), passed where a function takes `w`. */
-const EN = returnsEn;
-
-export const STATUS_LABELS: Record<ReturnStatus, string> = EN.labels.status;
-
-/** What each status means for the person who works the return, a line under the status. */
-export const STATUS_HINTS: Record<ReturnStatus, string> = EN.labels.statusHints;
-
-export const KIND_LABELS: Record<ReturnKind, string> = EN.labels.kind;
-
-export const KIND_HINTS: Record<ReturnKind, string> = EN.labels.kindHints;
-
-export const OUTCOME_LABELS: Record<ReturnOutcome, string> = EN.labels.outcome;
-
-export const REASON_LABELS: Record<ReturnReason, string> = EN.labels.reason;
-
-export const CONDITION_LABELS: Record<ReturnCondition, string> = EN.labels.condition;
-
-export const ACTION_LABELS: Record<ReturnAction, string> = EN.labels.action;
 
 const lookup = (table: Record<string, string>, key: string): string | undefined => (Object.hasOwn(table, key) ? table[key] : undefined);
 
-export const declineReasonText = (reason: string | null, w: ReturnsMessages = EN): string =>
+export const declineReasonText = (reason: string | null, w: ReturnsMessages): string =>
   reason ? (lookup(w.labels.declineReason, reason) ?? reason) : w.labels.declined;
 
-export const exclusionLabel = (value: string, w: ReturnsMessages = EN): string => lookup(w.labels.exclusion, value) ?? value.replaceAll("_", " ");
+export const exclusionLabel = (value: string, w: ReturnsMessages): string => lookup(w.labels.exclusion, value) ?? value.replaceAll("_", " ");
 
 const STATUS_FILTER_ORDER = ["open", "requested", "approved", "in_transit", "received", "inspected", "closed", "declined", "cancelled", "all"] as const;
 
 /** The queue's status choices in a language. */
-export const statusFilters = (w: ReturnsMessages = EN): { value: ReturnQueueFilter["status"]; label: string }[] =>
+export const statusFilters = (w: ReturnsMessages): { value: ReturnQueueFilter["status"]; label: string }[] =>
   STATUS_FILTER_ORDER.map((value) => ({ value, label: w.labels.statusFilters[value] }));
 
-export const STATUS_FILTERS = statusFilters();
-
 /** The queue's kind choices in a language. */
-export const kindFilters = (w: ReturnsMessages = EN): { value: ReturnQueueFilter["kind"]; label: string }[] =>
+export const kindFilters = (w: ReturnsMessages): { value: ReturnQueueFilter["kind"]; label: string }[] =>
   (["all", "withdrawal", "return"] as const).map((value) => ({ value, label: w.labels.kindFilters[value] }));
 
 /** The queue's address for a filter: only what differs from the defaults is in it. */
@@ -92,7 +69,7 @@ export type DueTone = "urgent" | "warn" | "calm";
  * nothing to say (a return that has ended without a refund, or one not yet approved). `urgent` is past the legal
  * deadline, `warn` is the last days, `calm` is the rest.
  */
-export function dueMark(due: RefundDue, timeZone: string, w: ReturnsMessages = EN, locale = "en-GB"): { text: string; tone: DueTone } | null {
+export function dueMark(due: RefundDue, timeZone: string, w: ReturnsMessages, locale = "en-GB"): { text: string; tone: DueTone } | null {
   const m = w.marks;
   const by = due.deadline ? dayText(due.deadline, timeZone, locale) : null;
   const left = due.daysToDeadline;
@@ -141,7 +118,7 @@ const text = (value: unknown): string => (typeof value === "string" ? value : ""
 const whole = (value: unknown): number | null => (typeof value === "number" && Number.isSafeInteger(value) ? value : null);
 
 /** One event of a return as a sentence. Money is written by `formatMoney` in the order's currency; unknown types are named, never hidden. */
-export function eventSentence(type: string, data: Record<string, unknown>, currency: string, locale = "en-GB", w: ReturnsMessages = EN): string {
+export function eventSentence(type: string, data: Record<string, unknown>, currency: string, locale = "en-GB", w: ReturnsMessages): string {
   const e = w.events;
   const money = (minor: number | null) => (minor === null ? e.anAmount : formatMoney(minor, currency, locale));
   const reasoned = (sentence: string, reason: unknown) => (text(reason) ? fillWords(e.withReason, { text: sentence, reason: text(reason) }) : sentence);
@@ -217,16 +194,14 @@ export const isReturnEvent = (type: string): boolean => type.startsWith("return.
 // The refund's working
 // ---------------------------------------------------------------------------
 
-export const WORKING_LABELS: Record<WorkingRow["key"], string> = EN.labels.working;
 
-export const CAPPED_WORDS: Record<"zero" | "refundable", string> = EN.labels.capped;
 
 // ---------------------------------------------------------------------------
 // Counts
 // ---------------------------------------------------------------------------
 
 /** A short sentence on what the numbers say, for the queue's header; empty when there is nothing to do. */
-export function countsSentence(counts: { open: number; requested: number; overdue: number; acknowledgementPending: number }, w: ReturnsMessages = EN): string {
+export function countsSentence(counts: { open: number; requested: number; overdue: number; acknowledgementPending: number }, w: ReturnsMessages): string {
   const c = w.counts;
   const parts: string[] = [];
   if (counts.overdue > 0) parts.push(fillWords(c.overdue, { n: counts.overdue }));
@@ -267,22 +242,22 @@ export function previewData(preview: { refund: Refund; refundableMinor: number; 
 // ---------------------------------------------------------------------------
 
 /** A return's outcome in words, `exchanged` (D239) included. */
-export const outcomeLabel = (outcome: string, w: ReturnsMessages = EN): string => lookup(w.labels.outcome, outcome) ?? outcome.replaceAll("_", " ");
+export const outcomeLabel = (outcome: string, w: ReturnsMessages): string => lookup(w.labels.outcome, outcome) ?? outcome.replaceAll("_", " ");
 
 /** The queue's exchange marks (`EXCHANGE_QUEUE_MARKS`). */
-export const EXCHANGE_MARK_LABELS = EN.labels.exchangeMarks;
-export type ExchangeMark = keyof typeof returnsEn.labels.exchangeMarks;
+export type ExchangeMark = keyof ReturnsMessages["labels"]["exchangeMarks"];
+const EXCHANGE_MARKS: readonly ExchangeMark[] = ["wished", "proposed", "confirmed", "waiting_payment"];
 
 /** The queue's exchange choices in a language. */
-export const exchangeFilters = (w: ReturnsMessages = EN): { value: ExchangeMark | ""; label: string }[] => [
+export const exchangeFilters = (w: ReturnsMessages): { value: ExchangeMark | ""; label: string }[] => [
   { value: "", label: w.labels.exchangeFilters.any },
-  ...(["wished", "proposed", "confirmed", "waiting_payment"] as const).map((value) => ({ value, label: w.labels.exchangeFilters[value] })),
+  ...EXCHANGE_MARKS.map((value) => ({ value, label: w.labels.exchangeFilters[value] })),
 ];
 
 /** The queue's `exchange=` value, or null for anything else. */
 export function exchangeFilterOf(value: string | string[] | undefined): ExchangeMark | null {
   const v = Array.isArray(value) ? value[0] : value;
-  return v && Object.hasOwn(EXCHANGE_MARK_LABELS, v) ? (v as ExchangeMark) : null;
+  return v && (EXCHANGE_MARKS as readonly string[]).includes(v) ? (v as ExchangeMark) : null;
 }
 
 /** The outcome of an exchange (`exchangeOutcome()`), in the order's currency, as staff read it. */
@@ -290,7 +265,7 @@ export function outcomeSentence(
   outcome: { kind: "refund_due" | "even" | "to_pay"; refundMinor: number; toPayMinor: number },
   currency: string,
   locale = "en-GB",
-  w: ReturnsMessages = EN,
+  w: ReturnsMessages,
 ): string {
   if (outcome.kind === "refund_due") return fillWords(w.outcome.refundDue, { amount: formatMoney(outcome.refundMinor, currency, locale) });
   if (outcome.kind === "to_pay") return fillWords(w.outcome.toPay, { amount: formatMoney(outcome.toPayMinor, currency, locale) });
@@ -303,7 +278,7 @@ export function exchangeSentence(
   currency: string,
   timeZone: string,
   locale = "en-GB",
-  w: ReturnsMessages = EN,
+  w: ReturnsMessages,
 ): string {
   const s = w.exchangeState;
   const until = x.expiresAt ? fillWords(s.until, { time: timeText(x.expiresAt, timeZone, locale) }) : "";
@@ -341,7 +316,7 @@ export function labelSentence(
   currency: string,
   carrierName: string | null,
   locale = "en-GB",
-  w: ReturnsMessages = EN,
+  w: ReturnsMessages,
 ): string {
   const l = w.labelState;
   if (label.source === "pasted") return l.pasted;

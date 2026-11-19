@@ -205,6 +205,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   Email reaches the event log (D732): `email.bounced`, `email.complained`, `broadcast.sent` and `marketing.paused` are queued through
   `queue_integration_event()` in the statement that makes them, so they are workflow triggers and webhook topics; a new email event does the same.
 
+## Reserved test addresses are logged, never sent (D792, `src/lib/reserved-address.ts`)
+
+- **Reserved test addresses are logged, never sent (D792, `src/lib/reserved-address.ts`)**: an address on `example.org` or `example.net`
+  (or under them; RFC 2606 reserves both, `isReservedAddress()`) is kept whole in `email_messages` as `logged` with `RESERVED_NOTE` and
+  never handed to Resend: `sendEmail()` and the broadcast batches (`sendBatch()`) write the row as `logged` in the insert that keeps it,
+  and a broadcast counts the recipient as sent, as when sending is not set up. A new path that hands mail to Resend asks too. Only these
+  two domains: `example.com` and `.test`, `.example`, `.invalid` are what the tests deliver to through a stubbed Resend. Made-up people
+  (a demo store's seeded customers, D792) use `example.org`, so they cannot bounce against the sending guard or reach anyone, and the email
+  log and their timelines still show every email.
+
 ## SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)
 
 - **SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)**: a

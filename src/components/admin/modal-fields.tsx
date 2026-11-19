@@ -14,16 +14,17 @@ import {
   MODAL_SECONDS_MAX,
   MODAL_SECONDS_MIN,
   MODAL_SIZES,
-  classProblem,
+  classProblemCode,
   keyFromHash,
-  keyProblem,
+  keyProblemCode,
   modalHash,
-  modalProblems,
+  modalProblemCodes,
   modalRows,
   newModal,
   slugifyKey,
   uniqueKey,
   type ModalFrequency,
+  type ModalProblemCode,
   type ModalOverlay,
   type ModalPosition,
   type ModalSize,
@@ -35,27 +36,18 @@ import type { RowPatch } from "@/lib/page-rows";
 
 import { fillWords } from "@/lib/admin-fill";
 import type { BlocksMessages } from "@/lib/admin-messages/blocks.en";
-import { blocksEn } from "@/lib/admin-messages/blocks.en";
 
 import { useAdminText } from "./admin-text";
 import { Check, Choices, NumberField, TextField, fieldClass, smallButton } from "./block-fields";
 
 type ModalWords = BlocksMessages["modal"];
 
-/** A modal's refusal from `page-modal.ts` (written in English for the page's check) in the admin's language; one not known stays as written. */
-function problemText(text: string, w: ModalWords): string {
-  const en = blocksEn.modal.problems;
-  const pairs: [string, string][] = [
-    [en.noName, w.problems.noName],
-    [fillWords(en.tooLong, { max: MODAL_KEY_MAX }), fillWords(w.problems.tooLong, { max: MODAL_KEY_MAX })],
-    [en.badKey, w.problems.badKey],
-    [en.spaces, w.problems.spaces],
-    [fillWords(en.badClass, { max: MODAL_CLASS_MAX }), fillWords(w.problems.badClass, { max: MODAL_CLASS_MAX })],
-    [en.noOpen, w.problems.noOpen],
-    [fillWords(en.days, { min: MODAL_DAYS_MIN, max: MODAL_DAYS_MAX }), fillWords(w.problems.days, { min: MODAL_DAYS_MIN, max: MODAL_DAYS_MAX })],
-    [en.noClose, w.problems.noClose],
-  ];
-  return pairs.find(([english]) => english === text)?.[1] ?? text;
+/** A modal's refusal as a code (`page-modal.ts`) in the admin's language, with the limits filled in. */
+function problemText(code: ModalProblemCode, w: ModalWords): string {
+  if (code === "tooLong") return fillWords(w.problems.tooLong, { max: MODAL_KEY_MAX });
+  if (code === "badClass") return fillWords(w.problems.badClass, { max: MODAL_CLASS_MAX });
+  if (code === "days") return fillWords(w.problems.days, { min: MODAL_DAYS_MIN, max: MODAL_DAYS_MAX });
+  return w.problems[code];
 }
 
 /**
@@ -117,15 +109,15 @@ function ModalSettings({
   onSite: boolean;
 }) {
   const w = useAdminText("blocks").modal;
-  const problems = modalProblems(modal).map((problem) => problemText(problem, w));
+  const problems = modalProblemCodes(modal).map((code) => problemText(code, w));
   const keyId = useId();
   const classId = useId();
   const triggers = modal.triggers;
   const setTriggers = (patch: Partial<ModalTriggers>) => set({ triggers: { ...triggers, ...patch } });
   const taken = otherKeys.includes(modal.key);
-  const ownKeyIssue = keyProblem(modal.key);
+  const ownKeyIssue = keyProblemCode(modal.key);
   const keyIssue = ownKeyIssue ? problemText(ownKeyIssue, w) : taken ? w.taken : null;
-  const ownClassIssue = triggers.className !== undefined ? classProblem(triggers.className) : null;
+  const ownClassIssue = triggers.className !== undefined ? classProblemCode(triggers.className) : null;
   const classIssue = ownClassIssue ? problemText(ownClassIssue, w) : null;
   const closable = modal.closeButton !== false;
   const overlayCloses = modal.closeOnOverlay !== false;

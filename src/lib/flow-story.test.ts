@@ -53,3 +53,10 @@ describe("a flow as the owner reads it (D767 slice 2, M3.3)", () => {
     expect(storyLead("subscriber.subscribed", [], w)).toBe("When someone joins your list:");
   });
 });
+
+describe("a lapse flow's lead (slice 4)", () => {
+  it("names the days without an order", () => {
+    const words = { ...w, triggers: { "customer.lapsed": "When someone has not ordered for {n} days:" } };
+    expect(storyLead("customer.lapsed", [{ kind: "ordered" }], words, 90)).toBe("When someone has not ordered for 90 days: It ends when they order.");
+  });
+});

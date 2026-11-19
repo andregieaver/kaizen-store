@@ -1690,7 +1690,7 @@ export function PageBuilder({
               item={previewed}
               href={previewed ? (templates.previewBase ? `${templates.previewBase}/${previewed.id}/preview` : templatePreviewPath(templates.previewStore, previewed.id)) : null}
               returnFocus={previewOpener}
-              reason={previewed ? blockedReason(previewed, { pageType, rowsFull, blocksFull }) : null}
+              reason={previewed ? blockedReason(previewed, { pageType, rowsFull, blocksFull }, w.templates) : null}
               switching={previewed ? controller.busy.has(previewed.id) : false}
               using={previewed ? templateUse.using === previewed.id : false}
               usingAny={templateUse.using !== null}
@@ -2256,7 +2256,7 @@ function SavedList({
                   {part.kind === "page" ? (
                     <SavedLayoutItem
                       part={part}
-                      reason={blockedReason({ kind: "page", pageType: part.content.pageType }, { pageType, rowsFull: false, blocksFull: false })}
+                      reason={blockedReason({ kind: "page", pageType: part.content.pageType }, { pageType, rowsFull: false, blocksFull: false }, w.templates)}
                       onManage={() => onOpen(part.id)}
                       onUse={() => onUseLayout(part)}
                       showSharing={sharing !== null}

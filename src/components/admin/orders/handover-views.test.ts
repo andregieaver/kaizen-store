@@ -2,6 +2,8 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { ordersEn } from "@/lib/admin-messages/orders.en";
+
 import type { FormState } from "@/components/admin/action-form";
 import type { LocalDelivery, PickupDelivery } from "@/lib/delivery-options";
 import { noteStart, shipWords, type DeliveryCell } from "@/lib/order-list-row";
@@ -152,15 +154,15 @@ describe("the list's Delivery cell and fulfilment words", () => {
   const cell = (change: Partial<DeliveryCell>): DeliveryCell => ({ method: "ship", label: "Standard", ready: false, postalCode: null, city: null, phone: null, note: null, ...change });
 
   it("names the method, the pickup place, and where a local delivery goes with the start of its note", () => {
-    expect(draw(h(DeliveryText, { cell: cell({}) })).text.trim()).toBe("Standard");
-    expect(draw(h(DeliveryText, { cell: cell({ method: "pickup", label: "Shop Oslo" }) })).text.trim()).toBe("Collect at Shop Oslo");
-    const local = draw(h(DeliveryText, { cell: cell({ method: "local", label: "Oslo centre", postalCode: "0155", city: "Oslo", phone: "+47 400 00 000", note: "Ring twice" }) })).text;
+    expect(draw(h(DeliveryText, { words: ordersEn.table, cell: cell({}) })).text.trim()).toBe("Standard");
+    expect(draw(h(DeliveryText, { words: ordersEn.table, cell: cell({ method: "pickup", label: "Shop Oslo" }) })).text.trim()).toBe("Collect at Shop Oslo");
+    const local = draw(h(DeliveryText, { words: ordersEn.table, cell: cell({ method: "local", label: "Oslo centre", postalCode: "0155", city: "Oslo", phone: "+47 400 00 000", note: "Ring twice" }) })).text;
     expect(local).toContain("Local delivery: Oslo centre");
     expect(local).toContain("0155 Oslo");
     expect(local).toContain("+47 400 00 000");
     expect(local).toContain("“Ring twice”");
-    expect(draw(h(DeliveryText, { cell: undefined })).text.trim()).toBe("–");
-    expect(draw(h(DeliveryText, { cell: cell({ label: null }) })).text.trim()).toBe("–");
+    expect(draw(h(DeliveryText, { words: ordersEn.table, cell: undefined })).text.trim()).toBe("–");
+    expect(draw(h(DeliveryText, { words: ordersEn.table, cell: cell({ label: null }) })).text.trim()).toBe("–");
   });
 
   it("says To hand over, Ready and Collected for pickup, To deliver and Taken out for local delivery, and the usual words otherwise", () => {

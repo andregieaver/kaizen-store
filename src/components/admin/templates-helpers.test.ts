@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { builderEn } from "@/lib/admin-messages/builder.en";
 import type { TemplateItem } from "@/lib/templates";
 
 import {
-  KIND_FILTERS,
   NO_FILTERS,
+  kindFilters,
   PREVIEW_DEVICES,
   activated,
   deviceWidth,
@@ -21,6 +22,8 @@ import {
   blockedReason,
 } from "./templates-helpers";
 import { item, layoutItem } from "./templates-test-support";
+
+const T = builderEn.templates;
 
 const ITEMS: TemplateItem[] = [
   item({
@@ -46,7 +49,7 @@ const ITEMS: TemplateItem[] = [
 
 describe("groupTemplates", () => {
   it("puts rows, then columns, then components, each in the order given", () => {
-    const groups = groupTemplates(ITEMS);
+    const groups = groupTemplates(ITEMS, T);
     expect(groups.map((g) => g.label)).toEqual(["Rows", "Columns", "Components"]);
     expect(groups[0].items.map((i) => i.id)).toEqual(["b", "d"]);
     expect(groups[1].items.map((i) => i.id)).toEqual(["c"]);
@@ -54,8 +57,8 @@ describe("groupTemplates", () => {
   });
 
   it("leaves out a kind with nothing in it, and gives nothing for nothing", () => {
-    expect(groupTemplates(ITEMS.filter((i) => i.kind === "column")).map((g) => g.kind)).toEqual(["column"]);
-    expect(groupTemplates([])).toEqual([]);
+    expect(groupTemplates(ITEMS.filter((i) => i.kind === "column"), T).map((g) => g.kind)).toEqual(["column"]);
+    expect(groupTemplates([], T)).toEqual([]);
   });
 });
 
@@ -101,8 +104,8 @@ describe("filterTemplates", () => {
 
 describe("the kind chips", () => {
   it("are All, then the kinds in the order of the groups", () => {
-    expect(KIND_FILTERS.map((k) => k.label)).toEqual(["All", "Page layouts", "Rows", "Columns", "Components"]);
-    expect(KIND_FILTERS.map((k) => k.value)).toEqual(["all", "page", "row", "column", "block"]);
+    expect(kindFilters(T).map((k) => k.label)).toEqual(["All", "Page layouts", "Rows", "Columns", "Components"]);
+    expect(kindFilters(T).map((k) => k.value)).toEqual(["all", "page", "row", "column", "block"]);
   });
 });
 
@@ -118,14 +121,14 @@ describe("patchTemplate", () => {
 
 describe("the words for an empty list", () => {
   it("say where nothing is activated from, and what to do", () => {
-    expect(noneActivated("stores").title).toBe("No templates activated from your other stores");
-    expect(noneActivated("marketplace").title).toBe("No templates activated from the marketplace");
-    expect(noneActivated("marketplace").hint).toContain("Browse");
+    expect(noneActivated("stores", false, T).title).toBe("No templates activated from your other stores");
+    expect(noneActivated("marketplace", false, T).title).toBe("No templates activated from the marketplace");
+    expect(noneActivated("marketplace", false, T).hint).toContain("Browse");
   });
 
   it("say when a source has nothing at all", () => {
-    expect(nothingShared("stores").title).toContain("have not shared");
-    expect(nothingShared("marketplace").title).toContain("marketplace");
+    expect(nothingShared("stores", false, T).title).toContain("have not shared");
+    expect(nothingShared("marketplace", false, T).title).toContain("marketplace");
   });
 });
 
@@ -138,7 +141,7 @@ describe("page layouts among the templates (D127)", () => {
   ];
 
   it("come first among the groups, as Page layouts", () => {
-    const groups = groupTemplates(LAYOUTS);
+    const groups = groupTemplates(LAYOUTS, T);
     expect(groups.map((g) => g.label)).toEqual(["Page layouts", "Rows", "Columns", "Components"]);
     expect(groups[0].items.map((i) => i.id)).toEqual(["p1", "p2", "p3"]);
   });
@@ -163,10 +166,10 @@ describe("page layouts among the templates (D127)", () => {
   });
 
   it("say which kind of page they are for", () => {
-    expect(forLabel(LAYOUTS[0])).toBe("For pages");
-    expect(forLabel(LAYOUTS[1])).toBe("For articles");
-    expect(forLabel({ kind: "page", pageType: "product_layout" })).toBe("For product layouts");
-    expect(forLabel(ITEMS[1])).toBeNull();
+    expect(forLabel(LAYOUTS[0], T)).toBe("For pages");
+    expect(forLabel(LAYOUTS[1], T)).toBe("For articles");
+    expect(forLabel({ kind: "page", pageType: "product_layout" }, T)).toBe("For product layouts");
+    expect(forLabel(ITEMS[1], T)).toBeNull();
   });
 });
 
@@ -174,22 +177,22 @@ describe("why a template cannot be used", () => {
   const room = { pageType: "page", rowsFull: false, blocksFull: false } as const;
 
   it("names the kind of page a layout is for when it is another", () => {
-    expect(blockedReason(layoutItem({ id: "x", pageType: "article" }), room)).toBe(
+    expect(blockedReason(layoutItem({ id: "x", pageType: "article" }), room, T)).toBe(
       "Made for articles, so it cannot be used on pages.",
     );
-    expect(blockedReason(layoutItem({ id: "x", pageType: "page" }), room)).toBeNull();
-    expect(blockedReason({ kind: "page", pageType: null }, room)).toMatch(/does not say/);
+    expect(blockedReason(layoutItem({ id: "x", pageType: "page" }), room, T)).toBeNull();
+    expect(blockedReason({ kind: "page", pageType: null }, room, T)).toMatch(/does not say/);
   });
 
   it("does not stop a page layout on a full page: replacing needs no room", () => {
-    expect(blockedReason(layoutItem({ id: "x" }), { ...room, rowsFull: true, blocksFull: true })).toBeNull();
+    expect(blockedReason(layoutItem({ id: "x" }), { ...room, rowsFull: true, blocksFull: true }, T)).toBeNull();
   });
 
   it("says when the page has no room for a row, column or component", () => {
-    expect(blockedReason(ITEMS[0], { ...room, blocksFull: true })).toMatch(/no room for more blocks/);
-    expect(blockedReason(ITEMS[1], { ...room, rowsFull: true })).toMatch(/no room for more rows/);
-    expect(blockedReason(ITEMS[2], { ...room, rowsFull: true })).toMatch(/no room for more rows/);
-    expect(blockedReason(ITEMS[1], { ...room, blocksFull: true })).toBeNull();
+    expect(blockedReason(ITEMS[0], { ...room, blocksFull: true }, T)).toMatch(/no room for more blocks/);
+    expect(blockedReason(ITEMS[1], { ...room, rowsFull: true }, T)).toMatch(/no room for more rows/);
+    expect(blockedReason(ITEMS[2], { ...room, rowsFull: true }, T)).toMatch(/no room for more rows/);
+    expect(blockedReason(ITEMS[1], { ...room, blocksFull: true }, T)).toBeNull();
   });
 });
 

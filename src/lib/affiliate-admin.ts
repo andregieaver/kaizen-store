@@ -1,6 +1,6 @@
 import { AFFILIATE_REJECTION_LABELS, AFFILIATE_STATUS_LABELS, friendDiscount, referrerReward, type AffiliateAttributionRow, type AffiliateOverview, type AffiliateSettings } from "./affiliates";
 import { countWords, fillWords } from "./admin-fill";
-import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
+import type { LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { affiliateSettingsInput } from "./affiliates-schema";
 import { bpsToPercentText, percentNumber, percentTextToBps, type MoneyFormat } from "./bonus-admin";
 import { formatMoney, minorUnitDigits } from "./money";
@@ -67,7 +67,7 @@ const wholeNumber = (text: string): number | null => (/^\d{1,9}$/.test(text.trim
 export function readAffiliateForm(
   values: AffiliateFormValues,
   currency: string,
-  w: LoyaltyMessages["affiliate"]["errors"] = loyaltyEn.affiliate.errors,
+  w: LoyaltyMessages["affiliate"]["errors"],
 ): AffiliateFormRead {
   const errors: Partial<Record<AffiliateField, string>> = {};
 
@@ -151,22 +151,13 @@ export function orderedProblems(errors: Partial<Record<AffiliateField, string>>)
 // Words
 // ---------------------------------------------------------------------------
 
-/** What the program is, for the owner who has not turned it on. */
-export const AFFILIATE_EXPLANATION = loyaltyEn.affiliate.explanation;
-
-/** Why the program needs the bonus program. */
-export const AFFILIATE_NEEDS_BONUS = loyaltyEn.affiliate.needsBonus;
-
-/** What turning it on or off does, in the order the owner needs to know it. */
-export const AFFILIATE_ON_NOTES = loyaltyEn.affiliate.onNotes;
-
 type RuleWords = LoyaltyMessages["affiliateRules"];
 
 /**
  * The rules in sentences, the way an owner reads them back: the friend's discount, what the referrer earns and when it
  * counts, the limits. `money` formats the credits' currency.
  */
-export function rulesSummary(settings: AffiliateSettings, money: MoneyFormat, pendingDays: number, w: RuleWords = loyaltyEn.affiliateRules): string[] {
+export function rulesSummary(settings: AffiliateSettings, money: MoneyFormat, pendingDays: number, w: RuleWords): string[] {
   const lines: string[] = [];
   const days = (n: number) => countWords(n, w.days);
   lines.push(
@@ -199,7 +190,7 @@ export function example(
   currency: string,
   locale: string,
   orderMajor = 1000,
-  template = loyaltyEn.affiliateRules.example,
+  template: string,
 ): string {
   const goods = orderMajor * 10 ** minorUnitDigits(currency);
   const off = friendDiscount(goods, settings);
@@ -212,7 +203,7 @@ export function example(
 export function overviewRows(
   overview: AffiliateOverview,
   money: MoneyFormat,
-  w: LoyaltyMessages["affiliateOverview"] = loyaltyEn.affiliateOverview,
+  w: LoyaltyMessages["affiliateOverview"],
 ): { label: string; value: string; hint?: string }[] {
   return [
     { label: w.affiliates, value: String(overview.affiliates) },

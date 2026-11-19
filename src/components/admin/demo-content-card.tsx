@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
+import type { HomeMessages } from "@/lib/admin-messages/home.en";
 
 import { idle, type FormState } from "./action-form";
 import { Button, Card } from "./ui";
@@ -40,12 +40,12 @@ function Items({ items, nouns }: { items: DemoCardItem[]; nouns: Record<string, 
 export function DemoContentCard({
   summary,
   action,
-  words: w = homeEn.demo,
+  words: w,
 }: {
   summary: DemoCardSummary | null;
   action: (state: FormState, data: FormData) => Promise<FormState>;
   /** The `home` catalogue's `demo` words in the account's language (D312 A3). */
-  words?: HomeMessages["demo"];
+  words: HomeMessages["demo"];
 }) {
   const [state, formAction, pending] = useActionState(action, idle);
   if (state.status === "ok") {

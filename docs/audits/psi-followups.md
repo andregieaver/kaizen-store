@@ -77,6 +77,8 @@ A new deferred item goes here and moves to its dated section when it is ticked.
       13 November 2026 (bloat review step 0.9): the Supabase client, zod, the builder's English and sign-in's English left the
       signed-in frame; home 1.28 to 0.78 MB, the builder 3.34 to 3.14 MB, `/admin/[store]` 1,194,862 to 682,999 bytes in the build's
       statistics (`docs/performance.md`). Still open: the p75 from the beacon.
+      19 November 2026 (bloat review step 2.26): the indirect importers are gone too; no admin client module reaches an area's English
+      catalogue through a lib module, held by `src/components/admin/admin-bundle.scan.test.ts`.
 
 ## Decided
 

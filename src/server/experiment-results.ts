@@ -22,6 +22,7 @@ import { mainCurrency } from "@/lib/markets";
 import type { ExperimentInfo } from "./experiment-admin";
 import { col, typedRows } from "./typed-rows";
 import type { Store } from "./stores";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 type Row = Record<string, unknown>;
 
@@ -196,7 +197,8 @@ export async function experimentResults(
     minDays: test.minDays,
     currency,
     locale: store.markets[0]?.locale ?? "en",
-    ...(say && { words: say.words, numberLocale: say.numberLocale }),
+    words: say?.words ?? experimentsEn,
+    ...(say && { numberLocale: say.numberLocale }),
   });
   const watched = await guardrailCounts(store, test, now);
   const count = (pick: (k: string) => { n: number; bad: number }) => keys.map((key) => ({ key, ...pick(key) }));

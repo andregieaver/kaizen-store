@@ -1,5 +1,5 @@
 import { countWords, fillWords } from "./admin-fill";
-import { homeEn, type HomeMessages } from "./admin-messages/home.en";
+import type { HomeMessages } from "./admin-messages/home.en";
 import { withoutStoreName } from "./home";
 import { formatMoney } from "./money";
 
@@ -227,7 +227,7 @@ const daysSince = (iso: string, now: number) => Math.floor((now - new Date(iso).
 export type AttentionWords = HomeMessages["attention"];
 
 /** What needs the owner, across their stores, most urgent first. Staff see only what they can act on. */
-export function attentionFor(stores: StoreFigures[], now = Date.now(), w: AttentionWords = homeEn.attention): KindedAttentionItem[] {
+export function attentionFor(stores: StoreFigures[], now = Date.now(), w: AttentionWords): KindedAttentionItem[] {
   const items: KindedAttentionItem[] = [];
   const a = w.actions;
   for (const s of stores) {
@@ -461,7 +461,7 @@ export function queueItems(s: QueueFigures, now: number, w: AttentionWords): Kin
  * One store's items as said inside it (D454 N9: no store name in front), most urgent first, `urgent` always a yes or a no: what
  * `src/server/attention.ts` gives the readers beside Home. Only the queues of E2.1 for now; their figures as `queueItems()` reads them.
  */
-export function storeAttentionItems(s: QueueFigures, now: number, w: AttentionWords = homeEn.attention): StoreAttentionItem[] {
+export function storeAttentionItems(s: QueueFigures, now: number, w: AttentionWords): StoreAttentionItem[] {
   return queueItems(s, now, w)
     .sort((x, y) => Number(Boolean(y.urgent)) - Number(Boolean(x.urgent)))
     .map((item) => ({ kind: item.kind, text: withoutStoreName(item.text, s.name), href: item.href, action: item.action, urgent: Boolean(item.urgent) }));
@@ -484,7 +484,7 @@ export function totalSales(stores: Pick<StoreFigures, "sales">[]): SalesFigure[]
 }
 
 /** The change on the week before, in words: "+12 %", "−5 %", "New" when there was nothing before, or null when both are nothing. */
-export function changeText(current: number, prior: number, w: HomeMessages["common"] = homeEn.common): string | null {
+export function changeText(current: number, prior: number, w: HomeMessages["common"]): string | null {
   if (prior <= 0) return current > 0 ? w.newThisWeek : null;
   const change = Math.round(((current - prior) / prior) * 100);
   if (change === 0) return w.sameAsBefore;

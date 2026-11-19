@@ -256,3 +256,24 @@ describe("a push of Markdown alone runs the docs budget (bloat review step 1.1)"
     expect(ci.split("\n").filter((line) => line.includes("docs-budget") && !line.trim().startsWith("#"))).toEqual([]);
   });
 });
+
+describe("the Migration versions list is retired (bloat review step 2.41)", () => {
+  // The words are matched, not the file: a session told again to record a migration's version would add to a frozen list.
+  const OLD = /record (the file's|the migration|its) versions?/i;
+  const OLD_TOO = /version recorded in/i;
+  const MESSAGE =
+    "The Migration versions list is frozen (bloat review step 2.41): the ledger supabase_migrations.kaizen_files is the record; a new advisor finding is a line in docs/audits/psi-followups.md.";
+
+  it("no standing instruction points at the frozen list", () => {
+    for (const file of ["CLAUDE.md", "README.md", "docs/capacity.md", "docs/ci-migrations.md"]) {
+      const text = readFileSync(path.join(process.cwd(), file), "utf8").replace(/\s+/g, " ");
+      expect(OLD.test(text), `${file}: ${MESSAGE}`).toBe(false);
+      expect(OLD_TOO.test(text), `${file}: ${MESSAGE}`).toBe(false);
+    }
+  });
+
+  it("would notice the old sentence", () => {
+    expect(OLD.test("and record the file's version in `docs/decisions.md`")).toBe(true);
+    expect(OLD_TOO.test("has its version recorded in `docs/decisions.md` afterwards")).toBe(true);
+  });
+});

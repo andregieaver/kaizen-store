@@ -207,15 +207,19 @@ function hasPathsList(text) {
 
 function decisionRows(root) {
   const rows = [];
-  if (existsSync(path.join(root, "docs/decisions.md"))) {
+  const files = filesUnder(root, "docs/decisions", (name) => /^D\d+.*\.md$/.test(name));
+  // Bloat review step 2.40: once a decision is a file, docs/decisions.md holds only its index row, which is not counted again.
+  if (files.length === 0 && existsSync(path.join(root, "docs/decisions.md"))) {
     for (const line of read(root, "docs/decisions.md").split("\n")) {
       const match = /^\|\s*(D\d+)\s*\|/.exec(line);
       if (match) rows.push({ id: match[1], bytes: Buffer.byteLength(`${line}\n`) });
     }
   }
-  for (const file of filesUnder(root, "docs/decisions", (name) => /^D\d+.*\.md$/.test(name))) {
+  for (const file of files) {
     const id = /\/(D\d+)[^/]*\.md$/.exec(file)[1];
-    rows.push({ id, bytes: statSync(path.join(root, file)).size, file: true });
+    // Without its first line, the heading the split adds, which repeats the title the row already held.
+    const text = read(root, file);
+    rows.push({ id, bytes: Buffer.byteLength(text.slice(text.indexOf("\n") + 1)), file: true });
   }
   return rows;
 }

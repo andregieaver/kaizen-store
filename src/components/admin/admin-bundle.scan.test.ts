@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { SRC, chain, directive, files, read, reach, rel, resolve, specifiersOf } from "@/test/import-walk";
+import { PACKAGES, SRC, chain, directive, files, read, reach, rel, resolve, specifiersOf } from "@/test/import-walk";
 
 import baseline from "./admin-bundle.baseline.json";
 
@@ -17,7 +17,7 @@ import baseline from "./admin-bundle.baseline.json";
  *      schema to a `-schema.ts` file beside the helper, or read the helper from a module without zod. Rewrite the list, once a module
  *      has stopped (or when growth is accepted on purpose, shown in the diff), with
  *      `WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts`.
- * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`.
+ * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below.
  */
 const WRITE = process.env.WRITE_ADMIN_BUNDLE_BASELINE === "1";
 
@@ -91,6 +91,37 @@ const ends = (line: string) => `${line.split(" -> ")[0]} -> ${line.split(" -> ")
 
 const zodReach = () => clientsReaching("zod");
 
+/**
+ * 3. Catalogues (bloat review step 2.26): no admin client module reaches an area's catalogue file (`src/lib/admin-messages/{area}.{en,nb}.ts`)
+ *    or an English twin of a helper (`src/lib/*-english.ts`, for the server and the tests) through value imports, a lib module on the way
+ *    too. `common.en` and `sign-in.en` are allowed, and `admin-text-later.ts`, whose `import()` per area is the designed late fetch. A part
+ *    takes its words as an argument or reads them with `useAdminText()`; English the server writes is said in the account's language on the
+ *    server (`docs/platform-admin-i18n.md` 3.3).
+ */
+const SITE_CATALOGUE = /admin-messages\/([\w-]+\.(?:en|nb))$/;
+const ENGLISH_TWIN = /^lib\/[\w-]+-english\.ts$/;
+const ALLOWED_CATALOGUES = ["common.en", "sign-in.en"];
+const LATE_FETCH = "components/admin/admin-text-later.ts";
+
+function catalogueSites(planted?: Map<string, string[]>): string[] {
+  const walked = new Set<string>();
+  for (const client of CLIENTS) for (const file of reach(client, { planted }).keys()) walked.add(file);
+  const sites = new Set<string>();
+  for (const file of walked) {
+    // A file the walk met but did not walk into (a server action file, a server-only module) is a reference in the browser, not its code.
+    if (PACKAGES.includes(file) || rel(file) === LATE_FETCH) continue;
+    const specifiers = specifiersOf(file, planted);
+    if (directive(read(file), "use server") || specifiers.includes("server-only")) continue;
+    for (const specifier of specifiers) {
+      const catalogue = SITE_CATALOGUE.exec(specifier)?.[1];
+      if (catalogue && !ALLOWED_CATALOGUES.includes(catalogue)) sites.add(`src/${rel(file)} -> ${catalogue}`);
+      const target = resolve(file, specifier);
+      if (target && !PACKAGES.includes(target) && ENGLISH_TWIN.test(rel(target))) sites.add(`src/${rel(file)} -> src/${rel(target)}`);
+    }
+  }
+  return [...sites].sort();
+}
+
 describe.runIf(WRITE)("the baseline writer", () => {
   it("writes the baseline", () => {
     writeFileSync(join(SRC, "components/admin/admin-bundle.baseline.json"), JSON.stringify({ zodReach: zodReach() }, null, 2) + "\n");
@@ -120,6 +151,18 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     ).toEqual([]);
     const gone = baseline.zodReach.filter((name) => !now.includes(name));
     expect(gone, "These no longer reach zod: take them off with WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts").toEqual([]);
+  });
+
+  it("no client module reaches an area's catalogue or an English twin", () => {
+    expect(catalogueSites(), "pass the words as an argument or read them with useAdminText(); see docs/platform-admin-i18n.md 3.3").toEqual([]);
+  });
+
+  it("would notice: a catalogue and an English twin planted on a lib module a client part reads", () => {
+    const helper = join(SRC, "lib/admin-fill.ts");
+    const planted = new Map([[helper, ["@/lib/admin-messages/home.en", "@/lib/return-admin-english"]]]);
+    const sites = catalogueSites(planted);
+    expect(sites).toContain("src/lib/admin-fill.ts -> home.en");
+    expect(sites).toContain("src/lib/admin-fill.ts -> src/lib/return-admin-english.ts");
   });
 
   it("would notice: zod planted on a part of the frame", () => {

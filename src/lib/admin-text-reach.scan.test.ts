@@ -89,13 +89,13 @@ const catalogues = (seen: Set<string>) => [...seen].filter((file) => file.starts
 
 /** Catalogue files behind each entry that runs for shoppers; each only falls. */
 const CEILINGS: Record<string, number> = {
-  "src/proxy.ts": 9,
-  "src/app/api/visit/route.ts": 2,
-  "src/app/api/visit/touch/route.ts": 2,
-  "src/app/api/visit/speed/route.ts": 2,
-  "src/app/api/visit/speed/own/route.ts": 2,
-  "src/app/api/recommendations/events/route.ts": 1,
-  "src/app/s/[store]/[market]/layout.tsx": 13,
+  "src/proxy.ts": 6,
+  "src/app/api/visit/route.ts": 0,
+  "src/app/api/visit/touch/route.ts": 0,
+  "src/app/api/visit/speed/route.ts": 0,
+  "src/app/api/visit/speed/own/route.ts": 0,
+  "src/app/api/recommendations/events/route.ts": 0,
+  "src/app/s/[store]/[market]/layout.tsx": 8,
 };
 
 describe("the admin's words outside the admin (bloat review step 0.7)", () => {

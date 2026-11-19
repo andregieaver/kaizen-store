@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { fieldsEn } from "@/lib/admin-messages/fields.en";
+
 import {
   emptyGroup,
   fieldGroupInput,
@@ -73,8 +75,8 @@ describe("groups for customers and orders are for staff only", () => {
 
   it("is told to the group editor before the server is", () => {
     const pub = field({ type: "text", name: "shown", label: "Shown", access: "public" });
-    expect(draftProblems(group({ entities: ["customer"], fields: [pub] }) as FieldGroupInput).join(" ")).toMatch(/staff only/);
-    expect(draftProblems(group({ entities: ["customer"] }) as FieldGroupInput)).toEqual([]);
+    expect(draftProblems(group({ entities: ["customer"], fields: [pub] }) as FieldGroupInput, fieldsEn).join(" ")).toMatch(/staff only/);
+    expect(draftProblems(group({ entities: ["customer"] }) as FieldGroupInput, fieldsEn)).toEqual([]);
   });
 
   it("is not carried in by an imported file", () => {

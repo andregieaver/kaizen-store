@@ -7,6 +7,7 @@ import { closeDb, db } from "@/db/client";
 import { attentionFor, totalSales } from "@/lib/control-center";
 
 import type { Account } from "./auth";
+import { homeEn } from "@/lib/admin-messages/home.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
@@ -68,7 +69,7 @@ describe("the control center (D107)", () => {
     expect(view.stores).toHaveLength(1);
     expect(view.stores[0]).toMatchObject({ slug: `center-${run}`, role: "owner", open: false, toSend: 0, sales: [] });
     expect(view.latest).toEqual([]);
-    expect(attentionFor(view.stores).map((i) => i.action)).toContain("Finish setup");
+    expect(attentionFor(view.stores, undefined, homeEn.attention).map((i) => i.action)).toContain("Finish setup");
   });
 
   it("counts the week's paid sales against the week before, orders to send, and stock running out, in code", async () => {
@@ -90,7 +91,7 @@ describe("the control center (D107)", () => {
     await db().execute(sql`update commerce.stores set time_zone = 'America/New_York' where id = ${storeId}::uuid`);
     expect(new Set((await center.controlCenter(account)).latest.map((o) => o.timeZone))).toEqual(new Set(["America/New_York"]));
     await db().execute(sql`update commerce.stores set time_zone = 'Europe/Oslo' where id = ${storeId}::uuid`);
-    const text = attentionFor(view.stores).map((i) => i.text).join("\n");
+    const text = attentionFor(view.stores, undefined, homeEn.attention).map((i) => i.text).join("\n");
     expect(text).toContain("2 orders are waiting to be sent");
   });
 
@@ -119,7 +120,7 @@ describe("the control center (D107)", () => {
     `);
     const view = await center.controlCenter(account);
     expect(view.stores[0].privacy).toEqual({ overdue: 1, dueSoon: 1 });
-    const items = attentionFor(view.stores);
+    const items = attentionFor(view.stores, undefined, homeEn.attention);
     expect(items.find((i) => i.text.includes("past the one-month deadline"))?.urgent).toBe(true);
     // Counts and ids only: nothing of the requests' emails reaches the figures.
     expect(JSON.stringify(view)).not.toContain(`p1-${run}`);
@@ -160,7 +161,7 @@ describe("the control center (D107)", () => {
       values ${bill("-3", null)}, ${bill("3", null)}, ${bill("30", null)}, ${bill("-5", standing)}`);
     const view = await center.controlCenter(account, `center-${run}`);
     expect(view.stores[0].books).toEqual({ differ: 1, waiting: 1, billsOverdue: 1, billsDue: 1 });
-    expect(attentionFor(view.stores).filter((i) => i.href.endsWith("/settings/books")).map((i) => i.text)).toEqual([
+    expect(attentionFor(view.stores, undefined, homeEn.attention).filter((i) => i.href.endsWith("/settings/books")).map((i) => i.text)).toEqual([
       "Kaffe: 1 document in the books differs from Tripletex.",
       "Kaffe: 1 document has waited more than a week to be posted to the books.",
       "Kaffe: 1 bill is past its due date.",
@@ -257,7 +258,7 @@ describe("the control center and stock (wave 3, D172)", () => {
 
   it("says it to the owner, with links that open the Inventory page filtered to it", async () => {
     const view = await center.controlCenter(stockAccount);
-    const items = attentionFor(view.stores);
+    const items = attentionFor(view.stores, undefined, homeEn.attention);
     const level = items.find((i) => i.text.includes("warning level you set"));
     expect(level).toMatchObject({ href: `/admin/center-stock-${run}/inventory?status=low`, action: "Open inventory" });
     expect(items.find((i) => i.text.includes("owed on backorder"))).toMatchObject({ href: `/admin/center-stock-${run}/inventory?status=backorder` });
@@ -274,7 +275,7 @@ describe("the control center and stock (wave 3, D172)", () => {
   it("leaves the stock out for a member who may not open Products, as a figure that is missing and never as zero", async () => {
     const view = (await center.controlCenter(stockAccount)).stores[0];
     expect(view.hides).toBeUndefined();
-    const hidden = attentionFor([{ ...view, hides: ["stock"] }]);
+    const hidden = attentionFor([{ ...view, hides: ["stock"] }], undefined, homeEn.attention);
     expect(hidden.some((i) => i.text.includes("owed") || i.text.includes("warning level") || i.text.includes("out of stock"))).toBe(false);
   });
 });
@@ -429,7 +430,7 @@ describe("the queues of ecosystem plan E2.1 (D713)", () => {
   });
 
   it("says them on Home with the page that acts, the dispute first and urgent, with its days left", async () => {
-    const items = attentionFor((await center.controlCenter(owner, slug)).stores);
+    const items = attentionFor((await center.controlCenter(owner, slug)).stores, undefined, homeEn.attention);
     expect(items[0]).toMatchObject({ kind: "disputes", urgent: true, href: `/admin/${slug}/orders/${orderId}/dispute/${disputeId}`, action: "Answer" });
     expect(items[0].text).toBe("Kø: a customer's bank disputed a payment, and it needs your answer within 3 days.");
     const byKind = new Map(items.map((i) => [i.kind, i]));

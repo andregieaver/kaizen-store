@@ -10,7 +10,7 @@ type FormAction = SpendActions["add"];
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { campaignLink, LINK_MEDIUMS, type LinkMedium } from "@/lib/analytics-campaigns";
-import { channelLabel } from "@/lib/analytics-traffic";
+import { channelLabel } from "@/lib/analytics-channels";
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm";

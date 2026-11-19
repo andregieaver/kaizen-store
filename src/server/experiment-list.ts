@@ -43,5 +43,5 @@ export async function experimentList(
     experimentTraffic(store, open, now),
     Promise.all(open.map(async (t) => ({ ...t, buttons: buttonsOf(await publishedContentOf(store.id, t.id)).map((b) => b.label) }))),
   ]);
-  return { tests: listed, ideas: testIdeas({ targets: withButtons, facts, busy }) };
+  return { tests: listed, ideas: testIdeas({ targets: withButtons, facts, busy, words: say.words }) };
 }

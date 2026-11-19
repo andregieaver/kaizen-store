@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { experimentCard, type CardInput } from "./experiment-card";
 import { verdictOf, type VariantFigures } from "./experiment-results";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 const now = new Date("2026-11-16T12:00:00Z");
 
@@ -9,7 +10,7 @@ const rate = (key: string, visitors: number, conversions: number): VariantFigure
 
 /** A running test of adding to the cart, its verdict worked out as the store does. */
 function running(figures: VariantFigures[], days: number, over: Partial<CardInput> = {}): CardInput {
-  const verdict = verdictOf({ goal: "cart", figures, splitP: 0.5, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
+  const verdict = verdictOf({ words: experimentsEn, goal: "cart", figures, splitP: 0.5, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
   return { status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: { figures, days, verdict }, now, ...over };
 }
 
@@ -75,7 +76,7 @@ describe("experimentCard", () => {
 
   it("sends a broken split to a new test, and shows no figures", () => {
     const figures = [rate("a", 3000, 270), rate("b", 1000, 110)];
-    const verdict = verdictOf({ goal: "cart", figures, splitP: 0.00001, days: 20, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
+    const verdict = verdictOf({ words: experimentsEn, goal: "cart", figures, splitP: 0.00001, days: 20, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
     const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: { figures, days: 20, verdict }, now });
     expect(card).toMatchObject({ state: "broken", next: "start_again", showFigures: false });
   });

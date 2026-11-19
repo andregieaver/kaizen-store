@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { blocksEn } from "./admin-messages/blocks.en";
+import { fillWords } from "./admin-fill";
 import { consentCookieName, encodeConsent, mayRemember } from "./cookie-consent";
-import { EXIT_INTENT_MIN_MS, NO_SCROLL, NO_WAY_TO_CLOSE, NO_WAY_TO_OPEN, autoAllowed, classProblem, flowRows, hasAutoTriggers, isExitIntent, isWorkingPath, keyFromHash, keyFromLink, keyProblem, modalDomId, modalHash, modalProblems, modalRows, modalStorageName, modalSummary, newModal, rememberClose, remembersClose, repeatedModalKey, shouldAutoOpen, slugifyKey, stepScrollIntent, triggerWords, uniqueKey, type KeyValue, type ModalMemory, type RowModal, type ScrollIntentState } from "./page-modal";
+import { EXIT_INTENT_MIN_MS, NO_SCROLL, NO_WAY_TO_CLOSE, NO_WAY_TO_OPEN, autoAllowed, classProblem, flowRows, hasAutoTriggers, isExitIntent, isWorkingPath, keyFromHash, keyFromLink, keyProblem, modalDomId, modalHash, modalProblemCodes, modalProblems, modalRows, MODAL_CLASS_MAX, MODAL_DAYS_MAX, MODAL_DAYS_MIN, MODAL_KEY_MAX, modalStorageName, modalSummary, newModal, rememberClose, remembersClose, repeatedModalKey, shouldAutoOpen, slugifyKey, stepScrollIntent, triggerWords, uniqueKey, type KeyValue, type ModalMemory, type RowModal, type ScrollIntentState } from "./page-modal";
 import { rowModalSchema } from "./page-modal-schema";
 
 /** A storage that keeps what it is given, or refuses. */
@@ -106,6 +108,22 @@ describe("the modal setting", () => {
     expect(modalProblems(modal({ closeButton: false }))).toEqual([]);
     expect(modalProblems(modal({ closeOnOverlay: false }))).toEqual([]);
     expect(modalProblems(modal({ key: "Bad key" }))).toHaveLength(1);
+  });
+
+  it("gives the same problems as codes, in the same order, which the builder says in the admin's language (bloat review step 2.26)", () => {
+    const p = blocksEn.modal.problems;
+    const say = (code: keyof typeof p) =>
+      fillWords(p[code], { max: code === "tooLong" ? MODAL_KEY_MAX : code === "badClass" ? MODAL_CLASS_MAX : MODAL_DAYS_MAX, min: MODAL_DAYS_MIN });
+    const cases: RowModal[] = [
+      newModal("promo"),
+      modal({ key: "" }),
+      modal({ key: "x".repeat(MODAL_KEY_MAX + 1) }),
+      modal({ key: "Bad key", triggers: { className: "a b" } }),
+      modal({ triggers: { className: "1a" }, frequency: "days", days: 0 }),
+      modal({ triggers: {}, closeButton: false, closeOnOverlay: false }),
+      modal({ frequency: "days" }),
+    ];
+    for (const each of cases) expect(modalProblemCodes(each).map(say)).toEqual(modalProblems(each));
   });
 
   it("is accepted or refused by the schema with the same words", () => {

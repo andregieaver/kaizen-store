@@ -6,6 +6,7 @@ import { eligiblePerDay, goalEstimate } from "@/lib/experiment-traffic";
 
 import type { TestableTarget } from "./experiment-admin";
 import type { Store } from "./stores";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 type Row = Record<string, unknown>;
 
@@ -89,9 +90,9 @@ describe("experimentTraffic", () => {
     // Two visits in ten reached checkout; no cart or paid order was made.
     expect(facts.baselines).toEqual({ orders: null, cart: null, checkout: 0.2, signup: null });
     expect(eligiblePerDay(facts, "header")).toBeCloseTo(6);
-    const estimate = goalEstimate({ facts, targetId: "header", goal: "checkout", trafficShare: 1, versions: 2 });
+    const estimate = goalEstimate({ words: experimentsEn, facts, targetId: "header", goal: "checkout", trafficShare: 1, versions: 2 });
     expect(estimate?.days).toBeGreaterThan(14);
-    expect(goalEstimate({ facts, targetId: "header", goal: "orders", trafficShare: 1, versions: 2 })).toBeNull();
+    expect(goalEstimate({ words: experimentsEn, facts, targetId: "header", goal: "orders", trafficShare: 1, versions: 2 })).toBeNull();
   });
 
   it("knows nothing about traffic while a store does not count visits, but still the cookie choices", async () => {

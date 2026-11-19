@@ -31,6 +31,7 @@ import { OwnerToolError } from "./owner-tool-error";
 import { savePage } from "./pages";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 /**
  * The autopilot tests its page changes first (ecosystem plan E4.1, D729, `src/lib/autopilot-tests.ts`): when it would publish a change to a
@@ -76,7 +77,7 @@ export async function testInsteadOfPublishing(a: { account: Account; store: Stor
   if (!target || target.partOnly || (target.kind !== "page" && target.kind !== "role")) return { notTested: "not_testable" };
   const room = await testRoom(a.store.id);
   if (room.allows === 0 || room.running >= room.allows) return { notTested: "no_room" };
-  const choice = chooseTest(await experimentTraffic(a.store, [target], now), target.id);
+  const choice = chooseTest(await experimentTraffic(a.store, [target], now), target.id, experimentsEn);
   if ("none" in choice) return { notTested: choice.none };
   const original = await publishedContentOf(a.store.id, page.id);
   if (!original) return { notTested: "not_live" };

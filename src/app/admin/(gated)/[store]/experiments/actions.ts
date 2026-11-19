@@ -26,6 +26,7 @@ import {
   type NewExperiment,
   type Outcome,
 } from "@/server/experiment-admin";
+import { inAccountWords } from "./answer-words";
 
 /**
  * A store's A/B tests of pages (D148): each action is bound to the store's slug, checks the member (`requireMember`) and
@@ -50,7 +51,7 @@ const newExperiment = z.object({
 });
 
 /** Makes a test as a draft, with a copy of the page as its first version. */
-export async function createExperimentAction(storeSlug: string, input: unknown): Promise<Outcome<{ id: string }>> {
+async function createExperimentActionInEnglish(storeSlug: string, input: unknown): Promise<Outcome<{ id: string }>> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   const parsed = newExperiment.safeParse(input);
@@ -74,7 +75,7 @@ const draftChanges = z.object({
 });
 
 /** Changes a draft: what it measures, who is in it and how the visitors are shared. */
-export async function updateDraftAction(storeSlug: string, id: string, input: unknown): Promise<Outcome> {
+async function updateDraftActionInEnglish(storeSlug: string, id: string, input: unknown): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -88,7 +89,7 @@ export async function updateDraftAction(storeSlug: string, id: string, input: un
 }
 
 /** Changes a running or finished test's name, hypothesis or planned end: nothing the numbers rest on. */
-export async function renameExperimentAction(storeSlug: string, id: string, input: { name?: string; hypothesis?: string; plannedEnd?: string }): Promise<Outcome> {
+async function renameExperimentActionInEnglish(storeSlug: string, id: string, input: { name?: string; hypothesis?: string; plannedEnd?: string }): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -99,7 +100,7 @@ export async function renameExperimentAction(storeSlug: string, id: string, inpu
   return result;
 }
 
-export async function addVariantAction(storeSlug: string, id: string): Promise<Outcome<{ key: string }>> {
+async function addVariantActionInEnglish(storeSlug: string, id: string): Promise<Outcome<{ key: string }>> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return { ok: false, problems: ["Unknown test."] };
@@ -108,7 +109,7 @@ export async function addVariantAction(storeSlug: string, id: string): Promise<O
   return result;
 }
 
-export async function removeVariantAction(storeSlug: string, id: string, key: string): Promise<Outcome> {
+async function removeVariantActionInEnglish(storeSlug: string, id: string, key: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || !/^[b-d]$/.test(key)) return unknown;
@@ -117,7 +118,7 @@ export async function removeVariantAction(storeSlug: string, id: string, key: st
   return result;
 }
 
-export async function startExperimentAction(storeSlug: string, id: string): Promise<Outcome> {
+async function startExperimentActionInEnglish(storeSlug: string, id: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -127,7 +128,7 @@ export async function startExperimentAction(storeSlug: string, id: string): Prom
 }
 
 /** Lets a test that is ready start by itself at a time (an ISO instant; the browser works it out from the owner's own clock). */
-export async function scheduleExperimentAction(storeSlug: string, id: string, at: string): Promise<Outcome> {
+async function scheduleExperimentActionInEnglish(storeSlug: string, id: string, at: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -137,7 +138,7 @@ export async function scheduleExperimentAction(storeSlug: string, id: string, at
 }
 
 /** Takes a scheduled test back to a draft. */
-export async function unscheduleExperimentAction(storeSlug: string, id: string): Promise<Outcome> {
+async function unscheduleExperimentActionInEnglish(storeSlug: string, id: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -146,7 +147,7 @@ export async function unscheduleExperimentAction(storeSlug: string, id: string):
   return result;
 }
 
-export async function stopExperimentAction(storeSlug: string, id: string): Promise<Outcome> {
+async function stopExperimentActionInEnglish(storeSlug: string, id: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -156,7 +157,7 @@ export async function stopExperimentAction(storeSlug: string, id: string): Promi
 }
 
 /** Makes a version the page: its content replaces the original's. */
-export async function applyVariantAction(storeSlug: string, id: string, key: string): Promise<Outcome> {
+async function applyVariantActionInEnglish(storeSlug: string, id: string, key: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || !/^[b-d]$/.test(key)) return unknown;
@@ -166,7 +167,7 @@ export async function applyVariantAction(storeSlug: string, id: string, key: str
 }
 
 /** Keeps the original: the test is discarded. */
-export async function discardExperimentAction(storeSlug: string, id: string): Promise<Outcome> {
+async function discardExperimentActionInEnglish(storeSlug: string, id: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -179,7 +180,7 @@ export async function discardExperimentAction(storeSlug: string, id: string): Pr
  * Decides a test from its page (D659): a version becomes the page, or `original` keeps it. A running test is stopped first, as the AI
  * manager's `apply_winner` does, so a clear winner is one press (and a yes) away instead of Stop, then Decide.
  */
-export async function decideExperimentAction(storeSlug: string, id: string, choice: string, learning = ""): Promise<Outcome> {
+async function decideExperimentActionInEnglish(storeSlug: string, id: string, choice: string, learning = ""): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || !/^(original|[b-d])$/.test(choice)) return unknown;
@@ -197,7 +198,7 @@ export async function decideExperimentAction(storeSlug: string, id: string, choi
 }
 
 /** Keeps what a test taught, in the owner's words (D662). */
-export async function saveLearningAction(storeSlug: string, id: string, learning: string): Promise<Outcome> {
+async function saveLearningActionInEnglish(storeSlug: string, id: string, learning: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || typeof learning !== "string") return unknown;
@@ -206,7 +207,7 @@ export async function saveLearningAction(storeSlug: string, id: string, learning
   return result;
 }
 
-export async function deleteDraftAction(storeSlug: string, id: string): Promise<Outcome> {
+async function deleteDraftActionInEnglish(storeSlug: string, id: string): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknown;
@@ -219,7 +220,7 @@ export async function deleteDraftAction(storeSlug: string, id: string): Promise<
  * A link that shows one version of a running test on the live site to whoever opens it (D148 phase 20, `src/server/ab-preview.ts`): never counted,
  * never indexed, over when the test stops. Made for a member who may change the store's marketing, and audited (without the link).
  */
-export async function previewLinkAction(storeSlug: string, id: string, version: string): Promise<Outcome<{ url: string }>> {
+async function previewLinkActionInEnglish(storeSlug: string, id: string, version: string): Promise<Outcome<{ url: string }>> {
   const member = await checkPermission(storeSlug, "marketing:write", "ab_testing");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || !/^[b-d]$/.test(version)) return { ok: false, problems: ["Unknown test."] };
@@ -227,4 +228,51 @@ export async function previewLinkAction(storeSlug: string, id: string, version: 
   if (!url) return { ok: false, problems: ["A preview link is made while the test runs."] };
   await audit(member.account.id, member.store.id, "experiment.preview_link", { experiment: id, version });
   return { ok: true, url };
+}
+
+// Each action's answer in the account's words (bloat review step 2.26): the browser draws what it is given, with no English to match.
+export async function createExperimentAction(...args: Parameters<typeof createExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof createExperimentActionInEnglish>>> {
+  return inAccountWords(await createExperimentActionInEnglish(...args));
+}
+export async function updateDraftAction(...args: Parameters<typeof updateDraftActionInEnglish>): Promise<Awaited<ReturnType<typeof updateDraftActionInEnglish>>> {
+  return inAccountWords(await updateDraftActionInEnglish(...args));
+}
+export async function renameExperimentAction(...args: Parameters<typeof renameExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof renameExperimentActionInEnglish>>> {
+  return inAccountWords(await renameExperimentActionInEnglish(...args));
+}
+export async function addVariantAction(...args: Parameters<typeof addVariantActionInEnglish>): Promise<Awaited<ReturnType<typeof addVariantActionInEnglish>>> {
+  return inAccountWords(await addVariantActionInEnglish(...args));
+}
+export async function removeVariantAction(...args: Parameters<typeof removeVariantActionInEnglish>): Promise<Awaited<ReturnType<typeof removeVariantActionInEnglish>>> {
+  return inAccountWords(await removeVariantActionInEnglish(...args));
+}
+export async function startExperimentAction(...args: Parameters<typeof startExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof startExperimentActionInEnglish>>> {
+  return inAccountWords(await startExperimentActionInEnglish(...args));
+}
+export async function scheduleExperimentAction(...args: Parameters<typeof scheduleExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof scheduleExperimentActionInEnglish>>> {
+  return inAccountWords(await scheduleExperimentActionInEnglish(...args));
+}
+export async function unscheduleExperimentAction(...args: Parameters<typeof unscheduleExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof unscheduleExperimentActionInEnglish>>> {
+  return inAccountWords(await unscheduleExperimentActionInEnglish(...args));
+}
+export async function stopExperimentAction(...args: Parameters<typeof stopExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof stopExperimentActionInEnglish>>> {
+  return inAccountWords(await stopExperimentActionInEnglish(...args));
+}
+export async function applyVariantAction(...args: Parameters<typeof applyVariantActionInEnglish>): Promise<Awaited<ReturnType<typeof applyVariantActionInEnglish>>> {
+  return inAccountWords(await applyVariantActionInEnglish(...args));
+}
+export async function discardExperimentAction(...args: Parameters<typeof discardExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof discardExperimentActionInEnglish>>> {
+  return inAccountWords(await discardExperimentActionInEnglish(...args));
+}
+export async function decideExperimentAction(...args: Parameters<typeof decideExperimentActionInEnglish>): Promise<Awaited<ReturnType<typeof decideExperimentActionInEnglish>>> {
+  return inAccountWords(await decideExperimentActionInEnglish(...args));
+}
+export async function saveLearningAction(...args: Parameters<typeof saveLearningActionInEnglish>): Promise<Awaited<ReturnType<typeof saveLearningActionInEnglish>>> {
+  return inAccountWords(await saveLearningActionInEnglish(...args));
+}
+export async function deleteDraftAction(...args: Parameters<typeof deleteDraftActionInEnglish>): Promise<Awaited<ReturnType<typeof deleteDraftActionInEnglish>>> {
+  return inAccountWords(await deleteDraftActionInEnglish(...args));
+}
+export async function previewLinkAction(...args: Parameters<typeof previewLinkActionInEnglish>): Promise<Awaited<ReturnType<typeof previewLinkActionInEnglish>>> {
+  return inAccountWords(await previewLinkActionInEnglish(...args));
 }

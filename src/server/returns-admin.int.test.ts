@@ -5,6 +5,7 @@ import { closeDb, db } from "@/db/client";
 import { attentionFor } from "@/lib/control-center";
 
 import type { Account, Membership } from "./auth";
+import { homeEn } from "@/lib/admin-messages/home.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
@@ -132,7 +133,7 @@ describe("what waits in Returns", () => {
   it("is in the control center's store figures, and from there in what needs the owner", async () => {
     const view = await center.controlCenter(account, slug);
     expect(view.stores[0].returns).toEqual({ overdue: 1, unacknowledged: 1, requested: 1 });
-    const items = attentionFor(view.stores);
+    const items = attentionFor(view.stores, undefined, homeEn.attention);
     const returns = items.filter((i) => i.href.includes("/returns"));
     expect(returns.map((i) => i.href)).toEqual([`/admin/${slug}/returns?overdue=1`, `/admin/${slug}/returns`, `/admin/${slug}/returns?status=requested`]);
     expect(returns.map((i) => Boolean(i.urgent))).toEqual([true, true, false]);

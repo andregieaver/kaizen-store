@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
-import { RFM_SEGMENTS, type RfmSegment } from "@/lib/analytics-customers";
+import { RFM_SEGMENTS, type RfmSegment } from "@/lib/rfm-segments";
 import {
   CONDITION_GROUPS,
   conditionOffered,

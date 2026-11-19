@@ -1,7 +1,7 @@
 import { erfc, MIN_PER_ARM } from "./experiment-stats";
 import { GOAL_WORDS, MAX_RUN_DAYS, MIN_DAYS, type Goal } from "./experiments";
 import { countWords, fillWords } from "./admin-fill";
-import { experimentsEn, type ExperimentsMessages } from "./admin-messages/experiments.en";
+import type { ExperimentsMessages } from "./admin-messages/experiments.en";
 import { formatMoney } from "./money";
 
 /**
@@ -192,7 +192,7 @@ export type VerdictInput = {
   currency: string;
   locale: string;
   /** The words, in the account's language (D312 A7); English, as the AI manager reads it, unless given. */
-  words?: ExperimentsMessages;
+  words: ExperimentsMessages;
   /** How numbers are written in those words; en-GB unless given. */
   numberLocale?: string;
 };
@@ -200,7 +200,7 @@ export type VerdictInput = {
 /** The results in words and one of six verdicts; the rule is fixed here: nothing is said before the minimum, a broken split says so first. */
 export function verdictOf(input: VerdictInput): Verdict {
   const { goal, figures, days } = input;
-  const all = input.words ?? experimentsEn;
+  const all = input.words;
   const w = all.verdict;
   const nl = input.numberLocale ?? "en-GB";
   const pct = (share: number) => percentIn(share, nl);
@@ -313,7 +313,7 @@ export function estimateRuntime(input: {
   trafficShare: number;
   minDays?: number;
   /** The words and how numbers are written (D312 A7); English unless given. */
-  words?: ExperimentsMessages;
+  words: ExperimentsMessages;
   numberLocale?: string;
 }): RuntimeEstimate | null {
   const perVersion = visitorsPerVersion(input.baseline, input.relativeChange);
@@ -324,7 +324,7 @@ export function estimateRuntime(input: {
   const days = weeks * 7;
   const tooLong = days > 42;
   const nl = input.numberLocale ?? "en-GB";
-  const w = (input.words ?? experimentsEn).estimate;
+  const w = input.words.estimate;
   const change = percentIn(input.relativeChange, nl);
   const n = perVersion.toLocaleString(nl);
   return {
