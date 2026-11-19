@@ -6,7 +6,8 @@ import { fillWords } from "@/lib/admin-fill";
 import { APP_GATES, type AppGate } from "@/lib/custom-apps";
 
 import { useAdminText } from "./admin-text";
-import { Button, Chip, ConfirmButton, List, ListRow, RowLead } from "./ui";
+import { Button, Chip, List, ListRow, RowLead } from "./ui";
+import { ConfirmButton } from "./ui/confirm-button";
 
 type Answer = { ok: true } | { ok: false; message: string };
 type AsyncAnswer = Promise<Answer>;

@@ -6,7 +6,8 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
 import { PhoneRow } from "./phone-row";
-import { Button, Card, Chip, ConfirmButton, List, ListRow, RowDate, RowLead } from "./ui";
+import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
+import { ConfirmButton } from "./ui/confirm-button";
 
 type Answer = { ok: true; secret?: string; message?: string } | { ok: false; message: string };
 type Async = Promise<Answer>;

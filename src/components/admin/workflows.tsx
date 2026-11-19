@@ -8,7 +8,8 @@ import { PLATFORM_WORKFLOWS } from "@/lib/platform-workflows";
 import { listValues, OPERATORS, SEGMENT_FIELD, STORE_WORKFLOWS, type AnyWorkflowInput, type WorkflowAction, type WorkflowCondition, type WorkflowField } from "@/lib/workflows";
 
 import { useAdminText } from "./admin-text";
-import { Button, Card, Chip, ConfirmButton, List, ListRow, RowDate, RowLead } from "./ui";
+import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
+import { ConfirmButton } from "./ui/confirm-button";
 
 type Saved = { ok: true } | { ok: false; problems: string[] };
 type Plain = { ok: true; message?: string } | { ok: false; message: string };

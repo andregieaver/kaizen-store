@@ -10,7 +10,8 @@ import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { fileSize } from "@/lib/form-files";
 import { AdminLink } from "../ui/link";
-import { Button, ButtonLink, Card, Chip, ConfirmButton } from "../ui";
+import { Button, ButtonLink, Card, Chip } from "../ui";
+import { ConfirmButton } from "../ui/confirm-button";
 
 /**
  * A form's responses (D705): newest first, a new one marked until it is opened; each opens to its answers with a reply by email when it has

@@ -3,7 +3,6 @@
 import { lazy, Suspense, useRef, useState, useTransition, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { createPortal, useFormStatus } from "react-dom";
 
-import { useCommonText } from "../admin-text-context";
 import { buttonClass, type ButtonKind, type ButtonSize } from "./button";
 
 /**
@@ -11,8 +10,10 @@ import { buttonClass, type ButtonKind, type ButtonSize } from "./button";
  * (`Modal`) with the action's own words: what happens (`question`, its first sentence the dialog's title), the confirm word (`confirm`)
  * and *Cancel* (where focus starts, and what Escape and the backdrop do). On yes it runs `action`, or, without one, submits the form it is
  * in as its submitter (its `name`, `value` and `formAction` go with it), so it is a form's delete button and a row's own button alike.
- * Never `window.confirm` (the ratchet counts the files that call it, `adminRepeats.confirmFiles`). The dialog's code loads on the first
- * hover, focus or press, so no screen's first scripts carry it. Without a script a submit button submits, as a plain one does.
+ * Never `window.confirm` (the ratchet counts the files that call it, `adminRepeats.confirmFiles`). The dialog's code, its words among it
+ * (`common.form.cancel`), loads on the first hover, focus or press, so no screen's first scripts carry them: this module reads no
+ * catalogue, as it is a client reference of every route whose server code reaches the kit's index, the storefront's included. Without a
+ * script a submit button submits, as a plain one does.
  */
 
 type ConfirmDialog = typeof import("./confirm-dialog");
@@ -56,7 +57,7 @@ export type ConfirmButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "
   size?: ButtonSize;
   full?: boolean;
   icon?: ReactNode;
-  /** What the button says while it works; *Working …* otherwise. */
+  /** What the button says while it works ("Deleting …"); its own words otherwise, disabled and `aria-busy`. */
   busy?: ReactNode;
   children?: ReactNode;
 };
@@ -79,7 +80,6 @@ export function ConfirmButton({
   disabled,
   ...rest
 }: ConfirmButtonProps) {
-  const words = useCommonText().form;
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [running, start] = useTransition();
@@ -130,7 +130,7 @@ export function ConfirmButton({
         }}
       >
         {kind !== "icon" && icon}
-        {kind === "icon" ? icon : working ? (busy ?? words.working) : children}
+        {kind === "icon" ? icon : working ? (busy ?? children) : children}
       </button>
       {refusal && (
         <span role="alert" className="text-sm text-danger-text">
@@ -140,7 +140,7 @@ export function ConfirmButton({
       {open &&
         createPortal(
           <Suspense fallback={null}>
-            <Dialog {...splitQuestion(question)} more={more} confirm={confirm} cancel={cancel ?? words.cancel} danger={danger} onCancel={() => setOpen(false)} onConfirm={yes} />
+            <Dialog {...splitQuestion(question)} more={more} confirm={confirm} cancel={cancel} danger={danger} onCancel={() => setOpen(false)} onConfirm={yes} />
           </Suspense>,
           document.body,
         )}

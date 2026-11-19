@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
 
 import { adminText } from "@/lib/admin-text";
 
-import { refusalOf, splitQuestion } from "./confirm-button";
+import { ConfirmButton, refusalOf, splitQuestion } from "./confirm-button";
 import ConfirmDialog from "./confirm-dialog";
-import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, ConfirmButton, CountBadge, EmptyState, Field, fieldClass, fillWidth, FocusFrame, FocusHeading, InsightPanel, KpiTile, List, ListRow, ListSearch, PageHeader, Pager, pageAddress, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, Select, ShareBar, TextArea, TextInput, TrendChip, type FieldControl } from "./index";
+import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, EmptyState, Field, fieldClass, fillWidth, FocusFrame, FocusHeading, InsightPanel, KpiTile, List, ListRow, ListSearch, PageHeader, Pager, pageAddress, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, Select, ShareBar, TextArea, TextInput, TrendChip, type FieldControl } from "./index";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 
@@ -355,6 +355,14 @@ describe("the confirm button (code review 1.12)", () => {
     expect(refusalOf({ ok: false, message: "Gone." })).toBe("Gone.");
     expect(refusalOf({ ok: true })).toBeNull();
     expect(refusalOf(undefined)).toBeNull();
+  });
+
+  it("is kept out of the kit's index, which every route's server code reaches: its index names no client part but the link", () => {
+    const index = readFileSync(join(__dirname, "index.ts"), "utf8");
+    const named = [...index.matchAll(/^export \{[^}]*\} from "\.\/([\w-]+)";$/gm)].map((m) => m[1]);
+    const client = named.filter((name) => /^\s*["']use client["']/.test(readFileSync(join(__dirname, `${name}.tsx`), "utf8")));
+    expect(client).toEqual(["link"]);
+    expect(index).not.toMatch(/export \{[^}]*\bConfirmButton\b[^}]*\} from/);
   });
 
   it("never asks with the browser's own confirm", () => {

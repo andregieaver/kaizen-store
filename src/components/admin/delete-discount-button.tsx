@@ -33,7 +33,7 @@ export function DeleteDiscountButton({
       <ConfirmButton
         kind="none"
         question={question}
-        confirm={form.delete}
+        confirm={compact ? form.delete : (label ?? w.deleteCode)}
         action={action}
         busy={form.deleting}
         className={

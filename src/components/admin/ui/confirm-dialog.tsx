@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 
+import { useCommonText } from "../admin-text-context";
 import { Modal } from "../modal";
 import { Button } from "./button";
 
@@ -24,11 +25,14 @@ export default function ConfirmDialog({
   detail: string;
   more?: ReactNode;
   confirm: string;
-  cancel: string;
+  /** The way back's word; *Cancel* (`common.form.cancel`) unless the button names another. */
+  cancel?: string;
   danger: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const common = useCommonText().form;
+  const back = cancel ?? common.cancel;
   // The dialog opens in its layout effect; focus then moves from its title bar to the safe choice.
   useEffect(() => document.querySelector<HTMLButtonElement>("dialog[open] [data-confirm-cancel]")?.focus(), []);
   return (
@@ -39,7 +43,7 @@ export default function ConfirmDialog({
       footer={
         <>
           <Button onClick={onCancel} data-confirm-cancel="">
-            {cancel}
+            {back}
           </Button>
           <Button kind={danger ? "danger" : "main"} onClick={onConfirm} data-confirm-yes="">
             {confirm}
