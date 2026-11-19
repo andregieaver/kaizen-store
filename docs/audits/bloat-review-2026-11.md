@@ -192,7 +192,7 @@ commit as the fix.
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | Open | |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
 | 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | 19 Nov, 00d7bddd, D781: mirror set at sign-in and for all; commit 2 waits for the owner. |
-| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | In progress | Local: untouched tab asks at most 2 in ten minutes, 6 an hour (10, 60 before); count still one statement, now with `waiting`. Awaiting review. |
+| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | In progress | 19 Nov, c30c7d23, D783: untouched tab 60 to 6 asks an hour; a day's statistics to read. |
 | 2.35 | Answer a store's own domain without a deployment | SF-13 | L | strong | 2.20, 1.8, 1.29 | Open | |
 | 2.36 | Send the AI manager a lean default round | AI-1, AI-9, AI-11, FT-4, AI-6, GAP-ai-s1, GAP-ai-2 | M | strong | 1.19, 0.5, 0.11 | Open | |
 | 2.37 | Slim the tool schemas, so no first round is over 56,000 characters | AI-8 | M | strong | 1.19, 2.36 | Open | |
@@ -342,6 +342,7 @@ Change log:
 - 18 Nov 2026: step 2.17 on main (13522625, D778): page lists, pickers and grids read columns and cards, not documents; Done after a week's statistics.
 - 19 Nov 2026: step 2.13 Done (4cc84650, D779); step 2.18 Done (38759d01, D780); step 2.33 commit 1 on main (00d7bddd, D781), commit 2 waits for the owner.
 - 19 Nov 2026: step 2.48 Done (0e649cc0, D782): a placed order's ceilings held; no trigger gated, as each would change what an order writes.
+- 19 Nov 2026: step 2.34 on main (c30c7d23, D783): an untouched admin tab asks for notices every ten minutes; Done after a day's statistics.
 - 18 Nov 2026: step 2.17 carried out locally in five commits (the Pages list in SQL with pageTitles(), pages of 100, the grid's and the
   feed's cards in SQL, the index for the static params and search picker, the pageDocuments list); waiting for review and the D-row.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
