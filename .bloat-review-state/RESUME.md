@@ -340,3 +340,7 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 19 Nov ~08:40: THIRD EXECUTOR added: worktree /home/user/kz-d (branch bloat-d), no builds. Running 2.44 -> 2.40 -> 2.41 (Sonnet). Shared kaizen DB replaced by a fresh template clone (was 4.9 GB). Disk 9.7 GB free.
 - kz-b: 2.4 (afd4ccd83482464ef). kz-c: 2.26 (ad9d83271bbd34604).
 - Reminders: 20 Nov 03:10 (2.34 stats), 25 Nov 03:20 (2.16, 2.17, 2.42 trial).
+- 2.4 c1-3 pushed 48627c2b8 (static store pages; /api/shop/mine private no-store; add 1 req 104 B). c4 (/wishlist/saved delete) next deploy. Check: client nav om-oss on prod after 1h (regeneration). git stash banned in context. kz-b free.
+- 19 Nov ~10:45: 2.4 REVERTED on main (4fb09512c): store-pages.spec:8 footer->om-oss client nav = global error (React 412), chromium+webkit. Prod never had it (c0d23751b). Opus debugger a0a1d6a93174c32f8 in kz-b (cherry-picks 397da1b5e,46ce6bd76,48627c2b8 + fix). 2.5 WIP saved at branch wip-2.5 (717ef3d66) - depends on 2.4.
+- E4 (other session, organisation_extension_facts reads organisation_billing/store_billing) broke shop journey (all stops) + query-budget house-customers 1418->1880: accepting via FIRST run on kzfix_e4 (bash bloxyfqtp), keep only those keys.
+- kz-c 2.26 (ad9d83271bbd34604), kz-d 2.44->2.40->2.41 (a8170e090b363d1fd).
