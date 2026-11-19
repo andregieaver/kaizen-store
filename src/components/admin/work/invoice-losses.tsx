@@ -10,7 +10,8 @@ import { formatMoney } from "@/lib/money";
 import { minorToDecimal, parseMoneyText } from "@/lib/work-calc";
 import { isDay } from "@/lib/work-dates";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Field } from "../ui/field";
 
 /**
  * Writing off a lost invoice (D500), owners only: what is outstanding unless less is given, on a day, with why. Only for a loss that is

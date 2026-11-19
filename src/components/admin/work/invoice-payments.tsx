@@ -10,7 +10,8 @@ import { minorToDecimal } from "@/lib/work-calc";
 import { isDay } from "@/lib/work-dates";
 import { methodLabel, paymentAmountProblem } from "@/lib/work-invoice-ui";
 
-import { Field, Problems, control, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Problems, control, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -113,7 +114,7 @@ export function PaymentForm({
         {tw.outstanding} <strong className="tabular-nums">{formatMoney(outstandingMinor, currency, locale)}</strong>. A part
         payment is fine; the invoice is marked paid when the payments cover it.
       </p>
-      <Field label={fillWords(tw.amountReceived, { currency })} error={attempted ? (read.message ?? undefined) : undefined}>
+      <Field label={fillWords(tw.amountReceived, { currency })} problem={attempted ? (read.message ?? undefined) : undefined}>
         {(props) => (
           <input
             {...props}
@@ -126,7 +127,7 @@ export function PaymentForm({
         )}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={tw.receivedOn} error={attempted ? (dateProblem ?? undefined) : undefined}>
+        <Field label={tw.receivedOn} problem={attempted ? (dateProblem ?? undefined) : undefined}>
           {(props) => (
             <input
               {...props}

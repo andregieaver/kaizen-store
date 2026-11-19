@@ -12,7 +12,8 @@ import { Modal } from "@/components/admin/modal";
 import { MESSAGE_MAX } from "@/lib/work-email";
 import { sendFormProblems, sentText, type SendKind } from "@/lib/work-send-ui";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -193,7 +194,7 @@ function SendForm({
           </label>
         </fieldset>
       )}
-      <Field label={tw.to} error={shown.find((p) => p.includes("email address"))}>
+      <Field label={tw.to} problem={shown.find((p) => p.includes("email address"))}>
         {(props) => (
           <input {...props} type="email" value={to} onChange={(e) => setTo(e.target.value)} className={control} autoComplete="off" />
         )}
@@ -201,7 +202,7 @@ function SendForm({
       <Field
         label={tw.messageOptional}
         hint={fillWords(tw.goesOnTop, { left: MESSAGE_MAX - message.length })}
-        error={shown.find((p) => p.startsWith(tw.keepTheMessage))}
+        problem={shown.find((p) => p.startsWith(tw.keepTheMessage))}
       >
         {(props) => (
           <textarea {...props} value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className={`${control} py-2`} />

@@ -89,6 +89,22 @@ An admin link is an `AdminLink` (`src/components/admin/ui/link.tsx`: on top of `
 and a new file may not import `next/link` (the ratchet count `directLinks` only falls). The table of policies is in `docs/performance.md`
 under *What the router fetches ahead*.
 
+## The admin kit: fields, empty states, confirms, pagers and searches (code review 1.12, D818, `src/components/admin/ui`)
+
+- A field is `Field` (label, hint and the problem under it, tied by `aria-describedby`/`aria-invalid`; `required` marks it) around
+  `TextInput`, `Select` or `TextArea` (`fieldClass()` for a box drawn another way); an empty list is `EmptyState` (title, a line, one next
+  step); a list's pages are `Pager` (by number or by cursor, links that work without script) and its search `ListSearch` (a GET form,
+  `keep` for the list's other values, `tools` in the bar, `aside` beside it).
+- Anything that asks first is `ConfirmButton`: the admin's `Modal` with the action's own words (the question's first sentence its title,
+  the confirm word, *Cancel* focused), then its `action`, or its form submitted with it as the submitter; `ask={false}` where nothing needs
+  asking, `cancel` where *Cancel* would read as the action's own. Never `window.confirm`.
+- All but `ConfirmButton` hold no state, so server pages and client parts draw them; its dialog loads on the first hover, focus or press.
+  Their words are the server area `kit` handed as props, and `common.form.cancel`. Import `ConfirmButton` from `ui/confirm-button`: the
+  kit's index is reached by every route's server code, the storefront's included, so it names no client part but the link (`ui.test.ts`).
+- The ratchet (`src/server/ratchet.scan.test.ts`) lists hand-written field boxes and pill links per file (`adminFiles`) and counts the
+  files calling `confirm(` (`confirmFiles`) in `src/app/admin`, the platform's and the owner's pages included, and `src/components/admin`;
+  none may rise. `docs/admin-style.md` 5.10 has the look.
+
 ## Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`)
 
 - Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`): a store's admin lists each section's everyday pages in **Basic**, the default for every account, and every page in

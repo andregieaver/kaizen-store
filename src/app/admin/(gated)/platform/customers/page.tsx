@@ -6,7 +6,7 @@ import { Avatar } from "@/components/avatar";
 import { listPlatformCustomers } from "@/server/platform-customers";
 import { requirePlatformReader } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
-import { Card, CARD_CLASS, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, EmptyState, List, ListRow, ListSearch, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -31,32 +31,23 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.description} />
-      {/* Round 63 (D827): on a phone the search is one line with its button inside, and each person one row (their first store in the line under). */}
-      <form role="search" className="flex flex-wrap gap-2 max-sm:relative">
-        <label className="sr-only" htmlFor="customer-search">
-          {w.search}
-        </label>
-        <input
-          id="customer-search"
-          name="q"
-          type="search"
-          defaultValue={q}
-          placeholder={w.search}
-          className="min-h-10 w-full max-w-sm rounded-md border border-line bg-card px-3 text-sm max-sm:min-h-11 max-sm:max-w-none max-sm:pr-24"
-        />
-        <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink max-sm:absolute max-sm:top-1.5 max-sm:right-1.5 max-sm:min-h-8">
-          {w.searchButton}
-        </button>
-        {q && (
-          <Link href="/admin/platform/customers" className="flex min-h-10 items-center px-2 text-sm underline">
-            {w.everyone}
-          </Link>
-        )}
-      </form>
+      <ListSearch
+        action="/admin/platform/customers"
+        id="customer-search"
+        value={q}
+        placeholder={w.search}
+        words={{ label: w.search, button: w.searchButton }}
+        className="max-w-xl"
+        aside={
+          q && (
+            <Link href="/admin/platform/customers" className="flex min-h-10 items-center px-2 text-sm underline">
+              {w.everyone}
+            </Link>
+          )
+        }
+      />
       {customers.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {q ? w.noMatch : w.none}
-        </p>
+        <EmptyState title={q ? w.noMatch : w.none} action={q && <ButtonLink href="/admin/platform/customers">{w.everyone}</ButtonLink>} />
       ) : (
         <Card compact>
           <List label={w.title}>

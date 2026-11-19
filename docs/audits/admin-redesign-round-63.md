@@ -15,7 +15,7 @@ changes as described here. From 640 px it is as before.
 
 ## Customers
 
-- **The search is one line** with its button inside the field.
+- **The search is one line** with its button inside the field: the admin kit's list search, which D818 brought here the same day.
 - **Each person is one row:** their name, then their email and first store (*+1* for each more). Their stores' roles and plans and the
   day they joined show from `sm` up and on their own page.
 

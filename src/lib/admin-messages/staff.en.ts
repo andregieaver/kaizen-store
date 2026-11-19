@@ -61,6 +61,8 @@ export const staffEn = {
     noTwoStep: "No two-step",
     notSignedIn: "not signed in yet",
     removeAccess: "Remove access",
+    /** Asked before access is removed (code review 1.12; the admin usability audit's H3 row). */
+    removeQuestion: "Remove access for {email}? They can no longer sign in to this store. You can invite them again.",
     forEmail: " for {email}",
     roleOf: "Role of {email}",
     changeRole: "Change role",

@@ -45,8 +45,9 @@ async function makeToken(page: Page, name: string, scopes: string[], powers: str
 async function revoke(page: Page, name: string) {
   await page.goto(`/admin/${E2E_STORE}/settings/api`);
   const row = page.getByRole("listitem").filter({ hasText: name });
-  page.once("dialog", (dialog) => void dialog.accept());
+  // It asks in the admin's dialog (D818), with the action's own word.
   await row.getByRole("button", { name: "Revoke" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Revoke" }).click();
   await expect(page.getByRole("listitem").filter({ hasText: name })).toHaveCount(0);
 }
 

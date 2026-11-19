@@ -819,8 +819,8 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D814 | **Admin redesign round 58: new text message, close store and change your store on a phone** | 2026-11-19 | [text](decisions/D814.md) |
 | D815 | **Kaizena Flow's Stripe webhooks are replaced new first: the old ones go only after the new secrets are saved** | 2026-11-19 | [text](decisions/D815.md) |
 | D816 | **The proxy imports leaf readers only** | 2026-11-19 | [text](decisions/D816.md) |
-| D817 | **Contracts sent a month on Usage and limits: a count, and a soft limit nobody sets yet** |  | [text](decisions/D817.md) |
-| D818 | **The admin kit: Field, TextInput, Select, EmptyState, ConfirmButton, Pager and ListSearch in the admin's ui (code review** | 2026-11-19 | [text](decisions/D818.md) |
+| D817 | **Contracts sent a month on Usage and limits: a count, and a soft limit nobody sets yet** | 2026-11-19 | [text](decisions/D817.md) |
+| D818 | **The admin kit: Field, TextInput, Select, EmptyState, ConfirmButton, Pager and ListSearch in the admin's ui** | 2026-11-19 | [text](decisions/D818.md) |
 | D819 | **Admin redesign round 59: add a customer, bring a domain here and recordings on a phone** | 2026-11-19 | [text](decisions/D819.md) |
 | D820 | **Admin redesign round 60: move a domain, footers and draft orders on a phone** | 2026-11-19 | [text](decisions/D820.md) |
 | D821 | **Each admin page hands cuts of the word areas its parts read** | 2026-11-19 | [text](decisions/D821.md) |
@@ -830,6 +830,8 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D825 | **Crawlers get the cached page; only link previews keep the blocking render** | 2026-11-19 | [text](decisions/D825.md) |
 | D826 | **Every storefront link states what it may fetch ahead** | 2026-11-19 | [text](decisions/D826.md) |
 | D827 | **Admin redesign round 63: Kaizena Flow's customers, extensions and stores on a phone** | 2026-11-19 | [text](decisions/D827.md) |
+| D828 | **The ledger job's turns: ledger_books.checked_at and behind (bloat review step 3.22)** | 2026-11-19 | [text](decisions/D828.md) |
+| D829 | **Forms that answer: each problem under its field, Saved that clears on the next edit, and every admin form busy while it** | 2026-11-19 | [text](decisions/D829.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

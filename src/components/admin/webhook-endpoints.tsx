@@ -7,6 +7,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { useAdminText } from "./admin-text";
 import { PhoneRow } from "./phone-row";
 import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
+import { ConfirmButton } from "./ui/confirm-button";
 
 type Answer = { ok: true; secret?: string; message?: string } | { ok: false; message: string };
 type Async = Promise<Answer>;
@@ -220,12 +221,12 @@ export function EndpointCard({ endpoint, topics, owner, actions }: { endpoint: E
           <Button disabled={pending} onClick={() => run(() => actions.switchOn(endpoint.id, !endpoint.enabled))}>
             {endpoint.enabled ? w.switchOff : w.switchOn}
           </Button>
-          <Button disabled={pending} onClick={() => window.confirm(w.renewQuestion) && run(() => actions.renew(endpoint.id))}>
+          <ConfirmButton disabled={pending} question={w.renewQuestion} confirm={w.renew} action={() => run(() => actions.renew(endpoint.id))}>
             {w.renew}
-          </Button>
-          <Button kind="danger" disabled={pending} onClick={() => window.confirm(fillWords(w.removeQuestion, { name: endpoint.name })) && run(() => actions.remove(endpoint.id))}>
+          </ConfirmButton>
+          <ConfirmButton kind="danger" disabled={pending} question={fillWords(w.removeQuestion, { name: endpoint.name })} confirm={w.remove} action={() => run(() => actions.remove(endpoint.id))}>
             {w.remove}
-          </Button>
+          </ConfirmButton>
         </div>
       )}
       {message && (

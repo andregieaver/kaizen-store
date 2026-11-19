@@ -3,7 +3,8 @@
 import Link from "next/link";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { PageHeader } from "@/components/admin/ui";
+// From its own file, not the kit's index: this boundary is in every admin screen's first scripts, and the index would bring every part (D818).
+import { PageHeader } from "@/components/admin/ui/page-header";
 
 /**
  * An address in the signed-in admin that leads nowhere, or to something no longer there (`notFound()` in any of its pages), in the

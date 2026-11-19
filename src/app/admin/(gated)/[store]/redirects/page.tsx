@@ -7,7 +7,8 @@ import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { RedirectForm } from "@/components/admin/redirects/redirect-form";
 import { RedirectTable } from "@/components/admin/redirects/redirect-table";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
-import { card, field, hint, primary, secondary } from "@/components/admin/data/ui";
+import { card, hint, primary, secondary } from "@/components/admin/data/ui";
+import { Field, Select, TextInput } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -113,24 +114,20 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           role="search"
           aria-label={l.searchRegion}
         >
-          <div className="flex min-w-48 flex-1 flex-col gap-1">
-            <label htmlFor="redirect-q" className="text-sm font-medium">
-              {l.searchLabel}
-            </label>
-            <input id="redirect-q" name="q" defaultValue={q} placeholder={l.searchPlaceholder} autoComplete="off" className={`${field} font-mono`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="redirect-filter" className="text-sm font-medium">
-              {l.kind}
-            </label>
-            <select id="redirect-filter" name="filter" defaultValue={filter} className={field}>
-              {filterChoices(w).map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Field label={l.searchLabel} id="redirect-q" className="min-w-48 flex-1">
+            {(control) => <TextInput {...control} name="q" defaultValue={q} placeholder={l.searchPlaceholder} autoComplete="off" className="font-mono" />}
+          </Field>
+          <Field label={l.kind} id="redirect-filter">
+            {(control) => (
+              <Select {...control} name="filter" defaultValue={filter}>
+                {filterChoices(w).map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
           <button type="submit" className={primary}>
             {l.search}
           </button>

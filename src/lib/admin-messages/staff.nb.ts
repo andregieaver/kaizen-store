@@ -52,6 +52,7 @@ export const staffNb: StaffMessages = {
     noTwoStep: "Ikke totrinns",
     notSignedIn: "har ikke logget inn ennå",
     removeAccess: "Fjern tilgang",
+    removeQuestion: "Fjerne tilgangen for {email}? De kan ikke lenger logge inn i denne butikken. Du kan invitere dem igjen.",
     forEmail: " for {email}",
     roleOf: "Rollen til {email}",
     changeRole: "Endre rolle",

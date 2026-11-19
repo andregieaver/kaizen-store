@@ -11,7 +11,8 @@ import { RECURRENCE_INTERVALS, RECURRENCE_PERIODS } from "@/lib/work-recurrence"
 import { VAT_LINE_CATEGORIES } from "@/lib/work-vat";
 import type { RecurringInvoice } from "@/server/work-recurring";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -118,7 +119,7 @@ export function RecurringForm({
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
-      <Field label={tw.name} error={err("name")} hint={tw.forYouWhatThis}>
+      <Field label={tw.name} problem={err("name")} hint={tw.forYouWhatThis}>
         {(props) => (
           <input
             {...props}
@@ -133,7 +134,7 @@ export function RecurringForm({
       </Field>
       <Field
         label={tw.lineText}
-        error={err("description")}
+        problem={err("description")}
         hint={tw.whatTheInvoiceS}
       >
         {(props) => (
@@ -148,7 +149,7 @@ export function RecurringForm({
         )}
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label={tw.unit} error={err("unit")}>
+        <Field label={tw.unit} problem={err("unit")}>
           {(props) => (
             <select
               {...props}
@@ -164,7 +165,7 @@ export function RecurringForm({
         </Field>
         <Field
           label={unit === "hour" ? "Hours" : "Quantity"}
-          error={err("quantity")}
+          problem={err("quantity")}
           hint={unit === "hour" ? QUANTITY_MESSAGE.hour : undefined}
         >
           {(props) => (
@@ -178,7 +179,7 @@ export function RecurringForm({
             />
           )}
         </Field>
-        <Field label={fillWords(tw.priceIn, { currency: chosenCurrency })} error={err("price")} hint={tw.eachWithoutVat}>
+        <Field label={fillWords(tw.priceIn, { currency: chosenCurrency })} problem={err("price")} hint={tw.eachWithoutVat}>
           {(props) => (
             <input
               {...props}
@@ -192,7 +193,7 @@ export function RecurringForm({
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label={tw.discount} error={err("discount")}>
+        <Field label={tw.discount} problem={err("discount")}>
           {(props) => (
             <input
               {...props}
@@ -204,7 +205,7 @@ export function RecurringForm({
             />
           )}
         </Field>
-        <Field label={tw.vat} error={err("vatCategory")}>
+        <Field label={tw.vat} problem={err("vatCategory")}>
           {(props) => (
             <select {...props} name="vatCategory" defaultValue={template?.vatCategory ?? "standard"} className={control}>
               {VAT_LINE_CATEGORIES.map((category) => (
@@ -215,7 +216,7 @@ export function RecurringForm({
             </select>
           )}
         </Field>
-        <Field label={tw.currency} error={err("currency")}>
+        <Field label={tw.currency} problem={err("currency")}>
           {(props) => (
             <select
               {...props}
@@ -237,7 +238,7 @@ export function RecurringForm({
       <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-medium">{tw.schedule}</legend>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={tw.every} error={err("interval")}>
+          <Field label={tw.every} problem={err("interval")}>
             {(props) => (
               <select {...props} name="interval" defaultValue={String(template?.recurrenceInterval ?? 1)} className={control}>
                 {RECURRENCE_INTERVALS.map((n) => (
@@ -248,7 +249,7 @@ export function RecurringForm({
               </select>
             )}
           </Field>
-          <Field label={tw.period} error={err("period")}>
+          <Field label={tw.period} problem={err("period")}>
             {(props) => (
               <select {...props} name="period" defaultValue={template?.recurrencePeriod ?? "month"} className={control}>
                 {RECURRENCE_PERIODS.map((period) => (
@@ -261,14 +262,14 @@ export function RecurringForm({
           </Field>
           <Field
             label={tw.firstPeriod}
-            error={err("startDate")}
+            problem={err("startDate")}
             hint={tw.everyLaterPeriodIs}
           >
             {(props) => (
               <input {...props} name="startDate" type="date" defaultValue={template?.startDate ?? today} className={control} />
             )}
           </Field>
-          <Field label={tw.lastPeriod} error={err("endDate")} hint={tw.emptyForNoEnd}>
+          <Field label={tw.lastPeriod} problem={err("endDate")} hint={tw.emptyForNoEnd}>
             {(props) => (
               <input {...props} name="endDate" type="date" defaultValue={template?.endDate ?? ""} className={control} />
             )}
@@ -279,7 +280,7 @@ export function RecurringForm({
         )}
         <Field
           label={tw.daysToPay}
-          error={err("paymentDays")}
+          problem={err("paymentDays")}
           hint={tw.n1To90Empty}
         >
           {(props) => (

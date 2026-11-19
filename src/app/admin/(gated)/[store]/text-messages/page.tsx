@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 
-import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { buttonClass, ButtonLink, Card, CARD_CLASS, Chip, EmptyState, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { SmsConnectForm, SmsSettingsForm, StopNumberButton } from "@/components/admin/sms-views";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -62,7 +62,7 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
           <details className="group flex flex-col gap-4">
             <summary className="flex cursor-pointer list-none flex-wrap gap-2 [&::-webkit-details-marker]:hidden">
               <span className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink group-open:hidden">{w.connectOpen}</span>
-              <a href="https://46elks.com" target="_blank" rel="noopener" className="inline-flex h-11 items-center rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken">
+              <a href="https://46elks.com" target="_blank" rel="noopener" className={buttonClass("secondary", "header")}>
                 {w.makeAccount}
               </a>
             </summary>
@@ -97,7 +97,16 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
         {fillWords(w.spent, { spent: money(settings.spentThisMonth), cap: money(settings.monthlyCap), currency: settings.currency ?? "" })}
       </p>
       {campaigns.length === 0 ? (
-        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>{w.none}</p>
+        <EmptyState
+          title={w.none}
+          action={
+            mayWrite && (
+              <ButtonLink href={`${base}/new`} kind="main">
+                {w.newText}
+              </ButtonLink>
+            )
+          }
+        />
       ) : (
         <Card compact>
           <List label={w.title}>
