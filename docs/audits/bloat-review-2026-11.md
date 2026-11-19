@@ -186,7 +186,7 @@ commit as the fix.
 | 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Open | |
 | 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | Done | 19 Nov, D799: catalogue sites 35 to 0; 83 routes fell 4.86 MB; five screens 634-664 KB; admin median 643,240 B. aaa201926..589fb73de. |
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | In progress | D821: product editor 431,497 to 236,060 B, builder 606,658 to 460,097; words handed 13.2 to 6.1 MB; shared held. 3 sites left. |
-| 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | In progress | Local: menu 17,307 to 14,757 chars (commit 1); before, words in a product save 66,222 B, a builder publish 184,312, a Pages redraw 66,679 + menu 13,514 (commit 2). |
+| 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | In progress | Local: menu 17,307 to 14,757 chars; saves measured (product 66,222 B of words). Stopped at commit 3: neither way reaches 20 KB (notes below). |
 | 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | In progress | D800: builder 2,791,016 to 2,007,139 B; ProseMirror 26 routes to 0; drafts to 840,961. Owner: a press on production. |
 | 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | In progress | D801: idle home 953,731 to 812,820 B (800,000 held at today's); orders 798,324. Owner: a tab past the hour. |
@@ -650,7 +650,13 @@ added since); the one index line over 200 characters shortened.
 English owner; answer, words, menu in bytes): the product editor's save 127,821, 66,222, 13,514; the builder's save of a draft 1,087,
 0, 0 (a draft redraws nothing; a publish answers 236,942, 184,312, 13,514); a shell redraw (the Pages list's document, after the
 specs before it) 318,490, 66,679, 13,514, of which `website` is 48,784 and the shared words 17,735. The store menu in unit terms
-fell from 17,307 to 14,757 characters with commit 1.
+fell from 17,307 to 14,757 characters with commit 1. Stopped before commit 3 (its rule: neither way reaches under 20 KB). Way B:
+Next 16.4.6's `revalidate()` marks the path revalidated for `{ expire: 0 }` exactly as for `updateTag`
+(`next/dist/server/web/spec-extension/revalidate.js`; the action handler then draws the route), so only a profile that serves stale
+content skips the redraw, which a publish, a price or stock may not use; the build to read it was killed for memory five times.
+Way A takes `builder` and `blocks` (78,648 and 57,944 bytes) out of a builder publish, leaving 47,720 bytes of words, and does not
+touch the product save (66,222). The shell redraw has 17,735 bytes of shared words and 13,514 of menu even on a screen with no words
+of its own: 31,249, over the 30 KB aimed at.
 
 ## 1. The headline
 
