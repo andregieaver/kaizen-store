@@ -3,6 +3,7 @@ import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping
 import { formatMoney } from "@/lib/money";
 import type { MethodRate } from "@/lib/shipping-methods";
 import { Button, ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 /**
  * One country's shipping methods (D237, `docs/wave-3-shipping-methods.md` 2.1): in the order shoppers see ties broken, each with what its rates
@@ -75,16 +76,16 @@ export function MethodsListView({
               <RowFact>{fillWords(w.position, { n: i + 1 })}</RowFact>
               {canWrite && methods.length > 1 && (
                 <RowActions>
-                  <form action={move(m.id, "up")}>
+                  <QuietActionForm action={move(m.id, "up")}>
                     <Button type="submit" kind="quiet" size="dense" disabled={i === 0} aria-label={fillWords(w.moveUp, { name: m.name })}>
                       {w.up}
                     </Button>
-                  </form>
-                  <form action={move(m.id, "down")}>
+                  </QuietActionForm>
+                  <QuietActionForm action={move(m.id, "down")}>
                     <Button type="submit" kind="quiet" size="dense" disabled={i === methods.length - 1} aria-label={fillWords(w.moveDown, { name: m.name })}>
                       {w.down}
                     </Button>
-                  </form>
+                  </QuietActionForm>
                 </RowActions>
               )}
             </ListRow>

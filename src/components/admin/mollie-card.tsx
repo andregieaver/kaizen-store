@@ -1,6 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip } from "@/components/admin/ui";
 import { ConfirmButton } from "@/components/admin/ui/confirm-button";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { submitClass } from "@/lib/submit-class";
 import { fillWords } from "@/lib/admin-fill";
 import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
@@ -56,9 +57,9 @@ export function MollieCard({
         <div className="flex flex-col gap-3 text-sm">
           {terms}
           {isOwner ? (
-            <form action={connectAction}>
+            <QuietActionForm action={connectAction}>
               <SubmitButton>{w.connect}</SubmitButton>
-            </form>
+            </QuietActionForm>
           ) : (
             <p className="text-muted">{w.ownerOnly}</p>
           )}

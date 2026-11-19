@@ -2,6 +2,7 @@ import { CATEGORY_ICONS, type FormTemplateItem } from "@/lib/form-templates";
 import type { AdminLang } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { NavIcon, type NavIconName } from "../nav-icons";
 import { CARD_CLASS } from "../ui";
@@ -52,7 +53,7 @@ function Cards({ title, cards, make }: { title?: string; cards: Card[]; make: (k
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-form-starters>
         {cards.map((c) => (
           <li key={c.key}>
-            <form action={make.bind(null, c.key)} className="h-full">
+            <QuietActionForm action={make.bind(null, c.key)} className="h-full">
               <button
                 type="submit"
                 className={`${CARD_CLASS} flex h-full w-full flex-col items-start gap-2 p-5 text-left transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2`}
@@ -69,7 +70,7 @@ function Cards({ title, cards, make }: { title?: string; cards: Card[]; make: (k
                   {c.note && ` · ${c.note}`}
                 </span>
               </button>
-            </form>
+            </QuietActionForm>
           </li>
         ))}
       </ul>

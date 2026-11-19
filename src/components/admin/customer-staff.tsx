@@ -1,5 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import type { CustomersMessages } from "@/lib/admin-messages/customers.en";
 import { CUSTOMER_COMPANY_MAX, CUSTOMER_NAME_MAX, CUSTOMER_NOTE_MAX, CUSTOMER_PHONE_MAX } from "@/lib/customer-staff";
@@ -148,11 +149,11 @@ export function CustomerNotes({
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
                 <span>{n.author ? fillWords(words.by, { author: n.author, date: date(n.createdAt) }) : fillWords(words.byUnknown, { date: date(n.createdAt) })}</span>
                 {remove && (
-                  <form action={remove(n.id)}>
+                  <QuietActionForm action={remove(n.id)}>
                     <button type="submit" aria-label={fillWords(words.deleteLabel, { date: date(n.createdAt) })} className="rounded-pill px-2 underline">
                       {words.delete}
                     </button>
-                  </form>
+                  </QuietActionForm>
                 )}
               </div>
             </li>

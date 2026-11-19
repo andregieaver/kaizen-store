@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { buttonClass, Card, Chip } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { BusinessMessages } from "@/lib/admin-messages/business.en";
 import {
@@ -169,11 +170,11 @@ function StepRow({ item, words: w, text, href, tick }: { item: BusinessChecklist
   return (
     <li className="flex items-start gap-3 py-3">
       {tick ? (
-        <form action={tick}>
+        <QuietActionForm action={tick}>
           <button type="submit" aria-pressed={item.state === "done"} aria-label={fillWords(item.state === "done" ? w.markOpen : w.markDone, { step: title })} className={`${look} hover:bg-sunken`}>
             {mark}
           </button>
-        </form>
+        </QuietActionForm>
       ) : (
         <span className={look}>
           {item.state === "info" ? <span aria-hidden="true">i</span> : mark}

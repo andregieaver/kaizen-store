@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { buttonClass } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 type Level = "read" | "propose" | "change";
 
@@ -56,7 +57,7 @@ export function OAuthConsentForm({
     });
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <QuietActionForm action={action} className="flex flex-col gap-6">
       {Object.entries(hidden).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
@@ -121,6 +122,6 @@ export function OAuthConsentForm({
           {words.cancel}
         </button>
       </div>
-    </form>
+    </QuietActionForm>
   );
 }

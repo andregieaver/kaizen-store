@@ -3,6 +3,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
 import type { InstagramStatus } from "@/server/instagram";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 /**
  * The owner's Instagram connection (D560), for a store and for Kaizena Flow: connect (off to Instagram), the account and how its posts were
@@ -68,17 +69,17 @@ export function InstagramSettings({
           {canEdit ? (
             <div className="flex flex-wrap items-center gap-3 pt-2">
               {appOn && (
-                <form action={connect}>
+                <QuietActionForm action={connect}>
                   <button type="submit" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
                     {w.reconnect}
                   </button>
-                </form>
+                </QuietActionForm>
               )}
-              <form action={disconnect}>
+              <QuietActionForm action={disconnect}>
                 <button type="submit" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium text-danger-text hover:bg-sunken">
                   {w.disconnect}
                 </button>
-              </form>
+              </QuietActionForm>
               <p className="w-full text-xs text-muted">{w.disconnectHint}</p>
             </div>
           ) : (
@@ -89,11 +90,11 @@ export function InstagramSettings({
         <section className={card}>
           <p className="text-sm">{w.connectHint}</p>
           {canEdit ? (
-            <form action={connect}>
+            <QuietActionForm action={connect}>
               <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
                 {w.connect}
               </button>
-            </form>
+            </QuietActionForm>
           ) : (
             <p className="text-sm text-muted">{w.readOnly}</p>
           )}
