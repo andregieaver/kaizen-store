@@ -394,6 +394,14 @@ describe("flows (D767)", () => {
     await way(`past1-${run}@example.com`, "done", ["a", "b"]);
     await way(`past2-${run}@example.com`, "done", ["a"]);
     await way(`past3-${run}@example.com`, "running", ["a"]);
+    // Home and the briefing (M3.8): a flow switched on with 20 started in 30 days and more than 1 in 20 of them gone from the list is losing readers.
+    const { losingFlowCounts } = await import("./attention");
+    await db().execute(sql`update commerce.flows set enabled = true where id = ${saved.id}::uuid`);
+    for (let i = 0; i < 18; i += 1) await way(`pastx${i}-${run}@example.com`, i < 2 ? "stopped" : "done", []);
+    expect(await losingFlowCounts([storeId])).toEqual(new Map([[storeId, { flows: 1, only: saved.id }]]));
+    await db().execute(sql`update commerce.flows set enabled = false where id = ${saved.id}::uuid`);
+    expect(await losingFlowCounts([storeId])).toEqual(new Map());
+    await db().execute(sql`delete from commerce.flow_runs where flow_id = ${saved.id}::uuid and entry_key like 'pastx%'`);
     const past = await fl.flowStepPast(storeId, saved.id);
     expect(past.ended).toBe(2);
     expect(Object.fromEntries(past.reached)).toEqual({ a: 2, b: 1 });

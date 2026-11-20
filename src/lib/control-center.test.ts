@@ -539,4 +539,21 @@ describe("one attention source (ecosystem plan E2.1, D713)", () => {
       "1 nytt lead venter på at du lager en avtale av det eller avviser det.",
     );
   });
+
+  it("names flows losing readers, opening the one flow or the flows page (M3.8)", () => {
+    const one = storeAttentionItems({ slug: "kaffe", name: "Kaffe", role: "owner", flowsLosing: { flows: 1, only: "f1" } }, now, homeEn.attention);
+    expect(one).toEqual([
+      {
+        kind: "flows_losing",
+        text: "1 flow is losing readers: more than 1 in 20 who started it left your list. Its page says what to change.",
+        href: "/admin/kaffe/flows/f1",
+        action: "See the flow",
+        urgent: false,
+      },
+    ]);
+    expect(storeAttentionItems({ slug: "kaffe", name: "Kaffe", role: "owner", flowsLosing: { flows: 2, only: null } }, now, homeNb.attention)[0]).toMatchObject({
+      href: "/admin/kaffe/flows",
+      text: "2 flyter mister lesere: mer enn 1 av 20 som startet dem, meldte seg av listen. Sidene deres sier hva du kan endre.",
+    });
+  });
 });

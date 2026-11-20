@@ -19,9 +19,12 @@ export type FlowReport = {
 
 export type FlowSuggestion = "none" | "space_out" | "add_picks" | "build_on_top";
 
+/** A flow losing readers: at least this many started it in 30 days, and more than this share of them left the list on the way. */
+export const LOSING = { entered: 20, share: 0.05 } as const;
+
 /** One suggestion: leaving outweighs everything; then no orders from emails sent; then building on the step that works. */
 export function flowSuggestion(r: FlowReport): FlowSuggestion {
-  if (r.entered >= 20 && r.left / r.entered > 0.05) return "space_out";
+  if (r.entered >= LOSING.entered && r.left / r.entered > LOSING.share) return "space_out";
   if (r.sent >= 20 && r.orders === 0) return "add_picks";
   if (r.topStep && r.orders >= 3) return "build_on_top";
   return "none";
