@@ -11,6 +11,9 @@ A new deferred item goes here and moves to its dated section when it is ticked.
 - [ ] **Advisor (D748 E4)** `20261119091545_store_plans.sql`: `organisation_billing_price_plan_fk` (price_id, plan_id) has no covering
       index (INFO), as `store_billing_price_plan_fk` already had; both tables hold one row per store or account. One index on
       (price_id, plan_id) each, in place of the price_id index, when either table is next changed.
+- [ ] **Advisor (D836)** `20261120004843_account_email_changes.sql`: `account_email_changes_requested_by_accounts_id_fk` (requested_by)
+      has no covering index (INFO). The table holds at most one waiting change per account and is pruned daily, so only an account's
+      erasure reads it by `requested_by`. An index on `requested_by` when the table is next changed.
 - [ ] **AGT-14** Replay stored manager turns with thumbs as labels. Labels since 30 October 2026: Platform → AI counts the owners' thumbs per AI manager prompt version (`managerRatingsByVersion()`, counts only, never a conversation's words), beside the eval runs, so a new version is compared with
       the last by the people who use it; replaying rated turns against a new prompt remains. Done (D391): the prompts are versioned (`promptVersions()`, kept with
       every AI manager and chat answer and eval run) and the evals run in CI against a recorded model (`agent-eval-replay.int.test.ts`
