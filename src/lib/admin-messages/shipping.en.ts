@@ -1,3 +1,4 @@
+import { SHIPPING_WARNING_WORDS } from "../shipping-warning-labels";
 import type { Widen } from "./common.en";
 
 /**
@@ -68,15 +69,7 @@ export const shippingEn = {
       profilesLink: "Profiles",
     },
     needsLook: "Needs a look",
-    warnings: {
-      no_flat_with_methods: "{market}: there is no flat rate, so a basket no method prices cannot be bought.",
-      zones_without_rest: "{market}: no method has a rate for Rest of country, so addresses outside your zones cannot be served by a method.",
-      subscriptions_need_flat: "{market}: subscriptions and subscription boxes pay the flat rate, and none is set.",
-      default_weight_used: {
-        one: "{n} variant has no weight and uses the default weight in weight tiers.",
-        many: "{n} variants have no weight and use the default weight in weight tiers.",
-      },
-    },
+    warnings: { ...SHIPPING_WARNING_WORDS },
     country: "Country",
     price: "Delivery",
     freeFrom: "Free from",

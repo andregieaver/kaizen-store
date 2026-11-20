@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { warningWords } from "@/components/admin/shipping/shipping-hub";
 import { db } from "@/db/client";
 import { readDelivery } from "@/lib/delivery-options";
+import { SHIPPING_WARNING_WORDS } from "@/lib/shipping-warning-labels";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import { groupHandovers, readyWords, shapeArea, shapeMethod, shapeZone, weightWords, type HandoverOrder } from "@/lib/shipping-tools";
@@ -87,7 +88,7 @@ export async function shippingOverviewTool({ store }: Ctx, { market }: OwnerTool
         ),
       };
     }),
-    warnings: warnings.map((w) => warningWords(w, nameOf)),
+    warnings: warnings.map((w) => warningWords(w, nameOf, SHIPPING_WARNING_WORDS)),
     note: "Amounts include VAT and are in each country's own currency. Shoppers are offered the methods that price their basket, the pickup places and the cheapest local area that covers their postal code; with no method, the flat rate is charged. Carriers connected under Integrations are offered beside these and are not listed here.",
     admin: `/admin/${store.slug}/settings/shipping`,
   };

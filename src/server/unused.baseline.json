@@ -47,7 +47,6 @@
     "src/components/admin/nav-icons.tsx#NAV_ICON_NAMES",
     "src/components/admin/privacy/retention-view.tsx#KIND_LABELS",
     "src/components/admin/save-template-dialog.tsx#SAVED_AS_TEMPLATE",
-    "src/components/admin/shipping/local-view.tsx#GEONAMES_ATTRIBUTION",
     "src/components/admin/tax-profile-form.tsx#ReadinessList",
     "src/components/admin/templates-helpers.ts#KIND_FILTERS",
     "src/components/admin/templates-helpers.ts#isFiltering",

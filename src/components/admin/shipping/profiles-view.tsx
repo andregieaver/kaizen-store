@@ -2,7 +2,7 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
+import type { ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { PROFILES_MAX } from "@/lib/shipping-limits";
 
 import { ProductChooser } from "./product-chooser";
@@ -26,15 +26,15 @@ export function ProfilesView({
   canWrite,
   save,
   remove,
-  words: w = shippingEn.profiles,
+  words: w,
 }: {
   profiles: ProfileItem[];
   products: ChooserProduct[];
   canWrite: boolean;
   save: (profileId: string | null) => Action;
   remove: (profileId: string) => Action;
-  /** The view's words in the admin's language (D312 A8); English unless given. The product chooser reads its own. */
-  words?: ShippingMessages["profiles"];
+  /** The view's words in the admin's language (D312 A8). The product chooser reads its own. */
+  words: ShippingMessages["profiles"];
 }) {
   const names = Object.fromEntries(profiles.map((p) => [p.id, p.name]));
   const general = products.filter((p) => p.profileId === null).length;

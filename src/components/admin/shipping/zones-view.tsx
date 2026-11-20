@@ -2,7 +2,7 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { PhoneRow } from "@/components/admin/phone-row";
 import { Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
+import type { ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { PATTERN_CHARS_MAX, PATTERNS_MAX, ZONES_MAX } from "@/lib/shipping-limits";
 
 /**
@@ -24,7 +24,7 @@ export function ZonesView({
   save,
   remove,
   check,
-  words: w = shippingEn.zones,
+  words: w,
   locale = "en-GB",
 }: {
   market: { code: string; name: string };
@@ -34,8 +34,8 @@ export function ZonesView({
   remove: (zoneId: string) => Action;
   /** *Check a postal code*, for those who may change the settings; null hides it. */
   check: Action | null;
-  /** The view's words and how numbers are written, in the admin's language (D312 A8); English unless given. */
-  words?: ShippingMessages["zones"];
+  /** The view's words and how numbers are written, in the admin's language (D312 A8). */
+  words: ShippingMessages["zones"];
   locale?: string;
 }) {
   const help = fillWords(w.help, { patterns: PATTERNS_MAX, chars: PATTERN_CHARS_MAX.toLocaleString(locale) });

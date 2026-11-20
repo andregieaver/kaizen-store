@@ -3,11 +3,12 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { FormState } from "@/components/admin/action-form";
+import { shippingEn } from "@/lib/admin-messages/shipping.en";
 
 // The method editor moves to the new method's page once saved; drawn on the server here, it never navigates.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: () => undefined, push: () => undefined, refresh: () => undefined }) }));
 
-import { LocalView, GEONAMES_ATTRIBUTION, type LocalAreaItem } from "./local-view";
+import { LocalView, type LocalAreaItem } from "./local-view";
 import { MethodEditor } from "./method-editor";
 import { MethodsListView, ratesSummary } from "./methods-list";
 import { PickupView, type PickupPlace } from "./pickup-view";
@@ -70,6 +71,7 @@ describe("the Shipping hub", () => {
         ],
         flatRateForm: h("p", null, "FLAT FORM"),
         defaultWeightForm: h("p", null, "WEIGHT FORM"),
+        words: shippingEn.hub,
       }),
     );
     expect(text).toContain("Needs a look");
@@ -109,6 +111,7 @@ describe("the Shipping hub", () => {
         warnings: [],
         flatRateForm: null,
         defaultWeightForm: null,
+        words: shippingEn.hub,
       }),
     );
     expect(text).not.toContain("Needs a look");
@@ -117,16 +120,16 @@ describe("the Shipping hub", () => {
     expect(text).toContain("What a shopper sees");
     expect(text).toContain("No delivery choice yet");
     expect(text).toContain("1 area on, of 2.");
-    expect(deliverySentence([{ code: "NO", name: "Norway", price: "99 kr", free: false, freeFrom: "999 kr" }])).toEqual({
+    expect(deliverySentence([{ code: "NO", name: "Norway", price: "99 kr", free: false, freeFrom: "999 kr" }], shippingEn.hub)).toEqual({
       lead: "Shoppers in Norway pay 99 kr for delivery",
       rest: ", and nothing when they buy for 999 kr or more.",
     });
-    expect(deliverySentence([{ code: "NO", name: "Norway", price: "0 kr", free: true, freeFrom: null }]).lead).toBe("Delivery is free for shoppers in Norway.");
-    expect(deliverySentence([]).lead).toBe("No delivery price yet");
-    expect(deliverySentence([{ code: "NO", name: "Norway", price: "99 kr", free: false, freeFrom: null }, { code: "SE", name: "Sweden", price: null, free: false, freeFrom: null }]).lead).toBe(
+    expect(deliverySentence([{ code: "NO", name: "Norway", price: "0 kr", free: true, freeFrom: null }], shippingEn.hub).lead).toBe("Delivery is free for shoppers in Norway.");
+    expect(deliverySentence([], shippingEn.hub).lead).toBe("No delivery price yet");
+    expect(deliverySentence([{ code: "NO", name: "Norway", price: "99 kr", free: false, freeFrom: null }, { code: "SE", name: "Sweden", price: null, free: false, freeFrom: null }], shippingEn.hub).lead).toBe(
       "Delivery is priced in 1 of 2 countries",
     );
-    expect(warningWords({ code: "default_weight_used", variants: 1 }, (c) => c)).toBe("1 variant has no weight and uses the default weight in weight tiers.");
+    expect(warningWords({ code: "default_weight_used", variants: 1 }, (c) => c, shippingEn.hub.warnings)).toBe("1 variant has no weight and uses the default weight in weight tiers.");
   });
 });
 
@@ -152,6 +155,7 @@ describe("the methods list and the market tabs", () => {
             ],
           },
         ],
+        words: shippingEn.methods,
       }),
     );
     expect(text).toContain("Standard");
@@ -162,11 +166,11 @@ describe("the methods list and the market tabs", () => {
     expect(html).toContain(`href="/b/methods/${METHOD}"`);
     expect(html).toContain('href="/b/methods/new?market=NO"');
     expect(html).toContain('aria-label="Move Standard up"');
-    expect(ratesSummary([], "NOK")).toBe("No rates yet: not offered");
+    expect(ratesSummary([], "NOK", shippingEn.methods)).toBe("No rates yet: not offered");
   });
 
   it("says a market with no methods pays the flat rate, and hides buttons from someone who may only read", () => {
-    const { text, html } = draw(h(MethodsListView, { base: "/b", market: { code: "SE", name: "Sweden", currency: "SEK" }, canWrite: false, move: () => async () => undefined, methods: [] }));
+    const { text, html } = draw(h(MethodsListView, { base: "/b", market: { code: "SE", name: "Sweden", currency: "SEK" }, canWrite: false, move: () => async () => undefined, methods: [], words: shippingEn.methods }));
     expect(text).toContain("No methods in Sweden yet: baskets there pay the flat rate.");
     expect(html).not.toContain("Add a method");
   });
@@ -242,6 +246,7 @@ describe("zones and profiles", () => {
         save: () => action,
         remove: () => action,
         check: action,
+        words: shippingEn.zones,
       }),
     );
     expect(text).toContain("Check a postal code");
@@ -250,7 +255,7 @@ describe("zones and profiles", () => {
     expect(text).toContain("Delete Northern Norway");
     expect(text).toContain("Add a zone");
     expect(text).toContain("At most 1000 codes and 3,000 characters a zone.");
-    const empty = draw(h(ZonesView, { market: { code: "SE", name: "Sweden" }, zones: [], canWrite: false, save: () => action, remove: () => action, check: action }));
+    const empty = draw(h(ZonesView, { market: { code: "SE", name: "Sweden" }, zones: [], canWrite: false, save: () => action, remove: () => action, check: action, words: shippingEn.zones }));
     expect(empty.text).toContain("No zones: every postal code in Sweden is Rest of country.");
     expect(empty.text).not.toContain("Add a zone");
   });
@@ -261,7 +266,7 @@ describe("zones and profiles", () => {
       { id: "p2", title: "Mug", profileId: null, shipped: true },
       { id: "p3", title: "Gift card", profileId: null, shipped: false },
     ];
-    const { text, html } = draw(h(ProfilesView, { profiles: [{ id: PROFILE, name: "Bulky", products: 1 }], products, canWrite: true, save: () => action, remove: () => action }));
+    const { text, html } = draw(h(ProfilesView, { profiles: [{ id: PROFILE, name: "Bulky", products: 1 }], products, canWrite: true, save: () => action, remove: () => action, words: shippingEn.profiles }));
     expect(text).toContain("General");
     expect(text).toContain("2 products.");
     expect(text).toContain("Products in this profile: 1");
@@ -295,6 +300,7 @@ describe("pickup and local delivery settings", () => {
         companyHref: "/c",
         canWrite: true,
         save: () => action,
+        words: shippingEn.pickup,
       }),
     );
     expect(text).toContain("Shop Oslo");
@@ -304,12 +310,12 @@ describe("pickup and local delivery settings", () => {
     expect(html).toContain("Ask at the counter.");
     expect(text).toContain("1 translation is kept;");
     expect(text).toContain("SE is not a country you sell to, so customers cannot collect here.");
-    const none = draw(h(PickupView, { places: [], companyHref: "/c", canWrite: true, save: () => action }));
+    const none = draw(h(PickupView, { places: [], companyHref: "/c", canWrite: true, save: () => action, words: shippingEn.pickup }));
     expect(none.text).toContain("Add a store or a pickup point under Company");
   });
 
   it("free pickup shows an empty price, read as free", () => {
-    const { html } = draw(h(PickupView, { places: [place({ option: { active: false, amountMinor: 0, readyInHours: 0, instructions: "", instructionsT: {} } })], companyHref: "/c", canWrite: true, save: () => action }));
+    const { html } = draw(h(PickupView, { places: [place({ option: { active: false, amountMinor: 0, readyInHours: 0, instructions: "", instructionsT: {} } })], companyHref: "/c", canWrite: true, save: () => action, words: shippingEn.pickup }));
     expect(html).toContain('placeholder="Free"');
     expect(html).toContain("Not offered");
   });
@@ -343,13 +349,14 @@ describe("pickup and local delivery settings", () => {
         save: () => action,
         remove: () => action,
         check: action,
+        words: shippingEn.local,
       }),
     );
     expect(text).toContain("Norway · 2 postal codes and prefixes · NOK 99.00, from a basket of NOK 300.00, free from NOK 1,000.00");
     expect(text).toContain("Within 7,5 km of Shop Oslo, 120 postal codes · free");
     expect(text).toContain("Off");
     expect(text).toContain("Distances are measured between postal-code centres");
-    expect(text).toContain(GEONAMES_ATTRIBUTION);
+    expect(text).toContain(shippingEn.local.attribution);
     expect(text).toContain("Add an area");
     expect(html).toContain("Tuesdays and Fridays.");
     expect(html).toContain('checked="" value="radius"');
@@ -357,11 +364,11 @@ describe("pickup and local delivery settings", () => {
 
   it("offers postal-code areas only where no postal-code positions are loaded, and states no radius limit then", () => {
     const { text, html } = draw(
-      h(LocalView, { markets: [{ code: "DE", name: "Germany", currency: "EUR" }], areas: [], places: [], radiusCountries: [], canWrite: true, save: () => action, remove: () => action, check: action }),
+      h(LocalView, { markets: [{ code: "DE", name: "Germany", currency: "EUR" }], areas: [], places: [], radiusCountries: [], canWrite: true, save: () => action, remove: () => action, check: action, words: shippingEn.local }),
     );
     expect(text).toContain("No areas yet");
     expect(text).toContain("not for this country: no postal-code positions are loaded");
     expect(html).toMatch(/disabled=""[^>]*value="radius"/);
-    expect(text).not.toContain(GEONAMES_ATTRIBUTION);
+    expect(text).not.toContain(shippingEn.local.attribution);
   });
 });

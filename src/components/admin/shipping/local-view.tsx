@@ -2,7 +2,7 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { Card, Chip } from "@/components/admin/ui";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
+import type { ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { formatMoney } from "@/lib/money";
 import { AREAS_MAX } from "@/lib/shipping-limits";
 
@@ -18,9 +18,6 @@ import { AreaForm, type AreaDraft, type AreaPlace } from "./area-form";
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
 export type LocalAreaItem = AreaDraft & { placeName: string | null; included: number | null };
-
-/** The attribution the reference data's licence asks for (CC BY 4.0), wherever radius areas are offered. */
-export const GEONAMES_ATTRIBUTION = shippingEn.local.attribution;
 
 function areaSummary(area: LocalAreaItem, w: ShippingMessages["local"], locale: string): string {
   const km = String(area.radiusKm).replace(".", ",");
@@ -43,7 +40,7 @@ export function LocalView({
   save,
   remove,
   check,
-  words: w = shippingEn.local,
+  words: w,
   locale = "en-GB",
 }: {
   markets: { code: string; name: string; currency: string }[];
@@ -55,8 +52,8 @@ export function LocalView({
   remove: (areaId: string) => Action;
   /** *Check a postal code*, for those who may change the settings; null hides it. */
   check: Action | null;
-  /** The view's words and how amounts are written, in the admin's language (D312 A8); English unless given. The area form reads its own. */
-  words?: ShippingMessages["local"];
+  /** The view's words and how amounts are written, in the admin's language (D312 A8). The area form reads its own. */
+  words: ShippingMessages["local"];
   locale?: string;
 }) {
   const marketName = (code: string) => markets.find((m) => m.code === code)?.name ?? code;

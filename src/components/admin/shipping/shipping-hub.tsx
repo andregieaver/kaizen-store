@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
+import type { ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import type { ShippingWarning } from "@/lib/shipping-methods";
 import { DotChip } from "@/components/admin/home/home-parts";
 import { AdminLink, Card, CARD_CLASS, Chip } from "@/components/admin/ui";
@@ -35,13 +35,13 @@ export type ShippingHubProps = {
   /** The flat rate's form and the default weight's form, drawn by the page (they post to its actions). */
   flatRateForm: ReactNode;
   defaultWeightForm: ReactNode;
-  /** The hub's words in the admin's language (D312 A8); English unless given. */
-  words?: ShippingMessages["hub"];
+  /** The hub's words in the admin's language (D312 A8). */
+  words: ShippingMessages["hub"];
 };
 
 /** A warning in words, naming the country (the AI manager's shipping tool reads it in English). */
-export function warningWords(warning: ShippingWarning, marketName: (code: string) => string, words: ShippingMessages["hub"] = shippingEn.hub): string {
-  const w = words.warnings;
+export function warningWords(warning: ShippingWarning, marketName: (code: string) => string, words: ShippingMessages["hub"]["warnings"]): string {
+  const w = words;
   switch (warning.code) {
     case "no_flat_with_methods":
     case "zones_without_rest":
@@ -53,7 +53,7 @@ export function warningWords(warning: ShippingWarning, marketName: (code: string
 }
 
 /** The page's sentence: what a shopper pays for delivery, its first part the one to read ("Shoppers in Norway pay 99 kr for delivery"). */
-export function deliverySentence(prices: HubPrice[], words: ShippingMessages["hub"] = shippingEn.hub): { lead: string; rest: string } {
+export function deliverySentence(prices: HubPrice[], words: ShippingMessages["hub"]): { lead: string; rest: string } {
   const w = words.sentence;
   const set = prices.filter((p) => p.price !== null);
   if (set.length === 0) return { lead: w.none, rest: w.noneMore };
@@ -79,7 +79,7 @@ export function ShippingHubView({
   warnings,
   flatRateForm,
   defaultWeightForm,
-  words: w = shippingEn.hub,
+  words: w,
 }: ShippingHubProps) {
   const nameOf = (code: string) => markets.find((m) => m.code === code)?.name ?? code;
   const shown = prices.find((p) => p.price !== null);
@@ -94,7 +94,7 @@ export function ShippingHubView({
           <h2 id="shipping-warnings" className="text-body-strong">{w.needsLook}</h2>
           <ul className="mt-2 list-disc pl-5 text-sm">
             {warnings.map((warning, i) => (
-              <li key={i}>{warningWords(warning, nameOf, w)}</li>
+              <li key={i}>{warningWords(warning, nameOf, w.warnings)}</li>
             ))}
           </ul>
         </section>

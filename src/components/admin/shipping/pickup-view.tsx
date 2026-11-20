@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
+import type { ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { INSTRUCTIONS_MAX, READY_HOURS_MAX } from "@/lib/shipping-limits";
 import { typedAmount } from "@/lib/shipping-method-form";
 
@@ -35,14 +35,14 @@ export function PickupView({
   companyHref,
   canWrite,
   save,
-  words: w = shippingEn.pickup,
+  words: w,
 }: {
   places: PickupPlace[];
   companyHref: string;
   canWrite: boolean;
   save: (place: PickupPlace) => Action;
-  /** The view's words in the admin's language (D312 A8); English unless given. */
-  words?: ShippingMessages["pickup"];
+  /** The view's words in the admin's language (D312 A8). */
+  words: ShippingMessages["pickup"];
 }) {
   if (places.length === 0) {
     return (
