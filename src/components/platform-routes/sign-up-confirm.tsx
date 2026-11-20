@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { confirmSignup } from "@/app/(platform)/sign-up/actions";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { signUpWorkspaceText } from "@/lib/messages/sign-up-workspace";
 import { platformText } from "@/lib/platform-text";
 import { confirmationOf } from "@/server/self-signup";
 
@@ -57,12 +58,9 @@ async function Confirm({ lang, params }: { lang: PlatformLang; params: Promise<{
     );
   }
   // A sign-up for extensions without a store (D748 E7) starts its account and trials, not a store.
+  const ws = signUpWorkspaceText(lang).confirm;
   const words = found.workspace
-    ? {
-        title: w.confirmTitleWorkspace,
-        body: w.confirmBodyWorkspace,
-        button: w.confirmButtonWorkspace,
-      }
+    ? { title: ws.title, body: ws.body, button: ws.button }
     : { title: w.confirmTitle, body: w.confirmBody, button: w.confirmButton };
   return (
     <>

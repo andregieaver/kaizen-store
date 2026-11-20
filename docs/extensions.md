@@ -458,7 +458,7 @@ Your business; its owner owns the account at the account's level (`ownerWho()`: 
 (`/admin/account/add`, in the account menu and Account's sidebar): "Open an online store" (an account with only a workspace opens its first
 store there with the plan's trial, `createStoreForOwner()`; one with stores goes to Your stores) and each extension it does not have, one
 press to try it free (or add it after a trial). The confirmation page and the sign-up's emails speak of the account and its trials for a
-workspace. The platform's counts leave workspaces out of stores (overview, briefing, the Stores list, the AI manager's figures) and the
+workspace (`src/lib/messages/sign-up-workspace.ts`, kept out of `platformText()`, which the storefront's layout reaches). The platform's counts leave workspaces out of stores (overview, briefing, the Stores list, the AI manager's figures) and the
 sign-up funnel names those who started with extensions alone. `STANDALONE_SIGNUP_OPEN` is on. Kaizena Flow's own admin needs no workspace
 (its own store has every extension), so this stays the customers'. Left for part four: the product pages.
 

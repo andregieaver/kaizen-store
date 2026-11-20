@@ -21,6 +21,7 @@ import { recordSignup } from "@/server/experiments";
 import { confirmSelfSignup, selfServeOn, startSelfSignup } from "@/server/self-signup";
 import { langOfLocale, type PlatformLang } from "@/lib/platform-lang";
 import { platformText, type PlatformMessages } from "@/lib/platform-text";
+import { signUpWorkspaceText } from "@/lib/messages/sign-up-workspace";
 
 /** The form's checks, in the words of the language it was sent in (D312). */
 function inputIn(errors: PlatformMessages["signUp"]["errors"]) {
@@ -146,10 +147,11 @@ export async function confirmSignup(_state: FormState, formData: FormData): Prom
   const w = platformText(langOfForm(formData)).signUp.selfServe;
   const done = await confirmSelfSignup(String(formData.get("token") ?? ""), { password: String(formData.get("password") ?? "") });
   // A sign-up for extensions (D748 E7) is told about its account, not a store.
+  const ws = signUpWorkspaceText(langOfForm(formData)).confirm;
   if (done.ok) {
-    const text = done.workspace ? (done.password ? w.doneWorkspaceWithPassword : w.doneWorkspace) : done.password ? w.doneWithPassword : w.done;
+    const text = done.workspace ? (done.password ? ws.doneWithPassword : ws.done) : done.password ? w.doneWithPassword : w.done;
     return { status: "ok", messages: [text.replaceAll("{store}", done.storeName)] };
   }
-  const problem = done.workspace && done.problem === "off" ? w.offWorkspace : done.workspace && done.problem === "failed" ? w.failedWorkspace : w[done.problem];
+  const problem = done.workspace && done.problem === "off" ? ws.off : done.workspace && done.problem === "failed" ? ws.failed : w[done.problem];
   return { status: "error", messages: [problem] };
 }

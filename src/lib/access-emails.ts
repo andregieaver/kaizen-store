@@ -1,5 +1,6 @@
 import type { EmailContent } from "./email-layout";
 import { langOfLocale, PLATFORM_LANG_FACTS, type PlatformLang } from "./platform-lang";
+import { signUpWorkspaceText } from "./messages/sign-up-workspace";
 import { platformText } from "./platform-text";
 
 /**
@@ -32,7 +33,7 @@ const fill = (text: string, values: { name: string; store: string }) => text.rep
 export function accessEmail(kind: AccessEmailKind, lang: PlatformLang, input: { name: string; storeName: string; url?: string; workspace?: boolean }): EmailContent {
   const all = platformText(lang).accessEmails;
   // A sign-up for extensions without a store (D748 E7) is told about its account and trials; a decline reads the same for both.
-  const w = input.workspace ? { ...all, ...all.workspace } : all;
+  const w = input.workspace ? { ...all, ...signUpWorkspaceText(lang).emails } : all;
   const values = { name: input.name.trim(), store: input.storeName.trim() };
   const head = { lang: PLATFORM_LANG_FACTS[lang].tag, footer: FOOTER };
   if (kind === "received") {
