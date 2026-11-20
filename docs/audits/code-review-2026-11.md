@@ -71,7 +71,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Done | 19 Nov: CLAUDE.md by bloat step 2.1 (7742afff, 10,102 bytes); decisions split by bloat step 2.40 (779 files, none over 500 characters a line). |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
 | 1.12 | Build the admin kit | FS4 | L | Done | 19 Nov 2026, 98e69ecf, a9c04344, 2e294c71, ba7c3331, dd56e77b, d6283f4f, 5820b511, b6db7cd6, D818: seven pieces in `A/ui`; 17 list pages; field boxes and pill links per file and `confirmFiles` (42 to 32) in the ratchet; see Notes below |
-| 1.13 | One way to search and page a list | FS2 | M | Open | Stores, Pages and Articles page at 100 with a count (bloat 0.19, 2.17), on `Pager` since D818; Orders, Customers, gift cards and reviews search with `ListSearch` (D818). Customers, Products, Invoices and Returns still to page. |
+| 1.13 | One way to search and page a list | FS2 | M | Done | 20 Nov 2026, 78a66106, 2b6bf757, 85ad6668, 360c6568, e39c1675, ecd9d41f, daadf7e8, D834: four lists and the platform's Customers on Pager and ListSearch; see Notes below |
 | 1.14 | One date formatter | FS5 | M | Done | 19 Nov 2026, 9cec7211, b1b85b24, D786: `adminDate()`/`adminDay()` in `src/lib/admin-date.ts`; `admin-dates.scan.test.ts`; see Notes below |
 | 1.15 | Forms that answer | FS6 | M | Done | 19 Nov 2026, c5c5a535, af185999, 0967e774, 7e517920, 11fef3c5, 7df0c6ca, D829: problems under their fields, Saved until the next edit, busy forms; 77 forms on `QuietActionForm`; `rawActionForms` 107 to 29; see Notes below |
 | 1.16 | Unsaved work survives | FB5 | M | Done | 19 Nov 2026, 45b40b6d, 27683588, D787: one leave guard in eight editors; drafts in the builder and product editor; see Notes below |
@@ -93,7 +93,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 2.7 | Fit the menu to a phone | FN10 | M | Open | |
 | 2.8 | One way to start | FS7 | M | Open | |
 | 2.9 | Empty screens with a next step | FS8 | M | Open | |
-| 2.10 | Give the platform's Stores list the store admin's list | FS9 | M | Open | Stores (2.10) paged at 100 with a count by bloat step 0.19, 14 Nov 2026, commit 4 of the step; the shared kit and the rest (the Stores search, Invoices, Returns) remain. |
+| 2.10 | Give the platform's Stores list the store admin's list | FS9 | M | Open | Stores (2.10) paged at 100 with a count by bloat step 0.19, 14 Nov 2026, on the kit's Pager since D818 and the shared page size since D834 (Invoices and Returns: step 1.13); the Stores search and filters remain. |
 | 2.11 | A Basic view in the builder | FB3 | M | Open | |
 | 2.12 | Select parts in the builder | FB4 | M | Open | |
 | 2.13 | A trail on the storefront | FF7 | S | Open | |
@@ -188,6 +188,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 19 November 2026: D811's found fault fixed (D815): the platform's Stripe webhooks are replaced new first, so a failure part way leaves the working ones.
 - 19 November 2026: step 1.12 done (D818, finding FS4): the admin kit (Field, TextInput, Select, EmptyState, ConfirmButton, Pager, ListSearch) in `A/ui`; 17 list pages on it; the ratchet lists hand-made field boxes and pill links per file; `confirmFiles` 42 to 32.
 - 19 November 2026: step 1.15 done (D829, finding FS6): a refused field shows its problem under it, *Saved* goes on the next edit, every admin form is busy while it works; 77 raw action forms are `QuietActionForm`; the ratchet's `rawActionForms` fell from 107 to 29, each kept one named.
+- 20 November 2026: step 1.13 done (D834, finding FS2): Customers, Products, Invoices and Returns, and the platform's Customers, show a hundred a page with "100 of 150" on `Pager` and search with `ListSearch`; the products table says whether a choice is this page or every match; row 2.10's note corrected (the Stores search and filters remain).
 
 **Notes on the steps**
 
@@ -393,6 +394,18 @@ platform's pages included) and `src/components/admin`; `confirmFiles` 42 to 32, 
 boxes and 150 pills burn down as screens are touched; step 1.13 pages Customers, Products, Invoices and Returns; step 2.9 the other
 empty screens.
 
+**Step 1.13.** 20 Nov 2026, D834: one page size and parser (`src/lib/list-page.ts`, a hundred); each read counts what its filters
+find in the same statement and ends its order on a unique key, so a page's edge loses or repeats no row; a page past the last opens
+the first. Customers (`customerPage()`, typed) stopped at 100 with no word; *Tag everyone the search finds* now follows the view too.
+Products read every product and searched, filtered and showed sixty at a time in the browser: `src/server/product-list.ts` reads a
+page and its count, the views' figures in a second statement (in place of every SKU: five statements still), the views are the search
+form's buttons, and the table's head chooses the page while its foot, only when more match, chooses every match on all pages
+(`matchingProductIds()`, the same filter and order). Invoices (50, "Page 2 of 3") and Returns (25) are on `Pager` and `ListSearch`.
+Platform: its Customers page the same; its own customers are its store's (D467); it has no products, returns or invoices list.
+Orders keep their cursor. Ratchet: unchecked reads 3084 to 3079, field boxes 295 to 293, native selects 456 to 453. Done when met:
+`e2e/signed-in/list-pages.spec.ts` sees "100 of 150" and the next page on Customers and Products; the integration tests hold the
+same for Invoices and Returns.
+
 **Step 1.20.** 19 Nov 2026, D796: `src/lib/dates.ts` gives D786's formatter neutral names for code outside the admin
 (`dateIn(where, instant, style, locale)`, `calendarDate(day, style, locale)`) and `storeZoneOf(row.time_zone)` for an untyped row.
 Articles, blog comments, article grids, campaign notices, the subscription and order pages (terms, bonus, downloads, parcels,
@@ -544,7 +557,7 @@ Severity 1: **FV11** the key that stops a double plan subscription changes every
 |---|---|---|---|---|---|
 | FF1 ✓ | 3 | A category, tag, search or *All products* listing returns at most 48 products with no next page, and the count says "48 products" because it counts what came back. A shopper cannot reach, or learn of, the rest; the owner loses sales and cannot see why. | `src/server/listing.ts:42, 212`; `src/components/product-listing.tsx:91`; `src/server/search.ts:301` | A page parameter in `parseListingParams` and `listingProducts`, the full count from the query, a *Show more* plain link (`?page=2`), the count as "48 of 200 products". The same for `searchProducts`. | M |
 | FS1 ✓ | 3 | Most admin pages give no sign that a click worked until all their data is read. The old page stays put and the owner clicks again. The platform admin is almost wholly without skeletons. | no `loading.tsx` for products, customers, discounts, deals, `S/settings/books`; only boundary at `src/app/admin/(gated)/layout.tsx:23` | One generic `loading.tsx` at `S/` and at `P/`, built from the `block` class in `S/orders/loading.tsx`; keep the fitted ones; a thin pending bar on sidebar links with `useLinkStatus` (read the Next 16 docs first). | S |
-| FS2 ✓ | 3 | Lists page, search and cap in at least four ways: orders by cursor, invoices by offset, returns by page number, products and the platform's stores load everything. Customers stops at 100 with no pager and no word that more exist. Search forms are hand-written in 24 files. | `src/server/customer-admin.ts:131`; `S/customers/page.tsx:37`; `S/products/page.tsx:91`; `S/orders/page.tsx:84-89`; `S/invoices/page.tsx:50`; `S/returns/page.tsx:44`; `P/stores/page.tsx:25` | Lift the orders pattern into `ListSearch` and `Pager` in `A/ui`; move Customers, Products, Invoices and Returns onto them; every list says when it was cut off. *Takes in the audit's phase 1 item for Products.* | M |
+| FS2 ✓ | 3 | Lists page, search and cap in at least four ways: orders by cursor, invoices by offset, returns by page number, products and the platform's stores load everything. Customers stops at 100 with no pager and no word that more exist. Search forms are hand-written in 24 files. | `src/server/customer-admin.ts:131`; `S/customers/page.tsx:37`; `S/products/page.tsx:91`; `S/orders/page.tsx:84-89`; `S/invoices/page.tsx:50`; `S/returns/page.tsx:44`; `P/stores/page.tsx:25` | Lift the orders pattern into `ListSearch` and `Pager` in `A/ui`; move Customers, Products, Invoices and Returns onto them; every list says when it was cut off. *Takes in the audit's phase 1 item for Products. Built: step 1.13, D834.* | M |
 | FS5 | 3 | Dates are fixed to Norwegian time in 66 admin files and cut from UTC strings in 46, while 86 use the store's zone. For a store outside Norway an evening order shows on the wrong day on some screens; one order can carry two dates. | `S/customers/page.tsx:41`; `S/customers/[customerId]/page.tsx:119`; `S/page.tsx:183`; `src/app/admin/(gated)/(owner)/page.tsx:100` | One `adminDate(store, iso, style)` in `src/lib`; a scan test that fails on `Europe/Oslo` and `.slice(0, 10)` in the admin; on the control center, each row's own store zone. *Audit phase 1: not built.* | M |
 | FS12 ✓ | 3 | Outside the admin, shoppers' dates stay on Oslo's clock: 73 `Europe/Oslo` lines, 34 server fallbacks to it, 28 dates with no zone (UTC's day on Vercel). A New York store's evening order shows the next day. | `src/components/article-view.tsx`; `campaign-notice.tsx`; `contract-signing.ts` | `src/lib/dates.ts` over D786's formatter; the store's zone already loaded; a scan test. *Found after step 1.14.* | M |
 | FS6 ✓ | 3 | Form feedback is uneven. 83 raw `<form action>` have no busy state and no outcome. `ActionForm` lists problems only at its foot, off screen on a long form; "Saved." is fixed English and stays after further edits; only 8 editors warn before leaving. | `A/action-form.tsx:41, 61-84, 99-117`; `A/ui/button.tsx` (no `useFormStatus`) | In `ActionForm`: each problem under its field, the first scrolled into view, *Not saved* on the first edit, words from `useCommonText()`. `Button` reads `useFormStatus`. A `QuietActionForm` for the raw forms. One `useLeaveGuard`. *Built: step 1.15, D829.* | M |
