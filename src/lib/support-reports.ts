@@ -1,5 +1,6 @@
 import { fillWords } from "./admin-fill";
-import { supportEn, type SupportMessages } from "./admin-messages/support.en";
+import type { SupportMessages } from "./admin-messages/support.en";
+import { SUPPORT_UNITS } from "./support-report-labels";
 /**
  * The support desk's report (D216, step 14; every figure is defined in `docs/analytics.md`, Support): worked out here, once, from one
  * row per conversation (`src/server/support-reports.ts` reads them; no words, no names, no customer), and repeated by the AI
@@ -241,7 +242,7 @@ type ReportUnits = SupportMessages["units"];
 /** A duration in words: "45 s", "1 min 30 s", "12 min", "1 h 20 min", "2 d 4 h". */
 export function durationWords(
   totalSeconds: number,
-  w: ReportUnits = supportEn.units,
+  w: ReportUnits,
 ): string {
   const s = Math.max(0, Math.round(totalSeconds));
   if (s < 60) return fillWords(w.seconds, { n: s });
@@ -267,18 +268,18 @@ export function durationWords(
 export const missingWords = (
   n: number,
   min = MIN_SUPPORT_SAMPLE,
-  w: ReportUnits = supportEn.units,
+  w: ReportUnits,
 ) => (n === 0 ? w.noneYet : fillWords(w.needed, { n, min }));
 
 /** A rate in words for the AI manager and the platform: "62 % (31 of 50)", or what is missing. */
 export function rateWords(r: Rate): string {
   return r.share === null
-    ? `Not shown: ${missingWords(r.of)}`
+    ? `Not shown: ${missingWords(r.of, MIN_SUPPORT_SAMPLE, SUPPORT_UNITS)}`
     : `${Math.round(r.share * 1000) / 10} % (${r.count} of ${r.of})`;
 }
 
 /** A duration figure in words: "median 3 min, slowest tenth 12 min (24 conversations)", or what is missing. */
 export function durationFigureWords(d: Duration, withSlowest = true): string {
-  if (d.median === null) return `Not shown: ${missingWords(d.n)}`;
-  return `median ${durationWords(d.median)}${withSlowest && d.slowestTenth !== null ? `, slowest tenth ${durationWords(d.slowestTenth)}` : ""} (${d.n})`;
+  if (d.median === null) return `Not shown: ${missingWords(d.n, MIN_SUPPORT_SAMPLE, SUPPORT_UNITS)}`;
+  return `median ${durationWords(d.median, SUPPORT_UNITS)}${withSlowest && d.slowestTenth !== null ? `, slowest tenth ${durationWords(d.slowestTenth, SUPPORT_UNITS)}` : ""} (${d.n})`;
 }

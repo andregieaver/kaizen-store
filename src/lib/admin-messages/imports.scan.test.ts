@@ -52,6 +52,8 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/affiliate-admin-english.ts": "The affiliate program's rules and overview in English, read by the AI manager's referral tools as well.",
   "lib/segment-labels.ts": "How a segment's rules are said in English (describeRules()), read by the AI manager's marketing tools and a broadcast's audience line as well.",
   "lib/campaign-labels.ts": "What a code or a campaign gives in English (describeCampaign()), read by the AI manager's campaign list as well.",
+  "lib/support-inbox-text-english.ts": "Why a conversation went to a person, a summary's outcome and the topics' own words in English, read by the AI manager's support tools as well.",
+  "lib/support-report-labels.ts": "A support report's units in English, read by support-reports.ts's rateWords() and durationFigureWords() for the AI manager and the platform as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
 

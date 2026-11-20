@@ -136,7 +136,7 @@ export function toneWords(
 }
 
 /** A topic of the closed lists in words: `order_status` is "Order status", `ai` "AI". */
-export function topicWords(topic: string, w: LibWords): string {
+export function topicWords(topic: string, w: Pick<LibWords, "topics">): string {
   const own = (w.topics as Record<string, string>)[topic];
   if (own) return own;
   if (topic === "ai") return "AI";

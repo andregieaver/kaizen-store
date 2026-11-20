@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { duration, durationFigureWords, durationWords, nearestRank, rate, rateWords, supportReport, type ReportConversation } from "./support-reports";
+import { SUPPORT_UNITS } from "./support-report-labels";
 
 const T = Date.UTC(2026, 9, 1, 10);
 const min = (n: number) => T + n * 60_000;
@@ -42,8 +43,8 @@ describe("support's report figures (D216, step 14; docs/analytics.md)", () => {
     expect(nearestRank([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 0.9)).toBe(10);
     expect(nearestRank([], 0.5)).toBeNull();
     expect(durationFigureWords(duration(ten))).toBe("median 55 s, slowest tenth 1 min 30 s (10)");
-    expect(durationWords(3 * 3600 + 20 * 60)).toBe("3 h 20 min");
-    expect(durationWords(50 * 3600)).toBe("2 d 2 h");
+    expect(durationWords(3 * 3600 + 20 * 60, SUPPORT_UNITS)).toBe("3 h 20 min");
+    expect(durationWords(50 * 3600, SUPPORT_UNITS)).toBe("2 d 2 h");
   });
 
   it("counts the AI alone only among ended AI-first conversations, a fact; resolved is the AI's judgement over the rest but spam", () => {
