@@ -141,7 +141,7 @@ describe("the readers that only ask what a source means", () => {
       expect(text, file).not.toMatch(/\bsource\??\.type\s*[!=]==/);
     }
     // The page's image shape and the builder's "is it products" and "is it custom" questions too.
-    expect(read("src/lib/page-content.ts")).toContain("sourceTraits(block.source).products");
+    expect(read("src/lib/grid-view.ts")).toContain("sourceTraits(block.source).products");
     expect(read("src/components/admin/page-builder-fields.tsx")).toContain("const custom = !traits.lookedUp;");
   });
 

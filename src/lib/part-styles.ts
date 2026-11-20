@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { type SmallerSize } from "./breakpoints";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./content-width";
-import { typographyAtSchema, typographyGroupsSchema, type TypographyGroups, type TypographyGroupsAt } from "./typography";
+import { SHADOWS, type Shadow } from "./grid-view";
+import type { TypographyGroups, TypographyGroupsAt } from "./typography";
+import { typographyAtSchema, typographyGroupsSchema } from "./typography-schema";
 
 /**
  * The style settings every part of a page can have (D47 to D49, D179): spacing, a border, rounded corners, a shadow, a colour
@@ -40,15 +42,8 @@ export const BORDER_MAX = 20;
 
 export const RADIUS_MAX = 200;
 
-/** Shadows to choose from (D49), each with its CSS. */
-export const SHADOWS = {
-  sm: { label: "Small", css: "0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08)" },
-  md: { label: "Medium", css: "0 4px 12px rgb(0 0 0 / 0.12)" },
-  lg: { label: "Large", css: "0 10px 30px rgb(0 0 0 / 0.15)" },
-  xl: { label: "Extra large", css: "0 20px 50px rgb(0 0 0 / 0.2)" },
-} as const;
-
-export type Shadow = keyof typeof SHADOWS;
+/** Shadows to choose from (D49), each with its CSS: a plain constant in `grid-view.ts`, which the grid's tiles read without a schema. */
+export { SHADOWS, type Shadow } from "./grid-view";
 
 /** The one kind of background a part can take per screen size (D179): a colour; a picture, video or gradient is the part's own. */
 export type ColorBackground = { type: "color"; color: Color; opacity?: number };

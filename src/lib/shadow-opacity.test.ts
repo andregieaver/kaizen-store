@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { DEFAULT_BREAKPOINTS } from "./breakpoints";
-import { SHADOWS, frameStyle, newPageContent, pageInput, shadowCss, shadowOpacityOf, type PageRow } from "./page-content";
+import { frameStyle } from "./grid-view";
+import { SHADOWS, newPageContent, pageInput, shadowCss, shadowOpacityOf, type PageRow } from "./page-content";
 import { columnStyle, partCss, rowStyle } from "./part-css";
 import { WIDTHS, partStyleAt } from "./part-css.testing";
 import { setAt } from "./responsive";

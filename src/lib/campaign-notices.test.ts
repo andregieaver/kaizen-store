@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { cardNotices, nextStepText, noticeText, noticesFor, type CampaignNotice } from "./campaign-notices";
+import { browserText } from "./browser-text";
+import { cardNotices, cardText, nextStepText, noticeText, noticesFor, type CampaignNotice } from "./campaign-notices";
 import { t } from "./i18n";
 
 const notice = (over: Partial<CampaignNotice>): CampaignNotice => ({
@@ -95,5 +96,26 @@ describe("campaign notices", () => {
     const spend = notice({ id: "s", kind: "bxgy", bxgy: { ...b, buyQuantity: null, buyMinor: 50000 } });
     expect(noticeText(spend, t("en"), money)).toBe("Spend kr 500, get 1 free");
     expect(cardNotices([free, spend, notice({ id: "a", kind: "bxgy", bxgy: { ...b, getKind: "amount", getMinor: 100 } })]).map((n) => n.id)).toEqual(["f"]);
+  });
+
+  it("say on a card in the browser what the server says on a card, in every language (bloat review step 2.10)", () => {
+    const b = { buyQuantity: 2, buyMinor: null, getQuantity: 1, getKind: "free" as const, getPercent: null, getMinor: null };
+    const cards = [
+      notice({ kind: "percent" }),
+      notice({ kind: "multi_buy" }),
+      notice({ kind: "tiered", tierBasis: "quantity", tiers: [{ at: 2, percent: 10, off: null }, { at: 4, percent: 15, off: null }] }),
+      notice({ kind: "tiered", tierBasis: "quantity", tiers: [{ at: 2, percent: 0, off: 5000 }, { at: 4, percent: 0, off: 15000 }] }),
+      notice({ kind: "bxgy", bxgy: b }),
+      notice({ kind: "bxgy", bxgy: { ...b, getKind: "percent", getPercent: 50 } }),
+    ];
+    for (const lang of ["en", "nb", "sv", "da"]) {
+      for (const card of cards) {
+        const said = cardText(card, browserText(lang).campaigns, money);
+        expect(said, `${lang} ${card.kind}`).not.toBeNull();
+        expect(said, `${lang} ${card.kind}`).toBe(noticeText(card, t(lang), money, { card: true }));
+      }
+    }
+    expect(cardText(notice({ kind: "free_shipping" }), browserText("en").campaigns, money)).toBeNull();
+    expect(cardText(notice({ kind: "bxgy", bxgy: { ...b, getKind: "amount", getMinor: 100 } }), browserText("en").campaigns, money)).toBeNull();
   });
 });

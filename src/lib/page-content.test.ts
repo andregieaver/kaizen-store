@@ -15,7 +15,6 @@ import {
   blockFonts,
   blockHasContent,
   blockText,
-  frameStyle,
   imageDisplaySize,
   parsePageContent,
   samePageContent,
@@ -34,6 +33,7 @@ import {
   type ImageShape,
   type RichTextDoc,
 } from "./page-content";
+import { frameStyle } from "./grid-view";
 import { newBlock } from "./page-rows";
 
 const doc = (...content: unknown[]) => ({ type: "doc", content });

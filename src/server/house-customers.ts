@@ -1,6 +1,5 @@
 import "server-only";
 
-import { DRILL_EMAIL_DOMAIN } from "@/lib/live-drills";
 
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
@@ -124,7 +123,9 @@ type Person = z.infer<typeof personRow>;
  * The live drills' test addresses (D406, D409: the Dream Factory signs up at the test domain): never people, so never Kaizena Flow's customers
  * or deals.
  */
-const DRILL_ADDRESSES = `%${DRILL_EMAIL_DOMAIN}`;
+// Written here rather than imported from `src/lib/live-drills.ts` (its `DRILL_EMAIL_DOMAIN`): store pages reach this file, and the import put
+// them over their route-load budget (bloat review 1.8). `house-customers.int.test.ts` holds the two equal.
+export const DRILL_ADDRESSES = "%@resend.dev";
 
 /** Everyone the platform knows as an owner or an applicant, one row per address, with what decides their tags and their deal. */
 function people(runner: Tx): Promise<Person[]> {
