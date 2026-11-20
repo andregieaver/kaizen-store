@@ -5,11 +5,16 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/admin/ui";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { CONTRACT_FIELDS, type ContractBlock } from "@/lib/contract-fields";
+import { contractDocText, docFromText } from "@/lib/contract-rich";
+import type { RichTextDoc } from "@/lib/rich-text-doc";
+
+import { ContractTextEditor } from "../lazy/editors";
 
 /**
  * A contract's draft (D695): its title, its words as blocks, and who signs. Homer changes the words in place and presses Save; Lisa adds,
  * moves and removes blocks, leaves out an optional clause, and names the signers. Everything is kept by one action, which draws the page
- * again with its preview; nothing is sent from here. Every word is plain text: a field is written in braces (`{customer.name}`).
+ * again with its preview; nothing is sent from here. A paragraph's and a clause's words are rich text (`ContractTextEditor`: lists, bold,
+ * italic, underline), kept as `doc` beside their plain `text`; a field is written in braces (`{customer.name}`).
  */
 
 type Words = DealsMessages["contracts"];
@@ -17,7 +22,9 @@ export type EditorSigner = { role: "store" | "customer" | "other"; name: string;
 type Member = { id: string; name: string; email: string };
 
 const inputClass = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
-const areaClass = "min-h-24 w-full rounded-md border border-line bg-card px-3 py-2 text-sm leading-relaxed";
+
+/** A paragraph's or a clause's words as the editor starts them: their document, or their plain text made one (a block from before formatting). */
+const docOf = (block: { text: string; doc?: RichTextDoc }): RichTextDoc => block.doc ?? docFromText(block.text);
 
 function nextClauseId(blocks: readonly ContractBlock[]): string {
   const taken = new Set(blocks.flatMap((b) => (b.type === "clause" ? [b.id] : [])));
@@ -141,22 +148,40 @@ export function BlocksEditor({
   setBlocks: (update: (all: ContractBlock[]) => ContractBlock[]) => void;
   words: Words;
 }) {
-  const change = (index: number, next: ContractBlock) => setBlocks((all) => all.map((b, i) => (i === index ? next : b)));
-  const move = (index: number, by: -1 | 1) =>
+  // Each block keeps its key as it moves: a rich text editor starts from its block's words once, so a moved block must keep its editor.
+  const [keys, setKeys] = useState<number[]>(() => blocks.map((_, i) => i));
+  const fresh = () => Math.max(-1, ...keys) + 1;
+  const keyAt = (index: number) => (keys.length === blocks.length ? keys[index] : `at-${index}`);
+
+  const change = (index: number, block: ContractBlock) => setBlocks((all) => all.map((b, i) => (i === index ? block : b)));
+  const changeWords = (index: number, doc: RichTextDoc) =>
+    setBlocks((all) => all.map((b, i) => (i === index && (b.type === "paragraph" || b.type === "clause") ? { ...b, doc, text: contractDocText(doc) } : b)));
+  const move = (index: number, by: -1 | 1) => {
+    const to = index + by;
+    if (to < 0 || to >= blocks.length) return;
+    const order = [...keys];
+    [order[index], order[to]] = [order[to], order[index]];
+    setKeys(order);
     setBlocks((all) => {
-      const to = index + by;
-      if (to < 0 || to >= all.length) return all;
       const copy = [...all];
       [copy[index], copy[to]] = [copy[to], copy[index]];
       return copy;
     });
-  const remove = (index: number) => setBlocks((all) => all.filter((_, i) => i !== index));
-  const add = (block: ContractBlock) =>
-    setBlocks((all) => {
-      // New words go before the signatures, where a contract's text ends.
-      const at = all.findIndex((b) => b.type === "signatures");
-      return at < 0 ? [...all, block] : [...all.slice(0, at), block, ...all.slice(at)];
-    });
+  };
+  const remove = (index: number) => {
+    setKeys(keys.filter((_, i) => i !== index));
+    setBlocks((all) => all.filter((_, i) => i !== index));
+  };
+  const insertAt = (all: readonly ContractBlock[]) => {
+    // New words go before the signatures, where a contract's text ends.
+    const at = all.findIndex((b) => b.type === "signatures");
+    return at < 0 ? all.length : at;
+  };
+  const add = (block: ContractBlock) => {
+    const at = insertAt(blocks);
+    setKeys([...keys.slice(0, at), fresh(), ...keys.slice(at)]);
+    setBlocks((all) => [...all.slice(0, at), block, ...all.slice(at)]);
+  };
 
   return (
     <section className="flex flex-col gap-3" aria-label={w.words}>
@@ -177,7 +202,7 @@ export function BlocksEditor({
 
       <ol className="flex flex-col gap-3">
         {blocks.map((block, index) => (
-          <li key={index} className="rounded-panel border border-line bg-card p-3">
+          <li key={keyAt(index)} className="rounded-panel border border-line bg-card p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="text-eyebrow text-muted">{w.kinds[block.type]}</span>
               <span className="flex gap-1">
@@ -196,7 +221,7 @@ export function BlocksEditor({
               <input className={inputClass} aria-label={w.kinds.heading} value={block.text} maxLength={200} onChange={(e) => change(index, { ...block, text: e.target.value })} />
             )}
             {block.type === "paragraph" && (
-              <textarea className={areaClass} aria-label={w.kinds.paragraph} value={block.text} onChange={(e) => change(index, { ...block, text: e.target.value })} />
+              <ContractTextEditor value={docOf(block)} label={w.kinds.paragraph} words={w} fields={CONTRACT_FIELDS} onChange={(doc) => changeWords(index, doc)} />
             )}
             {block.type === "clause" && (
               <div className="flex flex-col gap-2">
@@ -207,7 +232,7 @@ export function BlocksEditor({
                   maxLength={200}
                   onChange={(e) => change(index, { ...block, title: e.target.value })}
                 />
-                <textarea className={areaClass} aria-label={w.kinds.clause} value={block.text} onChange={(e) => change(index, { ...block, text: e.target.value })} />
+                <ContractTextEditor value={docOf(block)} label={w.kinds.clause} words={w} fields={CONTRACT_FIELDS} onChange={(doc) => changeWords(index, doc)} />
                 <div className="flex flex-wrap gap-4 text-sm">
                   {block.optional && (
                     <label className="flex items-center gap-2">
@@ -230,7 +255,16 @@ export function BlocksEditor({
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => add({ type: "paragraph", text: "" })}>{w.addText}</Button>
         <Button onClick={() => add({ type: "clause", id: nextClauseId(blocks), title: "", text: "", optional: false, included: true })}>{w.addClause}</Button>
-        {!blocks.some((b) => b.type === "signatures") && <Button onClick={() => setBlocks((all) => [...all, { type: "signatures" }])}>{w.kinds.signatures}</Button>}
+        {!blocks.some((b) => b.type === "signatures") && (
+          <Button
+            onClick={() => {
+              setKeys([...keys, fresh()]);
+              setBlocks((all) => [...all, { type: "signatures" }]);
+            }}
+          >
+            {w.kinds.signatures}
+          </Button>
+        )}
       </div>
     </section>
   );

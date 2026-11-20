@@ -1,14 +1,17 @@
+import type { ReactNode } from "react";
+
 import type {
   ContractSnapshot,
   FilledBlock,
   SnapshotSigner,
 } from "@/lib/contract-fields";
 import { contractText, type ContractText } from "@/lib/contract-text";
+import type { BlockNode, InlineNode, RichTextDoc } from "@/lib/rich-text-doc";
 
 /**
  * A contract as it was sent (D695): drawn from its snapshot alone, for the PDF (`contractHtml()`) and, in step 3, the signing page. Every
- * word is text, drawn by React (escaped), never HTML; no hook, no script, no picture and no link, so the PDF renderer can refuse every
- * request. Its styles are `CONTRACT_CSS`.
+ * word is text, drawn by React (escaped), never HTML; formatted words (`doc`) are drawn node by node as the few elements a contract
+ * takes. No hook, no script, no picture and no link, so the PDF renderer can refuse every request. Its styles are `CONTRACT_CSS`.
  */
 
 export const CONTRACT_CSS = `
@@ -18,6 +21,12 @@ export const CONTRACT_CSS = `
 .kc h1, .kc .kc-title { font-size: 18pt; line-height: 1.25; margin: 0 0 6mm; font-weight: 700; }
 .kc h2 { font-size: 11.5pt; margin: 6mm 0 1.5mm; font-weight: 650; break-after: avoid; }
 .kc p { margin: 0 0 3mm; white-space: pre-wrap; }
+.kc ul, .kc ol { margin: 0 0 3mm; padding-left: 6mm; }
+.kc ul { list-style: disc; }
+.kc ol { list-style: decimal; }
+.kc li { margin: 0 0 1mm; }
+.kc li > p { margin: 0; }
+.kc li > ul, .kc li > ol { margin: 1mm 0 0; }
 .kc .kc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin: 0 0 6mm; padding: 4mm; border: 1px solid #d4d4d8; border-radius: 2mm; }
 .kc .kc-label { font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; color: #71717a; margin: 0 0 1mm; }
 .kc .kc-party p { margin: 0; }
@@ -83,6 +92,53 @@ function Party({
   );
 }
 
+/** Formatted words (`contract-rich.ts`): paragraphs, lists, line breaks, bold, italic and underline, as elements, never as HTML. */
+function Formatted({ doc }: { doc: RichTextDoc }) {
+  return <>{doc.content.map(formattedBlock)}</>;
+}
+
+function formattedBlock(node: BlockNode, index: number): ReactNode {
+  switch (node.type) {
+    case "paragraph":
+    case "heading":
+      return <p key={index}>{formattedInline(node.content)}</p>;
+    case "bulletList":
+      return (
+        <ul key={index}>
+          {node.content.map((item, i) => (
+            <li key={i}>{item.content.map(formattedBlock)}</li>
+          ))}
+        </ul>
+      );
+    case "orderedList":
+      return (
+        <ol key={index} start={node.attrs?.start}>
+          {node.content.map((item, i) => (
+            <li key={i}>{item.content.map(formattedBlock)}</li>
+          ))}
+        </ol>
+      );
+    case "blockquote":
+      return <div key={index}>{node.content.map(formattedBlock)}</div>;
+    case "horizontalRule":
+      return null;
+  }
+}
+
+function formattedInline(nodes: InlineNode[] = []): ReactNode {
+  if (!nodes.length) return <br />;
+  return nodes.map((node, i) => {
+    if (node.type === "hardBreak") return <br key={i} />;
+    let out: ReactNode = node.text;
+    for (const mark of node.marks ?? []) {
+      if (mark.type === "bold") out = <strong>{out}</strong>;
+      else if (mark.type === "italic") out = <em>{out}</em>;
+      else if (mark.type === "underline") out = <u>{out}</u>;
+    }
+    return <span key={i}>{out}</span>;
+  });
+}
+
 function Block({
   block,
   signers,
@@ -96,12 +152,12 @@ function Block({
     case "heading":
       return <h2>{block.text}</h2>;
     case "paragraph":
-      return <p>{block.text}</p>;
+      return block.doc ? <Formatted doc={block.doc} /> : <p>{block.text}</p>;
     case "clause":
       return (
         <section>
           <h2>{block.title}</h2>
-          <p>{block.text}</p>
+          {block.doc ? <Formatted doc={block.doc} /> : <p>{block.text}</p>}
         </section>
       );
     case "quote_lines":

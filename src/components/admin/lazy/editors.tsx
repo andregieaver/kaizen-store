@@ -19,6 +19,11 @@ export const RichTextEditor = lazyView(
   dynamic(() => import("../rich-text-editor").then((m) => m.RichTextEditor)),
   () => <div className="min-h-32 rounded-md border border-line bg-card" aria-hidden />,
 );
+/** A contract's paragraph or clause as rich text (D695): loaded on a contract's or a template's page only. */
+export const ContractTextEditor = lazyView(
+  dynamic(() => import("../deals/contract-text-editor").then((m) => m.ContractTextEditor)),
+  () => <div className="min-h-36 rounded-md border border-line bg-card" aria-hidden />,
+);
 export const EntityFieldsCard = lazyView(dynamic(() => import("../entity-fields-card").then((m) => m.EntityFieldsCard)));
 
 /** A plain field of the settings panel that takes inline markup: drawn in the browser, its place held by a box of its own size. */

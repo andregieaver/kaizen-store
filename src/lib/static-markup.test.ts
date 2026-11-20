@@ -10,7 +10,7 @@ import { staticMarkup } from "./static-markup";
 
 /**
  * The documents' renderer (D695): every view a PDF draws is written exactly as `renderToStaticMarkup()` writes it, with text that needs
- * escaping, line breaks, optional clauses left out, a quote's lines and both languages. The order documents are held to it in their own
+ * escaping, line breaks, optional clauses left out, formatted words (lists, bold, italic, underline), a quote's lines and both languages. The order documents are held to it in their own
  * tests (`order-document-view*.test.ts`).
  */
 
@@ -24,6 +24,22 @@ function snapshot(language: "nb" | "en", withQuote: boolean) {
     ...template.blocks,
     { type: "paragraph", text: `Linje én\nLinje to med ${tricky}` },
     { type: "clause", id: "extra", title: "Valgfri", text: "Utelatt.", optional: true, included: false },
+    {
+      type: "clause",
+      id: "formatted",
+      title: "Formatert",
+      text: "",
+      optional: false,
+      included: true,
+      doc: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Til " }, { type: "text", text: "{customer.name}", marks: [{ type: "bold" }, { type: "underline" }] }, { type: "hardBreak" }, { type: "text", text: tricky, marks: [{ type: "italic" }] }] },
+          { type: "paragraph" },
+          { type: "orderedList", attrs: { start: 3 }, content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Tre" }] }, { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Under" }] }] }] }] }] },
+        ],
+      },
+    },
     ...(withQuote ? [{ type: "quote_lines" } as ContractBlock] : []),
   ];
   const values = Object.fromEntries(

@@ -109,9 +109,11 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   // A changed word is kept, and the preview is drawn again with it.
   const words = page.getByRole("region", { name: "What it says" });
   await words.getByLabel("Clause", { exact: true }).nth(1).fill(`Paid within 10 days ${run}.`);
+  // The words are rich text (D856): made a bulleted list, the contract draws them as one.
+  await words.getByRole("toolbar", { name: "Formatting for Clause" }).nth(1).getByRole("button", { name: "Bulleted list" }).click();
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status").getByText("Saved.")).toBeVisible({ timeout: 30_000 });
-  await expect(preview.getByText(`Paid within 10 days ${run}.`)).toBeVisible();
+  await expect(preview.locator("li").getByText(`Paid within 10 days ${run}.`)).toBeVisible();
 
   // The deal lists it as a draft.
   await page.getByRole("link", { name: "Back to the deal" }).click();
