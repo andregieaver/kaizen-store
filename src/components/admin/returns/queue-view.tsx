@@ -3,15 +3,15 @@ import Link from "next/link";
 import { CHIP_ITEM, CHIP_STRIP } from "@/lib/chip-strip";
 import { formatMoney } from "@/lib/money";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { kitEn } from "@/lib/admin-messages/kit.en";
 import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
-import { countsSentence, dayText, exchangeFilters, kindFilters, queueHref, statusFilters, type ExchangeMark } from "@/lib/return-admin";
+import { countsSentence, dayText, exchangeFilters, kindFilters, queueHref, queueQuery, statusFilters, type ExchangeMark } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
-import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, ListSearch, PageHeader, Pager, RowAmount, RowLead, Select, TextInput } from "@/components/admin/ui";
+import type { PagerWords } from "@/components/admin/ui/pager";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
-
-const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 /**
  * The returns queue (D153): what is open, oldest first, with what is overdue, what waits for an answer and what
@@ -26,6 +26,7 @@ export function ReturnsQueueView({
   locale = "en-GB",
   exchange = null,
   words: w = returnsEn,
+  pagerWords = kitEn.pager,
 }: {
   /** `/admin/{store}/returns` */
   base: string;
@@ -37,10 +38,11 @@ export function ReturnsQueueView({
   timeZone: string;
   locale?: string;
   words?: ReturnsMessages;
+  /** The kit's pager words (`adminText(lang, "kit").pager`, D834). */
+  pagerWords?: PagerWords;
 }) {
   const q = w.queue;
   const filtered = filter.status !== "open" || filter.kind !== "all" || filter.q !== "" || filter.overdue || exchange !== null;
-  const pages = Math.max(1, Math.ceil(queue.total / queue.pageSize));
   const orders = base.replace(/\/returns$/, "/orders");
   const plain = filter.kind === "all" && exchange === null && filter.q === "";
   const chips: { label: string; n: number | null; href: string; on: boolean }[] = [
@@ -72,21 +74,24 @@ export function ReturnsQueueView({
       )}
 
       {showFilters && (
-        <form method="get" action={base} role="search" className="flex items-center gap-2">
-          {filter.status !== "open" && <input type="hidden" name="status" value={filter.status} />}
-          {filter.kind !== "all" && <input type="hidden" name="kind" value={filter.kind} />}
-          {exchange && <input type="hidden" name="exchange" value={exchange} />}
-          {filter.overdue && <input type="hidden" name="overdue" value="1" />}
-          <label className="flex min-w-0 flex-1">
-            <span className="sr-only">{q.search}</span>
-            <input name="q" type="search" defaultValue={filter.q} placeholder={q.searchPlaceholder} maxLength={100} className="min-h-11 w-full rounded-pill border border-edge bg-card px-4 text-sm" />
-          </label>
-          {filtered && (
-            <Link href={base} className="flex min-h-10 shrink-0 items-center text-sm underline">
-              {q.clear}
-            </Link>
-          )}
-        </form>
+        // The kit's search (code review 1.13, D834): the queue's other filters ride along as hidden values.
+        <ListSearch
+          action={base}
+          value={filter.q}
+          label={q.search}
+          placeholder={q.searchPlaceholder}
+          maxLength={100}
+          words={{ label: q.search, button: q.search }}
+          button="hidden"
+          keep={queueQuery({ ...filter, q: "", exchange })}
+          aside={
+            filtered && (
+              <Link href={base} className="flex min-h-10 shrink-0 items-center text-sm underline">
+                {q.clear}
+              </Link>
+            )
+          }
+        />
       )}
 
       {showFilters && (
@@ -95,37 +100,37 @@ export function ReturnsQueueView({
         <form method="get" action={base} className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             {q.status}
-            <select name="status" defaultValue={filter.status} className={control}>
+            <Select name="status" defaultValue={filter.status}>
               {statusFilters(w).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
             {q.kind}
-            <select name="kind" defaultValue={filter.kind} className={control}>
+            <Select name="kind" defaultValue={filter.kind}>
               {kindFilters(w).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
             {q.exchange}
-            <select name="exchange" defaultValue={exchange ?? ""} className={control}>
+            <Select name="exchange" defaultValue={exchange ?? ""}>
               {exchangeFilters(w).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
             {q.search}
-            <input name="q" type="search" defaultValue={filter.q} placeholder={q.searchPlaceholder} maxLength={100} className={`${control} w-full`} />
+            <TextInput name="q" type="search" defaultValue={filter.q} placeholder={q.searchPlaceholder} maxLength={100} full />
           </label>
           <label className="flex min-h-10 items-center gap-2 text-sm">
             <input type="checkbox" name="overdue" value="1" defaultChecked={filter.overdue} className="size-4" />
@@ -191,27 +196,16 @@ export function ReturnsQueueView({
         </Card>
       )}
 
-      {pages > 1 && (
-        <nav aria-label={q.pages} className="flex items-center gap-3 text-sm">
-          {queue.page > 1 ? (
-            <Link href={queueHref(base, { ...filter, exchange, page: queue.page - 1 })} className="underline">
-              {q.previous}
-            </Link>
-          ) : (
-            <span className="text-muted">{q.previous}</span>
-          )}
-          <span className="text-muted">
-            {fillWords(q.pageOf, { page: queue.page, pages, total: queue.total })}
-          </span>
-          {queue.page < pages ? (
-            <Link href={queueHref(base, { ...filter, exchange, page: queue.page + 1 })} className="underline">
-              {q.next}
-            </Link>
-          ) : (
-            <span className="text-muted">{q.next}</span>
-          )}
-        </nav>
-      )}
+      <Pager
+        words={pagerWords}
+        label={q.pages}
+        base={base}
+        query={queueQuery({ ...filter, exchange })}
+        page={queue.page}
+        size={queue.pageSize}
+        shown={queue.rows.length}
+        total={queue.total}
+      />
       <details className={`px-6 py-3 ${CARD_CLASS}`}>
         <summary className="flex min-h-10 cursor-pointer items-center text-body text-ink">{q.rules}</summary>
         <p className="mt-2 text-sm text-ink-2">{q.description}</p>

@@ -8,7 +8,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { actionWords, buildBulkRequest, cappedNote, emptyPanel, gridSelectionProblem, type BulkRequestInput, type ListAction, type PanelForm } from "@/lib/bulk-admin";
 import { BULK_MAX_PRODUCTS } from "@/lib/data-limits";
 import { formatMoney } from "@/lib/money";
-import type { BatchSummary, BulkPreview, UndoResult } from "@/server/bulk-edit";
+import type { BatchSummary, BulkPreview, MatchFilter, UndoResult } from "@/server/bulk-edit";
 import type { BulkRun } from "@/app/admin/(gated)/[store]/products/bulk/actions";
 
 import { useAdminText } from "./admin-text";
@@ -32,7 +32,8 @@ export type BulkTools = {
   preview: (request: BulkRequestInput) => Promise<BulkPreview | { ok: false; problem: string }>;
   start: (request: BulkRequestInput) => Promise<BulkRun>;
   next: (batchId: string) => Promise<BulkRun>;
-  matching: (filter: { status?: "archived" }) => Promise<{ ids: string[]; total: number }>;
+  /** The products of the list's view and search on all its pages (D834), the first `BULK_MAX_PRODUCTS`, and how many match. */
+  matching: (filter: MatchFilter) => Promise<{ ids: string[]; total: number }>;
   undo: (batchId: string) => Promise<UndoResult>;
   terms: { id: string; name: string; kind: "category" | "tag" }[];
   markets: { code: string; name: string; currency: string }[];
@@ -54,8 +55,29 @@ const ACTIONS_ARCHIVED: ListAction[] = ["unarchive"];
  * The products list with a tick box for each product and, with some ticked, the bulk bar (D165, `docs/wave-2-data.md` 2.6): set status, archive,
  * categories and tags, price, stock, and the grid. Every action ends in one confirmation that says what will happen to how many products; applying runs in
  * chunks, each product through the editor's own door on the server. Without the right to change products (`bulk` null) it is the plain list.
+ * The list is a page of a hundred (code review 1.13, D834): the head's box chooses this page; when more match than it shows, the foot offers
+ * every product the view and search find on all pages (`total`, `filter`), saying so.
  */
-export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk }: { slug: string; rows: ProductRowView[]; archived: boolean; priceHeader: string; locale: string; bulk: BulkTools | null }) {
+export function ProductsTable({
+  slug,
+  rows,
+  total = rows.length,
+  filter = {},
+  archived,
+  priceHeader,
+  locale,
+  bulk,
+}: {
+  slug: string;
+  rows: ProductRowView[];
+  /** How many the view and search find on all pages. */
+  total?: number;
+  filter?: MatchFilter;
+  archived: boolean;
+  priceHeader: string;
+  locale: string;
+  bulk: BulkTools | null;
+}) {
   const all = useAdminText("products");
   const w = all.table;
   const lib = all.bulkLib;
@@ -89,7 +111,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
   };
   const selectMatching = () =>
     start(async () => {
-      const result = await bulk!.matching(archived ? { status: "archived" } : {});
+      const result = await bulk!.matching(filter);
       setSelected(new Set(result.ids));
       setNote(cappedNote(result.total, lib) ?? countWords(result.total, w.allChosen));
     });
@@ -231,7 +253,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
           <tr className="border-b border-line">
             {bulk && (
               <th scope="col" className="w-10 px-4 py-2">
-                <input type="checkbox" aria-label={allShown ? w.clearChoice : w.chooseShown} checked={allShown} onChange={selectShown} />
+                <input type="checkbox" aria-label={allShown ? w.clearChoice : fillWords(w.chooseShown, { n: rows.length })} checked={allShown} onChange={selectShown} />
               </th>
             )}
             <th scope="col" className="px-4 py-2 font-medium">
@@ -299,11 +321,12 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
           ))}
         </tbody>
       </table>
-      {bulk && rows.length > 0 && (
+      {/* More match than this page shows: the whole match on all pages is one press away, in so many words. */}
+      {bulk && total > rows.length && (
         <p className={hint}>
-          {rows.length > BULK_MAX_PRODUCTS ? fillWords(w.atMost, { max: BULK_MAX_PRODUCTS }) : ""}
+          {total > BULK_MAX_PRODUCTS ? fillWords(w.atMost, { max: BULK_MAX_PRODUCTS }) : ""}
           <button type="button" onClick={selectMatching} disabled={pending} className="underline underline-offset-2">
-            {fillWords(archived ? w.chooseAllArchived : w.chooseAll, { n: rows.length })}
+            {fillWords(archived ? w.chooseAllArchived : w.chooseAll, { n: total })}
           </button>
         </p>
       )}

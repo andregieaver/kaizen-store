@@ -95,6 +95,11 @@ under *What the router fetches ahead*.
   `TextInput`, `Select` or `TextArea` (`fieldClass()` for a box drawn another way); an empty list is `EmptyState` (title, a line, one next
   step); a list's pages are `Pager` (by number or by cursor, links that work without script) and its search `ListSearch` (a GET form,
   `keep` for the list's other values, `tools` in the bar, `aside` beside it).
+- A list shows a hundred a page by number (`LIST_PAGE_SIZE`, `listPage()`, `listOffset()` in `src/lib/list-page.ts`; code review 1.13, D834): its read
+  counts what its filters find in the same statement and ends its order on a unique key, the page draws `Pager` with the query's other values, so
+  a list that holds more than it shows says "100 of 150", and a page past the last opens the first. Only a list whose rows keep arriving pages by
+  cursor (Orders). Its search is `ListSearch`, its views and filters in the same form; a bulk *choose all* says whether it means this page or every
+  match on all pages. Customers, Products, Invoices, Returns, Pages, Articles and the platform's Stores and Customers do.
 - Anything that asks first is `ConfirmButton`: the admin's `Modal` with the action's own words (the question's first sentence its title,
   the confirm word, *Cancel* focused), then its `action`, or its form submitted with it as the submitter; `ask={false}` where nothing needs
   asking, `cancel` where *Cancel* would read as the action's own. Never `window.confirm`.

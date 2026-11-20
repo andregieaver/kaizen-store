@@ -21,6 +21,7 @@ import {
   type UndoResult,
 } from "@/server/bulk-edit";
 import { requirePermission } from "@/server/permissions";
+import { PRODUCT_SHOWS } from "@/server/product-list";
 
 /**
  * The bulk editor's actions (D165, `docs/wave-2-data.md` 2.6), for members who can change products. A preview writes nothing; a start makes the batch
@@ -61,8 +62,9 @@ export async function continueBulkAction(storeSlug: string, batchId: string): Pr
 
 export async function matchingAction(storeSlug: string, filter: MatchFilter): Promise<{ ids: string[]; total: number }> {
   const member = await requirePermission(storeSlug, "products:write");
-  const status = filter?.status === "archived" || filter?.status === "active" || filter?.status === "draft" ? filter.status : undefined;
-  return matchingProductIds(member.store.id, { status, q: typeof filter?.q === "string" ? filter.q.slice(0, 100) : undefined });
+  // The list's view and search (D834), checked here: anything else is every current product.
+  const show = PRODUCT_SHOWS.find((s) => s === filter?.show) ?? "all";
+  return matchingProductIds(member.store.id, { show, q: typeof filter?.q === "string" ? filter.q.slice(0, 100) : undefined });
 }
 
 export async function previewGridAction(storeSlug: string, edits: GridEdit[], markets: string[]): Promise<GridPreview | BulkProblem> {

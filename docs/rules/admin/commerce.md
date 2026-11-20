@@ -21,6 +21,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `commerce.product_safety_rules`, by `src/lib/product-safety.ts` in code and `commerce.responsible_person_areas()` in the publish
   trigger; read them through `productSafety()`, never `countries.in_eu`, and change a rule only by a migration of those rows.
   EEA establishment never satisfies an `eu` rule.
+- The list (D597, D834, `src/server/product-list.ts`): `adminProductPage()` reads a hundred a page with the count of what the view (`show`: all, active,
+  draft, stock, archived) and the search (name, handle or SKU, on the server) find, All putting the sold out and the drafts first;
+  `adminProductCounts()` gives the views' figures. The table's head chooses the page; *Choose all … that match, on every page* is offered only when
+  more match, and `matchingProductIds()` reads the same filter and order, at most `BULK_MAX_PRODUCTS`.
 
 ## Checkout (`src/server/checkout.ts`, decision D16)
 

@@ -283,6 +283,11 @@ describe("the lists and the hosted document", () => {
     const second = await inv.listInvoices(own.storeId, { limit: 2, offset: 2 });
     expect(second.rows.map((r) => r.documentNumber)).toEqual(["F-1"]);
     expect(second.total).toBe(3);
+    // The pages meet with none lost or repeated, all issued the same day; the count is the search's on every page (D834).
+    const first = await inv.listInvoices(own.storeId, { limit: 2, offset: 0 });
+    expect([...first.rows, ...second.rows].map((r) => r.documentNumber)).toEqual(["F-3", "F-2", "F-1"]);
+    const searched = await inv.listInvoices(own.storeId, { q: "F-", limit: 2, offset: 2 });
+    expect([searched.rows.length, searched.total]).toEqual([1, 3]);
   });
 
   it("show nothing of another store's", async () => {

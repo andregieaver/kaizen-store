@@ -334,6 +334,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   address (never edited, personal data). A merge is only `mergeCustomers()` (plan read again under both rows' locks, refused before anything
   changes for `MERGE_REFUSALS`), so a new table that points at a customer gets a line there (move it, or a refusal) as well as in erasure. The
   customer import is a D165 job (`customer_import`, the owner's) that never sets a password or subscribes anyone and names a row by its number only.
+- The list (D603, D834): `customerPage()` (`src/server/customer-admin.ts`) reads a hundred a page with the count of what the search, tag and view find,
+  ordered to the email; *Tag everyone the search finds* reads the same search, tag and view again on the server, on every page, at most `BULK_TAG_MAX`.
+  Kaizena Flow's Customers page the same (`platformCustomerPage()`).
 
 ## A customer's timeline (D462, `src/lib/customer-timeline.ts`, `src/server/customer-timeline.ts`, `CustomerTimeline`)
 

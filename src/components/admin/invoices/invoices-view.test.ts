@@ -83,12 +83,17 @@ describe("the invoices tab", () => {
     expect(draw({ documents: { rows: [], total: 0 } }).text).toContain("No invoices this month.");
   });
 
-  it("pages the list when there are more than a page, with links that keep the filter", () => {
-    const { html, text } = draw({ documents: { rows: [row()], total: 120 }, query: query({ q: "F", page: "2" }) });
-    expect(text).toContain("Page 2 of 3");
-    expect(html).toContain("page=3");
-    expect(html).toContain('href="/admin/s/invoices?q=F"');
-    expect(draw().text).not.toContain("Page 1 of");
+  it("pages the list a hundred at a time with the kit's pager, saying how many of all are shown, with links that keep the filter (D834)", () => {
+    const hundred = Array.from({ length: 100 }, (_, i) => row({ id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`, documentNumber: `F-${i}` }));
+    const first = draw({ documents: { rows: hundred, total: 150 }, query: query({ q: "F" }) });
+    expect(first.text).toContain("100 of 150");
+    expect(first.html).toContain('href="/admin/s/invoices?q=F&amp;page=2"');
+    expect(first.text).toContain("Next 100");
+    const { html, text } = draw({ documents: { rows: [row()], total: 250 }, query: query({ q: "F", page: "3", tab: "credit-notes" }) });
+    expect(text).toContain("201 of 250");
+    expect(html).toContain('href="/admin/s/invoices?tab=credit-notes&amp;q=F&amp;page=2"');
+    expect(html).toContain('aria-label="Pages of credit notes"');
+    expect(draw().text).not.toContain(" of 1");
   });
 });
 

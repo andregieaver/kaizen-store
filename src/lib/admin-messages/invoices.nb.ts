@@ -103,9 +103,6 @@ export const invoicesNb: InvoicesMessages = {
     document: "Dokument",
     pagesInvoices: "Sider med fakturaer",
     pagesCreditNotes: "Sider med kreditnotaer",
-    previous: "Forrige",
-    next: "Neste",
-    pageOf: "Side {page} av {pages} · {count}",
     csvTitle: "CSV til regnskapsføreren",
     csvInvoices:
       "Én rad for hver faktura utstedt i perioden: nummer, datoer, bestilling, kjøperens navn, land og mva-nummer, beløp, merverdiavgiften per sats, merverdiavgiften i selgerens valuta der dokumentet har den, og avgiftsbehandlingen. Filen har personopplysninger, så oppbevar den trygt; hver nedlasting skrives i endringsloggen.",

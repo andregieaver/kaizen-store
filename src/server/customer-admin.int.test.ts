@@ -7,8 +7,8 @@ type Row = Record<string, unknown>;
 
 vi.mock("server-only", () => ({}));
 
-const { customerSummary, findCustomer, getCustomerDetail, listCustomers } = await import("./customer-admin");
-const { listPlatformCustomers, getPlatformCustomer, listStorePeople } = await import("./platform-customers");
+const { customerPage, customerSummary, findCustomer, getCustomerDetail, listCustomers } = await import("./customer-admin");
+const { listPlatformCustomers, getPlatformCustomer, listStorePeople, platformCustomerPage } = await import("./platform-customers");
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -102,6 +102,55 @@ describe("a store's customers (D35)", () => {
   });
 });
 
+describe("a page of a store's customers (code review 1.13, D834)", () => {
+  let pagedStore: string;
+
+  beforeAll(async () => {
+    const [request] = await db().execute<Row>(sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`pager-${run}@example.com`}, 'Per Pager', 'Pager') returning id
+    `);
+    const [store] = await db().execute<Row>(sql`
+      select commerce.approve_access_request(${String(request.id)}::uuid, ${`pager-${run}`}, ${`Pager ${run}`}, null) as id
+    `);
+    pagedStore = String(store.id);
+    // 150 accounts made in one statement: one moment for all, so only the order's last key keeps a page's edge.
+    await db().execute(sql`
+      insert into commerce.customers (store_id, email, name)
+      select ${pagedStore}::uuid, 'p' || lpad(i::text, 3, '0') || '@example.com', 'Person ' || lpad(i::text, 3, '0') from generate_series(1, 150) i
+    `);
+    await db().execute(sql`
+      insert into commerce.customer_tags (store_id, email, key, label)
+      select ${pagedStore}::uuid, 'p' || lpad(i::text, 3, '0') || '@example.com', 'fair', 'Fair' from generate_series(1, 120) i
+    `);
+  });
+
+  it("shows a hundred, says how many there are in all, and the next page holds the rest with none lost or repeated", async () => {
+    const first = await customerPage(pagedStore, { limit: 100, offset: 0 });
+    const second = await customerPage(pagedStore, { limit: 100, offset: 100 });
+    expect(first.rows).toHaveLength(100);
+    expect(second.rows).toHaveLength(50);
+    expect([first.total, second.total]).toEqual([150, 150]);
+    const emails = [...first.rows, ...second.rows].map((c) => c.email);
+    expect(new Set(emails).size).toBe(150);
+    expect((await customerPage(pagedStore, { limit: 100, offset: 200 })).rows).toEqual([]);
+    // By name too: the same people, each once.
+    const byName = [...(await customerPage(pagedStore, { sort: "name", offset: 0 })).rows, ...(await customerPage(pagedStore, { sort: "name", offset: 100 })).rows];
+    expect(byName.map((c) => c.name)).toEqual(Array.from({ length: 150 }, (_, i) => `Person ${String(i + 1).padStart(3, "0")}`));
+  });
+
+  it("counts what the search, the tag and the view find, not the whole store", async () => {
+    const tagged = await customerPage(pagedStore, { tag: "fair", limit: 100 });
+    expect([tagged.rows.length, tagged.total]).toEqual([100, 120]);
+    expect((await customerPage(pagedStore, { tag: "fair", offset: 100 })).rows).toHaveLength(20);
+    const found = await customerPage(pagedStore, { q: "person 14", limit: 100 });
+    expect(found.total).toBe(found.rows.length);
+    expect(found.rows.map((c) => c.name).sort()).toEqual(["Person 140", "Person 141", "Person 142", "Person 143", "Person 144", "Person 145", "Person 146", "Person 147", "Person 148", "Person 149"]);
+    // Nobody has bought twice, and the list's other callers get its rows alone.
+    expect(await customerPage(pagedStore, { show: "back" })).toEqual({ rows: [], total: 0 });
+    expect(await listCustomers(pagedStore, { q: "person 150" })).toEqual([expect.objectContaining({ email: "p150@example.com", account: "unverified", orders: 0 })]);
+  });
+});
+
 describe("Kaizena Flow's customers (D35)", () => {
   it("are the people who run stores, with each store's role and plan", async () => {
     const found = await listPlatformCustomers({ q: `kunder ${run}` });
@@ -109,5 +158,22 @@ describe("Kaizena Flow's customers (D35)", () => {
     expect(found[0].stores).toEqual([expect.objectContaining({ slug: `cust-${run}`, role: "owner", planName: null })]);
     expect((await getPlatformCustomer(ownerId))?.stores).toHaveLength(1);
     expect(await listStorePeople(storeId)).toEqual([expect.objectContaining({ id: ownerId, role: "owner" })]);
+  });
+
+  it("come a page at a time with the count of all the search finds, none lost or repeated at a page's edge (D834)", async () => {
+    for (const letter of ["a", "b", "c"]) {
+      const [request] = await db().execute<Row>(sql`
+        insert into commerce.access_requests (email, name, store_name) values (${`sider-${letter}-${run}@example.com`}, ${`Side ${letter}`}, 'Sider') returning id
+      `);
+      await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`sider-${letter}-${run}`}, ${`Sider ${run} ${letter}`}, null)`);
+    }
+    // One moment for all three: only the order's last key keeps the edge.
+    await db().execute(sql`update commerce.accounts set created_at = '2026-01-01T00:00:00Z' where email like ${`sider-%-${run}@example.com`}`);
+    const first = await platformCustomerPage({ q: `sider ${run}`, limit: 2, offset: 0 });
+    const second = await platformCustomerPage({ q: `sider ${run}`, limit: 2, offset: 2 });
+    expect([first.rows.length, first.total, second.rows.length, second.total]).toEqual([2, 3, 1, 3]);
+    expect(new Set([...first.rows, ...second.rows].map((c) => c.email))).toEqual(new Set(["a", "b", "c"].map((l) => `sider-${l}-${run}@example.com`)));
+    expect(second.rows[0].stores).toEqual([expect.objectContaining({ role: "owner", planName: null, cancelAtPeriodEnd: false })]);
+    expect(await platformCustomerPage({ q: `nobody-${run}` })).toEqual({ rows: [], total: 0 });
   });
 });

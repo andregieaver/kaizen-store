@@ -253,7 +253,7 @@ describe("limits, stores and rights", () => {
     expect(all.ids.length).toBeLessThanOrEqual(BULK_MAX_PRODUCTS);
     const one = await bulk.matchingProductIds(fx.storeId, { q: "bulk-9" });
     expect(one.ids).toEqual([products[8].id]);
-    const archived = await bulk.matchingProductIds(fx.storeId, { status: "archived" });
+    const archived = await bulk.matchingProductIds(fx.storeId, { show: "archived" });
     expect(archived.ids.every((id) => ![products[20].id].includes(id))).toBe(true);
     expect((await bulk.matchingProductIds(rival.storeId, { q: "bulk-9" })).ids).toEqual([]);
   });

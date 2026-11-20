@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
@@ -6,7 +7,8 @@ import { InvoicesView } from "@/components/admin/invoices/invoices-view";
 import { InvoicesSkeleton } from "@/components/admin/invoices/skeletons";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { DOCUMENTS_PER_PAGE, exportProblemOf, parseInvoiceQuery } from "@/lib/invoice-admin";
+import { exportProblemOf, invoicesHref, parseInvoiceQuery } from "@/lib/invoice-admin";
+import { LIST_PAGE_SIZE, listOffset } from "@/lib/list-page";
 import { todayIn } from "@/lib/work-dates";
 import { getInvoiceSettings } from "@/server/invoice-settings";
 import { failingPdfs, invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "@/server/invoices";
@@ -47,7 +49,8 @@ async function Documents({ storeSlug, searchParams }: { storeSlug: string; searc
   const today = todayIn(store.timeZone);
   const raw = await searchParams;
   const query = parseInvoiceQuery(raw, today);
-  const filter = { from: query.from, to: query.to, q: query.q, limit: DOCUMENTS_PER_PAGE, offset: (query.page - 1) * DOCUMENTS_PER_PAGE };
+  // A hundred a page, with how many the period and search find in all (code review 1.13, D834).
+  const filter = { from: query.from, to: query.to, q: query.q, limit: LIST_PAGE_SIZE, offset: listOffset(query.page) };
   const waitingTab = query.tab === "waiting";
   const [settings, counts, documents, waiting, waitingNotes, failing] = await Promise.all([
     getInvoiceSettings(store.id),
@@ -57,6 +60,8 @@ async function Documents({ storeSlug, searchParams }: { storeSlug: string; searc
     waitingTab ? waitingCreditNotes(store.id) : [],
     waitingTab ? failingPdfs(store.id) : [],
   ]);
+  // A page past the last (a link kept from before) opens the first.
+  if (documents && documents.rows.length === 0 && query.page > 1) redirect(invoicesHref(`/admin/${store.slug}/invoices`, { ...query, page: 1 }, today));
   return (
     <InvoicesView
       base={`/admin/${store.slug}`}
@@ -74,6 +79,7 @@ async function Documents({ storeSlug, searchParams }: { storeSlug: string; searc
       actions={{ checkAgain: checkAgainAction.bind(null, store.slug), retryPdf: retryPdfAction.bind(null, store.slug) }}
       locale={locale}
       words={words}
+      pagerWords={adminText(lang, "kit").pager}
     />
   );
 }

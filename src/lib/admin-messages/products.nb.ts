@@ -81,7 +81,7 @@ export const productsNb: ProductsMessages = {
     options: { one: "{n} variant", many: "{n} varianter" },
     noPrice: "Ingen pris ennå",
     noMatch: "Ingen produkter passer «{q}».",
-    showMore: "Vis {n} til",
+    noneShown: "Ingen produkter i denne visningen.",
   },
   list: {
     title: "Produkter",
@@ -125,7 +125,7 @@ export const productsNb: ProductsMessages = {
     caption: "Produkter",
     captionArchived: "Arkiverte produkter",
     clearChoice: "Fjern valget",
-    chooseShown: "Velg alle produktene som vises",
+    chooseShown: "Velg alle {n} på denne siden",
     choose: "Velg {title}",
     product: "Produkt",
     status: "Status",
@@ -140,8 +140,8 @@ export const productsNb: ProductsMessages = {
     andDigital: "og digitalt",
     noPrice: "Ingen pris",
     atMost: "En masseendring tar høyst {max} produkter om gangen. ",
-    chooseAll: "Velg alle {n} produktene i listen",
-    chooseAllArchived: "Velg alle {n} arkiverte produktene",
+    chooseAll: "Velg alle {n} produktene som passer, på alle sidene",
+    chooseAllArchived: "Velg alle {n} arkiverte produktene, på alle sidene",
   },
   panel: {
     statusTo: "Sett statusen til",

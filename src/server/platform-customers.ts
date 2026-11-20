@@ -1,9 +1,12 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { ON_PLAN_STATUSES } from "@/lib/plans";
+
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -60,13 +63,50 @@ function toRow(row: Row): PlatformCustomerRow {
   };
 }
 
+const STORE_JSON = z.object({
+  slug: z.string(),
+  name: z.string(),
+  timeZone: z.string(),
+  role: z.string(),
+  planName: z.string().nullable(),
+  status: z.string().nullable(),
+  currentPeriodEnd: z.string().nullable(),
+  cancelAtPeriodEnd: z.boolean(),
+  mode: z.string().nullable(),
+});
+
+const LIST_ROW = z.object({
+  id: col.uuid,
+  email: col.text,
+  name: col.textOrNull,
+  avatar_path: col.textOrNull,
+  created_at: col.timestamp,
+  disabled_at: col.timestampOrNull,
+  stores: z.array(STORE_JSON),
+  on_plan: col.int,
+  /** How many the search finds in all, on every page (code review 1.13, D834). */
+  total: col.int,
+});
+
 /** Everyone who works in a store, newest first; optionally matching a search by name, email or store. */
-export async function listPlatformCustomers({ q = "", limit = 100 }: { q?: string; limit?: number } = {}): Promise<PlatformCustomerRow[]> {
+export async function listPlatformCustomers(options: { q?: string; limit?: number } = {}): Promise<PlatformCustomerRow[]> {
+  return (await platformCustomerPage(options)).rows;
+}
+
+/**
+ * A page of Kaizena Flow's customers (code review 1.13, D834): `limit` from `offset` (a hundred unless said), and how many the search finds
+ * in all. The order ends on the account's id, so a page's edge never loses or repeats one.
+ */
+export async function platformCustomerPage({ q = "", limit = 100, offset = 0 }: { q?: string; limit?: number; offset?: number } = {}): Promise<{
+  rows: PlatformCustomerRow[];
+  total: number;
+}> {
   const search = q.trim().toLowerCase().slice(0, 100);
   const like = `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(LIST_ROW, sql`
     select a.id, a.email, a.name, a.avatar_path, a.created_at, a.disabled_at, ${storesJson} as stores,
-      count(*) filter (where b.status in (${onPlan}))::int as on_plan
+      count(*) filter (where b.status in (${onPlan}))::int as on_plan,
+      count(*) over ()::int as total
     from commerce.accounts a
     join commerce.store_members m on m.account_id = a.id and m.disabled_at is null
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
@@ -75,10 +115,22 @@ export async function listPlatformCustomers({ q = "", limit = 100 }: { q?: strin
     group by a.id
     having ${search ? sql`lower(a.email) like ${like} or lower(coalesce(a.name, '')) like ${like}
       or bool_or(lower(s.name) like ${like} or s.slug like ${like})` : sql`true`}
-    order by a.created_at desc
-    limit ${limit}
+    order by a.created_at desc, a.id
+    limit ${limit} offset ${offset}
   `);
-  return rows.map(toRow);
+  return {
+    rows: rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      name: row.name ?? "",
+      avatarPath: row.avatar_path,
+      createdAt: row.created_at,
+      disabled: row.disabled_at !== null,
+      stores: row.stores,
+      onPlan: row.on_plan,
+    })),
+    total: rows[0]?.total ?? 0,
+  };
 }
 
 export type PlatformCustomer = PlatformCustomerRow & {

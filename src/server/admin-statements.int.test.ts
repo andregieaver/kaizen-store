@@ -55,7 +55,7 @@ const measures: Record<(typeof SCREENS)[number], () => Promise<unknown>> = {
   storeShell: () => screens.storeShellReads(member),
   storeHome: () => screens.storeHomeReads(member),
   ordersList: () => screens.ordersListReads(member.store, {}),
-  productsList: () => screens.productsListReads(member, { archived: false, needsFilter: false, canWrite: true, locale: "en" }),
+  productsList: () => screens.productsListReads(member, { show: "all", q: "", page: 1, needsFilter: false, canWrite: true, locale: "en" }),
   platformHome: async () => {
     await screens.platformShellReads();
     await screens.platformHomeReads();

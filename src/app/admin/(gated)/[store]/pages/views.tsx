@@ -16,6 +16,7 @@ import { fillWords, countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { listOffset, listPage, LIST_PAGE_SIZE } from "@/lib/list-page";
 import { LAYOUT_TYPES, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-roles";
 import { featureOn, requirementMet } from "@/lib/store-features";
@@ -57,8 +58,6 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
 type ListWords = WebsiteMessages["storePages"];
 type SharedWords = WebsiteMessages["list"];
 
-/** How many pages a list shows at a time (bloat review step 2.17), with the count and a pager as the Stores list has. */
-const PAGE_SIZE = 100;
 
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
   const gated = await requirePageTypeAccess((await params).store, type, "read");
@@ -67,7 +66,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   if (shopOff) return shopOff;
   const { store } = gated;
   const query = await searchParams;
-  const page = Math.max(1, Math.floor(Number(typeof query.page === "string" ? query.page : "1")) || 1);
+  const page = listPage(query.page);
   const lang = adminLangOf(gated.account.adminLocale);
   // What is scheduled for each page, article, header or footer, and what did not happen (D340), on the store's clock.
   const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
@@ -75,7 +74,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   // Every read of the list at once: the hundred shown and their count; every page of the kind by title for what the list says of all of
   // them (how many are live, the newest, the front page) and the own-page choices; and what each kind of list draws beside.
   const [pages, total, every, context, comments, schedules, jobs, uses, terms, layoutChoice, offers, take] = await Promise.all([
-    listPages(store.id, type, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    listPages(store.id, type, { limit: LIST_PAGE_SIZE, offset: listOffset(page) }),
     countPages(store.id, type),
     type === "page" || type === "article" ? pageTitles(store.id, type) : Promise.resolve([]),
     storePageContext(store, type),
@@ -271,7 +270,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           duplicate={context.actions.duplicate}
         />
       )}
-      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={pages.length} total={total} />
+      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={LIST_PAGE_SIZE} shown={pages.length} total={total} />
       {(type === "header" || type === "footer") && (
         <SiteLayoutChoice
           type={type}

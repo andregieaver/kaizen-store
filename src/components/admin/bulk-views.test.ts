@@ -72,13 +72,18 @@ describe("the products list", () => {
     expect(out).not.toContain("Choose all");
   });
 
-  it("has a tick box for each product, one to choose the whole page and one to choose all matching", () => {
-    const out = html(createElement(ProductsTable, { slug: "shop", rows, archived: false, priceHeader: "Price", locale: "en-GB", bulk: tools }));
+  it("has a tick box for each product, one to choose the whole page and, when more match than the page shows, one to choose all of them (D834)", () => {
+    const out = html(createElement(ProductsTable, { slug: "shop", rows, total: 150, filter: { show: "draft", q: "shirt" }, archived: false, priceHeader: "Price", locale: "en-GB", bulk: tools }));
     expect(out).toContain('aria-label="Choose Red shirt"');
-    expect(out).toContain('aria-label="Choose all products shown"');
-    expect(out).toContain("Choose all 2 listed products");
+    expect(out).toContain('aria-label="Choose all 2 on this page"');
+    expect(out).toContain("Choose all 150 products that match, on every page");
+    expect(out).not.toContain("at most 500");
     // Nothing is chosen yet, so no bar.
     expect(out).not.toContain("Bulk actions");
+    // Everything on one page: the head's box is all there is to choose.
+    const one = html(createElement(ProductsTable, { slug: "shop", rows, archived: false, priceHeader: "Price", locale: "en-GB", bulk: tools }));
+    expect(one).not.toContain("on every page");
+    expect(html(createElement(ProductsTable, { slug: "shop", rows, total: 900, archived: true, priceHeader: "Price", locale: "en-GB", bulk: tools }))).toMatch(/A bulk action takes at most 500 products at a time. <button[^>]*>Choose all 900 archived products, on every page/);
   });
 
   it("escapes a title that is markup", () => {

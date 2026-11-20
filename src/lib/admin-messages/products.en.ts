@@ -60,7 +60,7 @@ export const productsEn = {
     options: { one: "{n} option", many: "{n} options" },
     noPrice: "No price yet",
     noMatch: "No product matches “{q}”.",
-    showMore: "Show {n} more",
+    noneShown: "No products in this view.",
   },
   list: {
     title: "Products",
@@ -105,7 +105,7 @@ export const productsEn = {
     caption: "Products",
     captionArchived: "Archived products",
     clearChoice: "Clear the choice",
-    chooseShown: "Choose all products shown",
+    chooseShown: "Choose all {n} on this page",
     choose: "Choose {title}",
     product: "Product",
     status: "Status",
@@ -120,8 +120,8 @@ export const productsEn = {
     andDigital: "and digital",
     noPrice: "No price",
     atMost: "A bulk action takes at most {max} products at a time. ",
-    chooseAll: "Choose all {n} listed products",
-    chooseAllArchived: "Choose all {n} archived products",
+    chooseAll: "Choose all {n} products that match, on every page",
+    chooseAllArchived: "Choose all {n} archived products, on every page",
   },
   panel: {
     statusTo: "Set the status to",

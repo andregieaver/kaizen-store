@@ -526,7 +526,7 @@ export const customersEn = {
     tagLabel: "Tag",
     bulk: {
       title: "Tag everyone in this list",
-      description: "Adds a tag to, or takes it off, everyone the search and tag above find, up to 1,000 people.",
+      description: "Adds a tag to, or takes it off, everyone the list above finds on all its pages (its search, tag and view), up to 1,000 people.",
       tag: "Tag",
       add: "Add the tag",
       remove: "Take the tag off",
