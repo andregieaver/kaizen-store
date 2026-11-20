@@ -1,6 +1,5 @@
 {
   "already": [
-    "backdrops.en.ts -> lib/backdrops.ts",
     "fiken.en.ts -> lib/accounting-docs.ts",
     "fiken.en.ts -> lib/fiken-errors.ts",
     "fiken.en.ts -> lib/fiken-setup.ts",

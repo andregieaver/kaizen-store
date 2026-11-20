@@ -31,6 +31,7 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/order-tags-labels.ts": "Why a tag is refused, read by the admin API as well.",
   "lib/pick-list-labels.ts": "What the pick list leaves out, read by the AI manager's pick list tool as well.",
   "lib/animation-words.ts": "The builder's Animation words (D538): a label module already (no imports), which the fields read in English when no words are handed down.",
+  "lib/backdrop-words.ts": "The builder's backdrop and layer words (D534), which the fields read in English when no words are handed down.",
   "lib/order-status.ts": "An order's status and its chip's signal: a label module already (no imports), read by the order table and a subscription's page as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
