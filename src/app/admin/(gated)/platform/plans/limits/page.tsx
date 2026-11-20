@@ -25,12 +25,22 @@ export default async function PlanLimitsPage() {
   const columns = [{ id: "default", name: w.editor.default }, ...grid.plans];
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.editor.title} description={w.editor.description} />
+      <PageHeader
+        title={w.editor.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.editor.phoneLead}</span>
+            <span className="max-sm:hidden">{w.editor.description}</span>
+          </>
+        }
+      />
       <Card compact>
         <ActionForm action={savePlanLimitsAction} className="grid gap-4">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-body">
-              <thead className="text-caption text-muted">
+          {/* Round 70 (D846): on a phone the table is a list, each limit one row: its name, then each plan's field and Unlimited on its line
+              (the plan's name above it when there is more than the default). The fields stay one set, so the form posts each value once. */}
+          <div className="overflow-x-auto max-sm:overflow-visible">
+            <table className="w-full text-left text-body max-sm:block">
+              <thead className="text-caption text-muted max-sm:sr-only">
                 <tr>
                   <th scope="col" className="py-2 pr-4" />
                   {columns.map((c) => (
@@ -38,29 +48,35 @@ export default async function PlanLimitsPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-line max-sm:block">
                 {LIMIT_KEYS.map((key) => {
                   const unit = w.units[limitUnit(key)];
                   return (
-                    <tr key={key}>
-                      <th scope="row" className="py-2 pr-4 text-ink">
+                    <tr key={key} className="max-sm:flex max-sm:flex-wrap max-sm:items-center max-sm:gap-x-3 max-sm:py-2">
+                      <th scope="row" className="py-2 pr-4 text-ink max-sm:min-w-0 max-sm:flex-1 max-sm:basis-36 max-sm:p-0">
                         {w.limits[key]}
                         {unit && <span className="ml-1 text-caption text-muted">({unit})</span>}
-                        {LIMITS[key].enforce === "soft" && <span className="block text-caption text-muted">{w.usage.softOver}</span>}
+                        {LIMITS[key].enforce === "soft" && (
+                          <span className="block text-caption text-muted">
+                            <span className="sm:hidden">{w.editor.phoneWarns}</span>
+                            <span className="max-sm:hidden">{w.usage.softOver}</span>
+                          </span>
+                        )}
                       </th>
                       {columns.map((c) => {
                         const stored = grid.cells[c.id] ?? {};
                         const has = key in stored;
                         const value = stored[key];
                         return (
-                          <td key={c.id} className="py-2 pr-4 align-top">
-                            <div className="flex flex-col gap-1">
+                          <td key={c.id} className="py-2 pr-4 align-top max-sm:p-0">
+                            {columns.length > 1 && <span className="block text-caption text-muted sm:hidden">{c.name}</span>}
+                            <div className="flex flex-col gap-1 max-sm:flex-row max-sm:items-center max-sm:gap-2">
                               <input
                                 name={`v:${c.id}:${key}`}
                                 inputMode="decimal"
                                 defaultValue={has && value != null ? toTyped(key, value) : ""}
                                 aria-label={`${w.limits[key]}, ${c.name}`}
-                                className="w-28 rounded-lg border border-edge bg-card px-2 py-1"
+                                className="w-28 rounded-lg border border-edge bg-card px-2 py-1 max-sm:w-20"
                               />
                               <label className="flex items-center gap-1 text-caption text-muted">
                                 <input type="checkbox" name={`u:${c.id}:${key}`} defaultChecked={has && value === null} />

@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
@@ -35,6 +36,7 @@ export default async function PlatformApiPage() {
   const tokens = await listPlatformTokens();
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const base = `${siteUrl()}/api/platform/v1`;
+  const ph = own.api.phone;
 
   return (
     <AdminTextScope texts={areaTexts(lang, { notificationsTokens: NOTIFICATIONS_TOKENS_WORDS })}>
@@ -43,13 +45,28 @@ export default async function PlatformApiPage() {
           <Link href="/admin/platform/integrations" className="text-sm underline">
             {own.integrations.title}
           </Link>
-          <PageHeader title={own.api.title} description={<>{own.api.description}</>} />
+          <PageHeader
+            title={own.api.title}
+            description={
+              <>
+                <span className="sm:hidden">{ph.lead}</span>
+                <span className="max-sm:hidden">{own.api.description}</span>
+              </>
+            }
+          />
         </div>
+        {/* Round 70 (D846): on a phone the tokens in use come first; making a token and the API's reference are rows under them. */}
         {owner ? (
+          <div className="max-sm:order-last">
+          <PhoneRows>
+          <PhoneRow flat last title={w.make} sub={ph.makeSub} change={ph.open} done={ph.close}>
           <Card title={w.make} description={w.makeHint}>
             <p className="mb-4 text-sm text-muted">{own.api.actsAs}</p>
             <MakeApiToken scopes={[...PLATFORM_API_SCOPES]} powers={[]} make={makePlatformTokenAction} scopeWords={own.api.scopeWords} namePlaceholder={own.api.namePlaceholder} />
           </Card>
+          </PhoneRow>
+          </PhoneRows>
+          </div>
         ) : (
           <p className="text-sm text-ink-2">{own.api.ownerOnly}</p>
         )}
@@ -78,6 +95,9 @@ export default async function PlatformApiPage() {
             </List>
           )}
         </Card>
+        <div className="max-sm:order-last">
+        <PhoneRows>
+        <PhoneRow flat last title={w.howTitle} sub={fillWords(ph.howSub, { n: PLATFORM_API_OPERATIONS.length })} change={ph.read} done={ph.close}>
         <Card title={w.howTitle}>
           <div className="flex flex-col gap-3 text-sm text-ink-2">
             <p>{fillWords(own.api.how, { base })}</p>
@@ -91,6 +111,9 @@ export default async function PlatformApiPage() {
             </ul>
           </div>
         </Card>
+        </PhoneRow>
+        </PhoneRows>
+        </div>
       </div>
     </AdminTextScope>
   );
