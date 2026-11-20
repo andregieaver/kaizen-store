@@ -5,7 +5,7 @@ import { updateTag } from "next/cache";
 
 import { db } from "@/db/client";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { shippingEn } from "@/lib/admin-messages/shipping.en";
+import type { ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { FEATURES_NEEDING_ACCOUNTS, isAccountsMode, type AccountsMode } from "@/lib/customer-accounts";
 import { featureOn } from "@/lib/store-features";
 
@@ -15,7 +15,7 @@ import { memberCan } from "./permissions";
 import { storeTag } from "./stores";
 
 type Row = Record<string, unknown>;
-type Words = (typeof shippingEn)["customerAccounts"];
+type Words = ShippingMessages["customerAccounts"];
 
 /**
  * Customer accounts (wave 10 unit B, D365): the only writer of `stores.customer_accounts`. `settings:write` changes it; accounts cannot be
@@ -25,7 +25,7 @@ type Words = (typeof shippingEn)["customerAccounts"];
 export async function saveAccountsMode(
   member: Membership,
   mode: unknown,
-  words: Words = shippingEn.customerAccounts,
+  words: Words,
   featureLabel: (id: string) => string = (id) => id,
 ): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   if (!memberCan(member, "settings:write")) return { ok: false, problems: ["Not allowed."] };

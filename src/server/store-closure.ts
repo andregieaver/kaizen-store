@@ -16,6 +16,7 @@ import {
   type StoreStatus,
 } from "@/lib/store-closure";
 import { statusEmail } from "@/lib/store-closure-emails";
+import { CLOSURE_EN } from "@/lib/store-closure-labels";
 
 import { audit, type Account } from "./auth";
 import { cancelPlan } from "./billing";
@@ -124,7 +125,7 @@ export async function closeStore(
     return fail("Type the store's address to confirm.");
 
   const obligations = await storeObligations(storeId);
-  const blockers = closureBlockers(obligations);
+  const blockers = closureBlockers(obligations, CLOSURE_EN);
   if (blockers.length > 0 && !(options.by === "platform" && options.force))
     return fail(...blockers);
 
@@ -145,7 +146,7 @@ export async function closeStore(
       await tx.execute(
         sql`select 1 from commerce.stores where id = ${storeId}::uuid for update`,
       );
-      const again = closureBlockers(await storeObligations(storeId, tx));
+      const again = closureBlockers(await storeObligations(storeId, tx), CLOSURE_EN);
       if (again.length > 0 && !(options.by === "platform" && options.force))
         return again;
       await tx.execute(sql`

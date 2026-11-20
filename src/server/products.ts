@@ -34,8 +34,10 @@ import type { Term } from "@/lib/taxonomy";
 import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/lib/unit-price";
 import { unitPriceProblems } from "@/lib/unit-price-rules";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { featureOn, kindFeature } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
+import { FEATURE_COMMON_EN } from "@/lib/feature-common-labels";
 import { MEDIA_KINDS, mediaFileOk, type MediaItemKind, type VideoSource } from "@/lib/product-media";
 import { INHERIT_WORDS, parseProductPriceWords, productWordsColumn, type WordsByLocale } from "@/lib/price-words";
 import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-check";
@@ -744,7 +746,7 @@ export async function saveProduct(
     : [];
   const neededFeature = kindFeature(given.kind);
   if (neededFeature && !featureOn(store, neededFeature) && stored?.kind !== given.kind) {
-    return { ok: false, problems: [`${featureOffText(neededFeature)} Products of that kind can't be added until it is switched on.`] };
+    return { ok: false, problems: [`${featureOffText(neededFeature, FEATURE_COMMON_EN)} Products of that kind can't be added until it is switched on.`] };
   }
   // A bundle (D322) is made as one and stays one: its variant holds no stock, a goods variant's stock has nowhere to go in a bundle.
   if (stored && (stored.kind === "bundle") !== (given.kind === "bundle")) {
@@ -796,7 +798,7 @@ export async function saveProduct(
   // The store's product limit (D314): a new product, or one taken out of the archive, counts; saving one that already counts never does.
   if (!productId || stored?.status === "archived") {
     const room = await checkLimit(store.id, "products");
-    if (!room.ok) problems.push(limitRefusal("products", room.limit));
+    if (!room.ok) problems.push(limitRefusal("products", room.limit, LIMIT_REFUSALS));
   }
   problems.push(...(await componentProblems(db(), store.id, input, context.primaryLocale)));
   // Never priced on request while in a bundle priced from its products' prices (D433): that bundle's price is this product's list price. The

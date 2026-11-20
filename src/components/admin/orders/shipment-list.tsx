@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { OrderActionState } from "@/app/admin/(gated)/[store]/orders/actions";
 import type { FormState } from "@/components/admin/action-form";
 import { bookedCarrierName, cancelsOnUndo, undoneLine, undoWarnings } from "@/lib/shipment-undo";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { fillWords } from "@/lib/admin-fill";
 
 import { EmailAgainButton, UndoParcel } from "./parcel-buttons";
@@ -41,10 +41,10 @@ export function ShipmentList({
   status,
   undo = null,
   receiptRecorded = false,
-  words = orderEn.parcels,
+  words,
 }: {
   /** The `order` catalogue's `parcels` words in the account's language (D312 A4). */
-  words?: OrderMessages["parcels"];
+  words: OrderMessages["parcels"];
   shipments: ShipmentItem[];
   /** The order's admin address (`/admin/{store}/orders/{orderId}`). */
   base: string;

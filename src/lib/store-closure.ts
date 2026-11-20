@@ -4,7 +4,7 @@
  * (`commerce.stores_status_rules()`) and refuses new orders (`orders_store_open()`); the service is `src/server/store-closure.ts`.
  */
 import { countWords } from "./admin-fill";
-import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
+import type { SettingsMessages } from "./admin-messages/settings.en";
 import type { PermissionKey } from "./permission-keys";
 
 /** How long the owner may reopen a store they closed. After that only the platform can. */
@@ -43,11 +43,11 @@ export const NO_OBLIGATIONS: Obligations = {
   domains: 0,
 };
 
-/** The words of the closing page's sentences (D312 A8, `settings.close`); English, as the AI manager and the platform read them, unless given. */
+/** The words of the closing page's sentences (D312 A8, `settings.close`); in English `CLOSURE_EN` (`store-closure-labels.ts`), as the platform and the closing service read them. */
 export type ClosureWords = Pick<SettingsMessages["close"], "blockers" | "warnings">;
 
 /** What blocks an owner from closing the store, as plain sentences: goods paid for and not sent, and customers who expect deliveries. Empty: nothing stands in the way. */
-export function closureBlockers(o: Obligations, w: ClosureWords = settingsEn.close): string[] {
+export function closureBlockers(o: Obligations, w: ClosureWords): string[] {
   const out: string[] = [];
   if (o.paidUnshipped > 0) out.push(countWords(o.paidUnshipped, w.blockers.paidUnshipped));
   if (o.runningSubscriptions > 0) out.push(countWords(o.runningSubscriptions, w.blockers.subscriptions));
@@ -56,7 +56,7 @@ export function closureBlockers(o: Obligations, w: ClosureWords = settingsEn.clo
 }
 
 /** What is worth knowing before closing, but does not stop it. */
-export function closureWarnings(o: Obligations, w: ClosureWords = settingsEn.close): string[] {
+export function closureWarnings(o: Obligations, w: ClosureWords): string[] {
   const t = w.warnings;
   const out: string[] = [];
   if (o.openCheckouts > 0) out.push(countWords(o.openCheckouts, t.openCheckouts));

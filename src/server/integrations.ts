@@ -1356,11 +1356,12 @@ async function reviewData(storeId: string, storeSlug: string, reviewId: string):
  * when the delivery is built. A draft or scheduled test has none, so it is never sent.
  */
 async function experimentData(storeSlug: string, experimentId: string): Promise<WebhookSubject<"experiment"> | null> {
-  const [{ getStore }, { getExperiment }, { experimentResults }, { targetLabelText }] = await Promise.all([
+  const [{ getStore }, { getExperiment }, { experimentResults }, { targetLabelText }, { EXPERIMENTS_WORDS }] = await Promise.all([
     import("./stores"),
     import("./experiment-admin"),
     import("./experiment-results"),
     import("@/lib/experiment-words"),
+    import("@/lib/admin-words/experiments"),
   ]);
   const store = await getStore(storeSlug);
   const test = store && (await getExperiment(store.id, experimentId));
@@ -1375,7 +1376,7 @@ async function experimentData(storeSlug: string, experimentId: string): Promise<
     target: {
       kind: test.page.kind,
       title: test.page.title,
-      address: test.page.kind === "page" ? targetLabelText("page", test.page.slug, test.page.title, null) : null,
+      address: test.page.kind === "page" ? targetLabelText("page", test.page.slug, test.page.title, null, EXPERIMENTS_WORDS.en) : null,
       part: test.part?.label ?? null,
     },
     status: test.status,

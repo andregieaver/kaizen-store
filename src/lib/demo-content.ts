@@ -6,7 +6,7 @@
  */
 
 import { countWords, fillWords } from "./admin-fill";
-import { homeEn, type HomeMessages } from "./admin-messages/home.en";
+import type { HomeMessages } from "./admin-messages/home.en";
 
 export const DEMO_KINDS = ["product", "page", "term"] as const;
 export type DemoKind = (typeof DEMO_KINDS)[number];
@@ -18,19 +18,19 @@ export const NO_DEMO: DemoCounts = { products: 0, pages: 0, articles: 0, categor
 
 export const demoTotal = (counts: DemoCounts): number => counts.products + counts.pages + counts.articles + counts.categories + counts.tags;
 
-/** The words the demo content is told in (D312 A3): the `home` catalogue's `demo`, English unless given. */
+/** The words the demo content is told in (D312 A3): the `home` catalogue's `demo`, handed in by the page or the action. */
 export type DemoWords = HomeMessages["demo"];
 
 const COUNT_KEYS: (keyof DemoCounts)[] = ["products", "pages", "articles", "categories", "tags"];
 
 /** "a, b and c". */
-export function andWords(words: readonly string[], and = homeEn.demo.and): string {
+export function andWords(words: readonly string[], and: string): string {
   if (words.length <= 1) return words[0] ?? "";
   return `${words.slice(0, -1).join(", ")} ${and} ${words[words.length - 1]}`;
 }
 
 /** "6 products, 2 pages and 3 categories": only what there is, in a fixed order; empty when there is nothing. */
-export function demoWords(counts: DemoCounts, w: DemoWords = homeEn.demo): string {
+export function demoWords(counts: DemoCounts, w: DemoWords): string {
   return andWords(
     COUNT_KEYS.filter((key) => counts[key] > 0).map((key) => countWords(counts[key], w.counts[key])),
     w.and,
@@ -45,7 +45,7 @@ export type KeptItem = { kind: DemoKind; title: string; reason: KeptReason };
 const KEPT_REASONS: KeptReason[] = ["changed", "in_use", "in_test"];
 
 /** What stays, named, one sentence per reason: "Kept 2 you changed: Linen shirt and About us." */
-export function keptWords(kept: readonly KeptItem[], w: DemoWords = homeEn.demo): string[] {
+export function keptWords(kept: readonly KeptItem[], w: DemoWords): string[] {
   return KEPT_REASONS.flatMap((reason) => {
     const titles = kept.filter((k) => k.reason === reason).map((k) => k.title);
     return titles.length > 0 ? [countWords(titles.length, w.kept[reason], { titles: andWords(titles, w.and) })] : [];
@@ -53,7 +53,7 @@ export function keptWords(kept: readonly KeptItem[], w: DemoWords = homeEn.demo)
 }
 
 /** What the removal says when it is done: what went, then what stayed and why. */
-export function removalWords(removed: DemoCounts, kept: readonly KeptItem[], w: DemoWords = homeEn.demo): string[] {
+export function removalWords(removed: DemoCounts, kept: readonly KeptItem[], w: DemoWords): string[] {
   const went = demoWords(removed, w);
   return [went ? fillWords(w.removed, { words: went }) : w.nothingRemoved, ...keptWords(kept, w)];
 }

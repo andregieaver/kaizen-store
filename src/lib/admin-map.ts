@@ -7,7 +7,6 @@
 
 import type { ExtensionId } from "./extensions";
 import { requirementMet, type FeatureId, type FeatureRequirement } from "./store-features";
-import { PAGES_NB } from "./admin-messages/pages.nb";
 import { CUSTOMERS_FEATURE, sectionOf } from "./store-nav";
 
 export type AdminArea = "store" | "platform" | "account";
@@ -1539,8 +1538,14 @@ const words = (text: string) =>
     .split(/\s+/)
     .filter((w) => w.length > 1);
 
-/** The pages that best match what someone asks about, best first. */
-export function findPages(area: AdminArea, query: string, flags: SiteFlags = {}, limit = 5): AdminPage[] {
+/** Each page's Norwegian title and words by `${area}:${id}` (`PAGES_WORDS.nb`, `src/lib/admin-words/pages.ts`). */
+export type PagesNorwegian = Readonly<Record<string, { title: string; keywords: string[] }>>;
+
+/**
+ * The pages that best match what someone asks about, best first. `norwegian` is the pages' Norwegian (`PAGES_WORDS.nb`), handed in by the
+ * caller so this map, which shoppers' routes reach, holds no catalogue (bloat review step 2.50).
+ */
+export function findPages(area: AdminArea, query: string, norwegian: PagesNorwegian, flags: SiteFlags = {}, limit = 5): AdminPage[] {
   const asked = words(query);
   if (asked.length === 0) return [];
   const scored = pagesFor(area, flags).map((page) => {
@@ -1548,7 +1553,7 @@ export function findPages(area: AdminArea, query: string, flags: SiteFlags = {},
     const keywords = (page.keywords ?? []).flatMap(words);
     // Its Norwegian title and words too (D312 A2), so a person asking in Norwegian finds it; only words of four letters or more, so a short
     // English word ("for", "som") does not match a Norwegian one.
-    const nb = PAGES_NB[`${page.area}:${page.id}`];
+    const nb = norwegian[`${page.area}:${page.id}`];
     const nbTitle = words(nb?.title ?? "").filter((w) => w.length >= 4);
     const nbKeywords = (nb?.keywords ?? []).flatMap(words).filter((w) => w.length >= 4);
     const body = words(`${page.what} ${(page.tasks ?? []).join(" ")} ${page.group}`);

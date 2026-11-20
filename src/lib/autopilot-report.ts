@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { countWords, fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import { TEST_STATES, testLine } from "./autopilot-tests";
 import { findClaims } from "./claims";
 import type { EmailBlock, EmailContent } from "./email-layout";
@@ -84,7 +84,7 @@ export function autopilotEmail(
   facts: ReportFacts,
   url: string,
   note: string | null,
-  words: StaffEmailsMessages = staffEmailsEn,
+  words: StaffEmailsMessages,
   lang: AdminLang = "en",
 ): EmailContent {
   const w = words.autopilot;

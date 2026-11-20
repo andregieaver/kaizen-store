@@ -1,7 +1,7 @@
 import { AdminLink } from "../ui/link";
 import { MoreMenu } from "./order-folds";
 
-import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import type { OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { builtInHref, viewHref } from "@/lib/order-list-admin";
 import { BUILT_IN_VIEWS, type OrderListParams } from "@/lib/order-list";
 
@@ -19,7 +19,7 @@ export function ViewBar({
   views,
   openViewId,
   toSend = 0,
-  words: w = ordersEn.views,
+  words: w,
 }: {
   base: string;
   params: OrderListParams;
@@ -28,7 +28,7 @@ export function ViewBar({
   /** How many orders wait to be sent: counted on the To send tab (round 2, D597). */
   toSend?: number;
   /** The `orders` catalogue's `views` words in the account's language (D312 A4). */
-  words?: OrdersMessages["views"];
+  words: OrdersMessages["views"];
 }) {
   const onlyShow = (show: OrderListParams["show"]) => openViewId === null && params.show === show && noFilters(params);
   // Round 2 (D597): the bare address opens on To send while something waits, so All has an address of its own.

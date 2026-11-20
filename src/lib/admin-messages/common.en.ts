@@ -4,6 +4,7 @@
  * and in a client part with `useAdminText("common")`; a slice that reaches the browser holds strings only (a choice by number goes through
  * `src/lib/icu-lite.ts`). Legal and financial words come only from the glossary (`src/lib/i18n-glossary.ts`).
  */
+import { FEATURE_COMMON_EN } from "../feature-common-labels";
 import { ORDER_STATUS_LABELS } from "../order-status";
 
 export const commonEn = {
@@ -57,54 +58,7 @@ export const commonEn = {
       deals: "Deals and contracts",
     },
   },
-  features: {
-    labels: {
-      shop: "Online shop",
-      subscriptions: "Subscriptions",
-      boxes: "Subscription boxes",
-      appointments: "Appointments",
-      bookings: "Stays and rentals",
-      gift_cards: "Gift cards",
-      countries: "Several countries",
-      languages: "Several languages",
-      currencies: "Several currencies",
-      business: "Sell to businesses",
-      bonus: "Bonus program",
-      referrals: "Referral program",
-      reviews: "Product reviews",
-      sales: "Deals",
-    },
-    /** A feature that another needs, in a sentence: "needs the online shop". */
-    need: {
-      shop: "the online shop",
-      subscriptions: "the subscriptions",
-      boxes: "the subscription boxes",
-      appointments: "the appointments",
-      bookings: "the stays and rentals",
-      gift_cards: "the gift cards",
-      countries: "the several countries",
-      languages: "the several languages",
-      currencies: "the several currencies",
-      business: "the sell to businesses",
-      bonus: "the bonus program",
-      referrals: "the referral program",
-      reviews: "the product reviews",
-      sales: "the deals",
-    },
-    or: " or ",
-    off: { one: "{label} is switched off", many: "{label} are switched off" },
-    /** What a server action says when a stale page asks for something of a feature that is off (`featureOffText()`). */
-    offUnder: { one: "{label} is switched off under Settings, Features.", many: "{label} are switched off under Settings, Features." },
-    asleep: "{label} needs {need}, which is switched off.",
-    hidden: "This page is hidden while the feature is off. Nothing has been deleted: switch it on and everything is as it was.",
-    goTo: "Go to Features",
-    /** One press from the page itself (round 14, D641). */
-    switchOn: "Switch it on",
-    onlyOwner: "Only an owner can switch features on or off, under Settings → Features.",
-    noteOff: "{label} is switched off, so this is hidden.",
-    noteSwitch: "Switch it on under Features",
-    noteOwner: "An owner can switch it on under Settings, Features",
-  },
+  features: { ...FEATURE_COMMON_EN },
   /** What forms say on their own (`SubmitButton`, `PasswordField`; `ConfirmButton`'s way back, code review 1.12; `ActionForm`'s *Saved*, 1.15). */
   form: {
     working: "Working …",

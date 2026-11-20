@@ -39,7 +39,7 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = TAX_WORDS[lang];
-  const view = await taxProfileView(store.id);
+  const view = await taxProfileView(store.id, w.readiness);
   const lines = readiness(view.profile, view.country, w.readiness);
   const canEdit = true;
   // Reverse charge is for selling to businesses (D178): its readiness and words are hidden while that is switched off.

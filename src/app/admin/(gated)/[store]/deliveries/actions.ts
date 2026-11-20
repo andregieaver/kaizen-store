@@ -6,6 +6,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { formProblems } from "@/lib/form-problems";
 import { featureOn } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
+import { FEATURE_COMMON_EN } from "@/lib/feature-common-labels";
 import { checkOwnerRole } from "@/server/permissions";
 import { saveSchedule, scheduleInput } from "@/server/standing-orders";
 
@@ -14,7 +15,7 @@ export async function saveScheduleAction(storeSlug: string, scheduleId: string |
   const member = await checkOwnerRole(storeSlug);
   if (!member) return { status: "error", messages: ["Only an owner can change delivery days."] };
   // Delivery days are part of Subscription boxes (D178): kept as they are while it is switched off.
-  if (!featureOn(member.store, "boxes")) return { status: "error", messages: [featureOffText("boxes")] };
+  if (!featureOn(member.store, "boxes")) return { status: "error", messages: [featureOffText("boxes", FEATURE_COMMON_EN)] };
   const parsed = scheduleInput.safeParse({
     id: scheduleId,
     marketCode: form.get("marketCode"),

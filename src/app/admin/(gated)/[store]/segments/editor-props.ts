@@ -10,6 +10,7 @@ import { rfmGroups } from "@/server/analytics-customers-data";
 import { boughtChoices, storeTags } from "@/server/segments";
 import { smsOffered } from "@/server/sms";
 import { marketingFields } from "@/server/segment-facts";
+import { viewsKept } from "@/server/flows";
 import type { Store } from "@/server/stores";
 import { dealsOn } from "@/lib/extensions";
 
@@ -19,13 +20,14 @@ import { dealsOn } from "@/lib/extensions";
  * while the store has them on (ecosystem plan E3.6, D718).
  */
 export async function editorChoices(store: Store, lang: AdminLang = "en") {
-  const [tiers, tags, rfm, bought, sms, fields] = await Promise.all([
+  const [tiers, tags, rfm, bought, sms, fields, views] = await Promise.all([
     listTiers(store.id),
     storeTags(store.id),
     rfmGroups(store, new Date()),
     boughtChoices(store),
     smsOffered(store.id),
     marketingFields(store.id),
+    viewsKept(store.id),
   ]);
   const regions = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "region" });
   const tongues = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
@@ -38,6 +40,8 @@ export async function editorChoices(store: Store, lang: AdminLang = "en") {
     subscriptions: featureOn(store, "subscriptions") || featureOn(store, "boxes"),
     sms,
     fields: fields.length > 0,
+    // Product views are kept only while a browse email runs (D691), so "looked at" is offered only then (M2.4).
+    views,
   };
   return {
     currency,

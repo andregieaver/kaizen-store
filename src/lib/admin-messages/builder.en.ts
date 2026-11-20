@@ -1,4 +1,5 @@
 import type { Widen } from "./common.en";
+import { BLOCK_NAMES_EN, DIFFERENCES_EN } from "../version-difference-labels";
 
 /**
  * The words of the page builder's frame (D312 A7): the editor, its sidebar tabs, canvas tools, dialogs, versions, issues, Custom CSS,
@@ -9,47 +10,7 @@ import type { Widen } from "./common.en";
  */
 export const builderEn = {
   /** What each component is called (the palette, the canvas, the dialogs). */
-  blockNames: {
-    richText: "Rich text",
-    columns: "Columns",
-    heading: "Heading",
-    image: "Image",
-    beforeAfter: "Before and after",
-    animation: "Animation",
-    timeline: "Timeline",
-    button: "Button",
-    contentGrid: "Content grid",
-    product: "Product",
-    site: "Site",
-    menu: "Menu",
-    search: "Search",
-    plans: "Plans",
-    extensions: "Extensions",
-    domainSearch: "Domain search",
-    themeStore: "Theme store",
-    customField: "Custom fields",
-    fieldLoop: "Field loop",
-    storePart: "Shop page",
-    separator: "Separator line",
-    dualButton: "Dual button",
-    accordion: "Accordion",
-    tabs: "Tabs",
-    faq: "FAQs",
-    video: "Video",
-    html: "HTML",
-    testimonials: "Testimonials",
-    socialLinks: "Social media",
-    iconList: "Icon list",
-    table: "Table",
-    brands: "Brands",
-    gallery: "Gallery",
-    emailForm: "Email form",
-    newsletter: "Newsletter",
-    form: "Form",
-    instagram: "Instagram feed",
-    countdown: "Countdown",
-    stats: "Animated stats",
-  },
+  blockNames: { ...BLOCK_NAMES_EN },
   /** A component as the question before deleting it names it. */
   blockThis: {
     richText: "this text",
@@ -1412,31 +1373,7 @@ export const builderEn = {
     differencesTitle: "What the editor has that this version does not",
   },
   /** What differs between two versions of a page (D358, `compareVersions()`). */
-  differences: {
-    fields: {
-      title: "The title changed.",
-      slug: "The address changed.",
-      excerpt: "The excerpt changed.",
-      seo: "The search texts changed.",
-      thumbnail: "The page's picture changed.",
-      css: "The page's own CSS changed.",
-      terms: "Its categories or tags changed.",
-      markets: "The countries it is for changed.",
-      search: "Whether search engines or AI assistants may read it changed.",
-    },
-    text: "{label}: “{before}” became “{after}”",
-    textAdded: "{label}: “{after}” added",
-    textRemoved: "{label}: “{before}” taken out",
-    rowAdded: "A row added at place {row}.",
-    rowRemoved: "The row at place {row} taken out.",
-    rowMoved: "The row at place {from} moved to place {to}.",
-    blockAdded: "A {block} added in row {row}.",
-    blockRemoved: "A {block} taken out of row {row}.",
-    settingsRow: "Row {row}'s settings changed.",
-    settingsColumn: "A column's settings changed in row {row}.",
-    settingsBlock: "The settings of a {block} changed in row {row}.",
-    none: "Nothing differs.",
-  },
+  differences: { ...DIFFERENCES_EN },
   /** The page checker's panel and the question before publishing with a blocking problem (wave 1, 1e). The findings' own words stay the checker's. */
   issues: {
     title: "Checks",

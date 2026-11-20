@@ -8,6 +8,7 @@ import { defaultHours, type OpeningHours } from "@/lib/opening-hours";
 import { openingHoursInput, parseOpeningHours } from "@/lib/opening-hours-schema";
 import { featureOn, resourceFeature } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
+import { FEATURE_COMMON_EN } from "@/lib/feature-common-labels";
 
 import { audit, type Membership } from "./auth";
 import { noShowFeeFor } from "./no-show";
@@ -158,7 +159,7 @@ export async function saveResource(
   kind: ResourceKind = "staff",
 ): Promise<SaveResourceResult> {
   // Staff are part of Appointments, rooms and items of Stays and rentals (D178): nothing of a feature that is off is changed.
-  if (!featureOn(store, resourceFeature(kind))) return { ok: false, problems: [featureOffText(resourceFeature(kind))] };
+  if (!featureOn(store, resourceFeature(kind))) return { ok: false, problems: [featureOffText(resourceFeature(kind), FEATURE_COMMON_EN)] };
   const parsed = kind === "staff" ? resourceInput.safeParse(values) : unitInput.safeParse(values);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const r = parsed.data;

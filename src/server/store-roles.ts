@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import {
   collaboratorDays,
   collaboratorExpiry,
@@ -263,7 +264,7 @@ export async function inviteCollaborator(member: Membership, email: string, role
   }
   // The store's staff places (D314): a collaborator takes one while their time runs.
   const seats = await checkLimit(member.store.id, "staff_seats");
-  if (!seats.ok) return { ok: false, problems: [limitRefusal("staff_seats", seats.limit)] };
+  if (!seats.ok) return { ok: false, problems: [limitRefusal("staff_seats", seats.limit, LIMIT_REFUSALS)] };
   const result = await db().transaction(async (tx) => {
     const [invitee] = await tx.execute<Row>(sql`
       insert into commerce.accounts (email) values (${email})

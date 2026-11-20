@@ -20,7 +20,7 @@ describe("the redirect catalogue", () => {
 
   it("says every check's English sentence in its own words, with the addresses carried over", () => {
     const live = finding("source.live", { address: "/collections/shoes" });
-    expect(redirectFindingText(live)).toBe(live.text);
+    expect(redirectFindingText(live, redirectsEn)).toBe(live.text);
     expect(redirectFindingText(live, redirectsNb)).toBe('"/collections/shoes" er en publisert side, et produkt, en kategori, et stikkord eller en artikkel nå. Omdiriger bare fra en adresse som ikke finnes.');
     const loop = finding("target.loop", { address: "/a", addresses: ["/b", "/c", "/a"] });
     expect(redirectFindingText(loop, redirectsNb)).toBe('"/a" ville lukket en sløyfe via "/b", "/c" og "/a", så kunden ville aldri kommet fram.');

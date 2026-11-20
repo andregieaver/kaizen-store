@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PAGES_WORDS } from "./admin-words/pages";
 
 import { ADMIN_PAGES, findPages, matchPath, pageHref } from "./admin-map";
 import { ASSISTANT_SKILLS } from "./assistant-skills";
@@ -118,7 +119,7 @@ describe("the bonus program in the assistant's map and playbooks", () => {
     expect(pageHref(page!, {}, "kaffe")).toBe("/admin/kaffe/bonus");
     expect(matchPath("/admin/kaffe/bonus")?.page.id).toBe("bonus");
     for (const ask of ["loyalty credits", "reward returning customers", "cashback", "store credit"])
-      expect(findPages("store", ask, { features: ["shop", "bonus"] })[0]?.id, ask).toBe("bonus");
+      expect(findPages("store", ask, PAGES_WORDS.nb, { features: ["shop", "bonus"] })[0]?.id, ask).toBe("bonus");
   });
 
   it("mentions credits on the customer page", () => {

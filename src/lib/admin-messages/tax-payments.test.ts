@@ -43,8 +43,8 @@ describe("the tax and payments words (D312 A8)", () => {
     expect(METHOD_STATE_WORDS).toEqual(paymentsEn.methods.states);
     for (const setting of CAPTURE_SETTINGS) expect(paymentsEn.orders.capture[setting]).toEqual(CAPTURE_SETTING_WORDS[setting]);
     for (const method of PAYMENT_METHODS) expect(paymentsEn.methods.kinds[method.type]).toEqual({ label: method.label, where: method.where });
-    expect(stateReason("unsupported_country")).toBe("Stripe does not offer it in your country");
-    expect(stateReason("something_new")).toBe("something_new");
+    expect(stateReason("unsupported_country", paymentsEn.methods.reasons)).toBe("Stripe does not offer it in your country");
+    expect(stateReason("something_new", paymentsEn.methods.reasons)).toBe("something_new");
   });
 
   it("say what is on and off as before in English, and in Norwegian when given", () => {

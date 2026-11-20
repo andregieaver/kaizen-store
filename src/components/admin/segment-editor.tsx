@@ -311,6 +311,23 @@ function ConditionFields({
           />
         </>
       );
+    case "viewed":
+      return (
+        <>
+          <select aria-label={w.kinds.viewed} value={c.has ? "yes" : "no"} onChange={(e) => onChange({ ...c, has: e.target.value === "yes" })} className={field}>
+            <option value="yes">{ed.hasViewed}</option>
+            <option value="no">{ed.hasNotViewed}</option>
+          </select>
+          {since(c.days, (days) => onChange({ ...c, days }))}
+          <SearchChoices
+            label={ed.products}
+            options={products.map((p) => ({ value: p.id, label: p.name }))}
+            chosen={c.products}
+            onChange={(next) => onChange({ ...c, products: next })}
+            words={{ search: ed.searchProducts, none: ed.noProducts, noMatch: ed.noProductMatch, more: ed.moreProducts }}
+          />
+        </>
+      );
     case "boughtCategory":
       return (
         <>

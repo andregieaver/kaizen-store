@@ -1,5 +1,5 @@
 import type { OrderEditStatus } from "@/lib/order-edit-status";
-import { draftsEn, type DraftsMessages } from "@/lib/admin-messages/drafts.en";
+import type { DraftsMessages } from "@/lib/admin-messages/drafts.en";
 import { fillWords } from "@/lib/drafts-words";
 import { blockTextWords } from "@/lib/drafts-words-english";
 
@@ -40,7 +40,7 @@ export function OrderEditCard({
   hasEmail,
   mayRecordOutside,
   awaitingActions,
-  words = draftsEn,
+  words,
 }: {
   editHref: string;
   canWrite: boolean;
@@ -54,7 +54,7 @@ export function OrderEditCard({
   /** The actions on the waiting change, bound to the store and the change by the page; null for someone who may only read. */
   awaitingActions: AwaitingEditActions | null;
   /** The `drafts` catalogue in the account's language (the waiting change's controls read it from the page's `AdminTextScope`). */
-  words?: DraftsMessages;
+  words: DraftsMessages;
 }) {
   const edit = words.edit;
   const w = edit.card;

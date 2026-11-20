@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHmac } from "node:crypto";
 
-import { domainsEn } from "@/lib/admin-messages/domains.en";
+import { DNS_EFFECTS_EN } from "@/lib/domain-labels";
 import { effectText, isProtected, type DnsChange } from "@/lib/dns-plan";
 import { describeRecord } from "@/lib/dns-records";
 import { recipeChanges } from "@/lib/dns-recipes";
@@ -117,7 +117,7 @@ async function propose(account: Account, name: DnsTool, input: Record<string, un
   return {
     token: `${payload}.${sign(payload)}`,
     domain: made.apex,
-    summary: preview.plan.effects.map((e) => effectText(e, domainsEn.dns.effects)).join(" "),
+    summary: preview.plan.effects.map((e) => effectText(e, DNS_EFFECTS_EN)).join(" "),
     lines: [...preview.plan.removes.map((r) => `− ${describeRecord(r, made.apex)}`), ...preview.plan.adds.map((r) => `+ ${describeRecord(r, made.apex)}`)],
     touchesEmail: preview.plan.touchesEmail,
   };

@@ -4,7 +4,7 @@ import type { shopifyMoveTool as ShopifyMoveTool } from "./shopify-move-tool";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { capacityEn } from "@/lib/admin-messages/capacity.en";
+import { USAGE_METRICS } from "@/lib/usage-labels";
 import { formatLimit, formatUsage } from "@/lib/usage-format";
 import { summarizeUsage } from "@/lib/ai-usage";
 import { formatMoney } from "@/lib/money";
@@ -183,13 +183,13 @@ import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
 import { BONUS_DEFAULTS, type BonusSettings } from "@/lib/bonus";
 import { bonusSettingsInput } from "@/lib/bonus-schema";
 import { bpsToPercentText, moneyIn, overviewRows, percentTextToBps, readAdjustment, rulesSummary } from "@/lib/bonus-admin";
-import { BONUS_ACCOUNTING_NOTE, BONUS_EXPLANATION } from "@/lib/bonus-admin-english";
+import { BONUS_ACCOUNTING_NOTE, BONUS_ADJUST, BONUS_EXPLANATION, BONUS_OVERVIEW, BONUS_RULES } from "@/lib/bonus-admin-english";
 import { mainCurrency } from "@/lib/markets";
 import { adjustBonus, bonusOverview, customerBonus, getBonusSettings, saveBonusSettings } from "./bonus";
 import { AFFILIATE_DEFAULTS, type AffiliateSettings } from "@/lib/affiliates";
 import { affiliateSettingsInput } from "@/lib/affiliates-schema";
 import { attributionStatus, example as affiliateExample, overviewRows as affiliateOverviewRows, rulesSummary as affiliateRulesSummary } from "@/lib/affiliate-admin";
-import { AFFILIATE_EXPLANATION, AFFILIATE_NEEDS_BONUS } from "@/lib/affiliate-admin-english";
+import { AFFILIATE_EXPLANATION, AFFILIATE_NEEDS_BONUS, AFFILIATE_OVERVIEW, AFFILIATE_RULES } from "@/lib/affiliate-admin-english";
 import { listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool, copyAdTool, preflightCopyAd } from "./ad-budget-tools";
 import { cancelPurchaseTool, listPurchasesTool, preflightRequestPurchase, requestPurchaseTool, walletStatusTool } from "./purchase-tools";
 import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
@@ -286,8 +286,8 @@ import {
   setPagePlaceTool,
 } from "./site-tools";
 import { draftStore } from "./store-drafts";
-import { discountsEn } from "@/lib/admin-messages/discounts.en";
-import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
+import { CAMPAIGN_DESCRIBE } from "@/lib/campaign-labels";
+import { TAX_READINESS_EN } from "@/lib/tax-readiness-labels";
 
 type Row = Record<string, unknown>;
 
@@ -343,7 +343,7 @@ async function usageAndLimitsTool(ctx: OwnerToolContext) {
   return {
     month: "this calendar month (UTC)",
     lines: lines.map((l) => ({
-      what: capacityEn.metrics[l.metric],
+      what: USAGE_METRICS[l.metric],
       used: l.measured ? formatUsage(l.metric, l.used) : "not measured yet",
       limit: l.limit === null ? "no limit" : formatLimit(l.key, l.limit),
       from: { override: "set by Kaizena Flow for this store", plan: "the plan", platform: "Kaizena Flow's default", none: "nothing set" }[l.origin],
@@ -973,7 +973,7 @@ async function listCampaignsTool({ store }: OwnerToolContext) {
     campaigns: rows.map((c) => ({
       name: c.name,
       status: campaignStatus(c),
-      gives: describeCampaign(c, (minor, marketCode) => money(store, minor, store.markets.find((m) => m.code === marketCode)?.currency ?? "NOK"), discountsEn.describe),
+      gives: describeCampaign(c, (minor, marketCode) => money(store, minor, store.markets.find((m) => m.code === marketCode)?.currency ?? "NOK"), CAMPAIGN_DESCRIBE),
       free_product: c.giftTitle,
       applies_to: c.productIds.length + c.termIds.length === 0 ? "everything" : [...c.productIds.map((id) => name(products, id)), ...c.termIds.map((id) => name(terms, id))],
       only_for_customer_groups: c.tierIds.length > 0 ? c.tierIds.length : undefined,
@@ -1069,7 +1069,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
 
 /** The store's tax registration (D157), read only. The seller's own number is on its documents; no buyer's is ever here. */
 async function getTaxProfileTool({ store }: OwnerToolContext) {
-  const { profile, country, check } = await taxProfileView(store.id);
+  const { profile, country, check } = await taxProfileView(store.id, TAX_READINESS_EN);
   return {
     store_country: country,
     registered_for_vat: profile.vatRegistered,
@@ -1087,7 +1087,7 @@ async function getTaxProfileTool({ store }: OwnerToolContext) {
 
 /** What the VAT features need (D157): on or off, and what is missing, from `readiness()`. */
 async function taxReadinessTool({ store }: OwnerToolContext) {
-  const { readiness: all } = await taxProfileView(store.id);
+  const { readiness: all } = await taxProfileView(store.id, TAX_READINESS_EN);
   // Reverse charge is for selling to businesses (D178): left out while that is switched off, as the Tax page does.
   const lines = featureOn(store, "business") ? all : all.filter((line) => line.key !== "reverse_charge");
   return {
@@ -1488,8 +1488,8 @@ async function getBonusProgramTool({ store }: OwnerToolContext, { customer }: Ow
     most_percent_of_order_goods: settings.maxRedeemPercent,
     least_to_use: settings.minRedeemMinor > 0 ? format(settings.minRedeemMinor) : "no minimum",
     expires_after_months: settings.expiresMonths ?? "never",
-    rules_for_shoppers: rulesSummary(settings, format, currency, loyaltyEn.bonusRules),
-    store_owes: Object.fromEntries(overviewRows(overview, format, loyaltyEn.bonusOverview).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
+    rules_for_shoppers: rulesSummary(settings, format, currency, BONUS_RULES),
+    store_owes: Object.fromEntries(overviewRows(overview, format, BONUS_OVERVIEW).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
     accounting: BONUS_ACCOUNTING_NOTE,
     ...(who && credits && {
       customer: {
@@ -1555,7 +1555,7 @@ async function setBonusProgramTool(ctx: OwnerToolContext, input: OwnerToolInput<
   const currency = mainCurrency(store);
   return {
     done: settings.enabled ? "The bonus program is on with these rules." : "The bonus program is off. Balances are kept.",
-    rules_for_shoppers: rulesSummary(settings, moneyIn(currency, mainLocale(store)), currency, loyaltyEn.bonusRules),
+    rules_for_shoppers: rulesSummary(settings, moneyIn(currency, mainLocale(store)), currency, BONUS_RULES),
     admin: adminLink(store, "/bonus"),
   };
 }
@@ -1678,7 +1678,7 @@ async function checkRecommendationsTool({ store }: OwnerToolContext) {
 /** What an adjustment asks, with the customer found and the amount read, or the reason it cannot be done. */
 async function adjustmentFor(store: Store, input: OwnerToolInput<"adjust_customer_credits">) {
   const who = await findBonusCustomer(store, input.customer);
-  const read = readAdjustment(input.amount, input.reason, mainCurrency(store), loyaltyEn.adjust);
+  const read = readAdjustment(input.amount, input.reason, mainCurrency(store), BONUS_ADJUST);
   if (!read.ok) return fail(read.problem);
   return { who, ...read };
 }
@@ -1719,9 +1719,9 @@ async function getAffiliateProgramTool({ store }: OwnerToolContext, { customer }
     orders_that_earn: program.rewardOrders ?? "every order",
     monthly_limit_per_referrer: program.monthlyCapMinor === null ? "no limit" : format(program.monthlyCapMinor),
     link_remembered_days: program.cookieDays,
-    rules_for_shoppers: affiliateRulesSummary(program, format, bonus.pendingDays, loyaltyEn.affiliateRules),
-    example: affiliateExample(program, program.currency, locale, undefined, loyaltyEn.affiliateRules.example),
-    lately: Object.fromEntries(affiliateOverviewRows(overview, format, loyaltyEn.affiliateOverview).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
+    rules_for_shoppers: affiliateRulesSummary(program, format, bonus.pendingDays, AFFILIATE_RULES),
+    example: affiliateExample(program, program.currency, locale, undefined, AFFILIATE_RULES.example),
+    lately: Object.fromEntries(affiliateOverviewRows(overview, format, AFFILIATE_OVERVIEW).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
     ...(who && mine && {
       customer: {
         email: who.email,
@@ -1779,7 +1779,7 @@ async function setAffiliateProgramTool(ctx: OwnerToolContext, input: OwnerToolIn
   const bonus = await getBonusSettings(store.id);
   return {
     done: settings.enabled ? "The referral program is on with these rules." : "The referral program is off. Credits already earned are kept.",
-    rules_for_shoppers: affiliateRulesSummary(settings, moneyIn(program.currency, mainLocale(store)), bonus.pendingDays, loyaltyEn.affiliateRules),
+    rules_for_shoppers: affiliateRulesSummary(settings, moneyIn(program.currency, mainLocale(store)), bonus.pendingDays, AFFILIATE_RULES),
     ...(settings.enabled && { note: "Visitors are asked about marketing cookies, because a friend's link is remembered only with their consent." }),
     admin: adminLink(store, "/affiliates"),
   };

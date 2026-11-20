@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { orderEn } from "@/lib/admin-messages/order.en";
 import { parsePrice } from "@/lib/product-input";
 import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { capturePayment, voidAuthorization } from "@/server/payment-capture";
@@ -31,7 +30,7 @@ async function orderFor(storeSlug: string, orderId: string) {
  */
 export async function captureOrderAction(storeSlug: string, orderId: string, _previous: OrderActionState, form: FormData): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed(orderEn.messages.gone);
+  if (!found) return failed(ORDER_WORDS.en.messages.gone);
   const { words } = found;
   const typed = String(form.get("amount") ?? "").trim();
   const amountMinor = typed === "" ? null : parsePrice(typed, found.order.currency);
@@ -45,7 +44,7 @@ export async function captureOrderAction(storeSlug: string, orderId: string, _pr
 /** Lets the held card go and cancels the order (D289): nothing is charged and its items are no longer held. The customer is told when ticked. */
 export async function releaseCardAction(storeSlug: string, orderId: string, _previous: OrderActionState, form: FormData): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed(orderEn.messages.gone);
+  if (!found) return failed(ORDER_WORDS.en.messages.gone);
   const { words } = found;
   const outcome = await voidAuthorization(found.member.store.id, orderId, found.member.account.id);
   refresh();

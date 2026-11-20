@@ -1,4 +1,5 @@
 import type { Widen } from "./common.en";
+import { METHOD_STATES } from "../payment-method-labels";
 
 /**
  * The words of a store's payments (D312 A8; D17, D288–D293): Stripe and Mollie, payment methods per country, when the card is charged, the
@@ -96,13 +97,7 @@ export const paymentsEn = {
       blik: { label: "BLIK", where: "Poland, in złoty" },
       sepa_debit: { label: "SEPA Direct Debit", where: "Euro countries" },
     } as Record<string, { label: string; where: string }>,
-    states: {
-      active: "Active",
-      pending: "Stripe is checking",
-      requested: "Requested",
-      unavailable: "Not available",
-      not_read: "Not read yet",
-    },
+    states: { ...METHOD_STATES },
     reasons: {
       requirements_past_due: "Stripe needs more details from you",
       requirements_pending_verification: "Stripe is checking your details",

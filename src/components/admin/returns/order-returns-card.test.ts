@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
 
 import type { OrderReturnsOverview } from "@/server/order-returns";
 
@@ -26,7 +27,7 @@ const overview = (over: Partial<OrderReturnsOverview> = {}): OrderReturnsOvervie
 });
 
 const draw = (o = overview()) => {
-  const html = renderToString(h(OrderReturnsCard, { base: "/admin/s", overview: o, withdrawalPage: "https://example.com/s/s/no/withdraw", timeZone: "Europe/Oslo" }));
+  const html = renderToString(h(OrderReturnsCard, { base: "/admin/s", overview: o, withdrawalPage: "https://example.com/s/s/no/withdraw", timeZone: "Europe/Oslo", words: returnsEn }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };
@@ -34,27 +35,27 @@ const draw = (o = overview()) => {
 
 describe("where an order stands in the 14 days", () => {
   it("says the right is open before the goods are sent", () => {
-    expect(windowSentence(overview({ window: { state: "before_delivery", basis: "not_sent", startDay: null, statutoryEndDay: null, voluntaryEndDay: null, daysLeft: null } }))).toMatch(/at any time before it arrives/);
+    expect(windowSentence(overview({ window: { state: "before_delivery", basis: "not_sent", startDay: null, statutoryEndDay: null, voluntaryEndDay: null, daysLeft: null } }), returnsEn)).toMatch(/at any time before it arrives/);
   });
 
   it("counts the days to the last day of the statutory period", () => {
-    expect(windowSentence(overview())).toBe("The customer can withdraw until 15 October 2026 (10 days left).");
-    expect(windowSentence(overview({ window: { ...overview().window!, daysLeft: 1 } }))).toContain("(1 day left)");
+    expect(windowSentence(overview(), returnsEn)).toBe("The customer can withdraw until 15 October 2026 (10 days left).");
+    expect(windowSentence(overview({ window: { ...overview().window!, daysLeft: 1 } }), returnsEn)).toContain("(1 day left)");
   });
 
   it("says the store's own window is the store's to decline once the legal days are over", () => {
-    const sentence = windowSentence(overview({ window: { state: "voluntary", basis: "delivered", startDay: "2026-09-01", statutoryEndDay: "2026-09-15", voluntaryEndDay: "2026-09-30", daysLeft: 3 }, right: "return" }));
+    const sentence = windowSentence(overview({ window: { state: "voluntary", basis: "delivered", startDay: "2026-09-01", statutoryEndDay: "2026-09-15", voluntaryEndDay: "2026-09-30", daysLeft: 3 }, right: "return" }), returnsEn);
     expect(sentence).toContain("The 14 days of the right of withdrawal are over");
     expect(sentence).toContain("30 September 2026");
     expect(sentence).toContain("approve or decline");
   });
 
   it("says when it is all over, when the order is unpaid, copied or a company's", () => {
-    expect(windowSentence(overview({ window: { state: "closed", basis: "delivered", startDay: "2026-08-01", statutoryEndDay: "2026-08-15", voluntaryEndDay: "2026-08-15", daysLeft: null }, right: "none", unitsLeft: 0 }))).toBe("The return period is over.");
-    expect(windowSentence(overview({ window: null }))).toContain("not paid");
-    expect(windowSentence(overview({ copied: true }))).toContain("copied from another store");
-    expect(windowSentence(overview({ business: true, right: "none" }))).toContain("no legal right of withdrawal");
-    expect(windowSentence(overview({ business: true, right: "return" }))).toContain("Your own return window is open");
+    expect(windowSentence(overview({ window: { state: "closed", basis: "delivered", startDay: "2026-08-01", statutoryEndDay: "2026-08-15", voluntaryEndDay: "2026-08-15", daysLeft: null }, right: "none", unitsLeft: 0 }), returnsEn)).toBe("The return period is over.");
+    expect(windowSentence(overview({ window: null }), returnsEn)).toContain("not paid");
+    expect(windowSentence(overview({ copied: true }), returnsEn)).toContain("copied from another store");
+    expect(windowSentence(overview({ business: true, right: "none" }), returnsEn)).toContain("no legal right of withdrawal");
+    expect(windowSentence(overview({ business: true, right: "return" }), returnsEn)).toContain("Your own return window is open");
   });
 });
 
@@ -65,7 +66,7 @@ describe("the order page's returns", () => {
       deliveredOn: null,
       window: { state: "statutory", basis: "sent", startDay: null, statutoryEndDay: null, voluntaryEndDay: null, daysLeft: null, estimatedEndDay: "2026-10-18" },
     });
-    const sentence = windowSentence(sent);
+    const sentence = windowSentence(sent, returnsEn);
     expect(sentence).toContain("the customer's 14 days have not started and they can withdraw");
     expect(sentence).toContain("an estimate, not a deadline");
     expect(sentence).toContain("18 October 2026");
@@ -82,6 +83,7 @@ describe("the order page's returns", () => {
         timeZone: "Europe/Oslo",
         today: "2026-10-03",
         actions: { markDelivered: action, registerWithdrawal: action },
+        words: returnsEn,
       }),
     );
     const text = plain(html);
@@ -100,6 +102,7 @@ describe("the order page's returns", () => {
           timeZone: "Europe/Oslo",
           today: "2026-10-03",
           actions: { markDelivered: action, registerWithdrawal: action },
+          words: returnsEn,
         }),
       ),
     );
@@ -152,12 +155,13 @@ describe("the order page's returns", () => {
         withdrawalPage: "https://example.com/s/s/no/withdraw",
         timeZone: "Europe/Oslo",
         exchanges: { r1: { orderId: "o-2", orderNumber: "1042", settled: true } },
+        words: returnsEn,
       }),
     );
     expect(plain(html).replace(/<[^>]+>/g, "")).toContain("Exchanged: order #1042");
     expect(html).toContain('href="/admin/s/orders/o-2"');
     const waiting = renderToString(
-      h(OrderReturnsCard, { base: "/admin/s", overview: o, withdrawalPage: "https://example.com/x", timeZone: "Europe/Oslo", exchanges: { r1: { orderId: "o-2", orderNumber: "1042", settled: false } } }),
+      h(OrderReturnsCard, { base: "/admin/s", overview: o, withdrawalPage: "https://example.com/x", timeZone: "Europe/Oslo", exchanges: { r1: { orderId: "o-2", orderNumber: "1042", settled: false } }, words: returnsEn }),
     );
     expect(plain(waiting).replace(/<[^>]+>/g, "")).toContain("Exchange being processed: order #1042");
   });

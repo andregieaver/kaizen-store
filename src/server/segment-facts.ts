@@ -8,6 +8,7 @@ import { MARKETING_FIELD_TYPES } from "@/lib/custom-fields";
 import type { Person, SegmentField, SegmentNeeds } from "@/lib/segments";
 
 import { PAID } from "./analytics-sql";
+import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -19,7 +20,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * conditions hold for nobody then. People are keyed as the reader keys them: the account's address, else the row's own, in lower case.
  */
 
-export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms" | "lastClickAt" | "fields">;
+export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms" | "lastClickAt" | "fields" | "viewedProducts">;
 
 /** Which families were read (a person missing from one has none of it), and each person's facts by address. */
 export type ReadFacts = { read: Set<keyof SegmentFacts>; byEmail: Map<string, SegmentFacts> };
@@ -212,6 +213,19 @@ async function fieldValues(storeId: string, ids: string[], only: string | null) 
   });
 }
 
+/** When each signed-in customer last looked at each of the products named (M2.4), from the views kept while a browse email runs (D691). */
+async function viewedProducts(storeId: string, products: string[], only: string | null) {
+  return typedRows(
+    z.object({ email: col.text, id: col.uuid, at: col.timestamp }),
+    sql`
+      select lower(c.email) as email, cv.product_id as id, cv.viewed_at as at
+      from commerce.customer_product_views cv
+      join commerce.customers c on c.store_id = cv.store_id and c.id = cv.customer_id
+      where cv.store_id = ${storeId}::uuid and cv.product_id = any(${uuidList(products)}) and c.email <> '' and ${asked(sql`lower(c.email)`, only)}
+    `,
+  );
+}
+
 /** When each person on the list last pressed a link in the store's emails (M2.4): a broadcast's or a flow's, within the clicks kept. */
 async function lastClicks(storeId: string, only: string | null) {
   return typedRows(
@@ -259,7 +273,7 @@ async function featuresOn(storeId: string) {
 
 /** Whether the rules ask for any of these facts at all (most segments do not, and read nothing more). */
 export const needsFacts = (needs: SegmentNeeds) =>
-  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms || needs.clicks || needs.fields.length > 0;
+  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms || needs.clicks || needs.fields.length > 0 || needs.viewed.length > 0;
 
 /** Reads the families `needs` asks for (`only`: the JSON list of addresses asked for, or null for everyone). */
 export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, only: string | null): Promise<ReadFacts> {
@@ -320,6 +334,12 @@ export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, onl
       of(r.email).sms = r.status;
     });
   }
+  if (needs.viewed.length > 0) {
+    job("viewedProducts", viewedProducts(storeId, needs.viewed, only), (r) => {
+      const facts = of(r.email);
+      facts.viewedProducts = { ...facts.viewedProducts, [r.id]: r.at };
+    });
+  }
   if (needs.fields.length > 0) {
     job("fields", fieldValues(storeId, needs.fields, only), (r) => {
       of(r.email).fields = r.values;
@@ -348,5 +368,6 @@ export function applySegmentFacts(people: Person[], { read, byEmail }: ReadFacts
     if (read.has("sms")) p.sms = facts.sms ?? "none";
     if (read.has("lastClickAt")) p.lastClickAt = facts.lastClickAt ?? null;
     if (read.has("fields")) p.fields = facts.fields ?? {};
+    if (read.has("viewedProducts")) p.viewedProducts = facts.viewedProducts ?? {};
   }
 }

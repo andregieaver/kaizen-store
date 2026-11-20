@@ -1,4 +1,6 @@
 import type { Widen } from "./common.en";
+import { HANDOFF_EN, OUTCOME_EN, TOPIC_EN } from "../support-inbox-text-english";
+import { SUPPORT_UNITS } from "../support-report-labels";
 
 /**
  * The words of the support inbox at its three levels, its settings, saved replies, requests, reports and Kaizena Flow's support for owners (D312 A10; D216). `{name}`-style placeholders are filled by `fillWords()`; a count is a `{ one, many }` pair read by
@@ -238,22 +240,10 @@ export const supportEn = {
       open: "All open",
       ended: "Ended",
     },
-    handoff: {
-      customer: "The customer asked for a person",
-      ai: "The assistant asked for a person",
-      tone: "The customer's tone fell",
-      no_ai: "The assistant could not answer",
-      limit: "The assistant reached its daily limit",
-    },
-    outcomes: {
-      resolved: "Resolved",
-      unresolved: "Not resolved",
-      follow_up: "Needs a follow-up",
-      no_reply: "No reply",
-      spam: "Spam",
-    },
+    handoff: { ...HANDOFF_EN },
+    outcomes: { ...OUTCOME_EN },
     /** A topic's own words; a topic not named here is its id in words. */
-    topics: {} as Record<string, string>,
+    topics: { ...TOPIC_EN },
     summaryStatus: {
       pending: "The AI is writing a summary.",
       failed: "The AI could not write a summary.",
@@ -635,17 +625,7 @@ export const supportEn = {
     yourMessage: "Your message to Kaizena Flow",
     send: "Send",
   },
-  units: {
-    seconds: "{n} s",
-    minutesSeconds: "{m} min {n} s",
-    minutes: "{n} min",
-    hoursMinutes: "{h} h {n} min",
-    hours: "{n} h",
-    daysHours: "{d} d {n} h",
-    days: "{n} d",
-    noneYet: "None yet",
-    needed: "{n} of the {min} needed",
-  },
+  units: { ...SUPPORT_UNITS },
   /** Round 31 (D704): the reports on a phone, and a period with no conversation. */
   reportsPhone: {
     emptyTitle: "No conversations in the {period}",

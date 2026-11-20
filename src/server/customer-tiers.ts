@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { adminLangOf } from "@/lib/admin-lang";
-import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
+import type { CustomersMessages } from "@/lib/admin-messages/customers.en";
 import { fillWords } from "@/lib/admin-fill";
 import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { memberDiscount, tierInput, type MemberDiscount, type TierInput } from "@/lib/customer-tiers";
@@ -23,9 +23,9 @@ export function staffWords(account: { adminLocale?: string | null }): CustomersM
 
 /** The form checks' messages (`tierInput`, `companyInput`, which write English) in the reader's words, each once. */
 export function schemaProblems(issues: { message: string }[], words: CustomersMessages["saved"]): string[] {
-  const keys = Object.keys(customersEn.saved.schema) as (keyof CustomersMessages["saved"]["schema"])[];
+  const keys = Object.keys(CUSTOMERS_WORDS.en.saved.schema) as (keyof CustomersMessages["saved"]["schema"])[];
   const said = (message: string) => {
-    const key = keys.find((k) => customersEn.saved.schema[k] === message);
+    const key = keys.find((k) => CUSTOMERS_WORDS.en.saved.schema[k] === message);
     return key ? words.schema[key] : message;
   };
   return [...new Set(issues.map((i) => said(i.message)))];

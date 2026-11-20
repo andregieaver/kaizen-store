@@ -88,7 +88,7 @@ const Q: [string, string][] = [
 ];
 let hit = 0, need = 0;
 for (const [q, want] of Q) {
-  const pages = findPages("store", q, flags, 3);
+  const pages = findPages("store", q, PAGES_NB, flags, 3);
   const areas = [...new Set(pages.map((p) => areaOfPath(`/${p.path}`)).filter(Boolean))];
   const ok = want === "core" ? "(core)" : areas.includes(want as Loose) ? "HIT" : "miss";
   if (want !== "core") { need++; if (ok === "HIT") hit++; }
@@ -96,7 +96,7 @@ for (const [q, want] of Q) {
 }
 console.log(`router: ${hit} of ${need} non-core questions got their area from the top 3 pages`);
 // top-2 areas only
-let hit2 = 0; for (const [q, want] of Q) { if (want === "core") continue; const areas = [...new Set(findPages("store", q, flags, 3).map((p) => areaOfPath(`/${p.path}`)).filter(Boolean))].slice(0, 2); if (areas.includes(want as Loose)) hit2++; }
+let hit2 = 0; for (const [q, want] of Q) { if (want === "core") continue; const areas = [...new Set(findPages("store", q, PAGES_NB, flags, 3).map((p) => areaOfPath(`/${p.path}`)).filter(Boolean))].slice(0, 2); if (areas.includes(want as Loose)) hit2++; }
 console.log(`router with at most two areas: ${hit2} of ${need}`);
 
 // slim page list for the browser

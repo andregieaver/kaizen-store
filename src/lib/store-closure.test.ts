@@ -13,34 +13,35 @@ import {
   ownerMayReopen,
   reopenDeadline,
 } from "./store-closure";
+import { CLOSURE_EN } from "./store-closure-labels";
 
 describe("what blocks closing a store", () => {
   it("is nothing for a store with nothing open", () => {
-    expect(closureBlockers(NO_OBLIGATIONS)).toEqual([]);
+    expect(closureBlockers(NO_OBLIGATIONS, CLOSURE_EN)).toEqual([]);
   });
 
   it("names paid orders still to send, running subscriptions and running delivery lists, in the singular and the plural", () => {
-    expect(closureBlockers({ ...NO_OBLIGATIONS, paidUnshipped: 1 })[0]).toMatch(/^1 paid order has goods still to send\. Send it or cancel and refund it\.$/);
-    expect(closureBlockers({ ...NO_OBLIGATIONS, paidUnshipped: 3 })[0]).toMatch(/^3 paid orders have goods still to send\. Send them or cancel and refund them\.$/);
-    expect(closureBlockers({ ...NO_OBLIGATIONS, runningSubscriptions: 2 })[0]).toMatch(/^2 subscriptions are still running/);
-    expect(closureBlockers({ ...NO_OBLIGATIONS, runningDeliveries: 1 })[0]).toMatch(/^1 weekly delivery list is still running/);
-    expect(closureBlockers({ ...NO_OBLIGATIONS, paidUnshipped: 1, runningSubscriptions: 1, runningDeliveries: 1 })).toHaveLength(3);
+    expect(closureBlockers({ ...NO_OBLIGATIONS, paidUnshipped: 1 }, CLOSURE_EN)[0]).toMatch(/^1 paid order has goods still to send\. Send it or cancel and refund it\.$/);
+    expect(closureBlockers({ ...NO_OBLIGATIONS, paidUnshipped: 3 }, CLOSURE_EN)[0]).toMatch(/^3 paid orders have goods still to send\. Send them or cancel and refund them\.$/);
+    expect(closureBlockers({ ...NO_OBLIGATIONS, runningSubscriptions: 2 }, CLOSURE_EN)[0]).toMatch(/^2 subscriptions are still running/);
+    expect(closureBlockers({ ...NO_OBLIGATIONS, runningDeliveries: 1 }, CLOSURE_EN)[0]).toMatch(/^1 weekly delivery list is still running/);
+    expect(closureBlockers({ ...NO_OBLIGATIONS, paidUnshipped: 1, runningSubscriptions: 1, runningDeliveries: 1 }, CLOSURE_EN)).toHaveLength(3);
   });
 
   it("does not let waiting checkouts, bookings, returns, a plan or domains stop it", () => {
-    expect(closureBlockers({ ...NO_OBLIGATIONS, openCheckouts: 4, futureBookings: 2, openReturns: 1, livePlan: true, domains: 1 })).toEqual([]);
+    expect(closureBlockers({ ...NO_OBLIGATIONS, openCheckouts: 4, futureBookings: 2, openReturns: 1, livePlan: true, domains: 1 }, CLOSURE_EN)).toEqual([]);
   });
 });
 
 describe("what is only worth a warning", () => {
   it("always reminds about Stripe's balance and says nothing else for an empty store", () => {
-    const warnings = closureWarnings(NO_OBLIGATIONS);
+    const warnings = closureWarnings(NO_OBLIGATIONS, CLOSURE_EN);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/Stripe/);
   });
 
   it("says what closing does to waiting orders, plan and domains, and what it leaves alone", () => {
-    const text = closureWarnings({ ...NO_OBLIGATIONS, openCheckouts: 2, futureBookings: 1, openReturns: 3, livePlan: true, domains: 2 }).join("\n");
+    const text = closureWarnings({ ...NO_OBLIGATIONS, openCheckouts: 2, futureBookings: 1, openReturns: 3, livePlan: true, domains: 2 }, CLOSURE_EN).join("\n");
     expect(text).toMatch(/2 orders are waiting for payment\. Closing cancels them/);
     expect(text).toMatch(/1 booking is still to come\. Closing does not cancel it/);
     expect(text).toMatch(/3 returns are still open/);

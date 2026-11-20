@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { NO_FIGURE } from "@/lib/analytics-core";
 import { financeNumbers } from "@/lib/finance-words";
 import { formatMoney } from "@/lib/money";
@@ -27,7 +27,7 @@ export function OrderProfitsView({
   summary,
   capped,
   cappedAt,
-  words = financeEn,
+  words,
   timeZone,
 }: {
   base: string;
@@ -39,7 +39,7 @@ export function OrderProfitsView({
   summary: ProfitSummary;
   capped: boolean;
   cappedAt: number;
-  words?: FinanceMessages;
+  words: FinanceMessages;
 }) {
   const w = words.orderProfits;
   const pct = financeNumbers(words).percent;

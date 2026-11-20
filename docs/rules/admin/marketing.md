@@ -138,7 +138,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   case in `conditionSchema`, `holds()`, `describeCondition()`, `newCondition()`, `CONDITION_KIND_WORDS`, the editor's
   `ConditionFields` and a test, and reads only facts `segmentPeople()` loads (email engagement, M2.4: `clicked`, the latest press from
   `email_clicks`, read by `readSegmentFacts()` only when a rule asks; a customer field, `field`, only of fields the owner marked *Use it in
-  segments*, `marketingFields()`, its values used to choose people and never shown or sent, `field-values-readers.test.ts`). A segment's people are shown only to staff with
+  segments*, `marketingFields()`, its values used to choose people and never shown or sent, `field-values-readers.test.ts`; products
+  looked at, `viewed`, from `customer_product_views`, offered only while views are kept, `viewsKept()`). A segment's people are shown only to staff with
   `customers:read`. Customer tags (`commerce.customer_tags`) are written only by `addTag()`/`removeTag()`, by address, audited
   without it, and are personal data (export, erasure).
   Segments everywhere (wave 11 unit A, D380): a segment's customer types are only `rfmGroups()` (`src/server/analytics-customers-data.ts`, the

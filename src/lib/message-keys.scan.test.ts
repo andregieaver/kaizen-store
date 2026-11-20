@@ -37,11 +37,9 @@ const MATCHED_TABLES: { path: string; readBy: string }[] = [
   { path: "admin-messages/marketing.en.ts#marketingEn.problems", readBy: "src/lib/marketing-words.ts:marketingProblem() matches a server sentence" },
   { path: "admin-messages/payments.en.ts#paymentsEn.problems", readBy: "src/app/admin/(gated)/actions.ts:knownText() matches a server sentence" },
   { path: "admin-messages/tax.en.ts#taxEn.problems", readBy: "src/app/admin/(gated)/[store]/settings/tax/actions.ts:knownText() matches a server sentence" },
-  { path: "admin-messages/tax-reports.en.ts#taxReportsEn.problems", readBy: "src/lib/tax-report-words.ts:rateProblemText() matches a server sentence" },
   { path: "admin-messages/payments.en.ts#paymentsEn.methods.reasons", readBy: "src/lib/payment-methods.ts:stateReason() reads Stripe's reason code" },
   { path: "admin-messages/work.en.ts#workEn.errors.messages", readBy: "src/server/work-errors.ts:WORK_ERROR_MESSAGES is read by the error's code" },
   { path: "admin-messages/books.en.ts#booksEn.vatReturn.tripletex.delivery", readBy: "src/app/admin/(gated)/[store]/settings/books/vat/[term]/page.tsx:t.delivery[status]" },
-  { path: "admin-messages/screens.en.ts#screensEn.analyticsNotes.subscriptions.unconverted", readBy: "src/server/analytics-subscriptions-data.ts:NOTES.unconverted[key]" },
   { path: "admin-messages/platform.en.ts#platformEn.invoiceList.status", readBy: "src/components/admin/plan-invoices.tsx:words.status[invoice.status]" },
   { path: "admin-messages/order.en.ts#orderEn.events", readBy: "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx:words.events[event.type]" },
 ];

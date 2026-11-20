@@ -40,7 +40,7 @@ describe("the VAT, OSS and IOSS catalogue (D312 A9)", () => {
     expect(taxReportsEn.parts.views).toEqual(TAX_VIEW_LABEL);
     expect(taxReportsEn.exportProblems).toEqual(EXPORT_PROBLEMS);
     expect(taxReportsEn.oss.iossOff).toBe(IOSS_OFF_TEXT);
-    for (const reason of CLASS_REASONS) expect(reasonWords(reason)).toBe(reasonText(reason));
+    for (const reason of CLASS_REASONS) expect(reasonWords(reason, taxReportsEn)).toBe(reasonText(reason));
     for (const cause of CAUSES) expect(taxReportsEn.recon.causes[cause]).toEqual({ label: CAUSE_LABEL[cause], text: CAUSE_TEXT[cause] });
   });
 
@@ -53,12 +53,12 @@ describe("the VAT, OSS and IOSS catalogue (D312 A9)", () => {
       { place: "national", part: null, reason: "domestic" },
       ...CLASS_REASONS.map((reason) => ({ place: "none" as const, part: null, reason })),
     ];
-    for (const p of places) expect(placeText(p)).toBe(placeLabel(p));
+    for (const p of places) expect(placeText(p, taxReportsEn)).toBe(placeLabel(p));
     for (const period of [quarterPeriod(2026, 3), monthPeriod(2026, 9)]) {
-      expect(periodText(period)).toBe(periodLabel(period));
-      for (const today of ["2026-09-15", "2026-10-20", "2026-11-25", "2027-03-01"]) expect(deadlineText(period, today)).toBe(deadlineSentence(period, today));
+      expect(periodText(period, taxReportsEn)).toBe(periodLabel(period));
+      for (const today of ["2026-09-15", "2026-10-20", "2026-11-25", "2027-03-01"]) expect(deadlineText(period, today, taxReportsEn)).toBe(deadlineSentence(period, today));
     }
-    expect(longDateIn("2026-10-31")).toBe(longDate("2026-10-31"));
+    expect(longDateIn("2026-10-31", taxReportsEn)).toBe(longDate("2026-10-31"));
   });
 
   it("says the registration notes, the reconciliation's lines and the refunds' line in English as the libraries do", () => {
@@ -68,10 +68,10 @@ describe("the VAT, OSS and IOSS catalogue (D312 A9)", () => {
       ...registrationNotes({ ossScheme: "union", iossNumber: null }, { NU: 1 }),
     ];
     expect(notes.length).toBe(5);
-    for (const n of notes) expect(noteWords(n)).toBe(n.message);
+    for (const n of notes) expect(noteWords(n, taxReportsEn)).toBe(n.message);
     const causes = Object.fromEntries(CAUSES.map((c) => [c, { orders: 1, taxMinor: 10 }]));
     const bridge = reconcile({ currency: "NOK", finance: { orders: 3, taxMinor: 100 }, report: { orders: 2, taxMinor: 90 }, causes });
-    for (const line of bridge.lines) expect(lineWords(line, false)).toEqual({ label: line.label, text: line.text });
+    for (const line of bridge.lines) expect(lineWords(line, false, taxReportsEn)).toEqual({ label: line.label, text: line.text });
     expect(taxReportsEn.recon.refundsAgree).toBe(refundsLine(100, 100, 1).text);
     expect(taxReportsEn.recon.refundsDiffer).toBe(refundsLine(100, 500, 1).text);
   });

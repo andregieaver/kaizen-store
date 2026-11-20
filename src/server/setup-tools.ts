@@ -35,6 +35,7 @@ import { methodInput } from "@/lib/shipping-methods-schema";
 import { storeDetailsInput } from "@/lib/store-details";
 import { featureOn } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
+import { FEATURE_COMMON_EN } from "@/lib/feature-common-labels";
 
 import type { Account, Membership } from "./auth";
 import { catalogTag } from "./catalog";
@@ -151,7 +152,7 @@ async function prepareCountries(ctx: SetupToolContext, args: { countries: string
   const store = await storeNow(ctx);
   const codes = [...new Set(args.countries.map((code) => code.toUpperCase()))];
   if (!featureOn(store, "countries") && codes.length > 1) {
-    return fail(`${featureOffText("countries")} The store sells in one country: choose one, or switch Several countries on first (set_feature).`);
+    return fail(`${featureOffText("countries", FEATURE_COMMON_EN)} The store sells in one country: choose one, or switch Several countries on first (set_feature).`);
   }
   const known = await db().execute<Row>(sql`select code from commerce.countries where code in (${sql.join(codes.map((c) => sql`${c}`), sql`, `)})`);
   const unknown = codes.filter((code) => !known.some((row) => String(row.code).trim() === code));
@@ -204,7 +205,7 @@ async function prepareLanguages(ctx: SetupToolContext, args: LanguagesArgs) {
     }
   } else {
     if (others && others.length > 0) {
-      return fail(`${featureOffText("languages")} The store has its main language and each country's own: switch Several languages on first (set_feature).`);
+      return fail(`${featureOffText("languages", FEATURE_COMMON_EN)} The store has its main language and each country's own: switch Several languages on first (set_feature).`);
     }
     [locales, marketLocales] = oneLanguageChoice(kept, main ?? store.localization.locales[0] ?? "en", chosen);
   }

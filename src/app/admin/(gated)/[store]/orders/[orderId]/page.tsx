@@ -116,7 +116,6 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { einvoiceLines } from "@/server/einvoice-sending";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { dealsOn } from "@/lib/extensions";
-import { returnsEn } from "@/lib/admin-messages/returns.en";
 import { areaTexts } from "@/lib/admin-area";
 import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
@@ -1133,7 +1132,7 @@ function EventLine({ event, money, currency, base, locationNames, words }: { eve
   if (isReturnEvent(event.type)) {
     return (
       <>
-        {eventSentence(event.type, data, currency, undefined, returnsEn)}
+        {eventSentence(event.type, data, currency, undefined, RETURNS_WORDS.en)}
         {typeof data.returnId === "string" && typeof data.number === "string" && (
           <>
             {" · "}

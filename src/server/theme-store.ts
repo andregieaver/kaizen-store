@@ -23,7 +23,7 @@ import {
   type ThemeSwatch,
   type ThemeVersion,
 } from "@/lib/theme-store";
-import { designNb } from "@/lib/admin-messages/design.nb";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import type { PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { themeHighlights } from "@/lib/theme-highlights";
@@ -198,7 +198,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
     sectionStyles: themeSectionStyles(snapshot),
     sectionStyleNames: Object.keys(snapshot.theme.settings.sectionStyles ?? {}),
     changelog: themeChangelog(versions),
-    changelogIn: { nb: themeChangelog(versions, { ...platformText("nb").themeStore.changelog, whatsNew: designNb.whatsNew }) },
+    changelogIn: { nb: themeChangelog(versions, { ...platformText("nb").themeStore.changelog, whatsNew: DESIGN_WORDS.nb.whatsNew }) },
     version: latest?.number ?? null,
     updatedAt: latest?.publishedAt ?? (row.published_at ? new Date(String(row.published_at)).toISOString() : null),
     author: row.author_name ? String(row.author_name) : null,

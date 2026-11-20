@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { taxEn } from "@/lib/admin-messages/tax.en";
 import type { TaxProfileForm } from "@/lib/tax-profile";
 import { VIES_LIMIT_OWNER_PER_HOUR } from "@/lib/vies";
 
@@ -156,10 +157,10 @@ describe("checking the store's own number", () => {
     expect(entry.details).toEqual({ status: "valid", source: "vies", error: null });
     // Goods sent from China are an import, so reverse charge is off for goods (the same number keeps its check) ...
     await saveTaxProfile(owner, { ...swedish, dispatchCountry: "CN" });
-    expect((await taxProfileView(storeId)).readiness.find((line) => line.key === "reverse_charge")).toMatchObject({ on: false, text: expect.stringContaining("goods sent from an EU country") });
+    expect((await taxProfileView(storeId, taxEn.readiness)).readiness.find((line) => line.key === "reverse_charge")).toMatchObject({ on: false, text: expect.stringContaining("goods sent from an EU country") });
     // ... and with the goods sent from the store's own country (the same number keeps its check) it is on.
     await saveTaxProfile(owner, { ...swedish, dispatchCountry: "" });
-    const view = await taxProfileView(storeId);
+    const view = await taxProfileView(storeId, taxEn.readiness);
     expect(view.check).toMatchObject({ status: "valid", name: "ACME AB" });
     expect(view.readiness.find((line) => line.key === "reverse_charge")).toMatchObject({ on: true });
   });
@@ -168,7 +169,7 @@ describe("checking the store's own number", () => {
     expect(await checkOwnVatNumber(owner, { fetch: asFetch(async () => answer(200, { valid: false })) })).toMatchObject({ ok: true, check: { status: "invalid" }, profile: { vatNumberValid: false } });
     const down = await checkOwnVatNumber(owner, { fetch: asFetch(async () => answer(503, "down")) });
     expect(down).toMatchObject({ ok: true, check: { status: "unavailable", error: "http_503" }, profile: { vatNumberValid: null } });
-    expect((await taxProfileView(storeId)).readiness.find((line) => line.key === "reverse_charge")).toMatchObject({ on: false });
+    expect((await taxProfileView(storeId, taxEn.readiness)).readiness.find((line) => line.key === "reverse_charge")).toMatchObject({ on: false });
     expect((await taxCheckupFindings(storeId)).map((f) => f.code)).toContain("vat_number_not_valid");
   });
 

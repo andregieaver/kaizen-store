@@ -33,6 +33,7 @@ import { sendRegisteredEmail } from "./domain-emails";
 import { serveHolding } from "./holding";
 import { checkVatNumber } from "./vies";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { decryptSecret, encryptSecret, parseKey } from "@/lib/secret-box";
 
 import { checkLimit } from "./limits";
@@ -203,7 +204,7 @@ async function gate(account: Account, holder: HolderRef, input: { connect: boole
       const [connected] = await db().execute<Row>(sql`select 1 as on from commerce.store_domains where store_id = ${storeId}::uuid and hostname = ${input.domain}`);
       if (!connected) {
         const room = await checkLimit(storeId, "custom_domains");
-        if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit)] };
+        if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit, LIMIT_REFUSALS)] };
       }
     }
     return { ok: true, terms: { buyer: null, vatKind: null, vatNumber: null, consentAt: false, consentText: null }, review: null };

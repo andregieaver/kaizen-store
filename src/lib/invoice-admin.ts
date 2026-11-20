@@ -1,15 +1,16 @@
 import { countWords, fillWords } from "./admin-fill";
-import { invoicesEn, type InvoicesMessages } from "./admin-messages/invoices.en";
+import type { InvoicesMessages } from "./admin-messages/invoices.en";
+import { INVOICES_WORDS } from "./admin-words/invoices";
 import type { QueueReason } from "./invoice-readiness";
 import { listPage } from "./list-page";
 
-const EN = invoicesEn;
+const EN = INVOICES_WORDS.en;
 const lookup = (table: Record<string, string>, key: string): string | undefined => (Object.hasOwn(table, key) ? table[key] : undefined);
 
 /**
  * The words and addresses of the invoices screens in the admin (D159, `docs/wave-1b-invoices.md` 2.3): the three tabs, the period
  * and the search read from the address, the labels, and the sentences about what waits. Pure; the words are the `invoices` catalogue
- * (D312 A4), English unless another language's is passed. What a shopper reads is `invoice-text.ts`. Nothing here is legal advice.
+ * (D312 A4), passed in by the page. What a shopper reads is `invoice-text.ts`. Nothing here is legal advice.
  */
 
 export const INVOICE_TABS = ["invoices", "credit-notes", "waiting"] as const;
@@ -86,9 +87,9 @@ export function documentPrintHref(base: string, type: "invoice" | "credit_note",
   return type === "invoice" ? `${base}/invoices/${id}/print` : `${base}/invoices/credit-notes/${id}/print`;
 }
 
-export const vatKindLabel = (kind: string | null, w: InvoicesMessages = EN): string => (kind ? (lookup(w.labels.vatKind, kind) ?? kind) : "–");
+export const vatKindLabel = (kind: string | null, w: InvoicesMessages): string => (kind ? (lookup(w.labels.vatKind, kind) ?? kind) : "–");
 
-export const sourceLabel = (source: string | null, w: InvoicesMessages = EN): string => (source ? (lookup(w.labels.source, source) ?? source) : "–");
+export const sourceLabel = (source: string | null, w: InvoicesMessages): string => (source ? (lookup(w.labels.source, source) ?? source) : "–");
 
 /** A country code as its name in a language (English unless given), or the code when the runtime does not know it. */
 export function countryName(code: string | null, language = "en"): string {
@@ -104,7 +105,7 @@ export function countryName(code: string | null, language = "en"): string {
 export const WAITING_TITLES: Record<QueueReason, string> = EN.labels.waiting;
 
 /** The one line above the lists: what needs a person first. */
-export function countsSentence(counts: { waiting: number; overdue: number; pdfFailing: number }, w: InvoicesMessages = EN): string {
+export function countsSentence(counts: { waiting: number; overdue: number; pdfFailing: number }, w: InvoicesMessages): string {
   const c = w.counts;
   const parts: string[] = [];
   if (counts.overdue > 0) parts.push(fillWords(c.overdue, { n: counts.overdue }));
@@ -114,7 +115,7 @@ export function countsSentence(counts: { waiting: number; overdue: number; pdfFa
 }
 
 /** The result of *Check again*, in words. */
-export function checkAgainSentence(issued: number, creditNotes: number, w: InvoicesMessages = EN): string {
+export function checkAgainSentence(issued: number, creditNotes: number, w: InvoicesMessages): string {
   const c = w.checkAgain;
   if (issued === 0 && creditNotes === 0) return c.nothing;
   const parts: string[] = [];
@@ -124,7 +125,7 @@ export function checkAgainSentence(issued: number, creditNotes: number, w: Invoi
 }
 
 /** The result of sending a document again, in words. */
-export function sentAgainSentence(type: "invoice" | "credit_note", outcome: string | null, w: InvoicesMessages = EN): { ok: boolean; message: string } {
+export function sentAgainSentence(type: "invoice" | "credit_note", outcome: string | null, w: InvoicesMessages): { ok: boolean; message: string } {
   const words = w.sentAgain[type];
   if (outcome === "sent" || outcome === "logged") return { ok: true, message: words.sent };
   if (outcome === "duplicate") return { ok: false, message: words.duplicate };
@@ -132,14 +133,14 @@ export function sentAgainSentence(type: "invoice" | "credit_note", outcome: stri
 }
 
 /** A store day (YYYY-MM-DD) as the admin writes dates: "5 Oct 2026", the same in every runtime. A value that is not a day is shown as it is. */
-export function dayLabel(day: string | null, w: InvoicesMessages = EN): string {
+export function dayLabel(day: string | null, w: InvoicesMessages): string {
   if (!day || !isDay(day.slice(0, 10))) return day ?? "–";
   const [year, month, date] = day.slice(0, 10).split("-").map(Number);
   return fillWords(w.labels.day, { date, month: w.labels.months[month - 1], year });
 }
 
 /** A seller's field in words, or its key when it has none. */
-export const sellerFieldLabel = (field: string, w: InvoicesMessages = EN): string => lookup(w.labels.sellerFields, field) ?? field;
+export const sellerFieldLabel = (field: string, w: InvoicesMessages): string => lookup(w.labels.sellerFields, field) ?? field;
 
 /**
  * What an owner is told on the settings page, in plain English, for an accountant's eyes. Flagged for review (docs/wave-1b-invoices.md
@@ -150,4 +151,4 @@ export const INVOICE_NOTES: string[] = EN.notes;
 /** What the invoices page says when the CSV route sent the person back (`?export=`): fixed sentences, never text from the address. */
 export const EXPORT_PROBLEMS: Record<"period" | "too_many", string> = EN.labels.exportProblems;
 
-export const exportProblemOf = (value: string | undefined, w: InvoicesMessages = EN): string | null => (value ? (lookup(w.labels.exportProblems, value) ?? null) : null);
+export const exportProblemOf = (value: string | undefined, w: InvoicesMessages): string | null => (value ? (lookup(w.labels.exportProblems, value) ?? null) : null);

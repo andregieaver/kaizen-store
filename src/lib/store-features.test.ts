@@ -23,6 +23,7 @@ import {
   requirementMet,
 } from "./store-features";
 import { requirementLabel } from "./feature-labels";
+import { FEATURE_COMMON_EN } from "./feature-common-labels";
 import { featureBlockers, featureRows, featureWarnings } from "./feature-words";
 
 const money = (minor: number, currency: string) => `${(minor / 100).toFixed(2)} ${currency}`;
@@ -76,7 +77,7 @@ describe("the store features registry (D178)", () => {
     expect(requirementMet(["shop"], undefined)).toBe(true);
     expect(requirementMet(["shop", "bookings"], ["appointments", "bookings"])).toBe(true);
     expect(requirementMet(["bookings"], ["appointments", "bookings"])).toBe(false);
-    expect(requirementLabel(["appointments", "bookings"])).toBe("Appointments or Stays and rentals");
+    expect(requirementLabel(["appointments", "bookings"], FEATURE_COMMON_EN)).toBe("Appointments or Stays and rentals");
   });
 
   it("counts the features on of the thirteen, or of those shown", () => {

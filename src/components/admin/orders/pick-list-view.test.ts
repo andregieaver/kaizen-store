@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ordersEn } from "@/lib/admin-messages/orders.en";
 
 import { pickList, PICK_SKIP_WORDS, PICK_WARNING_WORDS, type PickInputLine, type PickInputOrder } from "@/lib/pick-list";
 
@@ -44,7 +45,7 @@ const ORDERS: PickInputOrder[] = [
 describe("the pick list (D174 2.3)", () => {
   it("by product: one row per variant with its SKU, title, orders and the units still to send, summed over the orders", () => {
     const list = pickList(ORDERS, { by: "product", sort: "sku" });
-    const html = renderToString(h(PickListView, { list }));
+    const html = renderToString(h(PickListView, { list, words: ordersEn.pick }));
     const text = plain(html);
     expect(text).not.toMatch(BAD);
     // Item 1: 3 − 1 sent in #1001, 2 − 1 withdrawn in #1002 = 3 units over 2 orders.
@@ -60,16 +61,16 @@ describe("the pick list (D174 2.3)", () => {
 
   it("by order: each order's number with its units to send per line", () => {
     const list = pickList(ORDERS, { by: "order" });
-    const text = plain(renderToString(h(PickListView, { list })));
+    const text = plain(renderToString(h(PickListView, { list, words: ordersEn.pick })));
     expect(text).toContain("#1001");
     expect(text).toContain("#1002");
     expect(text).toContain("by order");
-    expect(renderToString(h(PickListView, { list }))).toContain('aria-label="Order 1001"');
+    expect(renderToString(h(PickListView, { list, words: ordersEn.pick }))).toContain('aria-label="Order 1001"');
   });
 
   it("names the orders left out with the reason, and warns of a change waiting for payment without leaving the order out", () => {
     const list = pickList(ORDERS);
-    const text = plain(renderToString(h(PickListView, { list })));
+    const text = plain(renderToString(h(PickListView, { list, words: ordersEn.pick })));
     expect(text).toContain(`#1003: ${PICK_SKIP_WORDS.copied}`);
     expect(text).toContain(`#1004: ${PICK_SKIP_WORDS.unpaid}`);
     expect(text).toContain(`An order that was not found: ${PICK_SKIP_WORDS.not_found}`);
@@ -79,20 +80,20 @@ describe("the pick list (D174 2.3)", () => {
 
   it("holds no price, amount, name or address in either layout", () => {
     for (const by of ["product", "order"] as const) {
-      const text = plain(renderToString(h(PickListView, { list: pickList(ORDERS, { by }) })));
+      const text = plain(renderToString(h(PickListView, { list: pickList(ORDERS, { by }), words: ordersEn.pick })));
       expect(text, by).not.toMatch(MONEY);
     }
   });
 
   it("says when nothing is left to pick", () => {
     const list = pickList([order("o9", "1009", [line(1, { shipped: 1 })])]);
-    const text = plain(renderToString(h(PickListView, { list })));
+    const text = plain(renderToString(h(PickListView, { list, words: ordersEn.pick })));
     expect(text).toContain("Nothing of these orders is left to pick.");
     expect(text).toContain(`#1009: ${PICK_SKIP_WORDS.nothing_to_send}`);
   });
 
   it("draws a title as text, never as markup", () => {
-    const html = renderToString(h(PickListView, { list: pickList([order("o1", "1", [line(1, { title: "<b>Mug</b>" })])]) }));
+    const html = renderToString(h(PickListView, { list: pickList([order("o1", "1", [line(1, { title: "<b>Mug</b>" })])]), words: ordersEn.pick }));
     expect(html).not.toContain("<b>Mug</b>");
     expect(html).toContain("&lt;b&gt;Mug&lt;/b&gt;");
   });

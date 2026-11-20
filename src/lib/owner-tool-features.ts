@@ -8,6 +8,7 @@ import { EXTENSION_NAMES, storeExtensionOn, type ExtensionId } from "./extension
 import type { OwnerToolName } from "./owner-tools";
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
 import { requirementLabel } from "./feature-labels";
+import { FEATURE_COMMON_EN } from "./feature-common-labels";
 
 const BOOKED: FeatureRequirement = ["appointments", "bookings"];
 
@@ -232,5 +233,5 @@ export function toolFeatureRefusal(name: string, store?: FeatureSource): string 
   const extension = toolExtension(name);
   if (extension && store && !extensionMet(store, name)) return `This tool is part of the ${EXTENSION_NAMES[extension]} extension, which this account does not have.`;
   const feature = toolFeature(name);
-  return `${feature ? requirementLabel(feature) : "That feature"} is switched off in this store. An owner switches it on under Settings → Features.`;
+  return `${feature ? requirementLabel(feature, FEATURE_COMMON_EN) : "That feature"} is switched off in this store. An owner switches it on under Settings → Features.`;
 }

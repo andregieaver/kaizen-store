@@ -10,7 +10,7 @@ import { arr, churnRate, monthlyMinor, mrrMovements, type MrrMovements } from "@
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { screensEn } from "@/lib/admin-messages/screens.en";
+import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 
 import { dayStart, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
@@ -18,7 +18,7 @@ import type { Store } from "./stores";
 import { checkedRows, col, typedRows } from "./typed-rows";
 
 /** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
-const NOTES = screensEn.analyticsNotes.subscriptions;
+const NOTES = ANALYTICS_NOTES_EN.subscriptions;
 
 /**
  * The Subscriptions page's figures (D152, docs/analytics.md): monthly recurring revenue and how it moved, churn, failed

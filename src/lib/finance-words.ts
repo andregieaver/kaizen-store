@@ -1,5 +1,5 @@
 import { countWords } from "./admin-fill";
-import { financeEn, type FinanceMessages } from "./admin-messages/finance.en";
+import type { FinanceMessages } from "./admin-messages/finance.en";
 import { formatChange, formatCount, formatNumber, formatPercent, type Delta } from "./analytics-core";
 
 /**
@@ -14,13 +14,13 @@ export type FinanceNumbers = {
 };
 
 /** Whether the words write a decimal comma: the admin's Norwegian does, English does not. */
-export const decimalComma = (words: FinanceMessages = financeEn) => words.numbers.decimal === ",";
+export const decimalComma = (words: FinanceMessages) => words.numbers.decimal === ",";
 
 /** A figure's decimal point written as the language writes it; digit groups and signs are left alone. */
 export const withDecimals = (text: string, comma: boolean) => (comma ? text.replace(/(\d)\.(\d)/g, "$1,$2") : text);
 
 /** The writers in the words' language (its decimal mark and the days' words), English unless given. */
-export function financeNumbers(words: FinanceMessages = financeEn): FinanceNumbers {
+export function financeNumbers(words: FinanceMessages): FinanceNumbers {
   const comma = decimalComma(words);
   return {
     count: formatCount,

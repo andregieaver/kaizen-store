@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { effectiveLimit, LIMIT_KEYS, LIMITS, type LimitKey, type LimitOrigin, type LimitSource, widestSource, wouldPass } from "@/lib/limits";
 import { ON_PLAN_STATUSES } from "@/lib/plans";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { monthFigure, monthOf, utcDay, type UsageMetric } from "@/lib/usage-metrics";
 
 import { col, typedRow } from "./typed-rows";
@@ -323,5 +324,5 @@ export function forgetLimitMemos(): void {
 export async function storageRefusal(storeId: string | null, bytes: number): Promise<string | null> {
   if (!storeId || !/^[0-9a-f-]{36}$/i.test(storeId)) return null;
   const check = await checkLimit(storeId, "storage_bytes", Math.max(1, bytes));
-  return check.ok ? null : limitRefusal("storage_bytes", check.limit);
+  return check.ok ? null : limitRefusal("storage_bytes", check.limit, LIMIT_REFUSALS);
 }

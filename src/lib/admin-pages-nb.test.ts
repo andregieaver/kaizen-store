@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PAGES_WORDS } from "./admin-words/pages";
 
 import { ADMIN_PAGES, findPages } from "./admin-map";
 import { NAV_NB } from "./admin-messages/nav.nb";
@@ -27,8 +28,8 @@ describe("admin pages in Norwegian (D312 A2)", () => {
   });
 
   it("finds pages by Norwegian words", () => {
-    expect(findPages("store", "bestillinger", { features: ["shop"] }).map((p) => p.id)).toContain("orders");
-    expect(findPages("store", "frakt", { features: ["shop"] }).map((p) => p.id)).toContain("shipping");
-    expect(findPages("platform", "merverdiavgift").map((p) => p.id)).toContain("vat");
+    expect(findPages("store", "bestillinger", PAGES_WORDS.nb, { features: ["shop"] }).map((p) => p.id)).toContain("orders");
+    expect(findPages("store", "frakt", PAGES_WORDS.nb, { features: ["shop"] }).map((p) => p.id)).toContain("shipping");
+    expect(findPages("platform", "merverdiavgift", PAGES_WORDS.nb).map((p) => p.id)).toContain("vat");
   });
 });

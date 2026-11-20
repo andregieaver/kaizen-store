@@ -10,9 +10,10 @@ import { catalogTag } from "@/server/catalog";
 import { inviteHost, setHostDisabled, updateHost } from "@/server/hosts";
 import { featureOn } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
+import { FEATURE_COMMON_EN } from "@/lib/feature-common-labels";
 
 /** Hosts are part of Stays and rentals (D178): nothing about them changes while it is switched off, whatever a stale page sends. */
-const BOOKINGS_OFF: FormState = { status: "error", messages: [featureOffText("bookings")] };
+const BOOKINGS_OFF: FormState = { status: "error", messages: [featureOffText("bookings", FEATURE_COMMON_EN)] };
 
 /** Hosts change what the store earns (D71): owners only. */
 const requireOwner = (storeSlug: string) => checkOwnerRole(storeSlug);

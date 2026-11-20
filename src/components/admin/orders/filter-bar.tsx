@@ -6,7 +6,8 @@ import { Select, TextInput } from "../ui/field";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import type { OrdersMessages } from "@/lib/admin-messages/orders.en";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { clearHref, plainState } from "@/lib/order-list-admin";
 import { filterChips } from "@/lib/order-list-words";
 import {
@@ -49,7 +50,7 @@ export function FilterBar({
   params,
   markets,
   tagSuggestions,
-  words: w = ordersEn.filters,
+  words: w,
   columnWords = COLUMN_LABELS,
 }: {
   base: string;
@@ -57,13 +58,13 @@ export function FilterBar({
   markets: { code: string; name: string }[];
   tagSuggestions: string[];
   /** The `orders` catalogue's `filters` words in the account's language (D312 A4). */
-  words?: OrdersMessages["filters"];
+  words: OrdersMessages["filters"];
   /** The columns' names, the table's (`OrdersMessages["table"]["columns"]`). */
   columnWords?: Record<OrderColumn, string>;
 }) {
   const state = expandShow(plainState(params));
   // English (the catalogue itself, as the server hands it) names the codes as they are written: `partially refunded`.
-  const chips = filterChips(params, w, w === ordersEn.filters);
+  const chips = filterChips(params, w, w === ORDERS_WORDS.en.filters);
   const columns = columnsOf(params);
   const filtered = hasFilters(params);
   return (

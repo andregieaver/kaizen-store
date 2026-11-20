@@ -5,7 +5,7 @@ import { staffTermsFor, termsForOrder } from "@/server/checkout-terms";
 import type { Store } from "@/server/stores";
 import { Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 
 /**
  * What the shopper was shown about the terms when they ordered (wave 1, 1e, docs/wave-1-trust.md 2.4): "Terms accepted {date} as ticked/shown", or
@@ -17,14 +17,14 @@ export async function OrderTermsCard({
   orderId,
   zone,
   locale = "en-GB",
-  words: w = orderEn.terms,
+  words: w,
 }: {
   store: Pick<Store, "id" | "slug">;
   orderId: string;
   zone: string;
   /** The admin's locale for the date (D312). */
   locale?: string;
-  words?: OrderMessages["terms"];
+  words: OrderMessages["terms"];
 }) {
   const format = (date: Date) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: zone }).format(date);
   const [line, record] = await Promise.all([staffTermsFor(store, orderId, format), termsForOrder(store.id, orderId)]);

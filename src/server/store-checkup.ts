@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { booksEn } from "@/lib/admin-messages/books.en";
+import { WATCH_EN } from "@/lib/turnover-watch-labels";
 import { todayIn } from "@/lib/analytics-period";
 import { auditProblems } from "@/lib/order-numbers";
 import { watchText } from "@/lib/turnover-watch";
@@ -139,7 +139,7 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
   }
   // The threshold watch (D514): each threshold the turnover is near or has just passed, in one finding.
   const watches = turnover?.watches ?? [];
-  add(watches.length > 0, "turnover", watches.length, watches.map((w) => watchText(w, booksEn.watch, "en-GB")).join(" "), "/settings/books");
+  add(watches.length > 0, "turnover", watches.length, watches.map((w) => watchText(w, WATCH_EN, "en-GB")).join(" "), "/settings/books");
   add(Number(counts.supplier_late) > 0, "supplier_late", Number(counts.supplier_late), `${counts.supplier_late} order(s) have not been sent by their drop-shipping supplier within its working days (${String(counts.late_suppliers ?? "")}). Each supplier's page under Inventory, Suppliers shows them, to send again or cancel.`, "/inventory/suppliers");
   add(green.claims > 0, "green_claims", green.claims, `${green.claims} vague environmental claim(s) ("eco-friendly", "sustainable", "climate neutral") are on the live site; EU law bans them since 27 September 2026 unless proven. Environmental claims lists each.`, "/products/claims");
   return findings;

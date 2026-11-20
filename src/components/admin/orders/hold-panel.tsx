@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { RULE_LIMITS } from "@/lib/order-rules";
 import type { OrderHold } from "@/server/order-hold";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { fillWords } from "@/lib/admin-fill";
 
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
@@ -19,10 +19,10 @@ export function HoldPanel({
   when,
   release,
   holdAction,
-  words: w = orderEn.hold,
+  words: w,
 }: {
   /** The `order` catalogue's `hold` words in the account's language (D312 A4). */
-  words?: OrderMessages["hold"];
+  words: OrderMessages["hold"];
   hold: OrderHold | null;
   /** `/admin/{store}`. */
   base: string;

@@ -1,5 +1,6 @@
 import { countWords } from "./admin-fill";
-import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.en";
+import type { MarketingMessages } from "./admin-messages/marketing.en";
+import { MARKETING_WORDS } from "./admin-words/marketing";
 import type { LifecycleKind } from "./automation-kinds";
 
 /**
@@ -9,7 +10,7 @@ import type { LifecycleKind } from "./automation-kinds";
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const PATTERNS = Object.entries(marketingEn.problems).map(([key, english]) => {
+const PATTERNS = Object.entries(MARKETING_WORDS.en.problems).map(([key, english]) => {
   const names: string[] = [];
   const source = english
     .split(/(\{\w+\})/)
@@ -37,7 +38,7 @@ export function marketingProblem(text: string, words: MarketingMessages["problem
 }
 
 /** What a lifecycle automation's days mean: *Sent 7 days after the order is delivered.* (and *Sent as soon as they join.* for a welcome at 0). */
-export function automationDays(kind: LifecycleKind, n: number, words: MarketingMessages["automations"] = marketingEn.automations): string {
+export function automationDays(kind: LifecycleKind, n: number, words: MarketingMessages["automations"]): string {
   const w = words.kinds[kind];
   return n === 0 && w.now ? w.now : countWords(n, w.days);
 }

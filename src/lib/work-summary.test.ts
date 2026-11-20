@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { kaizenLifeDoor, workSummaryOf, type SummaryInput } from "./work-summary";
 import { combineOverviews, type StoreOverview, type WorkStore } from "./work-owner";
 import { workOverview, type OverviewEntry, type OverviewInvoice } from "./work-overview";
+import { workEn } from "./admin-messages/work.en";
 
 const TODAY = "2026-09-29";
 const NOW = Date.parse("2026-09-29T12:00:00Z");
@@ -59,7 +60,7 @@ const part = (s: WorkStore, invoices: OverviewInvoice[], entries: OverviewEntry[
   store: s,
   today: TODAY,
   clientCount: 1,
-  overview: workOverview({
+  overview: workOverview({ words: workEn.attention,
     today: TODAY,
     now: NOW,
     invoices,

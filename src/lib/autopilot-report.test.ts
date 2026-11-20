@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
+import { staffEmailsEn } from "./admin-messages/staff-emails.en";
 import { autopilotEmail, checkedNote, digestWorthSending, type ReportFacts } from "./autopilot-report";
 
 /** The autopilot's digest and weekly report (D309, `docs/ai-autopilot.md` 7.5): what the email says, and the model's note's checks. */
@@ -17,7 +18,7 @@ const weekly: ReportFacts = {
   goals: [{ title: "First sales", met: 1, all: 2 }],
 };
 const text = (facts: ReportFacts, note: string | null = null, nb = false) =>
-  JSON.stringify(autopilotEmail(facts, "https://kaizenaflow.com/admin/demo/assistant/autopilot", note, nb ? staffEmailsNb : undefined, nb ? "nb" : "en"));
+  JSON.stringify(autopilotEmail(facts, "https://kaizenaflow.com/admin/demo/assistant/autopilot", note, nb ? staffEmailsNb : staffEmailsEn, nb ? "nb" : "en"));
 
 describe("the digest", () => {
   it("is sent only when a step finished or something waits", () => {

@@ -5,6 +5,7 @@ import { homeNb } from "./admin-messages/home.nb";
 import { ATTENTION_KINDS, attentionFor, changeText, storeAttentionItems, totalSales, type StoreFigures } from "./control-center";
 import { demoWords, NO_DEMO, removalWords } from "./demo-content";
 import { workOverview } from "./work-overview";
+import { workEn } from "./admin-messages/work.en";
 import { workBase } from "@/lib/work-paths";
 
 const store = (over: Partial<StoreFigures> = {}): StoreFigures => ({
@@ -183,7 +184,7 @@ describe("the control center (D107)", () => {
 
   it("adds Work's own attention items for a store that uses it, urgent first, and nothing for one that does not", () => {
     const now = Date.parse("2026-09-29T12:00:00Z");
-    const workOf = (slug: string, name: string) => workOverview({
+    const workOf = (slug: string, name: string) => workOverview({ words: workEn.attention,
       today: "2026-09-29",
       now,
       invoices: [

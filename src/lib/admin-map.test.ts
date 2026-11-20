@@ -2,6 +2,7 @@ import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { PAGES_WORDS } from "./admin-words/pages";
 
 import {
   ADMIN_PAGES,
@@ -17,7 +18,7 @@ import { FEATURE_IDS, featureOn, requirementMet } from "./store-features";
 
 /** A store with the online shop on, as every store starts (D178), unless a test names its features. */
 const shopOn = (flags: SiteFlags = {}): SiteFlags => ({ features: ["shop"], ...flags });
-const findPages = (area: "store" | "platform", query: string, flags?: SiteFlags) => findPagesFor(area, query, shopOn(flags));
+const findPages = (area: "store" | "platform", query: string, flags?: SiteFlags) => findPagesFor(area, query, PAGES_WORDS.nb, shopOn(flags));
 const pagesFor = (area: "store" | "platform", flags?: SiteFlags) => pagesOf(area, shopOn(flags));
 const adminMapText = (area: "store" | "platform", flags?: SiteFlags) => mapTextFor(area, shopOn(flags));
 

@@ -21,7 +21,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 import { DEFAULT_RETURN_SETTINGS } from "@/lib/withdrawal";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { screensEn } from "@/lib/admin-messages/screens.en";
+import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 
 import { productNames } from "./analytics-refunds-data";
 import { inPeriod, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
@@ -52,7 +52,7 @@ export const TOP_RETURNED_PRODUCTS = 10;
 export const TIMING_CAP = 5_000;
 
 /** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
-const NOTES = screensEn.analyticsNotes.returns;
+const NOTES = ANALYTICS_NOTES_EN.returns;
 
 export const NOT_SEEN_RETURNS_NOTE = NOTES.notSeen;
 
@@ -445,8 +445,8 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
     refunded: { minor: refundedMinor, returns: refundedReturns, outside: refundedOutside },
     reasons: reasonBreakdown([...reasonInputs.values()]),
     timing: {
-      requestToRefund: timingOf(requestDays, screensEn.analyticsNotes.phrases.requestDate),
-      receivedToRefund: timingOf(receivedDays, screensEn.analyticsNotes.phrases.goodsReceivedFirst),
+      requestToRefund: timingOf(requestDays, ANALYTICS_NOTES_EN.phrases.requestDate),
+      receivedToRefund: timingOf(receivedDays, ANALYTICS_NOTES_EN.phrases.goodsReceivedFirst),
       afterDeadline: { late, of: withDeadline },
       truncated: timingTruncated,
     },

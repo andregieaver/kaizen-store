@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { diffOf } from "@/lib/audit";
 import { decryptSecret } from "@/lib/secret-box";
 import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
@@ -221,7 +222,7 @@ export async function inviteStaff(
   }
   // The store's staff places (D314).
   const seats = await checkLimit(store.id, "staff_seats");
-  if (!seats.ok) return { ok: false, problems: [limitRefusal("staff_seats", seats.limit)] };
+  if (!seats.ok) return { ok: false, problems: [limitRefusal("staff_seats", seats.limit, LIMIT_REFUSALS)] };
   const result = await db().transaction(async (tx) => {
     const [invitee] = await tx.execute<Row>(sql`
       insert into commerce.accounts (email) values (${email})

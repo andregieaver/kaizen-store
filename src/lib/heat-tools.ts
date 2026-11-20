@@ -5,13 +5,13 @@
  */
 
 import { fillWords } from "./admin-fill";
-import { heatmapsEn, type HeatmapsMessages } from "./admin-messages/heatmaps.en";
+import type { HeatmapsMessages } from "./admin-messages/heatmaps.en";
 import { formatCount, formatNumber, formatPercent } from "./analytics-core";
 import { attentionSeconds, foldPercent, frustrationRank, reachedShares, type CellTotal, type MapLayout } from "./heat-read";
 import { MIN_MAP_VIEWS, MIN_VERSION_VIEWS } from "./page-heat";
 
 /** A part's words: a landmark, a product card, or where on the page it sits (the map's table and the tools say the same). */
-export function partLabel(anchor: string, layout: MapLayout | null, words: HeatmapsMessages = heatmapsEn): string {
+export function partLabel(anchor: string, layout: MapLayout | null, words: { map: Pick<HeatmapsMessages["map"], "parts"> }): string {
   const p = words.map.parts;
   if (anchor === "@header") return p.header;
   if (anchor === "@footer") return p.footer;
@@ -44,7 +44,7 @@ export type PageFiguresInput = {
 };
 
 /** One page's map in words: how far people got, where they looked, and the parts clicked most; nothing below `MIN_MAP_VIEWS` page views. */
-export function pageFigures(heat: PageFiguresInput, words: HeatmapsMessages = heatmapsEn) {
+export function pageFigures(heat: PageFiguresInput, words: { map: Pick<HeatmapsMessages["map"], "parts" | "band"> }) {
   if (heat.views < MIN_MAP_VIEWS) {
     return { page_views: heat.views, figures: `not enough page views yet (${formatCount(heat.views)} of ${MIN_MAP_VIEWS}): no figure is given` };
   }
@@ -88,7 +88,7 @@ export function versionFigures(rows: readonly VersionFigure[]) {
 export type PageRowInput = { page: string; views: number; frustratedViews: number; reachedHalf: number };
 
 /** The hub in words: the pages where visitors get stuck (from `MIN_MAP_VIEWS` page views), then the most viewed. */
-export function hubFigures(rows: readonly PageRowInput[], words: HeatmapsMessages = heatmapsEn) {
+export function hubFigures(rows: readonly PageRowInput[], words: { hub: Pick<HeatmapsMessages["hub"], "frontPage"> }) {
   const name = (page: string) => {
     const rest = page.replace(/^\/[a-z0-9-]+/, "");
     return rest === "" ? words.hub.frontPage : rest;

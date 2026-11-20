@@ -281,6 +281,15 @@ describe("how people deal with the store (E3.6)", () => {
     const names = await seg.segmentNames(store.member.store, [{ match: "all", conditions: [{ kind: "field", field: tier, op: "filled" }] }]);
     expect(names.fieldLabel?.(tier)).toBe("Tier");
   });
+
+  it("finds who looked at a product, from the views kept for a browse email, and who has not (M2.4)", async () => {
+    await db().execute(sql`
+      insert into commerce.customer_product_views (store_id, customer_id, product_id, viewed_at)
+      values (${store.storeId}::uuid, ${anna}::uuid, ${mugProduct}::uuid, ${daysAgo(2)}::timestamptz)`);
+    expect(await who(store, { kind: "viewed", has: true, products: [mugProduct] })).toEqual(["anna"]);
+    expect(await who(store, { kind: "viewed", has: true, products: [mugProduct], days: 1 })).toEqual([]);
+    expect(await who(store, { kind: "viewed", has: false, products: [mugProduct] })).toEqual(["ola", "sub"]);
+  });
 });
 
 describe("saved segments on the newer conditions (E3.6)", () => {

@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
@@ -353,11 +354,11 @@ describe("an order's credits", () => {
   const inList = (child: Parameters<typeof renderToString>[0]) => html(createElement("dl", null, child));
 
   it("shows the credits used as a discount row, and what was earned with when it can be used", () => {
-    const used = inList(createElement(BonusUsedRow, { bonus, currency: "NOK", locale: "en-GB" }));
+    const used = inList(createElement(BonusUsedRow, { bonus, currency: "NOK", locale: "en-GB", words: orderEn.bonus }));
     expect(used).toContain("Bonus credits used");
     expect(used).toContain("−NOK 50.00");
     const earned = inList(
-      createElement(BonusEarnedRow, { timeZone: "Europe/Oslo", bonus, currency: "NOK", locale: "en-GB", now: new Date("2026-10-01T00:00:00Z") }),
+      createElement(BonusEarnedRow, { timeZone: "Europe/Oslo", bonus, currency: "NOK", locale: "en-GB", now: new Date("2026-10-01T00:00:00Z"), words: orderEn.bonus }),
     );
     expect(earned).toContain("Bonus credits earned (usable from 15 Oct 2026)");
     expect(earned).toContain("NOK 20.00");
@@ -370,6 +371,7 @@ describe("an order's credits", () => {
           currency: "NOK",
           locale: "en-GB",
           now: new Date("2026-11-01T00:00:00Z"),
+          words: orderEn.bonus,
         }),
       ),
     ).not.toContain("usable from");
@@ -377,11 +379,11 @@ describe("an order's credits", () => {
 
   it("shows nothing for an order with no credits, or a copied one", () => {
     for (const none of [null, { usedMinor: 0, earnedMinor: 0, availableAt: null }]) {
-      expect(inList(createElement(BonusUsedRow, { bonus: none, currency: "NOK", locale: "en-GB" }))).toBe("<dl></dl>");
-      expect(inList(createElement(BonusEarnedRow, { timeZone: "Europe/Oslo", bonus: none, currency: "NOK", locale: "en-GB" }))).toBe(
+      expect(inList(createElement(BonusUsedRow, { bonus: none, currency: "NOK", locale: "en-GB", words: orderEn.bonus }))).toBe("<dl></dl>");
+      expect(inList(createElement(BonusEarnedRow, { timeZone: "Europe/Oslo", bonus: none, currency: "NOK", locale: "en-GB", words: orderEn.bonus }))).toBe(
         "<dl></dl>",
       );
-      expect(html(createElement(BonusRefundNote, { bonus: none, currency: "NOK", locale: "en-GB" }))).toBe("");
+      expect(html(createElement(BonusRefundNote, { bonus: none, currency: "NOK", locale: "en-GB", words: orderEn.bonus }))).toBe("");
     }
   });
 
@@ -392,6 +394,7 @@ describe("an order's credits", () => {
         currency: "NOK",
         locale: "en-GB",
         refund: { refundedMinor: 0, totalMinor: 20000 },
+        words: orderEn.bonus,
       }),
     );
     expect(out).toContain("NOK 50.00 in credits was used on this order");

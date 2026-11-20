@@ -18,7 +18,7 @@ import { safeRatio } from "@/lib/analytics-core";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { screensEn } from "@/lib/admin-messages/screens.en";
+import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 
 import { num, PAID, SOLD_AT, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
@@ -388,9 +388,9 @@ export async function discountsReport(store: Store, period: AnalyticsPeriod): Pr
 
   const notes: string[] = [];
   if (unconverted > 0) {
-    notes.push(countWords(unconverted, screensEn.analyticsNotes.discounts.unconverted, { currencies: [...missing].sort().join(", ") }));
+    notes.push(countWords(unconverted, ANALYTICS_NOTES_EN.discounts.unconverted, { currencies: [...missing].sort().join(", ") }));
   }
-  if (couponsTruncated) notes.push(fillWords(screensEn.analyticsNotes.discounts.couponsTruncated, { n: COUPON_CAP }));
+  if (couponsTruncated) notes.push(fillWords(ANALYTICS_NOTES_EN.discounts.couponsTruncated, { n: COUPON_CAP }));
 
   return {
     currency: mainCurrency(store),

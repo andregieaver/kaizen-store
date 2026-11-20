@@ -3,10 +3,11 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { capacityEn } from "@/lib/admin-messages/capacity.en";
+import { USAGE_METRICS } from "@/lib/usage-labels";
 import { formatLimit, formatUsage } from "@/lib/usage-format";
 import { safeClientName } from "@/lib/oauth";
 import { ADMIN_PAGES, findPages, pageHref, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
+import { PAGES_WORDS } from "@/lib/admin-words/pages";
 import { groupUsage, summarizeUsage, withOwner } from "@/lib/ai-usage";
 import { ASSISTANT_SKILLS } from "@/lib/assistant-skills";
 import {
@@ -146,7 +147,7 @@ function describe(ctx: ManagerContext, page: (typeof ADMIN_PAGES)[number]) {
 }
 
 async function findAdminPage(ctx: ManagerContext, { question }: ManagerToolInput<"find_admin_page">) {
-  const pages = findPages(area(ctx), question, ctx.flags);
+  const pages = findPages(area(ctx), question, PAGES_WORDS.nb, ctx.flags);
   if (pages.length === 0) return { found: [], note: "No page matches. The map in your instructions lists every section." };
   return { found: pages.map((page) => describe(ctx, page)) };
 }
@@ -494,7 +495,7 @@ async function storeUsageTool(_ctx: ManagerContext, { store, top, limit }: Platf
     return {
       store: found.name,
       lines: lines.map((l) => ({
-        what: capacityEn.metrics[l.metric],
+        what: USAGE_METRICS[l.metric],
         used: l.measured ? formatUsage(l.metric, l.used) : "not measured yet",
         limit: l.limit === null ? "no limit" : formatLimit(l.key, l.limit),
         state: !l.measured ? "not measured" : { ok: "fine", near: "close to the limit", reached: "used up", over: "over the limit" }[l.state],
@@ -506,7 +507,7 @@ async function storeUsageTool(_ctx: ManagerContext, { store, top, limit }: Platf
   const ranked = rows.sort((a, b) => (b.values[top] ?? 0) - (a.values[top] ?? 0)).slice(0, limit);
   return {
     month: "this calendar month (UTC)",
-    by: capacityEn.metrics[top],
+    by: USAGE_METRICS[top],
     stores: ranked.map((r) => ({ store: r.name, address: r.slug, plan: r.plan ?? "no plan", used: r.values[top] === undefined ? "not measured" : formatUsage(top, r.values[top] ?? 0) })),
     link: "/admin/platform/capacity",
   };

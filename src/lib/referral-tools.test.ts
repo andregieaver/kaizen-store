@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PAGES_WORDS } from "./admin-words/pages";
 
 import { ADMIN_PAGES, findPages, pageHref } from "./admin-map";
 import { ASSISTANT_SKILLS } from "./assistant-skills";
@@ -57,7 +58,7 @@ describe("the referral program's tools in the AI manager (D131)", () => {
     const account = ADMIN_PAGES.find((p) => p.id === "account.referrals")!;
     expect(pageHref(account, {}, undefined)).toBe("/admin/account/referrals");
     expect(pageHref(ADMIN_PAGES.find((p) => p.id === "referrals")!, {}, undefined)).toBe("/admin/platform/referrals");
-    expect(findPages("platform", "change the referral commission")[0]?.id).toBe("referrals");
-    expect(findPages("store", "where is my referral link", { owner: true }).map((p) => p.id)).toContain("account.referrals");
+    expect(findPages("platform", "change the referral commission", PAGES_WORDS.nb)[0]?.id).toBe("referrals");
+    expect(findPages("store", "where is my referral link", PAGES_WORDS.nb, { owner: true }).map((p) => p.id)).toContain("account.referrals");
   });
 });

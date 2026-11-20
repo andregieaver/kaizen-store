@@ -22,6 +22,7 @@ import {
   type WorkStore,
 } from "./work-owner";
 import { workOverview, type OverviewEntry, type OverviewInvoice } from "./work-overview";
+import { workEn } from "./admin-messages/work.en";
 import type { PeriodReport, ReportRow } from "./work-reports";
 
 const TODAY = "2026-09-29";
@@ -74,7 +75,7 @@ function part(s: WorkStore, invoices: OverviewInvoice[], entries: OverviewEntry[
     store: s,
     today: TODAY,
     clientCount,
-    overview: workOverview({ today: TODAY, now: NOW, invoices, entries, timers: [], base, label: s.name }),
+    overview: workOverview({ words: workEn.attention, today: TODAY, now: NOW, invoices, entries, timers: [], base, label: s.name }),
   };
 }
 

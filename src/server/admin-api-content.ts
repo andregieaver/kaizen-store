@@ -33,7 +33,7 @@ import {
 import { listStoreMenus } from "./menus";
 import { getPageForEdit, listPages, savePage } from "./pages";
 import { readPriceDisplay } from "./price-display";
-import { experimentsEn } from "@/lib/admin-messages/experiments.en";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 import { experimentCard } from "@/lib/experiment-card";
 import { getExperiment, type ExperimentInfo } from "./experiment-admin";
 import { listedTests } from "./experiment-list";
@@ -422,7 +422,7 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       });
     }
     case "experiments.list": {
-      const tests = await listedTests(store, { words: experimentsEn, numberLocale: "en-GB" });
+      const tests = await listedTests(store, { words: EXPERIMENTS_WORDS.en, numberLocale: "en-GB" });
       return ok(route.name, { data: tests.map((t) => experimentOut(t, t.card)) });
     }
     case "experiments.get": {

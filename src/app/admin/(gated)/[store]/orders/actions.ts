@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { orderEn } from "@/lib/admin-messages/order.en";
 import { putBackChoice } from "@/lib/inventory-admin";
 import { parseAmount } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
@@ -71,7 +70,7 @@ export async function sendOrderAction(
 ): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.send", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const input = z
@@ -175,7 +174,7 @@ export async function refundOrderAction(
 ): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.refund", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const typed = String(form.get("amount") ?? "").trim();
@@ -219,7 +218,7 @@ export async function cancelOrderAction(
 ): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.cancel", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const reason = String(form.get("reason") ?? "").trim().slice(0, 500) || "Cancelled by the store";
@@ -240,7 +239,7 @@ export async function markBalancePaidAction(
 ): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.balance_paid", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const method = VENUE_METHODS.find((m) => m === form.get("method")) ?? "other";
@@ -261,7 +260,7 @@ export async function recordTermsPaidAction(
 ): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.terms_paid", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const text = (name: string) => String(form.get(name) ?? "").trim();
@@ -298,7 +297,7 @@ export async function updateContactAction(
 ): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.contact", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const field = (name: string, max = 200) => String(form.get(name) ?? "").trim().slice(0, max);
@@ -329,7 +328,7 @@ export async function addNoteAction(
 ): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.note", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const note = String(form.get("note") ?? "").trim().slice(0, 2000);
@@ -344,7 +343,7 @@ export async function addNoteAction(
 export async function resendConfirmationAction(storeSlug: string, orderId: string): Promise<OrderActionState> {
   return storeAction({ store: storeSlug, key: "orders:write", action: "order.resend_confirmation", answer: failed }, async (member) => {
     const found = await orderOf(member, orderId);
-    if (!found) return failed(orderEn.messages.gone);
+    if (!found) return failed(ORDER_WORDS.en.messages.gone);
     const { w } = found;
     if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
     const outcome = await sendOrderConfirmation(found.member.store.id, orderId, { resend: true });

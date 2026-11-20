@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
@@ -196,23 +197,23 @@ describe("blocking a referrer", () => {
 
 describe("the order page's parts", () => {
   it("shows the welcome discount among the totals, nothing without one", () => {
-    expect(html(createElement(ReferralDiscountRow, { minor: 4_980, currency: "NOK", locale: "en-GB" }))).toContain("Welcome discount (referral)");
-    expect(html(createElement(ReferralDiscountRow, { minor: 4_980, currency: "NOK", locale: "en-GB" }))).toContain("−NOK 49.80");
-    expect(html(createElement(ReferralDiscountRow, { minor: 0, currency: "NOK", locale: "en-GB" }))).toBe("");
+    expect(html(createElement(ReferralDiscountRow, { minor: 4_980, currency: "NOK", locale: "en-GB", words: orderEn.referral }))).toContain("Welcome discount (referral)");
+    expect(html(createElement(ReferralDiscountRow, { minor: 4_980, currency: "NOK", locale: "en-GB", words: orderEn.referral }))).toContain("−NOK 49.80");
+    expect(html(createElement(ReferralDiscountRow, { minor: 0, currency: "NOK", locale: "en-GB", words: orderEn.referral }))).toBe("");
   });
 
   it("says whose friend the order is, the status and what each got; nothing for an order no link led to", () => {
-    const out = html(createElement(OrderAttributionCard, { attribution: attribution(), storeSlug: "kaffe", locale: "en-GB" }));
+    const out = html(createElement(OrderAttributionCard, { attribution: attribution(), storeSlug: "kaffe", locale: "en-GB", words: orderEn.referral }));
     expect(out).toContain("Referral");
     expect(out).toContain("Lisa Listed");
     expect(out).toContain('href="/admin/kaffe/customers/c1"');
     expect(out).toContain("abcdef23");
     expect(out).toContain("NOK 10.00");
     expect(out).toContain("NOK 5.00");
-    const rejected = html(createElement(OrderAttributionCard, { attribution: attribution({ status: "rejected", reason: "not_new", rewardMinor: 0, discountMinor: 0 }), storeSlug: "kaffe", locale: "en-GB" }));
+    const rejected = html(createElement(OrderAttributionCard, { attribution: attribution({ status: "rejected", reason: "not_new", rewardMinor: 0, discountMinor: 0 }), storeSlug: "kaffe", locale: "en-GB", words: orderEn.referral }));
     expect(rejected).toContain("No reward: The friend had ordered before");
     expect(rejected).toContain("None");
-    expect(html(createElement(OrderAttributionCard, { attribution: null, storeSlug: "kaffe", locale: "en-GB" }))).toBe("");
+    expect(html(createElement(OrderAttributionCard, { attribution: null, storeSlug: "kaffe", locale: "en-GB", words: orderEn.referral }))).toBe("");
   });
 });
 

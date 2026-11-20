@@ -1,5 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { EVIDENCE_FIELDS, fieldMax, keyFields, SHORT_FIELDS, type Evidence, type EvidenceField } from "@/lib/dispute-evidence";
 
 const input = "w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
@@ -13,12 +13,12 @@ export function DisputeEvidenceForm({
   fields,
   reason,
   action,
-  words = orderEn.dispute,
+  words,
 }: {
   fields: Evidence;
   reason: string | null;
   action: ((state: FormState, form: FormData) => Promise<FormState>) | null;
-  words?: OrderMessages["dispute"];
+  words: OrderMessages["dispute"];
 }) {
   const first = keyFields(reason);
   const rest = EVIDENCE_FIELDS.filter((f) => !first.includes(f));

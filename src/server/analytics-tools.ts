@@ -7,7 +7,7 @@ import { costModeOf, ESTIMATE_MIN_COVERAGE, estimateText, formatKpi, kpiChange, 
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import { metricsToFix, MIN_SPEED_SAMPLES, SPEED_DAYS, speedValueText } from "@/lib/speed";
-import { analyticsEn } from "@/lib/admin-messages/analytics.en";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
 
 import { alertsForStore, diagnosisFor } from "./analytics-insights";
 import { speedReport } from "./analytics-speed";
@@ -144,7 +144,7 @@ export async function analyticsAlertsTool({ store }: Ctx) {
  */
 export async function speedReportTool({ store }: Ctx) {
   const r = await speedReport(store);
-  const w = analyticsEn.speed;
+  const w = ANALYTICS_WORDS.en.speed;
   const locale = store.markets[0]?.locale ?? "en";
   return {
     measuring: r.collecting ? "Speed is measured while the store counts visits." : w.off,

@@ -1,5 +1,5 @@
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import type { OrdersMessages } from "@/lib/admin-messages/orders.en";
 import type { PickList } from "@/lib/pick-list";
 
 /**
@@ -8,7 +8,7 @@ import type { PickList } from "@/lib/pick-list";
  * price, name or address (the data has none), so nothing of the kind can be printed. Orders that cannot be picked are listed with the reason, and an order whose change
  * waits for the customer's payment is picked as it stands, with a warning. A staff document, in the account's language (D312 A4).
  */
-export function PickListView({ list, words: w = ordersEn.pick }: { list: PickList; words?: OrdersMessages["pick"] }) {
+export function PickListView({ list, words: w }: { list: PickList; words: OrdersMessages["pick"] }) {
   return (
     <article aria-label={w.title} className="flex flex-col gap-4 bg-white p-6 text-black print:p-0">
       <header className="flex flex-wrap items-baseline justify-between gap-2">

@@ -2,6 +2,8 @@
  * The owner's words for heatmaps (D656, `docs/heatmaps-and-recordings.md` step 5): the switch on Analytics → Settings and what its action
  * answers. Server-only (`SERVER_AREAS`): the settings view is drawn on the server.
  */
+import { HEAT_BAND_EN, HEAT_FRONT_PAGE_EN, HEAT_PARTS_EN } from "../heat-labels";
+
 export const heatmapsEn = {
   title: "Heatmaps",
   description: "See where visitors click, how far down they scroll and what holds their attention, page by page and for each version of an A/B test.",
@@ -47,7 +49,7 @@ export const heatmapsEn = {
     turnOn: "Switch them on in Analytics settings",
     collecting: "Collecting. A page's map appears after {n} page views.",
     noneStuck: "No page has enough views yet to say where visitors get stuck.",
-    frontPage: "Front page",
+    frontPage: HEAT_FRONT_PAGE_EN,
     watch: "Watch recordings",
     phone: {
       lead: "Where visitors click, scroll and look, page by page.",
@@ -87,7 +89,7 @@ export const heatmapsEn = {
     lookTitle: "Where people look most",
     colBand: "Part of the page",
     colTime: "Time per view",
-    band: "{from}–{to} % down",
+    band: HEAT_BAND_EN,
     seconds: "{s} s",
     more: "More",
     newPicture: "Take a new picture",
@@ -95,13 +97,7 @@ export const heatmapsEn = {
     notOnPicture: "{n} clicks were on parts that are not in this picture.",
     pictureFrom: "Picture taken {date}.",
     figuresFrom: "Figures from {from} to {to}.",
-    parts: {
-      header: "Header",
-      footer: "Footer",
-      elsewhere: "Elsewhere on the page",
-      card: "Product card {n}",
-      part: "A part {p} % down the page",
-    },
+    parts: { ...HEAT_PARTS_EN },
     pictureAlt: "The page as visitors see it, with the heatmap over it",
     colChange: "Change it",
     editPart: "Edit this part",

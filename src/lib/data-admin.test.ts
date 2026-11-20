@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { commonEn } from "./admin-messages/common.en";
 import { COMPARE_AT_NOTE, IMPORT_CONFIRMATION } from "./data-admin-labels";
 import {
   NO_CONSENT_NOTE,
@@ -53,11 +54,11 @@ describe("sizes and times", () => {
   });
   it("says how long a file is kept", () => {
     const now = new Date("2026-10-05T12:00:00Z");
-    expect(expiryWords("2026-10-12T12:00:00Z", now)).toBe("expires in 7 days");
-    expect(expiryWords("2026-10-06T12:00:00Z", now)).toBe("expires in 1 day");
-    expect(expiryWords("2026-10-05T15:00:00Z", now)).toBe("expires in 3 hours");
-    expect(expiryWords("2026-10-05T11:00:00Z", now)).toBe("expired");
-    expect(expiryWords(null, now)).toBe("");
+    expect(expiryWords("2026-10-12T12:00:00Z", now, commonEn.dataJobs)).toBe("expires in 7 days");
+    expect(expiryWords("2026-10-06T12:00:00Z", now, commonEn.dataJobs)).toBe("expires in 1 day");
+    expect(expiryWords("2026-10-05T15:00:00Z", now, commonEn.dataJobs)).toBe("expires in 3 hours");
+    expect(expiryWords("2026-10-05T11:00:00Z", now, commonEn.dataJobs)).toBe("expired");
+    expect(expiryWords(null, now, commonEn.dataJobs)).toBe("");
   });
 });
 
@@ -68,10 +69,10 @@ describe("a job's counts", () => {
     expect(appliedCountsOfJob({ created: 4, failed: 1, pricesChanged: 9 })).toMatchObject({ created: 4, failed: 1, pricesChanged: 9, updated: 0, termsCreated: 0 });
   });
   it("words progress", () => {
-    expect(doneOfTotal(120, 400, "rows")).toBe("120 of 400 rows");
-    expect(doneOfTotal(null, 400, "rows")).toBe("0 of 400 rows");
-    expect(doneOfTotal(5, null, "rows")).toBe("5 rows");
-    expect(doneOfTotal(null, null, "rows")).toBe("");
+    expect(doneOfTotal(120, 400, "rows", commonEn.dataJobs)).toBe("120 of 400 rows");
+    expect(doneOfTotal(null, 400, "rows", commonEn.dataJobs)).toBe("0 of 400 rows");
+    expect(doneOfTotal(5, null, "rows", commonEn.dataJobs)).toBe("5 rows");
+    expect(doneOfTotal(null, null, "rows", commonEn.dataJobs)).toBe("");
   });
 });
 
@@ -85,13 +86,13 @@ describe("where an import is", () => {
     expect(JOB_STATUSES.filter(isWorking)).toEqual(["checking", "queued", "running"]);
   });
   it("words the work", () => {
-    expect(workingWords("product_import", "checking", "check")).toBe("Checking the file");
-    expect(workingWords("product_import", "running", "apply")).toBe("Saving products");
-    expect(workingWords("redirect_import", "checking", "check")).toBe("Checking the file");
-    expect(workingWords("redirect_import", "running", "apply")).toBe("Saving redirects");
-    expect(workingWords("order_export", "queued", null)).toBe("Waiting to start");
-    expect(workingWords("order_export", "running", "write")).toBe("Preparing your file");
-    expect(workingWords("customer_export", "running", "assemble")).toBe("Putting the file together");
+    expect(workingWords("product_import", "checking", "check", commonEn.dataJobs)).toBe("Checking the file");
+    expect(workingWords("product_import", "running", "apply", commonEn.dataJobs)).toBe("Saving products");
+    expect(workingWords("redirect_import", "checking", "check", commonEn.dataJobs)).toBe("Checking the file");
+    expect(workingWords("redirect_import", "running", "apply", commonEn.dataJobs)).toBe("Saving redirects");
+    expect(workingWords("order_export", "queued", null, commonEn.dataJobs)).toBe("Waiting to start");
+    expect(workingWords("order_export", "running", "write", commonEn.dataJobs)).toBe("Preparing your file");
+    expect(workingWords("customer_export", "running", "assemble", commonEn.dataJobs)).toBe("Putting the file together");
   });
   it("knows the export pages", () => {
     expect(exportPath("product_export")).toBe("/products/export");

@@ -2,7 +2,7 @@ import { timeAmountMinor, type BillingType } from "./work-calc";
 import { addCalendarDays, daysBetween, dueState, monthOf, type Day } from "./work-dates";
 import { formatDuration, invoiceableMinutes } from "./work-time";
 import { fillWords } from "./admin-fill";
-import { workEn, type WorkMessages } from "./admin-messages/work.en";
+import type { WorkMessages } from "./admin-messages/work.en";
 
 /**
  * The Work overview (docs/work.md 6.5): what is unbilled, what is drafted, what
@@ -133,10 +133,10 @@ export function workOverview(args: {
   balances?: readonly OverviewBalance[];
   base: string;
   label?: string;
-  /** The attention items' words (the `work` catalogue's `attention`); English when none are given. */
-  words?: WorkMessages["attention"];
+  /** The attention items' words (the `work` catalogue's `attention`). */
+  words: WorkMessages["attention"];
 }): WorkOverview {
-  const w = args.words ?? workEn.attention;
+  const w = args.words;
   const { today } = args;
   const perCurrency = new Map<string, CurrencyFigures>();
   const figures = (currency: string): CurrencyFigures => {
