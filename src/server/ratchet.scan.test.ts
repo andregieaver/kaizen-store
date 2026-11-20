@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_KIT, adminSources, ANSWERING_FORMS, ANY_SUPPRESSED, CONFIRM_CALL, DIRECT_LINK, handMadePills, OSLO_ZONE, RAW_FIELD, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, rawActionForms, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ADMIN_KIT, adminSources, ANSWERING_FORMS, ANY_SUPPRESSED, CONFIRM_CALL, DIRECT_LINK, EMPTY_LINE, handMadeEmptyBlocks, handMadePills, OSLO_ZONE, RAW_FIELD, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, rawActionForms, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import { selectsDocument } from "./page-documents-test-support";
 import baseline from "./ratchet.baseline.json";
 
@@ -52,6 +52,20 @@ const FILE_FIX: Record<string, string> = {
   pillLinks: "a link that is a button is ButtonLink (or buttonClass()), a state is a Chip, from src/components/admin/ui",
   rawActionForms:
     "a form bound to a server action is ActionForm (it says Saved, or each problem under its field) or QuietActionForm (it answers by what it does), from src/components/admin; a form to an address says its method",
+  emptyBlocks:
+    "an empty list or screen is EmptyState from src/components/admin/ui (a title, a line on what it is for, one next step; Clear filters when a search or filter matched nothing), compact in a panel or a dialog",
+  emptyLines: "a word of nothing alone in a bare <p> or <div>: draw it with EmptyState (compact in a panel or a dialog) from src/components/admin/ui",
+};
+
+/**
+ * The hand-written empty blocks kept (code review step 2.9, D845), each with why: places a person drops or opens something, whose words are
+ * already their next step. Every other "nothing here" box in the admin is the kit's `EmptyState`.
+ */
+const KEPT_EMPTY_BLOCKS: Record<string, string> = {
+  "src/components/admin/page-builder.tsx":
+    "the canvas's foot and an empty column are drop targets of the drag and drop (their frame lights up under a dragged block), and their words are the next step: Start from a layout, Drag a block here or add text",
+  "src/components/admin/dual-page-editor.tsx":
+    "an empty half of the two-page editor is where a page is opened: a heading and three ways in (open, create, mirror the other half), its frame the size of the half (data-dual-empty)",
 };
 
 /** Why the job it does keeps its own form (it answers by itself). */
@@ -150,6 +164,14 @@ describe("the ratchet (code review 1.2)", () => {
     expect(Object.keys(KEPT_ACTION_FORMS).filter((file) => !kept.includes(file)), "its forms moved onto ActionForm or QuietActionForm: take its line out").toEqual([]);
     // The two forms are where an action is bound to a <form>: the count sees theirs, and leaves them out.
     for (const file of ANSWERING_FORMS) expect(rawActionForms(readFileSync(join(process.cwd(), file), "utf8")), file).toBe(1);
+  });
+
+  it("draws every empty list and screen with the kit's EmptyState: a hand-written empty block is kept only where named with why (code review 2.9, D845)", () => {
+    const kept = Object.keys(now.adminFiles.emptyBlocks).sort();
+    expect(kept.filter((file) => !(file in KEPT_EMPTY_BLOCKS)).map((file) => `${file}: ${now.adminFiles.emptyBlocks[file]} hand-written empty blocks. ${FILE_FIX.emptyBlocks}`)).toEqual([]);
+    expect(Object.keys(KEPT_EMPTY_BLOCKS).filter((file) => !kept.includes(file)), "it no longer draws an empty block by hand: take its line out").toEqual([]);
+    // The kit's own file is where the box is drawn once, and is never in the list.
+    expect(Object.keys(now.adminFiles.emptyBlocks).filter((file) => file.startsWith(ADMIN_KIT))).toEqual([]);
   });
 
   it("counts the repeats in every admin page and part: the store's, the platform's and the owner's level (code review 1.12)", () => {
@@ -262,6 +284,22 @@ describe("the ratchet (code review 1.2)", () => {
     expect(rawActionForms('<form action={(form) => start(async () => { if (a > b) await make(form); })} aria-busy={pending}>')).toBe(1);
     expect(rawActionForms('<form action="/admin/x"> <form action={`${base}/orders`}> <form method="get" action={base}> <form method="post" action={exportHref}>')).toBe(0);
     expect(rawActionForms('<form onSubmit={submit}> <formset /> <QuietActionForm action={removeAction}> <ActionForm action={saveAction}>')).toBe(0);
+    // A hand-written empty block (step 2.9): a centred box with room, a thin dashed box with muted words, a card that only says nothing.
+    expect(handMadeEmptyBlocks("<p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>\n  {w.none}\n</p>")).toBe(1);
+    expect(handMadeEmptyBlocks('<div className="rounded-panel border border-dashed border-line px-4 py-5 text-sm text-muted">{w.notCounting}</div>')).toBe(1);
+    expect(handMadeEmptyBlocks('<p className="rounded-panel border border-line bg-card p-4 text-sm">{q ? w.noMatch : w.none}</p> <p className={`${card} text-sm`}>{w.nothingYet}</p>')).toBe(2);
+    // The kit's box is the look the scan finds when written out by hand.
+    expect(handMadeEmptyBlocks('<div className="flex flex-col items-center gap-2 rounded-panel border border-dashed border-line px-4 py-8 text-center">')).toBe(1);
+    expect(handMadeEmptyBlocks('<li className="rounded-md border border-dashed border-line p-4 text-sm text-muted">{w.noLines}</li>')).toBe(1);
+    // Not one: the kit's part, an alert, a chart's picture, a picture's frame, a drop zone, a card with more than a word, a table cell's centring.
+    expect(handMadeEmptyBlocks('<EmptyState title={w.none} /> <p role="alert" className="rounded-md border border-dashed p-6 text-center text-sm">{error}</p>')).toBe(0);
+    expect(handMadeEmptyBlocks('<div role="img" aria-label={label} className="rounded-panel border border-dashed px-4 py-8 text-center text-sm text-muted">{text}</div>')).toBe(0);
+    expect(handMadeEmptyBlocks('<div className="flex h-40 items-center justify-center rounded-md border border-dashed bg-surface text-sm text-muted">{w.none}</div>')).toBe(0);
+    expect(handMadeEmptyBlocks('<div className="rounded-lg border-2 border-dashed p-3 text-sm text-muted">{w.drop}</div> <td className="px-3 py-2 text-center">x</td>')).toBe(0);
+    expect(handMadeEmptyBlocks('<p className="rounded-panel bg-sunken p-3 text-sm">{w.permanent}</p> <p className={`p-4 ${CARD_CLASS}`}>{w.none} <a href="/x">Add</a></p>')).toBe(0);
+    // A word of nothing alone in a bare line (only falls).
+    expect(n('<p className="text-sm text-muted">{w.none}</p> <div>{filtered ? w.noMatch : w.emptyList}</div>', EMPTY_LINE)).toBe(2);
+    expect(n('<p className="text-sm">{w.intro}</p> <EmptyState title={w.none} /> <span>{w.none}</span>', EMPTY_LINE)).toBe(0);
     const tables = new Set(["media", "experiments"]);
     expect(unscopedWrites("sql`delete from commerce.media where id = ${id}::uuid`", tables)).toBe(1);
     expect(unscopedWrites("sql`update commerce.experiments e set status = 'done' where e.id = ${id}::uuid`", tables)).toBe(1);

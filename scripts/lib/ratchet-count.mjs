@@ -9,6 +9,8 @@
 // `PolicyLink` or `AdminLink`, so only the wrappers in `LINK_WRAPPERS` import it, and the files that still do only fall.
 // Two lists by file (code review step 1.12, D818, `adminFiles`): the admin's field boxes and pill links written out by hand, in place of the kit.
 // A third (code review step 1.15, D829, `adminFiles.rawActionForms`): forms bound to an action by hand, in place of ActionForm or QuietActionForm.
+// Two more (code review step 2.9, D845): `adminFiles.emptyBlocks`, a "nothing here" box drawn by hand in place of the kit's EmptyState (none
+// but the ones the test names with why), and `adminFiles.emptyLines`, a word of nothing alone in a bare `<p>` or `<div>` (only falls).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -183,7 +185,58 @@ export function rawActionForms(text) {
   return n;
 }
 
-/** The admin's hand-made field boxes, pill links and action forms, by file (only files that have one), the kit aside (code review steps 1.12 and 1.15). */
+/** A word that says there is nothing (code review step 2.9): `none`, `empty`, `nothing`, `noMatch` and their kin (`noneYet`, `nothingSaved`, `emptyText`). */
+const NOTHING_WORD = String.raw`\b(?:none|empty|nothing|noMatch(?:es)?|noResults|noRules|noArchived)\w*\b`;
+const EMPTY_OPEN = /<(?:p|div|li)(?=[\s>])/g;
+const CLASS_VALUE = /\sclassName=(\{`[\s\S]*?`\}|"[^"]*"|\{[\s\S]*?\})/;
+const CENTRED = /\btext-center\b/;
+/** Padding of 6 or more on every side or top and bottom (`p-8`, `py-6`, `max-sm:p-6`): a box with room around one line. */
+const ROOMY = /(?<![\w-])(?:p|py)-(?:6|8|10|12|16)\b/;
+const SOME_ROOM = /(?<![\w-])(?:p|py)-(?:4|5|6|8|10|12|16)\b/;
+/** A one-pixel dashed edge: the kit's empty box. A two-pixel one (`border-2 border-dashed`) is a place to drop something. */
+const THIN_DASHED = /(?<![\w:-])border-dashed\b/;
+const THICK_EDGE = /(?<![\w:-])border-2\b/;
+const MUTED = /\btext-muted\b/;
+/** A card or panel: `CARD_CLASS`, a page's own `card`, or a rounded box. */
+const BOX = /\bCARD_CLASS\b|\$\{card\}|\brounded-(?:panel|card|md|lg)\b/;
+/** A frame of a set size (`h-24`, `aspect-…`): the place of a picture or a preview, which says what is not there yet. */
+const FRAME = /(?<![\w:-])(?:h-\d+|aspect-\S+)/;
+const ONLY_NOTHING = new RegExp(String.raw`^\s*\{[^{}]*` + NOTHING_WORD + String.raw`[^{}]*\}\s*</(?:p|div|li)>`);
+/** A box that says something is wrong (`role="alert"`) or is a chart's picture (`role="img"`) is not an empty list. */
+const NOT_EMPTY = /\srole=["'](?:alert|img)["']/;
+
+/**
+ * Hand-written empty blocks in `text` (code review step 2.9, D845, finding FS8): a `<p>`, `<div>` or `<li>` drawn as a box that says there is
+ * nothing here, in place of the kit's `EmptyState` (title, a line, one next step). Three shapes: a centred box with room (`text-center` and
+ * `p-6`, `p-8`, `py-6` or more: the old `p-8 text-center` paragraph); a one-pixel dashed box with muted words and some room or centred (the
+ * kit's look drawn by hand); and a card or panel (`CARD_CLASS`, `card`, a rounded box with padding) whose only content is a word of nothing
+ * (`{w.none}`, `{q ? w.noMatch : w.empty}`). Not counted: an alert or a chart's picture (`role`), and a frame of a set size that holds the
+ * place of a picture (`h-24`, `aspect-…`).
+ */
+export function handMadeEmptyBlocks(text) {
+  let n = 0;
+  for (const m of text.matchAll(EMPTY_OPEN)) {
+    const tag = openingTag(text, m.index);
+    if (NOT_EMPTY.test(tag)) continue;
+    const cls = tag.match(CLASS_VALUE)?.[1];
+    if (!cls) continue;
+    const centred = CENTRED.test(cls) && ROOMY.test(cls);
+    const dashed = THIN_DASHED.test(cls) && !THICK_EDGE.test(cls) && MUTED.test(cls) && (SOME_ROOM.test(cls) || CENTRED.test(cls));
+    const boxed =
+      BOX.test(cls) && (SOME_ROOM.test(cls) || /\bCARD_CLASS\b|\$\{card\}/.test(cls)) && !FRAME.test(cls) && ONLY_NOTHING.test(text.slice(m.index + tag.length, m.index + tag.length + 300));
+    if (centred || dashed || boxed) n++;
+  }
+  return n;
+}
+
+/**
+ * A word of nothing alone in a bare `<p>` or `<div>` (code review step 2.9, D845): `<p className="text-sm text-muted">{w.none}</p>`. An
+ * empty list or screen is `EmptyState`, a panel's or a dialog's `EmptyState compact`; the lines left are counted per file and only fall,
+ * moving onto the kit as their screens are touched.
+ */
+export const EMPTY_LINE = new RegExp(String.raw`<(?:p|div)\b[^>]*>\s*\{[^{}]*` + NOTHING_WORD + String.raw`[^{}]*\}\s*</(?:p|div)>`, "g");
+
+/** The admin's hand-made field boxes, pill links, action forms and empty blocks and lines, by file (only files that have one), the kit aside (code review steps 1.12, 1.15 and 2.9). */
 export function adminFiles(root) {
   /** @type {Record<string, number>} */
   const rawFields = {};
@@ -191,6 +244,10 @@ export function adminFiles(root) {
   const pillLinks = {};
   /** @type {Record<string, number>} */
   const actionForms = {};
+  /** @type {Record<string, number>} */
+  const emptyBlocks = {};
+  /** @type {Record<string, number>} */
+  const emptyLines = {};
   for (const file of adminSources(root).sort()) {
     if (file.startsWith(ADMIN_KIT)) continue;
     const text = readFileSync(path.join(root, file), "utf8");
@@ -201,8 +258,12 @@ export function adminFiles(root) {
     if (pills > 0) pillLinks[file] = pills;
     const forms = ANSWERING_FORMS.includes(file) ? 0 : rawActionForms(text);
     if (forms > 0) actionForms[file] = forms;
+    const blocks = handMadeEmptyBlocks(text);
+    if (blocks > 0) emptyBlocks[file] = blocks;
+    const lines = count(text, EMPTY_LINE);
+    if (lines > 0) emptyLines[file] = lines;
   }
-  return { rawFields, pillLinks, rawActionForms: actionForms };
+  return { rawFields, pillLinks, rawActionForms: actionForms, emptyBlocks, emptyLines };
 }
 
 /** The counts as they stand: untyped reads, writes by id alone, `store_id is not distinct from` uses and direct imports of `next/link`, by file (only files that have one), and the totals. */
