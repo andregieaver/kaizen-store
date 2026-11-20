@@ -15,7 +15,8 @@ import { broadcastBlockSchema, suggestionBlocks } from "@/lib/broadcasts";
 import { flowAudience } from "@/lib/flow-audience";
 import { marketingProblem } from "@/lib/marketing-words";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
-import { suggestBroadcast } from "@/server/broadcasts";
+import { suggestBroadcast, suggestSubjects } from "@/server/broadcasts";
+import { checkPermission } from "@/server/permissions";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { adminLangOf } from "@/lib/admin-lang";
 import { getAutomation } from "@/server/automations";
@@ -263,4 +264,21 @@ export async function writeFlowEmailAction(storeSlug: string, flowId: string, st
     const blocks = suggestionBlocks(step.picks ? { ...s, products: [] } : s);
     return withLanguageContent(flow.steps, stepId, locale, { subject: s.subject, preview: s.preview, blocks });
   });
+}
+
+/**
+ * Subject lines to choose from for an email (email plan M3.7), from its words in one language and who it reaches: nothing is saved; the
+ * owner presses one to make it the subject (`changeFlowBlockAction()`).
+ */
+export async function suggestFlowSubjectsAction(storeSlug: string, flowId: string, stepId: string, locale: string): Promise<{ ok: true; subjects: string[] } | { ok: false; problem: string }> {
+  const member = await checkPermission(storeSlug, "marketing:write", "email_automation");
+  if (!member) return { ok: false, problem: FLOWS_WORDS.en.problems.missing };
+  const problems = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].problems;
+  const flow = await getFlow(member.store.id, flowId);
+  const step = flow ? findStep(flow.steps, stepId) : null;
+  const content = step?.kind === "email" && typeof locale === "string" ? step.content[locale] : undefined;
+  if (!flow || !content) return { ok: false, problem: FLOWS_WORDS[adminLangOf(member.account.adminLocale)].problems.step };
+  const words = content.blocks.flatMap((b) => ("text" in b && typeof b.text === "string" ? [b.text] : "label" in b && b.label ? [b.label] : []));
+  const result = await suggestSubjects(member.store, member.account.id, { subject: content.subject, words }, locale, flowAudience(flow.steps, stepId, flow.trigger, flow.triggerDays));
+  return result.ok ? result : { ok: false, problem: marketingProblem(result.problem, problems) };
 }

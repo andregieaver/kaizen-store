@@ -29,6 +29,7 @@ import {
   changeFlowBlocksAction,
   startFlowLanguageAction,
   writeFlowEmailAction,
+  suggestFlowSubjectsAction,
   changeFlowLapseAction,
   changeFlowPicksAction,
   changeFlowTriggerAction,
@@ -384,6 +385,17 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
         <div>
           <span className="text-caption text-muted">{w.subject}</span>
           {editable(-1, c.subject, w.subject, "text-body-strong text-ink", false)}
+          <SubjectChoices
+            w={w}
+            busy={busy}
+            suggest={() => suggestFlowSubjectsAction(p.storeSlug, p.flowId, step.id, locale)}
+            onPick={(subject) =>
+              start(async () => {
+                const result = await changeFlowBlockAction(p.storeSlug, p.flowId, step.id, locale, -1, subject);
+                setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
+              })
+            }
+          />
         </div>
         <hr className="border-line" />
         {between(0)}
@@ -720,5 +732,64 @@ function WriteWithAi({ w, busy, onWrite }: { w: FlowsMessages; busy: boolean; on
         </button>
       </div>
     </details>
+  );
+}
+
+/** Subject lines to choose from (email plan M3.7): the store's writer offers three from the email's words; one press makes one the subject. */
+function SubjectChoices({
+  w,
+  busy,
+  suggest,
+  onPick,
+}: {
+  w: FlowsMessages;
+  busy: boolean;
+  suggest: () => Promise<{ ok: true; subjects: string[] } | { ok: false; problem: string }>;
+  onPick: (subject: string) => void;
+}) {
+  const [subjects, setSubjects] = useState<string[] | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [asking, start] = useTransition();
+  return (
+    <div className="mt-1 flex flex-col gap-1" data-subject-choices>
+      <button
+        type="button"
+        disabled={busy || asking}
+        onClick={() =>
+          start(async () => {
+            setProblem(null);
+            const result = await suggest();
+            if (result.ok) setSubjects(result.subjects);
+            else setProblem(result.problem);
+          })
+        }
+        className="self-start text-caption text-ink-2 underline underline-offset-2 hover:text-ink"
+      >
+        {asking ? w.inPlace.subjects.asking : w.inPlace.subjects.ask}
+      </button>
+      {problem && (
+        <p role="alert" className="text-caption text-danger-text">
+          {problem}
+        </p>
+      )}
+      {subjects && (
+        <div role="group" aria-label={w.inPlace.subjects.choose} className="flex flex-col gap-1">
+          {subjects.map((subject) => (
+            <button
+              key={subject}
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                onPick(subject);
+                setSubjects(null);
+              }}
+              className="rounded border border-line bg-card px-2 py-1 text-left text-sm text-ink hover:border-ink"
+            >
+              {subject}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
