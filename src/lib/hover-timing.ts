@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * How hover changes play out (D206): how long a colour, shadow or movement takes to change while the pointer comes and
  * goes, and its easing, chosen from a closed list (never owner text as CSS). The theme sets them for the whole site
@@ -36,14 +34,6 @@ export const HOVER_DURATION_MAX = 2000;
 
 export type HoverTiming = { duration?: number; ease?: HoverEase };
 
-export const hoverTimingSchema = z
-  .object({
-    duration: z.number().int().min(0).max(HOVER_DURATION_MAX, `A hover takes at most ${HOVER_DURATION_MAX / 1000} seconds.`).optional(),
-    ease: z.enum(HOVER_EASE_IDS).optional(),
-  })
-  .optional()
-  .transform((timing) => (timing && (timing.duration !== undefined || timing.ease) ? timing : undefined));
-
 /** The custom properties a timing sets, for a style or a theme's CSS; none for what is not set. */
 export function hoverTimingVars(timing: HoverTiming | undefined): Record<string, string> {
   if (!timing) return {};
@@ -78,10 +68,3 @@ export const BUTTON_HOVER_IDS = Object.keys(BUTTON_HOVERS) as [ButtonHover, ...B
 
 /** The theme's hover settings: the site-wide timing and the buttons' default answer. */
 export type ThemeHover = HoverTiming & { button?: ButtonHover };
-export const themeHoverSchema = z
-  .object({
-    duration: z.number().int().min(0).max(HOVER_DURATION_MAX).optional(),
-    ease: z.enum(HOVER_EASE_IDS).optional(),
-    button: z.enum(BUTTON_HOVER_IDS).optional(),
-  })
-  .optional();

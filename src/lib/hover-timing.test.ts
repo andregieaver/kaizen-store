@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import { BrandsView } from "@/components/brands-view";
 import { PageBlockView } from "@/components/page-block";
-import { hoverTimingSchema, hoverTimingVars, themeHoverSchema } from "./hover-timing";
+import { hoverTimingVars } from "./hover-timing";
+import { hoverTimingSchema, themeHoverSchema } from "./hover-timing-schema";
 import { partFx } from "./motion-attrs";
 import { partMotionSchema } from "./motion-schema";
 import { setHoverTime } from "./motion-edit";

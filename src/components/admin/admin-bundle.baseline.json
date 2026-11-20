@@ -41,7 +41,6 @@
     "components/admin/generated-codes.tsx",
     "components/admin/gradient-fields.tsx",
     "components/admin/header-stage-fields.tsx",
-    "components/admin/hover-fields.tsx",
     "components/admin/image-size-fields.tsx",
     "components/admin/inventory/inventory-table.tsx",
     "components/admin/inventory/locations-view.tsx",

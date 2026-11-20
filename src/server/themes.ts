@@ -9,7 +9,7 @@ import { THEME_TEMPLATE_KEYS, withThemeTab, type StoreTheme, type ThemeSettings,
 import { storeThemeInput, themeSettingsSchema } from "@/lib/theme-schema";
 import { colourLibrarySchema } from "@/lib/colour-library";
 import { sectionStylesSchema, themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
-import { themeHoverSchema } from "@/lib/hover-timing";
+import { themeHoverSchema } from "@/lib/hover-timing-schema";
 
 import { parseSiteFonts } from "@/lib/fonts-schema";
 

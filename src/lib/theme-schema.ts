@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { themeHoverSchema } from "./hover-timing";
+import { themeHoverSchema } from "./hover-timing-schema";
 import { breakpointsSchema } from "./breakpoints-schema";
 import { fontFamily } from "./fonts-schema";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./content-width";

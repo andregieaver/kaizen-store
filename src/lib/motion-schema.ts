@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { hoverTimingSchema } from "./hover-timing";
+import { hoverTimingSchema } from "./hover-timing-schema";
 import {
   BACKGROUND_IDS,
   DELAY_MAX,
