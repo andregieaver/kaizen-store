@@ -23,22 +23,18 @@ import {
   type InvoiceTotals,
 } from "@/lib/work-calc";
 import { isOverdue, daysOverdue, resolvePaymentDays, tentativeDueOn } from "@/lib/work-dates";
+import { addressText, MANUAL_PAYMENT_METHODS, MAX_INVOICE_LINES, type BillingAddress, type InvoiceLineInput } from "@/lib/work-input";
 import {
-  addressText,
   creditNoteInput,
   invoiceInput,
   issueInvoiceInput,
-  MANUAL_PAYMENT_METHODS,
-  MAX_INVOICE_LINES,
   recordElsewhereInput,
   markLostInput,
   recordPaymentInput,
   reverseLossInput,
   reversePaymentInput,
   invoiceDraftInput,
-  type BillingAddress,
-  type InvoiceLineInput,
-} from "@/lib/work-input";
+} from "@/lib/work-input-schema";
 import {
   creditNoteWording,
   defaultLatePaymentNote,

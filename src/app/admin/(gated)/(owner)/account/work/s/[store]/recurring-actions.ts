@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import type { z } from "zod";
 
-import type { recurringInvoiceInput } from "@/lib/work-input";
+import type { recurringInvoiceInput } from "@/lib/work-input-schema";
 import { audit, type Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { problem, type WorkResult } from "@/server/work-errors";

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, readDb, type Db } from "@/db/client";
 import { lineDescription } from "@/lib/work-calc";
 import { addCalendarDays, isDay, todayIn, type Day } from "@/lib/work-dates";
-import { recurringInvoiceInput } from "@/lib/work-input";
+import { recurringInvoiceInput } from "@/lib/work-input-schema";
 import {
   duePeriods,
   isOccurrenceDay,

@@ -13,14 +13,8 @@ import {
   type EstimateAlertSettings,
   type EstimateStage,
 } from "@/lib/work-estimate";
-import {
-  ASSIGNMENT_STATUSES,
-  assignmentInput,
-  clientInput,
-  taskInput,
-  type BillingAddress,
-  type ClientInput,
-} from "@/lib/work-input";
+import { ASSIGNMENT_STATUSES, type BillingAddress, type ClientInput } from "@/lib/work-input";
+import { assignmentInput, clientInput, taskInput } from "@/lib/work-input-schema";
 import { DEFAULT_PAYMENT_DAYS } from "@/lib/work-dates";
 import type { VatTreatment } from "@/lib/work-vat";
 

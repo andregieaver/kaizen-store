@@ -3,7 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { NUMBER_SERIES, numberSeriesInput, workSettingsInput, type WorkSettingsInput } from "@/lib/work-input";
+import { NUMBER_SERIES, type WorkSettingsInput } from "@/lib/work-input";
+import { numberSeriesInput, workSettingsInput } from "@/lib/work-input-schema";
 import {
   DEFAULT_WORK_SETTINGS,
   changedSettings,

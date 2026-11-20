@@ -22,7 +22,8 @@ import {
 } from "./work-calc";
 import { daysBetween, dueState, isDay, type Day } from "./work-dates";
 import { documentLanguage } from "./work-invoice-text";
-import { LINE_DESCRIPTION_MAX, NOTES_MAX, REFERENCE_MAX, invoiceInput } from "./work-input";
+import { LINE_DESCRIPTION_MAX, NOTES_MAX, REFERENCE_MAX } from "./work-input";
+import { invoiceInput } from "./work-input-schema";
 import { workBase } from "./work-paths";
 import { parseDuration } from "./work-time";
 import { alignCategory, priceInvoice, type VatContext, type VatLineCategory, type VatNoteKey } from "./work-vat";

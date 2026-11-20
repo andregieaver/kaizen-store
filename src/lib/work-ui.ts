@@ -3,14 +3,8 @@ import type { z } from "zod";
 import { minorToDecimal, parseMoneyText } from "./work-calc";
 import { isDay } from "./work-dates";
 import { estimateStage, remainingMinutes, type EstimateStage } from "./work-estimate";
-import {
-  assignmentInput,
-  clientInput,
-  taskInput,
-  timeEntryInput,
-  type AssignmentInput,
-  type ClientInput,
-} from "./work-input";
+import type { AssignmentInput, ClientInput } from "./work-input";
+import { assignmentInput, clientInput, taskInput, timeEntryInput } from "./work-input-schema";
 import {
   MAX_ENTRY_MINUTES,
   MAX_ESTIMATE_MINUTES,

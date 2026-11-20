@@ -2,7 +2,7 @@ import type { z } from "zod";
 
 import { parsePercentText } from "./work-calc";
 import { formatDay, type Day } from "./work-dates";
-import { recurringInvoiceInput } from "./work-input";
+import { recurringInvoiceInput } from "./work-input-schema";
 import { QUANTITY_MESSAGE, readQuantity } from "./work-invoice-ui";
 import { hasProblems, issuesToProblems, readMoney, readWhole, type FormProblems } from "./work-ui";
 import { nextOccurrences, type RecurrenceRule } from "./work-recurrence";

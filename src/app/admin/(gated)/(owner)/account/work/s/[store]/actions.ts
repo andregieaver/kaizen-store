@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 
-import type { assignmentInput, clientInput, taskInput, timeEntryInput, timeEntryNoteInput } from "@/lib/work-input";
+import type { assignmentInput, clientInput, taskInput, timeEntryInput, timeEntryNoteInput } from "@/lib/work-input-schema";
 import { requireAccount, type Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { lookupCompany, searchCompanies, type BrregLookup, type BrregSearch } from "@/server/brreg";

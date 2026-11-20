@@ -13,7 +13,7 @@ import {
   type EstimateAlertSettings,
   type EstimateStage,
 } from "@/lib/work-estimate";
-import { startTimerInput, timeEntryInput, timeEntryNoteInput } from "@/lib/work-input";
+import { startTimerInput, timeEntryInput, timeEntryNoteInput } from "@/lib/work-input-schema";
 import {
   MAX_ENTRY_MINUTES,
   billableMinutes,

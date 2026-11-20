@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { numberSeriesInput, workSettingsInput } from "./work-input";
+import { numberSeriesInput, workSettingsInput } from "./work-input-schema";
 import {
   DEFAULT_WORK_SETTINGS,
   changedSettings,

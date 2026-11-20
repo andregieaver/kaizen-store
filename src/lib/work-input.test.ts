@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { UNNAMED_LINE } from "./work-calc";
+import { MAX_INVOICE_LINES, addressText } from "./work-input";
 import {
-  MAX_INVOICE_LINES,
-  addressText,
   assignmentInput,
   clientInput,
   creditNoteInput,
@@ -19,7 +18,7 @@ import {
   timeEntryInput,
   timeEntryNoteInput,
   workSettingsInput,
-} from "./work-input";
+} from "./work-input-schema";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
