@@ -135,6 +135,18 @@ the path, component or table you change, or list the rules with a search for lin
   (`src/server/buy-facts.ts`), cached with tags `buy:{store}` and `buy-platform`
   and carried in the product page's prerender; stock stays per request.
 
+## A page has two cache tags (bloat review step 2.14, `src/server/page-refresh.ts`, `src/lib/page-list-facts.ts`)
+
+- `page:{id}` (`pageTag()`) is on every cached read of one page's document: `findPublishedPage()`, `publishedPageById()`,
+  `siteLayoutFor()`, `productLayoutById()`, `siteVersionContent()`, an entry layout in `findEntryPage()` and a recommending grid's
+  words on a page or an article. `pages:{store}` stays on every one of them and on the reads of lists, menus and indexes.
+- A publish refreshes `page:{id}`, and `pages:{store}` only when `savePage()`'s scope is `site`: a first publish, a page that was not
+  live, a global part's spread, a header, footer, layout or variant, a change of `listFacts()`, or a page while the site has a grid
+  of pages ordered by publishing. An unpublish, a delete, a revert and every other refresh stay store-wide.
+- A new reader of one page's document adds `pageTag()`; a new field another page, list or file shows joins `listFacts()`, whose test
+  fails for a field of the page index or a grid's card it does not map. The sitemaps and the feed keep a life of hours: a body-only
+  publish's date reaches them within the hour (their pictures are list facts).
+
 ## Search (D72, `src/server/search.ts`, pure parts in `src/lib/search.ts`)
 
 - Search (D72, `src/server/search.ts`, pure parts in `src/lib/search.ts`):

@@ -889,6 +889,22 @@ before; the first add, which sets the cart's cookies, still makes Next empty its
 page with a further dynamic segment (a built page, the blog) that Next regenerates at run time (its revalidate time passed, or a tag was
 refreshed) is served per request again, with its metadata at the end of the body; the home stays static.
 
+## A publish makes its own page stale (bloat review step 2.14)
+
+A read of one page's document carries `page:{id}` beside `pages:{store}` (`docs/rules/storefront.md`, *A page has two cache tags*).
+A publish that changes only what the page itself shows refreshes `page:{id}`; one that changes what other pages, lists or files show
+of it (`listFacts()`: titles, address, picture and its descriptions, excerpts and search descriptions in every language, the body's
+pictures the sitemaps list, categories, tags, countries, blog, author, the crawler switches, a remembered modal) also refreshes
+`pages:{store}`, as does a first publish, a page that was not live, a global part's spread, any header, footer, layout or variant,
+and a page's publish while the site has a grid of pages ordered by publishing (every sort but by title: the publish moves the page in
+it). Measured on a local build: the tag of /om-oss's page is on 3 of the demo store's 267 entries (its three countries), every entry
+still carries `pages:{store}`, and 45 carry a page's own tag (`render-modes.mjs`, `withBothTags`). A body-only publish's date reaches
+the sitemaps (`lastmod`) and the Atom feed (`updated`) within their life of hours (`cacheLife("hours")` on `listPublishedPages()`,
+`articleCards()` and `blogFeed()`): they are not tagged per page, and step 2.15 does not lengthen them. The alt-text job refreshes a
+store's pages and catalogue once its queue is empty (one refresh across three runs of a 12-picture queue; one a run before).
+`x-nextjs-cache` is sent for a page served whole (a store's home, a built page) by `next start`; a product page streams its stock and
+sends none, so `e2e/signed-in/publish-reach.spec.ts` reads its kept entry's time under `.next/server/route-cache` instead.
+
 ## A store on a launch theme (bloat review step 1.6)
 
 The twelve measured store pages are the bare template: no font file, one-row pages, pictures of about 1 KB. CI's e2e job therefore seeds

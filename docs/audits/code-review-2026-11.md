@@ -114,7 +114,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.7 | Stage `placeOrder` | FV3 | L | Open | |
 | 3.8 | Cut the repeated round trips | FF4, FV8 | S | Open | |
 | 3.9 | Stop reading the whole catalogue for one page | FF2, FF5 | S | Open | |
-| 3.10 | Cache tags per product | FF3 | M | Open | |
+| 3.10 | Cache tags per product | FF3 | M | Open | Pages have their own tag, page:{id}, since bloat review step 2.14. |
 | 3.11 | One card query; smaller storefront files | FF10 | M | In progress | 20 Nov 2026, D833: the card query part is done (one column list, joins and mapper in `catalog.ts`); the file splits stay open |
 | 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
 | 3.13 | Domain folders | FV4, FH6 | L | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach; when a feature gets its folder, its reads and writes become two files (bloat step 2.20) |
@@ -884,3 +884,4 @@ scale. `statement_timeout` on a role behind the transaction pooler (FD9) needs a
 - 19 November 2026: bloat review step 2.40: every decision is its own file in `docs/decisions/` with `docs/decisions.md` a generated index (`scripts/decisions.mjs`); the Migration versions list is `docs/decisions/migration-versions.md`; 1.10 Done.
 - 19 November 2026: bloat review step 2.20: the proxy's readers are leaf files beside their features' writers; step 3.13's note gains the rule that a feature's reads and writes become two files when it gets its folder.
 - 19 November 2026: bloat review step 2.21: page reads live in `src/server/page-reads.ts`, apart from the writers in `pages.ts`, and the content types' reads in `content-types-read.ts`; steps 3.13 and 3.14 say so in their notes.
+- 20 November 2026: bloat review step 2.14: pages have their own cache tag, `page:{id}`; step 3.10's note says so.
