@@ -188,7 +188,7 @@ commit as the fix.
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | In progress | D821: product editor 431,497 to 236,060 B, builder 606,658 to 460,097; words handed 13.2 to 6.1 MB; shared held. 3 sites left. |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Done | 19 Nov, D831: menu 17,307 to 14,757 chars; saves and a shell redraw measured and held. Commit 3 dropped: a save without a redraw would serve stale pages. |
 | 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | In progress | D800: builder 2,791,016 to 2,007,139 B; ProseMirror 26 routes to 0; drafts to 840,961. Owner: a press on production. |
-| 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |
+| 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | In progress | Stopped 20 Nov: cuts sum 197,435 B (310,000 needed); needs code review 3.1. See 2.30 below. |
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | In progress | D801: idle home 953,731 to 812,820 B (800,000 held at today's); orders 798,324. Owner: a tab past the hour. |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
 | 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | 19 Nov, 00d7bddd, D781: mirror set at sign-in and for all; commit 2 waits for the owner. |
@@ -1097,3 +1097,40 @@ steps (2 S, 4 M, 1 L), in full in `bloat-review-2026-11/plan/phase-4.md`.
 **Not measured.** Real cold-start times, function invocations and cost on Vercel; real visitors' speed; the admin on a slow
 connection; a store on a launch theme with fonts; a checkout with a payment form open. The plan has steps that measure the last
 three and hold them.
+
+### 2.30 The builder's cut table (20 November 2026)
+
+Measured before any code of step 2.30, on main at 61c5dae (with step 2.25), with `next analyze --output` and
+`next analyze export` (the whole export filtered to its 20,202 module lines, the only lines the script reads from it, as the
+unfiltered file is 1.5 GB) and `node docs/audits/bloat-review-2026-11/scripts/cut-simulation.mjs builder` with one `--cut` per
+run. The builder's first-load parts are 1,975 KB in the analyzer's build (bootstrap 435 KB; 2,007,139 bytes in
+`scripts/bundle-budget.baseline.json`); the script's closure model is 1,531 KB plus the bootstrap, and it misses 1 KB of the
+actual set. KB as the script prints them (1,024 bytes), bytes from the same sum.
+
+| Cut (`importer=>imported`) | Removed | Bytes | Why |
+|---|---:|---:|---|
+| `page-editor.tsx=>dual-page-dialogs.tsx` | 0 KB | 0 | `dual-page-editor.tsx` imports both dual dialogs too |
+| `page-editor.tsx=>make-cool-dialog.tsx` | 2 KB | 1,978 | |
+| `page-editor.tsx=>ai-change-dialog.tsx` | 2 KB | 1,777 | |
+| `page-editor.tsx=>find-replace-dialog.tsx` | 3 KB | 3,320 | |
+| `page-editor.tsx=>page-versions-dialog.tsx` | 8 KB | 8,005 | with `version-compare.ts` and four small modules |
+| `page-editor.tsx=>save-template-dialog.tsx` | 2 KB | 1,892 | |
+| `page-editor.tsx=>page-issues-panel.tsx` (PublishWithIssuesDialog) | 0 KB | 0 | the module also holds `PageIssuesPanel`, which is on screen |
+| `page-builder.tsx=>templates-modal.tsx` | 5 KB | 5,099 | |
+| `page-builder.tsx=>templates-apply.tsx` | 3 KB | 2,645 | |
+| `page-builder.tsx=>templates-preview.tsx` | 5 KB | 5,482 | |
+| `page-builder.tsx=>saved-layout-dialog.tsx` | 3 KB | 2,752 | |
+| `page-builder.tsx=>theme-sections-list.tsx` | 2 KB | 1,637 | |
+| `page-builder.tsx=>theme-store-fields.tsx` | 0 KB | 0 | `page-builder-icons.tsx` imports it too |
+| `page-builder.tsx=>motion-fields.tsx` | 0 KB | 0 | `motion-canvas.tsx` and `gradient-fields.tsx` import it too |
+| The settings panel: `page-builder.tsx=>block-fields.tsx` and `=>page-builder-fields.tsx` | 73 KB | 74,776 | `page-builder-fields.tsx` 47 KB and the grid's tiles; `block-fields.tsx` (81 KB) stays, imported by `page-editor.tsx` itself (its form contexts) and by twelve field modules for its shared fields (`header-stage-fields.tsx`, `motion-fields.tsx`, `typography-fields.tsx`, `gradient-fields.tsx`, `modal-fields.tsx` and others) |
+| The custom-fields form: every edge into `fields-form.tsx` and `field-editor-dialog.tsx` | 32 KB | 32,896 | `fields-form.tsx` 23 KB and `field-pickers.tsx` |
+| The terms manager: `page-editor.tsx=>terms.tsx` | 50 KB | 51,418 | with `product-input.ts` 12 KB and the term field forms |
+| The brand icon list: `block-fields.tsx=>lib/icons.ts` and `=>lib/brands.ts` | 0 KB | 0 | `list-icon.tsx` and `table-view.tsx` import the icons too; the brands are small |
+| **All of them in one run** | **193 KB** | **197,435** | the twelve dialog rows alone: 32 KB (32,950) |
+
+The sum is 197,435 bytes, under the 310,000 bytes the step needs, so the step stopped here (its *Stop and report if*). Two runs
+beyond the table show what is missing: every cut above plus every edge into `block-fields.tsx` removes 277 KB (283,825 bytes),
+and the dual dialogs cut also in `dual-page-editor.tsx` adds 4 KB (201,519). The rest is in `page-builder.tsx` itself (136 KB in
+the first load), whose settings panel (`Dialogs` and the 22 declarations only it uses, about 2,370 of its 6,741 lines) no cut can
+reach: that is code review step 3.1, the builder's own split, with `block-fields.tsx`'s shared fields in a module of their own.
