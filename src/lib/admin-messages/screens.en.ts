@@ -1,5 +1,5 @@
-import { ANALYTICS_TABLES } from "../analytics-export";
-import { STOREFRONT_ROUTES } from "../storefront-api";
+import { ANALYTICS_CAPTIONS } from "../analytics-captions";
+import { STOREFRONT_ROUTE_TEXT } from "../storefront-api-labels";
 
 import type { Widen } from "./common.en";
 
@@ -337,10 +337,10 @@ export const screensEn = {
     state: "The request has no valid state.",
     challenge: "The request has no valid code challenge.",
   },
-  /** The storefront API's routes on Settings, API (`STOREFRONT_ROUTES` in `src/lib/storefront-api.ts`, whose words the published contract keeps), by `what`. */
-  storefrontRoutes: Object.fromEntries(STOREFRONT_ROUTES.map((route) => [route.what, route.text])) as Record<string, string>,
-  /** The analytics tables' captions (`ANALYTICS_TABLES` in `src/lib/analytics-export.ts`), which the Download CSV button names for a screen reader. */
-  analyticsCaptions: Object.fromEntries(Object.entries(ANALYTICS_TABLES).map(([id, table]) => [id, table.caption])) as Record<string, string>,
+  /** The storefront API's routes on Settings, API (`STOREFRONT_ROUTE_TEXT` in `src/lib/storefront-api-labels.ts`, whose words the published contract keeps), by `what`. */
+  storefrontRoutes: { ...STOREFRONT_ROUTE_TEXT } as Record<string, string>,
+  /** The analytics tables' captions (`ANALYTICS_CAPTIONS` in `src/lib/analytics-captions.ts`, which `ANALYTICS_TABLES` is built from), which the Download CSV button names for a screen reader. */
+  analyticsCaptions: { ...ANALYTICS_CAPTIONS } as Record<string, string>,
   /**
    * Analytics' notes (D152): the reports in `src/server/analytics-*-data.ts` write them from these English templates for the page, the AI
    * manager and the exports alike, and a page in another language says them in its own with `noteIn()` (`src/lib/analytics-notes.ts`), which

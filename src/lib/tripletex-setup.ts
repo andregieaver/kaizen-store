@@ -196,15 +196,3 @@ export function checkSettings(settings: Pick<TripletexSettings, "bookings" | "re
   return problems;
 }
 
-/** What each problem says to an owner, in plain words (the accountant's summary uses the same). */
-export const PROBLEM_WORDS: Record<AccountProblem, string> = {
-  missing: "The account is not in your Tripletex chart of accounts.",
-  inactive: "The account is switched off in Tripletex.",
-  not_customer_ledger: "The account is not a customer account (kundereskontro) in Tripletex.",
-  is_customer_ledger: "The account is a customer account; income needs an ordinary account.",
-  needs_department: "Tripletex asks for a department on every posting to this account.",
-  needs_project: "Tripletex asks for a project on every posting to this account.",
-  needs_dimension: "Tripletex asks for a free dimension on every posting to this account.",
-  vat_code_missing: "Your Tripletex company does not have this VAT code.",
-  vat_code_not_allowed: "Tripletex does not allow this VAT code on the account.",
-};

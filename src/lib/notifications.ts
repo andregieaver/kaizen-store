@@ -18,12 +18,6 @@
 export const NOTIFICATION_GROUPS = ["orders", "pickup", "returns"] as const;
 export type NotificationGroup = (typeof NOTIFICATION_GROUPS)[number];
 
-export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, string> = {
-  orders: "Orders",
-  pickup: "Pickup and local delivery",
-  returns: "Returns",
-};
-
 /**
  * The placeholders an owner may write in a template (4.2). The first three are in every notification; the others belong to the notifications
  * that have the value. What each becomes is `PLACEHOLDERS` in `src/lib/email-template.ts`.

@@ -7,9 +7,12 @@
  * `sendOrderConfirmation()`, the parcel emails), through `withTemplate()`; every other block (lines, totals, VAT statement, documents, the withdrawal
  * block, tracking, pickup details, links) stays the code's. Owner text is never HTML: every slot is text the renderer escapes.
  */
-import { findClaims, CLAIM_LABELS, type ClaimKind } from "./claims";
+import { findClaims, type ClaimKind } from "./claims";
 import { notificationOf, type PlaceholderName } from "./notifications";
 import { fillNamed } from "./placeholder-fill";
+import { PLACEHOLDERS, TEMPLATE_PROBLEM_EN } from "./email-template-labels";
+
+export { PLACEHOLDERS, TEMPLATE_PROBLEM_EN };
 
 export const TEMPLATE_SLOTS = ["subject", "heading", "body"] as const;
 export type TemplateSlot = (typeof TEMPLATE_SLOTS)[number];
@@ -25,21 +28,6 @@ export const PREVIEW_CHARS = 140;
 
 /** What a template holds; a missing or null slot is the standard text. */
 export type EmailTemplate = Partial<Record<TemplateSlot, string | null>>;
-
-/** What each placeholder becomes, for the chips beside the editor. */
-export const PLACEHOLDERS: Record<PlaceholderName, { label: string }> = {
-  store_name: { label: "The store's name" },
-  order_number: { label: "The order's number" },
-  customer_first_name: { label: "The customer's first name (left out when it is not known)" },
-  order_total: { label: "The order's total, in its own currency" },
-  carrier: { label: "The carrier's name" },
-  tracking_number: { label: "The parcel's tracking number" },
-  refund_amount: { label: "The amount refunded, in the order's currency" },
-  return_number: { label: "The return's number" },
-  pickup_place: { label: "The place to collect from" },
-  change_number: { label: "The change's number" },
-  due_date: { label: "The day the payment is due, in the customer's language" },
-};
 
 /** The values of a notification's placeholders for one email; null where it is not known. Money is already formatted in the order's currency. */
 export type PlaceholderValues = Partial<Record<PlaceholderName, string | null>>;
@@ -64,21 +52,6 @@ export type TemplateProblem = {
   message: string;
 };
 
-/** The words of `templateProblems()` (D312 A8): English here, as the server and the AI read them; the admin passes its own language's. */
-export const TEMPLATE_PROBLEM_EN = {
-  slots: { subject: "The subject", heading: "The heading", body: "The text" } as Record<TemplateSlot, string>,
-  locked: "This email cannot be changed.",
-  tooLong: "{slot} is {length} characters long; at most {max}.",
-  oneLine: "{slot} must be one line.",
-  bodyLines: "The text has {lines} lines; at most {max}.",
-  control: "{slot} holds a character that cannot be shown. Type it again.",
-  unknownPlaceholder: "{name} is not a placeholder of this email.",
-  strayBrace: "{slot} has a { or } that is not part of a placeholder. Placeholders are written {name}.",
-  address: "{slot} holds a web address ({address}). Links are added by Kaizena Flow as buttons; leave addresses out.",
-  emptyAfterFill: "{slot} would be empty when its placeholders have no value. Add some words.",
-  claim: '{slot} says "{phrase}": {kind}. Order emails state facts; offers and claims are marketing.',
-  claimKinds: { ...CLAIM_LABELS } as Record<ClaimKind, string>,
-};
 export type TemplateProblemWords = typeof TEMPLATE_PROBLEM_EN;
 
 /** A problem's words with its values put in, in one pass (a value is never read again as a placeholder). */

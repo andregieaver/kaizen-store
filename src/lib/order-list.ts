@@ -9,7 +9,10 @@ import { tagKey } from "./order-tags";
 import { normaliseSearch } from "./order-search";
 import { ORDERS_COUNT_CAP, ORDERS_PAGE_SIZE, VIEWS_MAX, VIEW_TITLE_MAX } from "./order-limits";
 
+import { COLUMN_LABELS, RANGE_LABELS, SOURCE_LABELS } from "./order-list-labels";
+
 export { ORDERS_COUNT_CAP, ORDERS_PAGE_SIZE, VIEWS_MAX, VIEW_TITLE_MAX };
+export { COLUMN_LABELS, RANGE_LABELS, SOURCE_LABELS };
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The vocabulary
@@ -66,18 +69,6 @@ export type ShowView = (typeof SHOW_VIEWS)[number];
 export const ORDER_COLUMNS = ["placed", "customer", "market", "payment", "fulfilment", "delivery", "items", "total", "tags", "source"] as const;
 export type OrderColumn = (typeof ORDER_COLUMNS)[number];
 export const DEFAULT_COLUMNS: readonly OrderColumn[] = ["placed", "customer", "payment", "fulfilment", "delivery", "items", "total", "tags"];
-export const COLUMN_LABELS: Record<OrderColumn, string> = {
-  placed: "Placed",
-  customer: "Customer",
-  market: "Market",
-  payment: "Payment",
-  fulfilment: "Fulfilment",
-  delivery: "Delivery",
-  items: "Items",
-  total: "Total",
-  tags: "Tags",
-  source: "Source",
-};
 
 /** The keys of the address, in the order they are written. Nothing else is read. */
 export const ORDER_LIST_KEYS = [
@@ -338,9 +329,6 @@ export function viewRecordOf(params: OrderListParams): Record<string, string> {
 
 export type ViewTitleResult = { ok: true; title: string } | { ok: false; problem: "empty" | "too_long" };
 
-/** What staff read when a view's title is refused. */
-export const VIEW_TITLE_PROBLEM_TEXT = { empty: "Give the view a name.", too_long: `A view's name is at most ${VIEW_TITLE_MAX} characters.` } as const;
-
 /**
  * A saved view's title as the database keeps it (`order_views_title`): Unicode NFC, spaces collapsed, trimmed, 1 to 40 code points. Two titles that differ only in case are one
  * title (the database's unique index folds case); the server says so when a title is taken.
@@ -448,16 +436,6 @@ export function describeFilters(params: OrderListParams): { key: OrderListKey; l
   if (p.archived !== "no") out.push({ key: "archived", label: p.archived === "yes" ? "Archived only" : "Including archived" });
   return out;
 }
-
-export const RANGE_LABELS: Record<RangeFilter, string> = {
-  "7d": "last 7 days",
-  "30d": "last 30 days",
-  "90d": "last 90 days",
-  this_month: "this month",
-  last_month: "last month",
-};
-
-export const SOURCE_LABELS: Record<SourceFilter, string> = { checkout: "Checkout", draft: "Staff-made", exchange: "Exchange", replacement: "Replacement", copied: "Copied history" };
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Dates: the store's own days

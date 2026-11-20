@@ -1,4 +1,4 @@
-import { VAT_STAFF_TEXT } from "../vat-treatment";
+import { VAT_STAFF_TEXT } from "../vat-treatment-labels";
 
 import type { Widen } from "./common.en";
 

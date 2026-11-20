@@ -9,6 +9,10 @@
 
 import { z } from "zod";
 
+import { POLICY_WORDS, REASON_WORDS } from "./inventory-labels";
+
+export { POLICY_WORDS, REASON_WORDS };
+
 // ---------------------------------------------------------------------------
 // Limits (spec 4.2)
 // ---------------------------------------------------------------------------
@@ -103,23 +107,6 @@ export function stockContextArgs(context: StockContext): [string, string, string
     note === "" ? null : note.slice(0, NOTE_MAX),
   ];
 }
-
-/** The words of the page (the admin is English only). */
-export const REASON_WORDS: Record<MovementReason, string> = {
-  received: "Received",
-  correction: "Correction",
-  count: "Count",
-  damaged: "Damaged",
-  lost: "Theft or loss",
-  promotion: "Promotion or donation",
-  sale: "Sale",
-  order_restock: "Put back after an order",
-  return_restock: "Return put back",
-  opening: "Opening figure",
-  system: "System",
-  transfer_out: "Sent to another location",
-  transfer_in: "Arrived from another location",
-};
 
 export const reasonWord = (reason: string): string => (isMovementReason(reason) ? REASON_WORDS[reason] : "Other");
 
@@ -231,7 +218,6 @@ export type AdjustOutcome = "written" | "unchanged" | "conflict" | "refused" | "
 export const STOCK_POLICIES = ["deny", "continue"] as const;
 export type StockPolicy = (typeof STOCK_POLICIES)[number];
 
-export const POLICY_WORDS: Record<StockPolicy, string> = { deny: "Stop selling at zero", continue: "Keep selling" };
 export const policyWords = (policy: StockPolicy, days: number | null): string =>
   policy === "continue" && days ? `Keep selling: ${days} ${days === 1 ? "day" : "days"}` : POLICY_WORDS[policy];
 

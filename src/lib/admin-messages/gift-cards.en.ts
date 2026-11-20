@@ -1,14 +1,30 @@
-import { ENTRY_WORDS, STATE_WORDS } from "../gift-card-admin";
 import type { Widen } from "./common.en";
 
 /**
  * The words of a store's gift cards in the admin (D312 A5): the list, a card's page, issuing one by hand, how long cards last, and what the
- * actions answer. A card's state and a ledger entry's kind are `gift-card-admin.ts`'s words in English. `{name}`-style placeholders are
+ * actions answer. A card's state and a ledger entry's kind are written here (bloat review step 2.50: nothing else read them). `{name}`-style placeholders are
  * filled by `fillWords()`; counts are `{ one, many }` pairs read by `countWords()`, with `{n}` the number.
  */
 export const giftCardsEn = {
-  states: { ...STATE_WORDS },
-  entries: { ...ENTRY_WORDS },
+  /** A card's state. */
+  states: {
+    waiting: "Not sent yet",
+    active: "Active",
+    spent: "Spent",
+    expired: "Expired",
+    deactivated: "Deactivated",
+  },
+  /** A ledger entry's kind in the words a card's page uses. */
+  entries: {
+    issue: "Issued",
+    hold: "Held for an order",
+    release: "Given back: the order was not paid",
+    spend: "Spent on an order",
+    refund: "Refunded back to the card",
+    adjust: "Changed by staff",
+    expire: "Expired",
+    void: "Deactivated",
+  },
   expiry: {
     never: "Never",
     years: { one: "{n} year", many: "{n} years" },

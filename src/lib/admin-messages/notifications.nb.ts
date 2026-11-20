@@ -1,4 +1,4 @@
-import { BOOKING_WORDS } from "../tripletex-settings";
+import { BOOKING_WORDS } from "../booking-bucket-labels";
 
 import type { NotificationsMessages } from "./notifications.en";
 

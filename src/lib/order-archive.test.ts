@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { ARCHIVE_REASONS, ARCHIVE_REASON_TEXT, archiveBlock, autoArchiveCutoff, autoArchiveDue, isAutoArchiveDays, type ArchiveFacts } from "./order-archive";
+import { ARCHIVE_REASON_TEXT } from "./order-archive-labels";
+import { ARCHIVE_REASONS, archiveBlock, autoArchiveCutoff, autoArchiveDue, isAutoArchiveDays, type ArchiveFacts } from "./order-archive";
 
 const order = (over: Partial<ArchiveFacts> = {}): ArchiveFacts => ({ status: "fulfilled", paid: true, physical: true, copied: false, archived: false, openReturn: false, ...over });
 

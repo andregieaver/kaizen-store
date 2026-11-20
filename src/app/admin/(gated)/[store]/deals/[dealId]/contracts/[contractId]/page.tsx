@@ -6,13 +6,14 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ContractEditor, type EditorSigner } from "@/components/admin/deals/contract-editor";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requireFeature } from "@/components/admin/feature-off";
-import { Card, Chip, PageHeader } from "@/components/admin/ui";
-import { CONTRACT_CSS, ContractDocumentView } from "@/components/documents/contract-document-view";
+import { AdminLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { CONTRACT_CSS } from "@/components/documents/contract-document-view";
+import { ContractPaper, ContractReadiness } from "@/components/admin/deals/contract-preview";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import type { FillProblem } from "@/lib/contract-fields";
 import { DEALS_WORDS } from "@/lib/admin-words/deals";
-import { getContract, previewContract, type ContractStatus } from "@/server/contracts";
+import { contractVersions } from "@/lib/contract-versions";
+import { contractsOfDeal, draftFacts, getContract, previewContract, type ContractStatus } from "@/server/contracts";
 import { getDeal } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
@@ -30,9 +31,10 @@ const signal = (status: ContractStatus) =>
   status === "signed" ? "positive" : status === "declined" || status === "expired" || status === "cancelled" ? "danger" : "neutral";
 
 /**
- * One contract on a deal (D695). A draft: its words and signers to change (`ContractEditor`), and beside them how it will look, filled in
- * from the deal now, with what still stops it from going out (kept in view while the words are edited on a wide screen). A sent one: the
- * document as it was sent, each signer's step, its PDF, and a new version or a cancel.
+ * One contract on a deal (D695). A draft: its words and signers to change (`ContractEditor`), and under them, the page's full width, how it
+ * will look, filled in as the words are typed (D857) with what still stops it from going out. A sent one: the document as it was sent,
+ * each signer's step, its PDF, and a new version or a cancel. Every contract says its version, and with more than one its versions are
+ * listed, each with how it ended and why a signer declined.
  */
 export default async function ContractPage({ params }: PageProps<"/admin/[store]/deals/[dealId]/contracts/[contractId]">) {
   const { store: slug, dealId, contractId } = await params;
@@ -55,10 +57,15 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
   const draft = contract.status === "draft";
   const editing = draft && canChange;
 
-  const [preview, staff] = await Promise.all([
-    draft ? previewContract(member, contract.id) : Promise.resolve(null),
+  const [preview, facts, staff, ofDeal] = await Promise.all([
+    draft && !editing ? previewContract(member, contract.id) : Promise.resolve(null),
+    editing ? draftFacts(member, contract) : Promise.resolve(null),
     editing ? listStaff(store.id) : Promise.resolve([]),
+    contractsOfDeal(member, deal.id),
   ]);
+  const versions = contractVersions(ofDeal);
+  const mine = versions.get(contract.id);
+  const chain = mine?.chain ?? [];
   const now = new Date().toISOString();
   const team = staff
     .filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > now))
@@ -68,16 +75,15 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
   // Whose turn it is on a sent contract: the first signer who has not signed.
   const next = contract.status === "sent" ? (contract.signers.find((s) => !s.signedAt && !s.declinedAt) ?? null) : null;
   const myTurn = canChange && next?.role === "store" && next.accountId === member.account.id;
-  const fillText = (problem: FillProblem) =>
-    problem.kind === "missing_field" ? fillWords(w.fill.missing_field, { field: `{${problem.key}} (${w.fields[problem.key]})` }) : w.fill[problem.kind];
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/deals/${deal.id}`, label: w.back }}
         title={contract.title}
         status={<Chip signal={signal(contract.status)}>{w.statuses[contract.status]}</Chip>}
         meta={[
+          fillWords(w.version, { n: mine?.number ?? 1 }),
           deal.title === contract.title ? null : deal.title,
           contract.sentAt ? fillWords(w.sentOn, { date: when(contract.sentAt) }) : null,
           contract.status === "sent" && contract.expiresAt ? fillWords(w.until, { date: when(contract.expiresAt) }) : null,
@@ -85,59 +91,36 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
         ].filter(Boolean)}
       />
 
-      <div className={editing ? "grid gap-6 lg:grid-cols-2" : "flex flex-col gap-6"}>
-        {editing && (
-          <Card title={w.words} compact>
-            <ContractEditor
-              initial={{
-                title: contract.title,
-                blocks: contract.blocks,
-                signers: contract.signers.map((s): EditorSigner => ({ role: s.role, name: s.name, email: s.email, accountId: s.accountId })),
-              }}
-              team={team}
-              words={w}
-              save={saveContractAction.bind(null, store.slug, contract.id)}
-            />
-          </Card>
-        )}
+      {editing && facts && (
+        <ContractEditor
+          initial={{
+            title: contract.title,
+            blocks: contract.blocks,
+            signers: contract.signers.map((s): EditorSigner => ({ role: s.role, name: s.name, email: s.email, accountId: s.accountId })),
+          }}
+          team={team}
+          words={w}
+          save={saveContractAction.bind(null, store.slug, contract.id)}
+          language={contract.language}
+          facts={facts}
+          previewCss={PREVIEW_CSS}
+          send={{
+            hint: storeSigner && storeSigner.accountId !== member.account.id ? fillWords(w.sendOther, { name: storeSigner.name }) : w.sendHint,
+            form: (
+              <ActionForm action={sendContractAction.bind(null, store.slug, contract.id)}>
+                <SubmitButton>{w.send}</SubmitButton>
+              </ActionForm>
+            ),
+          }}
+        />
+      )}
 
-        <div className={editing ? "lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto" : undefined}>
-          <Card title={draft ? w.preview : w.title} compact>
-            {preview && (
-              <div className="mb-4 rounded-panel bg-sunken p-3 text-sm">
-                {preview.ok ? (
-                  <p className="text-ink">{w.ready}</p>
-                ) : (
-                  <>
-                    <p className="font-medium text-ink">{w.notReady}</p>
-                    <ul className="mt-1 list-disc pl-5 text-ink-2">
-                      {preview.problems.map((p, i) => (
-                        <li key={i}>{fillText(p)}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
-            {preview && canChange && (
-              <div className="mb-4 flex flex-col gap-2">
-                <p className="text-sm text-muted">
-                  {preview.ok ? (storeSigner && storeSigner.accountId !== member.account.id ? fillWords(w.sendOther, { name: storeSigner.name }) : w.sendHint) : w.sendBlocked}
-                </p>
-                <ActionForm action={sendContractAction.bind(null, store.slug, contract.id)}>
-                  <SubmitButton disabled={!preview.ok}>{w.send}</SubmitButton>
-                </ActionForm>
-              </div>
-            )}
-            {shown && (
-              <div className="rounded-panel border border-line bg-white p-6 text-black">
-                <style>{PREVIEW_CSS}</style>
-                <ContractDocumentView snapshot={shown} level={2} />
-              </div>
-            )}
-          </Card>
-        </div>
-      </div>
+      {!editing && (
+        <Card title={draft ? w.preview : w.title} compact>
+          {preview && <ContractReadiness ok={preview.ok} problems={preview.ok ? [] : preview.problems} words={w} />}
+          {shown && <ContractPaper snapshot={shown} css={PREVIEW_CSS} />}
+        </Card>
+      )}
 
       {myTurn && next && (
         <Card title={w.signTitle} compact>
@@ -178,6 +161,7 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
                         ? w.signerStatus.viewed
                         : w.signerStatus.waiting}
                 </span>
+                {s.declineReason && <span className="basis-full text-ink-2">{fillWords(w.declinedBy, { name: s.name, reason: s.declineReason })}</span>}
               </li>
             ))}
           </ul>
@@ -200,6 +184,40 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
               )}
             </div>
           )}
+        </Card>
+      )}
+
+      {chain.length > 1 && (
+        <Card title={w.versions} description={w.versionsHint} compact>
+          <ol className="flex flex-col gap-3 text-sm">
+            {chain.map((v, i) => {
+              const declined = v.signers.find((g) => g.declinedAt);
+              return (
+                <li key={v.id} className="flex flex-col gap-0.5">
+                  <span className="flex flex-wrap items-center gap-2">
+                    {v.id === contract.id ? (
+                      <span className="font-medium text-ink" aria-current="page">
+                        {fillWords(w.version, { n: i + 1 })}
+                      </span>
+                    ) : (
+                      <AdminLink className="font-medium underline" href={`${base}/deals/${deal.id}/contracts/${v.id}`}>
+                        {fillWords(w.version, { n: i + 1 })}
+                      </AdminLink>
+                    )}
+                    <Chip signal={signal(v.status)}>{w.statuses[v.status]}</Chip>
+                    <span className="text-muted">{v.sentAt ? fillWords(w.sentOn, { date: when(v.sentAt) }) : null}</span>
+                  </span>
+                  {declined && (
+                    <span className="text-ink-2">
+                      {declined.declineReason
+                        ? fillWords(w.declinedBy, { name: declined.name, reason: declined.declineReason })
+                        : fillWords(w.declinedByNoReason, { name: declined.name })}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         </Card>
       )}
 

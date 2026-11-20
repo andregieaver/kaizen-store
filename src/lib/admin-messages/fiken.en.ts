@@ -1,6 +1,5 @@
-import { BOOKING_WORDS } from "../accounting-docs";
-import { FIKEN_BLOCK_WORDS, FIKEN_FAILURE_WORDS } from "../fiken-errors";
-import { FIKEN_PROBLEM_WORDS } from "../fiken-setup";
+import { BOOKING_WORDS } from "../booking-bucket-labels";
+import { FIKEN_BLOCK_WORDS, FIKEN_FAILURE_WORDS, FIKEN_PROBLEM_WORDS } from "../fiken-labels";
 
 import type { Widen } from "./common.en";
 

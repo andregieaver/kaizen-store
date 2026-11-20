@@ -22,13 +22,6 @@ export type TagProblem = "empty" | "too_long" | "invalid_chars";
 
 export type TagResult = { ok: true; tag: Tag } | { ok: false; problem: TagProblem };
 
-/** What staff read when a tag is refused. */
-export const TAG_PROBLEM_TEXT: Record<TagProblem, string> = {
-  empty: "A tag cannot be empty.",
-  too_long: `A tag is at most ${TAG_MAX_LENGTH} characters.`,
-  invalid_chars: "A tag cannot hold a comma or a control character.",
-};
-
 /**
  * What a tag may not hold: a comma, a control character (C0, DEL and C1), the bidirectional controls (U+202A to U+202E, U+2066 to U+2069) and the zero-width
  * characters (U+200B to U+200D, U+FEFF). Written as escapes so this source holds none of them. (Whitespace, tabs and new lines included, is collapsed to one
@@ -155,9 +148,3 @@ export function tagChangeNote(change: Pick<TagChange, "added" | "removed">): str
   return parts.join(". ");
 }
 
-/** What a bulk add or remove says about one order when it changed nothing, or refused something. */
-export const TAG_CHANGE_TEXT = {
-  alreadyHad: "already had",
-  didNotHave: "did not have",
-  limit: `already has ${TAGS_PER_ORDER} tags`,
-} as const;

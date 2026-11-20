@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { contractVersions } from "@/lib/contract-versions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -228,6 +229,10 @@ describe("sending", () => {
     expect((await contracts.getContract(store.member, next.id))?.signers).toHaveLength(2);
     expect(await contracts.sendContract(store.member, next.id, { render, storage })).toEqual({ ok: true, id: next.id });
     expect((await contracts.getContract(store.member, made.id))?.status).toBe("cancelled");
+    // The store's list has both, the new one second in its chain (D857).
+    const listed = await contracts.listContracts(store.member);
+    expect(listed.find((r) => r.id === next.id)).toMatchObject({ dealId: d.dealId, replacesId: made.id, status: "sent" });
+    expect(contractVersions(listed).get(next.id)?.number).toBe(2);
     expect(await contracts.cancelContract(store.member, next.id)).toEqual({ ok: true, id: next.id });
     expect(await contracts.cancelContract(store.member, next.id)).toEqual({ ok: false, problem: "not_draft" });
   });

@@ -226,6 +226,8 @@ export const consoleEn = {
   },
   /** The 100-day challenge's console (`docs/100-day-challenge.md` H2), Platform → Settings → 100-day challenge. */
   challenges: {
+    /** Round 72 (D858): the 100-day challenge on a phone. */
+    phone: { lead: "Stores the autopilot runs alone for 100 days, judged on three ratios.", setSub: "Locks the owner's settings but for the pause", open: "Open", close: "Close" },
     title: "100-day challenge",
     description:
       "Every store the autopilot runs alone for 100 days: what holds it up, what waits on its owner, its AI cost and the three ratios it is judged on.",

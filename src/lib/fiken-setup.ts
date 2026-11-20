@@ -98,9 +98,3 @@ export function checkFikenSettings(settings: Pick<FikenSettings, "bookings">, ac
   return problems;
 }
 
-/** What each problem says to an owner, in plain words. */
-export const FIKEN_PROBLEM_WORDS: Record<FikenAccountProblem, string> = {
-  missing: "Nothing is chosen for this yet.",
-  account_missing: "The account is not in your Fiken chart of accounts.",
-  wrong_range: "The account is not one sales can be booked on (3000–3999, or 2000–2999 for gift cards).",
-};

@@ -25,7 +25,12 @@ export default async function PlatformFontsPage() {
     <>
       <PageHeader
         title={w.misc.fonts.title}
-        description={w.misc.fonts.description}
+        description={
+          <>
+            <span className="sm:hidden">{w.misc.fonts.phoneLead}</span>
+            <span className="max-sm:hidden">{w.misc.fonts.description}</span>
+          </>
+        }
       />
       <Card compact>
         <SiteFontsForm fonts={chrome.fonts} action={savePlatformFontsAction} install={installPlatformFontAction} />

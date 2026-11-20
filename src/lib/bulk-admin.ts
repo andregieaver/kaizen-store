@@ -7,6 +7,9 @@ import type { Widen } from "./admin-messages/common.en";
 import { countWords, fillWords } from "./admin-fill";
 import { BULK_GRID_MAX_PRODUCTS, BULK_MAX_PRODUCTS } from "./data-limits";
 import { formatMoney } from "./money";
+import { BULK_WORDS } from "./bulk-admin-labels";
+
+export { BULK_WORDS };
 
 export const LIST_ACTIONS = ["status", "archive", "unarchive", "terms_add", "terms_remove", "price", "stock", "sell_in", "stop_selling_in"] as const;
 export type ListAction = (typeof LIST_ACTIONS)[number];
@@ -19,48 +22,6 @@ export type BulkRequestInput =
   | { action: "price"; productIds: string[]; markets?: string[]; percent?: string; amounts?: Record<string, string> }
   | { action: "stock"; productIds: string[]; change: string }
   | { action: "sell_in" | "stop_selling_in"; productIds: string[]; markets: string[] };
-
-const ACTIONS = {
-  status: "Set status",
-  archive: "Archive",
-  unarchive: "Unarchive",
-  terms_add: "Add to a category or tag",
-  terms_remove: "Remove from a category or tag",
-  price: "Change price",
-  stock: "Set stock",
-  grid: "Edit in a grid",
-  undo: "Undo",
-  sell_in: "Sell in",
-  stop_selling_in: "Stop selling in",
-  manufacturer: "Set the manufacturer",
-};
-
-/**
- * Every word this module gives a person, in English (D312 A5): the admin's `products` catalogue carries them in each language, and each
- * function takes them as its last argument, English unless given.
- */
-export const BULK_WORDS = {
-  actions: ACTIONS,
-  chooseTerm: "Choose at least one category or tag.",
-  writeStock: "Write a stock figure such as 12, or a change such as +5 or -3.",
-  chooseMarket: "Choose at least one market.",
-  chooseCountry: "Choose at least one country.",
-  writePercent: "Write a percentage, such as -10 or 5.5.",
-  writeAmounts: "Write an amount for {markets}: an amount is never applied across currencies.",
-  chooseProduct: "Choose at least one product.",
-  gridMax: "The grid takes at most {max} products; you chose {count}.",
-  capped: "{matching} products match; a bulk action takes the first {max}. Narrow the list to take the rest.",
-  none: "none",
-  categories: { one: "{n} category", many: "{n} categories" },
-  tags: { one: "{n} tag", many: "{n} tags" },
-  terms: "{categories}, {tags}",
-  archived: "archived",
-  notArchived: "not archived",
-  soldEverywhere: "sold in every country",
-  notSoldIn: "not sold in {list}",
-  price: "Price ({market})",
-  fields: { status: "Status", archived: "Archived", terms: "Categories and tags", stock: "Stock", cost: "Cost", sku: "SKU", availability: "Where it is sold" },
-};
 
 export type BulkWords = Widen<typeof BULK_WORDS>;
 

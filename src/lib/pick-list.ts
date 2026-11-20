@@ -6,6 +6,9 @@
  */
 import { unitsToSend, type FulfilmentLine } from "./fulfilment";
 import { PICK_LIST_MAX } from "./fulfilment-limits";
+import { PICK_SKIP_WORDS, PICK_WARNING_WORDS } from "./pick-list-labels";
+
+export { PICK_SKIP_WORDS, PICK_WARNING_WORDS };
 
 export const PICK_BY = ["product", "order"] as const;
 export type PickBy = (typeof PICK_BY)[number];
@@ -39,14 +42,6 @@ export type PickInputOrder =
 
 export const PICK_SKIPS = ["not_found", "copied", "unpaid", "nothing_to_send"] as const;
 export type PickSkipReason = (typeof PICK_SKIPS)[number];
-
-export const PICK_SKIP_WORDS: Record<PickSkipReason, string> = {
-  not_found: "Not found",
-  copied: "A copied order (history, never sent)",
-  unpaid: "Not paid",
-  nothing_to_send: "Nothing left to send",
-};
-export const PICK_WARNING_WORDS = { edit_pending: "A change waits for the customer's payment: picked as the order stands now" } as const;
 
 export type PickProductRow = { variantId: string | null; sku: string; title: string; units: number; orders: number };
 export type PickOrderRow = { orderId: string; number: string; units: number; lines: { lineId: string; sku: string; title: string; units: number }[] };

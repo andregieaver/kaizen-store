@@ -531,6 +531,8 @@ export const platformSiteEn = {
     },
   },
   pages: {
+    /** Round 72 (D858): categories and tags on a phone. */
+    phoneTerms: "Sort them so a content grid can show a category or tag.",
     types: {
       page: {
         list: "Pages",
@@ -621,6 +623,8 @@ export const platformSiteEn = {
         "What Kaizena Flow's own site stores in visitors' browsers, the tools it uses to measure and market, and the choices visitors make. Each store sets its own under Cookies and tracking in its admin.",
     },
     fonts: {
+      /** Round 72 (D858): Fonts on a phone. */
+      phoneLead: "Any Google Fonts family for Kaizena Flow's own site, served from the site.",
       title: "Fonts",
       description:
         "Any Google Fonts family for the headings and other text of Kaizena Flow's own site. Components on its pages can use their own. Fonts are copied to Kaizena Flow and load from the site itself, never from Google. Each store chooses its own under Fonts in its admin.",

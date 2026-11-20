@@ -430,6 +430,7 @@ export const productsNb: ProductsMessages = {
     usedBy: "produkter",
   },
   terms: {
+    phone: { newSub: { category: "Kan ha underkategorier", tag: "En flat liste på tvers av kategorier" }, close: "Lukk" },
     labels: { category: { one: "Kategori", many: "Kategorier" }, tag: { one: "Stikkord", many: "Stikkord" } },
     noneYet: "Ingen ennå.",
     byRules: "fylles etter regler",

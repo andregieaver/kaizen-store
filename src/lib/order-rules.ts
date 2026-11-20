@@ -5,23 +5,10 @@
  * `order-rules-schema.ts`, for the admin), so the list page and the editor's sentence read the same rules as the job.
  */
 
-export const RULE_LIMITS = {
-  /** Rules a store may have (also the database's `order_rules_limit`). */
-  rules: 50,
-  conditions: 10,
-  actions: 5,
-  name: 80,
-  /** A *Notify staff* note and a *Hold* reason. */
-  note: 200,
-  reason: 200,
-  /** What an *Ask the AI manager* asks it to look at. */
-  question: 300,
-  /** Turns *Ask the AI manager* may start in a store in 24 hours (each is a model's turn). */
-  asksPerDay: 20,
-  /** Products of one `has_product` and countries of one `country_in`. */
-  products: 50,
-  countries: 40,
-} as const;
+import { OUTCOME_WORDS, RULE_SENTENCE_EN } from "./order-rules-labels";
+
+export { RULE_LIMITS } from "./order-rule-limits";
+export { OUTCOME_WORDS, RULE_SENTENCE_EN };
 
 export const RULE_EVENTS = ["order.paid"] as const;
 export type RuleEvent = (typeof RULE_EVENTS)[number];
@@ -183,38 +170,6 @@ export type DescribeContext = {
   productName: (id: string) => string;
 };
 
-/** The words the rule's sentence is written in (D312 A8): English here, as the AI manager reads it; the admin passes its own language's. */
-export const RULE_SENTENCE_EN = {
-  deliveries: { shipping: "shipped", pickup: "collected", local: "delivered by the store", none: "not delivered" } as Record<RuleDelivery, string>,
-  sources: { checkout: "the checkout", draft: "a draft order", subscription: "a subscription renewal", delivery: "a subscription box delivery" } as Record<RuleSource, string>,
-  or: "or",
-  and: "and",
-  totalAtLeast: "the total is at least {amount}",
-  totalBelow: "the total is below {amount}",
-  countryIs: "the country is {countries}",
-  buyerBusiness: "the buyer is a business",
-  buyerConsumer: "the buyer is a consumer",
-  firstOrder: "it is the customer's first order",
-  orderedBefore: "the customer has ordered before",
-  hasProduct: "it has {products}",
-  deliveryIs: "it is {deliveries}",
-  backorder: "some of it is backordered",
-  gift: "it is a gift",
-  sourceIs: "it comes from {sources}",
-  tagged: 'it is tagged "{tag}"',
-  hostListing: "it is a host's listing",
-  ownSale: "it is the store's own sale",
-  riskHighest: "Stripe judged its payment highest risk",
-  riskElevated: "Stripe judged its payment elevated or highest risk",
-  actionTag: 'tag "{tag}"',
-  actionNotify: "notify staff",
-  actionHold: "hold it",
-  actionAsk: "ask the AI manager to look",
-  whenPaid: "When an order is paid{when}, {actions}.",
-  whenAnd: " and {conditions}",
-  joinAll: " and ",
-  joinAny: " or ",
-};
 export type RuleSentenceWords = typeof RULE_SENTENCE_EN;
 
 const put = (text: string, values: Record<string, string>) => text.replace(/\{(\w+)\}/g, (all, key: string) => values[key] ?? all);
@@ -277,18 +232,3 @@ export function describeRule(rule: Pick<OrderRule, "match" | "conditions" | "act
   return put(w.whenPaid, { when, actions: listWords(rule.actions.map((a) => describeAction(a, w)), "and", w) });
 }
 
-/** The words of a condition's or an action's outcome in the log. */
-export const OUTCOME_WORDS: Record<NonNullable<ConditionOutcome["why"]> | ActionProblem, string> = {
-  no_rate: "No exchange rate for the order's currency",
-  unknown: "Not known for a guest",
-  unread: "Stripe's risk outcome was not read yet",
-  not_found: "The order was not found",
-  limit: "The order has as many tags as it can hold",
-  already_held: "The order was already on hold",
-  sent: "The order was already sent",
-  invalid: "The action is not valid any more",
-  no_recipients: "Nobody is chosen for automation emails",
-  failed: "It could not be done",
-  ask_limit: `The AI manager was already asked ${RULE_LIMITS.asksPerDay} times by rules in the last 24 hours`,
-  no_owner: "Whoever saved the rule is no longer an owner of the store",
-};

@@ -1,12 +1,12 @@
 import type { Widen } from "./common.en";
-import { KIND_TITLES, SEVERITY_WORDS } from "../data-admin";
-import { STATUS_WORDS as JOB_STATUS_WORDS } from "../data-job";
-import { NOTE_HINT, OUTCOME_WORDS, REASON_CHOICES, STATE_HELP, STATE_WORDS, STATUS_WORDS } from "../inventory-admin";
-import { POLICY_WORDS, REASON_WORDS } from "../inventory";
+import { KIND_TITLES, SEVERITY_WORDS } from "../data-admin-labels";
+import { STATUS_WORDS as JOB_STATUS_WORDS } from "../data-job-labels";
+import { REASON_CHOICES } from "../inventory-admin-labels";
+import { POLICY_WORDS, REASON_WORDS } from "../inventory-labels";
 
 /**
  * The words of the Inventory pages (D312 A5): the list, the history, the locations, the stock import and export, and what their actions answer. The lists
- * that live beside their code (`STATUS_WORDS`, `STATE_WORDS`, `REASON_WORDS`, …) are spread in, so the English is written once, and the pure helpers in
+ * that code reads in English too (`REASON_WORDS`, `REASON_CHOICES`, …) are spread in from their label modules (`*-labels.ts`, which import no code), so the English is written once, and the pure helpers in
  * `src/lib/inventory-words.ts` write the sentences the libraries write, from these words. `{name}`-style placeholders are filled by `fillWords()`; a count is
  * a `{ one, many }` pair read by `countWords()`, with `{n}` the number. A file's findings, the server's refusals and the shared data pieces (the export
  * section, the file format field, the job's progress) keep their own words.
@@ -99,10 +99,28 @@ export const inventoryEn = {
         "One row for each variant at each active location, with on hand (twice: the second is kept as it was, so a count brought back is checked against it), committed, available, the policy at zero stock and the low-stock level. A store with more than {max} rows gets the file as a job.",
     },
   },
-  /** The list's filter choices (`STATUS_WORDS`), the marks of a row (`STATE_WORDS`) and what they mean (`STATE_HELP`). */
-  status: { ...STATUS_WORDS },
-  states: { ...STATE_WORDS },
-  stateHelp: { ...STATE_HELP },
+  /** The list's filter choices, the marks of a row and what they mean (written here since bloat review step 2.50; code reads them from here only). */
+  status: {
+    all: "All variants",
+    low: "At or below the low-stock level",
+    out: "Sold out",
+    backorder: "Selling on backorder",
+    negative: "Below zero",
+  },
+  states: {
+    negative: "Below zero",
+    backorder: "On backorder",
+    out: "Sold out",
+    low: "Low stock",
+    owed: "Owed",
+  },
+  stateHelp: {
+    negative: "More has been sold than was on hand. Receive stock or count it to bring it back to zero or above.",
+    backorder: "Nothing is left to sell now, and the variant keeps selling with a stated delivery time.",
+    out: "Nothing is left to sell now, and the variant stops selling at zero.",
+    low: "On hand is at or below the low-stock level set for this variant.",
+    owed: "Units sold on backorder on paid orders that have not been sent yet: what the store still has to receive.",
+  },
   list: {
     /** The list drawn for Homer (round 7, D624): a sentence, chips and one count per variant. */
     sentence: {
@@ -242,9 +260,15 @@ export const inventoryEn = {
     refused: "{n} refused",
     failed: "{n} could not be saved",
   },
-  outcomes: { ...OUTCOME_WORDS },
+  outcomes: {
+    written: "Saved",
+    unchanged: "Already that figure",
+    conflict: "Not saved: the stock changed",
+    refused: "Refused",
+    failed: "Could not be saved",
+  },
   figureHint: "Whole units, at most {max}. A figure never goes below 0 by a person's change: only a sale of a variant that keeps selling on backorder takes it below.",
-  noteHint: NOTE_HINT,
+  noteHint: "A short note for the history. Do not write about a person.",
   history: {
     filter: "Filter the history",
     sku: "SKU",

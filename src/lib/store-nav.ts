@@ -146,6 +146,8 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { area: "customers", feature: "shop", icon: "banknote" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { area: "customers", feature: "business", icon: "building", basic: true }),
           item("/deals", "Deals", "What each customer or company may buy, on a board from the first talk to won or lost.", { area: "customers", extension: "deals", feature: "sales", icon: "handshake", basic: true }),
+          // Every contract on the store's deals (D857), under Deals: made on a deal, found here.
+          item("/deals/contracts", "Contracts", "Every contract on your deals: who it is for, its version, and whether it is signed, waiting or declined.", { area: "customers", extension: "deals", feature: "sales", icon: "file-pen", basic: true }),
           // The leads inbox, a tab of Deals before (ecosystem plan E2.8, D713): its own page, so it is found and its address is its own.
           item("/leads", "Leads", "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.", { area: "customers", extension: "deals", feature: "sales", icon: "user-plus", basic: true }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { area: "customers", feature: "shop", icon: "heart" }),

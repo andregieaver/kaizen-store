@@ -1,4 +1,4 @@
-import { BOOKING_WORDS } from "../accounting-docs";
+import { BOOKING_WORDS } from "../booking-bucket-labels";
 
 import type { FikenMessages } from "./fiken.en";
 

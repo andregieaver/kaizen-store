@@ -73,19 +73,6 @@ export function statusesOf(kind: JobKind): readonly JobStatus[] {
 /** The status a new job of a kind starts in. */
 export const startStatus = (kind: JobKind): JobStatus => (isImport(kind) ? "uploaded" : "queued");
 
-/** A job's own words for a status, for the page and the email. */
-export const STATUS_WORDS: Record<JobStatus, string> = {
-  uploaded: "File received",
-  checking: "Checking the file",
-  checked: "Checked, ready to import",
-  queued: "Waiting to start",
-  running: "Working",
-  done: "Done",
-  failed: "Stopped with a problem",
-  cancelled: "Cancelled",
-  expired: "Files removed",
-};
-
 // ---------------------------------------------------------------------------
 // Findings
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { JOB_KINDS, STATUS_WORDS, isImport, progressPercent, type JobKind } from "@/lib/data-job";
+import { JOB_KINDS, isImport, progressPercent, type JobKind } from "@/lib/data-job";
+import { STATUS_WORDS } from "@/lib/data-job-labels";
 import { groupFindings } from "@/lib/data-job-help";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 

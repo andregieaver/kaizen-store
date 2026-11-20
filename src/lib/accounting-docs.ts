@@ -1,6 +1,8 @@
 import type { CreditNoteSnapshot } from "./credit-allocation";
 import type { OrderInvoiceSnapshot } from "./invoice-snapshot";
 
+export { BOOKING_WORDS } from "./booking-bucket-labels";
+
 /**
  * What every accounting connection books (Tripletex D453, Fiken D460): a Kaizena Flow document read into one shape (`BookingDoc`).
  * Work's invoices and credit notes and the shop's are read the same way for each system, so a document is booked alike wherever the
@@ -36,18 +38,6 @@ export function standardKeyOf(rate: number | string): BookingKey | null {
   if (bp === 0) return "standard_0";
   return null;
 }
-
-/** How a person reads each bucket, in the settings and in the summary for the accountant. */
-export const BOOKING_WORDS: Record<BookingKey, { en: string; nb: string }> = {
-  standard_25: { en: "Sales with 25% VAT", nb: "Salg med 25 % mva" },
-  standard_15: { en: "Sales with 15% VAT (food)", nb: "Salg med 15 % mva (mat)" },
-  standard_12: { en: "Sales with 12% VAT", nb: "Salg med 12 % mva" },
-  standard_0: { en: "Sales without VAT (not VAT registered)", nb: "Salg uten mva (ikke mva-registrert)" },
-  exempt: { en: "Sales exempt from VAT", nb: "Salg fritatt for mva" },
-  outside_scope: { en: "Sales outside the VAT act", nb: "Salg utenfor mva-loven" },
-  reverse_charge: { en: "Services to businesses abroad", nb: "Tjenester til næringsdrivende i utlandet" },
-  gift_card: { en: "Gift cards sold (owed to their holders)", nb: "Solgte gavekort (gjeld til innehaver)" },
-};
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Texts

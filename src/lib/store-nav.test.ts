@@ -198,10 +198,18 @@ describe("the store admin's sections (D147)", () => {
     expect(sectionOf("/settings/orders")?.key).toBe("settings");
   });
 
+  it("lists Contracts right under Deals, behind Deals' feature, the one marked when a contract's list is open (D857)", () => {
+    const customers = STORE_SECTIONS.find((s) => s.key === "customers")!;
+    const paths = customers.groups.flatMap((g) => g.items.map((i) => i.path));
+    expect(paths.indexOf("/deals/contracts")).toBe(paths.indexOf("/deals") + 1);
+    expect(customers.groups.flatMap((g) => g.items).find((i) => i.path === "/deals/contracts")).toMatchObject({ feature: "sales", extension: "deals", basic: true });
+    expect(permissionOfPath("/deals/contracts")).toBe("customers:read");
+  });
+
   it("puts the leads inbox beside Deals under Customers, behind Deals' feature, at an address of its own (ecosystem plan E2.8, D713)", () => {
     const customers = STORE_SECTIONS.find((s) => s.key === "customers")!;
     const paths = customers.groups.flatMap((g) => g.items.map((i) => i.path));
-    expect(paths.indexOf("/leads")).toBe(paths.indexOf("/deals") + 1);
+    expect(paths.indexOf("/leads")).toBe(paths.indexOf("/deals") + 2);
     expect(customers.groups.flatMap((g) => g.items).find((i) => i.path === "/leads")).toMatchObject({ feature: "sales", icon: "user-plus", basic: true });
     expect(sectionOf("/leads")?.key).toBe("customers");
     expect(permissionOfPath("/leads")).toBe("customers:read");

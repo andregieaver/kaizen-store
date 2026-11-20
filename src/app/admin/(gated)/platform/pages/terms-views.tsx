@@ -28,7 +28,15 @@ export async function PageTermsView({ type }: { type: PageType }) {
         <Link href={`/admin/platform/${copy.segment}`} className="w-fit text-sm underline">
           {tw.list}
         </Link>
-        <PageHeader title={w.pages.categories} description={tw.terms} />
+        <PageHeader
+          title={w.pages.categories}
+          description={
+            <>
+              <span className="sm:hidden">{w.pages.phoneTerms}</span>
+              <span className="max-sm:hidden">{tw.terms}</span>
+            </>
+          }
+        />
         </div>
       <TermsManager
         initial={terms}

@@ -1,12 +1,10 @@
-import { CONDITION_LABELS } from "../../components/admin/automation/rule-labels";
-import { TEMPLATE_PROBLEM_EN, PLACEHOLDERS } from "../email-template";
+import { BOOKING_WORDS } from "../booking-bucket-labels";
+import { PLACEHOLDERS, TEMPLATE_PROBLEM_EN } from "../email-template-labels";
 import { EVENTS, INTEGRATIONS } from "../integrations";
-import { BLOCK_WORDS, FAILURE_WORDS } from "../tripletex-errors";
-import { BOOKING_WORDS } from "../tripletex-settings";
-import { PROBLEM_WORDS } from "../tripletex-setup";
-import { NOTIFICATION_GROUP_LABELS, NOTIFICATIONS } from "../notifications";
-import { OUTCOME_WORDS, RULE_SENTENCE_EN } from "../order-rules";
-import { ALERT_AREA_WORDS, ALERT_LABELS, WEEKDAYS } from "../staff-alerts";
+import { NOTIFICATIONS } from "../notifications";
+import { CONDITION_LABELS, OUTCOME_WORDS, RULE_SENTENCE_EN } from "../order-rules-labels";
+import { ALERT_LABELS } from "../staff-alerts-labels";
+import { BLOCK_WORDS, FAILURE_WORDS } from "../tripletex-labels";
 
 import type { Widen } from "./common.en";
 
@@ -58,7 +56,11 @@ export const notificationsEn = {
     addsDescription: "Your words replace the subject, the heading and the first text of an email. The rest stays Kaizena Flow's, so nothing the law or the money needs can be removed.",
     addsText: "The order lines, totals, VAT statement, invoice link, tracking, pickup details and the right of withdrawal are always added by Kaizena Flow, in the order's own language and currency.",
     status: { on: "On", off: "Off", always: "Always on", fixed: "Fixed" },
-    groups: { ...NOTIFICATION_GROUP_LABELS },
+    groups: {
+      orders: "Orders",
+      pickup: "Pickup and local delivery",
+      returns: "Returns",
+    },
     pickupOn: "Sent for orders collected at your places or delivered by your own driver.",
     pickupOff: "The store offers no pickup or local delivery yet, so these are not sent. Set them up under Shipping.",
     alwaysSent: "Always sent: {why}",
@@ -167,8 +169,19 @@ export const notificationsEn = {
     },
     testOne: "Test: {alert}",
     alerts: { ...ALERT_LABELS },
-    areas: { ...ALERT_AREA_WORDS },
-    weekdays: [...WEEKDAYS] as string[],
+    areas: {
+      new_order: "Orders",
+      return_requested: "Orders",
+      refund_overdue: "Orders",
+      low_stock: "Products",
+      summary: "Analytics",
+      automation: "Orders",
+      dispute: "Orders",
+      payment_overdue: "Orders",
+      analytics: "Analytics",
+      accounting: "Settings",
+    },
+    weekdays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as string[],
     failed: {
       one: "Staff alerts could not be sent: {n} order or return of the last 30 days did not reach the team after ten tries.",
       many: "Staff alerts could not be sent: {n} orders or returns of the last 30 days did not reach the team after ten tries.",
@@ -569,7 +582,17 @@ export const notificationsEn = {
       receivable: "What customers owe you",
       accountCode: "Account {account} · VAT code {code}",
       account: "Account {account}",
-      problemWords: { ...PROBLEM_WORDS } as Record<keyof typeof PROBLEM_WORDS, string>,
+      problemWords: {
+        missing: "The account is not in your Tripletex chart of accounts.",
+        inactive: "The account is switched off in Tripletex.",
+        not_customer_ledger: "The account is not a customer account (kundereskontro) in Tripletex.",
+        is_customer_ledger: "The account is a customer account; income needs an ordinary account.",
+        needs_department: "Tripletex asks for a department on every posting to this account.",
+        needs_project: "Tripletex asks for a project on every posting to this account.",
+        needs_dimension: "Tripletex asks for a free dimension on every posting to this account.",
+        vat_code_missing: "Your Tripletex company does not have this VAT code.",
+        vat_code_not_allowed: "Tripletex does not allow this VAT code on the account.",
+      },
       statusOn: "Sending to Tripletex",
       statusPaused: "Paused: nothing is sent until you start again.",
       statusAuth: "Tripletex stopped accepting the token",

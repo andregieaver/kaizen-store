@@ -13,6 +13,7 @@
  * `ANALYTICS_TABLES`) or says `exportable={false}` with an entry in `NOT_EXPORTED`; `analytics-export-views.test.ts` fails for any other.
  * The VAT, OSS and IOSS tables keep the four files of D161 (their own button and log).
  */
+import { ANALYTICS_CAPTIONS, type AnalyticsCaptionId } from "./analytics-captions";
 import { amountCell, type Cell } from "./csv";
 
 export type ColumnKind =
@@ -68,12 +69,12 @@ const pct = (key: string, header = key, previous = false): TableColumn => ({ key
 const dec = (key: string, header = key): TableColumn => ({ key, header, kind: "decimal" });
 const date = (key: string, header = key): TableColumn => ({ key, header, kind: "date" });
 
-const table = (id: string, page: AnalyticsPage, view: string, caption: string, columns: TableColumn[], money = false): AnalyticsTable => ({ id, page, view, shape: "table", caption, columns, money });
-const bars = (id: string, page: AnalyticsPage, view: string, caption: string, kind: "amount" | "int" | "decimal" = "amount"): AnalyticsTable => ({
-  id, page, view, shape: "bars", caption, columns: [text("label"), kind === "amount" ? amount("value") : kind === "int" ? int("value") : dec("value")], money: kind === "amount",
+const table = (id: AnalyticsCaptionId, page: AnalyticsPage, view: string, columns: TableColumn[], money = false): AnalyticsTable => ({ id, page, view, shape: "table", caption: ANALYTICS_CAPTIONS[id], columns, money });
+const bars = (id: AnalyticsCaptionId, page: AnalyticsPage, view: string, kind: "amount" | "int" | "decimal" = "amount"): AnalyticsTable => ({
+  id, page, view, shape: "bars", caption: ANALYTICS_CAPTIONS[id], columns: [text("label"), kind === "amount" ? amount("value") : kind === "int" ? int("value") : dec("value")], money: kind === "amount",
 });
-const series = (id: string, page: AnalyticsPage, view: string, caption: string, values: TableColumn[], money: boolean): AnalyticsTable => ({
-  id, page, view, shape: "series", caption, columns: [date("bucket"), ...values], money,
+const series = (id: AnalyticsCaptionId, page: AnalyticsPage, view: string, values: TableColumn[], money: boolean): AnalyticsTable => ({
+  id, page, view, shape: "series", caption: ANALYTICS_CAPTIONS[id], columns: [date("bucket"), ...values], money,
 });
 
 /** The months after the first order a cohort table has a column for (`COHORT_OFFSETS` in `analytics-customers.ts`). */
@@ -81,20 +82,20 @@ const MONTHS = [0, 1, 2, 3, 6, 12].map((i) => `month_${i}`);
 
 const REGISTRY: AnalyticsTable[] = [
   // Overview
-  series("overview.net_revenue", "overview", "overview-sections.tsx", "Net revenue per period", [{ ...amount("net", "net_revenue", true) }], true),
-  series("overview.contribution", "overview", "overview-sections.tsx", "Contribution profit per period", [{ ...amount("profit", "contribution_profit", true) }], true),
-  bars("overview.factors", "overview", "overview-sections.tsx", "Change in each factor, in percent", "decimal"),
-  { id: "overview.funnel", page: "overview", view: "overview-sections.tsx", shape: "funnel", caption: "Sales funnel", columns: [text("stage"), int("count")], money: false },
-  bars("overview.top_revenue", "overview", "overview-sections.tsx", "Top products by revenue"),
-  bars("overview.top_profit", "overview", "overview-sections.tsx", "Top products by profit"),
-  table("overview.channels", "overview", "overview-sections.tsx", "Top channels by revenue", [text("channel"), amount("revenue"), int("orders"), pct("conversion"), dec("roas")], true),
+  series("overview.net_revenue", "overview", "overview-sections.tsx", [{ ...amount("net", "net_revenue", true) }], true),
+  series("overview.contribution", "overview", "overview-sections.tsx", [{ ...amount("profit", "contribution_profit", true) }], true),
+  bars("overview.factors", "overview", "overview-sections.tsx", "decimal"),
+  { id: "overview.funnel", page: "overview", view: "overview-sections.tsx", shape: "funnel", caption: ANALYTICS_CAPTIONS["overview.funnel"], columns: [text("stage"), int("count")], money: false },
+  bars("overview.top_revenue", "overview", "overview-sections.tsx"),
+  bars("overview.top_profit", "overview", "overview-sections.tsx"),
+  table("overview.channels", "overview", "overview-sections.tsx", [text("channel"), amount("revenue"), int("orders"), pct("conversion"), dec("roas")], true),
 
   // Finance
   // Speed (D336): the 75th percentile of each figure per kind of page and screen over 28 days; a figure with too few page loads is blank.
-  table("speed.figures", "speed", "speed-view.tsx", "Speed per kind of page and screen", [text("page"), text("screen"), int("page_loads"), int("lcp_ms"), int("inp_ms"), dec("cls"), int("ttfb_ms")]),
-  table("finance.bridge", "finance", "finance-view.tsx", "From gross sales to operating profit", [text("line"), amount("amount", "amount", true), pct("share_of_net_revenue"), text("estimated")], true),
-  bars("finance.where_it_went", "finance", "finance-view.tsx", "Where net revenue went"),
-  series("finance.revenue_profit", "finance", "finance-view.tsx", "Net revenue and contribution profit", [amount("net", "net_revenue", true), amount("profit", "contribution_profit")], true),
+  table("speed.figures", "speed", "speed-view.tsx", [text("page"), text("screen"), int("page_loads"), int("lcp_ms"), int("inp_ms"), dec("cls"), int("ttfb_ms")]),
+  table("finance.bridge", "finance", "finance-view.tsx", [text("line"), amount("amount", "amount", true), pct("share_of_net_revenue"), text("estimated")], true),
+  bars("finance.where_it_went", "finance", "finance-view.tsx"),
+  series("finance.revenue_profit", "finance", "finance-view.tsx", [amount("net", "net_revenue", true), amount("profit", "contribution_profit")], true),
   /** D288: with VAT, as the money moved (the one table of the page that is; its headers say so). */
   // Payouts (D290): each payout in its own currency, as Stripe paid it.
   {
@@ -102,7 +103,7 @@ const REGISTRY: AnalyticsTable[] = [
     page: "payouts",
     view: "payouts-view.tsx",
     shape: "table",
-    caption: "Payouts with what each settles and whether it adds up",
+    caption: ANALYTICS_CAPTIONS["payouts.list"],
     columns: [text("payout"), date("arrival", "arrives_on"), text("status"), amount("amount"), amount("fees", "stripe_fees"), amount("platformFees", "kaizena_flow_fee"), int("payments"), int("refunds"), text("state", "reconciliation"), amount("difference"), amount("untied", "not_tied_to_an_order"), text("mode")],
     money: true,
     rowCurrency: true,
@@ -113,7 +114,7 @@ const REGISTRY: AnalyticsTable[] = [
     page: "finance",
     view: "liabilities-view.tsx",
     shape: "table",
-    caption: "Owed to customers per ledger and currency: the period's roll-forward and what is held now",
+    caption: ANALYTICS_CAPTIONS["finance.liabilities"],
     columns: [
       text("ledger"),
       amount("opening", "at_start"),
@@ -138,78 +139,77 @@ const REGISTRY: AnalyticsTable[] = [
     page: "finance",
     view: "gift-cards-view.tsx",
     shape: "table",
-    caption: "Gift cards per currency: held now and the period's movements",
+    caption: ANALYTICS_CAPTIONS["finance.gift_cards"],
     columns: [amount("outstanding", "held_now"), int("cards"), amount("issued"), amount("spent"), amount("refunded", "refunded_back"), amount("adjusted", "changed_by_staff"), amount("expired"), amount("voided", "deactivated")],
     money: true,
     rowCurrency: true,
   },
-  table("finance.payment_methods", "finance", "payments-view.tsx", "Payments by method", [text("method"), int("payments"), amount("received", "received_with_vat"), pct("share", "share_of_received"), amount("refunded", "refunded_with_vat"), amount("fees", "fees_estimated")], true),
+  table("finance.payment_methods", "finance", "payments-view.tsx", [text("method"), int("payments"), amount("received", "received_with_vat"), pct("share", "share_of_received"), amount("refunded", "refunded_with_vat"), amount("fees", "fees_estimated")], true),
 
   // Customers
-  table("customers.top", "customers", "customers-view.tsx", "Top customers by revenue", [text("customer"), text("email"), text("account"), int("orders", "orders_in_period"), amount("revenue", "revenue_in_period"), int("lifetime", "orders_to_date"), date("last", "last_order_on")], true),
-  { id: "customers.retention", page: "customers", view: "customers-view.tsx", shape: "cohort", caption: "Share of each month's new customers who had bought again", columns: [date("cohort"), int("size", "customers"), ...MONTHS.map((m) => pct(m))], money: false },
-  { id: "customers.cohort_revenue", page: "customers", view: "customers-view.tsx", shape: "cohort", caption: "Revenue per customer of each month's new customers", columns: [date("cohort"), int("size", "customers"), ...MONTHS.map((m) => amount(m))], money: true },
+  table("customers.top", "customers", "customers-view.tsx", [text("customer"), text("email"), text("account"), int("orders", "orders_in_period"), amount("revenue", "revenue_in_period"), int("lifetime", "orders_to_date"), date("last", "last_order_on")], true),
+  { id: "customers.retention", page: "customers", view: "customers-view.tsx", shape: "cohort", caption: ANALYTICS_CAPTIONS["customers.retention"], columns: [date("cohort"), int("size", "customers"), ...MONTHS.map((m) => pct(m))], money: false },
+  { id: "customers.cohort_revenue", page: "customers", view: "customers-view.tsx", shape: "cohort", caption: ANALYTICS_CAPTIONS["customers.cohort_revenue"], columns: [date("cohort"), int("size", "customers"), ...MONTHS.map((m) => amount(m))], money: true },
 
   // Products
-  table("products.table", "products", "products-view.tsx", "Products with revenue, units, orders, margin, refund rate and shares", [
+  table("products.table", "products", "products-view.tsx", [
     text("product"), text("handle"), amount("revenue", "revenue", true), int("units", "units", true), int("orders", "orders"), pct("margin", "margin"), pct("refunds", "refund_rate"), pct("share", "share_of_revenue"), pct("profitShare", "share_of_profit"), int("views", "views"), pct("conversion", "conversion_rate"),
   ], true),
-  bars("products.top_revenue", "products", "products-view.tsx", "Top 10 products by revenue"),
+  bars("products.top_revenue", "products", "products-view.tsx"),
 
   // Inventory
-  table("inventory.variants", "inventory", "inventory-view.tsx", "Stocked variants with stock, sales per day, days left and what is tied up", [
+  table("inventory.variants", "inventory", "inventory-view.tsx", [
     text("name", "product"), text("sku"), text("status"), text("backorder", "selling_on_backorder"), int("onHand", "on_hand"), int("owed", "owed_on_backorder"), dec("v7", "per_day_7_days"), dec("v30", "per_day_30_days"), dec("days", "days_left"), amount("value", "tied_up_at_cost"), date("lastSold", "last_sold_on"),
   ], true),
 
   // Marketing
-  table("marketing.channels", "marketing", "marketing-view.tsx", "Channels with sessions, orders, revenue, conversion, spend, CAC, ROAS and profit", [
+  table("marketing.channels", "marketing", "marketing-view.tsx", [
     text("channel"), int("sessions"), int("orders"), amount("revenue"), pct("conversion"), amount("aov", "average_order"), int("newCustomers", "new_customers"), amount("spend", "ad_spend"), amount("cac"), dec("roas"), dec("profitRoas", "profit_roas"), amount("contribution", "contribution_profit"),
   ], true),
-  table("marketing.campaigns", "marketing", "campaigns-view.tsx", "Campaigns with sessions, orders, revenue, new customers, spend, CAC and ROAS", [
+  table("marketing.campaigns", "marketing", "campaigns-view.tsx", [
     text("campaign"), text("source"), int("sessions"), int("orders"), amount("revenue"), pct("conversion"), int("newCustomers", "new_customers"), amount("spend", "ad_spend"), amount("cac"), dec("roas"),
   ], true),
-  bars("marketing.revenue_by_channel", "marketing", "marketing-view.tsx", "Revenue by channel"),
-  bars("marketing.spend_by_channel", "marketing", "marketing-view.tsx", "Ad spend by channel"),
-  table("marketing.discount_codes", "marketing", "discounts-view.tsx", "Discount codes used in the period", [
+  bars("marketing.revenue_by_channel", "marketing", "marketing-view.tsx"),
+  bars("marketing.spend_by_channel", "marketing", "marketing-view.tsx"),
+  table("marketing.discount_codes", "marketing", "discounts-view.tsx", [
     text("code"), text("kind", "type"), text("status"), int("orders"), amount("revenue"), amount("discount", "taken_off"), pct("pct", "discount_percent"), amount("perOrder", "per_order"), amount("aov", "average_order"), pct("share", "share_of_code_revenue"),
   ], true),
-  series("marketing.discount_share", "marketing", "discounts-view.tsx", "Share of paid orders with a discount, by month", [pct("share", "orders_with_a_discount")], false),
-  bars("marketing.discount_by_kind", "marketing", "discounts-view.tsx", "Discount given by kind"),
+  series("marketing.discount_share", "marketing", "discounts-view.tsx", [pct("share", "orders_with_a_discount")], false),
+  bars("marketing.discount_by_kind", "marketing", "discounts-view.tsx"),
 
   // Subscriptions
-  table("subscriptions.bridge", "subscriptions", "subscriptions-view.tsx", "How monthly recurring revenue moved", [text("step"), amount("amount")], true),
-  bars("subscriptions.mrr_bridge", "subscriptions", "subscriptions-view.tsx", "MRR at the start, what was added and lost, and MRR at the end"),
+  table("subscriptions.bridge", "subscriptions", "subscriptions-view.tsx", [text("step"), amount("amount")], true),
+  bars("subscriptions.mrr_bridge", "subscriptions", "subscriptions-view.tsx"),
 
   // Traffic, and what follows from it
-  table("traffic.devices", "traffic", "traffic-view.tsx", "Devices with visits, share of visits, conversion rate, average order, orders and revenue", [text("device"), int("sessions", "visits"), pct("share", "share_of_visits"), pct("conversion", "conversion_rate"), amount("aov", "average_order"), int("orders"), amount("revenue")], true),
-  table("traffic.countries", "traffic", "traffic-view.tsx", "Countries with orders, revenue, share of revenue, average order, new customers, visits and conversion rate", [text("country"), int("orders"), amount("revenue"), pct("share", "share_of_revenue"), amount("aov", "average_order"), int("new", "new_customers"), int("sessions", "visits"), pct("conversion", "conversion_rate")], true),
-  table("traffic.cities", "traffic", "traffic-view.tsx", "The cities with most revenue", [text("city"), text("country"), int("orders"), amount("revenue"), pct("share", "share_of_revenue"), amount("aov", "average_order")], true),
-  table("traffic.landing", "traffic", "traffic-view.tsx", "The pages most visits began on", [text("page"), text("kind"), int("sessions", "visits"), int("orders"), pct("conversion", "conversion_rate"), amount("revenue")], true),
-  table("traffic.zero_terms", "traffic", "traffic-view.tsx", "Searches that found nothing", [text("term", "search"), int("searches", "times_it_found_nothing"), date("last", "last_searched_on")]),
-  table("traffic.top_terms", "traffic", "traffic-view.tsx", "The most searched terms", [text("term", "search"), int("searches"), int("results", "results_shown"), int("zero", "found_nothing"), int("clicked", "opened_a_result"), pct("ctr", "click_through")]),
-  table("traffic.low_click_terms", "traffic", "traffic-view.tsx", "Searches that found something but whose results were rarely opened", [text("term", "search"), int("searches"), int("results", "results_shown"), pct("ctr", "click_through")]),
-  table("traffic.search_days", "traffic", "traffic-view.tsx", "Searches tied to a visit and those followed by an order, per day", [date("day"), int("tied", "searches_tied_to_a_visit"), int("converted", "followed_by_an_order"), pct("rate", "share")]),
-  { id: "traffic.funnel", page: "traffic", view: "traffic-view.tsx", shape: "funnel", caption: "Visits, product views, carts, checkouts and purchases", columns: [text("stage"), int("count")], money: false },
-  { id: "traffic.heatmap", page: "traffic", view: "traffic-view.tsx", shape: "heatmap", caption: "Paid orders by weekday and two-hour band", columns: [text("band"), int("monday"), int("tuesday"), int("wednesday"), int("thursday"), int("friday"), int("saturday"), int("sunday")], money: false },
-  bars("traffic.weekdays", "traffic", "traffic-view.tsx", "Paid orders for each weekday", "int"),
-  table("traffic.refund_products", "traffic", "refunds-view.tsx", "The most refunded products", [text("product"), amount("value", "refunded"), pct("share", "share_of_refunds"), int("refunds"), int("restocked", "back_in_stock")], true),
-  table("traffic.refund_segments", "traffic", "refunds-view.tsx", "Refunds by new and returning customers", [text("segment", "customer"), amount("value", "refunded"), pct("share", "share_of_refunds"), int("refunds"), int("orders")], true),
-  table("traffic.refund_markets", "traffic", "refunds-view.tsx", "Refunds and refund rate by market", [text("market"), amount("value", "refunded"), int("refunds"), int("orders", "orders_refunded"), amount("revenue"), pct("rate", "refund_rate")], true),
-  bars("traffic.refund_reasons", "traffic", "refunds-view.tsx", "Refunded amount by reason"),
-  table("traffic.return_kinds", "traffic", "returns-view.tsx", "Returns made in the period by kind", [text("kind"), int("returns", "made"), int("units"), int("declined"), int("cancelled"), int("refunded"), amount("value", "refunded_amount"), int("exchanged")], true),
-  table("traffic.return_timing", "traffic", "returns-view.tsx", "Time from the request and from the goods arriving to the refund", [text("what", "time"), int("n", "returns"), dec("median", "typical_days"), dec("slowest", "slowest_days")]),
-  table("traffic.return_products", "traffic", "returns-view.tsx", "The most returned products", [text("product"), int("returned", "units_returned"), int("sold", "units_sold"), pct("rate", "return_rate"), amount("value", "returned_value")], true),
-  bars("traffic.return_reasons", "traffic", "returns-view.tsx", "Returns made by reason", "int"),
+  table("traffic.devices", "traffic", "traffic-view.tsx", [text("device"), int("sessions", "visits"), pct("share", "share_of_visits"), pct("conversion", "conversion_rate"), amount("aov", "average_order"), int("orders"), amount("revenue")], true),
+  table("traffic.countries", "traffic", "traffic-view.tsx", [text("country"), int("orders"), amount("revenue"), pct("share", "share_of_revenue"), amount("aov", "average_order"), int("new", "new_customers"), int("sessions", "visits"), pct("conversion", "conversion_rate")], true),
+  table("traffic.cities", "traffic", "traffic-view.tsx", [text("city"), text("country"), int("orders"), amount("revenue"), pct("share", "share_of_revenue"), amount("aov", "average_order")], true),
+  table("traffic.landing", "traffic", "traffic-view.tsx", [text("page"), text("kind"), int("sessions", "visits"), int("orders"), pct("conversion", "conversion_rate"), amount("revenue")], true),
+  table("traffic.zero_terms", "traffic", "traffic-view.tsx", [text("term", "search"), int("searches", "times_it_found_nothing"), date("last", "last_searched_on")]),
+  table("traffic.top_terms", "traffic", "traffic-view.tsx", [text("term", "search"), int("searches"), int("results", "results_shown"), int("zero", "found_nothing"), int("clicked", "opened_a_result"), pct("ctr", "click_through")]),
+  table("traffic.low_click_terms", "traffic", "traffic-view.tsx", [text("term", "search"), int("searches"), int("results", "results_shown"), pct("ctr", "click_through")]),
+  table("traffic.search_days", "traffic", "traffic-view.tsx", [date("day"), int("tied", "searches_tied_to_a_visit"), int("converted", "followed_by_an_order"), pct("rate", "share")]),
+  { id: "traffic.funnel", page: "traffic", view: "traffic-view.tsx", shape: "funnel", caption: ANALYTICS_CAPTIONS["traffic.funnel"], columns: [text("stage"), int("count")], money: false },
+  { id: "traffic.heatmap", page: "traffic", view: "traffic-view.tsx", shape: "heatmap", caption: ANALYTICS_CAPTIONS["traffic.heatmap"], columns: [text("band"), int("monday"), int("tuesday"), int("wednesday"), int("thursday"), int("friday"), int("saturday"), int("sunday")], money: false },
+  bars("traffic.weekdays", "traffic", "traffic-view.tsx", "int"),
+  table("traffic.refund_products", "traffic", "refunds-view.tsx", [text("product"), amount("value", "refunded"), pct("share", "share_of_refunds"), int("refunds"), int("restocked", "back_in_stock")], true),
+  table("traffic.refund_segments", "traffic", "refunds-view.tsx", [text("segment", "customer"), amount("value", "refunded"), pct("share", "share_of_refunds"), int("refunds"), int("orders")], true),
+  table("traffic.refund_markets", "traffic", "refunds-view.tsx", [text("market"), amount("value", "refunded"), int("refunds"), int("orders", "orders_refunded"), amount("revenue"), pct("rate", "refund_rate")], true),
+  bars("traffic.refund_reasons", "traffic", "refunds-view.tsx"),
+  table("traffic.return_kinds", "traffic", "returns-view.tsx", [text("kind"), int("returns", "made"), int("units"), int("declined"), int("cancelled"), int("refunded"), amount("value", "refunded_amount"), int("exchanged")], true),
+  table("traffic.return_timing", "traffic", "returns-view.tsx", [text("what", "time"), int("n", "returns"), dec("median", "typical_days"), dec("slowest", "slowest_days")]),
+  table("traffic.return_products", "traffic", "returns-view.tsx", [text("product"), int("returned", "units_returned"), int("sold", "units_sold"), pct("rate", "return_rate"), amount("value", "returned_value")], true),
+  bars("traffic.return_reasons", "traffic", "returns-view.tsx", "int"),
 
   // Settings pages: what the owner entered
-  table("settings.spend", "settings", "spend-form.tsx", "Latest ad spend entries", [date("day"), text("channel"), text("campaign"), amount("amount"), text("note")], true),
-  table("settings.targets", "settings", "settings-forms.tsx", "Revenue targets for the next 12 months", [text("month"), amount("target", "net_revenue_target")], true),
+  table("settings.spend", "settings", "spend-form.tsx", [date("day"), text("channel"), text("campaign"), amount("amount"), text("note")], true),
+  table("settings.targets", "settings", "settings-forms.tsx", [text("month"), amount("target", "net_revenue_target")], true),
   // D348: a target's value is in its metric's unit, named in `unit` (minor units of the main currency, orders, or basis points of a rate).
   table(
     "settings.period_targets",
     "settings",
     "settings-forms.tsx",
-    "Targets of every kind that have not ended",
     [text("metric"), text("period"), text("starts_on"), text("ends_on"), int("target_value"), text("unit")],
   ),
 ];

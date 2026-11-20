@@ -24,7 +24,7 @@ A number rises only where its row says so, with a decision.
 | src/lib/permissions.baseline.json | src/lib/permissions.scan.test.ts and src/lib/permissions.matrix.test.ts | never rewritten (the oracle from before roles; scripts/permission-baseline.mjs made it once) | what each admin entry point asked for before roles |
 | src/lib/docs-budget.baseline.json | src/lib/docs-budget.scan.test.ts | node scripts/docs-ratchet.mjs | the written rules (see The written rules below) |
 | src/components/admin/admin-bundle.baseline.json | src/components/admin/admin-bundle.scan.test.ts | WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts | admin client modules that reach zod (a new one fails; a rewrite is the deliberate step) |
-| src/lib/admin-messages/imports.baseline.json | src/lib/admin-messages/imports.scan.test.ts | WRITE_ADMIN_IMPORTS_BASELINE=1 pnpm exec vitest run src/lib/admin-messages/imports.scan.test.ts | value imports of code in the admin's catalogue files, `file -> target` |
+| none (ALLOWED_LEAVES in src/lib/admin-messages/imports.scan.test.ts, each with its reason) | src/lib/admin-messages/imports.scan.test.ts | a leaf is added by hand with its reason, only for a module that imports nothing but types and other leaves | a catalogue file's value imports: other catalogue files and the leaves only, 0 imports of code (36 in 14 files before step 2.50); the walk from it reaches no zod, component or server file |
 | src/lib/message-keys.baseline.json | src/lib/message-keys.scan.test.ts | WRITE_MESSAGE_KEYS_BASELINE=1 pnpm exec vitest run src/lib/message-keys.scan.test.ts | interface keys that no code names and no matched table covers |
 | none (KEPT, KEPT_ZONELESS and their ceilings, in src/lib/admin-dates.scan.test.ts) | src/lib/admin-dates.scan.test.ts | lower a count and its ceiling by hand once a case is gone (the test fails while a list is higher than the code) | admin code (src/app/admin, src/components/admin): a literal Europe/Oslo, 0; dates cut from a UTC string kept with a reason, 11 in 8 files (D786); dates formatted without a zone, 2 (browser only: Saved at, RestoreBar), from 42 (D812) |
 | none (the three KEPT lists and CEILINGS in src/lib/dates.scan.test.ts) | src/lib/dates.scan.test.ts | lower a count and its ceiling by hand once a case is gone | code outside the admin: a literal Europe/Oslo, 15 lines in 10 files; UTC cuts in storefront and email code, 16 (keys, labelled UTC); dates formatted without a zone, 2 (browser only) (D796) |
@@ -105,9 +105,10 @@ Steps of the bloat review write their sentence under a heading of their own belo
 - src/lib/admin-text-reach.scan.test.ts: the admin's words are not imported outside the admin; no module holds a table of every area
   (more than 40 area modules), and the median admin entry reaches at most 30 areas and 1.31 MB of catalogues; its ADMIN_REACH figures
   (median, largest entry, platform home) only fall, with room of two areas and 15 % of bytes for other changes (step 2.25).
-- src/lib/admin-messages/imports.scan.test.ts: a catalogue file holds text only; the listed imports only shrink until step 2.50.
+- src/lib/admin-messages/imports.scan.test.ts: a catalogue file holds text only: it imports other catalogue files and the ALLOWED_LEAVES
+  (`<thing>-labels.ts`, types only, each with its reason) and nothing else, and its walk reaches no zod, component or server file (step 2.50).
 - src/lib/message-keys.scan.test.ts: a key nothing reads fails; tables read by matching are named in MATCHED_TABLES.
-- The three baselines (admin-bundle, imports, message-keys) are rewritten by the writer each failure message names, which writes
+- The two baselines (admin-bundle, message-keys) are rewritten by the writer each failure message names, which writes
   today's figures: a rewrite is the deliberate step that accepts growth, shown in the diff.
 
 ### The builder's editors arrive after first paint (step 2.29)
