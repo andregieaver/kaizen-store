@@ -296,6 +296,10 @@ export const homeNb: HomeMessages = {
       one: "{store}: {n} flyt mister lesere: mer enn 1 av 20 som startet den, meldte seg av listen. Siden dens sier hva du kan endre.",
       many: "{store}: {n} flyter mister lesere: mer enn 1 av 20 som startet dem, meldte seg av listen. Sidene deres sier hva du kan endre.",
     },
+    flowsPaused: {
+      one: "{store}: {n} flyt ble slått av fordi lesere meldte seg av listen etter e-postene. Siden dens sier hva som skjedde.",
+      many: "{store}: {n} flyter ble slått av fordi lesere meldte seg av listen etter e-postene. Sidene deres sier hva som skjedde.",
+    },
     booksDiffer: { one: "{store}: {n} bilag i regnskapet avviker fra Tripletex.", many: "{store}: {n} bilag i regnskapet avviker fra Tripletex." },
     booksWaiting: { one: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført.", many: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført." },
     billsOverdue: { one: "{store}: {n} regning har passert forfallsdatoen.", many: "{store}: {n} regninger har passert forfallsdatoen." },

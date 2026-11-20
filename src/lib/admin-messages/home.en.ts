@@ -309,6 +309,10 @@ export const homeEn = {
       one: "{store}: {n} flow is losing readers: more than 1 in 20 who started it left your list. Its page says what to change.",
       many: "{store}: {n} flows are losing readers: more than 1 in 20 who started them left your list. Their pages say what to change.",
     },
+    flowsPaused: {
+      one: "{store}: {n} flow was switched off because readers left your list after its emails. Its page says what happened.",
+      many: "{store}: {n} flows were switched off because readers left your list after their emails. Their pages say what happened.",
+    },
     booksDiffer: { one: "{store}: {n} document in the books differs from Tripletex.", many: "{store}: {n} documents in the books differ from Tripletex." },
     booksWaiting: { one: "{store}: {n} document has waited more than a week to be posted to the books.", many: "{store}: {n} documents have waited more than a week to be posted to the books." },
     billsOverdue: { one: "{store}: {n} bill is past its due date.", many: "{store}: {n} bills are past their due date." },

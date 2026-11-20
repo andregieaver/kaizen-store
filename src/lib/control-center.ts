@@ -131,6 +131,8 @@ export type StoreFigures = {
    * marketing: how many, and the one's id when there is just one, so the item opens it.
    */
   flowsLosing?: { flows: number; only: string | null };
+  /** Flows the flow guard switched off in the last 14 days and still off (email plan M3.9), for a member who may read marketing. */
+  flowsPaused?: { flows: number; only: string | null };
 };
 
 /**
@@ -193,6 +195,7 @@ export const ATTENTION_KINDS = [
   "blog_comments",
   "unanswered_questions",
   "flows_losing",
+  "flows_paused",
   "books",
   "bills",
   "turnover",
@@ -416,7 +419,7 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
 }
 
 /** What `queueItems()` reads of a store: its name and the queues' figures (each left out where the member may not see it). */
-export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing">;
+export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing" | "flowsPaused">;
 
 /**
  * The queues ecosystem plan E2.1 (D713) brought to Home, each with the page that acts on it: payment disputes waiting for the store's answer
@@ -468,6 +471,17 @@ export function queueItems(s: QueueFigures, now: number, w: AttentionWords): Kin
       text: count(losing.flows, w.flowsLosing),
       href: losing.only ? `${base}/flows/${losing.only}` : `${base}/flows`,
       action: a.seeFlow,
+    });
+  }
+  // M3.9: a flow the guard switched off because readers left after its emails; urgent, as its readers stopped getting it.
+  const paused = s.flowsPaused;
+  if (paused && paused.flows > 0) {
+    items.push({
+      kind: "flows_paused",
+      text: count(paused.flows, w.flowsPaused),
+      href: paused.only ? `${base}/flows/${paused.only}` : `${base}/flows`,
+      action: a.seeFlow,
+      urgent: true,
     });
   }
   return items;

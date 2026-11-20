@@ -128,3 +128,14 @@ Orders are credited by D761's one rule, flows now a fourth sender (`flow:{flow}:
 Marketing). Home and the morning briefing say when a flow switched on is losing readers (`space_out`'s numbers, `LOSING`), through
 E2.1's one source (`losingFlowCounts()` in `src/server/attention.ts`, the item `flows_losing`), for a member who may read marketing; it
 opens the flow, or Flows when there are several.
+
+## The flow guard (20 November 2026, email plan M3.9 in part)
+
+A switched-on flow whose readers leave the list after its emails is switched off before it trips the store's sending guard (D730) for
+every email: hourly (`guardFlows()`, from the every-minute flows job `tickFlows()`), of the people who got one of its emails in the last 7 days, those who
+left the list within 48 hours of it (unsubscribed, or marked it as spam, which unsubscribes them); with 30 or more readers and more than
+3 in 100 leaving (`flowGuardPauses()`, `src/lib/flow-guard.ts`), the flow goes off, the counts are kept on it (`guard_paused_at`,
+`guard_counts`) and audited (`marketing.flow_guard_paused`). Its page says why in those numbers, Home and the morning briefing name it as
+urgent for 14 days (`flows_paused`, counted in `heldCounts()`'s one statement), and the owner switches it on again after a test, which
+clears the mark. Still to come in M3.9: the autopilot proposing the recipes a store lacks, and suggesting split tests.
+

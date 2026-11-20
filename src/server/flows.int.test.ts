@@ -406,4 +406,35 @@ describe("flows (D767)", () => {
     expect(past.ended).toBe(2);
     expect(Object.fromEntries(past.reached)).toEqual({ a: 2, b: 1 });
   });
+
+
+  it("switches off a flow whose readers leave the list after its emails, keeps why, and clears it when switched on again (M3.9)", async () => {
+    const steps: FlowStep[] = [email("g", "Hei")];
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Guard ${run}`, trigger: "subscriber.subscribed", steps, goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    await fl.switchFlow(storeId, owner, saved.id, true);
+    for (let i = 0; i < 30; i += 1) {
+      const person = await subscriber(`guard${i}-${run}@example.com`);
+      const [r] = await db().execute<Row>(sql`
+        insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, status, ended_at)
+        values (${storeId}::uuid, ${saved.id}::uuid, 1, ${person}::uuid, ${`guard${i}`}, 'done', now()) returning id`);
+      // Two leave the list now, three hours after their email; one leaves now too, but three days after its email, which does not count.
+      const at = new Date(Date.now() - (i === 2 ? 72 : 3) * HOUR);
+      await db().execute(sql`insert into commerce.flow_run_steps (store_id, run_id, step_id, outcome, created_at) values (${storeId}::uuid, ${String(r.id)}::uuid, 'g', 'logged', ${at.toISOString()}::timestamptz)`);
+      if (i <= 2) await db().execute(sql`update commerce.marketing_subscribers set status = 'unsubscribed', unsubscribe_source = 'link' where id = ${person}::uuid`);
+    }
+    const result = await fl.guardFlows({ everyRun: true });
+    expect(result.paused).toBeGreaterThanOrEqual(1);
+    const flow = await fl.getFlow(storeId, saved.id);
+    expect(flow?.enabled).toBe(false);
+    expect(flow?.guard).toMatchObject({ sent: 30, left: 2 });
+    // Home and the briefing name it (the same statement as the other held things).
+    const { heldCounts } = await import("./attention");
+    expect((await heldCounts([], [], [storeId])).paused.get(storeId)).toMatchObject({ flows: 1, only: saved.id });
+    // Switched on again by the owner, it starts afresh.
+    await fl.switchFlow(storeId, owner, saved.id, true);
+    expect((await fl.getFlow(storeId, saved.id))?.guard).toBeNull();
+    await fl.switchFlow(storeId, owner, saved.id, false);
+  });
 });

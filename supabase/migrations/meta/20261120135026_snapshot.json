@@ -1,6 +1,6 @@
 {
-  "id": "a3829559-948e-4768-8b95-a2e7270928fc",
-  "prevId": "2794e1ac-ed13-4375-bc50-2c7300cec5bc",
+  "id": "b4b8df0b-18a1-4c90-92bb-d0895694bcb6",
+  "prevId": "a3829559-948e-4768-8b95-a2e7270928fc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -37175,6 +37175,18 @@
         "enabled_at": {
           "name": "enabled_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "guard_paused_at": {
+          "name": "guard_paused_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "guard_counts": {
+          "name": "guard_counts",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

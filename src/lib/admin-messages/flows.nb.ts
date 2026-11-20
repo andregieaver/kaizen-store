@@ -69,6 +69,7 @@ export const flowsNb: FlowsMessages = {
     too_big: "«{subject}» ({language}) er lang: Gmail kutter en e-post rundt 102 KB. Gjør den kortere.",
   },
   stepReach: { measured: "Omtrent {n} ville fått den de neste 30 dagene, ut fra hvem som fikk den før.", all: "Omtrent {n} ville fått den de neste 30 dagene.", up_to: "Opptil {n} ville fått den de neste 30 dagene, etter hvilken vei de går." },
+  guard: { paused: "Slått av {date}: {left} av de {sent} som fikk e-postene uken før, meldte seg av listen innen to dager etter en av dem. Se på e-postene og hvor ofte de går, test den og slå den på igjen." },
   reach: {
     none: "Ingen ville ha startet det de siste 30 dagene.",
     one: "Omtrent 1 person ville starte det de neste 30 dagene, bedømt ut fra de siste 30.",

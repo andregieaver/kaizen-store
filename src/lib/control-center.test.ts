@@ -556,4 +556,15 @@ describe("one attention source (ecosystem plan E2.1, D713)", () => {
       text: "2 flyter mister lesere: mer enn 1 av 20 som startet dem, meldte seg av listen. Sidene deres sier hva du kan endre.",
     });
   });
+
+  it("names a flow the guard switched off as urgent, opening it (M3.9)", () => {
+    const [item] = storeAttentionItems({ slug: "kaffe", name: "Kaffe", role: "owner", flowsPaused: { flows: 1, only: "f2" } }, now, homeEn.attention);
+    expect(item).toEqual({
+      kind: "flows_paused",
+      text: "1 flow was switched off because readers left your list after its emails. Its page says what happened.",
+      href: "/admin/kaffe/flows/f2",
+      action: "See the flow",
+      urgent: true,
+    });
+  });
 });
