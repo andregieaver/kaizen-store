@@ -865,6 +865,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D860 | **The page builder's dialogs and settings fields load when drawn** | 2026-11-20 | [text](decisions/D860.md) |
 | D861 | **A listing draws its grid once and reads its list once** | 2026-11-20 | [text](decisions/D861.md) |
 | D862 | **Contract editor: side by side or stacked, and a draft saved as a template** | 2026-11-20 | [text](decisions/D862.md) |
+| D863 | **Each working store page loads its own parts** | 2026-11-20 | [text](decisions/D863.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
