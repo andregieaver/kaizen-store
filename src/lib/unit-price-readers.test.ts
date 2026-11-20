@@ -36,7 +36,8 @@ describe("who reads a variant's content", () => {
       "src/lib/product-csv-shopify.ts",
       "src/lib/product-csv.ts",
       "src/lib/product-import.ts",
-      "src/lib/product-input.ts",
+      // The product editor's schema checks a variant's content with parseMeasureAmount() (moved out of product-input.ts by bloat review step 2.46).
+      "src/lib/product-input-schema.ts",
       "src/lib/unit-price-rules.ts",
       "src/lib/unit-price.ts",
       "src/server/cart.ts",

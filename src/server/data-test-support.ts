@@ -187,7 +187,7 @@ export async function euOperator(fx: Fixture): Promise<string> {
  */
 export async function seedProducts(fx: Fixture, count: number, o: { prefix?: string; variants?: number; status?: "active" | "draft"; operator?: string } = {}): Promise<{ id: string; handle: string; skus: string[] }[]> {
   const { getEditorContext, emptyProduct, saveProduct } = await import("./products");
-  const { productInput } = await import("@/lib/product-input");
+  const { productInput } = await import("@/lib/product-input-schema");
   // The manufacturer first: the editor's context lists the operators that exist when it is read.
   const operator = o.operator ?? (await euOperator(fx));
   const store = (await getStore(fx.slug))!;

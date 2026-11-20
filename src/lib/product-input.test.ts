@@ -6,11 +6,11 @@ import {
   MAX_VARIANTS,
   formatPriceInput,
   parsePrice,
-  productInput,
   productProblems,
   variantLabel,
   type ProductInput,
 } from "./product-input";
+import { productInput } from "./product-input-schema";
 
 describe("parsePrice", () => {
   it("reads prices the way people type them", () => {

@@ -16,7 +16,8 @@ vi.mock("@/app/admin/(gated)/[store]/products/actions", () => ({
 vi.mock("@/app/admin/(gated)/[store]/fields/actions", () => ({ startFieldFileUploadAction: async () => ({ ok: false }) }));
 
 import { BACKORDER_LONG_HINT } from "@/lib/inventory";
-import { productInput, type ProductInput } from "@/lib/product-input";
+import type { ProductInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 import type { EditorContext } from "@/server/products";
 
 import { ProductEditor } from "./product-editor";

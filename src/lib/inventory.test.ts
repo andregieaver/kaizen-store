@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { productInput } from "./product-input";
+import { productInput } from "./product-input-schema";
 import {
   ADJUST_PROBLEM_WORDS,
   ADJUST_REASONS,

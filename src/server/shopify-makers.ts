@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { BULK_MAX_PRODUCTS } from "@/lib/data-limits";
 import { isoCountries } from "@/lib/iso-countries";
-import { operatorSchema } from "@/lib/product-input";
+import { operatorSchema } from "@/lib/product-input-schema";
 import { missingResponsible, responsibleAreas, safetyData, type ProductSafetyData } from "@/lib/product-safety";
 import { chunks, makerGroups, type MakerGroup } from "@/lib/shopify-makers";
 

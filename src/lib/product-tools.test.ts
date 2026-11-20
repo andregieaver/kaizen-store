@@ -1,7 +1,8 @@
 import { pictureItem } from "./product-media";
 import { describe, expect, it } from "vitest";
 
-import { GENERAL_TAX_CODE, productInput, type ProductInput } from "./product-input";
+import { GENERAL_TAX_CODE, type ProductInput } from "./product-input";
+import { productInput } from "./product-input-schema";
 import {
   createProductInput,
   factsOf,

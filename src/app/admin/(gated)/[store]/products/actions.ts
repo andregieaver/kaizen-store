@@ -10,7 +10,8 @@ import { categoryAttributes, categoryName, categoryPath, isCategory, searchCateg
 import { taxonomy, taxonomySearch, taxonomyWords } from "@/server/product-taxonomy";
 import { fillWords } from "@/lib/admin-fill";
 import type { FieldData } from "@/lib/custom-fields";
-import { BUNDLE_COMPONENTS_MAX, productInput, type ProductInput } from "@/lib/product-input";
+import { BUNDLE_COMPONENTS_MAX, type ProductInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 import { editorOptions } from "@/lib/variant-grid";
 import { db } from "@/db/client";
 import { componentFacts, searchComponents, type ComponentFacts } from "@/server/bundles";

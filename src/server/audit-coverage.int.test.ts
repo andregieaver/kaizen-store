@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { newPageContent } from "@/lib/page-content";
-import { productInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 
 import { addMember, auditRows, makeAccount, makeStore, membershipOf, run } from "./trust-fixtures";
 

@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/db/client";
-import { productInput, type ProductInput } from "@/lib/product-input";
+import type { ProductInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 import { editorOptions } from "@/lib/variant-grid";
 
 import { makeStore, type Fixture } from "./invoice-test-fixture";

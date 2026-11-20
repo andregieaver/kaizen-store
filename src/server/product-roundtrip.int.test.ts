@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { parseCsv } from "@/lib/csv";
 import { emptyGroup, newField, type FieldDef, type FieldGroupInput } from "@/lib/custom-fields";
-import { productInput, type ProductInput } from "@/lib/product-input";
+import type { ProductInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 
 import type { Membership } from "./auth";
 import { addSwedish, depsWith, fakeStorage, importThrough, itemsOf, membersOf, rowsOfCsv } from "./data-test-support";

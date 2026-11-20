@@ -15,7 +15,8 @@ vi.mock("@/app/admin/(gated)/[store]/products/actions", () => ({
 }));
 vi.mock("@/app/admin/(gated)/[store]/fields/actions", () => ({ startFieldFileUploadAction: async () => ({ ok: false }) }));
 
-import { productInput, type ProductInput } from "@/lib/product-input";
+import type { ProductInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 import type { Term } from "@/lib/taxonomy";
 import type { EditorContext } from "@/server/products";
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { productInput, type ProductInput } from "./product-input";
+import type { ProductInput } from "./product-input";
+import { productInput } from "./product-input-schema";
 import type { Term } from "./taxonomy";
 import { PACK_COUNT_MAX, packTotal, typedMeasure } from "./unit-price";
 import { allowSmallBase } from "./unit-price-test-support";

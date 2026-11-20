@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { parseListingParams } from "@/lib/listing-filters";
-import { MAX_VARIANTS, formatPriceInput, parsePrice, productInput, type ProductInput } from "@/lib/product-input";
+import { MAX_VARIANTS, formatPriceInput, parsePrice, type ProductInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 
 import { addSwedish, euOperator } from "./data-test-support";
 import { makeStore, type Fixture } from "./invoice-test-fixture";

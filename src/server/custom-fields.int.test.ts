@@ -11,7 +11,8 @@ import {
   type FieldDef,
   type FieldGroupInput,
 } from "@/lib/custom-fields";
-import { productInput, type ProductInput } from "@/lib/product-input";
+import type { ProductInput } from "@/lib/product-input";
+import { productInput } from "@/lib/product-input-schema";
 
 import type { Membership } from "./auth";
 import type { Store } from "./stores";

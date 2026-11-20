@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MAX_MEDIA, MAX_MODELS, MAX_VIDEOS, mediaFileOk, mediaProblems, ownMediaFile, pictureItem, type MediaItemShape } from "./product-media";
-import { productInput } from "./product-input";
+import { productInput } from "./product-input-schema";
 
 /** A product's gallery items (wave 6 unit G, D325, `docs/wave-6-catalogue.md` Unit G). */
 
