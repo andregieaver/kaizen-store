@@ -5,14 +5,16 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
-import { adminText, type AdminArea } from "@/lib/admin-text";
+import type { AdminArea } from "@/lib/admin-text";
+import { ALL_AREA_WORDS } from "@/test/admin-words-all";
 
 import baseline from "./admin-words-handed.baseline.json";
 
 /**
  * Every place the admin hands words to the browser (bloat review step 1.28, `docs/performance.md`, `docs/rules/budgets.md`). A site is
- * one `areaTexts(lang, { area: AREA_WORDS })` call (bloat review step 2.25; `adminTexts(lang, areas)` before it) or one
- * `<AdminAreas areas={...}>`; its id is the file and the areas (`views.tsx#website+schedules`, or the constant's name). Per site and language the test counts the bytes handed (the areas' catalogues as JSON) and the bytes named:
+ * one `areaTexts(lang, { area: AREA_WORDS })` call (bloat review step 2.25; a list of area names before it) or one
+ * `<AdminAreas areas={...}>`; its id is the file and the areas (`views.tsx#website+schedules`, or the constant's name). Per site and
+ * language the test counts the bytes handed (the areas' catalogues as JSON) and the bytes named:
  * the groups the client parts under the site read, found in source by static import (`useAdminText("area").group`, a destructuring, or
  * the variable's later uses; anything else takes the whole area). Named is counted from source, not what a browser reads at load: the
  * browser record of step 1.5 (`e2e/signed-in/admin-scripts.spec.ts`) is the cross-check on five screens, and step 2.27 works the list down.
@@ -161,11 +163,11 @@ function findSites(): { sites: Site[]; unresolved: string[] } {
   for (const file of SITE_FILES) {
     const text = read(file);
     const found: { index: number; list: string }[] = [];
-    for (const match of text.matchAll(/(?:adminTexts|areaTexts)\(\s*([^,]+),\s*(\[[^\]]*\]|\{[^}]*\}|[A-Z_]+)\s*\)/g)) found.push({ index: match.index!, list: match[2] });
+    for (const match of text.matchAll(/areaTexts\(\s*([^,]+),\s*(\{[^}]*\}|[A-Z_]+)\s*\)/g)) found.push({ index: match.index!, list: match[2] });
     for (const match of text.matchAll(/<AdminAreas\s+areas=\{(\[[^\]]*\]|\{[^}]*\}|[A-Z_]+)\}/g)) found.push({ index: match.index!, list: match[1] });
     // A call the patterns do not match is named, not skipped.
-    const calls = [...text.matchAll(/(?<![.\w])(?:adminTexts|areaTexts)\(/g)].filter((m) => !/^\s*(?:export\s+)?(?:async\s+)?function/.test(text.slice(Math.max(0, m.index! - 40), m.index!).split("\n").pop() ?? ""));
-    const matched = found.filter((entry) => /^(?:adminTexts|areaTexts)\(/.test(text.slice(entry.index, entry.index + 12))).length;
+    const calls = [...text.matchAll(/(?<![.\w])areaTexts\(/g)].filter((m) => !/^\s*(?:export\s+)?(?:async\s+)?function/.test(text.slice(Math.max(0, m.index! - 40), m.index!).split("\n").pop() ?? ""));
+    const matched = found.filter((entry) => /^areaTexts\(/.test(text.slice(entry.index, entry.index + 12))).length;
     if (calls.length > matched) unresolved.push(`${repo(file)}: ${calls.length - matched} areaTexts() call(s) the patterns do not match`);
     const used = new Map<string, number>();
     for (const { list } of found.sort((a, b) => a.index - b.index)) {
@@ -273,7 +275,7 @@ function figures(file: string, areas: string[]): Figures {
     handed[lang] = 0;
     named[lang] = 0;
     for (const area of areas) {
-      const words = adminText(lang, area as AdminArea) as unknown as Record<string, unknown>;
+      const words = ALL_AREA_WORDS[area as AdminArea][lang] as unknown as Record<string, unknown>;
       handed[lang] += size(words);
       if (whole.includes(area)) named[lang] += size(words);
       else for (const group of groups.get(area) ?? []) named[lang] += size(words[group]);

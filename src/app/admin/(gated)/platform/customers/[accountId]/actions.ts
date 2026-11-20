@@ -5,9 +5,10 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { NAME_MAX } from "@/lib/email-change-limits";
 import { formRefusal } from "@/lib/form-problems";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { requirePlatformAdmin } from "@/server/auth";
 import { cancelEmailChange, correctName, sendEmailChangeFor } from "@/server/email-change";
 import { platformAction } from "@/server/store-action";
@@ -35,12 +36,12 @@ const isAccount = (id: string) => z.uuid().safeParse(id).success;
 /** Corrects a customer's name (D836): the stores area's (support and owners), in the person's change log and the platform's. */
 export async function correctNameAction(accountId: string, _state: FormState, form: FormData): Promise<FormState> {
   return platformAction({ area: "stores", action: "platform.customer_name", answer: inForm }, async (admin, lang) => {
-    const w = adminText(lang, "bookings").account.profile;
+    const w = BOOKINGS_WORDS[lang].account.profile;
     if (!isAccount(accountId)) return formRefusal(w.problems.not_found);
     const result = await correctName(admin, accountId, form.get("name"));
     if (!result.ok) return formRefusal(fillWords(w.problems[result.problem], { n: NAME_MAX }), "name");
     refresh();
-    return { status: "ok", messages: [adminText(lang, "platform").customer.nameSaved] };
+    return { status: "ok", messages: [PLATFORM_WORDS[lang].customer.nameSaved] };
   });
 }
 
@@ -50,8 +51,8 @@ export async function correctNameAction(accountId: string, _state: FormState, fo
  */
 export async function sendEmailChangeAction(accountId: string, _state: FormState, form: FormData): Promise<FormState> {
   return platformAction({ area: "stores", action: "platform.customer_email_change", answer: inForm }, async (admin, lang) => {
-    const c = adminText(lang, "platform").customer;
-    const w = adminText(lang, "bookings").account.email;
+    const c = PLATFORM_WORDS[lang].customer;
+    const w = BOOKINGS_WORDS[lang].account.email;
     if (!admin.platformAdmin) return formRefusal(c.ownersSend);
     if (!isAccount(accountId)) return formRefusal(w.problems.not_found);
     const result = await sendEmailChangeFor(admin, accountId, form.get("email"));
@@ -67,8 +68,8 @@ export async function sendEmailChangeAction(accountId: string, _state: FormState
 /** Cancels a customer's waiting change of email: an owner of the platform's, as sending one is. */
 export async function cancelEmailChangeForAction(accountId: string): Promise<FormState> {
   return platformAction({ area: "stores", action: "platform.customer_email_cancel", answer: inForm }, async (admin, lang) => {
-    const w = adminText(lang, "bookings").account.email;
-    if (!admin.platformAdmin) return formRefusal(adminText(lang, "platform").customer.ownersSend);
+    const w = BOOKINGS_WORDS[lang].account.email;
+    if (!admin.platformAdmin) return formRefusal(PLATFORM_WORDS[lang].customer.ownersSend);
     if (!isAccount(accountId) || !(await cancelEmailChange(accountId, admin))) return formRefusal(w.problems.none);
     refresh();
     return { status: "ok", messages: [w.cancelled] };

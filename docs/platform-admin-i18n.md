@@ -220,9 +220,13 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
 ### 3.3 The admin
 
 - **Catalogue:** `src/lib/admin-messages/{area}.{lang}.ts`, one pair per area (common, nav, orders, products, customers, marketing, website,
-  settings, analytics, support, work, billing, platform), English the type, so a key missing in Norwegian fails the typecheck. Server
-  components read `adminText(lang, area)`; client components get their area's slice from the layout through `AdminTextProvider` and
-  `useAdminText(area)`. A page that draws another area's parts hands that area down too (`AdminTextScope`, or `AdminAreas` where the page
+  settings, analytics, support, work, billing, platform), English the type, so a key missing in Norwegian fails the typecheck. An area
+  is its two catalogue files, its entry in the type `AdminAreaMessages` (`src/lib/admin-text.ts`, types only) and its module
+  `src/lib/admin-words/{stem}.ts`, which `docs/audits/bloat-review-2026-11/scripts/admin-words-modules.mjs` writes for a new area.
+  Server code reads `<AREA>_WORDS[lang]` (`ORDERS_WORDS[lang]`), or several areas with `areaTexts(lang, { … })` from
+  `src/lib/admin-area.ts`, so an admin page or action loads only the areas it names (bloat review step 2.25, 20 November 2026: D312's
+  'one entry' per area is now the area's module, and there is no table of every area or `adminText()`); client components get their
+  area's slice from the layout through `AdminTextProvider` and `useAdminText(area)`. A page that draws another area's parts hands that area down too (`AdminTextScope`, or `AdminAreas` where the page
   has no language at hand): an area not handed down is drawn in English whatever the account's language. That English fallback is in
   every admin screen's first scripts, so an area only server pages read is listed in `SERVER_AREAS` (`src/lib/admin-text.ts`; the
   carriers' own words, `carriers`, the page builder's sandbox, `sandbox`, and the Fiken page's, `fiken`, since 5 November 2026): the fallback
@@ -232,7 +236,8 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   bloat review step 2.26). Where the server writes English sentences (a saver's refusal, a check's finding), they are turned into the
   account's language on the server, in the page or the action's answer (`redirectAnswer()`, `experimentAnswer()`), never in the browser.
 - **Cuts:** a page hands its parts the groups they read, not a whole area, where they read few of them (bloat review step 2.27). A cut
-  is some top-level groups of an area, the same objects in each language (`cut()` in `src/lib/admin-text.ts`), so no string moves and
+  is some top-level groups of an area, the same objects in each language (`cut()` in `src/lib/admin-area.ts`, each cut a module of its
+  own in `src/lib/admin-words`, `BUILDER_TEXT_WORDS`), so no string moves and
   no catalogue file is added; a part reads it by its own name (`useAdminText("builderText")`), and a group outside the cut does not
   compile. The cuts and their areas: `builderText` (builder: richText, textStyles, responsive), `websitePick` (website: picker,
   pictureMaker), `assistantBar` (assistant: name, launcher, notices), `homeDrafts` (home: drafts), `websiteList` (website: list,
@@ -242,15 +247,16 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   and `notificationsWorkflows`, `settingsHours`, `settingsAi`, `settingsCompany`, `settingsPriceRules`, `settingsFeatures`, `settingsPrices`
   and `settingsProducer`, `supportSettings`, `analyticsExport`, `reportsCampaigns`, `platformCopy`, `platformDocsGuide` and
   `platformReminders`, `builderVersions` (builder: differences, blockNames), `websiteStaging`, `websiteMedia` and `websiteMenus`,
-  `inventoryImport` and `customersStaff`, each named after its area and the groups it picks (`src/lib/admin-text.ts` lists them). A screen whose other parts read more of the area hands the area and the cut (the payload carries
+  `inventoryImport` and `customersStaff`, each named after its area and the groups it picks (`AdminAreaMessages` in `src/lib/admin-text.ts`
+  lists them). A screen whose other parts read more of the area hands the area and the cut (the payload carries
   the shared objects once). The AI manager's chat gets the whole `assistant` area with its start call, not with the screen. A part
   drawn where only its cut is handed is listed in `src/components/admin/admin-cuts.scan.test.ts`, which fails if it asks for the
   whole area again; "read" means named in source, as `admin-words-handed.scan.test.ts` counts it.
-- **Outside the admin:** code that is not under `src/app/admin` or `src/components/admin` (emails, cron jobs, routes, `src/lib`) never
-  imports `src/lib/admin-text.ts`, which loads every area in both languages. It reads its area from `src/lib/admin-words/{stem}.ts`
-  (`STAFF_EMAILS_WORDS[lang]`); a new area read outside the admin gets such a module and its `CATALOGUES` entry becomes that pair.
-  `src/lib/admin-text-reach.scan.test.ts` holds it, with a ceiling of catalogue files for the proxy, the beacons and the storefront
-  layout that only falls (bloat review step 0.7).
+- **Outside the admin:** code that is not under `src/app/admin` or `src/components/admin` (emails, cron jobs, routes, `src/lib`) reads
+  its area from `src/lib/admin-words/{stem}.ts` (`STAFF_EMAILS_WORDS[lang]`), as the admin does. `src/lib/admin-text-reach.scan.test.ts`
+  holds it, with a ceiling of catalogue files for the proxy, the beacons and the storefront layout that only falls (bloat review step
+  0.7), and holds the admin's own entries: no module value-imports more than 40 area modules, and the median admin page, layout, route or
+  actions file reaches at most 30 areas and 1.31 MB of catalogues through them (step 2.25; 4 areas and 213 KB when it was written).
 - **Plural and choice:** the ICU subset of `src/lib/icu-lite.ts` (`{count, plural, one {…} other {…}}`), never string joins; dates, numbers
   and money with the account's locale (`formatMoney(…, "nb-NO")`, `Intl.DateTimeFormat`).
 - **Messages from the server:** a saver's refusal becomes a key with values (`problem("shipping.notSold", { country })`), turned into words

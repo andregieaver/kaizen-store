@@ -100,7 +100,9 @@ Steps of the bloat review write their sentence under a heading of their own belo
 
 - src/components/admin/admin-bundle.scan.test.ts: the frame reaches no zod, Supabase client or catalogue; ZOD_REACH only shrinks.
 - src/components/admin/admin-bundle.scan.test.ts (step 2.29): no admin client module reaches lib/i18n or a storefront language (lib/messages/{en,nb,sv,da}.ts), with no exception list; words come from the server or from useSiteWords().
-- src/lib/admin-text-reach.scan.test.ts: the admin's words are not imported outside the admin.
+- src/lib/admin-text-reach.scan.test.ts: the admin's words are not imported outside the admin; no module holds a table of every area
+  (more than 40 area modules), and the median admin entry reaches at most 30 areas and 1.31 MB of catalogues; its ADMIN_REACH figures
+  (median, largest entry, platform home) only fall, with room of two areas and 15 % of bytes for other changes (step 2.25).
 - src/lib/admin-messages/imports.scan.test.ts: a catalogue file holds text only; the listed imports only shrink until step 2.50.
 - src/lib/message-keys.scan.test.ts: a key nothing reads fails; tables read by matching are named in MATCHED_TABLES.
 - The three baselines (admin-bundle, imports, message-keys) are rewritten by the writer each failure message names, which writes

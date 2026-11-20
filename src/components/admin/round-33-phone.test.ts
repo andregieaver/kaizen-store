@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
-import { adminTexts } from "@/lib/admin-text";
+import type { AdminArea } from "@/lib/admin-text";
+import { ALL_AREA_WORDS } from "@/test/admin-words-all";
 import type { PageSummary } from "@/server/pages";
 
 import { AdminTextScope } from "./admin-text";
@@ -16,8 +17,8 @@ import { AddEndpoint } from "./webhook-endpoints";
 /** Round 33 (D707): the Pages list and the add-endpoint form on a phone. */
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'");
-const scoped = (child: unknown, props: object, areas: Parameters<typeof adminTexts>[1]) =>
-  createElement(AdminTextScope as never, { texts: adminTexts("en", areas) } as never, createElement(child as never, props as never));
+const scoped = (child: unknown, props: object, areas: readonly AdminArea[]) =>
+  createElement(AdminTextScope as never, { texts: Object.fromEntries(areas.map((area) => [area, ALL_AREA_WORDS[area].en])) } as never, createElement(child as never, props as never));
 
 const page = (n: number, over: Partial<PageSummary> = {}): PageSummary => ({
   id: `p${n}`,

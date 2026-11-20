@@ -5,7 +5,7 @@ import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { Button, ButtonLink, FocusFrame } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { bookingsEn } from "@/lib/admin-messages/bookings.en";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
 import { emailChangeLink } from "@/server/email-change";
@@ -35,7 +35,7 @@ async function ConfirmEmail({ searchParams }: Pick<PageProps<"/admin/account/ema
   const token = typeof query.token === "string" ? query.token : "";
   const link = await emailChangeLink(token);
   const lang = link.state === "unknown" ? await requestAdminLang() : link.lang;
-  const w = adminText(lang, "bookings").account.confirmEmail;
+  const w = BOOKINGS_WORDS[lang].account.confirmEmail;
 
   if (link.state === "used") {
     // Done here or before: Your account for someone signed in on this device, the sign-in page for anyone else.

@@ -1,7 +1,7 @@
 /**
  * The admin kit's own words (code review step 1.12, D818, `src/components/admin/ui`), in English: a list's pager and its search box.
  * `{name}`-style placeholders are filled by `fillWords()`. Only the server reads them (`SERVER_AREAS`): `Pager` and `ListSearch` are drawn
- * on the server and take them as props (`adminText(lang, "kit").pager`), so they are in no admin screen's first scripts. A list with words
+ * on the server and take them as props (`KIT_WORDS[lang].pager`), so they are in no admin screen's first scripts. A list with words
  * of its own ("Next 50 orders") passes those in their place. `ConfirmButton`'s *Cancel* is `common.form.cancel`, read in the browser.
  */
 export const kitEn = {

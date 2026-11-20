@@ -1,6 +1,6 @@
 /**
  * The admin's words every area shares (D312 A0, `docs/platform-admin-i18n.md` 3.3): the account menu, the language choice. English is
- * the type, so a language without a key does not compile. Read on the server with `adminText(lang, "common")` (`src/lib/admin-text.ts`)
+ * the type, so a language without a key does not compile. Read on the server as `COMMON_WORDS[lang]` (`src/lib/admin-words/common.ts`)
  * and in a client part with `useAdminText("common")`; a slice that reaches the browser holds strings only (a choice by number goes through
  * `src/lib/icu-lite.ts`). Legal and financial words come only from the glossary (`src/lib/i18n-glossary.ts`).
  */

@@ -6,7 +6,7 @@ import { CARD_CLASS, Field, PageHeader, TextInput } from "@/components/admin/ui"
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { requireAccount } from "@/server/auth";
 import { freshness, pendingEmailChange } from "@/server/email-change";
 
@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Change your email" };
 export default async function AccountEmailPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "bookings").account.email;
+  const w = BOOKINGS_WORDS[lang].account.email;
   const [pending, fresh] = await Promise.all([pendingEmailChange(account.id), freshness()]);
   const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   return (

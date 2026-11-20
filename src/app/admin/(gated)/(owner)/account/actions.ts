@@ -32,6 +32,7 @@ import { BILLING_WORDS } from "@/lib/admin-words/billing";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { PRIVACY_OFFICER_WORDS } from "@/lib/admin-words/privacy-officer";
 import { SCREENS_WORDS } from "@/lib/admin-words/screens";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { NO_COUNTRY } from "@/server/billing";
 
 async function origin(): Promise<string> {
@@ -278,7 +279,7 @@ const refusedHere = (message: string, field?: "name" | "email"): FormState => ({
 /** The person's own name, shown wherever their account is named. */
 export async function changeNameAction(_state: FormState, form: FormData): Promise<FormState> {
   const account = await requireAccount();
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.profile;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].account.profile;
   const result = await (await emailChange()).changeOwnName(account, form.get("name"));
   if (!result.ok) return refusedHere(fillWords(w.problems[result.problem], { n: (await emailChange()).NAME_MAX }), "name");
   refresh();
@@ -288,7 +289,7 @@ export async function changeNameAction(_state: FormState, form: FormData): Promi
 /** Asks to move the account to a new address: a link goes to it, a notice to the current one. Needs a fresh sign-in (and its second step). */
 export async function requestEmailChangeAction(_state: FormState, form: FormData): Promise<FormState> {
   const account = await requireAccount();
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].account.email;
   const result = await (await emailChange()).requestEmailChange(account, form.get("email"));
   if (!result.ok) {
     const field = result.problem === "invalid" || result.problem === "same" || result.problem === "taken" ? "email" : undefined;
@@ -301,7 +302,7 @@ export async function requestEmailChangeAction(_state: FormState, form: FormData
 /** The waiting change's link again: a new one, and the old one stops working. */
 export async function resendEmailChangeAction(): Promise<FormState> {
   const account = await requireAccount();
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].account.email;
   const result = await (await emailChange()).resendEmailChange(account);
   if (!result.ok) return refusedHere(w.problems[result.problem]);
   refresh();
@@ -311,7 +312,7 @@ export async function resendEmailChangeAction(): Promise<FormState> {
 /** Cancels the waiting change: its link stops working. */
 export async function cancelEmailChangeAction(): Promise<FormState> {
   const account = await requireAccount();
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].account.email;
   if (!(await (await emailChange()).cancelEmailChange(account.id))) return refusedHere(w.problems.none);
   refresh();
   return { status: "ok", messages: [w.cancelled] };
@@ -335,6 +336,6 @@ export async function confirmEmailChangeAction(form: FormData): Promise<FormStat
   const token = String(form.get("token") ?? "");
   const result = await (await emailChange()).confirmEmailChange(token);
   if (result.ok) redirect(`${EMAIL_PAGE}/confirm?token=${encodeURIComponent(token)}&done=1`);
-  const w = adminText(result.lang ?? (await requestAdminLang()), "bookings").account.confirmEmail;
+  const w = BOOKINGS_WORDS[result.lang ?? (await requestAdminLang())].account.confirmEmail;
   return refusedHere(w[result.problem]);
 }

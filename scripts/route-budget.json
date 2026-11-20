@@ -27,13 +27,13 @@
     },
     "admin-store": {
       "route": "/admin/(gated)/[store]/articles/[pageId]/preview/page",
-      "bytes": 13372983,
-      "max": 13907903
+      "bytes": 12102611,
+      "max": 12586716
     },
     "admin-platform": {
-      "route": "/admin/(gated)/platform/ai/dream/[runId]/page",
-      "bytes": 13231040,
-      "max": 13760282
+      "route": "/admin/(gated)/platform/themes/pages/[pageId]/page",
+      "bytes": 11871363,
+      "max": 12346218
     },
     "proxy": {
       "route": ".next/server/middleware.js",

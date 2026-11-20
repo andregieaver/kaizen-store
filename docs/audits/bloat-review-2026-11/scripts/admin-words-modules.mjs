@@ -4,8 +4,9 @@
 // (`<cut>: cut(<source>, [groups])`) gets a module of its own too, `export const <CUT>_WORDS = cut(<AREA>_WORDS, [groups])`. Run from the
 // repo root: node docs/audits/bloat-review-2026-11/scripts/admin-words-modules.mjs. It refuses to overwrite a file, skips one that already
 // holds the area's constant (step 0.7's), prints the files written, and exits 1 when an area has no entry or an import it cannot match.
-// It writes nothing but files in src/lib/admin-words.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// It writes nothing but files in src/lib/admin-words. Once admin-text.ts holds types only, a new area is written from its entry in
+// AdminAreaMessages (`area: XMessages;`) and its `import type { XMessages } from "./admin-messages/<stem>.en";` line.
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = process.cwd();
@@ -59,11 +60,38 @@ function sourceConstant(source) {
   return null;
 }
 
+/** A module that exports `constant` already, by its file. */
+const existing = new Map();
+for (const name of readdirSync(WORDS_DIR).filter((file) => file.endsWith(".ts"))) {
+  const constant = /export const (\w+_WORDS)\b/.exec(readFileSync(join(WORDS_DIR, name), "utf8"))?.[1];
+  if (constant) existing.set(constant, name);
+}
+/** `XMessages` -> stem, from `import type { XMessages } from "./admin-messages/<stem>.en";` (admin-text.ts once it holds types only). */
+const typeStems = new Map();
+for (const m of TEXT.matchAll(/^import type \{ (\w+Messages) \} from "\.\/admin-messages\/([\w-]+)\.en";$/gm)) typeStems.set(m[1], m[2]);
+const camel = (stem) => stem.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
+
 for (const area of areas) {
-  const value = entries.get(area);
+  let value = entries.get(area);
+  if (value === undefined && existing.has(constantOf(area))) continue;
   if (value === undefined) {
-    problems.push(`${area} is in AdminAreaMessages but has no CATALOGUES entry`);
-    continue;
+    // No table any more (step 2.25's last commit): a new area is its type entry, `area: XMessages;`, and its type import.
+    const type = new RegExp(`^\\s+${area}: (\\w+Messages);`, "m").exec(typeBody)?.[1];
+    const stem = type && typeStems.get(type);
+    if (!stem) {
+      problems.push(`${area} has no module, no CATALOGUES entry and no "import type { XMessages }" line to make one from`);
+      continue;
+    }
+    const en = `${camel(stem)}En`;
+    const nb = `${camel(stem)}Nb`;
+    const exported = (lang, name) => new RegExp(`export const ${name}\\b`).test(readFileSync(join(ROOT, `src/lib/admin-messages/${stem}.${lang}.ts`), "utf8"));
+    if (!exported("en", en) || !exported("nb", nb)) {
+      problems.push(`${area}: src/lib/admin-messages/${stem}.{en,nb}.ts do not export ${en} and ${nb}`);
+      continue;
+    }
+    english.set(en, { type, stem });
+    norwegian.set(nb, stem);
+    value = `{ en: ${en}, nb: ${nb} }`;
   }
   const constant = constantOf(area);
   if (/^\w+_WORDS$/.test(value)) {

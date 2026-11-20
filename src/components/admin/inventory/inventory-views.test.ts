@@ -8,7 +8,9 @@ vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 
 import { AdminTextProvider } from "@/components/admin/admin-text";
 import { inventoryEn } from "@/lib/admin-messages/inventory.en";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
 import type { HistoryRow, InventoryPage, InventoryRow } from "@/server/inventory";
 
 import { HistoryView } from "./history-view";
@@ -374,7 +376,7 @@ describe("the stock file", () => {
 
 describe("the Inventory pages in Norwegian (D312 A5)", () => {
   const inNb = (children: ReactNode) =>
-    html(createElement(AdminTextProvider, { lang: "nb", texts: adminTexts("nb", ["inventory", "inventoryImport"]) } as Parameters<typeof AdminTextProvider>[0], children));
+    html(createElement(AdminTextProvider, { lang: "nb", texts: areaTexts("nb", { inventory: INVENTORY_WORDS, inventoryImport: INVENTORY_IMPORT_WORDS }) } as Parameters<typeof AdminTextProvider>[0], children));
 
   it("names the tabs, the list and its figures in Norwegian", () => {
     const head = html(createElement(InventoryHead, { slug: "shop", active: "list", title: "Lager", intro: "x", lang: "nb" }));
@@ -431,7 +433,7 @@ describe("the Inventory pages in Norwegian (D312 A5)", () => {
   it("asks for the stock file and counts the check in Norwegian", () => {
     expect(inNb(createElement(StockUpload, { slug: "shop", start: async () => ({ ok: false as const, problem: "x" }), register: async () => ({ ok: false as const, problems: [] }) }))).toContain("Last opp og les filen");
     expect(html(createElement(StockDryRun, { counts: { toUpdate: 2, unchanged: 1, conflicts: 0, withProblems: 0 }, lang: "nb" }))).toContain("Hva sjekken fant");
-    expect(stockResultWords({ outcome: "checked", will: "skip" }, adminTexts("nb", ["inventory"]).inventory.import)).toBe("Ville bli hoppet over");
+    expect(stockResultWords({ outcome: "checked", will: "skip" }, areaTexts("nb", { inventory: INVENTORY_WORDS }).inventory.import)).toBe("Ville bli hoppet over");
     expect(html(createElement(StockExportForm, { slug: "shop", lang: "nb" }))).toContain("Eksporter lager");
   });
 });

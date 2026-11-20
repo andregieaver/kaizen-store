@@ -5,13 +5,13 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { adminText } from "@/lib/admin-text";
 
 import { ActionForm, idle, SubmitButton } from "./action-form";
 import { FormWorkContext } from "./form-work";
 import { QuietActionForm } from "./quiet-action-form";
 import { Field, TextInput } from "./ui";
 import { ConfirmButton } from "./ui/confirm-button";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
 
 /**
  * The two forms that answer (code review 1.15, D829), as drawn before anything is sent: a form that is not busy, its live region ready and
@@ -30,8 +30,8 @@ describe("ActionForm", () => {
   });
 
   it("takes Saved from the common words, in the person's language, and writes no English of its own", () => {
-    expect(adminText("en", "common").form.saved).toBe("Saved.");
-    expect(adminText("nb", "common").form.saved).toBe("Lagret.");
+    expect(COMMON_WORDS.en.form.saved).toBe("Saved.");
+    expect(COMMON_WORDS.nb.form.saved).toBe("Lagret.");
     for (const file of ["action-form.tsx", "quiet-action-form.tsx", "form-answer.ts"]) expect(read(file)).not.toMatch(/"Saved\.?"/);
   });
 });

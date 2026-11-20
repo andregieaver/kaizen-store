@@ -5,11 +5,12 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
-import { adminTexts } from "@/lib/admin-text";
 import type { RunningPageJob } from "@/server/page-jobs";
 
 import { AdminTextScope } from "./admin-text";
 import { PageJobsPanel } from "./page-jobs-panel";
+import { areaTexts } from "@/lib/admin-area";
+import { WEBSITE_LIST_WORDS } from "@/lib/admin-words/website-list";
 
 /** The AI's page work on the Pages list (PSI UX-01). */
 
@@ -42,7 +43,7 @@ describe("the AI's page work on the Pages list", () => {
   it("offers no Stop to who may not change the site, shows nothing when nothing is being made, and speaks the account's language", () => {
     expect(html(panel({ stop: undefined }))).not.toContain(">Stop");
     expect(html(panel({ jobs: [] }))).toBe("");
-    const nb = html(createElement(AdminTextScope, { texts: adminTexts("nb", ["websiteList"]) } as Parameters<typeof AdminTextScope>[0], panel()));
+    const nb = html(createElement(AdminTextScope, { texts: areaTexts("nb", { websiteList: WEBSITE_LIST_WORDS }) } as Parameters<typeof AdminTextScope>[0], panel()));
     expect(nb).toContain("Lages av KI");
     expect(nb).toContain("Bygges nå");
     expect(nb).toContain("2 av 5 bilder laget · ett kunne ikke lages");

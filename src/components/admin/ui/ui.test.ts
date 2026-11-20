@@ -5,8 +5,9 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { adminText } from "@/lib/admin-text";
 import { refusalOf } from "@/lib/form-problems";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
 
 import { ConfirmButton, splitQuestion } from "./confirm-button";
 import { fieldClass, TextArea, type FieldControl } from "./field";
@@ -375,12 +376,12 @@ describe("the confirm button (code review 1.12)", () => {
 
 describe("the kit's words (code review 1.12)", () => {
   it("are in both languages, with the same placeholders", () => {
-    const en = adminText("en", "kit");
-    const nb = adminText("nb", "kit");
+    const en = KIT_WORDS.en;
+    const nb = KIT_WORDS.nb;
     for (const key of Object.keys(en.pager) as (keyof typeof en.pager)[]) {
       expect(nb.pager[key].match(/\{\w+\}/g) ?? []).toEqual(en.pager[key].match(/\{\w+\}/g) ?? []);
     }
     expect(nb.search.button).toBe("Søk");
-    expect(adminText("nb", "common").form.cancel).toBe("Avbryt");
+    expect(COMMON_WORDS.nb.form.cancel).toBe("Avbryt");
   });
 });

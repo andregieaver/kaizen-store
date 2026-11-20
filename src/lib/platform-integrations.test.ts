@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { adminText } from "./admin-text";
 import { DEFAULT_PLATFORM_EVENTS, isPlatformEvent, PLATFORM_EVENTS, platformSlackMessage } from "./platform-integrations";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 const store = { id: "s1", slug: "fjord", name: "Fjord & Co", url: "https://fjord.kaizenstore.site", admin_url: "https://kaizenaflow.com/admin/platform/stores/fjord" };
 const text = (payload: Record<string, unknown>) => JSON.stringify(platformSlackMessage(payload));
@@ -15,7 +15,7 @@ describe("Kaizena Flow's own events (D465)", () => {
 
   it("have words in every language of the admin", () => {
     for (const lang of ["en", "nb"] as const) {
-      const words = adminText(lang, "platform").integrations;
+      const words = PLATFORM_WORDS[lang].integrations;
       for (const event of PLATFORM_EVENTS) {
         expect(words.events[event]?.label, `${lang} ${event}`).toBeTruthy();
         expect(words.events[event]?.hint, `${lang} ${event}`).toBeTruthy();

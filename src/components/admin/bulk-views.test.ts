@@ -6,9 +6,10 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import type { BatchSummary } from "@/server/bulk-edit";
-import { adminTexts } from "@/lib/admin-text";
 import { buildBulkRequest, emptyPanel, fieldWords } from "@/lib/bulk-admin";
 import { productsNb } from "@/lib/admin-messages/products.nb";
+import { areaTexts } from "@/lib/admin-area";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 
 import { AdminTextScope } from "./admin-text";
 
@@ -174,7 +175,7 @@ describe("the grid", () => {
 
 describe("in Norwegian (D312 A5)", () => {
   it("draws the list and a bulk result in the catalogue's words", () => {
-    const nb = (child: ReturnType<typeof createElement>) => html(createElement(AdminTextScope, { texts: adminTexts("nb", ["products"]) } as Parameters<typeof AdminTextScope>[0], child));
+    const nb = (child: ReturnType<typeof createElement>) => html(createElement(AdminTextScope, { texts: areaTexts("nb", { products: PRODUCTS_WORDS }) } as Parameters<typeof AdminTextScope>[0], child));
     const list = nb(createElement(ProductsTable, { slug: "shop", rows, archived: false, priceHeader: "Pris (Norge)", locale: "nb-NO", bulk: tools }));
     expect(list).toContain("Publisert");
     expect(list).toContain("Utkast");

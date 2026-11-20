@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_LANG_KEY, adminLangOf, adminLangScript, browserAdminLang, storedAdminLocale } from "./admin-lang";
-import { adminText, adminTexts } from "./admin-text";
+import { areaTexts } from "./admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { ALL_AREA_WORDS } from "@/test/admin-words-all";
 
 describe("the admin's language (D312 A0)", () => {
   it("is what the account keeps, English for none or one no longer offered", () => {
@@ -32,9 +34,12 @@ describe("the admin's language (D312 A0)", () => {
   });
 
   it("has every area's words in every language", () => {
-    expect(adminText("nb", "common").accountMenu.yourAccount).toBe("Din konto");
-    expect(adminText("en", "common").accountMenu.yourAccount).toBe("Your account");
-    expect(Object.keys(adminTexts("nb", ["common"]))).toEqual(["common"]);
+    expect(COMMON_WORDS.nb.accountMenu.yourAccount).toBe("Din konto");
+    expect(COMMON_WORDS.en.accountMenu.yourAccount).toBe("Your account");
+    expect(Object.keys(areaTexts("nb", { common: COMMON_WORDS }))).toEqual(["common"]);
+    // Every area and cut has its module (bloat review step 2.25), with the same groups in both languages.
+    expect(Object.keys(ALL_AREA_WORDS)).toHaveLength(110);
+    for (const [area, words] of Object.entries(ALL_AREA_WORDS)) expect(Object.keys(words.nb).sort(), area).toEqual(Object.keys(words.en).sort());
   });
 });
 
@@ -45,8 +50,8 @@ describe("the catalogues' placeholders (D312 A1)", () => {
 
   it("names the same placeholders in Norwegian as in English, so fillWords() fills them all", () => {
     for (const area of ["common", "domains", "signIn"] as const) {
-      const nb = new Map(leaves(adminText("nb", area)));
-      for (const [path, en] of leaves(adminText("en", area))) expect(names(nb.get(path) ?? ""), `${area}${path}`).toEqual(names(en));
+      const nb = new Map(leaves(ALL_AREA_WORDS[area].nb));
+      for (const [path, en] of leaves(ALL_AREA_WORDS[area].en)) expect(names(nb.get(path) ?? ""), `${area}${path}`).toEqual(names(en));
     }
   });
 
