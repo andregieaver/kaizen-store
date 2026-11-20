@@ -862,6 +862,8 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D857 | **Contracts: live preview, full-width draft, versions shown, and a Contracts list under Deals** | 2026-11-20 | [text](decisions/D857.md) |
 | D858 | **Admin redesign round 72: Kaizena Flow's 100-day challenge, categories and tags and fonts on a phone** | 2026-11-20 | [text](decisions/D858.md) |
 | D859 | **The sign-up for extensions offers bundles and proposes the one that costs less or little more (D748 E7)** | 2026-11-20 | [text](decisions/D859.md) |
+| D860 | **The page builder's dialogs and settings fields load when drawn** | 2026-11-20 | [text](decisions/D860.md) |
+| D861 | **A listing draws its grid once and reads its list once** | 2026-11-20 | [text](decisions/D861.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

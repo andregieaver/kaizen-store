@@ -108,7 +108,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.1 | Split the page builder | FB1 | L | Open | |
 | 3.2 | One definition per block | FB6, FB9 | M | Open | 14 Nov: first slice out of `page-content.ts`: `rich-text-doc.ts` (bloat review step 0.10), public surface unchanged. |
 | 3.3 | Stop re-drawing the canvas | FB2 | M | Open | |
-| 3.4 | Load the builder's dialogs on demand | FB8 | M | Open | 19 Nov 2026: the Tiptap part is done by bloat review step 2.29 (local commits, row in the bloat review); the dialogs remain. |
+| 3.4 | Load the builder's dialogs on demand | FB8 | M | Done | 20 Nov 2026: done by bloat review step 2.30 (D860, c0e16999a): the twelve dialogs load when first opened; Tiptap by 2.29. |
 | 3.5 | Split the product editor | FB10 | M | Open | |
 | 3.6 | A ceiling for page files | FS10 | L | Open | |
 | 3.7 | Stage `placeOrder` | FV3 | L | Open | |
