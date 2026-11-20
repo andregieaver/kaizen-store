@@ -21,6 +21,7 @@ import { getBuyer } from "@/server/b2b";
 import { campaignNotices } from "@/server/campaign-notices";
 import type { GridProduct } from "@/server/catalog";
 import { listingFacets, listingPage, listingPageOf, LISTING_PAGES_MAX, type ListingFacets, type ListingScope } from "@/server/listing";
+import { perRequest } from "@/server/request-memo";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 import { termsIn } from "@/lib/term-texts";
@@ -116,43 +117,120 @@ export async function ProductListing({
         count={count}
         live={!tracked}
       />
-      {/* The list's first products, for the store's tags (D303 I1), only while it has one. */}
-      {products.length > 0 && toolCategories(store.tracking).length > 0 && (
-        <TrackOnView
-          event={{
-            kind: "view_item_list",
-            list: path,
-            currency: products[0].price.currency,
-            items: products.slice(0, LIST_ITEMS_MAX).map((p) => ({ id: p.id, name: p.title, price: majorAmount(p.price.amountMinor, p.price.currency), quantity: 1 })),
-          }}
-        />
-      )}
+      <ListTracking store={store} path={path} products={products} />
       {products.length === 0 ? (
         <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p>
       ) : (
         <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} hrefFor={hrefFor} tracked={tracked} notices={notices} />
       )}
       {(more || (asGiven && givenMore)) && page < LISTING_PAGES_MAX && (
-        <div className="flex flex-col items-center gap-2 pt-2">
-          {more && <p className="text-sm text-muted">{m.listing.countOf(products.length, total)}</p>}
-          <Link href={`${path}${listingQuery(filters, { ...keep, page: String(page + 1) })}`} scroll={false} className="rounded-button flex min-h-12 items-center justify-center border border-border px-6 font-medium">
-            {m.listing.showMore}
-          </Link>
-        </div>
+        <ShowMore m={m} href={`${path}${listingQuery(filters, { ...keep, page: String(page + 1) })}`} count={more ? m.listing.countOf(products.length, total) : null} />
       )}
     </div>
   );
 }
 
-/** A listing with the filters in the page's address. */
-export async function ProductListingFor({
-  searchParams,
-  ...props
-}: Omit<Parameters<typeof ProductListing>[0], "filters"> & {
+/** What the standard category, tag and All products pages hand their listing: their own first page, prerendered. */
+type StandardListingProps = {
+  store: Store;
+  market: Market;
+  scope: ListingScope;
+  /** The market's front page address, which product links start from. */
+  base: string;
+  /** The page's address without its query. */
+  path: string;
+  /** The page's own first page, as it prerendered it. */
+  products: GridProduct[];
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
-  return <ProductListing {...props} filters={parseListingParams(params)} page={listingPageOf(params.page)} />;
+};
+
+/**
+ * A standard listing as the address asks (bloat review step 2.12), read once per request for its controls, a chosen list and
+ * *Show more* alike: with nothing chosen, on the first page, the page's own products as prerendered and no list read (a store
+ * selling to both reads its list per viewer).
+ */
+function standardListing(store: Store, market: Market, scope: ListingScope, path: string, given: GridProduct[], searchParams: StandardListingProps["searchParams"]) {
+  return perRequest(`std-listing:${store.id}:${path}`, async () => {
+    const params = await searchParams;
+    const filters = parseListingParams(params);
+    const page = listingPageOf(params.page);
+    const m = t(market.lang);
+    const buyer = await getBuyer(store);
+    const viewer = { buyer, audienceBoth: store.audience === "both" };
+    const chosen = chosenFilters(filters);
+    const ownFirst = chosen.length === 0 && filters.sort === "featured" && page === 1 && store.audience !== "both";
+    const [facets, listed, terms, notices] = await Promise.all([
+      listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
+      ownFirst ? { products: given, total: -1 } : listingPage(store.id, market, scope, filters, viewer, page),
+      // Names as this language has them (D319), for the filters' words.
+      siteTerms(store.id, "product").then((list) => termsIn(list, market.locale)),
+      campaignNotices(store.id, market),
+    ]);
+    const { products } = listed;
+    // The prerendered first page's count is the page's products before filters, as a built grid counts (content-grid-section.tsx).
+    const total = ownFirst ? Math.max(facets.total, products.length) : listed.total;
+    // More than shows (code review FF1): say so, and offer the rest as a plain link that works without JavaScript.
+    const more = total > products.length;
+    return { m, filters, chosen, facets, terms, notices, products, total, more, page, ownFirst };
+  });
+}
+
+/**
+ * A standard listing's controls, and the list the address chose when it chose one: it hides the page's prerendered list
+ * (`data-grid-built`, by a rule in globals.css). Per request, so pages put it in a `<Suspense>` before that list.
+ */
+export async function StandardListingTop({ store, market, scope, base, path, products: given, searchParams }: StandardListingProps) {
+  const { m, filters, chosen, facets, terms, notices, products, total, more, ownFirst } = await standardListing(store, market, scope, path, given, searchParams);
+  const count = more ? m.listing.countOf(products.length, total) : m.listing.count(products.length);
+  return (
+    <>
+      <ListingControls market={market} filters={filters} facets={facets} terms={terms} path={path} count={count} live />
+      <ListTracking store={store} path={path} products={products} />
+      {!ownFirst && (
+        <div data-grid-listed>
+          {products.length === 0 ? (
+            <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p>
+          ) : (
+            <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** How many show of how many, and *Show more*, while a standard listing has more. Per request, after the page's list. */
+export async function StandardListingMore({ store, market, scope, path, products: given, searchParams }: StandardListingProps) {
+  const { m, filters, products, total, more, page } = await standardListing(store, market, scope, path, given, searchParams);
+  if (!(more && page < LISTING_PAGES_MAX)) return null;
+  return <ShowMore m={m} href={`${path}${listingQuery(filters, { page: String(page + 1) })}`} count={m.listing.countOf(products.length, total)} />;
+}
+
+/** The list's first products, for the store's tags (D303 I1), only while it has one. */
+function ListTracking({ store, path, products }: { store: Store; path: string; products: GridProduct[] }) {
+  if (products.length === 0 || toolCategories(store.tracking).length === 0) return null;
+  return (
+    <TrackOnView
+      event={{
+        kind: "view_item_list",
+        list: path,
+        currency: products[0].price.currency,
+        items: products.slice(0, LIST_ITEMS_MAX).map((p) => ({ id: p.id, name: p.title, price: majorAmount(p.price.amountMinor, p.price.currency), quantity: 1 })),
+      }}
+    />
+  );
+}
+
+/** *Show more* (code review FF1): a plain link that works without JavaScript, under how many show of how many when that is known. */
+function ShowMore({ m, href, count }: { m: Messages; href: string; count: string | null }) {
+  return (
+    <div className="flex flex-col items-center gap-2 pt-2">
+      {count && <p className="text-sm text-muted">{count}</p>}
+      <Link href={href} scroll={false} className="rounded-button flex min-h-12 items-center justify-center border border-border px-6 font-medium">
+        {m.listing.showMore}
+      </Link>
+    </div>
+  );
 }
 
 /**

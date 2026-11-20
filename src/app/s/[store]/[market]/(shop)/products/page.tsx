@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { AbMarker } from "@/components/lazy/blocks";
 import { PageGoal } from "@/components/ab/page-goal";
 import { PageEditLink } from "@/components/page-edit-link";
-import { ProductGrid, ProductListingFor } from "@/components/product-listing";
+import { ProductGrid, StandardListingMore, StandardListingTop } from "@/components/product-listing";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
@@ -99,13 +99,18 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   return (
     <>
       <h1 className="mb-4 text-3xl font-heading tracking-tight">{m.allProducts}</h1>
-      <Suspense
-        fallback={
-          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />
-        }
-      >
-        <ProductListingFor store={store} market={market} scope={{}} searchParams={searchParams} base={base} path={path} products={products} firstPage />
-      </Suspense>
+      {/* The list as prerendered, drawn once; the controls, a list the address chose (which hides it) and Show more stream beside it (bloat review step 2.12). */}
+      <div className="listing flex flex-col gap-4">
+        <Suspense fallback={null}>
+          <StandardListingTop store={store} market={market} scope={{}} searchParams={searchParams} base={base} path={path} products={products} />
+        </Suspense>
+        <div data-grid-built>
+          {products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />}
+        </div>
+        <Suspense fallback={null}>
+          <StandardListingMore store={store} market={market} scope={{}} searchParams={searchParams} base={base} path={path} products={products} />
+        </Suspense>
+      </div>
     </>
   );
 }

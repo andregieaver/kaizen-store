@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { CustomFieldGroups } from "@/components/custom-fields-view";
 import { PolicyLink } from "@/components/policy-link";
-import { ProductGrid, ProductListingFor } from "@/components/product-listing";
+import { ProductGrid, StandardListingMore, StandardListingTop } from "@/components/product-listing";
 import { RolePage } from "@/components/role-page";
 import { groupsToShow } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
@@ -157,6 +157,7 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
   const termFields = groupsToShow(fields);
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
   const base = marketPath(store.slug, market.slug);
+  const path = `${base}/${kind}/${term.slug}`;
 
   return (
     <>
@@ -183,22 +184,18 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
           </ul>
         </nav>
       )}
-      <Suspense
-        fallback={
-          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />
-        }
-      >
-        <ProductListingFor
-          store={store}
-          market={market}
-          scope={scope}
-          searchParams={query}
-          base={base}
-          path={`${base}/${kind}/${term.slug}`}
-          products={products}
-          firstPage
-        />
-      </Suspense>
+      {/* The list as prerendered, drawn once; the controls, a list the address chose (which hides it) and Show more stream beside it (bloat review step 2.12). */}
+      <div className="listing flex flex-col gap-4">
+        <Suspense fallback={null}>
+          <StandardListingTop store={store} market={market} scope={scope} searchParams={query} base={base} path={path} products={products} />
+        </Suspense>
+        <div data-grid-built>
+          {products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />}
+        </div>
+        <Suspense fallback={null}>
+          <StandardListingMore store={store} market={market} scope={scope} searchParams={query} base={base} path={path} products={products} />
+        </Suspense>
+      </div>
     </>
   );
 }

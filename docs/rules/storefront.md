@@ -416,9 +416,12 @@ the path, component or table you change, or list the rules with a search for lin
   the address (`parseListingParams()`/`listingQuery()`), applied by
   `listingProducts()`; the dialog offers `listingFacets()` (kinds,
   categories, tags, variant options, price range). Prices compare as shown
-  (`shownPrice()`: without VAT for businesses). Listing pages keep their
-  unfiltered grid prerendered as the `<Suspense>` fallback. Conditions shared
-  with search's filters live in `src/server/product-conditions.ts`.
+  (`shownPrice()`: without VAT for businesses). Listing pages draw their
+  unfiltered grid once, prerendered (`data-grid-built`); the controls, a grid
+  only when the address asks for another (`data-grid-listed`, which hides the
+  built one by one CSS rule) and Show more stream in per request, all from one
+  loader memoised with `perRequest()`. Conditions shared with search's filters
+  live in `src/server/product-conditions.ts`.
 
 ## A model that sees pictures (D163, `src/lib/ai-vision.ts`, `src/server/ai-vision.ts`, `ai_providers.vision_model`, the *Model that sees pictures*…
 
