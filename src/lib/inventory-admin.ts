@@ -11,12 +11,13 @@ import {
   isMovementReason,
   resultOf,
   type AdjustMode,
-  type AdjustOutcome,
   type AdjustProblem,
   type AdjustReason,
   type StockPolicy,
 } from "./inventory";
 import { fillWords } from "./admin-fill";
+
+export { REASON_CHOICES } from "./inventory-admin-labels";
 
 // ---------------------------------------------------------------------------
 // Tabs and addresses
@@ -43,14 +44,6 @@ export const inventoryPaths = (slug: string): Record<InventoryTab, string> => {
 export const STATUS_CHOICES = ["all", "low", "out", "backorder", "negative"] as const;
 export type StatusChoice = (typeof STATUS_CHOICES)[number];
 export const isStatusChoice = (value: unknown): value is StatusChoice => typeof value === "string" && (STATUS_CHOICES as readonly string[]).includes(value);
-
-export const STATUS_WORDS: Record<StatusChoice, string> = {
-  all: "All variants",
-  low: "At or below the low-stock level",
-  out: "Sold out",
-  backorder: "Selling on backorder",
-  negative: "Below zero",
-};
 
 const first = (value: string | string[] | undefined): string | undefined => (Array.isArray(value) ? value[0] : value);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -147,23 +140,6 @@ export function rowStates(row: RowFigures): RowState[] {
   return states;
 }
 
-export const STATE_WORDS: Record<RowState, string> = {
-  negative: "Below zero",
-  backorder: "On backorder",
-  out: "Sold out",
-  low: "Low stock",
-  owed: "Owed",
-};
-
-/** What a row's marks mean, in a sentence for the title of the mark. */
-export const STATE_HELP: Record<RowState, string> = {
-  negative: "More has been sold than was on hand. Receive stock or count it to bring it back to zero or above.",
-  backorder: "Nothing is left to sell now, and the variant keeps selling with a stated delivery time.",
-  out: "Nothing is left to sell now, and the variant stops selling at zero.",
-  low: "On hand is at or below the low-stock level set for this variant.",
-  owed: "Units sold on backorder on paid orders that have not been sent yet: what the store still has to receive.",
-};
-
 /** A figure for a table: a minus sign that is a minus sign, thousands apart. */
 export const figureText = (n: number): string => (n < 0 ? `−${Math.abs(n).toLocaleString("en-GB")}` : n.toLocaleString("en-GB"));
 /** A change for a table: always signed. */
@@ -248,16 +224,6 @@ export function adjustPayload(rows: readonly ReviewRow[], reason: AdjustReason, 
   return { reason, note: note.trim() === "" ? null : note.trim(), rows: sendable(rows).map((r) => ({ variantId: r.variantId, locationId: r.locationId, mode: r.mode, value: r.value, was: r.was })) };
 }
 
-/** The reasons a person gives, in the order the page offers them, with the sentence under the select. */
-export const REASON_CHOICES: { id: AdjustReason; label: string; help: string }[] = [
-  { id: "correction", label: "Correction", help: "The figure was wrong." },
-  { id: "count", label: "Count", help: "You counted what is on the shelf and the figure is that count." },
-  { id: "received", label: "Received", help: "Stock arrived from a supplier." },
-  { id: "damaged", label: "Damaged", help: "Units that cannot be sold." },
-  { id: "lost", label: "Theft or loss", help: "Units that are gone." },
-  { id: "promotion", label: "Promotion or donation", help: "Units given away." },
-];
-
 export const reasonChoice = (value: unknown): AdjustReason => (isAdjustReason(value) ? value : "correction");
 
 // ---------------------------------------------------------------------------
@@ -278,19 +244,8 @@ export function savedWords(c: SavedCounts): string {
   return `${parts.join(", ")}.`;
 }
 
-export const OUTCOME_WORDS: Record<AdjustOutcome, string> = {
-  written: "Saved",
-  unchanged: "Already that figure",
-  conflict: "Not saved: the stock changed",
-  refused: "Refused",
-  failed: "Could not be saved",
-};
-
 /** The limit a typed figure is held to, said under the box. */
 export const FIGURE_HINT = `Whole units, at most ${STOCK_MAX.toLocaleString("en-GB")}. A figure never goes below 0 by a person's change: only a sale of a variant that keeps selling on backorder takes it below.`;
-
-/** The note box's hint: staff text about stock, not about a person. */
-export const NOTE_HINT = "A short note for the history. Do not write about a person.";
 
 // ---------------------------------------------------------------------------
 // Locations

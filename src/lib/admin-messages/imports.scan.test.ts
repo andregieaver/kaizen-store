@@ -35,6 +35,8 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/bulk-admin-labels.ts": "The bulk editor's words, read by bulk-admin.ts's functions as their English as well.",
   "lib/data-admin-labels.ts": "What the import and export pages say, read by data-admin.ts, its test and the redirect import's pages as well.",
   "lib/data-job-labels.ts": "A data job's status in words, read by the job's email, the AI manager's job tool and the redirect import's pages as well.",
+  "lib/inventory-admin-labels.ts": "The reasons a person gives for a stock change, read by the stock table as well.",
+  "lib/inventory-labels.ts": "Stock movements' reasons and the stock policy in words, read by inventory.ts's functions (reasonWord, policyWords) as well.",
   "lib/order-status.ts": "An order's status and its chip's signal: a label module already (no imports), read by the order table and a subscription's page as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;

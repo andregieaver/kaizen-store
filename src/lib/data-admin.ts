@@ -9,7 +9,7 @@ import { fillWords } from "./admin-fill";
 import { DATA_EXPORTS_ACTIVE_MAX, EXPORT_KEEP_DAYS, EXPORT_MAX_ROWS } from "./data-limits";
 import { type JobKind, type JobPhase, type JobStatus } from "./data-job";
 
-export { COMPARE_AT_NOTE, IMPORT_CONFIRMATION } from "./data-admin-labels";
+export { COMPARE_AT_NOTE, IMPORT_CONFIRMATION, KIND_TITLES, SEVERITY_WORDS } from "./data-admin-labels";
 
 /** Shown on the order and customer export pages: the file holds personal data (GDPR Art. 5(1)(c), (e), (f)). Needs a human read (section 8). */
 export const PERSONAL_DATA_WARNING = `This file contains personal data. Keep it only as long as you need it; it is deleted from here after ${EXPORT_KEEP_DAYS} days.`;
@@ -160,19 +160,6 @@ export const exportPath = (kind: Exclude<JobKind, "product_import" | "redirect_i
           ? "/inventory/export"
           : "/customers/export";
 
-export const KIND_TITLES: Record<JobKind, string> = {
-  product_import: "Product import",
-  product_export: "Product export",
-  order_export: "Order export",
-  customer_export: "Customer export",
-  redirect_import: "Redirect import",
-  redirect_export: "Redirect export",
-  inventory_import: "Stock import",
-  inventory_export: "Stock export",
-  customer_import: "Customer import",
-  order_history_import: "Order history import",
-};
-
 // ---------------------------------------------------------------------------
 // Findings: the table's filter
 // ---------------------------------------------------------------------------
@@ -181,8 +168,6 @@ export const SEVERITY_FILTERS = ["all", "error", "warning", "info"] as const;
 export type SeverityFilter = (typeof SEVERITY_FILTERS)[number];
 
 export const severityFilterOf = (value: unknown): SeverityFilter => (SEVERITY_FILTERS as readonly unknown[]).includes(value) ? (value as SeverityFilter) : "all";
-
-export const SEVERITY_WORDS = { error: "Error", warning: "Warning", info: "Note" } as const;
 
 /** The rows of a number list as one phrase: `3, 4 and 9`; more than five are summarised. */
 export function rowsPhrase(rows: readonly number[]): string {
