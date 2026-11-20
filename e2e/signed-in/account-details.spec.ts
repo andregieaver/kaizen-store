@@ -74,8 +74,8 @@ test("a person changes their name and asks for a new email; the link's page chan
 
   // The name: Change, the field, Save.
   const name = `Mona ${run}`;
-  await details.getByRole("button", { name: "Change your name" }).click();
-  await details.getByLabel("Name", { exact: true }).fill(`  ${name}  `);
+  await details.locator("summary", { hasText: "Change" }).click();
+  await details.getByRole("textbox", { name: "Name", exact: true }).fill(`  ${name}  `);
   await details.getByRole("button", { name: "Save name" }).click();
   await expect(details.getByText("Name saved.")).toBeVisible();
   await expect(page.getByText(`Signed in as ${name} (${MOVER.email}).`)).toBeVisible();
@@ -152,7 +152,7 @@ test("a platform admin corrects a member's name and sends a link to their new ad
   // Sending a link for someone needs the admin's own sign-in from the last ten minutes.
   const page = await signIn(browser, ADMIN.email, `/admin/platform/customers/${id}`, true);
   const details = page.getByRole("region", { name: "Name and email" });
-  await details.getByLabel("Name", { exact: true }).fill("Ivar Rettet");
+  await details.getByRole("textbox", { name: "Name", exact: true }).fill("Ivar Rettet");
   await details.getByRole("button", { name: "Save name" }).click();
   await expect(details.getByText("Name saved.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: /Ivar Rettet/ })).toBeVisible();
