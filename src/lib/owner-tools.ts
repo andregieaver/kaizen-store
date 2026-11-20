@@ -6,6 +6,7 @@ import { segmentRulesSchema } from "./segments";
 import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
+import { EXTENSION_NAMES, EXTENSION_TRIAL_DAYS, isExtensionId } from "./extensions";
 import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
 import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
@@ -2464,6 +2465,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Email the customer of return ${text("return")} an exchange.`;
     case "start_autopilot_plan":
       return "Start the plan as you saw it.";
+    case "start_extension_trial": {
+      const id = text("extension");
+      return `Start the free trial of ${isExtensionId(id) ? EXTENSION_NAMES[id] : id} (${EXTENSION_TRIAL_DAYS} days).`;
+    }
     case "resume_autopilot_plan":
       return "Resume the plan.";
     case "send_replacement":

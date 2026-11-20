@@ -638,6 +638,8 @@ export const assistantNb: AssistantMessages = {
     get_referral_program: "Ser på verving",
     set_referral_program: "Forbereder vervingsendringen",
     get_my_referrals: "Ser på vervingene dine",
+    extension_offers: "Ser på hva som kan hjelpe",
+    start_extension_trial: "Starter en gratis prøveperiode",
     follow_up: "Tar vare på oppfølgingen",
     issue_gift_card: "Forbereder gavekortet",
     list_broadcasts: "Ser på nyhetsbrevene",

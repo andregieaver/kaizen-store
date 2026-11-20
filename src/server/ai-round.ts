@@ -7,7 +7,7 @@ import { storeTools } from "@/lib/chat";
 import { MODERATION_OPTIONS } from "@/lib/content-moderation";
 import { guideTools } from "@/lib/docs-guide";
 import { BRIEF_OPTIONS, REWORK_OPTIONS } from "@/lib/dream-factory";
-import { MANAGER_TOOLS } from "@/lib/manager-tools";
+import { managerToolsFor } from "@/lib/manager-tools";
 import { toolDefinition, type OwnerTool } from "@/lib/owner-tools";
 import { areaOfPath } from "@/lib/permissions";
 import { FEATURE_IDS } from "@/lib/store-features";
@@ -70,8 +70,8 @@ export function fixedOwnerWith(features: RoundFeatures) {
   return { ...principal, store };
 }
 
-/** The manager's own tools as `runTurn()` sends them to an owner in their own turn (no Kaizen Life, no outside assistant). */
-const managerDefinitions = (): ToolDefinition[] => MANAGER_TOOLS.map(toolDefinition);
+/** The manager's own tools as `runTurn()` sends them to an owner in their own turn (no Kaizen Life, no outside assistant), in a store or not. */
+const managerDefinitions = (store = true): ToolDefinition[] => managerToolsFor({ store, owner: true }).map(toolDefinition);
 
 /**
  * The AI manager's round for the fixed owner: its prompt (`managerPrompt()` as `fixedManagerPrompt()` draws it, with the store's features)
@@ -116,7 +116,7 @@ function largestAutopilotRound(): RoundDraw & { case: string } {
 
 /** The seven fixed rounds. 'chat' is a store's chat with the shop off (a website), 'chat_support' with the shop on (`storeTools(true)`). */
 export function drawFixedRounds(): Record<FixedAgent, RoundDraw & { case?: string }> {
-  const platformManager = managerDefinitions();
+  const platformManager = managerDefinitions(false);
   const platformTools = roundTools({ offered: offeredTools({ store: null }), managerTools: platformManager, appDefinitions: [], used: [], wanted: [], pageArea: null, allowed: null });
   return {
     chat: measureRound(fixedChatPrompt().length, storeTools(false)),

@@ -6,6 +6,7 @@ import { FOLLOW_UP_REPEATS, TASK_MAX } from "./follow-ups";
 import { goalTargetInput, TARGETS_MAX } from "./autopilot-goals";
 import { planInput } from "./autopilot-plans";
 import { SKILL_TITLE_MAX, SKILL_WHEN_MAX } from "./saved-skills";
+import { EXTENSION_IDS } from "./extensions";
 import { REFERRAL_COMMISSION_BPS_MAX, REFERRAL_COOKIE_DAYS_MAX, REFERRAL_MONTHS_MAX, REFERRAL_PENDING_DAYS_MAX } from "./referrals";
 
 /**
@@ -73,6 +74,18 @@ export const MANAGER_TOOLS = [
     "get_my_referrals",
     "The person's own referrals (Kaizena Flow's referral program): their link and code, visits, how many asked for a store, the stores that opened through it with the credit each earned, and their credit per currency, usable and waiting. Answers only from their own account; it never shows a referred store's customers or orders.",
     z.object({}),
+  ),
+  // Extension suggestions (D748 E9, D852): on a fact from the store's records, at most once per extension in 30 days, never after a no.
+  tool(
+    "extension_offers",
+    "At most one Kaizena Flow extension the account never tried that the store's records say would help, with that fact and its price, when one is due. Only when the person asks what would help or talks about what one does.",
+    z.object({ declined: z.enum(EXTENSION_IDS).optional().describe("The one they said no to.") }),
+  ),
+  tool(
+    "start_extension_trial",
+    "Starts the free trial of the extension extension_offers gave, on the person's yes. Needs their approval.",
+    z.object({ extension: z.enum(EXTENSION_IDS) }),
+    "plan",
   ),
   tool(
     "contact_kaizen_support",
@@ -317,3 +330,11 @@ export const OUTSIDE_MANAGER_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 export { TOOL_WORDS } from "./tool-words";
+
+/** The manager's tools that work only in a store, for the account's owner (D852: an extension's offer and trial). */
+const OWNER_STORE_TOOLS: ReadonlySet<string> = new Set(["extension_offers", "start_extension_trial"]);
+
+/** The manager's own tools a turn is given: in a store for its owner every one, elsewhere none of `OWNER_STORE_TOOLS`. */
+export const managerToolsFor = (place: { store: boolean; owner: boolean }): readonly OwnerTool[] =>
+  MANAGER_TOOLS.filter((t) => (place.store && place.owner) || !OWNER_STORE_TOOLS.has(t.name));
+

@@ -128,6 +128,19 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   value of `GateCategory`, the `assistant_approvals_category` check widened in a migration and its words in the `assistant`
   catalogues' `gates`.
 
+## The AI manager's extension suggestions (D748 E9, D852, `src/lib/extension-offers.ts`, `src/server/extension-offers.ts`)
+
+- **The AI manager's extension suggestions (D748 E9, D852, `src/lib/extension-offers.ts`, `src/server/extension-offers.ts`)**:
+  `extension_offers` and `start_extension_trial` are in a store's manager for its account's owner only (`managerToolsFor()`: never on
+  the platform, which has every extension, never for a member who is not the owner). `extension_offers` counts the store's own records
+  (`offerFacts()`) and returns at most one extension the account never had nor tried whose fact passes `OFFER_THRESHOLDS`, with the
+  fact and its price from the price list; an offer is kept when it is returned (`commerce.extension_offers`), so it comes at most once in
+  `OFFER_EVERY_DAYS` and never for `QUIET_AFTER_NO_DAYS` after `declined` (`offerDue()`). A workspace is never offered A/B tests, and Work
+  never at all (no fact in a store says what is logged elsewhere). `start_extension_trial` (gate `plan`, `NEVER_AUTOMATIC`) is refused
+  before it waits by `preflightExtensionTrial()` and on the owner's yes runs `startExtensionTrial()`, as the Try free button. The prompt
+  offers only when the person asks what would help or the talk is about what one does, never mid-task; the eval case
+  `manager-form-asks-trial` holds that a form message cannot make it start a trial (D391: record the eval again on Platform → AI).
+
 ## The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`, `src/server/exchange-tools.ts`)
 
 - **The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`,

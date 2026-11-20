@@ -48,6 +48,7 @@ import {
   stopPlanTool,
 } from "./autopilot-tools";
 import { OwnerToolError } from "./owner-tool-error";
+import { extensionOffersTool } from "./extension-offers";
 import { planReminderStats } from "./plan-reminders";
 import { ensureBillingEvents } from "./referral-billing";
 import { getReferralSettings, listReferrers, referralTotals, referrerOverview, REFERRALS_TAG, saveReferralSettings } from "./referrals";
@@ -276,6 +277,9 @@ type Handler = (ctx: ManagerContext, input: never) => Promise<unknown>;
 
 const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
   get_my_referrals: getMyReferrals,
+  extension_offers: extensionOffersTool,
+  // Gated (`plan`): the person's yes starts the trial (`decideApproval()` through `startTrialOnYes()`).
+  start_extension_trial: async () => fail("This needs the person's approval first."),
   find_admin_page: findAdminPage,
   open_admin_page: openAdminPage,
   use_skill: useSkill,

@@ -181,6 +181,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "decline_access_request",
   "set_referral_program",
   "contact_kaizen_support",
+  // An extension's free trial (D852): only on the owner's own yes, never from a plan.
+  "start_extension_trial",
   "start_autopilot_plan",
   "resume_autopilot_plan",
   // A purchase with the AI wallet (D599): every one waits for the owner's yes in this step (`docs/agent-spending.md` 5).

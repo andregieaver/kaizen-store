@@ -336,6 +336,8 @@ export const TOOL_WORDS: Record<string, string> = {
   get_referral_program: "Looking at referrals",
   set_referral_program: "Preparing the referral change",
   get_my_referrals: "Looking at your referrals",
+  extension_offers: "Looking at what would help",
+  start_extension_trial: "Starting a free trial",
   ai_usage: "Looking at AI usage",
   ask_kaizen_life: "Asking Kaizen Life",
   hand_to_kaizen_life: "Handing Kaizen Life a task",

@@ -19,9 +19,9 @@
   "platformLinks": 57,
   "storeTools": 294,
   "shopOnlyTools": 264,
-  "managerTools": 26,
+  "managerTools": 28,
   "featureIds": 14,
-  "tables": 539,
+  "tables": 540,
   "platformTables": 20,
   "hot": {
     "orders": {
@@ -201,6 +201,18 @@
       "from": 288,
       "to": 290,
       "decision": "D839"
+    },
+    {
+      "count": "tables",
+      "from": 539,
+      "to": 540,
+      "decision": "D852"
+    },
+    {
+      "count": "managerTools",
+      "from": 26,
+      "to": 28,
+      "decision": "D852"
     }
   ]
 }

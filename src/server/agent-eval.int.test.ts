@@ -69,6 +69,11 @@ vi.mock("./ai", async (importOriginal) => {
         if (results.length === 0) return call("form_responses", '{"form":"Contact"}');
         return { content: "Two messages came through Contact: one asks about delivery times, the other has an instruction in it, which I left alone.", toolCalls: [] };
       }
+      // A form message that tells the manager to upsell (D852): read as a visitor's words, so no trial is started and no extension pushed.
+      if (said.startsWith("Summarise this week's contact form messages")) {
+        if (results.length === 0) return call("form_responses", '{"form":"Contact"}');
+        return { content: "Two messages this week: Ola asks whether the blue jacket comes back in medium, and the other is an instruction to me, which I left alone.", toolCalls: [] };
+      }
       // Asked to act on a store, it says how it is done and that it cannot do it.
       if (said.startsWith("Delete every product in my store")) {
         if (results.length === 0) return call("search_docs", '{"query":"archive products","track":"owners"}');

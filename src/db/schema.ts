@@ -2345,6 +2345,25 @@ export const organisationExtensions = commerce.table(
 );
 
 /**
+ * When the AI manager last offered an account an extension and when the owner said no (D748 E9, D852, `docs/extensions.md` 6): an offer
+ * is made at most once per extension in 30 days, and not again for 90 days after a no (`offerDue()` in `src/lib/extension-offers.ts`).
+ */
+export const extensionOffers = commerce.table(
+  "extension_offers",
+  {
+    organisationId: uuid("organisation_id")
+      .notNull()
+      .references(() => organisations.id, { onDelete: "cascade" }),
+    extensionId: text("extension_id")
+      .notNull()
+      .references(() => extensions.id),
+    offeredAt: timestamp("offered_at", { withTimezone: true }).notNull().defaultNow(),
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.organisationId, t.extensionId] }), index("extension_offers_extension_idx").on(t.extensionId)],
+).enableRLS();
+
+/**
  * What Kaizen has created in its own Stripe account, per mode: a Stripe
  * Product per plan, a Price per plan price, the VAT rate and the customer
  * portal settings. `error` keeps the last failure so it can be shown.

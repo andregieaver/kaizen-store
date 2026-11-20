@@ -479,6 +479,16 @@ store owners), Add to your account offers an account without a store only what i
 `docs/site-pages/standalone-products.test.ts` from `docs/site-design.md` (the feature pages' shape), each claim built and its source in the
 generator, are saved as drafts of Kaizena Flow's own store for the owner to publish together with the sign-up (`docs/site-pages/README.md`).
 
+**E9 as built, part one (20 November 2026, D852).** The manager's suggestions (section 6) are two tools, in a store's manager for its
+account's owner only: `extension_offers` counts the store's records (`offerFacts()`: customer conversations and contact form messages in 7
+days for the support desk, subscribers for email automation, form messages and quote requests in 30 days for Deals, page views in 30 days
+for A/B tests; thresholds in `OFFER_THRESHOLDS`, `src/lib/extension-offers.ts`) and returns at most one extension the account never had nor
+tried, with the fact and its price; `commerce.extension_offers` (migration `20261120140730_furry_shiva`) keeps each offer and no, so one
+comes at most once in 30 days and never for 90 after a no. Work is never offered: no fact in a store says what is logged elsewhere.
+`start_extension_trial` (gate `plan`) waits for the owner's yes, is refused before it waits when the account has it or had its trial, and
+the autopilot never runs it. The eval case `manager-form-asks-trial` has a contact form message tell the manager to start a trial; the
+recording must be made again on Platform → AI. Section 9's price tuning is part two.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
