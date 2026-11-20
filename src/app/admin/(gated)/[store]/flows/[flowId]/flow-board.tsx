@@ -19,7 +19,9 @@ import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
 import { waitWords } from "@/lib/flow-story";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
-import type { FlowCondition, FlowPlace, FlowStep } from "@/lib/flows";
+import type { FactBlock, FlowCondition, FlowPlace, FlowStep } from "@/lib/flows";
+import type { CampaignFact, ProductFact } from "@/lib/broadcasts";
+import { findBroadcastFactsAction } from "../../broadcasts/actions";
 
 import {
   changeFlowConditionAction,
@@ -287,7 +289,7 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
         {said && <p role="status" className="text-sm text-ink-2">{said.text}</p>}
       </div>
     );
-  const change = (body: { add: (typeof ADDED_BLOCKS)[number]; at: number; words: string } | { remove: number }) =>
+  const change = (body: { add: (typeof ADDED_BLOCKS)[number]; at: number; words: string } | { fact: FactBlock; at: number } | { remove: number }) =>
     start(async () => {
       const result = await changeFlowBlocksAction(p.storeSlug, p.flowId, step.id, locale, body);
       setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
@@ -310,6 +312,7 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
               {w.inPlace.kinds[k]}
             </button>
           ))}
+          <FactFinder w={w} storeSlug={p.storeSlug} busy={busy} onAdd={(fact) => change({ fact, at })} />
         </div>
       ) : (
         <button
@@ -397,8 +400,8 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
           else if (block.type === "divider") inner = <hr className="border-line" />;
           else
             inner = (
-              <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">
-                {w.inPlace.product}
+              <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted" data-in-place-fact={block.type}>
+                {block.type === "campaign" ? w.inPlace.offer : w.inPlace.product}
                 {"label" in block && block.label ? `: ${block.label}` : ""}
               </p>
             );
@@ -594,5 +597,86 @@ export function FlowBoard(p: Props) {
         </div>
       </div>
     </DndContext>
+  );
+}
+
+/**
+ * A product or a running campaign's offer for the email, found in the store (M3.4, the broadcast editor's finder, D352): code draws it for
+ * each reader's market when the email is made, so a price is never written here.
+ */
+function FactFinder({ w, storeSlug, busy, onAdd }: { w: FlowsMessages; storeSlug: string; busy: boolean; onAdd: (fact: FactBlock) => void }) {
+  const [open, setOpen] = useState(false);
+  const [words, setWords] = useState("");
+  const [found, setFound] = useState<{ products: ProductFact[]; campaigns: CampaignFact[] } | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [finding, start] = useTransition();
+  const find = () =>
+    start(async () => {
+      setProblem(null);
+      const result = await findBroadcastFactsAction(storeSlug, words);
+      if (result.ok) setFound(result);
+      else setProblem(result.problem);
+    });
+  const pill = "rounded-full border border-line bg-card px-2.5 py-0.5 text-xs text-ink hover:border-ink";
+  if (!open)
+    return (
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          setOpen(true);
+          find();
+        }}
+        className={pill}
+      >
+        {w.inPlace.fact}
+      </button>
+    );
+  return (
+    <div className="mt-1 flex w-full flex-col gap-2 rounded border border-line bg-card p-2 text-left" data-fact-finder>
+      <div className="flex gap-1">
+        <input
+          aria-label={w.inPlace.findLabel}
+          placeholder={w.inPlace.findLabel}
+          value={words}
+          maxLength={120}
+          onChange={(e) => setWords(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              find();
+            }
+          }}
+          className="min-w-0 flex-1 rounded border border-line bg-card px-2 py-1 text-sm"
+        />
+        <button type="button" disabled={finding} onClick={find} className={pill}>
+          {w.inPlace.find}
+        </button>
+      </div>
+      {problem && (
+        <p role="alert" className="text-caption text-danger-text">
+          {problem}
+        </p>
+      )}
+      {found && found.products.length === 0 && found.campaigns.length === 0 && <p className="text-caption text-muted">{w.inPlace.noneFound}</p>}
+      {[
+        { label: w.inPlace.products, rows: found?.products.map((x) => ({ id: x.id, name: x.title, note: x.price, fact: { type: "product", product: x.id, handle: x.handle, label: x.title } as FactBlock })) ?? [] },
+        { label: w.inPlace.offers, rows: found?.campaigns.map((x) => ({ id: x.id, name: x.name, note: x.offer, fact: { type: "campaign", campaign: x.id, label: x.name } as FactBlock })) ?? [] },
+      ]
+        .filter((list) => list.rows.length > 0)
+        .map((list) => (
+          <ul key={list.label} aria-label={list.label} className="flex max-h-40 flex-col divide-y divide-line overflow-y-auto">
+            {list.rows.map((row) => (
+              <li key={row.id} className="flex items-center gap-2 py-1 text-sm">
+                <span className="min-w-0 flex-1 truncate text-ink">{row.name}</span>
+                <span className="text-caption text-muted">{row.note}</span>
+                <button type="button" disabled={busy} onClick={() => onAdd(row.fact)} className={pill}>
+                  {w.inPlace.addThis}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </div>
   );
 }

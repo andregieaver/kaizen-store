@@ -163,6 +163,9 @@ describe("blocks added between and removed (email plan M3.4)", () => {
     // The last block stays; a place outside the email changes nothing.
     expect(withBlockAt(steps, "e", "nb-NO", { remove: 0 })).toEqual(steps);
     expect(withBlockAt(steps, "e", "nb-NO", { add: "divider", at: 5, words: "" })).toEqual(steps);
+    // A product from the store's facts (D352), put where it was chosen.
+    const product = { type: "product" as const, product: "00000000-0000-4000-8000-000000000001", handle: "mug", label: "Mug" };
+    expect(stepAt(withBlockAt(steps, "e", "nb-NO", { fact: product, at: 0 }), ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [product, { type: "paragraph" }] } } });
   });
 });
 

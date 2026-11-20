@@ -150,6 +150,15 @@ test("on the canvas, a step is added in a branch, dragged to a new place, change
   await inPlace.getByRole("textbox", { name: "Button words" }).hover();
   await inPlace.getByRole("button", { name: "Remove this" }).last().click();
   await expect(inPlace.getByRole("textbox", { name: "Button words" })).toHaveCount(0);
+  // A product from the store (M3.4): found by the + between blocks, drawn by code when the email is made.
+  await inPlace.locator("[data-in-place-between]").last().getByRole("button", { name: "Add here" }).click();
+  await inPlace.getByRole("button", { name: "Product or offer" }).click();
+  await inPlace.getByRole("list", { name: "Products" }).getByRole("button", { name: "Add" }).first().click();
+  await expect(inPlace.locator("[data-in-place-fact=product]")).toHaveCount(1);
+  await page.screenshot({ path: "test-results/flow-in-place-product.png", fullPage: true });
+  await inPlace.locator("[data-in-place-fact=product]").hover();
+  await inPlace.getByRole("button", { name: "Remove this" }).last().click();
+  await expect(inPlace.locator("[data-in-place-fact=product]")).toHaveCount(0);
   // Languages side by side (M3.4): Norwegian is not written yet, started from the English words to translate in place.
   await inPlace.getByRole("group", { name: "Languages" }).getByRole("button", { name: /Norsk bokmål/ }).click();
   await inPlace.getByRole("button", { name: "Start from the English words" }).click();

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AUTOMATION_KINDS, PICK_KINDS, type PickKind } from "./automation-kinds";
 import type { AddedBlock } from "./flow-blocks";
-import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
+import { broadcastContentSchema, type BroadcastBlock, type BroadcastContent } from "./broadcasts";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "./flow-triggers";
 
 /**
@@ -219,11 +219,14 @@ export function withBlockText(steps: readonly FlowStep[], id: string, locale: st
  * paragraph or button starts with `words`; a button goes to the store's front page until it is changed. The same tree when there is no such
  * place. Pure; the save checks the email (an email keeps at least one block).
  */
+/** A block code draws from the store's facts when the email is made (D352): a product, or a running campaign's offer. */
+export type FactBlock = Extract<BroadcastBlock, { type: "product" | "campaign" }>;
+
 export function withBlockAt(
   steps: readonly FlowStep[],
   id: string,
   locale: string,
-  change: { add: AddedBlock; at: number; words: string } | { remove: number },
+  change: { add: AddedBlock; at: number; words: string } | { fact: FactBlock; at: number } | { remove: number },
 ): FlowStep[] {
   return replaceStep(steps, id, (step) => {
     if (step.kind !== "email") return step;
@@ -235,8 +238,10 @@ export function withBlockAt(
       blocks.splice(change.remove, 1);
     } else {
       if (change.at < 0 || change.at > blocks.length) return step;
-      const block =
-        change.add === "divider"
+      const block: BroadcastBlock =
+        "fact" in change
+          ? change.fact
+          : change.add === "divider"
           ? ({ type: "divider" } as const)
           : change.add === "button"
             ? ({ type: "button", text: change.words, url: "/" } as const)
