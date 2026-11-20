@@ -14,7 +14,7 @@ import { countPages, listPages, pageTitles } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
-import { ButtonLink, CARD_CLASS, PageHeader, Pager } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState, PageHeader, Pager } from "@/components/admin/ui";
 import { PlatformLegalCard, platformLegalLead } from "@/components/admin/platform-legal-card";
 import { adminLangOf } from "@/lib/admin-lang";
 import { platformLegalOverview } from "@/server/platform-legal";
@@ -158,9 +158,8 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           </span>
         </section>
       ) : pages.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS} max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none`}>
-          {tw.none}
-        </p>
+        // The header's New is the next step; a phone shows a plain line.
+        <EmptyState title={tw.none} className="max-sm:items-start max-sm:border-0 max-sm:p-0 max-sm:text-left" />
       ) : type === "header" || type === "footer" ? (
         <SiteLayoutsTable layouts={pages} adminBase={base} current={layoutCurrent} timeZone={PLATFORM_TIME_ZONE} />
       ) : (

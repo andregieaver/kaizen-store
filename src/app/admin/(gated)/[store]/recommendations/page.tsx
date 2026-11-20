@@ -11,7 +11,7 @@ import { recommendationReport } from "@/server/recommend-events";
 import { REPLAY_ORDERS, replayOnOrders } from "@/server/recommend-eval";
 import { costWords } from "@/lib/ai-usage";
 import { getRecommendSettingsFresh, listRules, ruleProducts, usedThisMonth, type RuleKind } from "@/server/recommend-settings";
-import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -130,7 +130,8 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         <h2 id="rules" className="text-title text-ink">{w.rules}</h2>
         <p className="text-sm text-muted">{w.rulesHint}</p>
         {rules.length === 0 ? (
-          <p className={`p-6 text-center text-sm text-muted ${CARD_CLASS}`}>{w.noRules}</p>
+          // The form to add a rule is the next section.
+          <EmptyState title={w.noRules} />
         ) : (
           <ul className={`divide-y divide-line ${CARD_CLASS}`}>
             {rules.map((rule) => (
@@ -185,9 +186,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         <p className="text-sm text-muted">{fillWords(w.replayHint, { n: REPLAY_ORDERS })}</p>
         {replay ? (
           replay.evaluated === 0 ? (
-            <p className={`p-6 text-center text-sm text-muted ${CARD_CLASS}`}>
-              {fillWords(w.replayNone, { found: replay.considered, off: replay.skipped.notOnSaleNow })}
-            </p>
+            <EmptyState title={fillWords(w.replayNone, { found: replay.considered, off: replay.skipped.notOnSaleNow })} />
           ) : (
             <div className={`overflow-x-auto ${CARD_CLASS}`}>
               <table className="w-full text-left text-sm">

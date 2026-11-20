@@ -11,7 +11,7 @@ import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { requirePlatformReader } from "@/server/auth";
 import { listLanguages } from "@/server/languages";
 import { uiRows } from "@/server/ui-text";
-import { PageHeader } from "@/components/admin/ui";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -128,7 +128,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
             </div>
           </div>
           {shown.length === 0 ? (
-            <p className="text-sm text-muted">{w.nothing}</p>
+            <EmptyState compact title={w.nothing} />
           ) : (
             <ActionForm action={saveGroupAction.bind(null, lang)} className="flex flex-col gap-4">
               <ul className="flex flex-col gap-3">

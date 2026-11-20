@@ -15,7 +15,8 @@ import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
 import { designChoices } from "@/server/design-presets";
-import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { platformPath } from "@/lib/platform-lang";
 
 import { createDreamStoreAction, createStoreAction } from "./actions";
 
@@ -50,7 +51,21 @@ export default async function AllStoresPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={w.description} />
-      <StoresList stores={stores} canDuplicate={canDuplicate} platformAdmin={account.platformAdmin} words={w} />
+      <StoresList
+        stores={stores}
+        canDuplicate={canDuplicate}
+        platformAdmin={account.platformAdmin}
+        words={w}
+        emptyText={fillWords(words.center.noAccessText, { email: account.email })}
+        emptyAction={
+          // The platform's admins create below; anyone else starts a store through the sign-up (code review 2.9, D845).
+          !canCreate && (
+            <ButtonLink kind="main" href={platformPath(lang, "/sign-up")}>
+              {words.center.startStore}
+            </ButtonLink>
+          )
+        }
+      />
       {full && (
         <p role="note" className="max-w-xl text-sm text-muted">
           {fillWords(w.max, { max: MAX_STORES_PER_OWNER })}

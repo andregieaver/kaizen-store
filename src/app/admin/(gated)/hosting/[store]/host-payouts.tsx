@@ -6,7 +6,7 @@ import type { HostEarning, HostStripeAccount } from "@/server/host-payments";
 import { platformPublishableKey } from "@/server/stripe";
 
 import { hostAccountSessionAction, hostCreateStripeAccountAction, hostRefreshStripeAccountAction } from "./actions";
-import { Card } from "@/components/admin/ui";
+import { Card, EmptyState } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
@@ -80,7 +80,7 @@ export function HostPayouts({
       <div className="flex flex-col gap-2">
         <h3 className="text-body-strong text-ink">{w.payments}</h3>
         {earnings.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

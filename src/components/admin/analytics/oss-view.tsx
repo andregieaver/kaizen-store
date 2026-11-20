@@ -18,6 +18,7 @@ import { KpiCard } from "./kpi-card";
 import { moneyWriter } from "./overview-text";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { ExportButton, ExportsNeedWrite, TaxStatement } from "./tax-parts";
+import { EmptyState } from "@/components/admin/ui";
 
 /**
  * The OSS (quarterly) and IOSS (monthly) views of the VAT, OSS and IOSS page (D161, `docs/wave-1c-reports.md` 2.2 and 4.3 to 4.6): the
@@ -209,7 +210,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               <KpiCard label={o.kpiDue} value={data.part5Eur === null ? null : eurText(data.part5Eur)} emphasis state={data.part5Eur === null ? "missing" : "ok"} missing={{ text: o.rateMissing }} help={o.kpiDueHelp} />
             </div>
             {parts.length === 0 ? (
-              <div className="rounded-panel border border-dashed border-line px-4 py-6 text-sm text-muted">{fillWords(o.nothingPart2, { period: label })}</div>
+              <EmptyState title={fillWords(o.nothingPart2, { period: label })} />
             ) : (
               parts.map((p) => (
                 <ChartCard key={p} title={o.parts[p]}>

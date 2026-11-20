@@ -21,7 +21,7 @@ import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { productsListReads } from "@/server/admin-screens";
 import { PRODUCT_SHOWS, type ProductShow } from "@/server/product-list";
-import { CARD_CLASS, ListSearch, PageHeader, Pager } from "@/components/admin/ui";
+import { ButtonLink, EmptyState, ListSearch, PageHeader, Pager } from "@/components/admin/ui";
 import { pageAddress } from "@/components/admin/ui/pager";
 
 import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
@@ -165,14 +165,17 @@ async function ProductList({
       {needsFilter ? (
         <NeedsContentList products={needing} base={base} words={SCREENS_WORDS[lang].unitGaps} />
       ) : none ? (
-        <div className={`p-8 text-center ${CARD_CLASS}`}>
-          <p className="mb-3">{archived ? w.noArchived : w.none}</p>
-          {!archived && (
-            <Link href={`${base}/new`} className="underline">
-              {w.addFirst}
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          title={archived ? w.noArchived : w.none}
+          action={
+            !archived &&
+            canWrite && (
+              <ButtonLink kind="main" href={`${base}/new`}>
+                {w.addFirst}
+              </ButtonLink>
+            )
+          }
+        />
       ) : (
         <>
           {/* On a phone and above the list (round 8, D626): what costs sales, from the figures of every current product. */}
@@ -189,6 +192,12 @@ async function ProductList({
             bulk={bulk}
             total={total}
             filter={{ show, q }}
+            empty={
+              <EmptyState
+                title={q ? fillWords(c.noMatch, { q }) : c.noneShown}
+                action={<ButtonLink href={archived ? `${base}?show=archived` : base}>{KIT_WORDS[lang].empty.clearFilters}</ButtonLink>}
+              />
+            }
             priceHeader={market ? fillWords(store.audience === "businesses" ? w.priceInExclVat : w.priceIn, { market: market.name }) : w.price}
             rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
             toolbar={

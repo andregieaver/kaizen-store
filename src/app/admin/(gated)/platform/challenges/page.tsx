@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { ButtonLink, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, KpiTile, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
@@ -40,7 +40,7 @@ export default async function PlatformChallengesPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={w.description} />
-      {stores.length === 0 && <p className="text-body text-muted">{w.none}</p>}
+      {stores.length === 0 && <EmptyState title={w.none} />}
       {stores.map((s) => (
         <StoreCard key={s.storeId} s={s} w={w} lang={lang} locale={locale} canWrite={canWrite} />
       ))}
@@ -130,7 +130,7 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
         <section aria-label={w.watch.title}>
           <h3 className="mb-2 text-sm font-medium text-ink">{w.watch.title}</h3>
           {s.rolledBack.length === 0 ? (
-            <p className="text-body text-ink-2">{w.watch.none}</p>
+            <EmptyState compact title={w.watch.none} />
           ) : (
             <ul className="flex flex-col gap-2 text-sm text-ink-2">
               {s.rolledBack.slice(0, 5).map((r) => (

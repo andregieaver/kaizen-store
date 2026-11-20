@@ -8,7 +8,7 @@ import { featureWords, usagePeriod } from "@/lib/ai-usage";
 import { requirePlatformReader } from "@/server/auth";
 import { roundStats, type RoundStats } from "@/server/ai-round-stats";
 import { usageByDay, usageRows } from "@/server/ai-usage";
-import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, EmptyState, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { AdminAreaMessages } from "@/lib/admin-text";
@@ -63,7 +63,7 @@ function TokensPerCall({ stats, words: w, locale }: { stats: RoundStats; words: 
   return (
     <Card title={w.title} description={w.intro}>
       {stats.byFeature.length === 0 ? (
-        <p className="text-body text-muted">{w.empty}</p>
+        <EmptyState compact title={w.empty} />
       ) : (
         <div className="flex flex-col gap-6">
           <List label={w.title}>

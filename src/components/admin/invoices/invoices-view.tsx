@@ -22,7 +22,7 @@ import {
 import { LIST_PAGE_SIZE } from "@/lib/list-page";
 import { formatMoney } from "@/lib/money";
 import type { DocumentListRow, DocumentPage, FailingPdf, InvoiceCounts, WaitingCreditNote, WaitingInvoice } from "@/server/invoices";
-import { Card, CARD_CLASS, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowLead, TextInput } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowLead, TextInput } from "@/components/admin/ui";
 import type { PagerWords } from "@/components/admin/ui/pager";
 
 import { CheckAgainForm, RetryPdfForm } from "./waiting-actions";
@@ -235,15 +235,8 @@ function ListTab({
       </p>
 
       {documents.rows.length === 0 ? (
-        <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
-          {filtered
-            ? credit
-              ? v.noCreditNotesMatch
-              : v.noInvoicesMatch
-            : credit
-              ? v.noCreditNotes
-              : v.noInvoices}
-        </p>
+        // A period or search that found nothing has its way back beside the search box (This month).
+        <EmptyState title={filtered ? (credit ? v.noCreditNotesMatch : v.noInvoicesMatch) : credit ? v.noCreditNotes : v.noInvoices} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[56rem] rounded-panel border border-line bg-card text-left text-sm">
@@ -406,7 +399,7 @@ function WaitingTab({
         {canWrite ? <CheckAgainForm action={actions.checkAgain} /> : <p className="text-sm text-muted">{v.checkAgainNoAccess}</p>}
       </div>
 
-      {nothing && <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>{v.nothingWaits}</p>}
+      {nothing && <EmptyState title={v.nothingWaits} />}
 
       {waiting.length > 0 && (
         <Card title={v.ordersWaiting} count={waiting.length} compact>

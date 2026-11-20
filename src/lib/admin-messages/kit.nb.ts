@@ -13,4 +13,7 @@ export const kitNb: KitMessages = {
     label: "Søk",
     button: "Søk",
   },
+  empty: {
+    clearFilters: "Fjern filtrene",
+  },
 };

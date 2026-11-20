@@ -5,7 +5,7 @@ import { Mail, ShoppingCart, Tag } from "lucide-react";
 import { NavIcon } from "@/components/admin/nav-icons";
 import { PhoneMore } from "@/components/admin/phone-more";
 import { PHONE_MORE_HIDDEN } from "@/components/admin/phone-more-class";
-import { AdminLink, CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
+import { AdminLink, CARD_CLASS, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
@@ -154,7 +154,8 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
           {w.running}
         </h2>
         {running.length + testing.length === 0 ? (
-          <p className={`px-5 py-4 text-body text-muted ${CARD_CLASS}`}>{w.nothingRunning}</p>
+          // The ones above start it.
+          <EmptyState title={w.nothingRunning} />
         ) : (
           <div className={`overflow-hidden ${CARD_CLASS}`}>
             <div aria-hidden className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-line px-5 py-2.5 text-caption text-muted sm:grid">

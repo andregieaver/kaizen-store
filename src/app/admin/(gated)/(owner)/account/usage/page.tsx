@@ -5,7 +5,7 @@ import { PeriodLinks, UsageReport } from "@/components/admin/usage-report";
 import { usagePeriod } from "@/lib/ai-usage";
 import { requireAccount } from "@/server/auth";
 import { ownedStores, usageByDay, usageRows } from "@/server/ai-usage";
-import { PageHeader } from "@/components/admin/ui";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
@@ -66,7 +66,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
         )}
       </div>
       {owned.length === 0 ? (
-        <p className="rounded-panel border border-line p-4 text-sm">{sw.noneOwned}</p>
+        <EmptyState title={sw.noneOwned} />
       ) : (
         <UsageReport rows={rows} days={days} scope="owner" words={w} locale={ADMIN_LANG_FACTS[lang].locale} />
       )}

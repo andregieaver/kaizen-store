@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
-import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -60,7 +60,7 @@ export default async function PlatformStatusPage() {
         </ul>
       </Card>
       <Card title={w.openTitle}>
-        {view.open.length === 0 ? <p className="text-sm text-muted">{w.none}</p> : view.open.map((i) => <IncidentAdmin key={i.id} incident={i} w={w} names={names} lang={lang} />)}
+        {view.open.length === 0 ? <EmptyState compact title={w.none} /> : view.open.map((i) => <IncidentAdmin key={i.id} incident={i} w={w} names={names} lang={lang} />)}
       </Card>
       {/* Round 70 (D846): on a phone posting an incident is a row that opens its form. */}
       <PhoneRows>

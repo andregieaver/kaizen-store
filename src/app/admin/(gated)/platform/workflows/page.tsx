@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PhoneRow } from "@/components/admin/phone-row";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -72,7 +72,7 @@ export default async function PlatformWorkflowsPage() {
           </div>
         )}
         {views.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState title={w.none} />
         ) : (
           views.map((flow) => <WorkflowCard key={flow.id} flow={flow} endpoints={endpointChoices} triggerLabels={triggerLabels} canWrite={canWrite} actions={actions} scope="platform" />)
         )}

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PhoneRow } from "@/components/admin/phone-row";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } from "@/components/admin/webhook-endpoints";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
@@ -98,7 +98,7 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
           <p className="text-sm text-ink-2">{w.ownerOnly}</p>
         )}
         {views.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState title={w.none} />
         ) : (
           views.map((endpoint) => <EndpointCard key={endpoint.id} endpoint={endpoint} topics={topics} owner={owner} actions={actions} />)
         )}

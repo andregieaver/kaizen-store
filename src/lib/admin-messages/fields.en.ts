@@ -196,9 +196,9 @@ export const fieldsEn = {
     storeTitle: "Store details",
     storeDescription:
       "Extra information about the whole store, from the groups of custom fields you made for it. A field is shown on the site only if you made it public, and you place it in a page, a product layout, a header or a footer.",
-    storeEmptyBefore: "No group of custom fields is on the store yet.",
-    makeOne: "Make one",
-    storeEmptyAfter: "with the store ticked under Where it can be used.",
+    storeEmpty: "No group of custom fields is on the store yet",
+    storeEmptyText: "A group made with the store ticked under Where it can be used shows here, ready to fill in.",
+    makeStoreGroup: "Make a group for the store",
     storeIntro: "Shown on the site when a field is public.",
   },
   actions: {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CARD_CLASS } from "@/components/admin/ui";
+import { EmptyState } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { screensEn, type ScreensMessages } from "@/lib/admin-messages/screens.en";
 
@@ -44,9 +44,7 @@ export function NeedsContentNotice({ count, href, words = GAP_WORDS }: { count: 
 export function NeedsContentList({ products, base, words = GAP_WORDS }: { products: NeedsContent[]; base: string; words?: GapWords }) {
   if (products.length === 0) {
     return (
-      <div className={`p-8 text-center ${CARD_CLASS}`}>
-        <p>{words.none}</p>
-      </div>
+      <EmptyState title={words.none} />
     );
   }
   return (

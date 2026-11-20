@@ -20,6 +20,7 @@ import { supplierPerformance } from "@/server/supplier-orders";
 import { dropShipWait, listDropShipSuppliers } from "@/server/suppliers";
 
 import { saveSupplierAction, saveWaitAction } from "./actions";
+import { EmptyState } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Suppliers" };
 
@@ -68,7 +69,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
     <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS })}>
       <div className="flex flex-col gap-6">
         {suppliers.length === 0 ? (
-          <p className="max-w-3xl text-sm text-muted">{w.none}</p>
+          <EmptyState title={w.none} className="max-w-3xl" />
         ) : (
           <>
           {/* Round 48 (D756): on a phone each supplier is a line: where it ships from, how fast, how many products. */}

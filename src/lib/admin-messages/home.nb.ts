@@ -208,6 +208,8 @@ export const homeNb: HomeMessages = {
   center: {
     title: "Kontrollsenter",
     noAccess: "Du har ikke tilgang til noen butikk ennå",
+    noAccessText: "Jobber du i en butikk, kan eieren legge deg til med {email}. Eller start din egen butikk.",
+    startStore: "Start en butikk",
     oneStore: "Butikken din i et blikk",
     allStores: "Alle {count} butikkene du jobber i, i et blikk",
     manage: "Administrer butikker",

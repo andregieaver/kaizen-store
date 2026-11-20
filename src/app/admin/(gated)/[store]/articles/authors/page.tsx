@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { BlogAuthorForm } from "@/components/admin/blog-author-form";
-import { ButtonLink, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, EmptyState, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { areaTexts } from "@/lib/admin-area";
@@ -40,7 +40,7 @@ export default async function AuthorsPage({ params, searchParams }: PageProps<"/
         />
         <Card title={w.authors.yours} className={authors.length === 0 ? "max-sm:p-4 max-sm:[&>header]:sr-only" : undefined}>
           {authors.length === 0 ? (
-            <p className="text-sm text-muted">{w.authors.none}</p>
+            <EmptyState compact title={w.authors.none} />
           ) : (
             <List label={w.authors.yours}>
               {authors.map((author) => (

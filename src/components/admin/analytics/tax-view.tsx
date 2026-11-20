@@ -18,6 +18,7 @@ import { moneyWriter } from "./overview-text";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { ExportButton, ExportsNeedWrite, TaxStatement } from "./tax-parts";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { EmptyState } from "@/components/admin/ui";
 
 /**
  * The VAT view of the VAT, OSS and IOSS page (D161, `docs/wave-1c-reports.md` 2.2): VAT per delivery country, rate and basis from the
@@ -152,16 +153,13 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
       {/* An empty period says so once on a phone (round 39, D731): the card, without the section's own heading and description. */}
       <AnalyticsSection id="vat-cards" title={v.cardsTitle} description={fillWords(v.cardsDescription, { currency: report.mainCurrency })} phoneQuiet={documents === 0}>
         {documents === 0 ? (
-          <div className="rounded-panel border border-dashed border-line px-4 py-6 text-sm text-muted">
-            <p>{v.nothing}</p>
-            <p className="mt-1">
-              {v.invoicingOff}{" "}
-              <Link href={`${base}/settings/invoices`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
-                {v.settingsInvoices}
-              </Link>
-              .
-            </p>
-          </div>
+          <EmptyState title={v.nothing}>
+            {v.invoicingOff}{" "}
+            <Link href={`${base}/settings/invoices`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
+              {v.settingsInvoices}
+            </Link>
+            .
+          </EmptyState>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <KpiCard label={v.kpi.charged} value={main(report.totals.vatChargedMainMinor)} help={v.kpi.chargedHelp} />

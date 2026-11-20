@@ -13,7 +13,7 @@ import {
 import { WORK_LOCALE, withStore, type WorkStore } from "@/lib/work-owner";
 import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import type { OwnerInvoiceList, OwnerInvoiceRow } from "@/server/work-owner";
-import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, EmptyState, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 import { InvoiceStatusChip } from "./invoice-status";
 import { CurrencyNote, StoreFilter } from "./owner-common";
@@ -154,11 +154,7 @@ export function OwnerInvoicesView({
       )}
 
       {list.rows.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          {empty
-            ? tw.noInvoicesYetStart
-            : tw.noInvoiceMatchesTry}
-        </p>
+        <EmptyState title={empty ? tw.noInvoicesYetStart : tw.noInvoiceMatchesTry} />
       ) : (
         <Card compact>
           <List label={tw.invoices}>

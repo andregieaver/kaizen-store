@@ -11,7 +11,7 @@ import { listSubscriptions } from "@/server/subscriptions";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
-import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Subscriptions" };
 
@@ -47,9 +47,14 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
 
   if (subscriptions.length === 0) {
     return (
-      <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
-        {w.none}
-      </p>
+      <EmptyState
+        title={w.none}
+        action={
+          <ButtonLink kind="main" href={`/admin/${store.slug}/products`}>
+            {w.toProducts}
+          </ButtonLink>
+        }
+      />
     );
   }
   return (

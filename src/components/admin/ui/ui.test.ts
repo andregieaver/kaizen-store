@@ -274,6 +274,14 @@ describe("the empty state (code review 1.12)", () => {
     expect(out).toContain('<div class="text-xs text-muted">Save a section to use it again.</div>');
     expect(out).not.toContain("text-center");
   });
+
+  it("takes a screen's own classes after its own, so a phone keeps the plain line a redesign round gave it (code review 2.9, D845)", () => {
+    const out = html(h(EmptyState, { title: "No redirects yet", className: "max-sm:items-start max-sm:border-0 max-sm:p-0 max-sm:text-left" }));
+    expect(out).toMatch(/class="flex flex-col items-center [^"]*text-center max-sm:items-start max-sm:border-0 max-sm:p-0 max-sm:text-left"/);
+    // No line and no step: the title alone (a list whose header already holds the next step).
+    expect(out).not.toContain("text-muted");
+    expect(out).not.toContain("<a ");
+  });
 });
 
 describe("the pager (code review 1.12)", () => {

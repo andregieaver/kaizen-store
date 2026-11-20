@@ -18,7 +18,7 @@ import { listDiscounts } from "@/server/discounts";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
-import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, Card, Chip, EmptyState, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { setCartRemindersAction } from "./actions";
@@ -126,9 +126,8 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         {settings.steps.length === 0 ? (
           <>
             <p className="text-sm text-muted sm:hidden">{carts.length === 0 ? w.phone.none : w.noReminders}</p>
-            <p className={`p-8 text-center text-sm text-muted max-sm:hidden ${CARD_CLASS}`}>
-              {w.noReminders}
-            </p>
+            {/* The heading's New reminder is the next step. */}
+            <EmptyState className="max-sm:hidden" title={w.noReminders} />
           </>
         ) : (
           <Card compact>
@@ -168,9 +167,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         {carts.length === 0 ? (
           <>
             <p className="text-sm text-muted sm:hidden">{w.phone.noCarts}</p>
-            <p className={`p-8 text-center text-sm text-muted max-sm:hidden ${CARD_CLASS}`}>
-              {w.noCarts}
-            </p>
+            <EmptyState className="max-sm:hidden" title={w.noCarts} />
           </>
         ) : (
           <Card compact>

@@ -11,7 +11,7 @@ import { pausedStores } from "@/server/sending-guard";
 import { SendingDomainCard } from "@/components/admin/sending-domain-card";
 
 import { platformSendingDomainAction } from "./actions";
-import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { EMAIL_SHOWS, emailCounts, emailsShown, emailWeek, isEmailShow } from "@/lib/email-log";
 import Link from "next/link";
@@ -128,7 +128,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
       </nav>
       <Card compact>
         {emailsShown(emails, show).length === 0 && show !== "all" ? (
-          <p className="text-sm text-muted">{w.noneShown}</p>
+          <EmptyState compact title={w.noneShown} />
         ) : (
           <EmailLog timeZone={PLATFORM_TIME_ZONE} emails={emailsShown(emails, show)} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={NOTIFICATIONS_WORDS[lang]} now={drawnAt.getTime()} quietUnsent={!settings} />
         )}

@@ -9,6 +9,7 @@ import type { AdminAreaMessages } from "@/lib/admin-text";
 import { RULES_MAX, type RuleAction, type SearchRule } from "@/lib/search-rules";
 
 import type { FormAction } from "./synonyms-card";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 export type RuleWords = AdminAreaMessages["bookings"]["search"]["rules"];
 
@@ -66,7 +67,7 @@ export function RulesCard({
     <Card title={w.title} description={w.description} aside={fillWords(w.count, { n: lines.length, max: RULES_MAX })}>
       <div id="rules" className="flex flex-col gap-5">
         {lines.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <ul className="divide-y divide-line rounded-panel border border-line text-sm">
             {lines.map((line) => (

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
+import { EmptyState } from "@/components/admin/ui";
 import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
 import { copyWizardPath } from "@/lib/store-copy-paths";
 import type { StoreSummary } from "@/server/auth";
@@ -13,14 +15,19 @@ export function StoresList({
   canDuplicate = false,
   platformAdmin = false,
   words: w = homeEn.stores,
+  emptyText,
+  emptyAction,
 }: {
   stores: StoreSummary[];
   canDuplicate?: boolean;
   platformAdmin?: boolean;
   /** The `home` catalogue's `stores` words in the account's language (D312 A3). */
   words?: HomeMessages["stores"];
+  /** With no store (code review 2.9, D845): how to be let in, and the one next step where the page offers none below. */
+  emptyText?: ReactNode;
+  emptyAction?: ReactNode;
 }) {
-  if (stores.length === 0) return <p className="text-sm text-muted">{w.noAccess}</p>;
+  if (stores.length === 0) return <EmptyState title={w.noAccess} action={emptyAction}>{emptyText}</EmptyState>;
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {stores.map((store) => (

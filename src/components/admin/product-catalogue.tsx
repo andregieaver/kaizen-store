@@ -47,6 +47,7 @@ export function ProductCatalogue({
   bulk,
   toolbar,
   pager,
+  empty,
 }: {
   slug: string;
   /** The page's products. */
@@ -62,6 +63,11 @@ export function ProductCatalogue({
   toolbar: ReactNode;
   /** Under the list: how many of all are shown, and the pages before and after. */
   pager: ReactNode;
+  /**
+   * What a search or a view that found nothing shows: the kit's `EmptyState` with *Clear filters* (code review 2.9, D845), drawn by the page
+   * on the server so this part's scripts carry neither. A store with no product at all gets the page's own first-product state instead.
+   */
+  empty: ReactNode;
 }) {
   const w = useAdminText("products").catalogue;
   // The browser's remembered choice: pictures on the server and until the browser says otherwise.
@@ -90,7 +96,7 @@ export function ProductCatalogue({
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-card bg-card p-8 text-center text-body text-muted">{filter.q ? fillWords(w.noMatch, { q: filter.q }) : w.noneShown}</p>
+        empty
       ) : view === "table" ? (
         <ProductsTable slug={slug} rows={rows} total={total} filter={filter} archived={archived} priceHeader={priceHeader} locale={locale} bulk={bulk} />
       ) : (

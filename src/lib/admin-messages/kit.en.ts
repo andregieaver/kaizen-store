@@ -1,5 +1,5 @@
 /**
- * The admin kit's own words (code review step 1.12, D818, `src/components/admin/ui`), in English: a list's pager and its search box.
+ * The admin kit's own words (code review step 1.12, D818, `src/components/admin/ui`), in English: a list's pager, its search box and an empty list's way back.
  * `{name}`-style placeholders are filled by `fillWords()`. Only the server reads them (`SERVER_AREAS`): `Pager` and `ListSearch` are drawn
  * on the server and take them as props (`KIT_WORDS[lang].pager`), so they are in no admin screen's first scripts. A list with words
  * of its own ("Next 50 orders") passes those in their place. `ConfirmButton`'s *Cancel* is `common.form.cancel`, read in the browser.
@@ -17,6 +17,10 @@ export const kitEn = {
   search: {
     label: "Search",
     button: "Search",
+  },
+  /** `EmptyState` (code review 2.9, D845): the way back from a search or filter that matched nothing, to the list without its query. */
+  empty: {
+    clearFilters: "Clear filters",
   },
 };
 

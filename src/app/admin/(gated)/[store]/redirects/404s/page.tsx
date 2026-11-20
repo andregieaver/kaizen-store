@@ -19,6 +19,7 @@ import { CRAWLER_NOTE, notFoundReport } from "@/server/not-found";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { ignoreMissingAction, redirectMissingAction, restoreMissingAction } from "./actions";
+import { EmptyState } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Pages not found" };
 
@@ -107,11 +108,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           </p>
           {uncounted && <p className={`${card} !p-3 text-sm`}>{uncounted}</p>}
           {report.rows.length === 0 ? (
-            <p className="rounded-panel bg-sunken p-6 text-center text-sm">
-              {report.distinct === 0 && !showCovered && !showIgnored
-                ? r.nothing
-                : r.noneWithChoices}
-            </p>
+            // The period and the two show/hide choices above are the way to more.
+            <EmptyState title={report.distinct === 0 && !showCovered && !showIgnored ? r.nothing : r.noneWithChoices} />
           ) : (
             <NotFoundTable
               rows={report.rows.map((r) => ({ path: r.path, requests: r.requests, crawlers: r.crawlers, lastAsked: r.lastAsked, covered: r.covered, ignored: r.ignored, suggestions: r.suggestions.map((s) => ({ kind: s.kind, path: s.path, title: s.title })) }))}

@@ -8,7 +8,7 @@ import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en
 import { countsSentence, dayText, exchangeFilters, kindFilters, queueHref, queueQuery, statusFilters, type ExchangeMark } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
-import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, ListSearch, PageHeader, Pager, RowAmount, RowLead, Select, TextInput } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, EmptyState, List, ListRow, ListSearch, PageHeader, Pager, RowAmount, RowLead, Select, TextInput } from "@/components/admin/ui";
 import type { PagerWords } from "@/components/admin/ui/pager";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
@@ -145,16 +145,20 @@ export function ReturnsQueueView({
 
       {queue.rows.length === 0 ? (
         filtered ? (
-          <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>{q.noMatch}</p>
+          // The way back is beside the search box (Clear).
+          <EmptyState title={q.noMatch} />
         ) : (
-          <section aria-label={q.list} className={`flex flex-col items-start gap-3 px-6 py-8 ${CARD_CLASS}`}>
-            <p className="text-body text-ink">{q.nothingWaits}</p>
-            <p className="text-sm text-ink-2">{q.empty}</p>
-            <p className="text-sm text-ink-2">{q.byHand}</p>
-            <ButtonLink kind="secondary" href={orders}>
-              {q.findOrder}
-            </ButtonLink>
-          </section>
+          <EmptyState
+            title={q.nothingWaits}
+            action={
+              <ButtonLink kind="secondary" href={orders}>
+                {q.findOrder}
+              </ButtonLink>
+            }
+          >
+            <p>{q.empty}</p>
+            <p className="mt-1">{q.byHand}</p>
+          </EmptyState>
         )
       ) : (
         <Card compact>

@@ -264,10 +264,11 @@ describe("SubscriptionsView, a store with no subscriptions", () => {
     expect(out).not.toContain("0,00");
   });
 
-  it("says what appears here and where to start", () => {
-    expect(out).toContain("/admin/shop/products");
-    expect(out).toContain("/admin/shop/subscriptions");
+  it("says what appears here and where to start: one next step, the kit's empty state (D845)", () => {
+    expect(out).toContain('href="/admin/shop/products"');
+    expect(out).not.toContain('href="/admin/shop/subscriptions"');
     expect(out).toContain("MRR");
+    expect(out).toContain("border-dashed");
   });
 
   it("draws no chart and no KPI card", () => {

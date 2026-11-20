@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow } from "@/components/admin/phone-row";
-import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
@@ -48,7 +48,7 @@ export default async function PlatformDutyRatesPage({ searchParams }: PageProps<
       />
       <Card title={w.tableTitle} className="max-sm:p-0 max-sm:[&>header]:sr-only">
         {rows.length === 0 ? (
-          <p className="text-sm text-muted max-sm:p-4">{w.empty}</p>
+          <EmptyState compact title={w.empty} className="max-sm:m-3" />
         ) : (
           <>
           {/* Round 65 (D832): on a phone each row is one line (who, the threshold, when, verified) opening its source and actions; from sm up the table. */}

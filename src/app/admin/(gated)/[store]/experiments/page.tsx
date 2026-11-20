@@ -10,7 +10,7 @@ import { partLabelText, targetLabelText } from "@/lib/experiment-words";
 import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 import { requirePermission } from "@/server/permissions";
 import { experimentList, type ListedTest } from "@/server/experiment-list";
-import { Card, CARD_CLASS, Chip, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, Chip, EmptyState, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "A/B tests" };
@@ -101,9 +101,8 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
         </p>
       )}
       {tests.length === 0 && (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {w.list.empty}
-        </p>
+        // The header's New test is the next step; the ideas below say where to start.
+        <EmptyState title={w.list.empty} />
       )}
       {LIST_GROUPS.map((group) => {
         const rows = tests.filter((t) => t.group === group);

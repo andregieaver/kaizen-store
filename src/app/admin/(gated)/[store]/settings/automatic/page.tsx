@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AdminLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { AdminLink, Card, CARD_CLASS, Chip, EmptyState, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
 import type { AutomaticMessages } from "@/lib/admin-messages/automatic.en";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
@@ -111,7 +111,7 @@ export default async function AutomaticPage({ params }: PageProps<"/admin/[store
       )}
       <Card title={w.runningTitle} description={w.runningDescription} count={lines.length}>
         {lines.length === 0 ? (
-          <p className="text-body text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <List label={w.runningTitle}>
             {lines.map((line, i) => {

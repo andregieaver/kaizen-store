@@ -28,7 +28,7 @@ import {
 } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, Note } from "./section";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState } from "@/components/admin/ui";
 
 /**
  * The Inventory page's body (D152): everything under the page's header, drawn from the one report object it is handed and nothing else
@@ -326,15 +326,9 @@ export function InventoryView({
           title={w.emptyTitle}
           description={w.emptyDescription}
         >
-          <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-            <p className="font-medium text-ink">{w.emptyLead}</p>
-            <p className="mx-auto mt-1 max-w-prose">
-              {w.emptyBody}{" "}
-              <Link href={`${base}/products`} className={linkClass}>
-                {w.goToProducts}
-              </Link>
-            </p>
-          </div>
+          <EmptyState title={w.emptyLead} action={<ButtonLink href={`${base}/products`}>{w.goToProducts}</ButtonLink>}>
+            {w.emptyBody}
+          </EmptyState>
         </AnalyticsSection>
       </div>
     );
@@ -745,11 +739,7 @@ export function InventoryView({
         description={<span className="max-sm:hidden">{fillWords(w.alertsDescription, { days: String(STOCKOUT_ALERT_DAYS), min: String(MIN_SOLD_30D) })}</span>}
       >
         {report.alerts.length === 0 ? (
-          <div className="rounded-panel border border-dashed border-line px-4 py-5 text-sm text-muted">
-            {noSales30
-              ? w.alertsNoSales
-              : fillWords(w.alertsNone, { days: String(STOCKOUT_ALERT_DAYS) })}
-          </div>
+          <EmptyState title={noSales30 ? w.alertsNoSales : fillWords(w.alertsNone, { days: String(STOCKOUT_ALERT_DAYS) })} />
         ) : (
           <div className={`p-4 ${CARD_CLASS}`}>
             <ul className="space-y-3 text-sm">{shownAlerts.map(alertItem)}</ul>

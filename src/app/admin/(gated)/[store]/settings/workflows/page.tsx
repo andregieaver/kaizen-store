@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { PhoneRow } from "@/components/admin/phone-row";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { AdminLink, Card, PageHeader } from "@/components/admin/ui";
+import { AdminLink, Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
 import { adminDate } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -103,7 +103,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
           </div>
         )}
         {views.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState title={w.none} />
         ) : (
           views.map((flow) => (
             <WorkflowCard

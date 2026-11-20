@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow } from "@/components/admin/phone-row";
-import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -47,7 +47,7 @@ export default async function PlatformReportsPage() {
       {/* Round 65 (D832): on a phone each waiting notice is one row (its kind, when it came, the AI's urgency and the store) opening the notice, the reading and the decision. */}
       <Card title={w.waiting} className="max-sm:p-0 max-sm:[&>header]:sr-only">
         {waiting.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <ul className="flex flex-col gap-6 max-sm:gap-0 max-sm:px-4">
             {waiting.map((report, index) => (
@@ -110,7 +110,7 @@ export default async function PlatformReportsPage() {
       </Card>
       <Card title={w.decided}>
         {decided.length === 0 ? (
-          <p className="text-sm text-muted">{w.noneDecided}</p>
+          <EmptyState compact title={w.noneDecided} />
         ) : (
           <ul className="flex flex-col gap-4">
             {decided.map((report) => (

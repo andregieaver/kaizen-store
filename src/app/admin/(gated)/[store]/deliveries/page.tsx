@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { cutoffWeekday, formatCutoff, formatDeliveryDate, WEEKDAYS, weekdayName, type DeliverySchedule } from "@/lib/standing-orders";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { deliveryRounds, listStandingOrders, type ScheduleView } from "@/server/standing-orders";
-import { PageHeader } from "@/components/admin/ui";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
@@ -100,7 +100,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
               )}
             </>
           ) : (
-            <p className="text-sm text-muted">{w.nothingPacked}</p>
+            <EmptyState compact title={w.nothingPacked} />
           )}
           {owner && (
             <details className="mt-4">
