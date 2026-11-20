@@ -8,10 +8,11 @@ import { featureOn } from "./store-features";
  */
 
 /**
- * The sign-up for extensions without a store (D748 E7 part two) is open: on since the workspace's own admin (part three) shows its extensions,
- * its settings and the AI manager. Off, its page answers 404, its action refuses, and the store's sign-up does not link to it.
+ * The sign-up for extensions without a store (D748 E7 part two) is open. Off until a workspace's customers reach it: its support email and
+ * website chat, and the pages its emails link to (signing a contract, a Work invoice, unsubscribing), which are served from the storefront's
+ * addresses a workspace has none of (part three b). Off, its page answers 404, its action refuses, and the store's sign-up does not link to it.
  */
-export const STANDALONE_SIGNUP_OPEN = true;
+export const STANDALONE_SIGNUP_OPEN = false;
 
 /** Days an extension's own trial lasts (section 2 of the spec): once per account per extension. */
 export const EXTENSION_TRIAL_DAYS = 14;

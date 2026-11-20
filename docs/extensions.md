@@ -459,8 +459,16 @@ Your business; its owner owns the account at the account's level (`ownerWho()`: 
 store there with the plan's trial, `createStoreForOwner()`; one with stores goes to Your stores) and each extension it does not have, one
 press to try it free (or add it after a trial). The confirmation page and the sign-up's emails speak of the account and its trials for a
 workspace (`src/lib/messages/sign-up-workspace.ts`, kept out of `platformText()`, which the storefront's layout reaches). The platform's counts leave workspaces out of stores (overview, briefing, the Stores list, the AI manager's figures) and the
-sign-up funnel names those who started with extensions alone. `STANDALONE_SIGNUP_OPEN` is on. Kaizena Flow's own admin needs no workspace
+sign-up funnel names those who started with extensions alone. `STANDALONE_SIGNUP_OPEN` was turned on and then off again the same day: a workspace's customers do not reach it yet (part three b
+below). Kaizena Flow's own admin needs no workspace
 (its own store has every extension), so this stays the customers'. Left for part four: the product pages.
+
+**E7 part three b, found 20 November 2026 (not built).** A workspace is refused by `getOpenStore()` (part one, so it is never a
+storefront), and so are the paths its customers use: the desk's inbound email (`siteOf()`, `support-inbound.ts`), the website chat
+(`widgetShop()`, `embedPlace()`), and the pages its emails link to under `/s/{store}/{market}/account/` (signing a contract, a Work invoice,
+unsubscribing from marketing, documents), which also sit behind the storefront's layout and the proxy's store facts. Before the sign-up
+opens, these serve a workspace: the server paths through a reader that allows a workspace while active, the pages in a plain frame with the
+business's name. Email automation also needs a way in for subscribers without a site (an import, a form on the owner's own site).
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 

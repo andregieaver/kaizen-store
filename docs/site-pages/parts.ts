@@ -79,11 +79,15 @@ export const checks = (lines: string[], extra: Record<string, unknown> = {}) => 
   ...extra,
 });
 const smallChecks = (lines: string[]) => checks(lines, { typography: { text: { size: { unit: "px", value: 17 }, align: "left" } } });
-/** The main action (5.3): Get Started with Flow. */
-export const mainAction = () => ({
+/** A page's main action: Get Started with Flow, or a page's own (a product page's free trial, D748 E7). */
+export type Action = { label: string; href: string };
+const GET_STARTED: Action = { label: "Get Started with Flow", href: "/sign-up" };
+
+/** The main action (5.3): Get Started with Flow, unless the page has its own. */
+export const mainAction = (action: Action = GET_STARTED) => ({
   id: id(),
   type: "dualButton",
-  first: { label: "Get Started with Flow", href: "/sign-up" },
+  first: { label: action.label, href: action.href },
   second: { label: "", href: "", variant: "outline" },
   size: "lg",
   shape: "pill",
@@ -97,7 +101,7 @@ export const mainAction = () => ({
 export const textLink = (text: string, href: string) => rich([para({ text, href })], { style: margin(-20, 0, 0, 0), typography: { text: { align: "center" } } });
 
 /** The hero (6.1, at the owner's 35°): the `h1`, the lead, the main action, a link to the first section and three checks side by side. */
-export function hero(o: { eyebrow: string; title: string; bold: string; rest: string; anchor: { text: string; href: string }; claims: string[] }) {
+export function hero(o: { eyebrow: string; title: string; bold: string; rest: string; anchor: { text: string; href: string }; claims: string[]; action?: Action }) {
   return {
     id: id(), type: "row", layout: "1", align: "middle", height: 50, style: pad(150, 20, 100), background: HERO_BG, backgroundFixed: true,
     contentMax: 968, typography: { text: { align: "center" } }, at: { sm: { height: 100, style: pad(0, 20, 0) } },
@@ -106,7 +110,7 @@ export function hero(o: { eyebrow: string; title: string; bold: string; rest: st
       blocks: [
         dual(1, o.eyebrow, o.title, "dark-color"),
         lead(o.bold, o.rest),
-        mainAction(),
+        mainAction(o.action),
         textLink(o.anchor.text, o.anchor.href),
         checks(o.claims, { layout: "row", position: "center", gap: 20, typography: { text: { weight: 500 } }, visibility: { hideAt: ["sm"] } }),
       ],
@@ -197,11 +201,11 @@ export function questionsRow(faq: { q: string; bold: string; rest: string }[], b
 }
 
 /** The end of a page that sells (6.7): the main action and a text link on. */
-export function endRow(o: { eyebrow: string; title: string; bold: string; rest: string; background?: Record<string, unknown> }) {
+export function endRow(o: { eyebrow: string; title: string; bold: string; rest: string; background?: Record<string, unknown>; action?: Action; after?: Action }) {
   return {
     id: id(), type: "row", layout: "1", align: "middle", style: pad(100, 20, 100), background: o.background ?? TURN_A, backgroundFixed: true,
     contentMax: 968, typography: { text: { align: "center" } }, at: { sm: { contentMax: 320 } },
-    columns: [{ id: id(), ...onSand, blocks: [dual(2, o.eyebrow, o.title, "light-color"), lead(o.bold, o.rest), mainAction(), textLink("Compare us to others", "/compare")] }],
+    columns: [{ id: id(), ...onSand, blocks: [dual(2, o.eyebrow, o.title, "light-color"), lead(o.bold, o.rest), mainAction(o.action), textLink(o.after?.label ?? "Compare us to others", o.after?.href ?? "/compare")] }],
   };
 }
 
