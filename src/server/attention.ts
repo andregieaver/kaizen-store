@@ -81,29 +81,54 @@ export async function decisionCounts(storeIds: readonly string[], accountId: str
   return new Map(rows.map((r) => [r.store_id, r.n]));
 }
 
+/** A store's flows losing readers (M3.8): how many, and the one's id when there is just one, so the item opens it. */
+type LosingFlows = { flows: number; only: string | null };
+
 /**
- * What visitors left that waits for the store's people, in one statement (Home's statements are counted, `admin-statements.int.test.ts`):
- * comments on the stores' articles held for a check (`pending`, the Comments page's first tab), and the questions the chat assistant could
- * not answer that are still open (ecosystem plan E4.3, counted as their page lists them, `OPEN_QUESTION`). Each for its own stores.
+ * What waits for the store's people that is not an order, in one statement (Home's statements are counted, `admin-statements.int.test.ts`):
+ * comments on the stores' articles held for a check (`pending`, the Comments page's first tab), the questions the chat assistant could not
+ * answer that are still open (ecosystem plan E4.3, counted as their page lists them, `OPEN_QUESTION`), and flows switched on that are losing
+ * readers (D767, email plan M3.8): at least `LOSING.entered` started one in the last 30 days and more than `LOSING.share` of them left the
+ * list on the way (their way through ended as stopped), the flow report's `space_out`. Each for its own stores.
  */
-export async function heldCounts(commentStores: readonly string[], questionStores: readonly string[]): Promise<{ comments: Map<string, number>; questions: Map<string, number> }> {
-  if (commentStores.length === 0 && questionStores.length === 0) return { comments: new Map(), questions: new Map() };
+export async function heldCounts(
+  commentStores: readonly string[],
+  questionStores: readonly string[],
+  flowStores: readonly string[] = [],
+): Promise<{ comments: Map<string, number>; questions: Map<string, number>; flows: Map<string, LosingFlows> }> {
+  if (commentStores.length === 0 && questionStores.length === 0 && flowStores.length === 0) return { comments: new Map(), questions: new Map(), flows: new Map() };
   const rows = await typedRows(
-    z.object({ store_id: col.uuid, comments: col.int, questions: col.int }),
+    z.object({ store_id: col.uuid, comments: col.int, questions: col.int, flows: col.int, first_flow: col.uuid.nullable() }),
     sql`
-      select x.store_id, count(*) filter (where x.kind = 'comment')::int as comments, count(*) filter (where x.kind = 'question')::int as questions
+      select x.store_id, count(*) filter (where x.kind = 'comment')::int as comments, count(*) filter (where x.kind = 'question')::int as questions,
+        count(*) filter (where x.kind = 'flow')::int as flows, (array_agg(x.ref order by x.ref) filter (where x.kind = 'flow'))[1] as first_flow
       from (
-        select c.store_id, 'comment' as kind from commerce.blog_comments c
+        select c.store_id, 'comment' as kind, null::uuid as ref from commerce.blog_comments c
         where c.store_id = any(${uuidList(commentStores)}) and c.status = 'pending'
         union all
-        select q.store_id, 'question' as kind from commerce.unanswered_questions q
+        select q.store_id, 'question' as kind, null::uuid as ref from commerce.unanswered_questions q
         where q.store_id = any(${uuidList(questionStores)}) and ${OPEN_QUESTION}
+        union all
+        select f.store_id, 'flow' as kind, f.id as ref from commerce.flows f
+        cross join lateral (
+          select count(*) filter (where r.entered_at > now() - interval '30 days') as entered,
+                 count(*) filter (where r.status = 'stopped' and r.ended_at > now() - interval '30 days') as left_list
+          from commerce.flow_runs r where r.store_id = f.store_id and r.flow_id = f.id
+        ) c
+        where f.store_id = any(${uuidList(flowStores)}) and f.enabled
+          and c.entered >= ${LOSING.entered} and c.left_list > c.entered * ${LOSING.share}::numeric
       ) x
       group by x.store_id
     `,
   );
   const of = (key: "comments" | "questions") => new Map(rows.filter((r) => r[key] > 0).map((r) => [r.store_id, r[key]]));
-  return { comments: of("comments"), questions: of("questions") };
+  const flows = new Map(rows.filter((r) => r.flows > 0).map((r) => [r.store_id, { flows: r.flows, only: r.flows === 1 ? r.first_flow : null }]));
+  return { comments: of("comments"), questions: of("questions"), flows };
+}
+
+/** Flows losing readers alone (M3.8), as `heldCounts()` counts them. */
+export async function losingFlowCounts(storeIds: readonly string[]): Promise<Map<string, LosingFlows>> {
+  return (await heldCounts([], [], storeIds)).flows;
 }
 
 /**
@@ -131,31 +156,6 @@ export async function activityCounts(storeIds: readonly string[], assigneeId: st
   return new Map(rows.filter((r) => r.overdue > 0 || r.today > 0).map((r) => [r.store_id, { overdue: r.overdue, today: r.today, ...(assigneeId ? {} : { team: true }) }]));
 }
 
-/**
- * Flows switched on that are losing readers (D767, email plan M3.8): at least `LOSING.entered` started one in the last 30 days and more than
- * `LOSING.share` of them left the list on the way (their way through ended as stopped), the flow report's `space_out`. How many per store,
- * and the one's id when there is just one.
- */
-export async function losingFlowCounts(storeIds: readonly string[]): Promise<Map<string, { flows: number; only: string | null }>> {
-  if (storeIds.length === 0) return new Map();
-  const rows = await typedRows(
-    z.object({ store_id: col.uuid, flows: col.int, first: col.uuid }),
-    sql`
-      select f.store_id, count(*)::int as flows, (array_agg(f.id order by f.id))[1] as first
-      from commerce.flows f
-      cross join lateral (
-        select count(*) filter (where r.entered_at > now() - interval '30 days') as entered,
-               count(*) filter (where r.status = 'stopped' and r.ended_at > now() - interval '30 days') as left_list
-        from commerce.flow_runs r where r.store_id = f.store_id and r.flow_id = f.id
-      ) c
-      where f.store_id = any(${uuidList(storeIds)}) and f.enabled
-        and c.entered >= ${LOSING.entered} and c.left_list > c.entered * ${LOSING.share}::numeric
-      group by f.store_id
-    `,
-  );
-  return new Map(rows.map((r) => [r.store_id, { flows: r.flows, only: r.flows === 1 ? r.first : null }]));
-}
-
 /** The stores each queue is counted for: those where the reader may see it (`controlCenter()` gates them by the member's keys). */
 export type QueueGates = {
   disputes: readonly string[];
@@ -176,7 +176,7 @@ export type QueueCounts = {
   activities: Map<string, ActivityFigures>;
   comments: Map<string, number>;
   questions: Map<string, number>;
-  flows: Map<string, { flows: number; only: string | null }>;
+  flows: Map<string, LosingFlows>;
 };
 
 /**
@@ -184,13 +184,12 @@ export type QueueCounts = {
  * calls kept for their yes; null for the team's (everyone's activities, the autopilot's calls).
  */
 export async function queueCounts(gates: QueueGates, accountId: string | null, now: Date = new Date()): Promise<QueueCounts> {
-  const [disputes, decisions, leads, activities, { comments, questions }, flows] = await Promise.all([
+  const [disputes, decisions, leads, activities, { comments, questions, flows }] = await Promise.all([
     disputeCounts(gates.disputes, now),
     decisionCounts(gates.decisions, accountId),
     leadCounts(gates.leads),
     activityCounts(gates.activities, accountId, now),
-    heldCounts(gates.comments, gates.questions ?? []),
-    losingFlowCounts(gates.flows ?? []),
+    heldCounts(gates.comments, gates.questions ?? [], gates.flows ?? []),
   ]);
   return { disputes, decisions, leads, activities, comments, questions, flows };
 }
