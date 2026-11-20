@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { COMPARE_AT_NOTE, IMPORT_CONFIRMATION } from "./data-admin-labels";
 import {
-  COMPARE_AT_NOTE,
-  IMPORT_CONFIRMATION,
   NO_CONSENT_NOTE,
   PERSONAL_DATA_WARNING,
   appliedCountsOfJob,

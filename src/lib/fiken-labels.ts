@@ -1,6 +1,6 @@
 /**
- * What the Fiken connection says to an owner, in English (bloat review step 2.50): beside `fiken-errors.ts` and `fiken-setup.ts`, which re-export
- * it for their functions, so the admin's `fiken` catalogue takes it from here and imports no code. Imports nothing but types.
+ * What the Fiken connection says to an owner, in English (bloat review step 2.50): beside `fiken-errors.ts` (which re-exports
+ * the failure and block words for its functions) and `fiken-setup.ts`, so the admin's `fiken` catalogue takes it from here and imports no code. Imports nothing but types.
  */
 import type { FikenAccountProblem } from "./fiken-setup";
 

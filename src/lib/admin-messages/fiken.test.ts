@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { FIKEN_BLOCK_WORDS, FIKEN_FAILURE_WORDS } from "../fiken-errors";
 import { FIKEN_SALE_VAT_TYPES } from "../fiken-settings";
-import { FIKEN_PROBLEM_WORDS } from "../fiken-setup";
+import { FIKEN_PROBLEM_WORDS } from "../fiken-labels";
 import { fikenEn } from "./fiken.en";
 import { fikenNb } from "./fiken.nb";
 

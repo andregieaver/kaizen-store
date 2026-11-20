@@ -9,7 +9,7 @@ import { fillWords } from "./admin-fill";
 import { DATA_EXPORTS_ACTIVE_MAX, EXPORT_KEEP_DAYS, EXPORT_MAX_ROWS } from "./data-limits";
 import { type JobKind, type JobPhase, type JobStatus } from "./data-job";
 
-export { COMPARE_AT_NOTE, IMPORT_CONFIRMATION, KIND_TITLES, SEVERITY_WORDS } from "./data-admin-labels";
+export { KIND_TITLES, SEVERITY_WORDS } from "./data-admin-labels";
 
 /** Shown on the order and customer export pages: the file holds personal data (GDPR Art. 5(1)(c), (e), (f)). Needs a human read (section 8). */
 export const PERSONAL_DATA_WARNING = `This file contains personal data. Keep it only as long as you need it; it is deleted from here after ${EXPORT_KEEP_DAYS} days.`;

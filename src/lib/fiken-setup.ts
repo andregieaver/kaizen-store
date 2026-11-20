@@ -1,8 +1,6 @@
 import { BOOKING_KEYS, type BookingKey } from "./accounting-docs";
 import { DEFAULT_FIKEN_BOOKING, type FikenSettings } from "./fiken-settings";
 
-export { FIKEN_PROBLEM_WORDS } from "./fiken-labels";
-
 /**
  * Fiken (D460): setting a connection up without asking an owner about accounts. `planFikenSetup()` reads the company's own accounts, takes
  * Fiken's standard account where the company has it, the nearest fitting one where it does not, and asks a person only what it cannot choose.

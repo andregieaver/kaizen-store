@@ -1,6 +1,6 @@
 /**
- * What staff read when an order cannot be archived (bloat review step 2.50): the English beside `order-archive.ts`, which re-exports it, so the
- * Orders catalogue (`admin-messages/orders.en.ts`) takes it from here and imports no code. Imports nothing but types.
+ * What staff read when an order cannot be archived (bloat review step 2.50): the English beside `order-archive.ts`, so the Orders catalogue
+ * (`admin-messages/orders.en.ts`) takes it from here and imports no code. Imports nothing but types.
  */
 import type { ArchiveReason } from "./order-archive";
 

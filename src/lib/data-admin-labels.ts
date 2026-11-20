@@ -1,5 +1,5 @@
 /**
- * What the import and export pages say that code reads too, in English (bloat review step 2.50): beside `data-admin.ts`, which re-exports it, so
+ * What the import and export pages say that code reads too, in English (bloat review step 2.50): beside `data-admin.ts` (which re-exports what its pages read), so
  * the admin's catalogues (`products`, `inventory`) take it from here and import no code. Imports nothing but types.
  */
 import type { JobKind } from "./data-job";
