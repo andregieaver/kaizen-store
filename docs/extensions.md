@@ -463,12 +463,13 @@ sign-up funnel names those who started with extensions alone. `STANDALONE_SIGNUP
 below). Kaizena Flow's own admin needs no workspace
 (its own store has every extension), so this stays the customers'. Left for part four: the product pages.
 
-**E7 part three b, found 20 November 2026 (not built).** A workspace is refused by `getOpenStore()` (part one, so it is never a
-storefront), and so are the paths its customers use: the desk's inbound email (`siteOf()`, `support-inbound.ts`), the website chat
-(`widgetShop()`, `embedPlace()`), and the pages its emails link to under `/s/{store}/{market}/account/` (signing a contract, a Work invoice,
-unsubscribing from marketing, documents), which also sit behind the storefront's layout and the proxy's store facts. Before the sign-up
-opens, these serve a workspace: the server paths through a reader that allows a workspace while active, the pages in a plain frame with the
-business's name. Email automation also needs a way in for subscribers without a site (an import, a form on the owner's own site).
+**E7 part three b (20 November 2026).** A workspace was refused by `getOpenStore()` (part one, so it is never a storefront), and so were
+the paths its customers use. `getServingStore()` (an active store, a workspace included) now serves them: the pages an email links to
+(`resolveAfterSaleShop()`: signing a contract, a Work invoice, unsubscribing, a document), the desk's inbound email (`siteOf()`) and the
+website chat (`widgetShop()`, in the workspace's one market); the storefront's frame says nothing of opening for a workspace.
+`getOpenStore()` still refuses it everywhere else. **Still open, so `STANDALONE_SIGNUP_OPEN` stays off:** email automation without a store
+has no way in for contacts (they come from a site's forms, checkout, My account or a Shopify or WooCommerce import, `SUBSCRIBE_SOURCES`):
+either email automation is not offered on its own until a contacts import exists, or that import is built first (the owner's choice).
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 

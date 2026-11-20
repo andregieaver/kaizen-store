@@ -11,7 +11,7 @@ import { featureOn, requirementMet, type FeatureRequirement } from "@/lib/store-
 
 import { log } from "./log";
 import { locationIn, missOrRedirect } from "./redirect-resolve";
-import { getOpenStore, templateStoreSlug, type Store } from "./stores";
+import { getOpenStore, getServingStore, templateStoreSlug, type Store } from "./stores";
 
 /**
  * A market the store offers as a place names it: a country's code (its own view) or a market address such as `no-en-eur` (the view a
@@ -60,7 +60,8 @@ export async function resolveAfterSaleShop(storeSlug: string, marketParam: strin
   const offered = await resolveShop(storeSlug, marketParam);
   if (offered) return offered;
   const { market: marketSlug, versions: ab } = splitSiteVersions(marketParam);
-  const store = await getOpenStore(storeSlug);
+  // A workspace (D748 E7) has these pages too: its contracts are signed, its invoices read and its emails unsubscribed from here.
+  const store = await getServingStore(storeSlug);
   const market = store ? findMarket(store.allMarkets, marketSlug, keptChoices(store.localization)) : null;
   return store && market ? { store, market, ab } : null;
 }

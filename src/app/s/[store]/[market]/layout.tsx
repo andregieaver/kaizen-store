@@ -137,7 +137,8 @@ export default async function MarketLayout({ children, params }: Props) {
   const notice = store.starter
     ? m.starterNotice
     : [
-      !(store.setupCompletedAt || store.isTemplate) && m.previewNotice,
+      // A workspace (D748 E7) is never set up as a shop: its emails' pages (a contract, an invoice) say nothing of opening.
+      !(store.setupCompletedAt || store.isTemplate || store.workspace) && m.previewNotice,
       selling && !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
       selling && store.paymentsOn && store.paymentsTest && m.testNotice,
     ]

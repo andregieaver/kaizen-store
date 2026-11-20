@@ -29,8 +29,8 @@ import { audit } from "./auth";
 import { findFont, installFonts } from "./fonts";
 import { log } from "./log";
 import { safeFetch } from "./replicate-fetch";
-import { resolveShop, type Shop } from "./shop";
-import { getOpenStore } from "./stores";
+import { resolveAfterSaleShop, resolveShop, type Shop } from "./shop";
+import { getServingStore } from "./stores";
 import { embedDesk, type Desk, type StaffDesk } from "./support-desk";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -441,9 +441,14 @@ export async function recheckFromFrame(frame: FrameWidget, deps: CheckDeps = {})
   return checked?.verifiedAt != null;
 }
 
-/** A store's widget's shop: the store while it is open, in the market chosen for the widget (else its first); null for Kaizena Flow's. */
+/**
+ * A store's widget's shop: the store while it is open, in the market chosen for the widget (else its first); null for Kaizena Flow's. A
+ * workspace (D748 E7) has no shop of its own, so its widget answers in its one market as its emails' pages do (`resolveAfterSaleShop()`).
+ */
 export async function widgetShop(frame: Pick<FrameWidget, "storeSlug" | "market">): Promise<Shop | null> {
   if (!frame.storeSlug) return null;
-  const store = await getOpenStore(frame.storeSlug);
-  return store ? resolveShop(store.slug, frame.market ?? store.markets[0]?.slug ?? "") : null;
+  const store = await getServingStore(frame.storeSlug);
+  if (!store) return null;
+  const market = frame.market ?? store.markets[0]?.slug ?? "";
+  return store.workspace ? resolveAfterSaleShop(store.slug, market) : resolveShop(store.slug, market);
 }

@@ -410,6 +410,16 @@ export async function getOpenStore(slug: string): Promise<Store | null> {
   return store?.status === "active" && !store.workspace ? store : null;
 }
 
+/**
+ * A store that serves its customers while it is open, a workspace (D748 E7 part three b) included: the pages an email links to (signing a
+ * contract, a Work invoice, unsubscribing, a document: `resolveAfterSaleShop()`), its desk's inbound email and its website chat. Never a
+ * storefront: those ask `getOpenStore()`.
+ */
+export async function getServingStore(slug: string): Promise<Store | null> {
+  const store = await getStore(slug);
+  return store?.status === "active" ? store : null;
+}
+
 /** The template store's slug: the demo shown to visitors, prerendered at build. */
 export async function templateStoreSlug(): Promise<string | null> {
   "use cache";

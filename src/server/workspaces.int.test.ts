@@ -20,6 +20,8 @@ const stores = await import("./stores");
 const permissions = await import("./permissions");
 const platform = await import("./platform");
 const ownerLevel = await import("./owner-level");
+const shop = await import("./shop");
+const widgets = await import("./support-widgets");
 
 const run = Date.now().toString(36);
 let owner: Account;
@@ -48,6 +50,14 @@ describe("a workspace is no store (D748 E7)", () => {
     expect(await stores.getOpenStore(slug)).toBeNull();
     const [active] = await db().execute<Row>(sql`select commerce.store_is_active(id) as on from commerce.stores where slug = ${slug}`);
     expect(active.on).toBe(true);
+  });
+
+  it("serves its customers the pages its emails link to and its website chat, never a storefront (E7 part three b)", async () => {
+    const market = (await stores.getStore(slug))!.markets[0].slug;
+    expect(await shop.resolveShop(slug, market)).toBeNull();
+    expect(await shop.resolveAfterSaleShop(slug, market)).toMatchObject({ store: { slug, workspace: true } });
+    expect(await widgets.widgetShop({ storeSlug: slug, market: null })).toMatchObject({ store: { slug } });
+    expect(await stores.getServingStore(slug)).toMatchObject({ workspace: true });
   });
 
   it("refuses its owner the areas it does not serve, as a key they lack (E7 part three)", async () => {

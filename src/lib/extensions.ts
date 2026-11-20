@@ -8,9 +8,9 @@ import { featureOn } from "./store-features";
  */
 
 /**
- * The sign-up for extensions without a store (D748 E7 part two) is open. Off until a workspace's customers reach it: its support email and
- * website chat, and the pages its emails link to (signing a contract, a Work invoice, unsubscribing), which are served from the storefront's
- * addresses a workspace has none of (part three b). Off, its page answers 404, its action refuses, and the store's sign-up does not link to it.
+ * The sign-up for extensions without a store (D748 E7 part two) is open. Off while email automation, sold on its own, has no way in for a
+ * workspace's contacts (part three b: its customers' other paths now reach it). Off, its page answers 404, its action refuses, and the store's
+ * sign-up does not link to it.
  */
 export const STANDALONE_SIGNUP_OPEN = false;
 

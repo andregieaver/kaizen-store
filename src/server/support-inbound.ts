@@ -38,7 +38,7 @@ import { fileReceived, pruneFiledEmails, storeOfFilingKey } from "./email-filing
 import { keepInboxAttachments, storeOfBooksKey, type ReceivedAttachment } from "./books-inbox";
 import type { DocumentStorage } from "./invoice-storage";
 import { log } from "./log";
-import { getOpenStore } from "./stores";
+import { getServingStore } from "./stores";
 import { SupportError, addMessage, deskSettings, transition, type DeskSettings } from "./support";
 import { systemDesk, type Desk } from "./support-desk";
 import { handOver } from "./support-route";
@@ -392,11 +392,14 @@ async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
   return { status: "done", conversationId };
 }
 
-/** The site a desk answers for: a store that is open, in its own country, or Kaizena Flow's; null for a store that is not open. */
+/**
+ * The site a desk answers for: a store that is open, in its own country, a workspace (D748 E7) included, or Kaizena Flow's; null for a store
+ * that is not open.
+ */
 async function siteOf(storeId: string | null): Promise<ChatSite | null> {
   if (!storeId) return { kind: "kaizen" };
   const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid and commerce.store_is_active(id)`);
-  const store = row ? await getOpenStore(String(row.slug)) : null;
+  const store = row ? await getServingStore(String(row.slug)) : null;
   const market = store ? homeMarket(store) : undefined;
   return store && market ? { kind: "store", store, market } : null;
 }
