@@ -62,6 +62,7 @@ export const flowsEn = {
     },
     goal: "It stops when they order.",
     ends: "Then it ends.",
+    endsPaused: "When it ends, who pressed no link since it began is paused: no marketing email until they press one.",
   },
   missingIn: "Not written in {languages} yet; those readers get it in {first}.",
   mainMissing: "Not written in {languages} yet, and {first} is your store's first language: readers in a language not written get nothing.",

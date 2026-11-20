@@ -61,6 +61,7 @@ export const flowsNb: FlowsMessages = {
       segment: { yes: "hvis de er i {segment}", no: "hvis de ikke er i {segment}" },
     },
     goal: "Det stopper når de bestiller.",
+    endsPaused: "Når det slutter, settes de som ikke har trykket på en lenke siden det begynte, på pause: ingen markedsføring før de trykker på en.",
     ends: "Så slutter det.",
   },
   missingIn: "Ikke skrevet på {languages} ennå; de leserne får den på {first}.",

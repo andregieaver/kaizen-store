@@ -863,7 +863,8 @@ export const REACH_DAYS = 30;
 /**
  * About how many people would start a flow in the next `REACH_DAYS` days, from real data (M3.5): for an event, the people on the list behind
  * its events of the last as many days (`emailOfSubjectAt()`); for a lapse, the customers whose lapse falls in the next as many days; for
- * browsing, the signed-in subscribers with views kept now (they are kept a week, D691). Read only; nothing is sent or entered.
+ * browsing, the signed-in subscribers with views kept now (they are kept a week, D691); for the sunset, those on the list, not paused, whose
+ * days without a press end by then (the already asleep among them). Read only; nothing is sent or entered.
  */
 export async function flowReach(storeId: string, trigger: string, triggerDays: number | null): Promise<number> {
   const store = sql`${storeId}::uuid`;
@@ -884,6 +885,15 @@ export async function flowReach(storeId: string, trigger: string, triggerDays: n
          and l.placed_at + make_interval(days => ${days}) between now() and now() + make_interval(days => ${REACH_DAYS})
          and exists (select 1 from commerce.orders o where o.store_id = l.store_id and o.id = l.id and ${PAID})
          and not exists (select 1 from commerce.orders o where o.store_id = l.store_id and lower(o.email) = lower(l.email) and o.placed_at > l.placed_at and ${PAID})`);
+    return row?.n ?? 0;
+  }
+  if (trigger === "subscriber.asleep") {
+    const days = triggerDays ?? DATE_TRIGGER_DAYS["subscriber.asleep"].start;
+    const row = await typedRow(n, sql`
+      select count(*)::int as n from commerce.marketing_subscribers s
+       where s.store_id = ${store} and s.status = 'subscribed' and s.paused_at is null
+         and greatest(s.consented_at, coalesce((select max(c.clicked_at) from commerce.email_clicks c where c.store_id = s.store_id and c.subscriber_id = s.id), s.consented_at))
+             + make_interval(days => ${days}) <= now() + make_interval(days => ${REACH_DAYS})`);
     return row?.n ?? 0;
   }
   if (trigger === "customer.browsed") {

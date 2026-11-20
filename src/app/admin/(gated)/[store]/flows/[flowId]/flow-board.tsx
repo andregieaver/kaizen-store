@@ -646,7 +646,7 @@ export function FlowBoard(p: Props) {
                 </span>
               </button>
               <Column steps={p.steps} first={{ start: true }} p={p} busy={busy} selected={selected} onSelect={setSelected} onAdd={onAdd} />
-              <span className="rounded-full border border-line bg-card px-3 py-1 text-caption text-muted">{w.story.ends}</span>
+              <span className="rounded-full border border-line bg-card px-3 py-1 text-caption text-muted">{p.trigger === "subscriber.asleep" ? w.story.endsPaused : w.story.ends}</span>
             </div>
           </div>
           {selected && <Panel p={p} selected={selected} onClose={() => setSelected(null)} />}

@@ -468,6 +468,8 @@ describe("flows (D767)", () => {
     const fresh = await subscriber(`asleep-fresh-${run}@example.com`);
     const before = (await fl.flowProposals(storeId)).sunset ?? 0;
     expect(before).toBeGreaterThanOrEqual(1);
+    const reachBefore = await fl.flowReach(storeId, "subscriber.asleep", 180);
+    expect(reachBefore).toBeGreaterThanOrEqual(1);
     const saved = await fl.saveFlow(storeId, owner, null, sunset("nb-NO"));
     if (!saved.ok) throw new Error(saved.problem);
     await fl.testFlow(storeId, saved.id);
@@ -494,6 +496,7 @@ describe("flows (D767)", () => {
     });
     expect(held).toBe("suppressed");
     expect(((await fl.flowProposals(storeId)).sunset ?? 0)).toBe(before - 1);
+    expect(await fl.flowReach(storeId, "subscriber.asleep", 180)).toBe(reachBefore - 1);
     // A press on a link in any of the store's emails wakes them.
     expect(await keepFlowClick(storeId, saved.id, "still", "nb.0", clickRef(saved.id, quiet))).toBe(true);
     const [woke] = await db().execute<Row>(sql`select paused_at from commerce.marketing_subscribers where id = ${quiet}::uuid`);

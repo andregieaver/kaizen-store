@@ -204,7 +204,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
               );
             })}
           </ol>
-          <p className="text-caption text-muted">{w.story.ends}</p>
+          <p className="text-caption text-muted">{flow.trigger === "subscriber.asleep" ? w.story.endsPaused : w.story.ends}</p>
         </div>
       </Card>
       {/* The canvas (Customise): the flow as a chart, dragged and dropped (flow-board.tsx); one deliberate step from the story. */}
