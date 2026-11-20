@@ -85,7 +85,9 @@ never over words already written). Write with AI under the email (M3.7, `writeFl
 hands it to the store's writer (`suggestBroadcast()`: the store's facts, brand and rules) with who the email reaches and when
 (`flowAudience()`: the trigger, its place, days and branch, picks it may not name); the words replace that language's, and an email with
 picks takes no products the writer chose. Under the subject, three subject lines to choose from (`suggestSubjects()`, nothing
-saved until one is pressed; a line making a claim AI may not make is left out). Each change is a new
+saved until one is pressed; a line making a claim AI may not make is left out), and Rewrite with AI: shorter, warmer or more direct
+(`rewriteEmail()`: one text back for each of the email's own, put back in its block by code, so pictures, products and addresses never
+move; refused on a claim). Each change is a new
 version, off until tested; the story above is drawn from the same tree.
 
 ## Presses in a flow's emails (19 November 2026)

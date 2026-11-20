@@ -303,6 +303,50 @@ export function parseSubjects(text: string, current = ""): string[] {
   }
 }
 
+/** The ways an email's words may be rewritten (email plan M3.7), the meaning kept. */
+export const REWRITE_TONES = ["shorter", "warmer", "direct"] as const;
+export type RewriteTone = (typeof REWRITE_TONES)[number];
+
+/** An email's own words in order, as the rewriter reads them: the subject, then each heading, paragraph and button. */
+export function rewritableTexts(content: { subject: string; blocks: readonly BroadcastBlock[] }): string[] {
+  return [content.subject, ...content.blocks.flatMap((b) => (b.type === "heading" || b.type === "paragraph" || b.type === "button" ? [b.text] : []))];
+}
+
+/**
+ * The rewriter's answer (JSON `{"texts": [...]}`) put back in place: one text for each of `rewritableTexts()`, in order, each within its
+ * block's limit and not empty; every other block (pictures, products, offers, lines, a button's address) is kept as it was. Null when the
+ * answer does not fit.
+ */
+export function rewrittenContent<T extends { subject: string; preview: string; blocks: BroadcastBlock[] }>(content: T, text: string): T | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  let texts: string[];
+  try {
+    const parsed = z.object({ texts: z.array(z.string()) }).safeParse(JSON.parse(text.slice(start, end + 1)));
+    if (!parsed.success) return null;
+    texts = parsed.data.texts.map((t) => t.trim());
+  } catch {
+    return null;
+  }
+  if (texts.length !== rewritableTexts(content).length || texts.some((t) => t.length === 0)) return null;
+  const [subject, ...rest] = texts;
+  if (subject.length > SUBJECT_MAX) return null;
+  let i = 0;
+  const limits = { heading: HEADING_MAX, paragraph: PARAGRAPH_MAX, button: BUTTON_MAX } as const;
+  const blocks: BroadcastBlock[] = [];
+  for (const block of content.blocks) {
+    if (block.type !== "heading" && block.type !== "paragraph" && block.type !== "button") {
+      blocks.push(block);
+      continue;
+    }
+    const next = rest[i++];
+    if (next.length > limits[block.type]) return null;
+    blocks.push({ ...block, text: next });
+  }
+  return { ...content, subject, blocks };
+}
+
 /**
  * The suggestion with only the products and campaigns the writer's tools handed it (by id, each once, in the model's order, within the
  * limits); an id it made up or took from elsewhere is dropped.

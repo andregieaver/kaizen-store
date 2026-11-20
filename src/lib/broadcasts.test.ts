@@ -196,3 +196,32 @@ describe("subject lines to choose from (M3.7)", () => {
     expect(parseSubjects('{"subjects": "one"}')).toEqual([]);
   });
 });
+
+describe("an email's words rewritten in place (M3.7)", () => {
+  it("puts each new text back in its block, keeping pictures, products and a button's address", async () => {
+    const { rewritableTexts, rewrittenContent } = await import("./broadcasts");
+    const content = {
+      subject: "Hei",
+      preview: "",
+      blocks: [
+        { type: "heading" as const, text: "Velkommen" },
+        { type: "product" as const, product: "00000000-0000-4000-8000-000000000001", handle: "mug", label: "Mug" },
+        { type: "paragraph" as const, text: "Lang tekst her." },
+        { type: "button" as const, text: "Se mer", url: "/p/mug" },
+      ],
+    };
+    expect(rewritableTexts(content)).toEqual(["Hei", "Velkommen", "Lang tekst her.", "Se mer"]);
+    const out = rewrittenContent(content, '{"texts": ["Hei!", "Hjertelig velkommen", "Kort.", "Se"]}');
+    expect(out?.subject).toBe("Hei!");
+    expect(out?.blocks).toEqual([
+      { type: "heading", text: "Hjertelig velkommen" },
+      content.blocks[1],
+      { type: "paragraph", text: "Kort." },
+      { type: "button", text: "Se", url: "/p/mug" },
+    ]);
+    // Too few texts, an empty one or no JSON: nothing changes.
+    expect(rewrittenContent(content, '{"texts": ["Hei!"]}')).toBeNull();
+    expect(rewrittenContent(content, '{"texts": ["Hei!", "", "Kort.", "Se"]}')).toBeNull();
+    expect(rewrittenContent(content, "nope")).toBeNull();
+  });
+});

@@ -197,4 +197,23 @@ describe("the writer's tools", () => {
     const none = (async () => ({ content: "Sorry", toolCalls: [] })) as never;
     expect(await bc.suggestSubjects(emailStore, store.accountId, { subject: "Hei", words: [] }, "nb-NO", "", { complete: none })).toMatchObject({ ok: false });
   });
+
+  it("rewrites an email's words in place, keeping its products, and refuses a claim (M3.7)", async () => {
+    const emailStore = (await storeById(store.storeId))!;
+    const content = {
+      subject: "Hei",
+      preview: "",
+      blocks: [
+        { type: "paragraph" as const, text: "En lang tekst om høsten hos oss." },
+        { type: "product" as const, product: "00000000-0000-4000-8000-000000000001", handle: "mug", label: "Mug" },
+      ],
+    };
+    const shorter = (async () => ({ content: JSON.stringify({ texts: ["Hei!", "Høst hos oss."] }), toolCalls: [] })) as never;
+    expect(await bc.rewriteEmail(emailStore, store.accountId, content, "nb-NO", "shorter", { complete: shorter })).toEqual({
+      ok: true,
+      content: { ...content, subject: "Hei!", blocks: [{ type: "paragraph", text: "Høst hos oss." }, content.blocks[1]] },
+    });
+    const claim = (async () => ({ content: JSON.stringify({ texts: ["Hei!", "Siste sjanse i dag."] }), toolCalls: [] })) as never;
+    expect(await bc.rewriteEmail(emailStore, store.accountId, content, "nb-NO", "direct", { complete: claim })).toMatchObject({ ok: false });
+  });
 });

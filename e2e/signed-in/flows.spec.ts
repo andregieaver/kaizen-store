@@ -176,6 +176,9 @@ test("on the canvas, a step is added in a branch, dragged to a new place, change
   await page.screenshot({ path: "test-results/flow-write-ai.png", fullPage: true });
   await inPlace.getByRole("button", { name: "Suggest three subject lines" }).click();
   await expect(inPlace.locator("[data-subject-choices]").getByRole("alert")).toHaveText("No AI with a text model is set up for this store.");
+  await inPlace.locator("[data-rewrite]").getByRole("button", { name: "Shorter" }).click();
+  await expect(inPlace.getByRole("status")).toHaveText("No AI with a text model is set up for this store.");
+  await expect(inPlace.getByRole("textbox", { name: "Words" }).first()).toHaveText("Written where it reads.");
   // Languages side by side (M3.4): Norwegian is not written yet, started from the English words to translate in place.
   await inPlace.getByRole("group", { name: "Languages" }).getByRole("button", { name: /Norsk bokmål/ }).click();
   await inPlace.getByRole("button", { name: "Start from the English words" }).click();

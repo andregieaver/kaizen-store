@@ -12,6 +12,9 @@ import {
   linksOf,
   linkTarget,
   parseSubjects,
+  rewritableTexts,
+  rewrittenContent,
+  type RewriteTone,
   parseSuggestion,
   SUBJECT_CHOICES,
   RECIPIENTS_KEEP_DAYS,
@@ -22,6 +25,7 @@ import {
   suggestionClaims,
   type EmailFacts,
   type BroadcastAudience,
+  type BroadcastBlock,
   type BroadcastContent,
   type BroadcastCounts,
   type BroadcastStatus,
@@ -985,6 +989,64 @@ export async function suggestSubjects(
     );
     if (subjects.length === 0) return { ok: false, problem: "The AI did not answer with subject lines. Try again or write one yourself." };
     return { ok: true, subjects };
+  } catch (error) {
+    if (error instanceof AiError) return { ok: false, problem: "The AI did not answer. Try again in a moment." };
+    throw error;
+  }
+}
+
+const TONE_WORDS: Record<RewriteTone, string> = {
+  shorter: "Make each text shorter: say the same in fewer words, and drop what repeats.",
+  warmer: "Make each text warmer and more personal, as a friendly shopkeeper would say it, without exclamation marks everywhere.",
+  direct: "Make each text more direct: lead with what the reader gets, in short plain sentences.",
+};
+
+/**
+ * An email's words rewritten shorter, warmer or more direct (email plan M3.7), the meaning kept: the store's writer gets its texts in order
+ * and gives one back for each, which code puts back in its own block (`rewrittenContent()`), so pictures, products, offers and a button's
+ * address never move. Refused when the answer does not fit or a new text makes a claim AI may not make. Nothing is saved here.
+ */
+export async function rewriteEmail<T extends { subject: string; preview: string; blocks: BroadcastBlock[] }>(
+  store: EmailStore,
+  accountId: string,
+  content: T,
+  locale: string,
+  tone: RewriteTone,
+  options: { complete?: typeof chatWithTools } = {},
+): Promise<{ ok: true; content: T } | { ok: false; problem: string }> {
+  const connection = await aiFor(store.id, { feature: "marketing_email", accountId });
+  if (!connection?.textModel) return { ok: false, problem: "No AI with a text model is set up for this store." };
+  const language = LANGUAGE_NAMES[locale.slice(0, 2)] ?? locale;
+  const brand = await brandOf(store.id);
+  const guide = brandGuide(brand);
+  const texts = rewritableTexts(content);
+  const messages: ToolChatMessage[] = [
+    {
+      role: "system",
+      content: [
+        `You rewrite the texts of a marketing email of the shop "${store.name}", in ${language}.`,
+        TONE_WORDS[tone],
+        "Keep what each text means. Add no fact, product, offer, price, discount, stock level or delivery time that the texts do not already say.",
+        "No urgency or scarcity, no best or lowest price claims, no environmental claims.",
+        RULES_STAND,
+        UNTRUSTED_TEXT,
+        `You get ${texts.length} texts in order: the subject first, then the email's headings, paragraphs and button words. Answer only with JSON: {"texts": string[] (exactly ${texts.length}, in the same order)}.`,
+        ...(guide ? [`\n\n${guide}`] : []),
+      ].join(" "),
+    },
+    { role: "user", content: `<email-texts>${JSON.stringify(texts).replace(/</g, "‹")}</email-texts>` },
+  ];
+  const chat = options.complete ?? chatWithTools;
+  try {
+    const reply = await chat(connection, messages, [], { maxTokens: 1500, timeoutMs: 45_000 });
+    const out = rewrittenContent(content, reply.content ?? "");
+    if (!out) return { ok: false, problem: "The AI did not answer with the email's words. Try again or change them yourself." };
+    const claims = rewritableTexts(out).flatMap((text) => suggestionClaims({ subject: text, preview: "", heading: "", paragraphs: [], button: "" }, brand.avoid));
+    if (claims.length > 0) {
+      const found = [...new Set(claims.map((c) => `${(c.kind === "avoided" ? AVOIDED_LABEL : CLAIM_LABELS[c.kind]).toLowerCase()} ("${c.phrase}")`))].join(", ");
+      return { ok: false, problem: `The suggestion made claims we do not let AI make: ${found}. Try again, or write it yourself.` };
+    }
+    return { ok: true, content: out };
   } catch (error) {
     if (error instanceof AiError) return { ok: false, problem: "The AI did not answer. Try again in a moment." };
     throw error;

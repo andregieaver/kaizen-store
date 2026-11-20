@@ -11,11 +11,11 @@ import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
 import { findStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withLanguageContent, withCondition, withEmailWords, withStepPicks, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
-import { broadcastBlockSchema, suggestionBlocks } from "@/lib/broadcasts";
+import { broadcastBlockSchema, REWRITE_TONES, suggestionBlocks, type RewriteTone } from "@/lib/broadcasts";
 import { flowAudience } from "@/lib/flow-audience";
 import { marketingProblem } from "@/lib/marketing-words";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
-import { suggestBroadcast, suggestSubjects } from "@/server/broadcasts";
+import { rewriteEmail, suggestBroadcast, suggestSubjects } from "@/server/broadcasts";
 import { checkPermission } from "@/server/permissions";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -281,4 +281,18 @@ export async function suggestFlowSubjectsAction(storeSlug: string, flowId: strin
   const words = content.blocks.flatMap((b) => ("text" in b && typeof b.text === "string" ? [b.text] : "label" in b && b.label ? [b.label] : []));
   const result = await suggestSubjects(member.store, member.account.id, { subject: content.subject, words }, locale, flowAudience(flow.steps, stepId, flow.trigger, flow.triggerDays));
   return result.ok ? result : { ok: false, problem: marketingProblem(result.problem, problems) };
+}
+
+/** An email's words in one language rewritten shorter, warmer or more direct (email plan M3.7): a new version, off until tested. */
+export async function rewriteFlowEmailAction(storeSlug: string, flowId: string, stepId: string, locale: string, tone: RewriteTone): Promise<FormState> {
+  return saveTree(storeSlug, flowId, async (flow, _storeId, member) => {
+    const problems = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].problems;
+    if (!REWRITE_TONES.includes(tone)) return null;
+    const step = findStep(flow.steps, stepId);
+    const content = step?.kind === "email" && typeof locale === "string" ? step.content[locale] : undefined;
+    if (!content) return null;
+    const result = await rewriteEmail(member.store, member.account.id, content, locale, tone);
+    if (!result.ok) return marketingProblem(result.problem, problems);
+    return withLanguageContent(flow.steps, stepId, locale, result.content);
+  });
 }

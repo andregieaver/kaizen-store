@@ -30,6 +30,7 @@ import {
   startFlowLanguageAction,
   writeFlowEmailAction,
   suggestFlowSubjectsAction,
+  rewriteFlowEmailAction,
   changeFlowLapseAction,
   changeFlowPicksAction,
   changeFlowTriggerAction,
@@ -426,6 +427,26 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
           );
         })}
         {step.picks && <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">{w.canvas.pickKinds[step.picks]}</p>}
+      </div>
+      {/* Rewritten in place (M3.7): the meaning kept, every block where it was. */}
+      <div role="group" aria-label={w.inPlace.rewrite.label} className="flex flex-wrap items-center gap-1" data-rewrite>
+        <span className="text-caption text-muted">{w.inPlace.rewrite.label}</span>
+        {(["shorter", "warmer", "direct"] as const).map((tone) => (
+          <button
+            key={tone}
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              start(async () => {
+                const result = await rewriteFlowEmailAction(p.storeSlug, p.flowId, step.id, locale, tone);
+                setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
+              })
+            }
+            className="rounded-full border border-line bg-card px-2.5 py-0.5 text-xs text-ink hover:border-ink"
+          >
+            {w.inPlace.rewrite[tone]}
+          </button>
+        ))}
       </div>
       <WriteWithAi w={w} busy={busy} onWrite={(brief) =>
         start(async () => {
