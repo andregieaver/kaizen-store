@@ -67,7 +67,12 @@ export type Person = {
   /** Their subscriptions (D25) and subscription boxes (D102) running now, each while its feature is on. */
   subscriptions?: number;
   sms?: SmsConsent;
+  /** When they last pressed a link in the store's emails (a broadcast's or a flow's, M2.4), within the clicks kept (`CLICK_DAYS`); null for none. */
+  lastClickAt?: string | null;
 };
+
+/** How long presses are kept, as `CLICK_DAYS` in `email-clicks.ts` (which this browser-side module cannot import: it signs with node:crypto). */
+export const SEGMENT_CLICK_DAYS = 180;
 
 const count = z.number().int().min(0).max(1_000_000);
 /** What an empty list says (`marketingProblem()` says it in the account's language): the editor counts as conditions change, so it is seen. */
@@ -97,8 +102,8 @@ export const CATEGORIES_PER_CONDITION = 20;
 
 /**
  * The conditions ecosystem plan E3.6 (D718) added: what a person bought (products, or a category's products; ever or in the last days; or
- * not), their deals, support conversations, reviews, subscriptions and consent to texts. Email engagement is not one: the store keeps no opens,
- * and a broadcast's clicks are counted per link without the person (D297 5.5).
+ * not), their deals, support conversations, reviews, subscriptions and consent to texts. Email engagement (M2.4) is presses on links, kept per
+ * person since M1.3 for broadcasts and D767 for flows; the store keeps no opens.
  */
 const MORE_CONDITIONS = [
   z.object({ kind: z.literal("bought"), has: z.boolean(), products: z.array(z.uuid()).min(1, CHOOSE_SOME).max(PRODUCTS_PER_CONDITION), days: days.optional() }),
@@ -108,6 +113,8 @@ const MORE_CONDITIONS = [
   z.object({ kind: z.literal("review"), maxStars: z.number().int().min(1).max(5).optional() }),
   z.object({ kind: z.literal("subscription"), has: z.boolean() }),
   z.object({ kind: z.literal("sms"), statuses: z.array(z.enum(SMS_CONSENTS)).min(1, CHOOSE_SOME).max(SMS_CONSENTS.length) }),
+  // Email engagement (email plan M2.4): pressed a link in the store's emails in the last days, or none within the clicks kept.
+  z.object({ kind: z.literal("clicked"), op: z.enum(["within", "never"]), days: days.optional() }),
 ] as const;
 
 export const conditionSchema = z.discriminatedUnion("kind", [...FIRST_CONDITIONS, ...MORE_CONDITIONS]);
@@ -117,7 +124,7 @@ export type ConditionKind = Condition["kind"];
 /** What a rule set must say beyond its shape: days where a condition counts them, tags that are tags. */
 function checkRules<T extends { conditions: readonly Condition[] }>(rules: T, ctx: z.RefinementCtx<T>) {
   rules.conditions.forEach((c, i) => {
-    const noDays = (c.kind === "lastOrder" && c.op !== "never") || (c.kind === "support" && c.op === "within");
+    const noDays = (c.kind === "lastOrder" && c.op !== "never") || (c.kind === "support" && c.op === "within") || (c.kind === "clicked" && c.op === "within");
     if (noDays && c.days === undefined) ctx.addIssue({ code: "custom", path: ["conditions", i, "days"], message: "Give a number of days." });
     if (c.kind === "tag" && c.tags.some((t) => tagKey(t) === null)) ctx.addIssue({ code: "custom", path: ["conditions", i, "tags"], message: "A tag is not valid." });
   });
@@ -204,6 +211,9 @@ export function holds(c: Condition, p: Person, today: Date): boolean {
       return (p.subscriptions > 0) === c.has;
     case "sms":
       return p.sms !== undefined && c.statuses.includes(p.sms);
+    case "clicked":
+      if (p.lastClickAt === undefined) return false;
+      return c.op === "never" ? p.lastClickAt === null : inLast(p.lastClickAt, c.days ?? 0, today);
   }
 }
 
@@ -227,6 +237,7 @@ export type SegmentNeeds = {
   reviews: boolean;
   subscriptions: boolean;
   sms: boolean;
+  clicks: boolean;
 };
 
 export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
@@ -247,6 +258,7 @@ export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
     reviews: kinds.has("review"),
     subscriptions: kinds.has("subscription"),
     sms: kinds.has("sms"),
+    clicks: kinds.has("clicked"),
   };
 }
 
@@ -345,6 +357,8 @@ export function describeCondition(c: Condition, ctx: DescribeContext): string {
       return c.has ? w.subscription : w.noSubscription;
     case "sms":
       return fillWords(w.sms, { list: or(c.statuses.map((s) => w.smsWords[s]), w) });
+    case "clicked":
+      return c.op === "never" ? fillWords(w.clickedNever, { days: days(SEGMENT_CLICK_DAYS) }) : fillWords(w.clickedWithin, { days: days(c.days ?? 0) });
   }
 }
 
@@ -411,6 +425,8 @@ export function newCondition(kind: ConditionKind): Condition {
       return { kind, has: true };
     case "sms":
       return { kind, statuses: ["subscribed"] };
+    case "clicked":
+      return { kind, op: "within", days: 90 };
   }
 }
 
@@ -434,6 +450,7 @@ export const CONDITION_KIND_WORDS: Record<ConditionKind, string> = {
   review: "Reviews",
   subscription: "Subscription",
   sms: "Text consent",
+  clicked: "Email engagement",
 };
 
 /**
@@ -444,7 +461,7 @@ export const CONDITION_GROUPS: readonly { id: "bought" | "orders" | "who" | "rea
   { id: "bought", kinds: ["bought", "boughtCategory", "subscription"] },
   { id: "orders", kinds: ["orders", "spent", "lastOrder", "firstOrder", "rfm"] },
   { id: "who", kinds: ["country", "language", "group", "company", "account", "tag"] },
-  { id: "reach", kinds: ["consent", "sms"] },
+  { id: "reach", kinds: ["consent", "clicked", "sms"] },
   { id: "talks", kinds: ["deal", "support", "review"] },
 ];
 

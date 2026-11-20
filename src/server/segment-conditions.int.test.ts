@@ -237,6 +237,26 @@ describe("how people deal with the store (E3.6)", () => {
     expect(await who(store, { kind: "sms", statuses: ["pending"] })).toEqual(["ola"]);
     expect(await who(store, { kind: "sms", statuses: ["none"] })).toEqual(["sub"]);
   });
+
+  it("finds who pressed a link in the store's emails in the last days, and who has not (M2.4)", async () => {
+    // Sub pressed a link in a flow's email ten days ago; another store's press for the same address counts for nothing here.
+    const { saveFlow } = await import("./flows");
+    const flow = await saveFlow(store.storeId, store.accountId, null, {
+      name: `Clicks ${run}`,
+      trigger: "subscriber.subscribed",
+      steps: [{ id: "e", kind: "email", content: { "nb-NO": { subject: "Hei", preview: "", blocks: [{ type: "paragraph", text: "Hei" }] } } }],
+      goals: [],
+    });
+    if (!flow.ok) throw new Error(flow.problem);
+    await db().execute(sql`
+      insert into commerce.email_clicks (store_id, subscriber_id, flow_id, step_id, link, clicked_at)
+      select s.store_id, s.id, ${flow.id}::uuid, 'e', 'nb.0', ${daysAgo(10)}::timestamptz from commerce.marketing_subscribers s
+       where s.store_id = ${store.storeId}::uuid and s.email = ${mail("sub")}
+    `);
+    expect(await who(store, { kind: "clicked", op: "within", days: 30 })).toEqual(["sub"]);
+    expect(await who(store, { kind: "clicked", op: "within", days: 5 })).toEqual([]);
+    expect(await who(store, { kind: "clicked", op: "never" })).toEqual(["anna", "ola"]);
+  });
 });
 
 describe("saved segments on the newer conditions (E3.6)", () => {

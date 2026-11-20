@@ -11,7 +11,8 @@ import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { featureOffText } from "@/lib/feature-labels";
 import type { Membership } from "@/server/auth";
 import { signAsStore } from "@/server/contract-signing";
-import { cancelContract, createContract, deleteDraft, newVersion, saveDraft, saveSigners, type ContractProblem } from "@/server/contracts";
+import { cancelContract, createContract, deleteDraft, newVersion, saveDraft, saveSigners, templateFromDraft, type ContractProblem } from "@/server/contracts";
+import { fillWords } from "@/lib/admin-fill";
 import { storeAction } from "@/server/store-action";
 import { dealsOn } from "@/lib/extensions";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
@@ -64,6 +65,26 @@ export async function saveContractAction(storeSlug: string, contractId: string, 
     if (!signed.ok) return answer(problemText(w, signed.problem));
     refresh();
     return { ok: true, messages: [w.saved] };
+  });
+}
+
+export type TemplateFromDraftState = { ok: boolean; messages: string[]; href?: string };
+
+/** A new template from the draft's words as they are on the screen (D862); the draft is not changed, and the answer links to the template. */
+export async function saveAsTemplateAction(storeSlug: string, contractId: string, input: { name: string; blocks: unknown }): Promise<TemplateFromDraftState> {
+  const answer = (message: string): TemplateFromDraftState => ({ ok: false, messages: [message] });
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.template_from_draft", answer }, async (member) => {
+    const off = offFor(member);
+    if (off) return answer(off);
+    const w = DEALS_WORDS[adminLangOf(member.account.adminLocale)];
+    if (!uuid.safeParse(contractId).success) return answer(w.contracts.problems.not_found);
+    const made = await templateFromDraft(member, contractId, { name: input.name, blocks: input.blocks });
+    if (!made.ok) return answer(w.templates.problems[made.problem]);
+    return {
+      ok: true,
+      messages: [fillWords(w.contracts.asTemplateDone, { name: made.name })],
+      href: `/admin/${member.store.slug}/deals/contract-templates/${made.id}`,
+    };
   });
 }
 

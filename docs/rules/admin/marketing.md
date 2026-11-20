@@ -136,7 +136,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `matches()`/`countSegment()` each time it is read, never a stored member list; money is the main currency without VAT through
   `toMain()` (a currency with no rate makes it unknown, never zero) and the RFM group is D152's own `rfm()`. A new condition is a
   case in `conditionSchema`, `holds()`, `describeCondition()`, `newCondition()`, `CONDITION_KIND_WORDS`, the editor's
-  `ConditionFields` and a test, and reads only facts `segmentPeople()` loads. A segment's people are shown only to staff with
+  `ConditionFields` and a test, and reads only facts `segmentPeople()` loads (email engagement, M2.4: `clicked`, the latest press from
+  `email_clicks`, read by `readSegmentFacts()` only when a rule asks). A segment's people are shown only to staff with
   `customers:read`. Customer tags (`commerce.customer_tags`) are written only by `addTag()`/`removeTag()`, by address, audited
   without it, and are personal data (export, erasure).
   Segments everywhere (wave 11 unit A, D380): a segment's customer types are only `rfmGroups()` (`src/server/analytics-customers-data.ts`, the
@@ -376,7 +377,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   plain text and stays valid. `fillContract()` fills `doc` and `text` with the same fields; `ContractDocumentView` draws `doc` as elements,
   never as HTML. A new mark or node is added to `contractDoc()`, the editor's extensions and the view together, with a test in
   `contract-rich.test.ts` and `static-markup.test.ts`.
-- **A draft's page (D857)**: *What it says* and *How it will look* stacked at full width; the preview is filled in the browser as the words are
+- **A draft's page (D857, D862)**: *What it says* and *How it will look* side by side from `xl` (the preview kept in view), or stacked at
+  full width by the member's choice (kept per browser) and always below `xl`; *Save as template* makes a new template from the words on the
+  screen (`templateFromDraft()`, a name in use refused, the draft unchanged). The preview is filled in the browser as the words are
   typed (`fillContract()` from `draftFacts()`), and Send is offered only with nothing unsaved, since sending fills it again from what was
   saved. Each contract says its version (`contractVersions()`, from `replaces_id`) and lists its versions with a declined signer's reason
   (admin page only). The store's contracts are listed at `/deals/contracts` (`listContracts()`), the menu item right under Deals.
