@@ -11,7 +11,9 @@ import {
   emptyCounts,
   linksOf,
   linkTarget,
+  parseSubjects,
   parseSuggestion,
+  SUBJECT_CHOICES,
   RECIPIENTS_KEEP_DAYS,
   keepHanded,
   sendProblems,
@@ -933,6 +935,56 @@ export async function suggestBroadcast(
       return { ok: false, problem: `The suggestion made claims we do not let AI make: ${found}. Try again, or write it yourself.` };
     }
     return { ok: true, suggestion };
+  } catch (error) {
+    if (error instanceof AiError) return { ok: false, problem: "The AI did not answer. Try again in a moment." };
+    throw error;
+  }
+}
+
+/**
+ * Subject lines to choose from (email plan M3.7), for an email already written: the store's writer reads its words and who it reaches,
+ * and offers `SUBJECT_CHOICES` other subjects in its language and brand, each checked for the claims AI may not make (a line making one is
+ * left out). Nothing is saved: the owner picks one, or none.
+ */
+export async function suggestSubjects(
+  store: EmailStore,
+  accountId: string,
+  email: { subject: string; words: string[] },
+  locale: string,
+  audience: string,
+  options: { complete?: typeof chatWithTools } = {},
+): Promise<{ ok: true; subjects: string[] } | { ok: false; problem: string }> {
+  const connection = await aiFor(store.id, { feature: "marketing_email", accountId });
+  if (!connection?.textModel) return { ok: false, problem: "No AI with a text model is set up for this store." };
+  const language = LANGUAGE_NAMES[locale.slice(0, 2)] ?? locale;
+  const brand = await brandOf(store.id);
+  const guide = brandGuide(brand);
+  const words = [email.subject, ...email.words].join("\n").slice(0, 3000).replace(/</g, "‹");
+  const messages: ToolChatMessage[] = [
+    {
+      role: "system",
+      content: [
+        `You write subject lines for a marketing email of the shop "${store.name}", in ${language}.`,
+        audience,
+        `Offer ${SUBJECT_CHOICES} subject lines that differ from each other and from the current one: short (under 60 characters), plain and warm, true to the email's words.`,
+        "Never write a price, a discount, an amount off, a stock level or a delivery time, and never name a product or an offer the email's words do not name.",
+        "No urgency or scarcity (no 'only today', 'last chance', 'few left'), no best or lowest price claims, no environmental claims such as sustainable or eco-friendly.",
+        RULES_STAND,
+        UNTRUSTED_TEXT,
+        `Answer only with JSON: {"subjects": string[] (${SUBJECT_CHOICES})}.`,
+        ...(guide ? [`\n\n${guide}`] : []),
+      ].join(" "),
+    },
+    { role: "user", content: `<email-words>${words}</email-words>` },
+  ];
+  const chat = options.complete ?? chatWithTools;
+  try {
+    const reply = await chat(connection, messages, [], { maxTokens: 300, timeoutMs: 30_000 });
+    const subjects = parseSubjects(reply.content ?? "", email.subject).filter(
+      (subject) => suggestionClaims({ subject, preview: "", heading: "", paragraphs: [], button: "" }, brand.avoid).length === 0,
+    );
+    if (subjects.length === 0) return { ok: false, problem: "The AI did not answer with subject lines. Try again or write one yourself." };
+    return { ok: true, subjects };
   } catch (error) {
     if (error instanceof AiError) return { ok: false, problem: "The AI did not answer. Try again in a moment." };
     throw error;

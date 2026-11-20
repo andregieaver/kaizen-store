@@ -74,13 +74,16 @@ async function dispatch() {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
-  const { altTexts, schedules, ...rest } = r;
+  // Products given the words their page shows of their standard category (bloat review step 2.23): their stores' catalogues show them.
+  for (const storeId of r.standardShown?.storeIds ?? []) revalidateTag(catalogTag(storeId), "max");
+  const { altTexts, schedules, standardShown, ...rest } = r;
   return Response.json(
     {
       ...rest,
       apiIdempotency,
       oauthTokens,
       altTexts: altTexts?.written ?? null,
+      standardShown: standardShown?.written ?? null,
       schedules: schedules ? { published: schedules.published, failed: schedules.failed } : null,
       themeUpdates: { updated: themeUpdates.updated, refused: themeUpdates.refused },
       platformThemeUpdates: { updated: platformThemeUpdates.updated, refused: platformThemeUpdates.refused },

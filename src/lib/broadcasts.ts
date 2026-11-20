@@ -279,6 +279,30 @@ export function parseSuggestion(text: string): SuggestionDraft | null {
   }
 }
 
+/** Subject lines offered to choose from (email plan M3.7). */
+export const SUBJECT_CHOICES = 3;
+
+/**
+ * The model's subject lines read from its answer (JSON `{"subjects": [...]}`, possibly in a code fence): trimmed, within `SUBJECT_MAX`,
+ * each once and different from the current one, at most `SUBJECT_CHOICES`. Empty when it is not such an answer.
+ */
+export function parseSubjects(text: string, current = ""): string[] {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return [];
+  try {
+    const parsed = z.object({ subjects: z.array(z.string()).max(10) }).safeParse(JSON.parse(text.slice(start, end + 1)));
+    if (!parsed.success) return [];
+    const seen = new Set([current.trim().toLowerCase()]);
+    return parsed.data.subjects
+      .map((x) => x.trim().replace(/\s+/g, " "))
+      .filter((x) => x.length > 0 && x.length <= SUBJECT_MAX && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase()))
+      .slice(0, SUBJECT_CHOICES);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The suggestion with only the products and campaigns the writer's tools handed it (by id, each once, in the model's order, within the
  * limits); an id it made up or took from elsewhere is dropped.

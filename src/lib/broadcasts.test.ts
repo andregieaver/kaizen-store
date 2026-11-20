@@ -186,3 +186,13 @@ describe("the store's own facts in an email (D352)", () => {
     expect(bare.blocks).toEqual([]);
   });
 });
+
+describe("subject lines to choose from (M3.7)", () => {
+  it("reads three different subjects within the limit, never the current one", async () => {
+    const { parseSubjects, SUBJECT_MAX } = await import("./broadcasts");
+    const answer = '```json\n{"subjects": ["Hei igjen", " hei  igjen ", "Nytt fra oss", "' + "x".repeat(SUBJECT_MAX + 1) + '", "Takk", "Mer"]}\n```';
+    expect(parseSubjects(answer, "Takk")).toEqual(["Hei igjen", "Nytt fra oss", "Mer"]);
+    expect(parseSubjects("no json here")).toEqual([]);
+    expect(parseSubjects('{"subjects": "one"}')).toEqual([]);
+  });
+});

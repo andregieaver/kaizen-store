@@ -9,12 +9,22 @@ import { makeStore, type Fixture } from "./invoice-test-fixture";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
+// The taxonomy's reads seen, so a test can say the product page opened none (bloat review step 2.23).
+const fileReads = vi.hoisted(() => [] as string[]);
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  const readFile = (async (file: Parameters<typeof actual.readFile>[0], ...rest: unknown[]) => {
+    fileReads.push(String(file));
+    return (actual.readFile as (...args: unknown[]) => Promise<unknown>)(file, ...rest);
+  }) as typeof actual.readFile;
+  return { ...actual, default: { ...actual, readFile }, readFile };
+});
 
 const { getEditorContext, getProductForEdit, saveProduct } = await import("./products");
 const { getStore } = await import("./stores");
 const { csvContextFor } = await import("./product-data");
-const { taxonomySearch } = await import("./product-taxonomy");
-const { searchCategories } = await import("@/lib/product-taxonomy");
+const { refreshStandardShown, taxonomy, taxonomySearch, taxonomyWords } = await import("./product-taxonomy");
+const { categoryPath, googleCategory, searchCategories, shownKey } = await import("@/lib/product-taxonomy");
 const { listingFacets, listingProducts } = await import("./listing");
 const { getProduct } = await import("./catalog");
 const { parseListingParams } = await import("@/lib/listing-filters");
@@ -58,6 +68,22 @@ describe("a product's standard category", () => {
     const read = (await getProductForEdit(store, editor, products[0].id))!;
     expect(read.standardCategory).toBe("aa-1-1");
     expect(read.standardAttributes).toEqual({ "1": [1, 2], "3": [24478] });
+  });
+
+  it("keeps on the product's row what its page shows of the category: the paths by language, Google's id and the attributes in English", async () => {
+    const [row] = await db().execute<Row>(sql`select standard_shown from commerce.products where store_id = ${fx.storeId}::uuid and id = ${products[0].id}::uuid`);
+    const shown = row.standard_shown as { for: string; paths: Record<string, string>; google: number | null; english: Record<string, string[]> };
+    const t = await taxonomy();
+    expect(shown.for).toBe(shownKey("aa-1-1", { "1": [1, 2], "3": [24478] }));
+    expect(shown.paths.nb).toBe(categoryPath(await taxonomyWords("nb-NO"), "aa-1-1"));
+    expect(shown.paths).toEqual({
+      en: "Apparel & Accessories > Clothing > Activewear",
+      nb: "Klær og tilbehør > Klesplagg > Treningsklær",
+      sv: categoryPath(await taxonomyWords("sv-SE"), "aa-1-1"),
+      da: categoryPath(await taxonomyWords("da-DK"), "aa-1-1"),
+    });
+    expect(shown.google).toBe(googleCategory(t, "aa-1-1"));
+    expect(shown.english).toEqual({ color: ["Black", "Blue"], pattern: ["Animal"] });
   });
 
   it("refuses a category the release does not know, an attribute of another category and a value of another attribute", async () => {
@@ -134,5 +160,64 @@ describe("a product's standard category", () => {
       english: { color: ["Black", "Blue"], pattern: ["Animal"] },
     });
     expect((await getProduct(fx.storeId, market, products[1].handle))!.standard).toBeNull();
+  });
+
+  it("reads the category in each market's language from the product's row, opening no taxonomy file (bloat review step 2.23)", async () => {
+    const store = (await getStore(fx.slug))!;
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const t = await taxonomy();
+    for (const locale of ["nb-NO", "sv-SE", "da-DK", "en-GB"]) {
+      const words = await taxonomyWords(locale);
+      fileReads.length = 0;
+      const product = (await getProduct(fx.storeId, { ...market, locale }, products[0].handle))!;
+      expect(fileReads.filter((file) => file.includes("product-taxonomy")), locale).toEqual([]);
+      expect(product.standard, locale).toEqual({
+        id: "aa-1-1",
+        path: categoryPath(words, "aa-1-1"),
+        google: googleCategory(t, "aa-1-1"),
+        english: { color: ["Black", "Blue"], pattern: ["Animal"] },
+      });
+    }
+    // The words are the row's: a page shows what is kept there, not what the files say.
+    const [row] = await db().execute<Row>(sql`select standard_shown from commerce.products where store_id = ${fx.storeId}::uuid and id = ${products[0].id}::uuid`);
+    const kept = row.standard_shown as { paths: Record<string, string> };
+    await db().execute(sql`
+      update commerce.products set standard_shown = ${JSON.stringify({ ...kept, paths: { ...kept.paths, nb: "Kept > On > The row" } })}::jsonb
+       where store_id = ${fx.storeId}::uuid and id = ${products[0].id}::uuid`);
+    expect((await getProduct(fx.storeId, market, products[0].handle))!.standard?.path).toBe("Kept > On > The row");
+    await db().execute(sql`
+      update commerce.products set standard_shown = ${JSON.stringify(kept)}::jsonb where store_id = ${fx.storeId}::uuid and id = ${products[0].id}::uuid`);
+  });
+
+  it("shows a category another writer put on the row once the dispatcher's job has derived its words, and the next run writes none", async () => {
+    const store = (await getStore(fx.slug))!;
+    const market = store.markets.find((m) => m.code === "NO")!;
+    await db().execute(sql`
+      update commerce.products set standard_category = 'hg-11-6-2-6', standard_attributes = '{}'
+       where store_id = ${fx.storeId}::uuid and id = ${products[1].id}::uuid`);
+    expect((await getProduct(fx.storeId, market, products[1].handle))!.standard).toBeNull();
+    const first = await refreshStandardShown();
+    expect(first.storeIds).toContain(fx.storeId);
+    expect((await getProduct(fx.storeId, market, products[1].handle))!.standard).toEqual({
+      id: "hg-11-6-2-6",
+      path: categoryPath(await taxonomyWords("nb-NO"), "hg-11-6-2-6"),
+      google: googleCategory(await taxonomy(), "hg-11-6-2-6"),
+      english: {},
+    });
+    expect((await refreshStandardShown()).written).toBe(0);
+  });
+
+  it("shows no category for an id the release does not know, and the job passes it by after one run", async () => {
+    const store = (await getStore(fx.slug))!;
+    const market = store.markets.find((m) => m.code === "NO")!;
+    await db().execute(sql`
+      update commerce.products set standard_category = 'aa-999', standard_attributes = '{}'
+       where store_id = ${fx.storeId}::uuid and id = ${products[1].id}::uuid`);
+    await refreshStandardShown();
+    expect((await getProduct(fx.storeId, market, products[1].handle))!.standard).toBeNull();
+    expect((await refreshStandardShown()).written).toBe(0);
+    await db().execute(sql`
+      update commerce.products set standard_category = null, standard_attributes = '{}', standard_shown = null
+       where store_id = ${fx.storeId}::uuid and id = ${products[1].id}::uuid`);
   });
 });

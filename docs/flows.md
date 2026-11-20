@@ -84,7 +84,8 @@ written yet starts from the first language's words, copied to translate in place
 never over words already written). Write with AI under the email (M3.7, `writeFlowEmailAction()`) takes a line of what it is about and
 hands it to the store's writer (`suggestBroadcast()`: the store's facts, brand and rules) with who the email reaches and when
 (`flowAudience()`: the trigger, its place, days and branch, picks it may not name); the words replace that language's, and an email with
-picks takes no products the writer chose. Each change is a new
+picks takes no products the writer chose. Under the subject, three subject lines to choose from (`suggestSubjects()`, nothing
+saved until one is pressed; a line making a claim AI may not make is left out). Each change is a new
 version, off until tested; the story above is drawn from the same tree.
 
 ## Presses in a flow's emails (19 November 2026)

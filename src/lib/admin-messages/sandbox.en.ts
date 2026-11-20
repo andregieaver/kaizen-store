@@ -89,17 +89,14 @@ export const sandboxEn = {
     notice: "Preview: nothing is saved or copied",
     by: "By {publisher}",
   },
+  /** How far the sandbox's visitors went (D457 S4), under its switch on Access requests (D847). */
   funnel: {
-    title: "Page builder sandbox",
     description: "Visitors who tried the builder without signing up, by when they started. Kept: became someone's store.",
     period: { one: "Last {n} day", many: "Last {n} days" },
     made: "Started",
     changed: "Changed something",
     published: "Published",
     kept: "Kept",
-    off: "The sandbox is off. Turn it on under Access requests.",
-    on: "The sandbox is on.",
-    switchLink: "Access requests",
   },
   guide: {
     title: "Things to try",

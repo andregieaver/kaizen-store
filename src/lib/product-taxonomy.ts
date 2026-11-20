@@ -16,6 +16,12 @@ export const MAX_ATTRIBUTE_VALUES = 25;
 /** The languages whose names the release ships (Shopify's own translations); others are shown the English names. */
 export const TAXONOMY_LANGS = ["en", "nb", "sv", "da"] as const;
 export type TaxonomyLang = (typeof TAXONOMY_LANGS)[number];
+/**
+ * The release the files in `src/data/product-taxonomy/` are (their `structure.json`'s `release`), known without opening them: the words a
+ * product keeps of its category carry it, so a new release derives them again (bloat review step 2.23). `scripts/product-taxonomy.mjs` says
+ * when to change it, and `product-taxonomy.test.ts` holds it to the file.
+ */
+export const TAXONOMY_RELEASE = "v2026-10";
 
 /** `structure.json`: a category's Google id (0 for none), its attribute ids and, where it names one its own way, that name's handle. */
 export type TaxonomyStructure = {
@@ -199,6 +205,39 @@ export function sortedAttributes(attributes: StandardAttributes): StandardAttrib
       .sort(([a], [b]) => Number(a) - Number(b))
       .map(([id, values]) => [id, [...new Set(values)].sort((a, b) => a - b)]),
   );
+}
+
+/**
+ * What a product keeps of its standard category for its page (`products.standard_shown`, bloat review step 2.23), derived from the release
+ * when it is saved or by the dispatcher, never typed: its key (`shownKey()`), the category's path in each language, Google's id and the
+ * chosen attributes' English names by handle. A category the release does not know keeps only its key, so the dispatcher passes it by.
+ */
+export type StandardShown = { for: string; paths?: Record<TaxonomyLang, string>; google?: number | null; english?: Record<string, string[]> };
+
+/** Stored attributes as kept: only number values, in the stable order of `sortedAttributes()`. */
+function keptAttributes(attributes: unknown): StandardAttributes {
+  const kept: StandardAttributes = {};
+  if (attributes && typeof attributes === "object" && !Array.isArray(attributes))
+    for (const [id, values] of Object.entries(attributes as Record<string, unknown>))
+      if (Array.isArray(values)) kept[id] = values.filter((v): v is number => typeof v === "number");
+  return sortedAttributes(kept);
+}
+
+/** The key of what a product shows of its category: the category, its attributes and the release, so a change of any derives it again. */
+export function shownKey(category: string, attributes: unknown): string {
+  return `${category}|${JSON.stringify(keptAttributes(attributes))}|${TAXONOMY_RELEASE}`;
+}
+
+/** The chosen attributes' values by their English names, keyed by the attribute's handle (`{"color": ["Black"]}`): the feeds' colour, material and pattern. */
+export function englishAttributes(t: TaxonomyStructure, english: TaxonomyWords, attributes: unknown): Record<string, string[]> {
+  const chosen: Record<string, string[]> = {};
+  for (const [attributeId, valueIds] of Object.entries((attributes ?? {}) as Record<string, unknown>)) {
+    const attribute = attributeName(t, english, Number(attributeId));
+    if (!attribute || !Array.isArray(valueIds)) continue;
+    const names = valueIds.flatMap((v) => (typeof v === "number" ? [valueName(t, english, v)?.name ?? ""] : [])).filter(Boolean);
+    if (names.length > 0) chosen[attribute.handle] = names;
+  }
+  return chosen;
 }
 
 /** A category from a Shopify CSV's `Product Category` cell: a `gid://shopify/TaxonomyCategory/…` or a full English path; null when unknown. */

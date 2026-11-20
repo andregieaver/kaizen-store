@@ -883,6 +883,7 @@ export const marketingEn = {
     aFewWords: "Say in a few words what the email is about.",
     noAi: "No AI with a text model is set up for this store.",
     noEmail: "The AI did not answer with an email. Try again or write it yourself.",
+    noSubjects: "The AI did not answer with subject lines. Try again or write one yourself.",
     claims: "The suggestion made claims we do not let AI make: {found}. Try again, or write it yourself.",
     aiDown: "The AI did not answer. Try again in a moment.",
     daysRange: "The days must be a whole number from {min} to {max}.",

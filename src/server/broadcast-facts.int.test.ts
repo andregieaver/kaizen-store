@@ -181,4 +181,20 @@ describe("the writer's tools", () => {
     })) as never;
     expect(await bc.suggestBroadcast(emailStore, store.accountId, "Our autumn favourites", "nb-NO", { complete: priced })).toMatchObject({ ok: false });
   });
+
+  it("offers subject lines to choose from, leaving out one that makes a claim (M3.7)", async () => {
+    const emailStore = (await storeById(store.storeId))!;
+    const asked: string[] = [];
+    const complete = (async (_c: unknown, messages: { content?: string | null }[], tools: unknown[]) => {
+      asked.push(messages[0].content ?? "", messages[1].content ?? "");
+      expect(tools).toEqual([]);
+      return { content: JSON.stringify({ subjects: ["Velkommen inn", "Siste sjanse i dag", "Godt å se deg"] }), toolCalls: [] };
+    }) as never;
+    const result = await bc.suggestSubjects(emailStore, store.accountId, { subject: "Hei", words: ["Takk for at du vil høre fra oss."] }, "nb-NO", "It goes to each person who joins the shop's list.", { complete });
+    expect(result).toEqual({ ok: true, subjects: ["Velkommen inn", "Godt å se deg"] });
+    expect(asked[0]).toContain("joins the shop's list");
+    expect(asked[1]).toContain("Takk for at du vil høre fra oss.");
+    const none = (async () => ({ content: "Sorry", toolCalls: [] })) as never;
+    expect(await bc.suggestSubjects(emailStore, store.accountId, { subject: "Hei", words: [] }, "nb-NO", "", { complete: none })).toMatchObject({ ok: false });
+  });
 });

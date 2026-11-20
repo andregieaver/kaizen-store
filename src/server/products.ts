@@ -55,7 +55,7 @@ import type { Store } from "./stores";
 import { withStockContext } from "./stock-context";
 import { listTerms, scopedTermIds } from "./taxonomy";
 import { categoryMarks } from "./unit-price-gaps";
-import { taxonomy } from "./product-taxonomy";
+import { standardShownOf, taxonomy } from "./product-taxonomy";
 import { deriveForProducts, marketPriceRules } from "./market-prices";
 
 type Row = Record<string, unknown>;
@@ -1071,6 +1071,9 @@ async function upsertProduct(
   if (!category || (category.active !== true && category.kept !== true)) {
     throw new FieldProblems(["That VAT category is not available: it does not exist or has been switched off. Choose another."]);
   }
+  // What the shop shows of the standard category, derived here so the page never opens the taxonomy (bloat review step 2.23).
+  const shown = input.standardCategory ? await standardShownOf(input.standardCategory, input.standardAttributes ?? {}) : null;
+  const shownJson = shown === null ? null : JSON.stringify(shown);
   if (productId) {
     const [row] = await tx.execute<Row>(sql`
       update commerce.products set
@@ -1086,6 +1089,7 @@ async function upsertProduct(
         shipping_profile_id = ${input.shippingProfileId === undefined ? sql`shipping_profile_id` : sql`(select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)`},
         standard_category = ${input.standardCategory === undefined ? sql`standard_category` : sql`${input.standardCategory}`},
         standard_attributes = ${input.standardCategory === undefined ? sql`standard_attributes` : sql`${JSON.stringify(input.standardAttributes ?? {})}::jsonb`},
+        standard_shown = ${input.standardCategory === undefined ? sql`standard_shown` : sql`${shownJson}::jsonb`},
         price_words = ${input.priceWords === undefined ? sql`price_words` : priceWordsValue(input.priceWords)}
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
@@ -1097,14 +1101,15 @@ async function upsertProduct(
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
-      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes, price_words, price_on_request
+      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes, standard_shown, price_words,
+      price_on_request
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
       ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)},
       ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid),
       ${bundlePricing(input)}, ${bundlePercent(input)}, ${input.standardCategory ?? null},
-      ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb,
+      ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb, ${shownJson}::jsonb,
       ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}, ${input.priceOnRequest && input.kind === "goods"}
     )
     returning id

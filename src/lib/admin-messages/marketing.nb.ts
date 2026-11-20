@@ -860,6 +860,7 @@ export const marketingNb: MarketingMessages = {
     aFewWords: "Si med noen få ord hva e-posten handler om.",
     noAi: "Ingen KI med en tekstmodell er satt opp for denne butikken.",
     noEmail: "KI-en svarte ikke med en e-post. Prøv igjen, eller skriv den selv.",
+    noSubjects: "KI-en svarte ikke med emnelinjer. Prøv igjen, eller skriv en selv.",
     claims: "Forslaget kom med påstander vi ikke lar KI komme med: {found}. Prøv igjen, eller skriv den selv.",
     aiDown: "KI-en svarte ikke. Prøv igjen om et øyeblikk.",
     daysRange: "Dagene må være et helt tall fra {min} til {max}.",

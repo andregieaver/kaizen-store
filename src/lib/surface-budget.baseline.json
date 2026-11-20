@@ -1,8 +1,8 @@
 {
-  "dispatcherJobs": 85,
+  "dispatcherJobs": 86,
   "minuteRoutes": 9,
-  "pages": 594,
-  "routeHandlers": 288,
+  "pages": 597,
+  "routeHandlers": 290,
   "storeLinks": 116,
   "storeLinksBySection": {
     "orders": 7,
@@ -183,6 +183,24 @@
       "from": 538,
       "to": 539,
       "decision": "D836"
+    },
+    {
+      "count": "dispatcherJobs",
+      "from": 85,
+      "to": 86,
+      "decision": "D839"
+    },
+    {
+      "count": "pages",
+      "from": 594,
+      "to": 597,
+      "decision": "D839"
+    },
+    {
+      "count": "routeHandlers",
+      "from": 288,
+      "to": 290,
+      "decision": "D839"
     }
   ]
 }

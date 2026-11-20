@@ -555,16 +555,15 @@ describe("owners choosing their own plan", () => {
     expect(kept).toMatchObject({ email: owner.email.toLowerCase(), price_id: price?.id, amount_minor: String(price?.amountMinor) });
   });
 
-  it("lists the stores a page at a time, and counts the same stores the list holds", async () => {
+  it("lists the stores a page at a time, and counts the same stores the list holds (D847: search and filters in platform-stores.int.test.ts)", async () => {
     const everyone = await billing.listStoreBilling({ includeClosed: true });
-    const first = await billing.listStoreBilling({ includeClosed: true, limit: 1 });
-    expect(first).toHaveLength(1);
-    expect(await billing.countStoreBilling({ includeClosed: true })).toBe(everyone.length);
-    expect(await billing.countStoreBilling()).toBe((await billing.listStoreBilling()).length);
+    const first = await billing.storeBillingPage({ limit: 1 });
+    expect(first.rows).toHaveLength(1);
+    expect(first.total).toBe(everyone.length);
     // A page past the first starts where the last one ended, in the list's own order.
-    expect(first[0].storeId).toBe(everyone[0].storeId);
-    if (everyone.length > 1) expect((await billing.listStoreBilling({ includeClosed: true, limit: 1, offset: 1 }))[0].storeId).toBe(everyone[1].storeId);
-    expect(await billing.listStoreBilling({ includeClosed: true, limit: 5, offset: everyone.length })).toEqual([]);
+    expect(first.rows[0].storeId).toBe(everyone[0].storeId);
+    if (everyone.length > 1) expect((await billing.storeBillingPage({ limit: 1, offset: 1 })).rows[0].storeId).toBe(everyone[1].storeId);
+    expect(await billing.storeBillingPage({ limit: 5, offset: everyone.length })).toEqual({ rows: [], total: 0 });
   });
 
   it("reminds an owner who did not finish paying (D33), once per reminder, and stops when they say no", async () => {
