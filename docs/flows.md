@@ -107,7 +107,9 @@ for an event, the people on the list behind its events of the last 30 days (the 
 lapse falls in the next 30; for browsing, the signed-in subscribers with views kept now. Test walks the newest subscriber through it,
 sending nothing. See the emails (`?see=1`, `drawFlowEmails()`) draws each email the newest subscriber would get, in their language and
 market with their picks and plain links, only when asked, at a desktop's or a phone's width, light or as a mail app that turns it dark shows it (colours reversed, pictures kept:
-`darkPreview()`, M3.4); nothing is sent, entered or marked tested. Still to come: each step's reach.
+`darkPreview()`, M3.4); nothing is sent, entered or marked tested. Each email in the story says how many of those would get it
+(`stepReach()`, `flowStepPast()`): its share of the flow's own ended ways through once 20 have ended, before that everyone who starts
+before a branch, or up to that inside one.
 
 ## The report in words (19 November 2026, email plan M3.8 in part)
 

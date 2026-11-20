@@ -741,6 +741,27 @@ export async function flowReach(storeId: string, trigger: string, triggerDays: n
   return row?.n ?? 0;
 }
 
+/**
+ * The flow's own past for each step's reach (M3.5, `stepReach()`): its ways through that have ended (kept 90 days, RUNS_KEEP_DAYS), and how
+ * many of them came to each step, whatever happened there. A way still running is left out: it has not come to its later steps yet.
+ */
+export async function flowStepPast(storeId: string, flowId: string): Promise<{ ended: number; reached: Map<string, number> }> {
+  const [ended, rows] = await Promise.all([
+    typedRow(
+      z.object({ n: col.int }),
+      sql`select count(*)::int as n from commerce.flow_runs r where r.store_id = ${storeId}::uuid and r.flow_id = ${flowId}::uuid and r.status <> 'running'`,
+    ),
+    typedRows(
+      z.object({ step_id: z.string(), n: col.int }),
+      sql`select st.step_id, count(*)::int as n from commerce.flow_run_steps st
+            join commerce.flow_runs r on r.store_id = st.store_id and r.id = st.run_id
+           where st.store_id = ${storeId}::uuid and r.flow_id = ${flowId}::uuid and r.status <> 'running'
+           group by st.step_id`,
+    ),
+  ]);
+  return { ended: ended?.n ?? 0, reached: new Map(rows.map((r) => [r.step_id, r.n])) };
+}
+
 // ---------------------------------------------------------------------------
 // The report in words (email plan M3.8)
 // ---------------------------------------------------------------------------
