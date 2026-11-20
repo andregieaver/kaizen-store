@@ -3,7 +3,7 @@
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
-import type { ContractField } from "@/lib/contract-fields";
+import type { ContractField } from "@/lib/contract-field-keys";
 import type { RichTextDoc } from "@/lib/rich-text-doc";
 
 import { ListIcon, NumberedIcon, toolButton } from "../rich-text-tools";

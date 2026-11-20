@@ -6,7 +6,7 @@ import { Button } from "@/components/admin/ui";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import type { ContractBlock } from "@/lib/contract-fields";
 
-import { BlocksEditor } from "./contract-editor";
+import { BlocksEditor } from "./blocks-editor";
 
 /**
  * A contract template (D695 step 2): its name, the contract's language, its words (`BlocksEditor`, as a draft's), how many days a contract

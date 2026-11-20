@@ -27,7 +27,6 @@
     "components/admin/custom-items-editor.tsx",
     "components/admin/customer-import-flow.tsx",
     "components/admin/deals/contract-editor.tsx",
-    "components/admin/deals/template-editor.tsx",
     "components/admin/display-fields.tsx",
     "components/admin/docs-guide-form.tsx",
     "components/admin/drafts/draft-editor.tsx",
