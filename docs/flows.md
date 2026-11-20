@@ -142,3 +142,16 @@ not ordered for 90 days, bought twice; counts only), each above its Start. The A
 goal's flow switched off and untested (`start_flow`), so the autopilot can propose one; switching it on stays the owner's, on the
 flow's page after a test. Still to come in M3.9: suggesting split tests (with M2.5).
 
+
+## Keep your list awake, the sunset (20 November 2026, email plan M2.8)
+
+The date trigger `subscriber.asleep` starts a flow for a subscriber who has pressed no link in the store's emails for its days (90 to 180,
+180 by default; presses are kept 180, no opens are kept, M0.1 b), counted from their last press or from when they joined, once per time
+they fall asleep (`enterAsleep()`, entry key `asleep:{subscriber}:{day}`). Those already asleep when the flow is switched on enter at most
+50 a day per flow, so switching it on never emails a whole quiet list at once. The goal Keep your list awake (`sunset()`, replacing no
+automation, so the Flows page counts it made by its trigger, `goalsMade()`) is one email asking whether they still want the store's news,
+with a button to the store, then 14 days. Who pressed no link since entering is paused when the run ends (`pauseSunsetRuns()`,
+`marketing_subscribers.paused_at`): still subscribed, never deleted, but `sendEmail()` holds their broadcasts and flow and automation
+emails (`suppressed()`); a press on any link in the store's emails clears it (`keepClick()`, `keepFlowClick()`). The subscribers list and a
+subscriber's page call them paused. The Flows page's goal says how many on the list it would reach now (`flowProposals()`), and the AI
+manager can start it (`start_flow`'s goal `sunset`, API 1.52).

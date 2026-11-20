@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
-import { EVENT_TRIGGERS } from "@/lib/flow-triggers";
+import { DATE_TRIGGER_DAYS, EVENT_TRIGGERS } from "@/lib/flow-triggers";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { FLOW_GUARD, flowGuardPauses, guardCountsOf } from "@/lib/flow-guard";
 import {
@@ -317,6 +317,7 @@ export async function startRecipeFlow(store: Store, accountId: string, key: Reci
   const locale = store.localization.locales[0] ?? "en-GB";
   if (key === "own") return saveFlow(store.id, accountId, null, ownFlow(locale));
   if (!(key in RECIPES)) return { ok: false, problem: "No such goal." };
+  if (key === "sunset") return saveFlow(store.id, accountId, null, RECIPES.sunset(locale));
   const own = await getAutomation(store, key);
   const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key](locale);
   return saveFlow(store.id, accountId, null, recipe);
@@ -325,11 +326,11 @@ export async function startRecipeFlow(store: Store, accountId: string, key: Reci
 /**
  * What each goal would reach in the store's own data (email plan M3.9, the Flows page's proposals): people on the list who joined in the
  * last 30 days (welcome), who bought in the last 30 days (after a purchase, cross-sell), whose latest paid order is 90 days old or more
- * (bring back customers), and who bought twice or more (restock). Counts only; browse is left out (its views are kept only while it runs).
+ * (bring back customers), who bought twice or more (restock), and who pressed no link in 180 days (keep your list awake). Counts only; browse is left out (its views are kept only while it runs).
  */
 export async function flowProposals(storeId: string): Promise<Partial<Record<RecipeKey, number>>> {
   const row = await typedRow(
-    z.object({ joined: col.int, buyers: col.int, lapsed: col.int, repeat: col.int }),
+    z.object({ joined: col.int, buyers: col.int, lapsed: col.int, repeat: col.int, asleep: col.int }),
     sql`
       with paid as (
         select lower(o.email) as email, max(o.placed_at) as last_at, count(*) as n from commerce.orders o
@@ -339,13 +340,16 @@ export async function flowProposals(storeId: string): Promise<Partial<Record<Rec
       select count(*) filter (where s.created_at > now() - interval '30 days')::int as joined,
              count(*) filter (where p.last_at > now() - interval '30 days')::int as buyers,
              count(*) filter (where p.last_at <= now() - interval '90 days')::int as lapsed,
-             count(*) filter (where p.n >= 2)::int as repeat
+             count(*) filter (where p.n >= 2)::int as repeat,
+             count(*) filter (where s.paused_at is null and greatest(s.consented_at, coalesce(
+               (select max(c.clicked_at) from commerce.email_clicks c where c.store_id = s.store_id and c.subscriber_id = s.id), s.consented_at))
+               <= now() - make_interval(days => ${DATE_TRIGGER_DAYS["subscriber.asleep"].start}))::int as asleep
         from commerce.marketing_subscribers s left join paid p on p.email = lower(s.email)
        where s.store_id = ${storeId}::uuid and s.status = 'subscribed'
     `,
   );
   if (!row) return {};
-  return { welcome: row.joined, after_purchase: row.buyers, cross_sell: row.buyers, win_back: row.lapsed, replenish: row.repeat };
+  return { welcome: row.joined, after_purchase: row.buyers, cross_sell: row.buyers, win_back: row.lapsed, replenish: row.repeat, sunset: row.asleep };
 }
 
 /** The switched-on flow of a store that does an automation's work, by name; null for none (an automation stays off while one is on). */
@@ -680,6 +684,54 @@ export async function enterLapsed(now = new Date()): Promise<number> {
   return rows.length;
 }
 
+/** Those already asleep when a sunset flow is switched on enter at most this many a day per flow, so a long-quiet list is asked gently. */
+const ASLEEP_PER_DAY = 50;
+
+/**
+ * Enters the people a sunset flow is for (email plan M2.8): on the list at least the flow's days, with no press on a link in its emails for
+ * that long (presses are kept 180 days), not paused, once per time they fall asleep (`asleep:{subscriber}:{day}`). Those who fall asleep
+ * after the flow was switched on enter as they do; those asleep before, at most `ASLEEP_PER_DAY` a day, so switching it on never emails a
+ * whole quiet list at once.
+ */
+export async function enterAsleep(now = new Date()): Promise<number> {
+  const at = now.toISOString();
+  const rows = await db().execute(sql`
+    insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, path)
+    select e.store_id, e.flow_id, e.version, e.subscriber_id, 'asleep:' || e.subscriber_id || ':' || to_char(e.slept at time zone 'UTC', 'YYYY-MM-DD'), '0'
+      from (
+        select f.store_id, f.id as flow_id, f.version, m.id as subscriber_id, s.slept, f.enabled_at,
+               row_number() over (partition by f.id order by s.slept) as n
+          from commerce.flows f
+          join commerce.marketing_subscribers m on m.store_id = f.store_id and m.status = 'subscribed' and m.paused_at is null
+          cross join lateral (
+            select greatest(m.consented_at, coalesce((select max(c.clicked_at) from commerce.email_clicks c where c.store_id = m.store_id and c.subscriber_id = m.id), m.consented_at))
+                   + make_interval(days => f.trigger_days) as slept
+          ) s
+         where f.enabled and f.trigger = 'subscriber.asleep' and f.store_id is not null and s.slept <= ${at}::timestamptz
+           and not exists (select 1 from commerce.flow_runs r where r.flow_id = f.id and r.subscriber_id = m.id and r.entered_at >= s.slept - make_interval(days => f.trigger_days))
+      ) e
+     where e.slept >= e.enabled_at
+        or e.n <= ${ASLEEP_PER_DAY} - (select count(*) from commerce.flow_runs r where r.flow_id = e.flow_id and r.entered_at > ${at}::timestamptz - interval '1 day')
+    on conflict do nothing
+    returning id`);
+  return rows.length;
+}
+
+/**
+ * The sunset's end (M2.8): a person whose way through a sunset flow ended without a press on any link since they entered is paused
+ * (`paused_at`): their marketing email is held from then on (`sendEmail()`), never deleted or unsubscribed; a press clears it.
+ */
+export async function pauseSunsetRuns(): Promise<number> {
+  const rows = await db().execute(sql`
+    update commerce.marketing_subscribers m set paused_at = now()
+      from commerce.flow_runs r join commerce.flows f on f.store_id = r.store_id and f.id = r.flow_id
+     where f.trigger = 'subscriber.asleep' and r.status = 'done' and r.ended_at > now() - interval '7 days'
+       and m.store_id = r.store_id and m.id = r.subscriber_id and m.paused_at is null and m.status = 'subscribed'
+       and not exists (select 1 from commerce.email_clicks c where c.store_id = m.store_id and c.subscriber_id = m.id and c.clicked_at >= r.entered_at)
+    returning m.id`);
+  return rows.length;
+}
+
 /**
  * Enters the people a browse flow is for (slice 4, D691's browse abandonment): a subscribed customer whose latest product view is the
  * flow's days old with nothing paid since, once per day of viewing (`browse:{customer}:{day}`); only views since the flow was switched on,
@@ -720,7 +772,10 @@ export async function tickFlows(): Promise<void> {
     await enterFlows();
     await enterLapsed();
     await enterBrowsed();
+    await enterAsleep();
     await runFlows();
+    // The sunset's end (M2.8): who finished it with no press is paused.
+    await pauseSunsetRuns();
     // The flow guard (M3.9): hourly inside, in the first five minutes.
     await guardFlows();
   } catch (error) {

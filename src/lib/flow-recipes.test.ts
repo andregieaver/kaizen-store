@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { RECIPES } from "./flow-recipes";
+import { goalsMade, RECIPES, sunset } from "./flow-recipes";
 import { advance, checkFlow, flowInputSchema, type FlowFacts, type FlowPath } from "./flows";
 
 const facts = (orderedSinceEntry: boolean): FlowFacts => ({ orderedSinceEntry, clickedFlowEmail: false, segments: new Set() });
@@ -19,13 +19,13 @@ function emails(steps: Parameters<typeof advance>[0], f: FlowFacts): string[] {
 }
 
 describe("the goals a flow starts from (D767 slice 3, M3.1)", () => {
-  it("makes every recipe a sound flow in Norwegian and English, naming the automation it replaces", () => {
+  it("makes every recipe a sound flow in Norwegian and English, naming the automation it replaces (the sunset replaces none)", () => {
     for (const [key, recipe] of Object.entries(RECIPES)) {
       for (const locale of ["nb-NO", "en-GB"]) {
         const flow = recipe(locale);
         expect(flowInputSchema.safeParse(flow).success, key).toBe(true);
         expect(checkFlow(flow.steps), key).toEqual([]);
-        expect(flow.replaces).toBe(key);
+        expect(flow.replaces).toBe(key === "sunset" ? null : key);
       }
     }
   });
@@ -72,5 +72,21 @@ describe("a flow of the owner's own (slice 4)", () => {
     expect(flowInputSchema.safeParse(flow).success).toBe(true);
     expect(checkFlow(flow.steps)).toEqual([]);
     expect(flow).toMatchObject({ name: "Mitt forløp", trigger: "order.sent", replaces: null });
+  });
+});
+
+describe("keep your list awake, the sunset (M2.8)", () => {
+  it("asks once after 180 days with no press, waits 14 days, and replaces no automation", () => {
+    const flow = sunset("en-GB");
+    expect(flowInputSchema.safeParse(flow).success).toBe(true);
+    expect(flow).toMatchObject({ trigger: "subscriber.asleep", triggerDays: 180, replaces: null });
+    expect(flow.steps.map((s) => s.kind)).toEqual(["email", "wait"]);
+    expect(flow.steps[1]).toMatchObject({ hours: 336 });
+    expect(sunset("nb-NO").name).toBe("Hold listen våken");
+  });
+
+  it("counts as made when a flow has its trigger, as the others do by the automation they replace", () => {
+    expect([...goalsMade([{ replaces: "welcome", trigger: "subscriber.subscribed" }, { replaces: null, trigger: "subscriber.asleep" }])].sort()).toEqual(["sunset", "welcome"]);
+    expect(goalsMade([{ replaces: null, trigger: "order.sent" }]).size).toBe(0);
   });
 });

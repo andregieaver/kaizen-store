@@ -336,6 +336,8 @@ export type SubscriberRow = {
   lastClickAt: string | null;
   /** When they joined (consented), for their engagement in words. */
   joinedAt: string;
+  /** When the sunset paused them (M2.8): no marketing email until they press a link; null when not paused. */
+  pausedAt: string | null;
 };
 
 export const SUBSCRIBERS_PAGE = 50;
@@ -358,6 +360,7 @@ const SUBSCRIBER_ROW = z.object({
   source_path: col.textOrNull,
   last_click_at: col.timestampOrNull,
   joined_at: col.timestamp,
+  paused_at: col.timestampOrNull,
 });
 
 const asSubscriberRow = (r: z.output<typeof SUBSCRIBER_ROW>): SubscriberRow => ({
@@ -374,6 +377,7 @@ const asSubscriberRow = (r: z.output<typeof SUBSCRIBER_ROW>): SubscriberRow => (
   path: r.source_path,
   lastClickAt: r.last_click_at,
   joinedAt: new Date(r.joined_at).toISOString(),
+  pausedAt: r.paused_at,
 });
 
 /** What the list may be narrowed to (D850): a form's sign-ups (its id, as `source_ref` holds it) and the page they were sent from. */
@@ -392,7 +396,7 @@ export async function listSubscribers(
     SUBSCRIBER_ROW,
     sql`
       select s.id, s.email, s.name, s.status, s.source, s.locale, s.confirmed_at is not null as confirmed, s.customer_id is not null as customer,
-        coalesce(s.unsubscribed_at, s.consented_at) as at, s.source_ref, f.name as form_name, s.source_path, s.consented_at as joined_at,
+        coalesce(s.unsubscribed_at, s.consented_at) as at, s.source_ref, f.name as form_name, s.source_path, s.consented_at as joined_at, s.paused_at,
         (select max(c.clicked_at) from commerce.email_clicks c where c.store_id = s.store_id and c.subscriber_id = s.id) as last_click_at
       from commerce.marketing_subscribers s
       ${FORM_OF}
@@ -481,6 +485,7 @@ export async function subscriberDetail(storeId: string, id: string): Promise<Sub
     confirmed: r.confirmed_at != null,
     lastClickAt: iso(r.last_click_at),
     joinedAt: iso(r.consented_at) ?? new Date(0).toISOString(),
+    pausedAt: iso(r.paused_at),
     customer: r.customer_id != null,
     at: iso(r.at)!,
     form: r.source === "form" && r.source_ref ? { id: String(r.source_ref), name: r.form_name ? String(r.form_name) : null } : null,

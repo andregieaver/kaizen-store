@@ -37,10 +37,10 @@ const steps: FlowStep[] = [
   { id: "q", kind: "if", condition: { kind: "ordered_since_entry" }, then: [email("thanks", "Takk")], else: [email("best", "Bestselgere")] },
 ];
 
-async function subscriber(address: string): Promise<string> {
+async function subscriber(address: string, consentedAt = new Date()): Promise<string> {
   const [row] = await db().execute<Row>(sql`
     insert into commerce.marketing_subscribers (store_id, email, locale, market_code, status, source, consent_text, consented_at, token)
-    values (${storeId}::uuid, ${address}, 'nb-NO', 'NO', 'subscribed', 'account', 'Yes please', now(), ${randomBytes(32).toString("base64url")})
+    values (${storeId}::uuid, ${address}, 'nb-NO', 'NO', 'subscribed', 'account', 'Yes please', ${consentedAt.toISOString()}::timestamptz, ${randomBytes(32).toString("base64url")})
     returning id
   `);
   return String(row.id);
@@ -457,4 +457,49 @@ describe("flows (D767)", () => {
     expect(after.cross_sell).toBe(after.after_purchase);
     expect(after.win_back).toBe(before.win_back);
   });
+
+  it("asks the list's sleepers once, pauses who stays quiet, holds their marketing email, and a press wakes them (M2.8)", async () => {
+    const { sunset } = await import("@/lib/flow-recipes");
+    const { sendEmail } = await import("./email");
+    const { clickRef, keepFlowClick } = await import("./email-clicks");
+    vi.stubEnv("SETTINGS_ENCRYPTION_KEY", Buffer.alloc(32, 5).toString("base64"));
+    const now = new Date();
+    const quiet = await subscriber(`asleep-quiet-${run}@example.com`, new Date(now.getTime() - 200 * 24 * HOUR));
+    const fresh = await subscriber(`asleep-fresh-${run}@example.com`);
+    const before = (await fl.flowProposals(storeId)).sunset ?? 0;
+    expect(before).toBeGreaterThanOrEqual(1);
+    const saved = await fl.saveFlow(storeId, owner, null, sunset("nb-NO"));
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    // Asleep before the flow was on: entered all the same, a few a day; joined today: not asleep.
+    expect(await fl.enterAsleep(now)).toBeGreaterThanOrEqual(1);
+    expect(await fl.enterAsleep(now)).toBe(0);
+    const entered = await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(entered.map((r) => String(r.subscriber_id))).toContain(quiet);
+    expect(entered.map((r) => String(r.subscriber_id))).not.toContain(fresh);
+    // Through the email and the 14 days without a press: paused, still subscribed.
+    await db().execute(sql`update commerce.flow_runs set status = 'done', ended_at = now(), entered_at = now() - interval '15 days'
+      where flow_id = ${saved.id}::uuid and subscriber_id = ${quiet}::uuid`);
+    expect(await fl.pauseSunsetRuns()).toBe(1);
+    const [row] = await db().execute<Row>(sql`select status, paused_at from commerce.marketing_subscribers where id = ${quiet}::uuid`);
+    expect(row).toMatchObject({ status: "subscribed" });
+    expect(row.paused_at).not.toBeNull();
+    const held = await sendEmail({
+      storeId,
+      kind: "marketing.broadcast",
+      to: `asleep-quiet-${run}@example.com`,
+      email: { subject: "Nytt", html: "<p>1</p>", text: "1" },
+      fromName: "Butikk",
+    });
+    expect(held).toBe("suppressed");
+    expect(((await fl.flowProposals(storeId)).sunset ?? 0)).toBe(before - 1);
+    // A press on a link in any of the store's emails wakes them.
+    expect(await keepFlowClick(storeId, saved.id, "still", "nb.0", clickRef(saved.id, quiet))).toBe(true);
+    const [woke] = await db().execute<Row>(sql`select paused_at from commerce.marketing_subscribers where id = ${quiet}::uuid`);
+    expect(woke.paused_at).toBeNull();
+    await fl.switchFlow(storeId, owner, saved.id, false);
+    vi.unstubAllEnvs();
+  });
 });
+

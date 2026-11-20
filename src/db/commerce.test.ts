@@ -191,6 +191,11 @@ describe("reference data", () => {
     await expect(insert("customer.browsed", 6)).rejects.toThrow(/flows_trigger_days/);
     const browse = await insert("customer.browsed", 1);
     await db.query("delete from commerce.flows where id = $1", [(browse.rows[0] as { id: string }).id]);
+    // A sunset asks after 90 to 180 days with no press (presses are kept 180, M2.8).
+    await expect(insert("subscriber.asleep", 60)).rejects.toThrow(/flows_trigger_days/);
+    await expect(insert("subscriber.asleep", 200)).rejects.toThrow(/flows_trigger_days/);
+    const asleep = await insert("subscriber.asleep", 180);
+    await db.query("delete from commerce.flows where id = $1", [(asleep.rows[0] as { id: string }).id]);
   });
 
   it("keeps a press for a broadcast or a flow's step, never both or neither (D767)", async () => {

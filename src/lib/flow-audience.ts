@@ -21,6 +21,8 @@ const STARTS: Record<FlowTrigger, (days: number | null) => string> = {
   "quote.requested": () => "It goes to each person on the shop's list who asked for a quote. You do not know what they asked for, so never name it; say the shop will answer.",
   "review.created": () => "It goes to each customer on the shop's list who wrote a review. Thank them; you do not know what they wrote, so never quote it.",
   "customer.lapsed": (d) => `It goes to customers on the shop's list who have not ordered for ${d ?? 90} days. Invite them back warmly, without pressure.`,
+  "subscriber.asleep": (d) =>
+    `It goes to people on the shop's list who have pressed no link in its emails for ${d ?? 180} days. Ask kindly whether they still want its news, with one button to say yes by visiting; if they do not, the shop stops emailing them. No guilt, no pressure.`,
   "customer.browsed": (d) =>
     `It goes to signed-in customers on the shop's list ${d ?? 1} ${d === 1 ? "day" : "days"} after they last looked at products they did not buy. Never say you watched them.`,
 };

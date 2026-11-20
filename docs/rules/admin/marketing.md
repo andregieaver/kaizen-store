@@ -139,8 +139,11 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## Engagement in words (email plan M2.8, `src/lib/engagement.ts`)
 
 - **Engagement (M2.8)**: a subscriber's level is only `engagementLevel()`, from their latest press on a link (`email_clicks`, kept 180 days; no opens are
-  kept, M0.1 b) and when they joined: pressed this month, in 3 months, quiet over 3 months, new, or asleep (no press in 6 months). Shown on
-  the subscribers list and a subscriber's page, for those on the list.
+  kept, M0.1 b) and when they joined: pressed this month, in 3 months, quiet over 3 months, new, or asleep (no press in 6 months); paused when
+  the sunset paused them. Shown on the subscribers list and a subscriber's page, for those on the list.
+- **The sunset (M2.8, `docs/flows.md`)**: a person is paused only by `pauseSunsetRuns()` (a sunset flow's run ended with no press since it
+  began) and woken only by a kept press (`email-clicks.ts`); a paused person stays subscribed and is never deleted, and `suppressed()` holds
+  every marketing email to them (broadcasts and automations), never a transactional one.
 
 ## Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`, `src/server/segments.ts`)
 

@@ -186,7 +186,7 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
                       row.path,
                       row.status === "subscribed" && !row.confirmed && row.source === "form" ? ws.notConfirmed : null,
                       // Their engagement in words (M2.8), from their latest press on a link; only for those on the list.
-                      row.status === "subscribed" ? ws.engagement[engagementLevel(row.joinedAt, row.lastClickAt, now)] : null,
+                      row.status === "subscribed" ? ws.engagement[engagementLevel(row.joinedAt, row.lastClickAt, now, row.pausedAt)] : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}

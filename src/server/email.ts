@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import type { RenderedEmail } from "@/lib/email-layout";
@@ -12,6 +13,7 @@ import { isReservedAddress, RESERVED_NOTE } from "@/lib/reserved-address";
 
 import { senderFor } from "./sending-domains";
 import { deskReplyTo } from "./support-reply-to";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -228,6 +230,15 @@ async function suppressed(message: OutgoingEmail): Promise<string | null> {
     if ((kind === "shopper" || kind === "security") && store.starter) return "suppressed: a demo store does not email shoppers";
   }
   if (message.kind.startsWith("privacy.") || kind === "evidence") return null;
+  // The sunset (email plan M2.8): a subscriber paused after months with no press gets no marketing email until they press a link again.
+  if (message.storeId && (message.kind === "marketing.broadcast" || message.kind === "marketing.automation")) {
+    const paused = await typedRow(
+      z.object({ one: col.int }),
+      sql`select 1 as one from commerce.marketing_subscribers
+           where store_id = ${message.storeId}::uuid and lower(email) = lower(${message.to}) and paused_at is not null limit 1`,
+    );
+    if (paused) return "suppressed: paused after months with no press on a link (the sunset)";
+  }
   if (!message.orderId && !message.subscriptionId) return null;
   const [row] = await db().execute<Row>(sql`
     select

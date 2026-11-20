@@ -13,4 +13,9 @@ describe("a subscriber's engagement in words (M2.8)", () => {
     expect(engagementLevel(ago(10), null, now)).toBe("new");
     expect(engagementLevel(ago(400), null, now)).toBe("asleep");
   });
+
+  it("calls a person the sunset paused paused, whatever their presses, until a press clears it", () => {
+    expect(engagementLevel(ago(400), null, now, ago(1))).toBe("paused");
+    expect(engagementLevel(ago(400), null, now, null)).toBe("asleep");
+  });
 });

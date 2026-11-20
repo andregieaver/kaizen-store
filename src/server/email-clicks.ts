@@ -30,6 +30,11 @@ export function clickRef(broadcastId: string, subscriberId: string): string | nu
   return key ? personRef(key, broadcastId, subscriberId) : null;
 }
 
+/** Clears the sunset's pause (M2.8) of a subscriber who pressed a link. */
+async function unpause(storeId: string, subscriberId: string): Promise<void> {
+  await db().execute(sql`update commerce.marketing_subscribers set paused_at = null where store_id = ${storeId}::uuid and id = ${subscriberId}::uuid and paused_at is not null`);
+}
+
 /** Keeps a press by the subscriber the reference names, when it is genuine and they are still on the store's list. Never throws. */
 export async function keepClick(storeId: string, broadcastId: string, link: string, ref: string | null): Promise<boolean> {
   try {
@@ -42,6 +47,8 @@ export async function keepClick(storeId: string, broadcastId: string, link: stri
        where s.store_id = ${storeId}::uuid and s.id = ${subscriberId}::uuid and s.status = 'subscribed'
       returning id
     `);
+    // A press wakes a person the sunset paused (M2.8): their marketing email goes again.
+    if (rows.length > 0) await unpause(storeId, subscriberId);
     return rows.length > 0;
   } catch (error) {
     log("error", "email_clicks.keep_failed", { storeId, broadcastId }, error);
@@ -63,6 +70,8 @@ export async function keepFlowClick(storeId: string, flowId: string, stepId: str
        where s.store_id = ${storeId}::uuid and s.id = ${subscriberId}::uuid and s.status = 'subscribed'
       returning id
     `);
+    // A press wakes a person the sunset paused (M2.8): their marketing email goes again.
+    if (rows.length > 0) await unpause(storeId, subscriberId);
     return rows.length > 0;
   } catch (error) {
     log("error", "email_clicks.keep_failed", { storeId, flowId }, error);

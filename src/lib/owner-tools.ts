@@ -2317,7 +2317,7 @@ const ALL_OWNER_TOOLS = [
   tool(
     "start_flow",
     "Starts a flow from a goal the store has no flow for yet (from list_flows): from the store's own email automation's words when the owner wrote one, else the ready-made one. It is saved switched off and untested, so nothing is sent: the owner reads it, tests it and switches it on on its page (the link).",
-    z.object({ goal: z.enum(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse"]) }),
+    z.object({ goal: z.enum(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse", "sunset"]) }),
   ),
   tool(
     "issue_gift_card",

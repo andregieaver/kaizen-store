@@ -8736,7 +8736,7 @@ export const flows = commerce.table(
     // DATE_TRIGGER_DAYS: a date trigger's days in its range, and no days for any other trigger.
     check(
       "flows_trigger_days",
-      sql`case ${t.trigger} when 'customer.lapsed' then coalesce(${t.triggerDays} between 30 and 730, false) when 'customer.browsed' then coalesce(${t.triggerDays} between 1 and 5, false) else ${t.triggerDays} is null end`,
+      sql`case ${t.trigger} when 'customer.lapsed' then coalesce(${t.triggerDays} between 30 and 730, false) when 'customer.browsed' then coalesce(${t.triggerDays} between 1 and 5, false) when 'subscriber.asleep' then coalesce(${t.triggerDays} between 90 and 180, false) else ${t.triggerDays} is null end`,
     ),
     check("flows_replaces", sql`${t.replaces} is null or ${t.replaces} in (${sqlList(AUTOMATION_KINDS)})`),
     index("flows_store_trigger_idx").on(t.storeId, t.trigger).where(sql`${t.enabled}`),
@@ -17308,6 +17308,9 @@ export const marketingSubscribers = commerce.table(
     confirmUntil: timestamp("confirm_until", { withTimezone: true }),
     /** The address's unsubscribe token, in every marketing email; it can only unsubscribe. */
     token: text("token").notNull(),
+    // The sunset (email plan M2.8): when a flow on `subscriber.asleep` ended with no press, marketing email to them is held (`sendEmail()`),
+    // never deleted or unsubscribed; a press on a link clears it.
+    pausedAt: timestamp("paused_at", { withTimezone: true }),
     unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
     unsubscribeSource: text("unsubscribe_source"),
     createdAt: createdAt(),

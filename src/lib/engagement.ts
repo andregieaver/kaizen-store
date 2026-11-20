@@ -3,16 +3,17 @@
  * flows since D767), kept 180 days. The store keeps no opens (M0.1 b), so presses are the one honest signal. Pure.
  */
 
-export const ENGAGEMENT_LEVELS = ["active", "warm", "cooling", "new", "asleep"] as const;
+export const ENGAGEMENT_LEVELS = ["active", "warm", "cooling", "new", "asleep", "paused"] as const;
 export type EngagementLevel = (typeof ENGAGEMENT_LEVELS)[number];
 
 const DAY = 86_400_000;
 
 /**
  * A subscriber's level: pressed a link in the last 30 days (active), 90 (warm) or 180 (cooling); else joined in the last 30 days and not yet
- * pressed one (new); else no press in the 180 days presses are kept (asleep, the sunset recipe's readers).
+ * pressed one (new); else no press in the 180 days presses are kept (asleep, the sunset recipe's readers). Paused when the sunset paused them, until a press wakes them.
  */
-export function engagementLevel(joinedAt: string, lastClickAt: string | null, now: Date): EngagementLevel {
+export function engagementLevel(joinedAt: string, lastClickAt: string | null, now: Date, pausedAt: string | null = null): EngagementLevel {
+  if (pausedAt) return "paused";
   const ago = (at: string) => (now.getTime() - new Date(at).getTime()) / DAY;
   if (lastClickAt) {
     const days = ago(lastClickAt);

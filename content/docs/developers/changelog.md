@@ -16,6 +16,13 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.52 — 2026-11-20
+
+The MCP tool `start_flow` takes one goal more (email plan M2.8): `sunset`, *Keep your list awake*. It starts a flow switched off and untested
+that, after 180 days with no press on a link in the store's emails, sends one email asking whether the person still wants them; who presses
+no link in the 14 days after is paused (no marketing email until they press one), never deleted or unsubscribed. `list_flows` offers it with
+how many on the list it would reach now.
+
 ## 1.51 — 2026-11-20
 
 Segment rules gain products a signed-in customer looked at (email plan M2.4), from the views a store keeps while a browse email runs.

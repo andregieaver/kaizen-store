@@ -17,9 +17,11 @@ export const EVENT_TRIGGERS = [
 /**
  * The triggers checked on a clock rather than read from the event log (slice 4): `customer.lapsed`, a person on the list whose latest
  * paid order is the flow's days old with nothing ordered since, entered once per such order (win-back, M2.3); `customer.browsed`, a
- * signed-in subscriber whose latest product view (D691) is the flow's days old with nothing paid since, once per day of viewing.
+ * signed-in subscriber whose latest product view (D691) is the flow's days old with nothing paid since, once per day of viewing;
+ * `subscriber.asleep`, a person on the list with no press on a link in the flow's days and on it at least that long (the sunset, M2.8),
+ * once per time they fall asleep.
  */
-export const DATE_TRIGGERS = ["customer.lapsed", "customer.browsed"] as const;
+export const DATE_TRIGGERS = ["customer.lapsed", "customer.browsed", "subscriber.asleep"] as const;
 export type DateTrigger = (typeof DATE_TRIGGERS)[number];
 
 /** Every trigger a flow may have. */
@@ -32,6 +34,8 @@ export const LAPSE_DAYS = { min: 30, max: 730 } as const;
 export const DATE_TRIGGER_DAYS: Record<DateTrigger, { min: number; max: number; start: number }> = {
   "customer.lapsed": { ...LAPSE_DAYS, start: 90 },
   "customer.browsed": { min: 1, max: 5, start: 1 },
+  // Presses are kept 180 days (CLICK_DAYS), so a sunset waits at most that long.
+  "subscriber.asleep": { min: 90, max: 180, start: 180 },
 };
 
 export const isDateTrigger = (trigger: string): trigger is DateTrigger => (DATE_TRIGGERS as readonly string[]).includes(trigger);

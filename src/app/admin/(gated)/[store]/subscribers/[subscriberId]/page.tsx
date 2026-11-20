@@ -41,7 +41,7 @@ export default async function SubscriberPage({ params }: PageProps<"/admin/[stor
           subscriber.customer ? ws.hasAccount : null,
           subscriber.locale,
           // Their engagement in words (M2.8), from their latest press on a link.
-          subscriber.status === "subscribed" ? ws.engagement[engagementLevel(subscriber.joinedAt, subscriber.lastClickAt, new Date())] : null,
+          subscriber.status === "subscribed" ? ws.engagement[engagementLevel(subscriber.joinedAt, subscriber.lastClickAt, new Date(), subscriber.pausedAt)] : null,
         ]}
         actions={
           subscriber.status !== "unsubscribed" && memberCan(member, "marketing:write") ? (

@@ -31,9 +31,9 @@
     "shop|marketing": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 159057,
+      "toolChars": 159066,
       "alwaysSentChars": 36543,
-      "totalChars": 174705
+      "totalChars": 174714
     },
     "shop|analytics": {
       "promptChars": 15648,
@@ -122,9 +122,9 @@
     "all|marketing": {
       "promptChars": 16538,
       "toolCount": 128,
-      "toolChars": 159149,
+      "toolChars": 159158,
       "alwaysSentChars": 36573,
-      "totalChars": 175687
+      "totalChars": 175696
     },
     "all|analytics": {
       "promptChars": 16538,
@@ -640,7 +640,7 @@
     "start_dns_move_here": 819,
     "start_experiment": 1090,
     "start_extension_trial": 517,
-    "start_flow": 543,
+    "start_flow": 552,
     "stock_history": 1101,
     "stock_levels": 1356,
     "stop_autopilot_plan": 440,

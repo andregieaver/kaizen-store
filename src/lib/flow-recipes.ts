@@ -1,3 +1,4 @@
+import { DATE_TRIGGER_DAYS } from "./flow-triggers";
 import type { BroadcastContent } from "./broadcasts";
 import type { FlowInput } from "./flows";
 
@@ -20,6 +21,9 @@ type Words = {
   timeAgain: [string, string];
   browseName: string;
   stillThinking: [string, string];
+  sunsetName: string;
+  stillWant: [string, string];
+  stillWantButton: string;
 };
 
 const WORDS: Record<"nb" | "en", Words> = {
@@ -42,6 +46,9 @@ const WORDS: Record<"nb" | "en", Words> = {
     timeAgain: ["På tide med påfyll?", "Det er en stund siden du kjøpte disse. Her er de igjen."],
     browseName: "Minn dem på det de så på",
     stillThinking: ["Fortsatt interessert?", "Du så på disse hos oss. Her er de igjen, om du vil ta en ny titt."],
+    sunsetName: "Hold listen våken",
+    stillWant: ["Vil du fortsatt høre fra oss?", "Det er en stund siden du åpnet en lenke i e-postene våre. Vil du fortsatt ha nyhetene våre, trykk på knappen. Hvis ikke, slutter vi å sende deg e-post, helt greit."],
+    stillWantButton: "Ja, hold meg oppdatert",
   },
   en: {
     name: "Welcome series",
@@ -62,6 +69,9 @@ const WORDS: Record<"nb" | "en", Words> = {
     timeAgain: ["Time for more?", "It has been a while since you bought these. Here they are again."],
     browseName: "Remind them what they looked at",
     stillThinking: ["Still thinking about it?", "You looked at these with us. Here they are again, if you want another look."],
+    sunsetName: "Keep your list awake",
+    stillWant: ["Do you still want to hear from us?", "It has been a while since you opened a link in our emails. If you still want our news, press the button. If not, we will stop emailing you, no hard feelings."],
+    stillWantButton: "Yes, keep me posted",
   },
 };
 
@@ -175,8 +185,38 @@ export function browseReminder(locale: string): Recipe {
 }
 
 /** The goals a flow starts from on the flows page (M3.1), each with its recipe; in the order shown. */
-export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack, cross_sell: crossSell, replenish: restock, browse: browseReminder } as const;
+/**
+ * Keep your list awake (email plan M2.8, the sunset): after the days with no press on a link, one email asking whether they still want the
+ * store's news, with a button to the store; a press wakes them, and who has not pressed one 14 days later is paused (`pauseSunsetRuns()`),
+ * never deleted or unsubscribed. It replaces no automation.
+ */
+export function sunset(locale: string): Recipe {
+  const w = wordsFor(locale);
+  const [subject, text] = w.stillWant;
+  return {
+    name: w.sunsetName,
+    trigger: "subscriber.asleep",
+    triggerDays: DATE_TRIGGER_DAYS["subscriber.asleep"].start,
+    replaces: null,
+    steps: [
+      {
+        id: "still",
+        kind: "email",
+        content: { [locale]: { subject, preview: "", blocks: [{ type: "paragraph", text }, { type: "button", text: w.stillWantButton, url: "/" }] } },
+      },
+      { id: "wait-14d", kind: "wait", hours: 14 * 24 },
+    ],
+    goals: [],
+  };
+}
+
+export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack, cross_sell: crossSell, replenish: restock, browse: browseReminder, sunset } as const;
 export type RecipeKey = keyof typeof RECIPES;
+
+/** The goals a store already has a flow for: each flow's automation, and the sunset by its trigger (it replaces none). */
+export function goalsMade(flows: readonly { replaces: string | null; trigger: string }[]): Set<string> {
+  return new Set(flows.flatMap((f) => [...(f.replaces ? [f.replaces] : []), ...(f.trigger === "subscriber.asleep" ? ["sunset"] : [])]));
+}
 
 /** An automation as saved (D298, D653): its days, words and follow-ups, as `getAutomation()` gives them. */
 export type SavedAutomation = { delayDays: number | null; content: BroadcastContent | null; followUps: readonly { position: number; delayDays: number; content: BroadcastContent }[] };

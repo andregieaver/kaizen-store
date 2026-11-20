@@ -1,6 +1,6 @@
 {
-  "id": "1406e13f-311d-445e-af96-67cbe66e4e8d",
-  "prevId": "a9a76f82-ecf8-4341-9373-fa91f79bf815",
+  "id": "7a0bf842-8393-4995-b7ae-2c2dde8559e6",
+  "prevId": "1406e13f-311d-445e-af96-67cbe66e4e8d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -37351,7 +37351,7 @@
       "checkConstraints": {
         "flows_trigger_days": {
           "name": "flows_trigger_days",
-          "value": "case \"commerce\".\"flows\".\"trigger\" when 'customer.lapsed' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 30 and 730, false) when 'customer.browsed' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 1 and 5, false) else \"commerce\".\"flows\".\"trigger_days\" is null end"
+          "value": "case \"commerce\".\"flows\".\"trigger\" when 'customer.lapsed' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 30 and 730, false) when 'customer.browsed' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 1 and 5, false) when 'subscriber.asleep' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 90 and 180, false) else \"commerce\".\"flows\".\"trigger_days\" is null end"
         },
         "flows_replaces": {
           "name": "flows_replaces",
@@ -37363,7 +37363,7 @@
         },
         "flows_trigger": {
           "name": "flows_trigger",
-          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'customer.lapsed', 'customer.browsed')"
+          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep')"
         },
         "flows_on_when_tested": {
           "name": "flows_on_when_tested",
@@ -47161,6 +47161,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "unsubscribed_at": {
           "name": "unsubscribed_at",
