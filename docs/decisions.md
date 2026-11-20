@@ -847,7 +847,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D842 | **A listing fetches its first screen of tiles ahead and the rest on intent** | 2026-11-20 | [text](decisions/D842.md) |
 | D843 | **No scheduled job fails in silence: report() for caught errors, trackedWork() for work after a route's answer (bloat revi** | 2026-11-20 | [text](decisions/D843.md) |
 | D844 | **Admin redesign round 69: Kaizena Flow's new form, referrals and docs guide on a phone** | 2026-11-20 | [text](decisions/D844.md) |
-| D845 | **Empty screens with a next step: every empty admin list says what it is for and offers one thing to do, a filtered one Cl** | 2026-11-20 | [text](decisions/D845.md) |
+| D845 | **Empty screens with a next step: every empty admin list says what it is for and offers one thing to do, a filtered one Clear filters** | 2026-11-20 | [text](decisions/D845.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
