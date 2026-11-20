@@ -18,6 +18,8 @@ type Product = {
   features: Feature[];
   faq: { q: string; bold: string; rest: string }[];
   end: { title: string; bold: string; rest: string };
+  /** The main action when the product is not sold on its own (email automation): the store's sign-up. */
+  action?: { label: string; href: string };
 };
 
 /** After a trial: 14 days of grace, then read-only with everything kept to read and export (docs/extensions.md 2 and 4.3). */
@@ -29,7 +31,7 @@ const AFTER_TRIAL = {
 
 /** A product page from its words, in the feature pages' shape (6.11). */
 function productPage(p: Product) {
-  const action = { label: "Start Your Free Trial", href: `/sign-up/extensions?with=${p.id}` };
+  const action = p.action ?? { label: "Start Your Free Trial", href: `/sign-up/extensions?with=${p.id}` };
   const turns = [TURN_B, TURN_A];
   return {
     title: p.title,
@@ -117,7 +119,7 @@ export const EMAIL_AUTOMATION: Product = {
     eyebrow: "Kaizena Email Automation",
     title: "Emails That Send Themselves",
     bold: "Newsletters, segments and flows that reach the right people at the right moment.",
-    rest: "With consent done properly. Try it free for 14 days.",
+    rest: "With consent done properly. Add it to your Kaizena Flow store and try it free for 14 days.",
     claims: ["Newsletters", "Flows", "Clear reports"],
   },
   cards: {
@@ -158,6 +160,8 @@ export const EMAIL_AUTOMATION: Product = {
     { q: "Will the AI write my emails?", bold: "It can suggest the words.", rest: "Products and prices always come from your catalogue, never from the AI." },
   ],
   end: { title: "Try Email Automation Free", bold: "Free for 14 days.", rest: "Your first flow can be running this afternoon." },
+  // Not sold on its own since 20 November 2026 (the owner's choice: no way in for a workspace's contacts yet): it is added to a store.
+  action: { label: "Get Started with Flow", href: "/sign-up" },
 };
 
 // D122 to D124 (clients, jobs, time, invoices, reports), D478 to D506 (the books, bank statements, receipts, the VAT return, the year-end),

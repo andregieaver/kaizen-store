@@ -102,8 +102,9 @@ page in the generator (no WhatsApp or text messages on the desk, no open trackin
 only, no card payment of an invoice, a simple electronic signature and not BankID). No issues and no claims found. Saved as new drafts of
 Kaizena Flow's own store (`published` null, a `saved` version, a `store.page_saved` entry), each guarded by the md5 of the checked JSON.
 
-**Before publishing:** the sign-up their buttons lead to answers only once `STANDALONE_SIGNUP_OPEN` is on (off until email automation has a
-way in for a workspace's contacts, `docs/extensions.md` 13, E7 part three b): publish them together with that. Look at each on a phone and in
+The same day the owner chose to open the sign-up without email automation sold on its own, so the Email Automation draft was changed in
+place (its two buttons *Get Started with Flow* to `/sign-up`, and the hero's line *Add it to your Kaizena Flow store*), as the generator
+now makes it. **Before publishing:** the sign-up the other three lead to is open (`STANDALONE_SIGNUP_OPEN`). Look at each on a phone and in
 dark mode; screenshots of the inbox, a flow, a Work invoice and the deals board would make the feature rows better. They belong in the
 *Explore* menu's *Run your business* group (the owner's to approve).
 
