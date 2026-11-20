@@ -1,7 +1,7 @@
 import { CONSENT_CATEGORIES, type ConsentCategory, type OptionalCategory } from "@/lib/cookie-consent";
 import { t } from "@/lib/i18n";
 
-import { CookieSettingsButton } from "./consent-manager";
+import { CookieSettingsButton } from "./cookie-settings-button";
 import { DeleteRecordings } from "./delete-recordings";
 
 /** A cookie as a site's cookie page lists it (D58). */
