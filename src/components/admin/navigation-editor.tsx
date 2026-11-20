@@ -183,7 +183,7 @@ export function NavigationEditor({
         />
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-card/95 backdrop-blur">
+      <div data-bottom-bar="" className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
           <button
             type="button"

@@ -1214,7 +1214,7 @@ export function PageEditor({
 
       {/* A dual page shows the active page's bar only, with Save both and Publish both (D412). */}
       {(!dual || dual.active) && (
-      <div data-editor-bar="" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 backdrop-blur">
+      <div data-editor-bar="" data-bottom-bar="" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 backdrop-blur">
         {browserDraft.offer && (
           <div className="px-4 pt-3">
             <DraftOffer at={browserDraft.offer.at} onRestore={restoreDraft} onDiscard={browserDraft.discard} />

@@ -203,7 +203,7 @@ export function AdminFrame({
               {children}
             </AdminMain>
             {/* Room under the page for the phone's bottom bar. */}
-            {phoneTabs && focused(<div aria-hidden className="h-24 shrink-0 md:hidden" />, null)}
+            {phoneTabs && focused(<div aria-hidden className="h-24 shrink-0 md:hidden [body:has([data-bottom-bar])_&]:hidden" />, null)}
           </div>
         </div>
         {phoneTabs && focused(<PhoneTabBar items={tabs} label={w.sections} more={w.more} areas={areas ?? []} />, null)}
