@@ -8,7 +8,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
-import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { Chip, EmptyState, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
@@ -176,7 +176,7 @@ export default async function PlatformIntegrationPage({ params, searchParams }: 
             </h2>
             <p className="mb-3 text-sm text-muted">{w.recentHint}</p>
             {deliveries.length === 0 ? (
-              <p className="text-sm text-muted">{w.nothing}</p>
+              <EmptyState compact title={w.nothing} />
             ) : (
               <List label={w.eventsSent}>
                 {deliveries.map((d) => (

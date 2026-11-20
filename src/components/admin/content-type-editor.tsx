@@ -43,6 +43,7 @@ import { FieldEditorDialog, type FieldLanguage } from "./field-editor-dialog";
 import { FieldList } from "./field-group-editor";
 import { FieldTypePicker } from "./field-type-picker";
 import { FieldsForm } from "./fields-form";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 const input =
   "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
@@ -364,9 +365,8 @@ export function ContentTypeEditor({
             </button>
           </div>
           {fields.length === 0 ? (
-            <p className="rounded-panel border border-dashed border-line p-6 text-center text-sm text-muted">
-              {w.noFields}
-            </p>
+            // Add a field, just above, is the next step.
+            <EmptyState title={w.noFields} />
           ) : (
             <FieldList
               fields={fields}

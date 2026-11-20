@@ -10,7 +10,7 @@ import { ExportButton } from "./export-scope";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { dayText, moneyWriter } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
@@ -354,17 +354,15 @@ export function bridgeBars(report: SubscriptionsReport, money: (minor: number | 
 function EmptyStore({ base, w }: { base: string; w: SubscriptionsWords }) {
   return (
     <AnalyticsSection id="empty" title={w.emptyTitle} description={w.emptyDescription}>
-      <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-        <p className="mx-auto max-w-prose">{w.emptyText}</p>
-        <p className="mt-3 space-x-4">
-          <Link href={`${base}/products`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
+      <EmptyState
+        title={w.emptyText}
+        action={
+          // Offering a subscription on a product is the one next step.
+          <ButtonLink kind="main" href={`${base}/products`}>
             {w.addOption}
-          </Link>
-          <Link href={`${base}/subscriptions`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
-            {w.openSubscriptions}
-          </Link>
-        </p>
-      </div>
+          </ButtonLink>
+        }
+      />
     </AnalyticsSection>
   );
 }

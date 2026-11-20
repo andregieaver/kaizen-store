@@ -6,6 +6,7 @@ import { fillWords } from "@/lib/admin-fill";
 import type { Memory } from "@/server/assistant-memory";
 
 import { useAdminText } from "./admin-text";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 export type AiMemoryActions = {
   update: (id: string, content: string) => Promise<boolean>;
@@ -95,7 +96,7 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
         </p>
       )}
       {memories.length === 0 ? (
-        <p className="rounded-panel border border-line p-4 text-sm">{w.empty}</p>
+        <EmptyState title={w.empty} />
       ) : (
         groups.map((group) => (
           <div key={group.kind} className="flex flex-col gap-2">

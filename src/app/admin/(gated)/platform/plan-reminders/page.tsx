@@ -15,7 +15,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { setPlanRemindersAction } from "./actions";
 import { requirePlatformReader } from "@/server/auth";
-import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, Card, Chip, EmptyState, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -106,9 +106,8 @@ export default async function PlanRemindersPage() {
           </Link>
         </div>
         {settings.steps.length === 0 ? (
-          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            {w.none}
-          </p>
+          // The heading's New reminder is the next step.
+          <EmptyState title={w.none} />
         ) : (
           <Card compact>
             <List label={w.reminders}>
@@ -144,9 +143,7 @@ export default async function PlanRemindersPage() {
           {w.latest}
         </h2>
         {checkouts.length === 0 ? (
-          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            {w.nothing}
-          </p>
+          <EmptyState title={w.nothing} />
         ) : (
           <Card compact>
             <List label={w.checkouts}>

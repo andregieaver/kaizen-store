@@ -15,7 +15,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
 import { requireAccount } from "@/server/auth";
 import { referrerOverview } from "@/server/referrals";
-import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Referrals" };
 
@@ -97,9 +97,7 @@ export default async function ReferralsPage() {
 
             <Section id="stores-heading" title={w.stores}>
               {overview.stores.length === 0 ? (
-                <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-                  {w.noStores}
-                </p>
+                <EmptyState title={w.noStores} />
               ) : (
                 <Card compact>
                   <List label={w.stores}>
@@ -126,9 +124,7 @@ export default async function ReferralsPage() {
 
             <Section id="history-heading" title={w.history}>
               {overview.entries.length === 0 ? (
-                <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-                  {w.noHistory}
-                </p>
+                <EmptyState title={w.noHistory} />
               ) : (
                 <Card compact>
                   <List label={w.creditList}>

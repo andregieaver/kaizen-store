@@ -7,6 +7,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redirects.en";
 import { lineResultWords } from "@/lib/redirect-admin";
 import { redirectFindingText } from "@/lib/redirect-words";
+import { EmptyState } from "@/components/admin/ui";
 
 /** The numbers of a dry run: what an import would do (2.2.4 step 3). */
 export function RedirectDryRun({
@@ -135,7 +136,8 @@ export function RedirectFindings({
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? f.nothing : f.noneOfKind}</p>
+        // The kinds above are the way back to every line.
+        <EmptyState title={severity === "all" ? f.nothing : f.noneOfKind} />
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">

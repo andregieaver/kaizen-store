@@ -21,6 +21,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 import { useAdminText } from "../admin-text";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 type Save = (state: FormState, form: FormData) => Promise<FormState>;
 
@@ -84,7 +85,8 @@ export function RepliesManager({
           {fillWords(w.allTitle, { n: replies.length })}
         </h2>
         {replies.length === 0 ? (
-          <p className="text-muted max-sm:rounded-panel max-sm:bg-card max-sm:p-4 max-sm:text-ink">{w.none}</p>
+          // The new reply's form is the next step (first on a computer, a row below on a phone).
+          <EmptyState title={w.none} />
         ) : (
           <ul className="flex flex-col gap-3">
             {replies.map((reply) => (

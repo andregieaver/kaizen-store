@@ -9,7 +9,7 @@ import { requestIp } from "@/server/connect";
 import { hostTaxStatus } from "@/server/dac7";
 import { ensureHostTestAccount, getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { hostListings, hostResources, requireHost } from "@/server/hosts";
-import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -100,7 +100,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
           {w.bookings}
         </h2>
         {bookings.length === 0 ? (
-          <p className="text-sm text-muted">{w.noneYet}</p>
+          <EmptyState title={w.noneYet} />
         ) : (
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {bookings.map((b) => (

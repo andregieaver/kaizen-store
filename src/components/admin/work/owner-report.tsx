@@ -13,7 +13,7 @@ import {
   type ReportParams,
   type ReportPreset,
 } from "@/lib/work-reports";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 
 import { reportCells, reportHeadings, reportNotes } from "./report-columns";
 import { ReportTotalsView } from "./report-totals";
@@ -127,9 +127,7 @@ export function OwnerReportView({
       {(many || manyCurrencies) && <CurrencyNote />}
 
       {report.rows.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          {tw.nothingToReportIn}
-        </p>
+        <EmptyState title={tw.nothingToReportIn} />
       ) : (
         <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-sm">

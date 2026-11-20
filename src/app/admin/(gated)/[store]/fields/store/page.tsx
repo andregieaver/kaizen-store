@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { EntityFieldsCard } from "@/components/admin/entity-fields-card";
@@ -10,7 +9,7 @@ import { FIELDS_WORDS } from "@/lib/admin-words/fields";
 import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
 import { requirePermission } from "@/server/permissions";
 import { storeFieldsForEditor } from "@/server/field-entities";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, EmptyState, PageHeader } from "@/components/admin/ui";
 
 import { saveStoreFieldsAction } from "../actions";
 import { entityFieldsSetup } from "../data";
@@ -36,13 +35,16 @@ export default async function StoreFieldsPage({ params }: PageProps<"/admin/[sto
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: base, label: t.title }} title={t.storeTitle} description={t.storeDescription} />
       {editor.groups.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {t.storeEmptyBefore}{" "}
-          <Link href={`${base}/new?entity=store`} className="underline">
-            {t.makeOne}
-          </Link>{" "}
-          {t.storeEmptyAfter}
-        </p>
+        <EmptyState
+          title={t.storeEmpty}
+          action={
+            <ButtonLink kind="main" href={`${base}/new?entity=store`}>
+              {t.makeStoreGroup}
+            </ButtonLink>
+          }
+        >
+          {t.storeEmptyText}
+        </EmptyState>
       ) : (
         <EntityFieldsCard
           groups={editor.groups}

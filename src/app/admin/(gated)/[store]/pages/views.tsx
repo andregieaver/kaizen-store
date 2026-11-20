@@ -36,7 +36,7 @@ import { WEBSITE_LIST_WORDS } from "@/lib/admin-words/website-list";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { listTerms } from "@/server/taxonomy";
-import { buttonClass, ButtonLink, Card, CARD_CLASS, Chip, CountBadge, PageHeader, Pager, Select } from "@/components/admin/ui";
+import { buttonClass, ButtonLink, Card, CARD_CLASS, Chip, CountBadge, EmptyState, PageHeader, Pager, Select } from "@/components/admin/ui";
 import { commentCounts } from "@/server/blog-comments";
 
 import {
@@ -249,9 +249,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           />
         </>
       ) : pages.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS} max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none`}>
-          {tw.none}
-        </p>
+        // The header's New is the next step; a phone shows a plain line.
+        <EmptyState title={tw.none} className="max-sm:items-start max-sm:border-0 max-sm:p-0 max-sm:text-left" />
       ) : type === "product_layout" ? (
         <ProductLayoutsTable
           layouts={pages}

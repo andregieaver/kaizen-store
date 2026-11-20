@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { requirePlatformReader } from "@/server/auth";
 import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { THEME_UPDATE_KEEP_DAYS, listOfferedDesigns, platformThemeUpdates } from "@/server/design-presets";
@@ -91,7 +91,7 @@ export default async function PlatformThemesPage() {
       />
       <Card title={d.addTitle} description={d.addDescription}>
         {offered.length === 0 ? (
-          <p className="text-sm text-muted">{d.noneOffered}</p>
+          <EmptyState compact title={d.noneOffered} />
         ) : (
           <List label={d.offeredList}>
             {/* Each theme's own look, then each of its presets (docs/theme-showcase-phase-1.md), added on its own. */}

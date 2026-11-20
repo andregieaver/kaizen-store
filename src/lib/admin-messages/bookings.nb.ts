@@ -80,8 +80,8 @@ export const bookingsNb: BookingsMessages = {
     today: "I dag",
     later: "Senere →",
     noUnits: "Ingen rom eller utleiegjenstander ennå.",
-    addThem: "Legg dem til",
-    thenChoose: ", og velg dem i et opphold eller en utleie.",
+    unitsText: "Legg til rommene, boligene og gjenstandene kundene bestiller, og velg dem i et opphold eller en utleie.",
+    addUnits: "Legg til rom og gjenstander",
     caption: "Opptatte netter og dager",
     unit: "Rom eller gjenstand",
     stays: "Opphold",
@@ -343,6 +343,7 @@ export const bookingsNb: BookingsMessages = {
   subscriptions: {
     title: "Abonnementer",
     none: "Ingen abonnementer ennå. Tilby et under Abonnementer i et produkt; hver kunde som abonnerer, vises her.",
+    toProducts: "Gå til produktene",
     items: {
       one: "1 vare",
       many: "{n} varer",

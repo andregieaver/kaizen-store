@@ -100,6 +100,15 @@ under *What the router fetches ahead*.
   a list that holds more than it shows says "100 of 150", and a page past the last opens the first. Only a list whose rows keep arriving pages by
   cursor (Orders). Its search is `ListSearch`, its views and filters in the same form; a bulk *choose all* says whether it means this page or every
   match on all pages. Customers, Products, Invoices, Returns, Pages, Articles and the platform's Stores and Customers do.
+- An empty screen or list, at all three levels, is `EmptyState` (code review 2.9, D845): its title says what is missing in plain words, a
+  line says what goes here only where it helps, and `action` holds one next step, a `ButtonLink` (usually the page's own *make the first*,
+  else an import, a setting or the page where it is made). Where the header or a form beside it already holds that step, the box has no
+  action: two links of one name confuse people and tests. A search or filter that matched nothing has its own title ("No product matches
+  …") and *Clear filters* (`KIT_WORDS[lang].empty.clearFilters`, handed to a client part) back to the list without its query, unless the search bar already has that way back.
+  Inside a card or a dialog it is `compact`; a phone's plain line is kept with `className` (`max-sm:border-0 max-sm:p-0 …`). A person with
+  no store gets who to ask and *Start a store* (the control center, `/admin/stores`). The ratchet's `adminFiles.emptyBlocks` (a centred box
+  with `p-6`+, a thin dashed box with muted words, a card holding only a word of nothing) is none but those named in the test (drop targets, and the page finder, kept out of every admin route's first scripts),
+  and `adminFiles.emptyLines` (a word of nothing alone in a bare line) only falls.
 - Anything that asks first is `ConfirmButton`: the admin's `Modal` with the action's own words (the question's first sentence its title,
   the confirm word, *Cancel* focused), then its `action`, or its form submitted with it as the submitter; `ask={false}` where nothing needs
   asking, `cancel` where *Cancel* would read as the action's own. Never `window.confirm`.

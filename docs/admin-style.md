@@ -438,7 +438,9 @@ header only.
   it; a required field's label carries a `*` in `danger-text`. The control's box (`TextInput`, `Select`, `TextArea`) is 40 px,
   `rounded-md`, `border-line` on `bg-card`, 12 px side padding (36 px and 8 px dense), its border `danger-text` while it is invalid.
 - **Empty state**: a dashed `border-line` box, `rounded-panel`, centred: the title (`body-strong`, `ink`), a line (`body`, `muted`) and
-  one next step; small and left-aligned in a panel or a dialog.
+  one next step; small and left-aligned in a panel or a dialog. A search or filter that found nothing has its own title and *Clear
+  filters*; on a phone a list may draw it as a plain line (no border or padding, left-aligned). It is the only "nothing here" box in the
+  admin (code review 2.9, D845): no `p-8 text-center` paragraph, sunken box or card holding one word of nothing.
 - **Confirm**: the admin's dialog, the question's first sentence its title and the rest under it, then *Cancel* (focused) and the
   confirm word, `danger` for deleting, ending and refusing, `main` for sending.
 - **A list's search and pages**: the Orders bar (a pill of `bg-card` ringed in `edge`: the search icon, the field, the round arrow,

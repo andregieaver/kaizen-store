@@ -7,6 +7,7 @@ import { Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminAreaMessages } from "@/lib/admin-text";
 import { SYNONYMS_MAX, synonymLine, type SynonymKind } from "@/lib/search-synonyms";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 export type SynonymWords = AdminAreaMessages["bookings"]["search"]["synonyms"];
 
@@ -48,7 +49,7 @@ export function SynonymsCard({
             <div key={locale} className="flex flex-col gap-2">
               {several && <h3 className="text-eyebrow text-muted">{name}</h3>}
               {own.length === 0 ? (
-                <p className="text-sm text-muted">{w.none}</p>
+                <EmptyState compact title={w.none} />
               ) : (
                 <ul className="divide-y divide-line rounded-panel border border-line text-sm">
                   {own.map((line) => (

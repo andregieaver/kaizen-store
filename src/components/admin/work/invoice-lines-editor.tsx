@@ -30,6 +30,7 @@ import type { LineTime } from "@/server/work-invoice-screens";
 import { errorText, smallButton, smallControl } from "./work-parts";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 export type LinesEditorProps = {
   rows: readonly LineRow[];
@@ -75,9 +76,7 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
   return (
     <div className="flex flex-col gap-3">
       {rows.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line p-4 text-sm text-muted">
-          {tw.noLinesYetAdd}
-        </p>
+        <EmptyState compact title={tw.noLinesYetAdd} />
       ) : (
         <div>
           <div

@@ -18,7 +18,7 @@ import {
 import { ownedStores } from "@/server/ai-usage";
 import { listPlans, listStoreBilling, type StoreBilling } from "@/server/billing";
 import { ownedAccount } from "@/server/privacy-officers";
-import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
@@ -64,7 +64,7 @@ export default async function OwnerBillingPage({ searchParams }: PageProps<"/adm
       <PageHeader title={w.title} description={billedByAccount ? w.account.description : w.description} />
       {billedByAccount && <AccountPlan billing={billedByAccount} words={w.account} b={b} per={per} lang={lang} />}
       {rows.length === 0 ? (
-        <p className="rounded-panel border border-line p-4 text-sm">{w.none}</p>
+        <EmptyState title={w.none} />
       ) : (
         <>
           {!billedByAccount && (

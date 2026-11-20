@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { buttonClass, Card, CARD_CLASS, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { buttonClass, Card, EmptyState, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -69,7 +69,8 @@ export default async function DeveloperPage({ searchParams }: PageProps<"/admin/
         }
       />
       {apps.length === 0 ? (
-        <p className={`max-w-3xl p-4 text-sm text-muted ${CARD_CLASS}`}>{w.none}</p>
+        // The header's New app is the next step.
+        <EmptyState title={w.none} className="max-w-3xl" />
       ) : (
         <Card title={w.apps}>
           <List label={w.apps}>

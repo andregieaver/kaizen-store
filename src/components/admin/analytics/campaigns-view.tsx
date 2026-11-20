@@ -11,6 +11,7 @@ import type { CampaignReport } from "@/server/analytics-traffic-data";
 import { DataTable, type Column } from "./data-table";
 import { moneyWriter } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
+import { EmptyState } from "@/components/admin/ui";
 
 /**
  * The Marketing page's campaigns (wave 5 unit I3, D303, `docs/analytics.md` "Campaign"): per source and campaign its sessions, paid orders,
@@ -70,7 +71,7 @@ export function CampaignsView({
       }
     >
       {!report.counting ? (
-        <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.notCounting}</p>
+        <EmptyState title={w.notCounting} />
       ) : (
         <>
           <DataTable caption={w.caption} columns={columns} rows={rows} rowKey={(r) => `${r.source}|${r.campaign}`} empty={w.empty} exportId="marketing.campaigns" />

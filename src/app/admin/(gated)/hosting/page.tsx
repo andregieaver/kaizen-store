@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { requireAccount } from "@/server/auth";
 import { listHostings } from "@/server/hosts";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
@@ -21,7 +21,7 @@ export default async function HostingPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={w.title} />
       {hostings.length === 0 ? (
-        <p className="text-sm text-muted">{w.none}</p>
+        <EmptyState title={w.none} />
       ) : (
         <ul className={`divide-y divide-line ${CARD_CLASS}`}>
           {hostings.map((h) => (

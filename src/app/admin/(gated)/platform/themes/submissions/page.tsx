@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { Card, Chip, EmptyState, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
@@ -39,7 +39,7 @@ export default async function SubmissionsPage({ searchParams }: PageProps<"/admi
       </nav>
       <Card>
         {rows.length === 0 ? (
-          <p className="text-sm text-muted">{filter === "open" ? s.none : s.noneDecided}</p>
+          <EmptyState compact title={filter === "open" ? s.none : s.noneDecided} />
         ) : (
           <List label={s.title}>
             {rows.map((row) => (

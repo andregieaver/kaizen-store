@@ -8,6 +8,7 @@ import type { Finding, ItemOutcome } from "@/lib/data-job";
 import { numberIn, rowsIn } from "@/lib/inventory-words";
 import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { EmptyState } from "@/components/admin/ui";
 
 /**
  * What a customer import found and did (wave 10 unit C, D366), presentational: the dry run's numbers, the apply's, and every row with its
@@ -125,7 +126,8 @@ export function CustomerFindings({
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? w.nothing : w.noneOfKind}</p>
+        // The kinds above are the way back to every line.
+        <EmptyState title={severity === "all" ? w.nothing : w.noneOfKind} />
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">

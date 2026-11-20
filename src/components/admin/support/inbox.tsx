@@ -27,6 +27,7 @@ import {
 import { CARD_CLASS } from "@/components/admin/ui";
 
 import { useAdminText } from "../admin-text";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 /**
  * The support inbox (D216, `docs/support.md` 2.4, 5.4), the same at every level: the list on the left, the conversation in the middle
@@ -556,16 +557,20 @@ export function Inbox({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {rows.length === 0 && tab !== "ended" && !(query || tone || topic || store) ? (
               // Round 21 (D681): an empty inbox says how shoppers reach you and what happens when they do.
-              <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-                <MessageSquare aria-hidden className="size-10 text-brand-text" strokeWidth={1.5} />
-                <p className="text-body-strong text-ink">{w.quietTitle}</p>
-                <p className="max-w-xs text-body text-ink-2">{t.empty[tab]} {w.quietText}</p>
-                {context.shopUrl && (
-                  <a href={context.shopUrl} target="_blank" rel="noreferrer" className="text-body font-medium text-brand-text underline underline-offset-2">
-                    {w.seeChat}
-                  </a>
-                )}
-              </div>
+              <EmptyState
+                icon={<MessageSquare strokeWidth={1.5} />}
+                title={w.quietTitle}
+                action={
+                  context.shopUrl && (
+                    <a href={context.shopUrl} target="_blank" rel="noreferrer" className="text-body font-medium text-brand-text underline underline-offset-2">
+                      {w.seeChat}
+                    </a>
+                  )
+                }
+                className="border-0"
+              >
+                {t.empty[tab]} {w.quietText}
+              </EmptyState>
             ) : (
               <ConversationList
                 rows={rows}

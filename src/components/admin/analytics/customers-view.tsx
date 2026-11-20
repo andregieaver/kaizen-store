@@ -16,7 +16,7 @@ import { DataTable, ShareBar, type Column } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState } from "@/components/admin/ui";
 
 /**
  * The Customers page's body (D152): everything under the page's header, drawn from the one report object it is handed and nothing
@@ -248,12 +248,7 @@ export function CustomersView({
       <div className="flex flex-col gap-8">
         {noteBlock}
         <AnalyticsSection id="cust-empty" title={w.emptyTitle} description={w.emptyDescription}>
-          <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-            <p className="font-medium text-ink">{w.emptyLead}</p>
-            <p className="mx-auto mt-1 max-w-prose">
-              {w.emptyBody}
-            </p>
-          </div>
+          <EmptyState title={w.emptyLead}>{w.emptyBody}</EmptyState>
         </AnalyticsSection>
       </div>
     );
@@ -484,7 +479,7 @@ export function CustomersView({
             </div>
           </div>
         ) : (
-          <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.nvrEmpty}</div>
+          <EmptyState title={w.nvrEmpty} />
         )}
       </AnalyticsSection>
       </PhoneRow>

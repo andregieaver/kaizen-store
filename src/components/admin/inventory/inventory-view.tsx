@@ -12,6 +12,7 @@ import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import type { InventoryPage } from "@/server/inventory";
 
 import { InventoryTable, type InventoryTools } from "./inventory-table";
+import { ButtonLink, EmptyState } from "@/components/admin/ui";
 
 /**
  * The Inventory page's body (wave 3, D172, `docs/wave-3-inventory.md` 2.2): the counts of what needs a look (each a link that sets the filter), the filter
@@ -115,19 +116,21 @@ export function InventoryView({
       )}
 
       {page.rows.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">
-          {filtered ? (
-            w.noMatch
-          ) : (
-            <>
-              {w.noGoods}
-              <Link href={`/admin/${slug}/products/new`} className="underline underline-offset-2">
+        filtered ? (
+          // The way back is beside the search box (Clear the filter).
+          <EmptyState title={w.noMatch} />
+        ) : (
+          <EmptyState
+            title={w.noGoods}
+            action={
+              <ButtonLink kind="main" href={`/admin/${slug}/products/new`}>
                 {w.addProduct}
-              </Link>
-              .
-            </>
-          )}
-        </p>
+              </ButtonLink>
+            }
+          >
+            {w.noGoodsText}
+          </EmptyState>
+        )
       ) : (
         <InventoryTable
           rows={page.rows}

@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { weekSummary } from "@/lib/opening-hours";
 import { requirePermission } from "@/server/permissions";
 import { listResources } from "@/server/bookings";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
@@ -34,9 +34,8 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
         </Link>
       </div>
       {staff.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
-          {w.none}
-        </p>
+        // The header's Add staff is the next step.
+        <EmptyState title={w.none} />
       ) : (
         <ul className={`divide-y divide-line ${CARD_CLASS}`}>
           {staff.map((s) => (

@@ -18,7 +18,7 @@ import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { dayText } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
 import { safeMoney } from "./subscriptions-view";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
@@ -287,16 +287,7 @@ function CountingState({ base, traffic, w }: { base: string; traffic: TrafficRep
 
 function NeedsCounting({ traffic, base, what, w }: { traffic: TrafficReport; base: string; what: string; w: TrafficWords }) {
   return (
-    <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-      <p>{`${what} ${countingReason(traffic, w)}`}</p>
-      {!traffic.counting ? (
-        <p className="mt-1">
-          <Link href={`${base}/analytics/settings#visits`} className={linkClass}>
-            {w.turnOn}
-          </Link>
-        </p>
-      ) : null}
-    </div>
+    <EmptyState title={`${what} ${countingReason(traffic, w)}`} action={!traffic.counting && <ButtonLink href={`${base}/analytics/settings#visits`}>{w.turnOn}</ButtonLink>} />
   );
 }
 
@@ -647,16 +638,14 @@ function SearchSection({ base, search, timeZone, money, w }: { base: string; sea
         </Note>
       ) : null}
       {none ? (
-        <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          {search.period.days === 0 ? w.noSearchesPeriod : w.noSearchUsed}
-        </div>
+        <EmptyState title={search.period.days === 0 ? w.noSearchesPeriod : w.noSearchUsed} />
       ) : (
         <>
           <div className="space-y-2">
             <h3 className="text-body-strong text-ink">{w.zeroTitle}</h3>
             <p className="max-w-prose text-sm text-muted">{w.zeroText}</p>
             {search.zeroTerms.length === 0 ? (
-              <div className="rounded-panel border border-dashed border-line px-4 py-4 text-sm text-muted">{w.nothingMissed}</div>
+              <EmptyState compact title={w.nothingMissed} />
             ) : (
               <>
                 <DataTable caption={w.zeroCaption} columns={zeroColumns} rows={search.zeroTerms} rowKey={(r) => r.term} exportId="traffic.zero_terms" />

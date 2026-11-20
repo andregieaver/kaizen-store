@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { ButtonLink, Card, CountBadge, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, CountBadge, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { COMMENT_STATUSES, type CommentStatus } from "@/lib/blog-comments";
@@ -57,7 +57,7 @@ export default async function CommentsPage({ params, searchParams }: PageProps<"
       </nav>
       <Card title={m.tabs[status]} description={status === "spam" || status === "rejected" ? m.retention : m.plainText}>
         {comments.length === 0 ? (
-          <p className="text-sm text-muted">{m.none[status]}</p>
+          <EmptyState compact title={m.none[status]} />
         ) : (
           <ul role="list" className="divide-y divide-line">
             {comments.map((comment) => (

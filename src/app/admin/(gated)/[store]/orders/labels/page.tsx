@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { requireFeature } from "@/components/admin/feature-off";
-import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { BULK_PRINT_MAX } from "@/lib/order-bulk";
@@ -53,9 +53,7 @@ export default async function LabelsPage({ params, searchParams }: PageProps<"/a
     <div className="flex flex-col gap-4">
       <PageHeader back={back} title={w.title} description={labels.length > 0 ? countWords(labels.length, w.ready) : undefined} />
       {labels.length === 0 && (
-        <p role="status" className="rounded-panel bg-sunken p-4 text-sm">
-          {w.none}
-        </p>
+        <EmptyState title={w.none} />
       )}
       {missing > 0 && labels.length > 0 && (
         <p role="status" className="rounded-panel bg-sunken p-4 text-sm">

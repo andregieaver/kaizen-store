@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { Chip, EmptyState, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -50,7 +50,7 @@ export default async function AccountsPage() {
         </section>
       )}
       {previews.length === 0 ? (
-        <p className="rounded-panel border border-line bg-card p-4 text-sm">{w.none}</p>
+        <EmptyState title={w.none} />
       ) : (
         <List label={w.list}>
           {previews.map((p) => (

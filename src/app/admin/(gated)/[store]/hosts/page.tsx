@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { hostTaxStatus } from "@/server/dac7";
 import { listHosts } from "@/server/hosts";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
@@ -43,7 +43,17 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
         </p>
       )}
       {hosts.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{w.none}</p>
+        <EmptyState
+          title={w.none}
+          action={
+            // The form to add one is below.
+            memberCan(current, "owner") && (
+              <ButtonLink kind="main" href="#add-host">
+                {w.add}
+              </ButtonLink>
+            )
+          }
+        />
       ) : (
         <ul className={`divide-y divide-line ${CARD_CLASS}`}>
           {hosts.map((h) => (

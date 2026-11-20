@@ -6,6 +6,7 @@ import { SEVERITY_FILTERS, rowsPhrase, wholeNumber, type SeverityFilter } from "
 import type { Finding, ItemOutcome } from "@/lib/data-job";
 
 import { hint, tableShell, td, th } from "./ui";
+import { EmptyState } from "@/components/admin/ui";
 
 /** One product's line of an import: what the file said about it and what happened (or would happen). */
 export type FindingItem = { seq: number; ref: string | null; rows: number[]; outcome: ItemOutcome; will: string | null; messages: Finding[] };
@@ -68,7 +69,8 @@ export function FindingsTable({
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? w.nothing : w.noneOfKind}</p>
+        // The kinds above are the way back to every line.
+        <EmptyState title={severity === "all" ? w.nothing : w.noneOfKind} />
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">

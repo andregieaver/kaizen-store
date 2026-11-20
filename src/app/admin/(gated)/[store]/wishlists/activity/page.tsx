@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { CartAddTable, WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listCartAdds } from "@/server/wishlist-admin";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
@@ -54,11 +54,8 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
       </nav>
 
       {rows.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {show === "all"
-            ? w.activity.none
-            : w.activity.nothing}
-        </p>
+        // A filter that matched nothing has its way back in the filters above (Everything).
+        <EmptyState title={show === "all" ? w.activity.none : w.activity.nothing} />
       ) : (
         <div className={`px-4 ${CARD_CLASS}`}>
           <CartAddTable timeZone={store.timeZone} rows={rows} storeSlug={store.slug} locale={locale} words={w} dateLocale={lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale} />
