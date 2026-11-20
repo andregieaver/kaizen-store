@@ -2,10 +2,7 @@ import Link from "next/link";
 
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import {
-  supportEn,
-  type SupportMessages,
-} from "@/lib/admin-messages/support.en";
+import type { SupportMessages } from "@/lib/admin-messages/support.en";
 import type { RequestRow } from "@/server/support-actions";
 import type { RequestChoice } from "@/server/support-carry-out";
 
@@ -25,7 +22,7 @@ export function RequestsView({
   carryOut = null,
   choices = {},
   now,
-  words = supportEn,
+  words,
 }: {
   rows: RequestRow[];
   which: "open" | "decided";
@@ -40,7 +37,7 @@ export function RequestsView({
   /** What each open request offers (`requestChoices()`). */
   choices?: Record<string, RequestChoice>;
   now: Date;
-  words?: SupportMessages;
+  words: SupportMessages;
 }) {
   const w = words.requests;
   return (

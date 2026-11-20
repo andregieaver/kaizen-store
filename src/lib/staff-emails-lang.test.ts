@@ -39,31 +39,31 @@ describe("owner and staff emails in the account's language (D312 A10)", () => {
 
   it("the English is what the words given by default make", () => {
     expect(securityEmail(security, staffEmailsEn, "en")).toEqual(
-      securityEmail(security),
+      securityEmail(security, staffEmailsEn),
     );
-    expect(securityEmail(security).subject).toBe(
+    expect(securityEmail(security, staffEmailsEn).subject).toBe(
       "Your two-step sign-in was reset",
     );
-    expect(text(securityEmail(security))).toContain(
+    expect(text(securityEmail(security, staffEmailsEn))).toContain(
       "A platform admin (admin@example.com) reset the two-step sign-in",
     );
-    expect(guardrailEmail(guardrail).subject).toBe(
+    expect(guardrailEmail(guardrail, staffEmailsEn).subject).toBe(
       'Your A/B test "Vår" was stopped: fewer orders in version B',
     );
-    expect(text(guardrailEmail(guardrail))).toContain(
+    expect(text(guardrailEmail(guardrail, staffEmailsEn))).toContain(
       "had run for 1 day when version B (Ny)",
     );
-    expect(text(guardrailEmail(guardrail))).toContain(
+    expect(text(guardrailEmail(guardrail, staffEmailsEn))).toContain(
       "12 of 1,200 visitors who saw version B ordered (1 %)",
     );
-    expect(text(statusEmail(closure))).toContain(
+    expect(text(statusEmail(closure, staffEmailsEn))).toContain(
       "You can reopen the store yourself until 20 November 2026",
     );
     // The store's own day (D796): midnight UTC is still the evening of the 19th in New York.
-    expect(text(statusEmail({ ...closure, timeZone: "America/New_York" }))).toContain(
+    expect(text(statusEmail({ ...closure, timeZone: "America/New_York" }, staffEmailsEn))).toContain(
       "You can reopen the store yourself until 19 November 2026",
     );
-    expect(statusEmail(closure).lang).toBe("en");
+    expect(statusEmail(closure, staffEmailsEn).lang).toBe("en");
   });
 
   it("writes Norwegian with Norwegian numbers and dates", () => {

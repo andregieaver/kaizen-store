@@ -4,10 +4,7 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 import { formatCount, formatPercent } from "@/lib/analytics-core";
 import { fillWords } from "@/lib/admin-fill";
-import {
-  supportEn,
-  type SupportMessages,
-} from "@/lib/admin-messages/support.en";
+import type { SupportMessages } from "@/lib/admin-messages/support.en";
 import { topicWords } from "@/lib/support-inbox-text";
 import {
   HANDOFF_WHYS,
@@ -57,7 +54,7 @@ function Figure({
 }
 
 /** A share, or what is missing for it. */
-export function rateValue(r: Rate, t: Words = supportEn): ReactNode {
+export function rateValue(r: Rate, t: Words): ReactNode {
   return r.share === null ? (
     <span className="text-base font-normal text-muted">
       {missingWords(r.of, MIN_SUPPORT_SAMPLE, t.units)}
@@ -132,14 +129,14 @@ export function ReportsView({
   periodLabel,
   cut = false,
   picker,
-  words: t = supportEn,
+  words: t,
   inboxHref,
 }: {
   report: SupportReport;
   periodLabel: string;
   cut?: boolean;
   picker?: ReactNode;
-  words?: Words;
+  words: Words;
   /** Where the conversations are answered, for the empty card's link (round 31, D704). */
   inboxHref?: string;
 }) {

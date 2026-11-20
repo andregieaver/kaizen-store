@@ -1,10 +1,7 @@
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
 import { dateIn } from "./dates";
-import {
-  staffEmailsEn,
-  type StaffEmailsMessages,
-} from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 import { REOPEN_DAYS } from "./store-closure";
 
@@ -28,10 +25,10 @@ export type StatusEmailFacts = {
   timeZone: string;
 };
 
-/** Written from the `staffEmails` catalogue in the owner's admin language (D312 A10); English unless other words are given. */
+/** Written from the `staffEmails` catalogue in the owner's admin language (D312 A10). */
 export function statusEmail(
   facts: StatusEmailFacts,
-  words: StaffEmailsMessages = staffEmailsEn,
+  words: StaffEmailsMessages,
   lang: AdminLang = "en",
 ): EmailContent {
   const { storeName: name, by } = facts;

@@ -11,10 +11,7 @@ import {
 } from "@/lib/support-reports";
 import { MIN_SUPPORT_SAMPLE, type SupportMode } from "@/lib/support-rules";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import {
-  supportEn,
-  type SupportMessages,
-} from "@/lib/admin-messages/support.en";
+import type { SupportMessages } from "@/lib/admin-messages/support.en";
 
 /**
  * The platform's per-store support totals (D216, 2.8 *Stores*, step 14): a row per store with its desk's mode, how many wait now and
@@ -46,12 +43,12 @@ export function StoreTotalsView({
   stores,
   cut = false,
   periodLabel,
-  words: t = supportEn,
+  words: t,
 }: {
   stores: StoreTotalsRow[];
   cut?: boolean;
   periodLabel: string;
-  words?: SupportMessages;
+  words: SupportMessages;
 }) {
   const w = t.totals;
   if (stores.length === 0) return <p className="text-muted">{w.none}</p>;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+
 import { renderEmail } from "./email-layout";
+import { staffEmailsEn } from "@/lib/admin-messages/staff-emails.en";
 import { answeredEmail, guardrailEmail, orderRate, type GuardrailFacts } from "./experiment-emails";
 import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
 
@@ -24,7 +26,7 @@ describe("orderRate", () => {
 });
 
 describe("guardrailEmail", () => {
-  const email = renderEmail(guardrailEmail(facts));
+  const email = renderEmail(guardrailEmail(facts, staffEmailsEn));
 
   it("names the test, the version and the figures that were counted", () => {
     expect(email.subject).toBe('Your A/B test "Longer story" was stopped: fewer orders in version B');
@@ -34,7 +36,7 @@ describe("guardrailEmail", () => {
   });
 
   it("says which guardrail stopped it, with what that guardrail counted (D148 phase 19)", () => {
-    const speed = renderEmail(guardrailEmail({ ...facts, guardrail: { kind: "speed", version: { n: 2000, bad: 400 }, original: { n: 2000, bad: 200 } } }));
+    const speed = renderEmail(guardrailEmail({ ...facts, guardrail: { kind: "speed", version: { n: 2000, bad: 400 }, original: { n: 2000, bad: 200 } } }, staffEmailsEn));
     expect(speed.subject).toBe('Your A/B test "Longer story" was stopped: slower pages in version B');
     expect(speed.text).toContain("400 of 2,000 page loads of version B took more than 2.5 seconds to show their main content (20 %), against 200 of 2,000 of the original (10 %).");
     const checkout = renderEmail(guardrailEmail({ ...facts, guardrail: { kind: "checkout", version: { n: 300, bad: 60 }, original: { n: 300, bad: 6 } } }, staffEmailsNb, "nb"));
@@ -53,7 +55,7 @@ describe("guardrailEmail", () => {
   });
 
   it("says one day in the singular and escapes what the owner wrote", () => {
-    const html = renderEmail(guardrailEmail({ ...facts, days: 1, testName: "<b>x</b>" }));
+    const html = renderEmail(guardrailEmail({ ...facts, days: 1, testName: "<b>x</b>" }, staffEmailsEn));
     expect(html.text).toContain("had run for 1 day when");
     expect(html.html).not.toContain("<b>x</b>");
   });
@@ -71,7 +73,7 @@ describe("answeredEmail (D662)", () => {
   };
 
   it("says the test has an answer, gives the store's own verdict, and leaves deciding to the owner", () => {
-    const email = renderEmail(answeredEmail(facts));
+    const email = renderEmail(answeredEmail(facts, staffEmailsEn));
     expect(email.subject).toBe('Your A/B test "Shorter hero" has an answer');
     expect(email.text).toContain("has run for 16 days");
     expect(email.text).toContain("B is better than the original. B got 29 % more visitors");

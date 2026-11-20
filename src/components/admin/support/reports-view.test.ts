@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { supportReport, type ReportConversation } from "@/lib/support-reports";
+import { supportEn } from "@/lib/admin-messages/support.en";
 
 import { ReportsView } from "./reports-view";
 import { StoreTotalsView } from "./store-totals-view";
@@ -31,7 +32,7 @@ const times = <X,>(n: number, make: (i: number) => X) => Array.from({ length: n 
 
 describe("the support report's view (D216, step 14)", () => {
   it("shows a rate below ten as what is missing, never a percentage, and counts always", () => {
-    const text = html(h(ReportsView, { report: supportReport(times(4, () => c({ rating: "good" }))), periodLabel: "Last 30 days" }));
+    const text = html(h(ReportsView, { report: supportReport(times(4, () => c({ rating: "good" }))), periodLabel: "Last 30 days", words: supportEn }));
     expect(text).toContain("Started");
     expect(text).toContain("4 of the 10 needed");
     expect(text).not.toContain("100.0 %");
@@ -43,7 +44,7 @@ describe("the support report's view (D216, step 14)", () => {
       ...times(10, () => c({ rating: "good", tone: 70, topics: ["delivery"], outcome: "resolved" })),
       ...times(10, (i) => c({ queuedAt: T, firstAgentAt: T + (i + 1) * 60_000, handoffReason: "customer", anonymised: i === 0 })),
     ];
-    const text = html(h(ReportsView, { report: supportReport(rows), periodLabel: "Last 30 days" }));
+    const text = html(h(ReportsView, { report: supportReport(rows), periodLabel: "Last 30 days", words: supportEn }));
     expect(text).toContain("50.0 %");
     expect(text).toContain("The customer asked for a person");
     expect(text).toContain("5 min 30 s");
@@ -56,11 +57,11 @@ describe("the support report's view (D216, step 14)", () => {
 
   it("draws the platform's totals per store with counts and rates only, and no link to a conversation", () => {
     const report = supportReport(times(3, () => c()));
-    const text = html(h(StoreTotalsView, { stores: [{ store: { id: "1", slug: "fjell", name: "Fjell" }, mode: "ai_first", waiting: 2, report }], periodLabel: "Last 30 days" }));
+    const text = html(h(StoreTotalsView, { stores: [{ store: { id: "1", slug: "fjell", name: "Fjell" }, mode: "ai_first", waiting: 2, report }], periodLabel: "Last 30 days", words: supportEn }));
     expect(text).toContain("Fjell");
     expect(text).toContain("AI first");
     expect(text).toContain("– (3)");
     expect(text).not.toMatch(/support\/c\/|\?c=/);
-    expect(html(h(StoreTotalsView, { stores: [], periodLabel: "x" }))).toContain("No store has a support desk");
+    expect(html(h(StoreTotalsView, { stores: [], periodLabel: "x", words: supportEn }))).toContain("No store has a support desk");
   });
 });

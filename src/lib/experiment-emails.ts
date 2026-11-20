@@ -1,9 +1,6 @@
 import { countWords, fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import {
-  staffEmailsEn,
-  type StaffEmailsMessages,
-} from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 
 /**
@@ -44,10 +41,10 @@ export function orderRate(
   return `${rate.toLocaleString(locale, { maximumFractionDigits: rate < 10 ? 1 : 0 })} %`;
 }
 
-/** Written from the `staffEmails` catalogue in the recipient's admin language (D312 A10); English unless other words are given. */
+/** Written from the `staffEmails` catalogue in the recipient's admin language (D312 A10). */
 export function guardrailEmail(
   facts: GuardrailFacts,
-  words: StaffEmailsMessages = staffEmailsEn,
+  words: StaffEmailsMessages,
   lang: AdminLang = "en",
 ): EmailContent {
   const { version, original } = facts;
@@ -113,7 +110,7 @@ export type AnsweredFacts = {
 };
 
 /** The email to a test's owners the first time it has an answer (D662): what it found, and that deciding is theirs. */
-export function answeredEmail(facts: AnsweredFacts, words: StaffEmailsMessages = staffEmailsEn, lang: AdminLang = "en"): EmailContent {
+export function answeredEmail(facts: AnsweredFacts, words: StaffEmailsMessages, lang: AdminLang = "en"): EmailContent {
   const w = words.answered;
   return {
     subject: fillWords(w.subject, { test: facts.testName }),

@@ -1,9 +1,6 @@
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import {
-  staffEmailsEn,
-  type StaffEmailsMessages,
-} from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 
 /**
@@ -32,10 +29,10 @@ export type SecurityFacts = {
   signInUrl: string;
 };
 
-/** Written from the `staffEmails` catalogue in the account's admin language (D312 A10); English unless other words are given. */
+/** Written from the `staffEmails` catalogue in the account's admin language (D312 A10). */
 export function securityEmail(
   facts: SecurityFacts,
-  words: StaffEmailsMessages = staffEmailsEn,
+  words: StaffEmailsMessages,
   lang: AdminLang = "en",
 ): EmailContent {
   const w = words.security;
