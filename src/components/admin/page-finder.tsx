@@ -7,7 +7,6 @@ import { fillWords } from "@/lib/admin-fill";
 import type { ShellMessages } from "@/lib/admin-messages/shell.en";
 import { ASK_AI_MANAGER_EVENT, type AskDetail } from "@/lib/alert-ask";
 import { finderOptions, type FinderGroup, type FinderItem } from "@/lib/finder-groups";
-import { EmptyState } from "@/components/admin/ui/empty-state";
 
 export type FinderWords = ShellMessages["finder"];
 
@@ -205,10 +204,9 @@ export function PageFinder({ find, words }: { find: (query: string) => Promise<F
           </div>
           <div className="overflow-y-auto p-2">
             {options.length === 0 && (
-              // Said as it changes: what to type, or that nothing matched (the kit's empty state, whose words say what to try).
-              <div role="status">
-                {nothing ? <EmptyState compact title={fillWords(words.none, { query: typed })} /> : <p className="px-3 py-3 text-body text-muted">{words.hint}</p>}
-              </div>
+              <p role="status" className="px-3 py-6 text-center text-body text-muted">
+                {nothing ? fillWords(words.none, { query: typed }) : words.hint}
+              </p>
             )}
             {count > 0 && (
               <FinderList listId={listId} groups={shown} current={current} ask={askAt >= 0 ? typed : null} words={words} onHover={setActive} onChoose={choose} />

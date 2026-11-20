@@ -49,6 +49,7 @@ export function ProductCatalogue({
   bulk,
   toolbar,
   pager,
+  clearFilters,
 }: {
   slug: string;
   /** The page's products. */
@@ -64,9 +65,10 @@ export function ProductCatalogue({
   toolbar: ReactNode;
   /** Under the list: how many of all are shown, and the pages before and after. */
   pager: ReactNode;
+  /** The kit's *Clear filters* (`KIT_WORDS[lang].empty`), for a search or view that found nothing. */
+  clearFilters: string;
 }) {
   const w = useAdminText("products").catalogue;
-  const { clearFilters } = useAdminText("common").list;
   // The browser's remembered choice: pictures on the server and until the browser says otherwise.
   const view = useSyncExternalStore(subscribeView, readView, () => "grid" as const);
   const setView = (next: "grid" | "table") => {

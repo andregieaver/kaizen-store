@@ -13,8 +13,8 @@ import {
   type EntryStatus,
 } from "@/lib/content-types";
 import { areaTexts } from "@/lib/admin-area";
-import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { CONTENT_WORDS } from "@/lib/admin-words/content";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { listEntries } from "@/server/content-entries";
 import { getContentType, listContentTypes } from "@/server/content-types";
 
@@ -140,7 +140,7 @@ export async function ContentEntriesView({ site, typeId, q }: { site: ContentSit
           <EmptyState
             title={query ? w.entries.noMatch : w.entries.none}
             // The header's New entry is the next step for an empty type; a search that found nothing goes back to them all.
-            action={query && <ButtonLink href={`${base}/${type.id}`}>{COMMON_WORDS[site.lang].list.clearFilters}</ButtonLink>}
+            action={query && <ButtonLink href={`${base}/${type.id}`}>{KIT_WORDS[site.lang].empty.clearFilters}</ButtonLink>}
           />
         ) : (
           <Card compact>

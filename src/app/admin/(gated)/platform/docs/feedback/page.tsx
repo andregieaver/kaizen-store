@@ -5,7 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { docsPageAt } from "@/lib/docs-content";
 import { docsUrl } from "@/lib/docs-host";
 import { DOCS_SEARCH_SUB, docsSearchQueryString, NO_FILTERS } from "@/lib/docs-search";
@@ -167,7 +167,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
             title={tally.length === 0 ? w.none : w.noneFound}
             action={
               tally.length > 0 && (
-                <ButtonLink href="/admin/platform/docs/feedback">{COMMON_WORDS[lang].list.clearFilters}</ButtonLink>
+                <ButtonLink href="/admin/platform/docs/feedback">{KIT_WORDS[lang].empty.clearFilters}</ButtonLink>
               )
             }
           />

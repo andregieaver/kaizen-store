@@ -59,13 +59,16 @@ const FILE_FIX: Record<string, string> = {
 
 /**
  * The hand-written empty blocks kept (code review step 2.9, D845), each with why: places a person drops or opens something, whose words are
- * already their next step. Every other "nothing here" box in the admin is the kit's `EmptyState`.
+ * already their next step, and the page finder's line, kept out of every admin route's first scripts. Every other "nothing here" box in the
+ * admin is the kit's `EmptyState`.
  */
 const KEPT_EMPTY_BLOCKS: Record<string, string> = {
   "src/components/admin/page-builder.tsx":
     "the canvas's foot and an empty column are drop targets of the drag and drop (their frame lights up under a dragged block), and their words are the next step: Start from a layout, Drag a block here or add text",
   "src/components/admin/dual-page-editor.tsx":
     "an empty half of the two-page editor is where a page is opened: a heading and three ways in (open, create, mirror the other half), its frame the size of the half (data-dual-empty)",
+  "src/components/admin/page-finder.tsx":
+    "the page finder (Ctrl/Cmd+K) is in the first scripts of every admin route, where EmptyState would add about 0.9 KB to each for one line that already says what to try (another word, or ask the AI manager)",
 };
 
 /** Why the job it does keeps its own form (it answers by itself). */

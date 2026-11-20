@@ -232,10 +232,6 @@ export const commonEn = {
     noAccess: "You do not have access to this.",
     failed: "That did not go through. Try again, and if it keeps happening, contact Kaizena Flow support.",
   },
-  /** An empty list (code review 2.9, D845, `EmptyState`): the way back from a search or filter that matched nothing. */
-  list: {
-    clearFilters: "Clear filters",
-  },
   snippet: {
     count: "{length} of about {advice} characters",
     cut: ": search engines may cut the end",
