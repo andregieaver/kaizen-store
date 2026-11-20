@@ -300,6 +300,7 @@ export const reportsNb: ReportsMessages = {
     emptyText:
       "Butikken har ingen abonnementer, så det er ingen gjentakende inntekt å vise. Når en kunde abonnerer, viser siden månedlig gjentakende inntekt (MRR), hvordan den endrer seg, hvem som avslutter og hvilke betalinger som mislykkes.",
     addOption: "Legg til et kjøpsalternativ på et produkt",
+    openSubscriptions: "Åpne abonnementer",
     nowTitle: "Gjentakende inntekt i dag",
     nowDescription: "Hvor mye som kommer inn hver måned fra abonnementer som løper nå. Tallene er dagens, uansett hvilken periode som er valgt.",
     failedTitle: "Mislykkede betalinger er et øyeblikksbilde",

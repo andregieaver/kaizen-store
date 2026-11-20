@@ -310,6 +310,7 @@ export const reportsEn = {
     emptyText:
       "This store has no subscriptions, so there is no recurring revenue to show. Once a shopper subscribes, this page shows monthly recurring revenue (MRR), how it moves, who cancels and which payments fail.",
     addOption: "Add a purchase option to a product",
+    openSubscriptions: "Open subscriptions",
     nowTitle: "Recurring revenue today",
     nowDescription: "How much comes in every month from subscriptions that are running now. These figures are today's, whatever period is picked.",
     failedTitle: "Failed payments are a snapshot",
