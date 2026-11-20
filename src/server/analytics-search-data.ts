@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { safeRatio } from "@/lib/analytics-core";
 import { addDays, daysBetween, todayIn, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { LOW_CLICK_MIN, LOW_CLICK_RATE } from "@/lib/analytics-search";
-import { screensEn } from "@/lib/admin-messages/screens.en";
+import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 
 import { dayKey, dayOf, inMain, inPeriod, num, PAID, VOUCHER_NET, type Row } from "./analytics-sql";
 import { SEARCH_LOG_DAYS } from "./search";
@@ -123,8 +123,8 @@ export type AfterSearch = {
   missingCurrencies: string[];
 };
 
-export const SEARCH_REVENUE_NOTE = screensEn.analyticsNotes.search.revenue;
-export const SEARCH_REVENUE_OFF_NOTE = screensEn.analyticsNotes.search.revenueOff;
+export const SEARCH_REVENUE_NOTE = ANALYTICS_NOTES_EN.search.revenue;
+export const SEARCH_REVENUE_OFF_NOTE = ANALYTICS_NOTES_EN.search.revenueOff;
 
 export { LOW_CLICK_MIN, LOW_CLICK_RATE };
 

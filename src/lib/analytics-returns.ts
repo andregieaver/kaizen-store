@@ -1,5 +1,5 @@
 import { countWords, fillWords } from "./admin-fill";
-import { screensEn } from "./admin-messages/screens.en";
+import { ANALYTICS_NOTES_EN } from "./analytics-note-labels";
 import { formatCount, formatNumber, safeRatio } from "./analytics-core";
 import { daysBetween } from "./analytics-period";
 import { REASON_LABELS } from "./return-admin-english";
@@ -26,7 +26,7 @@ export const MIN_TIMING_SAMPLE = 5;
 export type Figure = { value: number | null; missing: string | null };
 
 /** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
-const NOTES = screensEn.analyticsNotes.returns;
+const NOTES = ANALYTICS_NOTES_EN.returns;
 
 /**
  * A rate of `part` over `whole`. It has no value when nothing was recorded in the store at all (`tracked` false: the figure would be
@@ -130,7 +130,7 @@ export function reasonBreakdown(inputs: readonly ReasonInput[], min = MIN_REASON
   const rows: ReasonRow[] = [...named.entries()]
     .map(([reason, v]) => ({ reason, label: REASON_LABELS[reason], returns: v.returns, units: v.units, share: sharesShown ? safeRatio(v.returns, given) : null }))
     .sort((a, b) => b.returns - a.returns || b.units - a.units || (a.reason < b.reason ? -1 : 1));
-  if (none.returns > 0) rows.push({ reason: "", label: screensEn.analyticsNotes.phrases.noReasonGiven, returns: none.returns, units: none.units, share: null });
+  if (none.returns > 0) rows.push({ reason: "", label: ANALYTICS_NOTES_EN.phrases.noReasonGiven, returns: none.returns, units: none.units, share: null });
   let note: string | null = null;
   if (total === 0) note = null;
   else if (given === 0) note = NOTES.reasonsNone;

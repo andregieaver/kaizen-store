@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { financeStatement } from "@/lib/analytics-finance";
+import { FINANCE_STATEMENT_EN } from "@/lib/finance-statement-labels";
 import { coverageText, derive } from "@/lib/analytics-kpi";
 import { customPeriod, daysBetween, enumerateBuckets } from "@/lib/analytics-period";
 import { localizationOf } from "@/lib/localization";
@@ -546,7 +547,7 @@ describe("a free-shipping code", () => {
     expect(totals.shippingMinor).toBe(7_840);
     expect(totals.grossSalesMinor - totals.discountsMinor + totals.shippingMinor).toBe(totals.revenueMinor);
     // So the statement needs no rounding line to bridge to revenue.
-    const statement = financeStatement(totals, settings, PERIOD.days);
+    const statement = financeStatement(totals, settings, PERIOD.days, FINANCE_STATEMENT_EN);
     expect(statement.lines.some((l) => l.key === "rounding")).toBe(false);
     expect(statement.lines.find((l) => l.key === "discounts")?.amountMinor).toBe(-3_920);
     expect(statement.reconciles).toBe(true);
@@ -571,7 +572,7 @@ describe("cost coverage", () => {
     expect(d.grossProfit).toBeNull();
     expect(d.grossMarginPct).toBeNull();
     expect(d.contributionProfit).toBeNull();
-    const statement = financeStatement(totals, settings, PERIOD.days);
+    const statement = financeStatement(totals, settings, PERIOD.days, FINANCE_STATEMENT_EN);
     expect(statement.costCoverage).toBe(0);
     expect(statement.hasCosts).toBe(false);
     const data = await overviewData(costless, { period: "custom", from: "2026-09-01", to: "2026-09-07", compare: "none" }, new Date("2026-09-10T12:00:00Z"));

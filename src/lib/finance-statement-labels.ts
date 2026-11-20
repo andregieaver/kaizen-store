@@ -1,0 +1,63 @@
+/**
+ * The finance bridge's lines and notes in English (bloat review step 2.50): beside `analytics-finance.ts`, whose `financeStatement()` the
+ * morning summary and the CSV export write with no language, so the `finance` catalogue takes its `statement` group from here and they bring
+ * no catalogue. Imports nothing.
+ */
+
+export const FINANCE_STATEMENT_EN = {
+  labels: {
+    grossSales: "Gross sales",
+    discounts: "Discounts",
+    shippingIncome: "Shipping income",
+    rounding: "Rounding",
+    revenue: "Revenue",
+    refunds: "Refunds",
+    netRevenue: "Net revenue",
+    cogs: "Cost of goods sold",
+    grossProfit: "Gross profit",
+    paymentFees: "Payment fees",
+    paymentFeesEstimated: "Payment fees (estimated)",
+    platformFees: "Platform fees",
+    shippingCosts: "Shipping costs (estimated)",
+    handlingCosts: "Handling and packaging (estimated)",
+    returnLabels: "Return labels",
+    replacements: "Lost parcels sent again",
+    marketing: "Marketing",
+    lostDisputes: "Lost disputes",
+    contributionProfit: "Contribution profit",
+    fixedCosts: "Fixed costs (pro rata)",
+    operatingProfit: "Operating profit (estimate)",
+  },
+  notes: {
+    grossSales: "Goods before discounts, without VAT.",
+    discounts: "Campaigns, customer groups, codes (a free-shipping code takes its discount off shipping income), referral and bonus credit.",
+    shippingIncome: "What shipping was charged before discounts, without VAT.",
+    rounding: "VAT is taken off each line and each order, which differ by a few minor units.",
+    refunds:
+      "Made in the period, refunds made in the payment provider's own dashboard included once it reports them. An order changed after purchase counts at its new amount on the day it was placed, so the refund of a change's lower total is not counted again here (D174).",
+    basis: "Estimated from the {known} of sales whose cost is known",
+    costsScaled: "{basis}: its cost of goods is scaled up to all sales.",
+    costsTooFew: "Product costs are known for only {known} of sales, too few to estimate from. Enter the rest in the product editor.",
+    costsNone: "No product cost is entered for what was sold. Enter costs in the product editor.",
+    basisSentence: "{basis}.",
+    feesReal: "What Stripe took for every order's payments, as Stripe reported it.",
+    feesPart: "Stripe's own fee for {real} of {orders} orders; the rest {rest}.",
+    feesPartUnset: "count as 0, as no payment fee is set in Analytics settings",
+    feesPartEstimated: "estimated from the fee in Analytics settings",
+    feesUnset: "No payment fee is set in Analytics settings, so it counts as 0.",
+    feesEstimated: "Estimated from the fee in Analytics settings and each order's total with VAT.",
+    platformFees: "What Kaizena Flow took on the period's payments.",
+    shippingUnset: "No shipping cost is set in Analytics settings, so it counts as 0.",
+    shippingEstimated: "Estimated from the cost per order in Analytics settings.",
+    handlingEstimated: "The handling and packaging cost per order in Analytics settings, for each order with something to ship.",
+    returnLabels: "Return labels booked in the period, at the carrier's price without VAT.",
+    replacements: "The goods of lost or returned parcels sent again for nothing in the period, at their cost price, and their parcels. No sale, so not among the orders.",
+    marketingNone: "No marketing spend is entered for the period.",
+    marketing: "Spend entered under Marketing.",
+    lostDisputes: "Disputes the bank decided against the store in the period, without VAT, with Stripe's dispute fee where it is known. Not a refund: no credit note is issued.",
+    contributionEstimated: "After the costs that follow each order, before fixed costs. {basis}.",
+    contribution: "After the costs that follow each order, before fixed costs.",
+    fixedUnset: "No fixed costs are set in Analytics settings, so they count as 0.",
+    fixed: "The monthly amount spread over the days of the period.",
+  },
+};

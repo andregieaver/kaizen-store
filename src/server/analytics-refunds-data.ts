@@ -10,7 +10,7 @@ import { allocateRefund } from "@/lib/analytics-products";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { screensEn } from "@/lib/admin-messages/screens.en";
+import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
@@ -141,7 +141,7 @@ export type RefundsReport = {
 };
 
 /** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
-const NOTES = screensEn.analyticsNotes.refunds;
+const NOTES = ANALYTICS_NOTES_EN.refunds;
 
 export const NOT_SEEN_NOTE = NOTES.notSeen;
 

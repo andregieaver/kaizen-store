@@ -3,8 +3,8 @@ import "server-only";
 import { change, formatChange, formatNumber, formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { analyticsEn } from "@/lib/admin-messages/analytics.en";
-import { customReportsEn } from "@/lib/admin-messages/custom-reports.en";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
+import { CUSTOM_REPORTS_WORDS } from "@/lib/admin-words/custom-reports";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import {
   allowedDimensions,
@@ -39,7 +39,7 @@ import type { Store } from "./stores";
  * The words are English (the model answers in the person's language); labels and amounts use the store's main language and format.
  */
 
-const W = customReportsEn;
+const W = CUSTOM_REPORTS_WORDS.en;
 /** Rows handed to the model; the rest are counted and left to the report's page. */
 export const TOOL_ROWS = 40;
 
@@ -68,8 +68,8 @@ export async function reportCatalogueTool() {
       name: W.catalogue.dimensions[key],
       ...(OVERLAPPING.has(key) ? { note: "One line or order can be in several rows, so its columns do not add up." } : {}),
     })),
-    periods: Object.fromEntries(PERIOD_PRESETS.map((p) => [p, analyticsEn.period.presets[p] ?? p])),
-    comparisons: Object.fromEntries(COMPARE_KEYS.map((c) => [c, analyticsEn.compare.modes[c]])),
+    periods: Object.fromEntries(PERIOD_PRESETS.map((p) => [p, ANALYTICS_WORDS.en.period.presets[p] ?? p])),
+    comparisons: Object.fromEntries(COMPARE_KEYS.map((c) => [c, ANALYTICS_WORDS.en.compare.modes[c]])),
     limits: { figures: MAX_METRICS, cuts: MAX_DIMENSIONS, rows: MAX_ROWS },
     filter_values:
       "A filter's values are the keys run_report gives each row (`key`): ids for products, variants, categories and tags (from list_products, get_product or an earlier report), a country code for country, a currency code for currency, `new` or `returning` for new or returning customers.",
@@ -127,7 +127,7 @@ export async function runReportTool({ store }: OwnerToolContext, spec: OwnerTool
   return {
     report: describeSpec(spec, W.catalogue, {
       period: report.period.label,
-      comparison: report.comparison ? (spec.period.compare === "year" ? analyticsEn.compare.theLastYear : analyticsEn.compare.thePrevious) : null,
+      comparison: report.comparison ? (spec.period.compare === "year" ? ANALYTICS_WORDS.en.compare.theLastYear : ANALYTICS_WORDS.en.compare.thePrevious) : null,
       currency: report.currency,
       filterValue: (d, v) => labelOf(labels, d, v),
     }),

@@ -62,6 +62,9 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/turnover-watch-labels.ts": "The threshold watch's sentences, read by the store checkup (watchText() in English) as well.",
   "lib/version-difference-labels.ts": "What a version changes (differences, blockNames) in English, read by the AI manager's A/B test tools (differenceLine()) as well.",
   "lib/heat-labels.ts": "The heatmap parts, bands and the front page's name in English, read by the AI manager's heatmap tools (pageFigures(), hubFigures()) as well.",
+  "lib/analytics-note-labels.ts": "The analytics reports' notes in English, which the report servers write, the AI manager and the CSV read and sayIn() matches, as well.",
+  "lib/finance-statement-labels.ts": "The finance bridge's lines and notes in English, read by financeStatement() for the morning summary and the CSV export as well.",
+  "lib/tax-report-labels.ts": "A tax report's refusals in English, which rateProblemText() matches in tax-report-words.ts (a module the tax views import in the browser) as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
 

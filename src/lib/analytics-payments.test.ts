@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { financeStatement } from "./analytics-finance";
+import { FINANCE_STATEMENT_EN } from "./finance-statement-labels";
 import { DEFAULT_ANALYTICS_SETTINGS, EMPTY_TOTALS } from "./analytics-kpi";
 import { paymentsByMethod, type PaymentGroupRow } from "./analytics-payments";
 
@@ -55,7 +56,7 @@ describe("lost disputes in the finance bridge (D288)", () => {
   const totals = { ...EMPTY_TOTALS, orders: 2, grossSalesMinor: 100_000, revenueMinor: 100_000, lineRevenueMinor: 100_000, knownCostRevenueMinor: 100_000, cogsMinor: 40_000 };
 
   it("takes a lost dispute off contribution profit as its own line, never as a refund, and still adds up", () => {
-    const s = financeStatement({ ...totals, lostDisputesMinor: 8_000 }, DEFAULT_ANALYTICS_SETTINGS, 30);
+    const s = financeStatement({ ...totals, lostDisputesMinor: 8_000 }, DEFAULT_ANALYTICS_SETTINGS, 30, FINANCE_STATEMENT_EN);
     const line = (key: string) => s.lines.find((l) => l.key === key)?.amountMinor;
     expect(line("lostDisputes")).toBe(-8_000);
     expect(line("refunds")).toBe(0);
@@ -64,6 +65,6 @@ describe("lost disputes in the finance bridge (D288)", () => {
   });
 
   it("has no such line when no dispute was lost", () => {
-    expect(financeStatement(totals, DEFAULT_ANALYTICS_SETTINGS, 30).lines.some((l) => l.key === "lostDisputes")).toBe(false);
+    expect(financeStatement(totals, DEFAULT_ANALYTICS_SETTINGS, 30, FINANCE_STATEMENT_EN).lines.some((l) => l.key === "lostDisputes")).toBe(false);
   });
 });

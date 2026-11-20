@@ -1,4 +1,5 @@
 import type { Widen } from "./common.en";
+import { TAX_REPORT_PROBLEMS_EN } from "../tax-report-labels";
 
 /**
  * The words of Analytics → VAT, OSS and IOSS (D312 A9; D161): the reports, the reconciliation, ECB rates and the exports; every term from
@@ -405,23 +406,7 @@ export const taxReportsEn = {
     ioss_sales_no_number: "Orders are marked IOSS, but no IOSS number is recorded in Settings > Tax now. They are listed here as they were marked.",
   },
   /** What `src/server/ecb-rates.ts` and `tax-rate-overrides.ts` answer, said in the account's language by `knownText()`. */
-  problems: {
-    invalid: "That is not a currency the ECB publishes a rate for, or not a day from 2021-07-01.",
-    future: "That day has not come yet.",
-    notPublished: "The ECB has not published a rate for that day yet. It publishes about 16:00 Central European Time on working days.",
-    unavailable: "The ECB could not be reached just now. Nothing was changed. Try again, or enter a rate yourself.",
-    limit: "Too many rates have been asked of the ECB from this store in the last hour. Try again later, or enter a rate yourself.",
-    chooseCurrency: "Choose a currency.",
-    dayFormat: "Use a date as year-month-day.",
-    ownerFetch: "Only an owner can fetch a rate for a return.",
-    ownerEnter: "Only an owner can enter a rate for a return.",
-    euro: "The euro needs no rate.",
-    dayFrom: "A rate is for a day from {day}.",
-    rateShape: "The rate is a positive number with at most six decimals: units of the currency per 1 euro.",
-    reasonMin: "Say why, in at least {n} characters (it is shown wherever the rate is used).",
-    reasonMax: "The reason is at most {n} characters.",
-    pastDay: "A rate is entered for a day that has passed, not for one that has not come.",
-  },
+  problems: { ...TAX_REPORT_PROBLEMS_EN },
   actions: {
     noAccess: "You do not have access to this.",
     already: "The ECB's rate for {date} was already stored: {rate}.",

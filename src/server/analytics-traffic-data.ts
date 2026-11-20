@@ -23,7 +23,7 @@ import {
   type LandingKind,
 } from "@/lib/analytics-traffic";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { screensEn } from "@/lib/admin-messages/screens.en";
+import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
@@ -278,7 +278,7 @@ const count = (rows: Row[], key: string, field = "n"): Map<string, number> => ne
 
 const money = (n: number) => n.toLocaleString("en-US");
 /** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
-const NOTES = screensEn.analyticsNotes.traffic;
+const NOTES = ANALYTICS_NOTES_EN.traffic;
 
 function commonNotes(coverage: Coverage, excluded: { unconverted: number; missing: string[] }, uncovered: Money): string[] {
   const notes: string[] = [];

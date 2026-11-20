@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { financeStatement, type FinanceLine } from "@/lib/analytics-finance";
+import { FINANCE_STATEMENT_EN } from "@/lib/finance-statement-labels";
 import { DEFAULT_ANALYTICS_SETTINGS, EMPTY_TOTALS, type AnalyticsSettings, type Totals } from "@/lib/analytics-kpi";
 import type { SeriesPoint } from "@/server/analytics-totals";
 
@@ -57,7 +58,7 @@ const NORMAL = totals({
 const EARLIER = totals({ ...NORMAL, orders: 30, grossSalesMinor: 1_100_000, revenueMinor: 950_000, refundsMinor: 20_000, cogsMinor: 350_000, knownCostRevenueMinor: 950_000, vatMinor: 230_000, marketingMinor: 120_000 });
 
 function period(t: Totals, over: Partial<FinancePeriodData> = {}, settings: AnalyticsSettings = SETTINGS): FinancePeriodData {
-  return { label: "16 Sep – 15 Oct 2026", totals: t, statement: financeStatement(t, settings, DAYS), unconverted: 0, missingCurrencies: [], ...over };
+  return { label: "16 Sep – 15 Oct 2026", totals: t, statement: financeStatement(t, settings, DAYS, FINANCE_STATEMENT_EN), unconverted: 0, missingCurrencies: [], ...over };
 }
 
 const point = (i: number, over: Partial<SeriesPoint> = {}): SeriesPoint => ({

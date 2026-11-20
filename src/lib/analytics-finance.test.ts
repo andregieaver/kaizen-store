@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { financeStatement, paymentFees, shippingCostsFor, type FinanceStatement } from "./analytics-finance";
+import { FINANCE_STATEMENT_EN } from "./finance-statement-labels";
 import { DEFAULT_ANALYTICS_SETTINGS, derive, EMPTY_TOTALS, type AnalyticsSettings, type Totals } from "./analytics-kpi";
 
 const settings: AnalyticsSettings = {
@@ -75,7 +76,7 @@ describe("shippingCostsFor", () => {
 
 describe("financeStatement", () => {
   it("lists the bridge in order", () => {
-    const s = financeStatement(totals(), settings, 30);
+    const s = financeStatement(totals(), settings, 30, FINANCE_STATEMENT_EN);
     expect(s.lines.map((l) => l.key)).toEqual([
       "grossSales",
       "discounts",
@@ -96,7 +97,7 @@ describe("financeStatement", () => {
   });
 
   it("signs the lines so they add up", () => {
-    const s = financeStatement(totals(), settings, 30);
+    const s = financeStatement(totals(), settings, 30, FINANCE_STATEMENT_EN);
     const amounts = Object.fromEntries(s.lines.map((l) => [l.key, l.amountMinor]));
     expect(amounts).toEqual({
       grossSales: 1_100_000,
@@ -120,7 +121,7 @@ describe("financeStatement", () => {
 
   it("agrees with derive()", () => {
     const t = totals();
-    const s = financeStatement(t, settings, 30);
+    const s = financeStatement(t, settings, 30, FINANCE_STATEMENT_EN);
     const d = derive(t, settings, 30);
     expect(line(s, "netRevenue").amountMinor).toBe(d.netRevenue);
     expect(line(s, "grossProfit").amountMinor).toBe(d.grossProfit);
@@ -130,19 +131,19 @@ describe("financeStatement", () => {
   });
 
   it("shows rounding between the parts and revenue when they differ", () => {
-    const s = financeStatement(totals({ revenueMinor: 1_050_003 }), settings, 30);
+    const s = financeStatement(totals({ revenueMinor: 1_050_003 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(line(s, "rounding").amountMinor).toBe(3);
     expect(s.lines.map((l) => l.key).indexOf("rounding")).toBe(3);
     expect(s.reconciles).toBe(true);
-    const down = financeStatement(totals({ revenueMinor: 1_049_998 }), settings, 30);
+    const down = financeStatement(totals({ revenueMinor: 1_049_998 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(line(down, "rounding").amountMinor).toBe(-2);
     expect(down.reconciles).toBe(true);
-    expect(financeStatement(totals(), settings, 30).lines.some((l) => l.key === "rounding")).toBe(false);
+    expect(financeStatement(totals(), settings, 30, FINANCE_STATEMENT_EN).lines.some((l) => l.key === "rounding")).toBe(false);
   });
 
   it("holds a free-shipping code's discount in discounts and the shipping before it in shipping income, with no rounding to bridge it", () => {
     // 10 000 of goods and 3 920 of shipping, the code taking all 3 920 off: revenue is 10 000.
-    const s = financeStatement(totals({ grossSalesMinor: 10_000, discountsMinor: 3_920, shippingMinor: 3_920, revenueMinor: 10_000, knownCostRevenueMinor: 10_000, lineRevenueMinor: 10_000 }), settings, 30);
+    const s = financeStatement(totals({ grossSalesMinor: 10_000, discountsMinor: 3_920, shippingMinor: 3_920, revenueMinor: 10_000, knownCostRevenueMinor: 10_000, lineRevenueMinor: 10_000 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(line(s, "discounts").amountMinor).toBe(-3_920);
     expect(line(s, "shippingIncome").amountMinor).toBe(3_920);
     expect(s.lines.some((l) => l.key === "rounding")).toBe(false);
@@ -150,7 +151,7 @@ describe("financeStatement", () => {
   });
 
   it("has no profit while no cost is known, though shipping income is charged", () => {
-    const s = financeStatement(totals({ revenueMinor: 14_000, lineRevenueMinor: 10_000, knownCostRevenueMinor: 0, cogsMinor: 0, refundsMinor: 0 }), settings, 30);
+    const s = financeStatement(totals({ revenueMinor: 14_000, lineRevenueMinor: 10_000, knownCostRevenueMinor: 0, cogsMinor: 0, refundsMinor: 0 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(s.costCoverage).toBe(0);
     expect(s.hasCosts).toBe(false);
     expect(line(s, "grossProfit").amountMinor).toBeNull();
@@ -158,7 +159,7 @@ describe("financeStatement", () => {
   });
 
   it("gives each line its share of net revenue", () => {
-    const s = financeStatement(totals(), settings, 30);
+    const s = financeStatement(totals(), settings, 30, FINANCE_STATEMENT_EN);
     expect(line(s, "netRevenue").shareOfNet).toBe(1);
     expect(line(s, "cogs").shareOfNet).toBeCloseTo(-0.4, 10);
     expect(line(s, "grossProfit").shareOfNet).toBeCloseTo(0.6, 10);
@@ -166,14 +167,14 @@ describe("financeStatement", () => {
   });
 
   it("has no shares when net revenue is not above zero", () => {
-    const s = financeStatement(totals({ refundsMinor: 1_050_000 }), settings, 30);
+    const s = financeStatement(totals({ refundsMinor: 1_050_000 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(s.lines.every((l) => l.shareOfNet === null)).toBe(true);
-    const empty = financeStatement({ ...EMPTY_TOTALS }, settings, 30);
+    const empty = financeStatement({ ...EMPTY_TOTALS }, settings, 30, FINANCE_STATEMENT_EN);
     expect(empty.lines.every((l) => l.shareOfNet === null)).toBe(true);
   });
 
   it("marks what is estimated", () => {
-    const s = financeStatement(totals(), settings, 30);
+    const s = financeStatement(totals(), settings, 30, FINANCE_STATEMENT_EN);
     const estimated = s.lines.filter((l) => l.estimated).map((l) => l.key);
     expect(estimated).toEqual(["paymentFees", "shippingCosts", "contributionProfit", "fixedCosts", "operatingProfit"]);
     expect(line(s, "paymentFees").label).toMatch(/estimated/);
@@ -184,23 +185,23 @@ describe("financeStatement", () => {
 
   it("uses Stripe's real fees where every order has them, and says how much is estimated otherwise (D290)", () => {
     const orders = totals().orders;
-    const real = financeStatement(totals({ realFeeOrders: orders }), settings, 30);
+    const real = financeStatement(totals({ realFeeOrders: orders }), settings, 30, FINANCE_STATEMENT_EN);
     expect(line(real, "paymentFees")).toMatchObject({ label: "Payment fees", estimated: false });
     expect(line(real, "paymentFees").note).toMatch(/as Stripe reported it/);
-    const some = financeStatement(totals({ realFeeOrders: 1 }), settings, 30);
+    const some = financeStatement(totals({ realFeeOrders: 1 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(line(some, "paymentFees")).toMatchObject({ label: "Payment fees (estimated)", estimated: true });
     expect(line(some, "paymentFees").note).toBe(`Stripe's own fee for 1 of ${orders} orders; the rest estimated from the fee in Analytics settings.`);
-    const unset = financeStatement(totals({ realFeeOrders: orders }), { ...settings, paymentFeeBps: 0, paymentFeeFixedMinor: 0 }, 30);
+    const unset = financeStatement(totals({ realFeeOrders: orders }), { ...settings, paymentFeeBps: 0, paymentFeeFixedMinor: 0 }, 30, FINANCE_STATEMENT_EN);
     expect(line(unset, "paymentFees").missing).toBe(false);
   });
 
   it("marks the subtotals", () => {
-    const s = financeStatement(totals(), settings, 30);
+    const s = financeStatement(totals(), settings, 30, FINANCE_STATEMENT_EN);
     expect(s.lines.filter((l) => l.subtotal).map((l) => l.key)).toEqual(["revenue", "netRevenue", "grossProfit", "contributionProfit", "operatingProfit"]);
   });
 
   it("gives profit no amount, not zero, without product costs", () => {
-    const s = financeStatement(totals({ cogsMinor: 0, knownCostRevenueMinor: 0 }), settings, 30);
+    const s = financeStatement(totals({ cogsMinor: 0, knownCostRevenueMinor: 0 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(s.hasCosts).toBe(false);
     expect(s.costCoverage).toBe(0);
     for (const key of ["cogs", "grossProfit", "contributionProfit", "operatingProfit"]) {
@@ -215,7 +216,7 @@ describe("financeStatement", () => {
   });
 
   it("estimates profit when costs are known for part of the sales, marks the lines and says from how much", () => {
-    const s = financeStatement(totals({ knownCostRevenueMinor: 525_000, cogsMinor: 200_000 }), settings, 30);
+    const s = financeStatement(totals({ knownCostRevenueMinor: 525_000, cogsMinor: 200_000 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(s.hasCosts).toBe(true);
     expect(s.mode).toBe("estimated");
     expect(s.estimated).toBe(true);
@@ -239,7 +240,7 @@ describe("financeStatement", () => {
     for (const known of [0, 0.1, 0.29, 0.3, 0.45, 0.8, 1]) {
       const t = totals({ knownCostRevenueMinor: Math.round(1_050_000 * known), cogsMinor: Math.round(400_000 * known) });
       const d = derive(t, settings, 30);
-      const s = financeStatement(t, settings, 30);
+      const s = financeStatement(t, settings, 30, FINANCE_STATEMENT_EN);
       expect(line(s, "grossProfit").amountMinor, `gross at ${known}`).toBe(d.grossProfit);
       expect(line(s, "contributionProfit").amountMinor, `contribution at ${known}`).toBe(d.contributionProfit);
       expect(line(s, "operatingProfit").amountMinor, `operating at ${known}`).toBe(d.operatingProfit);
@@ -248,11 +249,11 @@ describe("financeStatement", () => {
   });
 
   it("is exact at full coverage and gives no profit but the margin under 30 %", () => {
-    const exact = financeStatement(totals(), settings, 30);
+    const exact = financeStatement(totals(), settings, 30, FINANCE_STATEMENT_EN);
     expect(exact.mode).toBe("exact");
     expect(exact.estimated).toBe(false);
     expect(line(exact, "cogs").estimated).toBe(false);
-    const low = financeStatement(totals({ knownCostRevenueMinor: 210_000, cogsMinor: 40_000 }), settings, 30);
+    const low = financeStatement(totals({ knownCostRevenueMinor: 210_000, cogsMinor: 40_000 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(low.mode).toBe("missing");
     expect(low.hasCosts).toBe(false);
     expect(low.costCoverage).toBe(0.2);
@@ -263,7 +264,7 @@ describe("financeStatement", () => {
   });
 
   it("flags settings that were never entered, and counts them as zero", () => {
-    const s = financeStatement(totals({ paymentFeesMinor: 0, shippingCostsMinor: 0, marketingMinor: 0 }), DEFAULT_ANALYTICS_SETTINGS, 30);
+    const s = financeStatement(totals({ paymentFeesMinor: 0, shippingCostsMinor: 0, marketingMinor: 0 }), DEFAULT_ANALYTICS_SETTINGS, 30, FINANCE_STATEMENT_EN);
     for (const key of ["paymentFees", "shippingCosts", "marketing", "fixedCosts"]) {
       expect(line(s, key).missing, key).toBe(true);
       expect(line(s, key).amountMinor, key).toBe(0);
@@ -275,7 +276,7 @@ describe("financeStatement", () => {
   });
 
   it("does not call a setting missing when there were no orders to need it", () => {
-    const s = financeStatement({ ...EMPTY_TOTALS }, DEFAULT_ANALYTICS_SETTINGS, 30);
+    const s = financeStatement({ ...EMPTY_TOTALS }, DEFAULT_ANALYTICS_SETTINGS, 30, FINANCE_STATEMENT_EN);
     expect(line(s, "paymentFees").missing).toBe(false);
     expect(line(s, "shippingCosts").missing).toBe(false);
     expect(line(s, "marketing").missing).toBe(false);
@@ -284,7 +285,7 @@ describe("financeStatement", () => {
   });
 
   it("with nothing sold, shows the fixed costs as a loss", () => {
-    const s = financeStatement({ ...EMPTY_TOTALS }, settings, 30);
+    const s = financeStatement({ ...EMPTY_TOTALS }, settings, 30, FINANCE_STATEMENT_EN);
     expect(s.hasCosts).toBe(true);
     expect(s.costCoverage).toBeNull();
     expect(line(s, "operatingProfit").amountMinor).toBe(-36_000);
@@ -292,15 +293,15 @@ describe("financeStatement", () => {
   });
 
   it("shows a loss", () => {
-    const s = financeStatement(totals({ cogsMinor: 900_000 }), settings, 30);
+    const s = financeStatement(totals({ cogsMinor: 900_000 }), settings, 30, FINANCE_STATEMENT_EN);
     expect(line(s, "contributionProfit").amountMinor).toBe(-90_000);
     expect(line(s, "operatingProfit").amountMinor).toBe(-126_000);
     expect(s.reconciles).toBe(true);
   });
 
   it("spreads fixed costs over the days of the period", () => {
-    expect(line(financeStatement(totals(), settings, 7), "fixedCosts").amountMinor).toBe(-Math.round((36_500 * 12 * 7) / 365));
-    expect(line(financeStatement(totals(), settings, 0), "fixedCosts").amountMinor).toBe(0);
+    expect(line(financeStatement(totals(), settings, 7, FINANCE_STATEMENT_EN), "fixedCosts").amountMinor).toBe(-Math.round((36_500 * 12 * 7) / 365));
+    expect(line(financeStatement(totals(), settings, 0, FINANCE_STATEMENT_EN), "fixedCosts").amountMinor).toBe(0);
   });
 
   it("keeps the bridge adding up across many shapes of totals", () => {
@@ -315,7 +316,7 @@ describe("financeStatement", () => {
             refundsMinor,
             knownCostRevenueMinor: Math.round(revenueMinor * known),
           });
-          expect(financeStatement(t, settings, 30).reconciles, JSON.stringify([revenueMinor, refundsMinor, known])).toBe(true);
+          expect(financeStatement(t, settings, 30, FINANCE_STATEMENT_EN).reconciles, JSON.stringify([revenueMinor, refundsMinor, known])).toBe(true);
         }
       }
     }

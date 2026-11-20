@@ -7,6 +7,7 @@ import { addDays, customPeriod, daysBetween } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 
 import { financeStatement } from "@/lib/analytics-finance";
+import { FINANCE_STATEMENT_EN } from "@/lib/finance-statement-labels";
 
 import { getAnalyticsSettings } from "./analytics-settings";
 import { periodTotals } from "./analytics-totals";
@@ -75,7 +76,7 @@ export async function staffSummaryFigures(store: Store, period: { from: string; 
     `),
   ]);
   const deskOn = counts?.desk_mode && counts.desk_mode !== "off";
-  const contribution = financeStatement(totals.totals, settings, length).lines.find((l) => l.key === "contributionProfit");
+  const contribution = financeStatement(totals.totals, settings, length, FINANCE_STATEMENT_EN).lines.find((l) => l.key === "contributionProfit");
   return {
     from: period.from,
     to: period.to,

@@ -5,6 +5,7 @@ import { campaignRows } from "@/lib/analytics-campaigns";
 import { ANALYTICS_TABLES, lastDayOf, OWNER_ONLY_TABLES, tableFileName, tableFileRows, type AnalyticsTable, type ExportPeriod, type TableData } from "@/lib/analytics-export";
 import { COHORT_OFFSETS } from "@/lib/analytics-customers";
 import { financeStatement } from "@/lib/analytics-finance";
+import { FINANCE_STATEMENT_EN } from "@/lib/finance-statement-labels";
 import { log } from "./log";
 import { payoutsReport } from "./payouts-report";
 import { speedReport } from "./analytics-speed";
@@ -547,7 +548,7 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
 
 const financeOf = async (x: Run, period: AnalyticsPeriod) => {
   const { totals, unconverted, missingCurrencies } = await periodTotals(x.ctx.store, period, x.ctx.settings);
-  return { totals, statement: financeStatement(totals, x.ctx.settings, period.days), unconverted, missingCurrencies };
+  return { totals, statement: financeStatement(totals, x.ctx.settings, period.days, FINANCE_STATEMENT_EN), unconverted, missingCurrencies };
 };
 const customers = (x: Run) => x.once("customers", () => customersReport(x.ctx.store, x.period, x.ctx.settings, x.ctx.now));
 const products = (x: Run) => x.once("products", () => productsReport(x.ctx.store, x.period, x.against));

@@ -1,6 +1,6 @@
 import { costCoverageOf, costModeOf, coveredMargin, estimatedCogs, fixedCostsFor, type AnalyticsSettings, type CostMode, type Totals } from "./analytics-kpi";
 import { fillWords } from "./admin-fill";
-import { financeEn, type FinanceMessages } from "./admin-messages/finance.en";
+import type { FinanceMessages } from "./admin-messages/finance.en";
 import { formatPercent, safeRatio } from "./analytics-core";
 
 /**
@@ -103,7 +103,7 @@ export type FinanceStatement = {
  * `words` are the bridge's labels and notes in the admin's language (D312 A9); without them the statement says what it always said, in
  * English, as the AI manager and the CSV export read it. No amount depends on them.
  */
-export function financeStatement(totals: Totals, settings: AnalyticsSettings, days: number, words: FinanceMessages["statement"] = financeEn.statement): FinanceStatement {
+export function financeStatement(totals: Totals, settings: AnalyticsSettings, days: number, words: FinanceMessages["statement"]): FinanceStatement {
   const L = words.labels;
   const N = words.notes;
   const orders = totals.orders;

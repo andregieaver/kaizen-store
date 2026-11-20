@@ -95,7 +95,8 @@ describe("one contribution profit (E1)", () => {
     expect(totals.returnLabelsMinor).toBe(10_000);
     expect(before.handlingCostsMinor).toBeUndefined();
     const { financeStatement } = await import("@/lib/analytics-finance");
-    const statement = financeStatement(totals, settings, 10);
+    const { FINANCE_STATEMENT_EN } = await import("@/lib/finance-statement-labels");
+    const statement = financeStatement(totals, settings, 10, FINANCE_STATEMENT_EN);
     expect(statement.lines.map((l) => l.key)).toEqual(expect.arrayContaining(["handlingCosts", "returnLabels"]));
     expect(statement.reconciles).toBe(true);
   });
