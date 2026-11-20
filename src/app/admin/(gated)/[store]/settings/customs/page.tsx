@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireFeature } from "@/components/admin/feature-off";
-import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { Card, Chip, EmptyState, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { effectiveDispatch } from "@/lib/tax-profile";
@@ -55,7 +55,7 @@ export default async function CustomsSettingsPage({ params }: PageProps<"/admin/
         <>
           <Card title={w.choice}>
             {markets.length === 0 ? (
-              <p className="text-sm text-muted">{w.none}</p>
+              <EmptyState compact title={w.none} />
             ) : (
               <List label={w.choice}>
                 {markets.map((m) => (

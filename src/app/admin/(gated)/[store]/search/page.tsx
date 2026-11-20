@@ -11,7 +11,7 @@ import { SEARCH_LOG_DAYS, searchStats } from "@/server/search";
 import { listRules } from "@/server/search-rules";
 import { listSynonyms } from "@/server/search-synonyms";
 import { siteTerms } from "@/server/taxonomy";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { RULES_MAX } from "@/lib/search-rules";
@@ -106,7 +106,7 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
           {meaningOn && ` ${fillWords(w.closestHint, { limit: ai?.minSimilarity.toFixed(2) ?? "" })}`}
         </p>
         {stats.zero.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <ol className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {stats.zero.map((row) => (

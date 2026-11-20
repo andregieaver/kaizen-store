@@ -15,7 +15,7 @@ import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
 import { slackAppOn } from "@/server/slack";
-import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { Chip, EmptyState, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
@@ -178,7 +178,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
           <h2 id="log" className="mb-1 text-title text-ink">{w.recent}</h2>
           <p className="mb-3 text-sm text-muted">{w.recentHint}</p>
           {deliveries.length === 0 ? (
-            <p className="text-sm text-muted">{w.nothing}</p>
+            <EmptyState compact title={w.nothing} />
           ) : (
             <List label={w.eventsSent}>
               {deliveries.map((d) => (
