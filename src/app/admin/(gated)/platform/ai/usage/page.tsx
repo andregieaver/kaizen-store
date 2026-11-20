@@ -11,7 +11,8 @@ import { usageByDay, usageRows } from "@/server/ai-usage";
 import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
+import type { AdminAreaMessages } from "@/lib/admin-text";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 
 export const metadata: Metadata = { title: "AI usage" };
 
@@ -24,7 +25,7 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
   // The page checks for itself: the layout's check redirects in the browser, after the page's own data would already be sent.
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").usage;
+  const w = PLATFORM_TOOLS_WORDS[lang].usage;
   const { period } = await searchParams;
   const chosen = usagePeriod(typeof period === "string" ? period : undefined);
   const [rows, days, stats] = await Promise.all([usageRows({ days: chosen.days }), usageByDay({ days: chosen.days }), roundStats(30)]);

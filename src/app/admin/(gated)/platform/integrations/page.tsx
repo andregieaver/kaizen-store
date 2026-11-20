@@ -5,10 +5,11 @@ import { connection } from "next/server";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { requirePlatformReader } from "@/server/auth";
 import { countWords } from "@/lib/admin-fill";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { listPlatformEndpoints } from "@/server/platform-endpoints";
 import { listPlatformIntegrations } from "@/server/platform-integrations";
 
@@ -23,9 +24,9 @@ export default async function PlatformIntegrationsPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const all = adminText(lang, "notifications");
+  const all = NOTIFICATIONS_WORDS[lang];
   const w = all.integrations;
-  const platformWords = adminText(lang, "platform");
+  const platformWords = PLATFORM_WORDS[lang];
   const own = { ...platformWords.integrations, api: platformWords.api };
   const [connected, endpoints] = await Promise.all([listPlatformIntegrations(), listPlatformEndpoints()]);
   const services = INTEGRATIONS.filter((info) => isProvider(info.id));

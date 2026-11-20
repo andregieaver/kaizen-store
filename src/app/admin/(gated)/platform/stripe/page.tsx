@@ -12,7 +12,7 @@ import { requirePlatformReader } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Stripe" };
 
@@ -23,7 +23,7 @@ export default async function PlatformStripePage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").stripe;
+  const w = PLATFORM_WORDS[lang].stripe;
   const [webhooks, saleFeeBps, checkoutUi] = await Promise.all([
     listPlatformWebhooks(),
     getSaleFeeBps(),

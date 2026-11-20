@@ -12,7 +12,7 @@ import { requirePlatformReader } from "@/server/auth";
 import { listShippingVatRules, unverifiedRates, vatCoverage } from "@/server/vat-admin";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 
 import { addVatCategoryAction, setShippingVatRuleAction, setVatCategoryActiveAction, setVatRateAction, verifyVatRateAction } from "./actions";
 
@@ -28,7 +28,7 @@ export default async function PlatformVatPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").vat;
+  const w = PLATFORM_TOOLS_WORDS[lang].vat;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const [coverage, unverified, shippingRules] = await Promise.all([vatCoverage(), unverifiedRates(), listShippingVatRules()]);
   const names = new Map(coverage.categories.map((c) => [c.code, c.nameEn]));

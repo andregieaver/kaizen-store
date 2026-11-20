@@ -13,8 +13,9 @@ import { requirePlatformReader } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Plans" };
 
@@ -29,9 +30,9 @@ export default async function PlansPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").plans;
+  const w = PLATFORM_WORDS[lang].plans;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const intervals = adminText(lang, "billing").intervals;
+  const intervals = BILLING_WORDS[lang].intervals;
   const [plans, currencies] = await Promise.all([listPlans(), planCurrencies()]);
   const modes = platformModes();
   return (

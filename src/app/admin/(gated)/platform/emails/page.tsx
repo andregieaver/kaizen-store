@@ -17,7 +17,8 @@ import { EMAIL_SHOWS, emailCounts, emailsShown, emailWeek, isEmailShow } from "@
 import Link from "next/link";
 import { CHIP_ITEM, CHIP_STRIP } from "@/lib/chip-strip";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Emails" };
 
@@ -27,7 +28,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").emails;
+  const w = PLATFORM_WORDS[lang].emails;
   const [emails, settings, sending, paused] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings()), getSendingDomain(null), pausedStores()]);
   const webhook = emailEventsSetup() === "ok";
   // Round 16 (D650): a sentence of what went, the setup a fold, chips for what to show, and the emails by day.
@@ -107,7 +108,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
         <SendingDomainCard
           domain={sending && sendingDomainView(sending)}
           suggested="kaizenaflow.com"
-          words={adminText(lang, "notifications").sendingDomain}
+          words={NOTIFICATIONS_WORDS[lang].sendingDomain}
           action={platformCan(account, "settings") ? platformSendingDomainAction : null}
           display={ADMIN_LANG_FACTS[lang].tag}
           timeZone={PLATFORM_TIME_ZONE}
@@ -129,7 +130,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
         {emailsShown(emails, show).length === 0 && show !== "all" ? (
           <p className="text-sm text-muted">{w.noneShown}</p>
         ) : (
-          <EmailLog timeZone={PLATFORM_TIME_ZONE} emails={emailsShown(emails, show)} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={adminText(lang, "notifications")} now={drawnAt.getTime()} quietUnsent={!settings} />
+          <EmailLog timeZone={PLATFORM_TIME_ZONE} emails={emailsShown(emails, show)} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={NOTIFICATIONS_WORDS[lang]} now={drawnAt.getTime()} quietUnsent={!settings} />
         )}
       </Card>
     </div>

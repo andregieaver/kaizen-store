@@ -14,7 +14,7 @@ import { setAiAutonomyPaused } from "@/server/ai-pause";
 import { requirePlatformAdmin } from "@/server/auth";
 import { runUnderstandingEval } from "@/server/query-understanding";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import type { Account } from "@/server/auth";
 import { OwnerToolError } from "@/server/owner-tool-error";
 import { saveSearchSettings } from "@/server/web-search-settings";
@@ -22,7 +22,7 @@ import { saveSearchSettings } from "@/server/web-search-settings";
 /** Pauses or starts again every AI that acts on its own, platform-wide (PSI AST-07); a platform admin's alone, audited. */
 export async function setAiPauseAction(_state: FormState, formData: FormData): Promise<FormState> {
   const account = await requirePlatformAdmin();
-  const w = adminText(adminLangOf(account.adminLocale), "platformTools").ai.pause;
+  const w = PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].ai.pause;
   const paused = formData.get("paused") === "on";
   await setAiAutonomyPaused(account, paused);
   refresh();
@@ -39,10 +39,10 @@ export async function saveWebSearchAction(_state: FormState, formData: FormData)
     throw error;
   }
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(account.adminLocale), "platformTools").ai.webSearchSaved] };
+  return { status: "ok", messages: [PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].ai.webSearchSaved] };
 }
 
-const wordsOf = (account: Account) => adminText(adminLangOf(account.adminLocale), "platformTools").aiActions;
+const wordsOf = (account: Account) => PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].aiActions;
 
 /** Kaizen's AI provider and models (D73): the default for every store. */
 export async function savePlatformAiAction(_state: FormState, formData: FormData): Promise<FormState> {

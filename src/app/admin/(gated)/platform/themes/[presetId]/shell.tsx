@@ -10,8 +10,11 @@ import { shownDesignDetails } from "@/server/design-presets";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminTexts } from "@/lib/admin-text";
-import { PLATFORM_SITE_AREAS, platformSiteWords } from "@/server/platform-site-words";
+import { areaTexts } from "@/lib/admin-area";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
+import { PLATFORM_SITE_WORDS } from "@/lib/admin-words/platform-site";
+import { PLATFORM_SITE_AREA_WORDS } from "@/server/platform-site-areas";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 import { archiveDesignAction, deleteDesignAction, publishDesignAction, unarchiveDesignAction, unpublishDesignAction } from "../actions";
 
@@ -38,7 +41,7 @@ export async function DesignShell({
   // The platform site's areas, its own words (`platformSite`, read by the theme's details and content tabs) and the whole of `design`:
   // the Theme tab's editor reads all of it (`theme-editor.tsx`), the page editor's cut (`designEditor`) is not enough there (step 2.27).
   return (
-    <AdminTextScope texts={adminTexts(lang, [...PLATFORM_SITE_AREAS, "platformSite", "design"])}>
+    <AdminTextScope texts={areaTexts(lang, { ...PLATFORM_SITE_AREA_WORDS, platformSite: PLATFORM_SITE_WORDS, design: DESIGN_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: facts.archivedAt ? "/admin/platform/themes?show=archived" : "/admin/platform/themes", label: s.back }}

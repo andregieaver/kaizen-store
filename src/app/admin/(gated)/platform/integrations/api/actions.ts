@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { requirePlatform } from "@/server/auth";
 import { makePlatformToken, PLATFORM_TOKENS_MAX, revokePlatformToken } from "@/server/platform-api-tokens";
 
@@ -13,7 +13,7 @@ export type PlatformTokenAnswer = { ok: true; token?: string } | { ok: false; me
 
 export async function makePlatformTokenAction(form: FormData): Promise<PlatformTokenAnswer> {
   const admin = await requirePlatform("settings");
-  const w = adminText(adminLangOf(admin.adminLocale), "notifications").apiTokens;
+  const w = NOTIFICATIONS_WORDS[adminLangOf(admin.adminLocale)].apiTokens;
   const made = await makePlatformToken(admin, { name: String(form.get("name") ?? ""), scopes: form.getAll("scopes").map(String) });
   if (!made.ok) return { ok: false, message: fillWords(w.problems[made.problem], { max: PLATFORM_TOKENS_MAX }) };
   refresh();
@@ -22,7 +22,7 @@ export async function makePlatformTokenAction(form: FormData): Promise<PlatformT
 
 export async function revokePlatformTokenAction(id: string): Promise<PlatformTokenAnswer> {
   const admin = await requirePlatform("settings");
-  if (!(await revokePlatformToken(admin, id))) return { ok: false, message: adminText(adminLangOf(admin.adminLocale), "notifications").apiTokens.problems.gone };
+  if (!(await revokePlatformToken(admin, id))) return { ok: false, message: NOTIFICATIONS_WORDS[adminLangOf(admin.adminLocale)].apiTokens.problems.gone };
   refresh();
   return { ok: true };
 }

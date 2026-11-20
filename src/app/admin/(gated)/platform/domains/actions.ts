@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { requirePlatformAdmin } from "@/server/auth";
 import { decideReview, setDomainsOpenToAll, setDomainsPublic, setStoreDomainBuying } from "@/server/domain-admin";
 import { saveDomainPricing } from "@/server/domain-prices";
@@ -21,7 +21,7 @@ export async function saveDomainPricingAction(_state: FormState, form: FormData)
   });
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(admin.adminLocale), "domains").platform.saved] };
+  return { status: "ok", messages: [DOMAINS_WORDS[adminLangOf(admin.adminLocale)].platform.saved] };
 }
 
 /** Opens buying to every store, or back to the stores opened one by one (decision 9). */
@@ -29,7 +29,7 @@ export async function domainsOpenAction(_state: FormState, form: FormData): Prom
   const admin = await requirePlatformAdmin();
   await setDomainsOpenToAll(admin, form.get("open") === "on");
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(admin.adminLocale), "domains").platform.saved] };
+  return { status: "ok", messages: [DOMAINS_WORDS[adminLangOf(admin.adminLocale)].platform.saved] };
 }
 
 /** Opens or closes buying for one store. */
@@ -38,7 +38,7 @@ export async function storeDomainBuyingAction(_state: FormState, form: FormData)
   const result = await setStoreDomainBuying(admin, String(form.get("slug") ?? ""), form.get("open") === "on");
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(admin.adminLocale), "domains").platform.saved] };
+  return { status: "ok", messages: [DOMAINS_WORDS[adminLangOf(admin.adminLocale)].platform.saved] };
 }
 
 /** Sells domains to people without a store, or stops (D317). */
@@ -46,7 +46,7 @@ export async function domainsPublicAction(_state: FormState, form: FormData): Pr
   const admin = await requirePlatformAdmin();
   await setDomainsPublic(admin, form.get("on") === "on");
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(admin.adminLocale), "domains").platform.saved] };
+  return { status: "ok", messages: [DOMAINS_WORDS[adminLangOf(admin.adminLocale)].platform.saved] };
 }
 
 /** Approves or refuses a purchase waiting for a look (D317 10). */
@@ -55,5 +55,5 @@ export async function reviewDomainAction(_state: FormState, form: FormData): Pro
   const result = await decideReview(admin, String(form.get("purchase") ?? ""), form.get("answer") === "approve");
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(admin.adminLocale), "domains").platform.saved] };
+  return { status: "ok", messages: [DOMAINS_WORDS[adminLangOf(admin.adminLocale)].platform.saved] };
 }

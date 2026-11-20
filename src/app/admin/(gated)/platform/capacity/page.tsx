@@ -10,7 +10,6 @@ import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } f
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { CapacityMessages } from "@/lib/admin-messages/capacity.en";
 import { styleOver, styleSummary, type StyleRow } from "@/lib/style-reading";
 import { formatUsage } from "@/lib/usage-format";
@@ -29,6 +28,8 @@ import { adminFromDublin } from "@/server/status";
 import { styleReading } from "@/server/style-reading";
 import { cronHealth } from "@/lib/cron-health";
 import { COSTLY_ALLOWED, WHOLE_READ_ALLOWED } from "@/lib/platform-flags";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
+import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 
 import { recordingsOpenAction } from "./actions";
 
@@ -49,7 +50,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const sort = USAGE_METRIC_IDS.find((m) => m === query.sort) ?? null;
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "capacity");
+  const w = CAPACITY_WORDS[lang];
   const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen, flagged, cacheWeek, coldStarts] = await Promise.all([
     platformUsage(month),
     databaseGlance(),
@@ -232,7 +233,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           ]}
           locale={locale}
           words={w.speed}
-          speed={adminText(lang, "analytics").speed}
+          speed={ANALYTICS_WORDS[lang].speed}
         />
       </div>
       </PhoneRow>

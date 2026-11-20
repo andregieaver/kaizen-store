@@ -4,7 +4,7 @@ import { InstagramSettings, instagramReturned } from "@/components/admin/instagr
 import { PageHeader } from "@/components/admin/ui";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { platformCan, requirePlatform } from "@/server/auth";
 import { instagramAppOn, instagramStatus } from "@/server/instagram";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Instagram" };
 export default async function PlatformInstagramPage({ searchParams }: PageProps<"/admin/platform/instagram">) {
   const admin = await requirePlatform("settings", "read");
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "notifications").instagram;
+  const w = NOTIFICATIONS_WORDS[lang].instagram;
   return (
     <>
       <div className="flex flex-col gap-6">

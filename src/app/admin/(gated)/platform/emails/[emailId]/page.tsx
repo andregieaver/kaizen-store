@@ -7,14 +7,15 @@ import { EmailView } from "@/components/admin/email-log";
 import { getEmail } from "@/server/email";
 import { requirePlatformReader } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Email" };
 
 export default async function PlatformEmailPage({ params }: PageProps<"/admin/platform/emails/[emailId]">) {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").emailDetail;
+  const w = PLATFORM_WORDS[lang].emailDetail;
   const { emailId } = await params;
   const email = z.uuid().safeParse(emailId).success ? await getEmail(emailId, null) : null;
   if (!email) notFound();
@@ -23,7 +24,7 @@ export default async function PlatformEmailPage({ params }: PageProps<"/admin/pl
       <Link href="/admin/platform/emails" className="text-sm underline">
         {w.back}
       </Link>
-      <EmailView email={email} words={adminText(lang, "notifications")} />
+      <EmailView email={email} words={NOTIFICATIONS_WORDS[lang]} />
     </div>
   );
 }

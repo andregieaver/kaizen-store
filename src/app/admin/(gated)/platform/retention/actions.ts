@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { RETENTION_BASES, type RetentionBasis, type RetentionKind } from "@/lib/retention";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { requirePlatformAdmin } from "@/server/auth";
 import { changeRetentionRule, verifyRetentionRule } from "@/server/retention";
 
@@ -21,7 +21,7 @@ const text = (form: FormData, name: string): string => String(form.get(name) ?? 
 /** Starts a new period for a kind of data. */
 export async function changeRetentionRuleAction(_previous: FormState, form: FormData): Promise<FormState> {
   const account = await requirePlatformAdmin();
-  const words = adminText(adminLangOf(account.adminLocale), "privacy");
+  const words = PRIVACY_WORDS[adminLangOf(account.adminLocale)];
   const w = words.retention.actions;
   const country = text(form, "country").toUpperCase();
   if (country && !/^[A-Z]{2}$/.test(country)) return { status: "error", messages: [w.country] };
@@ -56,7 +56,7 @@ export async function changeRetentionRuleAction(_previous: FormState, form: Form
 /** Marks a period as reviewed by a person. */
 export async function verifyRetentionRuleAction(ruleId: string): Promise<FormState> {
   const account = await requirePlatformAdmin();
-  const words = adminText(adminLangOf(account.adminLocale), "privacy");
+  const words = PRIVACY_WORDS[adminLangOf(account.adminLocale)];
   if (!z.uuid().safeParse(ruleId).success) return { status: "error", messages: [words.retention.actions.gone] };
   const result = await verifyRetentionRule(account.id, ruleId);
   if (!result.ok) return { status: "error", messages: [words.problems[result.problem] ?? result.problem] };

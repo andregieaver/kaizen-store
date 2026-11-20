@@ -5,10 +5,10 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { requirePlatformAdmin, type Account } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { addVatCategory, setShippingVatRule, setVatCategoryActive, setVatRate, verifyVatRate, type VatAdminResult } from "@/server/vat-admin";
 
-const said = (account: Account) => adminText(adminLangOf(account.adminLocale), "platformTools").vat.actions;
+const said = (account: Account) => PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].vat.actions;
 
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
 

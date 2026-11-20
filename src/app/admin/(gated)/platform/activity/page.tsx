@@ -9,7 +9,8 @@ import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 
 export const metadata: Metadata = { title: "Change log" };
 
@@ -21,8 +22,8 @@ export const metadata: Metadata = { title: "Change log" };
 export default async function PlatformActivityPage({ searchParams }: PageProps<"/admin/platform/activity">) {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").activity;
-  const staffWords = adminText(lang, "staff");
+  const w = PLATFORM_WORDS[lang].activity;
+  const staffWords = STAFF_WORDS[lang];
   const query = await searchParams;
   const values = valuesFromQuery(query);
   const before = typeof query.before === "string" && /^\d{1,15}$/.test(query.before) ? Number(query.before) : null;

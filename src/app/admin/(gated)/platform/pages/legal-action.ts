@@ -4,19 +4,20 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { PLATFORM_LEGAL_KINDS, type PlatformLegalKind } from "@/lib/platform-legal";
 import { requirePlatform } from "@/server/auth";
 import { pagesTag } from "@/lib/cache-tags";
 import { writePlatformLegalPages } from "@/server/platform-legal";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
+import { PLATFORM_LEGAL_WORDS } from "@/lib/admin-words/platform-legal";
+import { PRIVACY_OFFICER_WORDS } from "@/lib/admin-words/privacy-officer";
 import { platformAccountId, setOfficer } from "@/server/privacy-officers";
 import { platformAction } from "@/server/store-action";
 
 /** Writes and publishes Kaizena Flow's legal pages in English and Norwegian (D312 P5); a ticked page already written is written again. */
 export async function writeLegalPagesAction(_state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatform("website");
-  const w = adminText(adminLangOf(admin.adminLocale), "platformLegal");
+  const w = PLATFORM_LEGAL_WORDS[adminLangOf(admin.adminLocale)];
   const overwrite = formData
     .getAll("overwrite")
     .filter((value): value is PlatformLegalKind => (PLATFORM_LEGAL_KINDS as readonly unknown[]).includes(value));
@@ -32,7 +33,7 @@ export async function writeLegalPagesAction(_state: FormState, formData: FormDat
 /** Kaizena Flow's own data protection officer (D763): the platform account's, named on its privacy notice when it is written again. */
 export async function setPlatformOfficerAction(_state: FormState, formData: FormData): Promise<FormState> {
   return platformAction({ area: "website", action: "privacy.officer", answer: (message) => ({ status: "error", messages: [message] }) }, async (admin, lang) => {
-    const w = adminText(lang, "privacyOfficer");
+    const w = PRIVACY_OFFICER_WORDS[lang];
     const platform = await platformAccountId();
     if (!platform) return { status: "error", messages: [w.notOwner] };
     const read = readOfficerChoice(officerFields(formData), { store: false });

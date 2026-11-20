@@ -38,7 +38,7 @@ export function ReturnsQueueView({
   timeZone: string;
   locale?: string;
   words?: ReturnsMessages;
-  /** The kit's pager words (`adminText(lang, "kit").pager`, D834). */
+  /** The kit's pager words (`KIT_WORDS[lang].pager`, D834). */
   pagerWords?: PagerWords;
 }) {
   const q = w.queue;

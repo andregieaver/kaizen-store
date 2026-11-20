@@ -11,8 +11,11 @@ import { ButtonLink, Card, EmptyState, List, ListRow, ListSearch, PageHeader, Pa
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { LIST_PAGE_SIZE, listOffset, listPage } from "@/lib/list-page";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -22,9 +25,9 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").customers;
-  const billingWords = adminText(lang, "billing");
-  const roleWord = (role: string) => (adminText(lang, "staff").roles as Record<string, string>)[role] ?? role;
+  const w = PLATFORM_WORDS[lang].customers;
+  const billingWords = BILLING_WORDS[lang];
+  const roleWord = (role: string) => (STAFF_WORDS[lang].roles as Record<string, string>)[role] ?? role;
   const query = await searchParams;
   const q = typeof query.q === "string" ? query.q : "";
   // A hundred a page, with how many the search finds in all (code review 1.13, D834); a page past the last opens the first.
@@ -89,7 +92,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
             ))}
           </List>
           <Pager
-            words={adminText(lang, "kit").pager}
+            words={KIT_WORDS[lang].pager}
             label={w.title}
             base="/admin/platform/customers"
             query={{ q: q || undefined }}

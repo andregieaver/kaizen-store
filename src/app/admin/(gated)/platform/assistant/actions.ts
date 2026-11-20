@@ -4,7 +4,8 @@ import { updateTag } from "next/cache";
 import { after } from "next/server";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 import { requirePlatformAdmin } from "@/server/auth";
 import type { Approval, Conversation, Principal } from "@/server/owner-assistant";
 import { deleteSkill, saveSkill } from "@/server/assistant-saved-skills";
@@ -25,7 +26,7 @@ export async function startPlatformAssistantAction() {
   const { assistantAbilities, listConversations } = await assistant();
   const [abilities, conversations] = await Promise.all([assistantAbilities(null), listConversations(p)]);
   // The chat's words come with its start, not with every screen (bloat review step 2.27).
-  return { abilities, conversations, texts: adminTexts(adminLangOf(p.account.adminLocale ?? null), ["assistant"]) };
+  return { abilities, conversations, texts: areaTexts(adminLangOf(p.account.adminLocale ?? null), { assistant: ASSISTANT_WORDS }) };
 }
 
 export async function loadPlatformConversationAction(conversationId: string): Promise<Conversation | null> {

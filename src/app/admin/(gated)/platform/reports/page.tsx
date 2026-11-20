@@ -7,8 +7,8 @@ import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { requirePlatformReader } from "@/server/auth";
 import { screeningOn } from "@/server/content-moderation";
 import { listContentReports, type ContentReport } from "@/server/content-reports";
@@ -27,7 +27,7 @@ export default async function PlatformReportsPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "platform").reports;
+  const w = PLATFORM_WORDS[lang].reports;
   const when = (at: string) => adminDate(PLATFORM_TIME_ZONE, at, "dayTime", lang);
   const [reports, screening] = await Promise.all([listContentReports(), screeningOn()]);
   const waiting = reports.filter((r) => r.status === "received");

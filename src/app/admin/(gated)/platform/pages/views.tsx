@@ -19,8 +19,12 @@ import { PlatformLegalCard, platformLegalLead } from "@/components/admin/platfor
 import { adminLangOf } from "@/lib/admin-lang";
 import { platformLegalOverview } from "@/server/platform-legal";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
+import { PLATFORM_LEGAL_WORDS } from "@/lib/admin-words/platform-legal";
+import { PRIVACY_OFFICER_WORDS } from "@/lib/admin-words/privacy-officer";
+import { WEBSITE_LIST_WORDS } from "@/lib/admin-words/website-list";
 import { platformSiteWords } from "@/server/platform-site-words";
 
 import {
@@ -71,7 +75,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   const officer = legal && platform
     ? await Promise.all([storedChoice(platform, null), officerCandidates(platform, null), accountOfficer(platform)]).then(([choice, people, current]) => ({ choice, people, current }))
     : null;
-  const pw = adminText(adminLangOf(admin.adminLocale), "privacyOfficer");
+  const pw = PRIVACY_OFFICER_WORDS[adminLangOf(admin.adminLocale)];
   // The theme store's own pages (D285) are edited from Themes, so they are not mixed with these.
   const themeStorePages = new Set(roles.flatMap(([role, id]) => (isThemeStoreRole(role) ? [id] : [])));
   const pages = all.filter((p) => !themeStorePages.has(p.id));
@@ -84,7 +88,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   const count = type === "page" ? choices.length : total;
   const offered = (role: PlatformRole) => choices.filter((p) => (!placedIds.has(p.id) || p.id === roleOf[role]) && (p.state !== "draft" || p.id === roleOf[role]));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["websiteList"])}>
+    <AdminTextScope texts={areaTexts(lang, { websiteList: WEBSITE_LIST_WORDS })}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title={<>{tw.list}</>}
@@ -92,13 +96,13 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
             legal &&
               fillWords(w.pages.leadJoin, {
                 pages: count === 0 ? w.pages.leadNoPages : countWords(count, w.pages.leadPages),
-                legal: platformLegalLead(legal, adminText(lang, "platformLegal")),
+                legal: platformLegalLead(legal, PLATFORM_LEGAL_WORDS[lang]),
               }),
           ]}
           description={<>
               {type === "header" || type === "footer" ? (
                 <>
-                  <span className="sm:hidden">{adminText(lang, "websiteList").list.phoneIntro[type]}</span>
+                  <span className="sm:hidden">{WEBSITE_LIST_WORDS[lang].list.phoneIntro[type]}</span>
                   <span className="max-sm:hidden">{tw.intro}</span>
                 </>
               ) : (
@@ -169,7 +173,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           duplicate={duplicatePageAction.bind(null, type)}
         />
       )}
-      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={LIST_PAGE_SIZE} shown={all.length} total={total} />
+      <Pager words={KIT_WORDS[lang].pager} label={tw.list} base={base} query={query} page={page} size={LIST_PAGE_SIZE} shown={all.length} total={total} />
       {legal && <PlatformLegalCard lang={adminLangOf(admin.adminLocale)} overview={legal} write={writeLegalPagesAction} />}
       {officer && (
         <section className="flex max-w-xl flex-col gap-3" aria-labelledby="platform-officer" id="privacy-officer">

@@ -3,7 +3,6 @@
 import { platformActionWords } from "@/server/platform-site-words";
 import { fillWords } from "@/lib/admin-fill";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { adminText } from "@/lib/admin-text";
 
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -35,6 +34,8 @@ import type { GridData } from "@/lib/content-grid";
 import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
 import { translateRequest, type TranslateResult } from "@/lib/page-translate-ai";
+import { PLATFORM_SITE_WORDS } from "@/lib/admin-words/platform-site";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { AiError, aiFor } from "@/server/ai";
 import { translatePageTexts } from "@/server/page-translate";
 
@@ -292,7 +293,7 @@ export async function setPlatformPageRoleAction(role: string, _state: FormState,
   const result = await setPlatformPageRole(admin, role, choice || null);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
-  const site = adminText(await actionAdminLang(), "platformSite");
+  const site = PLATFORM_SITE_WORDS[await actionAdminLang()];
   const name = site.tables.roles[role].name.toLowerCase();
   return { status: "ok", messages: [fillWords(choice ? site.actions.roleChosen : site.actions.roleStandard, { name })] };
 }
@@ -336,7 +337,7 @@ export async function platformDualChoicesAction(kind: unknown): Promise<DualChoi
 /** A page build or a page's pictures on Kaizena Flow's own site stopped from the Pages list (PSI UX-01), as `cancel_page_build` stops one. */
 export async function stopPlatformPageJobAction(kind: string, id: string): Promise<FormState> {
   const admin = await requirePlatform("website");
-  const answer = await stopPageJob(null, admin.id, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
+  const answer = await stopPageJob(null, admin.id, kind, id, WEBSITE_WORDS[await actionAdminLang()].pageJobs);
   refresh();
   return answer;
 }

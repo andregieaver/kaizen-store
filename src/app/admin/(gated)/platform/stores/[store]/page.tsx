@@ -25,7 +25,12 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { featureOffer } from "@/server/store-features";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 import { LimitOverridesCard } from "@/components/admin/limit-overrides";
 import { storeLimits } from "@/server/limits";
 import { storeOverrides } from "@/server/limits-admin";
@@ -42,11 +47,11 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export default async function PlatformStorePage({ params }: PageProps<"/admin/platform/stores/[store]">) {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").store;
-  const t = adminText(lang, "platform");
-  const billingWords = adminText(lang, "billing");
+  const w = PLATFORM_WORDS[lang].store;
+  const t = PLATFORM_WORDS[lang];
+  const billingWords = BILLING_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const roleWord = (role: string) => (adminText(lang, "staff").roles as Record<string, string>)[role] ?? role;
+  const roleWord = (role: string) => (STAFF_WORDS[lang].roles as Record<string, string>)[role] ?? role;
   const store = await getStore((await params).store);
   if (!store) notFound();
   const [billing, plans, people, invoices] = await Promise.all([
@@ -65,7 +70,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     themeLookThumbs(),
   ]);
   const offer = await featureOffer(store.id);
-  const blockers = closureBlockers(obligations, adminText(lang, "settings").close);
+  const blockers = closureBlockers(obligations, SETTINGS_WORDS[lang].close);
   const owner = people.find((p) => p.role === "owner");
   // The store's plan and invoices on the store's own day, as its billing page shows them (D786).
   const date = (iso: string) => adminDate(store, iso, "day", lang);
@@ -94,7 +99,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
 
       {owner && (
         <CustomerBar
-          words={adminText(lang, "customers")}
+          words={CUSTOMERS_WORDS[lang]}
           customer={{
             href: `/admin/platform/customers/${owner.id}`,
             name: owner.name,
@@ -253,7 +258,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         timeZone={store.timeZone}
         limits={limits.limits}
         overrides={overrides}
-        words={adminText(lang, "capacity")}
+        words={CAPACITY_WORDS[lang]}
         locale={locale}
         set={setLimitOverrideAction.bind(null, store.id, owner?.id ?? null)}
         remove={(id) => removeLimitOverrideAction.bind(null, store.id, id)}

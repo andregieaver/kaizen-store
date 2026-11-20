@@ -4,7 +4,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { AUTOPILOT_TABS, AutopilotPage, type AutopilotTab } from "@/components/admin/autopilot/autopilot-page";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 import { requirePlatformAdmin } from "@/server/auth";
 import { autopilotOverview } from "@/server/autopilot-overview";
 
@@ -19,7 +20,7 @@ export default async function PlatformAutopilotPage({ searchParams }: PageProps<
   const lang = adminLangOf(account.adminLocale ?? null);
   const overview = await autopilotOverview({ account, store: null });
   return (
-    <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+    <AdminTextScope texts={areaTexts(lang, { assistant: ASSISTANT_WORDS })}>
       <AutopilotPage
         timeZone={PLATFORM_TIME_ZONE}
         overview={overview}

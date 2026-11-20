@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { Inbox } from "@/components/admin/support/inbox";
 import type { SupportDeskContext } from "@/components/admin/support/desk-context";
 import { presence } from "@/server/support";
@@ -49,7 +50,7 @@ export default async function PlatformSupportPage({ searchParams }: PageProps<"/
   };
   return (
     <AdminTextScope
-      texts={adminTexts(adminLangOf(desk.account.adminLocale), ["support"])}
+      texts={areaTexts(adminLangOf(desk.account.adminLocale), { support: SUPPORT_WORDS })}
     >
       <Inbox context={context} initial={initial} initialTab={initialTab} initialOpen={initialOpen} />
     </AdminTextScope>

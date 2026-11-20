@@ -15,7 +15,8 @@ import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 
 import { clearAction, generateAction, planAction, reviewAction, saveGroupAction } from "../actions";
 
@@ -35,7 +36,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
   await connection();
   const account = await requirePlatformReader();
   const adminLang = adminLangOf(account.adminLocale);
-  const w = adminText(adminLang, "platformTools").languages.one;
+  const w = PLATFORM_TOOLS_WORDS[adminLang].languages.one;
   const { lang } = await params;
   const { group: groupParam, show } = await searchParams;
   const language = (await listLanguages()).find((l) => l.lang === lang);
@@ -75,7 +76,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
   const href = (g: string, f: Filter) => `/admin/platform/languages/${lang}?group=${encodeURIComponent(g)}&show=${f}`;
 
   return (
-    <AdminTextScope texts={adminTexts(adminLang, ["platformTools"])}>
+    <AdminTextScope texts={areaTexts(adminLang, { platformTools: PLATFORM_TOOLS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: "/admin/platform/languages", label: w.back }}

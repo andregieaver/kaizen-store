@@ -9,8 +9,8 @@ import { experimentResults, listExperiments, type Comparison, type ExperimentRes
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { requirePlatformReader } from "@/server/auth";
 
 import { startSearchTestAction, stopSearchTestAction } from "./actions";
@@ -31,7 +31,7 @@ const verdictWords = (verdict: Verdict, w: Words) => fillWords(w.verdicts[verdic
 export default async function SearchTestPage({ searchParams }: PageProps<"/admin/platform/search-test">) {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").searchTest;
+  const w = PLATFORM_TOOLS_WORDS[lang].searchTest;
   const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const { id } = await searchParams;
   const experiments = await listExperiments();

@@ -9,10 +9,12 @@ import { PlatformRoleNotice } from "@/components/admin/platform-role-notice";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { platformRoleOf } from "@/lib/platform-access";
 import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
+import { areaTexts } from "@/lib/admin-area";
+import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 import { requirePlatformReader } from "@/server/auth";
 import { noteFirstRequest } from "@/server/instance-start";
 import { platformShellReads } from "@/server/admin-screens";
@@ -71,7 +73,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
   const { waiting, supportWaiting, supportRequests } = await platformShellReads();
   const tabs: NavItem[] = platformTabs({ requests: waiting, support: supportWaiting + supportRequests });
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "shell");
+  const w = SHELL_WORDS[lang];
   return (
     <AdminFrame
       layout={LEVEL_LAYOUTS.platform}
@@ -87,7 +89,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         <PageFinder find={findPlatformPagesAction} words={w.finder} />
         {/* The AI manager can do anything on the platform, so it is the owners' (D510). */}
         {account.platformAdmin && (
-        <AdminTextScope texts={adminTexts(lang, ["assistantBar"])}>
+        <AdminTextScope texts={areaTexts(lang, { assistantBar: ASSISTANT_BAR_WORDS })}>
           <AiManagerLauncher
             area="platform"
             base={`${base}/assistant`}

@@ -6,11 +6,12 @@ import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/adm
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { isApiPower } from "@/lib/admin-api";
 import { LISTING_NOTE_MAX } from "@/lib/apps";
 import { clientHost } from "@/lib/oauth";
 import { scopeLabel } from "@/lib/oauth-words";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import { requirePlatformReader } from "@/server/auth";
 import { listingRequests } from "@/server/developer-apps";
 
@@ -27,9 +28,9 @@ export default async function PlatformAppsPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const ow = adminText(lang, "oauth");
+  const ow = OAUTH_WORDS[lang];
   const w = ow.platformApps;
-  const powerWords = adminText(lang, "notifications").apiTokens.scopeWords;
+  const powerWords = NOTIFICATIONS_WORDS[lang].apiTokens.scopeWords;
   const [waiting, decided] = await Promise.all([listingRequests(admin, "requested"), listingRequests(admin, "decided")]);
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const field = "min-h-10 rounded-md border border-line bg-card px-3 py-2 text-sm";

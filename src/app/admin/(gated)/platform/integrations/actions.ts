@@ -6,8 +6,9 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { isProvider } from "@/lib/integrations";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { requirePlatform, requirePlatformAdmin } from "@/server/auth";
 import { removePlatformIntegration, savePlatformIntegration, sendPlatformTest } from "@/server/platform-integrations";
 import { PLATFORM_SLACK, SLACK_COOKIE, SLACK_COOKIE_PATH, slackStart } from "@/server/slack";
@@ -15,7 +16,7 @@ import { PLATFORM_SLACK, SLACK_COOKIE, SLACK_COOKIE_PATH, slackStart } from "@/s
 /** Kaizena Flow's own integrations (D465): only a platform admin connects, changes, tests or disconnects one. */
 const wordsOf = (locale: string | null | undefined) => {
   const lang = adminLangOf(locale);
-  return { lang, shared: adminText(lang, "notifications"), own: adminText(lang, "platform").integrations };
+  return { lang, shared: NOTIFICATIONS_WORDS[lang], own: PLATFORM_WORDS[lang].integrations };
 };
 
 export async function savePlatformIntegrationAction(provider: string, _state: FormState, formData: FormData): Promise<FormState> {

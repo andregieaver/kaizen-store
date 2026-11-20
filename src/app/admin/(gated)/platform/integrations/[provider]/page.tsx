@@ -13,9 +13,12 @@ import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { PLATFORM_EVENTS } from "@/lib/platform-integrations";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_INTEGRATIONS_WORDS } from "@/lib/admin-words/notifications-integrations";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { getPlatformIntegration, listPlatformDeliveries, platformDefaultEvents, type PlatformDeliveryRow } from "@/server/platform-integrations";
 import { slackAppOn } from "@/server/slack";
@@ -40,9 +43,9 @@ export default async function PlatformIntegrationPage({ params, searchParams }: 
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
   const lang = adminLangOf(admin.adminLocale);
-  const all = adminText(lang, "notifications");
+  const all = NOTIFICATIONS_WORDS[lang];
   const w = all.integrations.provider;
-  const own = adminText(lang, "platform").integrations;
+  const own = PLATFORM_WORDS[lang].integrations;
   const [integration, deliveries] = await Promise.all([getPlatformIntegration(provider), listPlatformDeliveries(provider)]);
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const chosen = new Set<string>(integration?.events ?? platformDefaultEvents());
@@ -54,7 +57,7 @@ export default async function PlatformIntegrationPage({ params, searchParams }: 
   const steps = all.integrations.infos[info.id]?.steps ?? info.steps ?? [];
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsIntegrations: NOTIFICATIONS_INTEGRATIONS_WORDS })}>
       <div className="flex flex-col gap-6">
         <div>
           <Link href="/admin/platform/integrations" className="text-sm underline">

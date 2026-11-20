@@ -13,11 +13,11 @@ import { clearUiTexts, generateChunk, markUiReviewed, planGeneration, saveUiEdit
 import { isBuiltIn } from "@/lib/ui-catalog-all";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
-const wordsOf = (account: Account) => adminText(adminLangOf(account.adminLocale), "platformTools").languages.actions;
-const unknown = async () => adminText(await actionAdminLang(), "platformTools").languages.actions.unknown;
+const wordsOf = (account: Account) => PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].languages.actions;
+const unknown = async () => PLATFORM_TOOLS_WORDS[await actionAdminLang()].languages.actions.unknown;
 
 async function platformAdmin(): Promise<Account> {
   const account = await requireAccount();

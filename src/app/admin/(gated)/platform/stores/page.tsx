@@ -13,7 +13,10 @@ import { requirePlatformReader } from "@/server/auth";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, Pager, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 
 export const metadata: Metadata = { title: "Stores" };
 
@@ -23,8 +26,8 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").stores;
-  const billingWords = adminText(lang, "billing");
+  const w = PLATFORM_WORDS[lang].stores;
+  const billingWords = BILLING_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const raw = (await searchParams).page;
   const page = listPage(raw);
@@ -34,7 +37,7 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
     sandboxFunnel(),
     sandboxSettings(),
   ]);
-  const f = adminText(lang, "sandbox").funnel;
+  const f = SANDBOX_WORDS[lang].funnel;
   const share = (n: number, of: number) => (of > 0 ? ` (${Math.round((n / of) * 100)} %)` : "");
   return (
     <>
@@ -137,7 +140,7 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
           ))}
         </List>
         <Pager
-          words={{ ...adminText(lang, "kit").pager, shownOf: w.shownOf, previous: w.previous, next: w.next }}
+          words={{ ...KIT_WORDS[lang].pager, shownOf: w.shownOf, previous: w.previous, next: w.next }}
           label={w.title}
           base="/admin/platform/stores"
           page={page}

@@ -9,11 +9,11 @@ import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
-import { adminText } from "@/lib/admin-text";
 import { ALLOWANCES_OF, LAUNCH_TRIAL_DAYS, type AllowanceKey, type ExtensionId } from "@/lib/extensions";
 import { formatMoney } from "@/lib/money";
 import { PLAN_INTERVALS, type PlanInterval } from "@/lib/plans";
 import { formatPriceInput } from "@/lib/product-input";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { requirePlatformReader } from "@/server/auth";
 import { listPlans } from "@/server/billing";
 import { launchPreview, type LaunchPreview } from "@/server/extension-launch";
@@ -44,7 +44,7 @@ export default async function ExtensionsPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").extensions;
+  const w = PLATFORM_WORDS[lang].extensions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const [catalogue, plans, currencies, launchedAt, founding] = await Promise.all([
     getExtensionCatalogue(),

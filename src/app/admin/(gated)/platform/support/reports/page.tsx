@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 
 import { PeriodPicker } from "@/components/admin/analytics/period-picker";
 import { ReportsView } from "@/components/admin/support/reports-view";
 import { addDays, parseAnalyticsParams, todayIn } from "@/lib/analytics-period";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { kaizenDesk } from "@/server/support-desk";
 import { KAIZEN_TIME_ZONE, deskReport } from "@/server/support-reports";
 import { PageHeader } from "@/components/admin/ui";
@@ -17,7 +17,7 @@ export default async function KaizenSupportReportsPage({
 }: PageProps<"/admin/platform/support/reports">) {
   const staff = await kaizenDesk();
   const lang = adminLangOf(staff.account.adminLocale);
-  const t = adminText(lang, "support");
+  const t = SUPPORT_WORDS[lang];
   const now = new Date();
   const { period, notice } = parseAnalyticsParams(await searchParams, {
     now,

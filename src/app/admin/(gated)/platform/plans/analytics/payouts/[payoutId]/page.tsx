@@ -7,9 +7,10 @@ import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { payoutFlagged } from "@/lib/payouts";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
+import { FINANCE_WORDS } from "@/lib/admin-words/finance";
 import { requirePlatformReader } from "@/server/auth";
 import { platformPayoutDetail } from "@/server/platform-payouts";
 
@@ -26,8 +27,8 @@ export default async function PlatformPayoutPage({ params }: PageProps<"/admin/p
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const detail = await platformPayoutDetail((await params).payoutId);
   if (!detail) notFound();
-  const w = adminText(lang, "console").planAnalytics.payouts;
-  const fw = adminText(lang, "finance").payouts;
+  const w = CONSOLE_WORDS[lang].planAnalytics.payouts;
+  const fw = FINANCE_WORDS[lang].payouts;
   const { payout, reconciliation: r, lines } = detail;
   const money = (minor: number, currency = payout.currency) => formatMoney(minor, currency, locale);
   const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });

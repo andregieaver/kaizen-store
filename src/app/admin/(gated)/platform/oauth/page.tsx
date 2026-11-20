@@ -6,7 +6,7 @@ import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import { requirePlatformReader } from "@/server/auth";
 import { clientsSeen } from "@/server/oauth-clients";
 
@@ -22,7 +22,7 @@ export default async function PlatformOAuthPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "oauth").platform;
+  const w = OAUTH_WORDS[lang].platform;
   const clients = await clientsSeen();
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   return (

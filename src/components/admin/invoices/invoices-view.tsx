@@ -76,7 +76,7 @@ export function InvoicesView({
   exportProblem?: string | null;
   locale?: string;
   words?: InvoicesMessages;
-  /** The kit's pager words (`adminText(lang, "kit").pager`, D834). */
+  /** The kit's pager words (`KIT_WORDS[lang].pager`, D834). */
   pagerWords?: PagerWords;
 }) {
   const v = w.view;

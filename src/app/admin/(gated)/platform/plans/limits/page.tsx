@@ -4,8 +4,8 @@ import { connection } from "next/server";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { LIMIT_KEYS, LIMITS, limitUnit, toTyped } from "@/lib/limits";
+import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 import { requirePlatformReader } from "@/server/auth";
 import { limitGrid } from "@/server/limits-admin";
 
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Limits" };
 export default async function PlanLimitsPage() {
   await connection();
   const admin = await requirePlatformReader();
-  const w = adminText(adminLangOf(admin.adminLocale), "capacity");
+  const w = CAPACITY_WORDS[adminLangOf(admin.adminLocale)];
   const grid = await limitGrid();
   const columns = [{ id: "default", name: w.editor.default }, ...grid.plans];
   return (

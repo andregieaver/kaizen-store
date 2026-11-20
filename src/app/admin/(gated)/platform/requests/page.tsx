@@ -16,7 +16,6 @@ import { designChoices } from "@/server/design-presets";
 import { CARD_CLASS, Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 type W = PlatformMessages["requests"];
@@ -25,6 +24,7 @@ import { decideAction, sandboxAction, selfServeAction } from "../actions";
 import { selfServeOn, unconfirmedCount } from "@/server/self-signup";
 import { sandboxCounts, sandboxSettings } from "@/server/sandbox";
 import { SANDBOX_PATH } from "@/lib/sandbox";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Access requests" };
 
@@ -36,7 +36,7 @@ export default async function PlatformPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").requests;
+  const w = PLATFORM_WORDS[lang].requests;
   // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
   const [requests, { cards }, selfServe, unconfirmed, sandbox, sandboxes] = await Promise.all([
     listAccessRequests(),

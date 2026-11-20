@@ -8,12 +8,12 @@ import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { mayFreeze } from "@/lib/challenge-baseline";
 import { RATIO_KEYS, type RatioKey } from "@/lib/challenge-scoreboard";
 import { utcDay } from "@/lib/autopilot-challenge";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import { requirePlatformReader } from "@/server/auth";
 import { scoreboardOf } from "@/server/challenge-scoreboard";
 
@@ -37,7 +37,7 @@ export default async function ChallengeScoreboardPage({ params }: PageProps<"/ad
   if (!s) notFound();
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const all = adminText(lang, "console").challenges;
+  const all = CONSOLE_WORDS[lang].challenges;
   const w = all.board;
   const money = (minor: number | null) => (minor === null ? w.notKnown : formatAmount(minor, s.currency, locale));
   const ratio = (key: RatioKey, value: number | null) =>

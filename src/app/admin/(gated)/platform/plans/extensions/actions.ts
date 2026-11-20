@@ -5,10 +5,10 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
 import { parseBundleForm, parseExtensionForm, parseFoundingForm, parseGrantsForm, type FormProblem } from "@/lib/extension-form";
 import { ALLOWANCES_OF, EXTENSION_IDS, isExtensionId, type ExtensionId } from "@/lib/extensions";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { listPlans } from "@/server/billing";
 import { launchExtensions } from "@/server/extension-launch";
 import { extensionCurrencies, getExtensionCatalogue, saveBundle, saveExtension, saveExtensionFounding, savePlanGrants } from "@/server/extensions";
@@ -16,7 +16,7 @@ import { platformAction } from "@/server/store-action";
 
 /** The extension catalogue's three forms (D748 step E2), at the platform's plans area, write. */
 
-const words = (lang: AdminLang) => adminText(lang, "platform").extensions;
+const words = (lang: AdminLang) => PLATFORM_WORDS[lang].extensions;
 
 function said(lang: AdminLang, problems: readonly FormProblem[]): FormState {
   const w = words(lang).problems;

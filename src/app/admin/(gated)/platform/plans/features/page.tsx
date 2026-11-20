@@ -9,7 +9,7 @@ import { getFeatureMatrix } from "@/server/plan-features";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 import { saveFeaturesAction } from "./actions";
 
@@ -25,7 +25,7 @@ export default async function PlanFeaturesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
-  const w = adminText(adminLangOf(account.adminLocale), "platform").features;
+  const w = PLATFORM_WORDS[adminLangOf(account.adminLocale)].features;
   const { plans, features } = await getFeatureMatrix();
   const columns = plans.filter((plan) => plan.active);
   const groups = featureGroups(features);

@@ -6,8 +6,8 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { installFont } from "@/server/fonts";
 import { platformAction } from "@/server/store-action";
-import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { checkKaizenDesk } from "@/server/support-desk";
 import { addSiteFromForm, checkSiteFromForm, createFromForm, deleteFromForm, readAgainFromForm, removeSiteFromForm, saveFromForm } from "@/server/support-widget-actions";
 
@@ -19,7 +19,7 @@ const write = (action: string) => ({ area: "support" as const, action, answer })
 /** Kaizena Flow's desk for the person, or the refusal in their words. */
 async function desk(lang: AdminLang) {
   const staff = await checkKaizenDesk();
-  return staff ?? answer(adminText(lang, "support").widgets.problems.noAccess);
+  return staff ?? answer(SUPPORT_WORDS[lang].widgets.problems.noAccess);
 }
 
 export async function createKaizenWidgetAction(_state: FormState, form: FormData): Promise<FormState> {

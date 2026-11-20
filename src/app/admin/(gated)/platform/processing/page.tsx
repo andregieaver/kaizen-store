@@ -7,9 +7,10 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { PERSONAL_DATA } from "@/lib/personal-data";
 import { processingRecord } from "@/lib/personal-purposes";
+import { areaTexts } from "@/lib/admin-area";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { requirePlatformReader } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Record of processing" };
@@ -24,11 +25,11 @@ export default async function PlatformProcessingPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "privacy");
+  const w = PRIVACY_WORDS[lang];
   const r = w.record;
   const rows = processingRecord(PERSONAL_DATA);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+    <AdminTextScope texts={areaTexts(lang, { privacy: PRIVACY_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={r.title}

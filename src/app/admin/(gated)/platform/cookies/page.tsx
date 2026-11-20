@@ -5,8 +5,8 @@ import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { reviewFindings } from "@/lib/cookie-scan";
+import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { requirePlatformReader } from "@/server/auth";
 import { listConsents } from "@/server/consents";
 import { latestFindings, listScans } from "@/server/cookie-scans";
@@ -24,7 +24,7 @@ export default async function PlatformCookiesPage() {
   await connection();
   await requirePlatformReader();
   const { w, lang } = await platformSiteWords();
-  const words = adminText(lang, "legal");
+  const words = LEGAL_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const [chrome, consents, scans, lastDone, notes] = await Promise.all([
     getPlatformChrome(),

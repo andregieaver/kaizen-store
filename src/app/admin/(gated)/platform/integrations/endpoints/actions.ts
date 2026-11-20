@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { requirePlatform, type Account } from "@/server/auth";
 import {
   addPlatformEndpoint,
@@ -24,7 +24,7 @@ import type { SaveOutcome } from "@/server/webhook-endpoints";
  */
 const asOwner = (): Promise<Account> => requirePlatform("settings");
 
-const wordsOf = (account: Account) => adminText(adminLangOf(account.adminLocale), "notifications").integrations.endpoints;
+const wordsOf = (account: Account) => NOTIFICATIONS_WORDS[adminLangOf(account.adminLocale)].integrations.endpoints;
 
 export type EndpointAnswer = { ok: true; secret?: string; message?: string } | { ok: false; message: string };
 

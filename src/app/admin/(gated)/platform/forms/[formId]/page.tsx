@@ -8,8 +8,11 @@ import { SaveAsTemplateCard } from "@/components/admin/forms/form-template-parts
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import type { PageType } from "@/lib/page-content";
+import { areaTexts } from "@/lib/admin-area";
+import { BLOCKS_FORM_WORDS } from "@/lib/admin-words/blocks-form";
+import { FORM_TEMPLATES_WORDS } from "@/lib/admin-words/form-templates";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { platformCan, requirePlatform } from "@/server/auth";
 import { formUses, getForm } from "@/server/forms-admin";
 import { starterOfForm, templatesOfForm } from "@/server/form-templates";
@@ -38,11 +41,11 @@ export default async function PlatformFormPage({ params }: PageProps<"/admin/pla
   const form = await getForm(null, (await params).formId);
   if (!form) notFound();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "forms");
+  const w = FORMS_WORDS[lang];
   const [uses, linked, starter] = await Promise.all([formUses(null, form.id), templatesOfForm({ accountId: account.id, storeId: null }, form.id, "en"), starterOfForm(form.id, "en")]);
   const base = "/admin/platform/forms";
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms", "blocksForm", "formTemplates"])}>
+    <AdminTextScope texts={areaTexts(lang, { forms: FORMS_WORDS, blocksForm: BLOCKS_FORM_WORDS, formTemplates: FORM_TEMPLATES_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: w.title }}

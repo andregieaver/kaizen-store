@@ -16,7 +16,7 @@ import { PLATFORM_LANG_FACTS, PLATFORM_LANGS, platformPath } from "@/lib/platfor
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 
 import { addLanguageAction, saveLocalesAction, setEnabledAction, setSiteLanguageAction } from "./actions";
 
@@ -33,7 +33,7 @@ export default async function LanguagesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
-  const w = adminText(adminLangOf(account.adminLocale), "platformTools").languages;
+  const w = PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].languages;
   const [languages, coverage, siteLangs] = await Promise.all([listLanguages(), uiCoverage(), getPlatformLangs()]);
   const uses = new Map(await Promise.all(languages.map(async (l) => [l.lang, await storesUsing(l.lang)] as const)));
   const have = new Set(languages.map((l) => l.lang));

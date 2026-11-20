@@ -1,10 +1,10 @@
 "use server";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { heartbeat, setAgentPartner, setPresence } from "@/server/support";
 import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
 import { checkKaizenDesk } from "@/server/support-desk";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 /** Kaizen's desk's presence (D216): online or away, and the open inbox's heartbeat, for platform admins. */
 
@@ -39,7 +39,7 @@ export async function kaizenSupportActAction(
   conversationId: string,
   raw: unknown,
 ): Promise<AgentActResult> {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   const desk = await checkKaizenDesk();
   if (!desk) return { ok: false, problem: w.noAccess };
   const act = readAct(raw);

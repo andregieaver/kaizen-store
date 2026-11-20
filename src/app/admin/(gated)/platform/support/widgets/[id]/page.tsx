@@ -7,8 +7,10 @@ import { WidgetEditor } from "@/components/admin/support/widgets/widget-editor";
 import { WidgetSites } from "@/components/admin/support/widgets/widget-sites";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { kaizenDesk } from "@/server/support-desk";
 import { widgetPreviewOf } from "@/server/support-widget-view";
 import { getWidget } from "@/server/support-widgets";
@@ -32,11 +34,11 @@ export default async function KaizenWidgetPage({ params }: PageProps<"/admin/pla
   const widget = await getWidget(staff.desk, id);
   if (!widget) notFound();
   const lang = adminLangOf(staff.account.adminLocale);
-  const w = adminText(lang, "support").widgets;
+  const w = SUPPORT_WORDS[lang].widgets;
   const preview = await widgetPreviewOf(null, widget);
   const write = staff.canWrite;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support", "designEditor"])}>
+    <AdminTextScope texts={areaTexts(lang, { support: SUPPORT_WORDS, designEditor: DESIGN_EDITOR_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: "/admin/platform/support/widgets", label: w.back }} title={widget.name} description={w.description} />
         {!preview.chatOn && (

@@ -3020,7 +3020,7 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS": {
+    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREA_WORDS": {
       "areas": [
         "designEditor",
         "builder",
@@ -3054,7 +3054,7 @@
         "backdrops"
       ]
     },
-    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#2": {
+    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREA_WORDS#2": {
       "areas": [
         "designEditor",
         "builder",
@@ -3088,7 +3088,7 @@
         "backdrops"
       ]
     },
-    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#3": {
+    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREA_WORDS#3": {
       "areas": [
         "designEditor",
         "builder",

@@ -7,8 +7,8 @@ import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
-import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { movePreviews, type MovePreview } from "@/server/account-move";
 import { requirePlatformReader } from "@/server/auth";
 
@@ -26,7 +26,7 @@ export default async function AccountsPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "screens").platformAccounts;
+  const w = SCREENS_WORDS[lang].platformAccounts;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const previews = await movePreviews();
   const day = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);

@@ -9,7 +9,8 @@ import { listSharedFormTemplates } from "@/server/form-templates";
 import { listMarketplaceTemplates } from "@/server/templates";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { FORM_TEMPLATES_WORDS } from "@/lib/admin-words/form-templates";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { PageHeader } from "@/components/admin/ui";
 
 import { setFormTemplateHiddenAction, setTemplateHiddenAction } from "./actions";
@@ -28,8 +29,8 @@ export default async function PlatformTemplatesPage() {
   const account = await requirePlatformReader();
   const { w } = await platformSiteWords();
   const [templates, formTemplates] = await Promise.all([listMarketplaceTemplates(), listSharedFormTemplates()]);
-  const forms = adminText(adminLangOf(account.adminLocale), "forms");
-  const f = { kinds: forms.kinds, templates: adminText(adminLangOf(account.adminLocale), "formTemplates") };
+  const forms = FORMS_WORDS[adminLangOf(account.adminLocale)];
+  const f = { kinds: forms.kinds, templates: FORM_TEMPLATES_WORDS[adminLangOf(account.adminLocale)] };
   const hidden = templates.filter((t) => t.hidden).length;
 
   return (

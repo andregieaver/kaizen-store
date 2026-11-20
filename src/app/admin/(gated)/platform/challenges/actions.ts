@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { parsePrice } from "@/lib/product-input";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import { endChallenge, saveChallenge } from "@/server/autopilot-settings";
 import { pinChallenge } from "@/server/challenge-pin";
 import { freezeBaseline, removeOriginalPeriod, saveOriginalPeriod } from "@/server/challenge-scoreboard";
@@ -52,7 +52,7 @@ function challengeInput(formData: FormData): Record<string, unknown> {
 /** Sets the challenge on the store at the address given, or changes its dates and budgets. */
 export async function saveChallengeAction(_state: FormState, formData: FormData): Promise<FormState> {
   return platformAction(write("challenge.save"), async (account, lang) => {
-    const w = adminText(lang, "console").challenges;
+    const w = CONSOLE_WORDS[lang].challenges;
     const slug = String(formData.get("store") ?? "").trim().toLowerCase();
     const storeId = slug ? await storeIdBySlug(slug) : null;
     if (!storeId) return { status: "error", messages: [w.unknownStore], fields: { store: w.unknownStore } };
@@ -72,7 +72,7 @@ export async function saveChallengeAction(_state: FormState, formData: FormData)
 /** Takes the challenge off a store: the owner's own autopilot settings are in force again. */
 export async function endChallengeAction(storeId: string): Promise<FormState> {
   return platformAction(write("challenge.end"), async (account, lang) => {
-    const w = adminText(lang, "console").challenges;
+    const w = CONSOLE_WORDS[lang].challenges;
     if (!z.uuid().safeParse(storeId).success) return answer(w.unknownStore);
     await endChallenge({ account }, storeId);
     revalidatePath(PATH);
@@ -86,8 +86,8 @@ const MONEY_FIELDS = ["netSales", "cogs", "shipping", "paymentFees", "marketing"
 /** Adds a period of the original's signed P&L to the store's scoreboard (E7), or replaces the one that starts the same day. */
 export async function saveOriginalAction(storeId: string, _state: FormState, formData: FormData): Promise<FormState> {
   return platformAction(write("challenge.original_save"), async (account, lang) => {
-    const w = adminText(lang, "console").challenges.board;
-    if (!z.uuid().safeParse(storeId).success) return answer(adminText(lang, "console").challenges.unknownStore);
+    const w = CONSOLE_WORDS[lang].challenges.board;
+    if (!z.uuid().safeParse(storeId).success) return answer(CONSOLE_WORDS[lang].challenges.unknownStore);
     const text = (key: string) => String(formData.get(key) ?? "").trim();
     const currency = text("currency").toUpperCase();
     const input: Record<string, unknown> = { from: text("from"), to: text("to"), currency, signedBy: text("signedBy"), signedOn: text("signedOn") };
@@ -113,8 +113,8 @@ export async function saveOriginalAction(storeId: string, _state: FormState, for
 /** Takes a period of the original's figures off the scoreboard. */
 export async function removeOriginalAction(storeId: string, from: string): Promise<FormState> {
   return platformAction(write("challenge.original_remove"), async (account, lang) => {
-    const w = adminText(lang, "console").challenges.board;
-    if (!z.uuid().safeParse(storeId).success || !/^\d{4}-\d{2}-\d{2}$/.test(from)) return answer(adminText(lang, "console").challenges.unknownStore);
+    const w = CONSOLE_WORDS[lang].challenges.board;
+    if (!z.uuid().safeParse(storeId).success || !/^\d{4}-\d{2}-\d{2}$/.test(from)) return answer(CONSOLE_WORDS[lang].challenges.unknownStore);
     await removeOriginalPeriod({ account }, storeId, from);
     revalidatePath(`${PATH}/${storeId}`);
     return { status: "ok", messages: [w.removed] };
@@ -124,8 +124,8 @@ export async function removeOriginalAction(storeId: string, from: string): Promi
 /** Freezes the challenge's baseline before Day 1 (E7, D648): the clone's cost estimates, the agreed ad money and its goods' cost prices. */
 export async function freezeBaselineAction(storeId: string): Promise<FormState> {
   return platformAction(write("challenge.baseline_freeze"), async (account, lang) => {
-    const w = adminText(lang, "console").challenges.board;
-    if (!z.uuid().safeParse(storeId).success) return answer(adminText(lang, "console").challenges.unknownStore);
+    const w = CONSOLE_WORDS[lang].challenges.board;
+    if (!z.uuid().safeParse(storeId).success) return answer(CONSOLE_WORDS[lang].challenges.unknownStore);
     try {
       await freezeBaseline({ account }, storeId);
     } catch (error) {

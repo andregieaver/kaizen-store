@@ -15,7 +15,8 @@ import { siteStore } from "@/server/house-switch";
 import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { Card, CARD_CLASS, Chip, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
@@ -30,8 +31,8 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "platformTools").experiments;
-  const ex = adminText(lang, "experiments");
+  const w = PLATFORM_TOOLS_WORDS[lang].experiments;
+  const ex = EXPERIMENTS_WORDS[lang];
   const { show } = await searchParams;
   const everything = show === "all";
   const [{ tests, overview, truncated }, own, house] = await Promise.all([platformExperiments(everything), platformUnitTests(), siteStore()]);

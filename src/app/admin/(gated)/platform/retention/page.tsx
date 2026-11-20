@@ -5,8 +5,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { RetentionView } from "@/components/admin/privacy/retention-view";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { todayIn } from "@/lib/work-dates";
+import { areaTexts } from "@/lib/admin-area";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { requirePlatformReader } from "@/server/auth";
 import { retentionOverview } from "@/server/retention";
 
@@ -25,13 +26,13 @@ export default async function PlatformRetentionPage() {
   const overview = await retentionOverview();
   const lang = adminLangOf(account.adminLocale);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+    <AdminTextScope texts={areaTexts(lang, { privacy: PRIVACY_WORDS })}>
       <RetentionView
         overview={overview}
         verify={(id) => verifyRetentionRuleAction.bind(null, id)}
         change={changeRetentionRuleAction}
         today={todayIn(PLATFORM_TIME_ZONE)}
-        words={adminText(lang, "privacy")}
+        words={PRIVACY_WORDS[lang]}
         locale={ADMIN_LANG_FACTS[lang].locale}
       />
     </AdminTextScope>

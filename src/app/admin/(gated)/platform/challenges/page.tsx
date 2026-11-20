@@ -7,12 +7,12 @@ import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { ConsoleMessages } from "@/lib/admin-messages/console.en";
-import { adminText } from "@/lib/admin-text";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { budgetShare, waitedHours, type ChallengePhase } from "@/lib/challenge-console";
 import { INTERVENTION_CLASSES } from "@/lib/interventions";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import { requirePlatformReader } from "@/server/auth";
 import { challengeStores, type ChallengeStore, type Queue } from "@/server/challenge-console";
 
@@ -34,7 +34,7 @@ export default async function PlatformChallengesPage() {
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "console").challenges;
+  const w = CONSOLE_WORDS[lang].challenges;
   const stores = await challengeStores();
   const canWrite = admin.platformAdmin;
   return (

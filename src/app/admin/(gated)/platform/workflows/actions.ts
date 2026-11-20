@@ -3,8 +3,8 @@
 import { refresh } from "next/cache";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { AnyWorkflowInput } from "@/lib/workflows";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { requirePlatform } from "@/server/auth";
 import { deletePlatformWorkflow, getPlatformWorkflow, savePlatformWorkflow, switchPlatformWorkflow, testPlatformWorkflow } from "@/server/platform-workflows";
 
@@ -20,7 +20,7 @@ export async function savePlatformWorkflowAction(id: string | null, input: AnyWo
 
 export async function testPlatformWorkflowAction(id: string) {
   const admin = await owner();
-  const w = adminText(adminLangOf(admin.adminLocale), "notifications").workflows;
+  const w = NOTIFICATIONS_WORDS[adminLangOf(admin.adminLocale)].workflows;
   const tested = await testPlatformWorkflow(admin, id);
   refresh();
   if (!tested.ok) return { ok: false as const, message: w.noRuns };
@@ -30,7 +30,7 @@ export async function testPlatformWorkflowAction(id: string) {
 
 export async function switchPlatformWorkflowAction(id: string, on: boolean): Promise<{ ok: true } | { ok: false; message: string }> {
   const admin = await owner();
-  const w = adminText(adminLangOf(admin.adminLocale), "notifications").workflows;
+  const w = NOTIFICATIONS_WORDS[adminLangOf(admin.adminLocale)].workflows;
   const switched = await switchPlatformWorkflow(admin, id, on);
   refresh();
   return switched === "ok" ? { ok: true } : { ok: false, message: switched === "untested" ? w.untested : w.noRuns };

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 
 import { PeriodPicker } from "@/components/admin/analytics/period-picker";
 import { StoreTotalsView } from "@/components/admin/support/store-totals-view";
 import { addDays, parseAnalyticsParams, todayIn } from "@/lib/analytics-period";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { requirePlatformReader } from "@/server/auth";
 import { storeTotals } from "@/server/support-platform";
 import { KAIZEN_TIME_ZONE } from "@/server/support-reports";
@@ -21,7 +21,7 @@ export default async function StoresSupportPage({
 }: PageProps<"/admin/platform/support/stores">) {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const t = adminText(lang, "support");
+  const t = SUPPORT_WORDS[lang];
   const now = new Date();
   const { period, notice } = parseAnalyticsParams(await searchParams, {
     now,

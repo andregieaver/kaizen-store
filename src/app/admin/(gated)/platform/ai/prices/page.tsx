@@ -10,8 +10,8 @@ import { listPrices, unpricedModels } from "@/server/ai-prices";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 
 import { setAiPriceAction } from "./actions";
 
@@ -41,7 +41,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "platformTools").prices;
+  const w = PLATFORM_TOOLS_WORDS[lang].prices;
   const [prices, unpriced, query] = await Promise.all([listPrices(), unpricedModels(), searchParams]);
   const text = (key: string) => (typeof query[key] === "string" ? (query[key] as string) : "");
   const models = new Map<string, typeof prices>();

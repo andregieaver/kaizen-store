@@ -7,8 +7,11 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { PLATFORM_EVENTS } from "@/lib/platform-integrations";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_WORKFLOWS_WORDS } from "@/lib/admin-words/notifications-workflows";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { listPlatformEndpoints } from "@/server/platform-endpoints";
 import { listPlatformWorkflows, platformWorkflowRuns } from "@/server/platform-workflows";
@@ -26,9 +29,9 @@ export default async function PlatformWorkflowsPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const all = adminText(lang, "notifications");
+  const all = NOTIFICATIONS_WORDS[lang];
   const w = all.workflows;
-  const own = adminText(lang, "platform");
+  const own = PLATFORM_WORDS[lang];
   const canWrite = platformCan(admin, "settings");
   const triggerLabels = Object.fromEntries(PLATFORM_EVENTS.map((event) => [event, own.integrations.events[event]?.label ?? event]));
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
@@ -55,7 +58,7 @@ export default async function PlatformWorkflowsPage() {
   const endpointChoices = endpoints.map((e) => ({ id: e.id, name: e.name }));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsWorkflows"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsWorkflows: NOTIFICATIONS_WORKFLOWS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{own.workflows.description}</span></>} />
         {/* Round 49 (D762), as the store's page: on a phone the workflows come first and a new one is a row under them. */}

@@ -12,13 +12,13 @@ import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Plan reminder" };
 
 export default async function PlanReminderPage({ params }: PageProps<"/admin/platform/plan-reminders/[stepId]">) {
   const account = await requirePlatformReader();
-  const t = adminText(adminLangOf(account.adminLocale), "platform");
+  const t = PLATFORM_WORDS[adminLangOf(account.adminLocale)];
   const w = t.planReminderStep;
   const { stepId } = await params;
   if (!z.uuid().safeParse(stepId).success) notFound();

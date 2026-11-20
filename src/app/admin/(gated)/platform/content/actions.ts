@@ -4,9 +4,9 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { contentProblem } from "@/lib/content-admin";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
+import { CONTENT_WORDS } from "@/lib/admin-words/content";
 import { requirePlatform, type Account } from "@/server/auth";
 import { deleteEntry, moveEntry, publishEntry, saveEntry, unpublishEntry, type EntryContext } from "@/server/content-entries";
 import { contentTag, deleteContentType, saveContentType } from "@/server/content-types";
@@ -21,7 +21,7 @@ const BASE = "/admin/platform/content";
 
 function inWords<T extends SaveResult>(account: Account, result: T): T {
   if (result.ok) return result;
-  const words = adminText(adminLangOf(account.adminLocale), "content").problems;
+  const words = CONTENT_WORDS[adminLangOf(account.adminLocale)].problems;
   return { ...result, problems: result.problems.map((problem) => contentProblem(problem, words)) };
 }
 

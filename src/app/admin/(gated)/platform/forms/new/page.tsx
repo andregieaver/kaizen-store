@@ -5,7 +5,9 @@ import { FormStart } from "@/components/admin/forms/form-start";
 import { TemplateManager } from "@/components/admin/forms/form-template-parts";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { FORM_TEMPLATES_WORDS } from "@/lib/admin-words/form-templates";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { requirePlatform } from "@/server/auth";
 import { listFormTemplates } from "@/server/form-templates";
 
@@ -20,10 +22,10 @@ export const metadata: Metadata = { title: "New form" };
 export default async function NewPlatformFormPage() {
   const account = await requirePlatform("website");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "forms");
+  const w = FORMS_WORDS[lang];
   const items = await listFormTemplates({ accountId: account.id, storeId: null }, "en");
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms", "formTemplates"])}>
+    <AdminTextScope texts={areaTexts(lang, { forms: FORMS_WORDS, formTemplates: FORM_TEMPLATES_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: "/admin/platform/forms", label: w.start.back }} title={w.start.title} description={w.start.description} />
         <FormStart lang={lang} items={items} make={makePlatformFormAction} />

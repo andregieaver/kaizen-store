@@ -13,7 +13,9 @@ import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Invoice" };
 
@@ -27,9 +29,9 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").invoice;
-  const t = adminText(lang, "platform");
-  const billingWords = adminText(lang, "billing");
+  const w = PLATFORM_WORDS[lang].invoice;
+  const t = PLATFORM_WORDS[lang];
+  const billingWords = BILLING_WORDS[lang];
   const { store: slug, invoiceId } = await params;
   const store = await getStore(slug);
   if (!store) notFound();
@@ -65,7 +67,7 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
 
       {owner && (
         <CustomerBar
-          words={adminText(lang, "customers")}
+          words={CUSTOMERS_WORDS[lang]}
           customer={{
             href: `/admin/platform/customers/${owner.id}`,
             name: owner.name,

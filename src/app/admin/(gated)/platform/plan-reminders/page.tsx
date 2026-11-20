@@ -19,7 +19,7 @@ import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, Row
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "Plan reminders" };
 
@@ -36,7 +36,7 @@ export default async function PlanRemindersPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").planReminders;
+  const w = PLATFORM_WORDS[lang].planReminders;
   const STATUS: Record<AbandonedPlanRow["status"], string> = w.status;
   const [settings, stats, checkouts, discounts] = await Promise.all([
     getPlanReminderSettings(),
@@ -115,7 +115,7 @@ export default async function PlanRemindersPage() {
               {settings.steps.map((step) => (
                 <ListRow key={step.id}>
                   <RowLead
-                    title={fillWords(w.after, { delay: describeDelay(step.delayMinutes, adminText(lang, "platform").delay) })}
+                    title={fillWords(w.after, { delay: describeDelay(step.delayMinutes, PLATFORM_WORDS[lang].delay) })}
                     href={`${base}/${step.id}`}
                     sub={
                       <>

@@ -15,8 +15,8 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 import {
   adjustReferralCreditAction,
@@ -94,7 +94,7 @@ export default async function PlatformReferralsPage() {
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").referrals;
+  const w = PLATFORM_WORDS[lang].referrals;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const [settings, totals, referrers, referrals] = await Promise.all([getReferralSettings(), referralTotals(), listReferrers(), listReferrals()]);

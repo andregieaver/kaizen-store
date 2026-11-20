@@ -7,9 +7,10 @@ import { RefreshWhile } from "@/components/admin/refresh-while";
 import { ButtonLink, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { passMembership, requirePlatformReader } from "@/server/auth";
 import { testDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
@@ -31,8 +32,8 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
   // The page checks for itself: the layout's check redirects in the browser, after the page's own data would already be sent.
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").ai;
-  const words = adminText(lang, "home").dream;
+  const w = PLATFORM_TOOLS_WORDS[lang].ai;
+  const words = HOME_WORDS[lang].dream;
   const run = await testDreamRun((await params).runId);
   if (!run) notFound();
   const store = await getStore(run.storeSlug);

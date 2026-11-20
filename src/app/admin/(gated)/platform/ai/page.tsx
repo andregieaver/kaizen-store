@@ -24,7 +24,10 @@ import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_AI_WORDS } from "@/lib/admin-words/settings-ai";
 
 import { checkPlatformVisionAction, evalPlatformAiAction, setAiPauseAction, evalPlatformAgentsAction, removePlatformAiAction, savePlatformAiAction, saveWebSearchAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
 
@@ -43,8 +46,8 @@ const card = "rounded-lg border border-line bg-card p-5";
 export default async function PlatformAiPage() {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").ai;
-  const shared = adminText(lang, "settings").ai;
+  const w = PLATFORM_TOOLS_WORDS[lang].ai;
+  const shared = SETTINGS_WORDS[lang].ai;
   const [agentRuns, dreamRuns, ratings] = await Promise.all([recentAgentEvalRuns(), recentDreamRuns(), managerRatingsByVersion()]);
   const current = promptVersions();
   const [settings, ownCount, search, paused] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings(), aiAutonomyPaused()]);
@@ -65,7 +68,7 @@ export default async function PlatformAiPage() {
   );
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsAi"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsAi: SETTINGS_AI_WORDS })}>
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title={w.title} description={<>{status}</>} />

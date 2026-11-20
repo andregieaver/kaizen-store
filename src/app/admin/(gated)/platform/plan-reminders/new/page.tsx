@@ -7,7 +7,7 @@ import { PlanReminderForm } from "../reminder-form";
 import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 export const metadata: Metadata = { title: "New plan reminder" };
 
@@ -15,7 +15,7 @@ export default async function NewPlanReminderPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
-  const w = adminText(adminLangOf(account.adminLocale), "platform").newReminder;
+  const w = PLATFORM_WORDS[adminLangOf(account.adminLocale)].newReminder;
   const { steps } = await getPlanReminderSettings();
   const last = steps.at(-1)?.delayMinutes ?? 0;
   return (

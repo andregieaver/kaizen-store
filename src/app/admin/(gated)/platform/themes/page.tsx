@@ -23,7 +23,8 @@ import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PLATFORM_SITE_WORDS } from "@/lib/admin-words/platform-site";
 import { platformSiteWords } from "@/server/platform-site-words";
 
 import {
@@ -86,7 +87,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
   const older = starters.filter((starter) => !packStores.has(starter.id));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["platformSite"])}>
+    <AdminTextScope texts={areaTexts(lang, { platformSite: PLATFORM_SITE_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t.title}

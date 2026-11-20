@@ -7,10 +7,10 @@ import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
-import { adminText } from "@/lib/admin-text";
 import { APPLIES_TO, percentOfBps } from "@/lib/duties";
 import { formatMoney } from "@/lib/money";
 import { PLATFORM_BASE } from "@/lib/platform-nav";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { requirePlatformReader } from "@/server/auth";
 import { listDutyRates, type DutyRateListed } from "@/server/duty-rates";
 
@@ -26,7 +26,7 @@ export default async function PlatformDutyRatesPage({ searchParams }: PageProps<
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").dutyRates;
+  const w = PLATFORM_TOOLS_WORDS[lang].dutyRates;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const rows = await listDutyRates();
   const query = await searchParams;

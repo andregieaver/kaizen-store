@@ -6,10 +6,10 @@ import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { platformText } from "@/lib/platform-text";
 import { INCIDENT_IMPACTS, INCIDENT_STATUSES, STATUS_COMPONENTS } from "@/lib/status";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { requirePlatformReader } from "@/server/auth";
 import { readStatusOverview, subscriberCount, type IncidentView } from "@/server/status";
 
@@ -25,7 +25,7 @@ export default async function PlatformStatusPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "platform").status;
+  const w = PLATFORM_WORDS[lang].status;
   // The components as the public status page names them, in the admin's language (both languages are the site's own, D312).
   const names = platformText(lang).status.components;
   const [view, subscribers] = await Promise.all([readStatusOverview(), subscriberCount()]);

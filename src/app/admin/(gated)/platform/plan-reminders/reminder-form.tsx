@@ -1,11 +1,12 @@
 import { ReminderEditor } from "@/components/admin/reminder-editor";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminTexts } from "@/lib/admin-text";
 import { requestAdminLang } from "@/server/admin-request-lang";
-import { adminText } from "@/lib/admin-text";
 import type { ReminderText } from "@/lib/cart-reminders";
 import { platformDiscountSummary } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
+import { areaTexts } from "@/lib/admin-area";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { PLATFORM_REMINDERS_WORDS } from "@/lib/admin-words/platform-reminders";
 import { planReminderPreview } from "@/server/plan-reminders";
 import { listPlatformDiscounts } from "@/server/platform-discounts";
 
@@ -31,7 +32,7 @@ export async function PlanReminderForm({
     formatMoney(minor, currency, "nb-NO");
   const lang = await requestAdminLang();
   return (
-    <AdminTextScope texts={adminTexts(lang, ["platformReminders"])}>
+    <AdminTextScope texts={areaTexts(lang, { platformReminders: PLATFORM_REMINDERS_WORDS })}>
       <ReminderEditor
         initial={step}
         storeName={preview.storeName}
@@ -52,7 +53,7 @@ export async function PlanReminderForm({
             gives: platformDiscountSummary(
               d,
               money,
-              adminText(lang, "billing").discount,
+              BILLING_WORDS[lang].discount,
             ),
           }))}
         save={savePlanReminderAction.bind(null, step.id)}

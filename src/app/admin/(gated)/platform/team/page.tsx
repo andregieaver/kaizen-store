@@ -6,8 +6,8 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { PLATFORM_ROLES } from "@/lib/platform-access";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import { requirePlatformReader } from "@/server/auth";
 import { listPlatformAdmins } from "@/server/platform-team";
 
@@ -24,7 +24,7 @@ export default async function PlatformTeamPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "console").team;
+  const w = CONSOLE_WORDS[lang].team;
   const people = await listPlatformAdmins(admin);
   // Only an owner changes the team (D510); the others see who is on it.
   const owner = admin.platformAdmin;

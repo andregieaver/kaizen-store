@@ -4,7 +4,6 @@ import { connection } from "next/server";
 import { PageEditor } from "@/components/admin/page-editor";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
 import { parseDualLayout, templateAsPage, type DualKind, type DualLayout, type DualWith } from "@/lib/dual-page";
-import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { THEME_STORE_PARTS } from "@/lib/theme-store-parts";
@@ -17,9 +16,11 @@ import { listSavedParts } from "@/server/saved-parts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_WORDS } from "@/lib/admin-words/builder";
 import type { EditablePage } from "@/server/pages";
-import { PLATFORM_SITE_AREAS, platformSiteWords } from "@/server/platform-site-words";
+import { PLATFORM_SITE_AREA_WORDS } from "@/server/platform-site-areas";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 import { deleteThemeStorePageAction } from "./actions";
 import { platformPageContext } from "./context";
@@ -67,7 +68,7 @@ async function platformSecondDoc(doc: DualWith, lang: AdminLang, author: string)
     const [terms, gridTerms, context] = await Promise.all([listTerms({ storeId: null, contentType: termContentOf(shape) }), bothTerms(null), platformPageContext(shape, author)]);
     return {
       doc: { kind: "template", id: part.id },
-      kindName: adminText(lang, "builder").dual.kinds.template,
+      kindName: BUILDER_WORDS[lang].dual.kinds.template,
       props: { page, template: part, savedParts, terms, gridTerms, context: { ...context, languages: context.languages.slice(0, 1), schedule: null, share: null } },
     };
   }
@@ -83,7 +84,7 @@ async function platformSecondDoc(doc: DualWith, lang: AdminLang, author: string)
     bothTerms(null),
     platformPageContext(doc.kind, author),
   ]);
-  return { doc, kindName: adminText(lang, "builder").dual.kinds[doc.kind], props: { page, savedParts, terms, gridTerms, context } };
+  return { doc, kindName: BUILDER_WORDS[lang].dual.kinds[doc.kind], props: { page, savedParts, terms, gridTerms, context } };
 }
 
 /** A new page, article, header or footer in the editor; with `?with=`, beside a second document (D412). */
@@ -100,9 +101,9 @@ export async function NewPageView({ type, searchParams }: { type: PageType; sear
   const { lang, w } = await platformSiteWords();
   const dual = context.dualPages ? await platformDual({ kind: type as DualKind, id: null }, query, lang, admin.name ?? "") : null;
   const props = { page: null, savedParts: saved, terms, gridTerms, context };
-  const bw = adminText(lang, "builder");
+  const bw = BUILDER_WORDS[lang];
   return (
-    <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
+    <AdminTextScope texts={areaTexts(lang, PLATFORM_SITE_AREA_WORDS)}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">{typeWords(w, type).new}</h1>
       {dual && dual !== "refused" && context.dualPages ? (
@@ -161,10 +162,10 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
         : null;
   // A second document beside this one (D412); a theme store page (D285) has its own place and stays alone.
   const dual = role || !context.dualPages ? null : await platformDual({ kind: type as DualKind, id: page.id }, query, lang, admin.name ?? "");
-  const bw = adminText(lang, "builder");
+  const bw = BUILDER_WORDS[lang];
   if (dual && dual !== "refused" && context.dualPages) {
     return (
-      <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
+      <AdminTextScope texts={areaTexts(lang, PLATFORM_SITE_AREA_WORDS)}>
         <h1 className="sr-only">{fillWords(w.tables.editTitle, { title: page.draft.title || `${w.tables.untitled} ${w.tables.pageTypes[type].one}` })}</h1>
         <DualPageEditor
           left={{ doc: { kind: type as DualKind, id: page.id }, kindName: bw.dual.kinds[type as DualKind], props: { page, notice, savedParts: saved, terms, gridTerms, context } }}
@@ -178,7 +179,7 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
     );
   }
   return (
-    <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
+    <AdminTextScope texts={areaTexts(lang, PLATFORM_SITE_AREA_WORDS)}>
       <h1 className="sr-only">{fillWords(w.tables.editTitle, { title: page.draft.title || `${w.tables.untitled} ${w.tables.pageTypes[type].one}` })}</h1>
       <PageEditor
         key={page.id}

@@ -20,7 +20,8 @@ import { jobsNeedingLook } from "@/lib/cron-health";
 import { AdminLink } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 import { setBriefingAction } from "./plans/analytics/actions";
 
@@ -36,8 +37,8 @@ export default async function PlatformOverviewPage() {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "platform").overview;
-  const bw = adminText(lang, "platform").briefing;
+  const w = PLATFORM_WORDS[lang].overview;
+  const bw = PLATFORM_WORDS[lang].briefing;
   const { o, jobs, snapshot, briefing, failedEvents } = await platformHomeReads();
   const lateJobs = jobsNeedingLook(jobs);
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
@@ -74,7 +75,7 @@ export default async function PlatformOverviewPage() {
   // Kaizena Flow's own Home in the store's pattern (admin redesign round 1, step 3, D595): a greeting and one sentence, the one next step,
   // recurring revenue as bars, the funnel from sign-up to paying, and the system's health apart from the business.
   const t = w.today;
-  const home = adminText(lang, "home").today;
+  const home = HOME_WORDS[lang].today;
   const now = new Date();
   const zone = PLATFORM_TIME_ZONE;
   const [requests, months, funnel] = await Promise.all([

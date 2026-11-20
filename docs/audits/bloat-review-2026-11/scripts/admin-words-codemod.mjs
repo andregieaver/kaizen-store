@@ -107,10 +107,10 @@ for (const file of walk(join(ROOT, target))) {
   }
   if (many && /\bareaTexts\(/.test(plain) && !/import\s*\{[^}]*\bareaTexts\b[^}]*\}\s*from/.test(text)) imports.unshift('import { areaTexts } from "@/lib/admin-area";');
 
-  // adminText and adminTexts leave the import of the registry once no call is left.
+  // adminText and adminTexts leave the imports of the registry (a file may have two) once no call is left.
   const stillOne = left.some((m) => plain.slice(m.index, m.index + 10) === "adminText(");
   const stillMany = left.some((m) => plain.slice(m.index, m.index + 11) === "adminTexts(");
-  text = text.replace(/^import\s*(type\s+)?\{([^}]*)\}\s*from\s*"((?:@\/lib|\.)\/admin-text)";[^\S\n]*\n/m, (whole, typeOnly, names, from) => {
+  text = text.replace(/^import\s*(type\s+)?\{([^}]*)\}\s*from\s*"((?:@\/lib|\.)\/admin-text)";[^\S\n]*\n/gm, (whole, typeOnly, names, from) => {
     if (typeOnly) return whole;
     const kept = names
       .split(",")

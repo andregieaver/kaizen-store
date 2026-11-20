@@ -6,7 +6,8 @@ import { FormsList } from "@/components/admin/forms/forms-list";
 import { ButtonLink, PageHeader } from "@/components/admin/ui";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { platformCan, requirePlatform } from "@/server/auth";
 import { formUses, listForms } from "@/server/forms-admin";
 
@@ -16,12 +17,12 @@ export const metadata: Metadata = { title: "Forms" };
 export default async function PlatformFormsPage({ searchParams }: PageProps<"/admin/platform/forms">) {
   const account = await requirePlatform("website", "read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "forms");
+  const w = FORMS_WORDS[lang];
   const { problem } = await searchParams;
   const [forms, uses] = await Promise.all([listForms(null), formUses(null)]);
   const base = "/admin/platform/forms";
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms"])}>
+    <AdminTextScope texts={areaTexts(lang, { forms: FORMS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

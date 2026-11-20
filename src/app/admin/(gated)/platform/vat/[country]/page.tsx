@@ -12,7 +12,8 @@ import { listShippingVatRules, listVatRates, vatCoverage } from "@/server/vat-ad
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
+import { PRODUCT_WORDS } from "@/lib/admin-words/product";
 
 import { setShippingVatRuleAction, setVatRateAction, verifyVatRateAction } from "../actions";
 
@@ -24,10 +25,10 @@ export default async function PlatformVatCountryPage({ params }: PageProps<"/adm
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").vat;
+  const w = PLATFORM_TOOLS_WORDS[lang].vat;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   // The standard rate standing in where no reduced rate is known (`describeRate()`), in the admin's language: the product editor's words.
-  const fallbackText = (text: string) => fillWords(adminText(lang, "product").vatCategory.fallback, { rate: /\(([^)]+)\)/.exec(text)?.[1] ?? "" });
+  const fallbackText = (text: string) => fillWords(PRODUCT_WORDS[lang].vatCategory.fallback, { rate: /\(([^)]+)\)/.exec(text)?.[1] ?? "" });
   const code = (await params).country.toUpperCase();
   if (!/^[A-Z]{2}$/.test(code)) notFound();
   const [coverage, rates, shippingRules] = await Promise.all([vatCoverage(), listVatRates({ country: code }), listShippingVatRules()]);

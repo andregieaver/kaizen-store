@@ -4,14 +4,14 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { bpsOfPercent } from "@/lib/duties";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { requirePlatformAdmin, type Account } from "@/server/auth";
 import { removeDutyRate, saveDutyRate, setDutyRateVerified, type DutyAdminResult } from "@/server/duty-rates";
 
 /** The platform's duty rates (wave 7 unit I, D343): platform admins only, only through `src/server/duty-rates.ts`. */
 
-const said = (account: Account) => adminText(adminLangOf(account.adminLocale), "platformTools").dutyRates.actions;
+const said = (account: Account) => PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].dutyRates.actions;
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

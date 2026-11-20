@@ -8,9 +8,12 @@ import { Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/componen
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { PLATFORM_API_OPERATIONS, PLATFORM_API_SCOPES } from "@/lib/platform-api";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_TOKENS_WORDS } from "@/lib/admin-words/notifications-tokens";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { listPlatformTokens } from "@/server/platform-api-tokens";
 
@@ -26,15 +29,15 @@ export default async function PlatformApiPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "notifications").apiTokens;
-  const own = adminText(lang, "platform");
+  const w = NOTIFICATIONS_WORDS[lang].apiTokens;
+  const own = PLATFORM_WORDS[lang];
   const owner = platformCan(admin, "settings");
   const tokens = await listPlatformTokens();
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const base = `${siteUrl()}/api/platform/v1`;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsTokens"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsTokens: NOTIFICATIONS_TOKENS_WORDS })}>
       <div className="flex flex-col gap-6">
         <div>
           <Link href="/admin/platform/integrations" className="text-sm underline">

@@ -8,7 +8,6 @@ import { ShareBar } from "@/components/admin/ui/bars";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { payoutFlagged } from "@/lib/payouts";
 import { share, type CurrencyFigure, type MovementFigure, type PlanSummary } from "@/lib/plan-analytics";
@@ -25,6 +24,11 @@ import { platformSalesView } from "@/server/platform-sales";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { SalesMonth } from "@/lib/platform-sales";
 import { addCalendarDays, todayIn } from "@/lib/work-dates";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
+import { FINANCE_WORDS } from "@/lib/admin-words/finance";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 
 import { postBooksAction, readSalesAction, removePlatformSpendAction, savePlatformSpendAction, setBooksStoreAction, setBriefingAction, setTargetAction } from "./actions";
 
@@ -41,7 +45,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "console").planAnalytics;
+  const w = CONSOLE_WORDS[lang].planAnalytics;
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const year = new Date().getUTCFullYear();
@@ -65,14 +69,14 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
     platformSnapshot(),
     platformBriefingSetting(),
   ]);
-  const tw = adminText(lang, "platform").briefing;
+  const tw = PLATFORM_WORDS[lang].briefing;
   const thisMonth = monthOf(snapshot.today);
   const monthLabel = new Date(`${thisMonth}T12:00:00Z`).toLocaleDateString(locale, { month: "long", year: "numeric", timeZone: "UTC" });
   const currencies = [...new Set([...snapshot.mrr.map((m) => m.currency), ...snapshot.sales.map((x) => x.currency), "NOK"])];
   const sw = w.sales;
   const bw = w.books;
   const pw = w.payouts;
-  const fw = adminText(lang, "finance").payouts;
+  const fw = FINANCE_WORDS[lang].payouts;
   const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });
   // Kaizena Flow's own payouts (D509): newest first, each a link to what it carried.
   const payoutsTable = (rows: PlatformPayoutRow[]) => (
@@ -343,7 +347,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
         today={todayOslo}
         locale={locale}
         words={w}
-        channelNames={adminText(lang, "reports").channels}
+        channelNames={REPORTS_WORDS[lang].channels}
         save={savePlatformSpendAction}
         remove={removePlatformSpendAction}
       />
@@ -356,7 +360,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
         connected={adConnections.on}
         connectHref={adConnections.houseSlug ? `/admin/${adConnections.houseSlug}/ads` : null}
         words={w}
-        platformNames={adminText(lang, "marketing").ads.platforms}
+        platformNames={MARKETING_WORDS[lang].ads.platforms}
       />
       </PhoneRow>
 

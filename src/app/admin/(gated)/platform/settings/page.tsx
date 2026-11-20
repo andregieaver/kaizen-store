@@ -5,8 +5,8 @@ import { SettingsHub } from "@/components/admin/settings-hub";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
-import { adminText } from "@/lib/admin-text";
 import { PLATFORM_BASE, PLATFORM_HUB_INTROS, PLATFORM_HUB_TITLES, SETTINGS_ITEMS } from "@/lib/platform-nav";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { requirePlatformReader } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -20,7 +20,7 @@ export default async function PlatformSettingsPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const t = adminText(lang, "home").settings;
+  const t = HOME_WORDS[lang].settings;
   const cards = SETTINGS_ITEMS.map((item) => ({
     href: `${PLATFORM_BASE}${item.path}`,
     label: navWord(lang, item.label),

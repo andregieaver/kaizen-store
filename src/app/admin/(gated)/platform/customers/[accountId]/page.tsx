@@ -21,8 +21,10 @@ import { CARD_CLASS, Field, List, ListRow, PageHeader, RowDate, RowFact, RowLead
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { NAME_MAX } from "@/lib/email-change-limits";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 
 import { cancelEmailChangeForAction, correctNameAction, resetTwoStepAction, sendEmailChangeAction } from "./actions";
 
@@ -39,10 +41,10 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "platform").customer;
-  const billingWords = adminText(lang, "billing");
-  const roleWord = (role: string) => (adminText(lang, "staff").roles as Record<string, string>)[role] ?? role;
-  const invoiceWords = adminText(lang, "platform").invoiceList;
+  const w = PLATFORM_WORDS[lang].customer;
+  const billingWords = BILLING_WORDS[lang];
+  const roleWord = (role: string) => (STAFF_WORDS[lang].roles as Record<string, string>)[role] ?? role;
+  const invoiceWords = PLATFORM_WORDS[lang].invoiceList;
   const { accountId } = await params;
   if (!z.uuid().safeParse(accountId).success) notFound();
   const customer = await getPlatformCustomer(accountId);

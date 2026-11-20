@@ -29,8 +29,8 @@ import {
 } from "../actions";
 import { DemoStoreView } from "./demo-store-view";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { platformSiteWords } from "@/server/platform-site-words";
-import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Demo store" };
 
@@ -43,7 +43,7 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
   await connection();
   await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
-  const labels = adminText(lang, "common").features.labels;
+  const labels = COMMON_WORDS[lang].features.labels;
   const t = w.starter;
   const { starterId } = await params;
   const starter = await getStarter(starterId);

@@ -7,8 +7,12 @@ import { DocsGuideForm } from "@/components/admin/docs-guide-form";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { platformText } from "@/lib/platform-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { PLATFORM_DOCS_GUIDE_WORDS } from "@/lib/admin-words/platform-docs-guide";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { aiFor } from "@/server/ai";
 import { requirePlatformReader } from "@/server/auth";
 import { getDocsGuideForEdit, guideKeeping } from "@/server/docs-guide-settings";
@@ -29,12 +33,12 @@ export default async function DocsGuidePage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "platform").docsGuide;
+  const w = PLATFORM_WORDS[lang].docsGuide;
   const [guide, ai, keeping] = await Promise.all([getDocsGuideForEdit(), aiFor(null), guideKeeping()]);
   const ready = Boolean(ai?.textModel);
   const days = keeping.transcriptDays === 1 ? w.oneDay : fillWords(w.days, { n: keeping.transcriptDays });
   return (
-    <AdminTextScope texts={adminTexts(lang, ["platformTools", "websitePick", "platformDocsGuide"])}>
+    <AdminTextScope texts={areaTexts(lang, { platformTools: PLATFORM_TOOLS_WORDS, websitePick: WEBSITE_PICK_WORDS, platformDocsGuide: PLATFORM_DOCS_GUIDE_WORDS })}>
       <div className="flex max-w-3xl flex-col gap-6">
         <PageHeader title={w.title} description={guide.enabled ? (ready ? fillWords(w.onReady, { name: guide.name }) : w.onNoModel) : w.off} />
         <Card title={w.how}>

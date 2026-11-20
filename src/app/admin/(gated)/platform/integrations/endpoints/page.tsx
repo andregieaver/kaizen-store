@@ -9,9 +9,12 @@ import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } fr
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { DEFAULT_PLATFORM_EVENTS, PLATFORM_EVENTS } from "@/lib/platform-integrations";
 import { ID_HEADER, SIGNATURE_HEADER, TIMESTAMP_HEADER } from "@/lib/webhook-signature";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_INTEGRATIONS_WORDS } from "@/lib/admin-words/notifications-integrations";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { listPlatformEndpointDeliveries, listPlatformEndpoints } from "@/server/platform-endpoints";
 
@@ -35,9 +38,9 @@ export default async function PlatformEndpointsPage() {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
-  const all = adminText(lang, "notifications").integrations;
+  const all = NOTIFICATIONS_WORDS[lang].integrations;
   const w = all.endpoints;
-  const own = adminText(lang, "platform").integrations;
+  const own = PLATFORM_WORDS[lang].integrations;
   const owner = platformCan(admin, "settings");
   const topics = PLATFORM_EVENTS.map((event) => ({ id: event, label: own.events[event]?.label ?? event, hint: own.events[event]?.hint ?? "" }));
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
@@ -71,7 +74,7 @@ export default async function PlatformEndpointsPage() {
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsIntegrations: NOTIFICATIONS_INTEGRATIONS_WORDS })}>
       <div className="flex flex-col gap-6">
         <div>
           <Link href="/admin/platform/integrations" className="text-sm underline">

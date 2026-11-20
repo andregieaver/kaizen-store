@@ -4,8 +4,8 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fromTyped, isLimitKey, LIMITS } from "@/lib/limits";
+import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 import { requirePlatformAdmin } from "@/server/auth";
 import { removeLimitOverride, setLimitOverride } from "@/server/limits-admin";
 
@@ -15,7 +15,7 @@ import { removeLimitOverride, setLimitOverride } from "@/server/limits-admin";
  */
 export async function setLimitOverrideAction(storeId: string, ownerId: string | null, _state: FormState, form: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  const w = adminText(adminLangOf(admin.adminLocale), "capacity");
+  const w = CAPACITY_WORDS[adminLangOf(admin.adminLocale)];
   const key = form.get("key");
   if (!isLimitKey(key)) return { status: "error", messages: [w.overrides.needLimit] };
   const reason = String(form.get("reason") ?? "").trim();
@@ -37,7 +37,7 @@ export async function setLimitOverrideAction(storeId: string, ownerId: string | 
 
 export async function removeLimitOverrideAction(storeId: string, id: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  const w = adminText(adminLangOf(admin.adminLocale), "capacity");
+  const w = CAPACITY_WORDS[adminLangOf(admin.adminLocale)];
   await removeLimitOverride(admin, storeId, id);
   refresh();
   return { status: "ok", messages: [w.overrides.removed] };

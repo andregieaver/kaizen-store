@@ -42,7 +42,7 @@ import { PLANS_TAG } from "@/server/public-plans";
 import { platformModes } from "@/server/stripe";
 import { getStore } from "@/server/stores";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 /** Turns self-serve sign-up on or off (D359). */
@@ -50,7 +50,7 @@ export async function selfServeAction(_state: FormState, form: FormData): Promis
   const admin = await requirePlatformAdmin();
   await setSelfServe(admin, form.get("on") === "on");
   refresh();
-  return { status: "ok", messages: [adminText(await actionAdminLang(), "platform").requests.selfServe.saved] };
+  return { status: "ok", messages: [PLATFORM_WORDS[await actionAdminLang()].requests.selfServe.saved] };
 }
 
 /** Turns the page builder's sandbox on or off (D457). */
@@ -58,11 +58,11 @@ export async function sandboxAction(_state: FormState, form: FormData): Promise<
   const admin = await requirePlatformAdmin();
   await setSandboxOn(admin, form.get("on") === "on");
   refresh();
-  return { status: "ok", messages: [adminText(await actionAdminLang(), "platform").requests.sandbox.saved] };
+  return { status: "ok", messages: [PLATFORM_WORDS[await actionAdminLang()].requests.sandbox.saved] };
 }
 
 /** The refusals and confirmations here, in the account's language (D312 A11). */
-const said = async () => adminText(await actionAdminLang(), "platform").actions;
+const said = async () => PLATFORM_WORDS[await actionAdminLang()].actions;
 
 async function requirePlatformAdmin(): Promise<Account> {
   const account = await requireAccount();

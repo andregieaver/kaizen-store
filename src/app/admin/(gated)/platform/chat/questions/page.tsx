@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/admin/ui";
 import { UnansweredQuestionsView } from "@/components/admin/unanswered-questions-view";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { QUESTION_STATUSES, type QuestionStatus } from "@/lib/unanswered-questions";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { platformCan, requirePlatform } from "@/server/auth";
 import { listUnanswered, savedAnswers } from "@/server/unanswered-questions";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Questions Kaizena Flow's assistant c
 export default async function PlatformQuestionsPage({ searchParams }: PageProps<"/admin/platform/chat/questions">) {
   const account = await requirePlatform("support", "read");
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "support");
+  const words = SUPPORT_WORDS[lang];
   const asked = (await searchParams).show;
   const show: QuestionStatus = typeof asked === "string" && (QUESTION_STATUSES as readonly string[]).includes(asked) ? (asked as QuestionStatus) : "open";
   const rows = await listUnanswered(null, show);

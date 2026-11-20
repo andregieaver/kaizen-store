@@ -3,9 +3,10 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
-import { adminText } from "@/lib/admin-text";
 import { LLMS_MAX, RULES_MAX } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { uploadsEnabled } from "@/server/media";
 import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 
@@ -63,7 +64,7 @@ export default async function PlatformSeoPage() {
             initial={{ title: seo.title.en ?? "", description: seo.description.en ?? "" }}
             fallback={PLATFORM_DEFAULTS}
             url={`${origin}/`}
-            words={adminText(lang, "common").snippet}
+            words={COMMON_WORDS[lang].snippet}
           />
         </section>
 
@@ -77,7 +78,7 @@ export default async function PlatformSeoPage() {
             locales={["en"]}
             languageNames={{ en: "English" }}
             generated="/og.png"
-            words={adminText(lang, "settings").seo.shareField}
+            words={SETTINGS_WORDS[lang].seo.shareField}
           />
         </section>
 

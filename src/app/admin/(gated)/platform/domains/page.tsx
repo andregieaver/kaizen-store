@@ -7,9 +7,9 @@ import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { domainPrice } from "@/lib/domain-prices";
 import { formatMoney } from "@/lib/money";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { requirePlatformReader } from "@/server/auth";
 import { allRegistrations, domainLeads, domainsOpenToAll, domainsPublic, purchasesInReview, purchasesNeedingALook, storesBuyingDomains } from "@/server/domain-admin";
 import { domainPricingRows, latestEurRates } from "@/server/domain-prices";
@@ -29,7 +29,7 @@ export default async function PlatformDomainsPage() {
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "domains").platform;
+  const w = DOMAINS_WORDS[lang].platform;
   const [pricing, { rates, day }, openToAll, stores, registrations, purchases, sellsPublic, inReview, leads] = await Promise.all([
     domainPricingRows(),
     latestEurRates(),
