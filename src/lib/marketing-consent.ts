@@ -59,4 +59,7 @@ export const SUBSCRIBER_CSV_COLUMNS = [
   "unsubscribe_source",
   "customer",
   "created_at",
+  // A form's sign-up (D850): the form's name (or id, for a form since deleted) and the page it was sent from; last, so older readers keep their columns.
+  "form",
+  "page",
 ] as const;

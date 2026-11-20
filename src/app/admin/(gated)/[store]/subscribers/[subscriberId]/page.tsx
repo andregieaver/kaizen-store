@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { AdminLink, Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
@@ -53,6 +53,31 @@ export default async function SubscriberPage({ params }: PageProps<"/admin/[stor
             <dt className="text-caption text-muted">{ws.from}</dt>
             <dd className="text-ink">{ws.sources[subscriber.source]}</dd>
           </div>
+          {subscriber.form && (
+            // Which form and page they signed up by (D850); the form opens in its editor while it exists.
+            <>
+              <div>
+                <dt className="text-caption text-muted">{ws.joinedWith}</dt>
+                <dd className="text-ink" data-subscriber-form>
+                  {subscriber.form.name ? (
+                    <AdminLink href={subscriber.formPlatform ? `/admin/platform/forms/${subscriber.form.id}` : `/admin/${store.slug}/forms/${subscriber.form.id}`} className="underline">
+                      {subscriber.form.name}
+                    </AdminLink>
+                  ) : /^[0-9a-f-]{36}$/.test(subscriber.form.id) ? (
+                    ws.formGone
+                  ) : (
+                    ws.pageForm
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-caption text-muted">{ws.joinedOn}</dt>
+                <dd className="break-all text-ink" data-subscriber-page>
+                  {subscriber.path ?? <span className="text-muted">{ws.pageNotKept}</span>}
+                </dd>
+              </div>
+            </>
+          )}
           <div>
             <dt className="text-caption text-muted">{ws.when}</dt>
             <dd className="text-ink">{when(subscriber.consentedAt)}</dd>

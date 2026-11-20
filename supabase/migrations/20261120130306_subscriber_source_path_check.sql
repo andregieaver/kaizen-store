@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."marketing_subscribers" ADD CONSTRAINT "marketing_subscribers_source_path" CHECK ("commerce"."marketing_subscribers"."source_path" is null or ("commerce"."marketing_subscribers"."source" = 'form' and char_length("commerce"."marketing_subscribers"."source_path") between 1 and 500));

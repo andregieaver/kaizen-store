@@ -1,6 +1,6 @@
 {
-  "id": "b94bacc6-5971-4cc8-b684-f3088e86aa35",
-  "prevId": "75e7f3d8-a65e-4616-ad45-6ea670b338c3",
+  "id": "a3829559-948e-4768-8b95-a2e7270928fc",
+  "prevId": "2794e1ac-ed13-4375-bc50-2c7300cec5bc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -47017,6 +47017,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "consent_text": {
           "name": "consent_text",
           "type": "text",
@@ -47249,6 +47255,10 @@
         "marketing_subscribers_source": {
           "name": "marketing_subscribers_source",
           "value": "\"commerce\".\"marketing_subscribers\".\"source\" in ('form', 'checkout', 'account', 'shopify', 'woocommerce')"
+        },
+        "marketing_subscribers_source_path": {
+          "name": "marketing_subscribers_source_path",
+          "value": "\"commerce\".\"marketing_subscribers\".\"source_path\" is null or (\"commerce\".\"marketing_subscribers\".\"source\" = 'form' and char_length(\"commerce\".\"marketing_subscribers\".\"source_path\") between 1 and 500)"
         },
         "marketing_subscribers_unsubscribe_source": {
           "name": "marketing_subscribers_unsubscribe_source",

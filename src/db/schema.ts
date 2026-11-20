@@ -17222,8 +17222,10 @@ export const marketingSubscribers = commerce.table(
     marketCode: text("market_code"),
     status: text("status").notNull(),
     source: text("source").notNull(),
-    /** The form's block id, or the order's id. */
+    /** The form's block id (a form record's id, D705), or the order's id. */
     sourceRef: text("source_ref"),
+    /** The page a form's sign-up was sent from, a path on the site (D850); null for checkout, My account and older rows. */
+    sourcePath: text("source_path"),
     /** The words the person agreed to, as shown. */
     consentText: text("consent_text").notNull(),
     consentedAt: timestamp("consented_at", { withTimezone: true }).notNull(),
@@ -17254,6 +17256,7 @@ export const marketingSubscribers = commerce.table(
     }),
     check("marketing_subscribers_status", sql`${t.status} in (${sqlList(SUBSCRIBER_STATUSES)})`),
     check("marketing_subscribers_source", sql`${t.source} in (${sqlList(SUBSCRIBE_SOURCES)})`),
+    check("marketing_subscribers_source_path", sql`${t.sourcePath} is null or (${t.source} = 'form' and char_length(${t.sourcePath}) between 1 and 500)`),
     check(
       "marketing_subscribers_unsubscribe_source",
       sql`${t.unsubscribeSource} is null or ${t.unsubscribeSource} in (${sqlList(UNSUBSCRIBE_SOURCES)})`,

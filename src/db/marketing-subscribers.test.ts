@@ -140,6 +140,21 @@ describe("a subscriber", () => {
   });
 });
 
+describe("where a subscriber signed up (D850)", () => {
+  it("keeps the page only for a form's sign-up, as a path of at most 500 characters", async () => {
+    const id = await subscriber("subscribed");
+    await db.query("update commerce.marketing_subscribers set source_path = '/blog/vinter' where id = $1", [id]);
+    await expect(db.query("update commerce.marketing_subscribers set source_path = '' where id = $1", [id])).rejects.toThrow(/marketing_subscribers_source_path/);
+    await expect(db.query("update commerce.marketing_subscribers set source_path = $2 where id = $1", [id, `/${"x".repeat(500)}`])).rejects.toThrow(/marketing_subscribers_source_path/);
+    await expect(
+      db.query(
+        "insert into commerce.marketing_subscribers (store_id, email, locale, status, source, consent_text, consented_at, token, source_path) values ($1, 'checkout@example.com', 'nb', 'subscribed', 'checkout', 'w', now(), $2, '/checkout')",
+        [store, token()],
+      ),
+    ).rejects.toThrow(/marketing_subscribers_source_path/);
+  });
+});
+
 describe("the consent history", () => {
   it("is written only by the subscribers' rules and never changed", async () => {
     const id = await subscriber("subscribed");

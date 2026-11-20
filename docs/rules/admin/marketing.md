@@ -120,7 +120,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   its waiting record and calls `joinList()` when opened; only a signed-in customer with a verified email subscribes at once
   (`setAccountSubscription()`, never telling an unverified one an address is subscribed). Every marketing email will carry the
   subscriber's `token` (the unsubscribe page and one-click POST look it up first, `unsubscribeByToken()`); staff never subscribe
-  anyone, only unsubscribe (`marketing:write`), and the export is the owner's. The one other way in is a move from Shopify (D445
+  anyone, only unsubscribe (`marketing:write`), and the export is the owner's. A form's sign-up keeps its form (`source_ref`) and page
+  (`source_path`, D850), and the list narrows by either (`listSubscribers()`, `subscriberSources()`). The one other way in is a move from Shopify (D445
   step 8, the owner's Decision 1): `addMovedSubscribers()` adds only those Shopify records as `SUBSCRIBED` with a date
   (`movedSubscriber()`), source `shopify`, Shopify's record as the consent words, confirmed only for a confirmed opt-in, never
   over an address already on the list; a moved subscriber's first broadcast says the shop moved (`m.news.movedReason`). A new way

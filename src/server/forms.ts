@@ -318,7 +318,7 @@ export async function submitForm(request: FormRequest, visitor: string, files: R
     // A store's form keeps the person on its list (D295), as unconfirmed: the owner switched the confirmation off. Kaizena Flow's own forms keep
     // them on its own store's list (D467).
     const list = owner.storeId ?? (await houseStoreId());
-    if (list) await keepOnList(list, block.id, checked.email, payload, request.lang, "unconfirmed");
+    if (list) await keepOnList(list, block.id, checked.email, payload, request.lang, "unconfirmed", request.path);
     const status = await relaySignup(found, checked.email, payload, null, request.path, id);
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid and ${owned(owner.storeId)}`);
     if (found.formId) {
@@ -359,7 +359,15 @@ type SignupPayload = { name: string; consent: string; consentedAt: string };
  * A newsletter sign-up on a subscriber list (D295), with the words agreed to and when: a store's form on the store's list, Kaizena Flow's own
  * forms on the list of Kaizena Flow's own store (D467), where its broadcasts and automations reach the people who asked.
  */
-async function keepOnList(storeId: string, blockId: string, email: string, payload: SignupPayload, locale: string, proof: "confirmed" | "unconfirmed") {
+async function keepOnList(
+  storeId: string,
+  blockId: string,
+  email: string,
+  payload: SignupPayload,
+  locale: string,
+  proof: "confirmed" | "unconfirmed",
+  path: string,
+) {
   try {
     await joinList({
       storeId,
@@ -369,6 +377,8 @@ async function keepOnList(storeId: string, blockId: string, email: string, paylo
       marketCode: null,
       source: "form",
       sourceRef: blockId,
+      // The page it was sent from (D850): the owner's list says which form and page each person joined by.
+      sourcePath: path,
       consentText: payload.consent.slice(0, 1000),
       consentedAt: new Date(payload.consentedAt),
       proof,
@@ -478,7 +488,7 @@ export async function confirmSignup(token: string): Promise<{ location: string }
     return back("expired");
   }
   const list = storeId ?? (await houseStoreId());
-  if (list) await keepOnList(list, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed");
+  if (list) await keepOnList(list, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed", path);
   if (storeId && found.block.type === "newsletter") await welcomeSignup(found, String(row.email), String(row.locale), String(row.id));
   const confirmedAt = new Date(String(row.confirmed_at));
   const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, confirmedAt, path, String(row.id));

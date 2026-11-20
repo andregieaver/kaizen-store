@@ -16,6 +16,7 @@ const STORE = "e2e-subscribers";
 const RUN = Date.now().toString(36).toLowerCase();
 const email = `kari-${RUN}@example.com`;
 let id = "";
+const shots = process.env.FORMS_SHOTS;
 
 test.beforeAll(async () => {
   const sql = testDb();
@@ -35,6 +36,13 @@ test.beforeAll(async () => {
       values (${store.id}, ${email}, 'Kari Nordmann', 'nb-NO', 'NO', 'subscribed', 'form', 'news', 'Send meg nyheter og tilbud.', now(), ${token})
       returning id`;
     id = String(row.id);
+    // Two sign-ups by one of the store's forms, on two pages (D850).
+    const [form] = await sql`insert into commerce.forms (store_id, kind, name, signup) values (${store.id}, 'signup', ${`E2E Winter list ${RUN}`}, '{}') returning id`;
+    for (const [who, path] of [["ola", "/blog/vinter"], ["eva", "/kampanje"]] as const) {
+      await sql`
+        insert into commerce.marketing_subscribers (store_id, email, locale, status, source, source_ref, source_path, consent_text, consented_at, token)
+        values (${store.id}, ${`${who}-${RUN}@example.com`}, 'nb-NO', 'subscribed', 'form', ${String(form.id)}, ${path}, 'Send meg nyheter.', now(), ${(who + RUN + "y".repeat(43)).slice(0, 43)})`;
+    }
   } finally {
     await sql.end();
   }
@@ -43,12 +51,32 @@ test.beforeAll(async () => {
 test("the page counts who wants the store's emails and lists them, newest first", async ({ page }) => {
   await page.goto(`/admin/${STORE}/subscribers`);
   await expect(page.getByRole("heading", { level: 1, name: "Subscribers" })).toBeVisible();
-  await expect(page.getByText("Want your emails")).toBeVisible();
+  await expect(page.getByText("Want your emails", { exact: true })).toBeVisible();
   const list = page.getByRole("list", { name: "Subscribers" });
   await expect(list.getByRole("link", { name: email })).toBeVisible();
-  await page.getByRole("searchbox", { name: "Search by email or name" }).fill(RUN);
+  await page.getByRole("searchbox", { name: "Search by email or name" }).fill(`kari-${RUN}`);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(list.getByRole("listitem")).toHaveCount(1);
+});
+
+test("each sign-up says its form and page, and the list narrows to either (D850)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/subscribers`);
+  const list = page.getByRole("list", { name: "Subscribers" });
+  const ola = list.getByRole("listitem").filter({ hasText: `ola-${RUN}@example.com` });
+  await expect(ola).toContainText(`E2E Winter list ${RUN} · /blog/vinter`);
+  if (shots) await page.screenshot({ path: `${shots}/20-subscribers-sources.png`, fullPage: true });
+  await page.locator("[data-subscriber-form-filter]").selectOption({ label: `E2E Winter list ${RUN} (2)` });
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await page.locator("[data-subscriber-page-filter]").selectOption("/kampanje");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  await expect(list).toContainText(`eva-${RUN}@example.com`);
+  // One subscriber names the form, which opens in its editor, and the page.
+  await list.getByRole("link", { name: `eva-${RUN}@example.com` }).click();
+  await expect(page.locator("[data-subscriber-form]")).toContainText(`E2E Winter list ${RUN}`);
+  await expect(page.locator("[data-subscriber-page]")).toHaveText("/kampanje");
+  if (shots) await page.screenshot({ path: `${shots}/21-subscriber-source.png`, fullPage: true });
 });
 
 test("one subscriber shows the words they agreed to, and Unsubscribe ends it", async ({ page }) => {

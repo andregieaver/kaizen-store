@@ -13,6 +13,7 @@ import {
   CONFIRM_DAYS,
   PENDING_KEEP_DAYS,
   SUBSCRIBER_CSV_COLUMNS,
+  SUBSCRIBE_SOURCES,
   SUBSCRIBER_STATUSES,
   TOKEN_PATTERN,
   type ConsentEventKind,
@@ -50,6 +51,8 @@ export type JoinRequest = {
   marketCode: string | null;
   source: SubscribeSource;
   sourceRef?: string | null;
+  /** A form's sign-up: the page it was sent from, a path on the site (D850). */
+  sourcePath?: string | null;
   /** The words the person agreed to, as shown. */
   consentText: string;
   consentedAt?: Date;
@@ -77,6 +80,8 @@ export async function joinList(request: JoinRequest): Promise<JoinOutcome> {
   // A verified customer's account proves the address; a waiting request from an unverified one is theirs to see, and its link proves it.
   const customerId = request.proof === "account" || request.proof === "link" ? (request.customerId ?? null) : null;
   const name = (request.name ?? "").slice(0, 200);
+  // Only a form's sign-up has a page (D850), as a path on the site.
+  const path = request.source === "form" && request.sourcePath?.startsWith("/") ? request.sourcePath.slice(0, 500) : null;
 
   const result = await db().transaction(async (tx) => {
     const [existing] = await tx.execute<Row>(sql`
@@ -94,7 +99,7 @@ export async function joinList(request: JoinRequest): Promise<JoinOutcome> {
     if (existing) {
       await tx.execute(sql`
         update commerce.marketing_subscribers set
-          status = ${status}, source = ${request.source}, source_ref = ${request.sourceRef ?? null},
+          status = ${status}, source = ${request.source}, source_ref = ${request.sourceRef ?? null}, source_path = ${path},
           consent_text = ${request.consentText}, consented_at = ${consentedAt}::timestamptz, confirmed_at = ${confirmedAt}::timestamptz,
           confirm_hash = ${confirmToken ? hash(confirmToken) : null}, confirm_until = ${until}::timestamptz,
           name = case when ${name} = '' then name else ${name} end, locale = ${request.locale}, market_code = ${request.marketCode},
@@ -105,11 +110,11 @@ export async function joinList(request: JoinRequest): Promise<JoinOutcome> {
     }
     const [row] = await tx.execute<Row>(sql`
       insert into commerce.marketing_subscribers (
-        store_id, email, customer_id, name, locale, market_code, status, source, source_ref, consent_text, consented_at, confirmed_at,
+        store_id, email, customer_id, name, locale, market_code, status, source, source_ref, source_path, consent_text, consented_at, confirmed_at,
         confirm_hash, confirm_until, token
       ) values (
         ${request.storeId}::uuid, ${email}, ${customerId}::uuid, ${name}, ${request.locale}, ${request.marketCode}, ${status}, ${request.source},
-        ${request.sourceRef ?? null}, ${request.consentText}, ${consentedAt}::timestamptz, ${confirmedAt}::timestamptz,
+        ${request.sourceRef ?? null}, ${path}, ${request.consentText}, ${consentedAt}::timestamptz, ${confirmedAt}::timestamptz,
         ${confirmToken ? hash(confirmToken) : null}, ${until}::timestamptz, ${newToken()}
       )
       returning id
@@ -321,46 +326,120 @@ export type SubscriberRow = {
   customer: boolean;
   /** When they joined (consented) or left. */
   at: string;
+  /**
+   * A form's sign-up (D850): the form's id (`source_ref`) and its name while the form exists (a page's own sign-up form before D705 has none),
+   * and the page it was sent from (null before D850 kept it, where no response or send told it).
+   */
+  form: { id: string; name: string | null } | null;
+  path: string | null;
 };
 
 export const SUBSCRIBERS_PAGE = 50;
 
-/** Newest first, by address search and status, 50 a page (keyset on the time and id). */
+/** The form behind a form's sign-up: the store's own, or one of Kaizena Flow's whose sign-ups the house store keeps (D467). */
+const FORM_OF = sql`left join commerce.forms f on s.source = 'form' and f.id::text = s.source_ref and (f.store_id = s.store_id or f.store_id is null)`;
+
+const SUBSCRIBER_ROW = z.object({
+  id: col.uuid,
+  email: col.text,
+  name: col.text,
+  status: z.enum(SUBSCRIBER_STATUSES),
+  source: z.enum(SUBSCRIBE_SOURCES),
+  locale: col.text,
+  confirmed: col.bool,
+  customer: col.bool,
+  at: col.timestamp,
+  source_ref: col.textOrNull,
+  form_name: col.textOrNull,
+  source_path: col.textOrNull,
+});
+
+const asSubscriberRow = (r: z.output<typeof SUBSCRIBER_ROW>): SubscriberRow => ({
+  id: r.id,
+  email: r.email,
+  name: r.name,
+  status: r.status,
+  source: r.source,
+  locale: r.locale,
+  confirmed: r.confirmed,
+  customer: r.customer,
+  at: new Date(r.at).toISOString(),
+  form: r.source === "form" && r.source_ref ? { id: r.source_ref, name: r.form_name } : null,
+  path: r.source_path,
+});
+
+/** What the list may be narrowed to (D850): a form's sign-ups (its id, as `source_ref` holds it) and the page they were sent from. */
+export type SubscriberFilter = { query?: string; status?: SubscriberStatus | null; form?: string | null; path?: string | null };
+
+/** Newest first, by address search, status, form and page, 50 a page (keyset on the time and id). */
 export async function listSubscribers(
   storeId: string,
-  options: { query?: string; status?: SubscriberStatus | null; before?: { at: string; id: string } | null } = {},
+  options: SubscriberFilter & { before?: { at: string; id: string } | null } = {},
 ): Promise<{ rows: SubscriberRow[]; more: boolean }> {
   const words = (options.query ?? "").trim().toLowerCase().slice(0, 100);
   const like = `%${words.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const rows = await db().execute<Row>(sql`
-    select id, email, name, status, source, locale, confirmed_at is not null as confirmed, customer_id is not null as customer,
-      coalesce(unsubscribed_at, consented_at) as at
-    from commerce.marketing_subscribers
-    where store_id = ${storeId}::uuid
-      and (${options.status ?? null}::text is null or status = ${options.status ?? null})
-      and (${words} = '' or lower(email) like ${like} or lower(name) like ${like})
-      and (${options.before?.at ?? null}::timestamptz is null
-        or (coalesce(unsubscribed_at, consented_at), id) < (${options.before?.at ?? null}::timestamptz, ${options.before?.id ?? null}::uuid))
-    order by coalesce(unsubscribed_at, consented_at) desc, id desc
-    limit ${SUBSCRIBERS_PAGE + 1}
-  `);
-  return {
-    rows: rows.slice(0, SUBSCRIBERS_PAGE).map((r) => ({
-      id: String(r.id),
-      email: String(r.email),
-      name: String(r.name ?? ""),
-      status: String(r.status) as SubscriberStatus,
-      source: String(r.source) as SubscribeSource,
-      locale: String(r.locale),
-      confirmed: Boolean(r.confirmed),
-      customer: Boolean(r.customer),
-      at: new Date(String(r.at)).toISOString(),
-    })),
-    more: rows.length > SUBSCRIBERS_PAGE,
-  };
+  const form = options.form?.slice(0, 64) || null;
+  const path = options.path?.slice(0, 500) || null;
+  const rows = await typedRows(
+    SUBSCRIBER_ROW,
+    sql`
+      select s.id, s.email, s.name, s.status, s.source, s.locale, s.confirmed_at is not null as confirmed, s.customer_id is not null as customer,
+        coalesce(s.unsubscribed_at, s.consented_at) as at, s.source_ref, f.name as form_name, s.source_path
+      from commerce.marketing_subscribers s
+      ${FORM_OF}
+      where s.store_id = ${storeId}::uuid
+        and (${options.status ?? null}::text is null or s.status = ${options.status ?? null})
+        and (${words} = '' or lower(s.email) like ${like} or lower(s.name) like ${like})
+        and (${form}::text is null or (s.source = 'form' and s.source_ref = ${form}))
+        and (${path}::text is null or s.source_path = ${path})
+        and (${options.before?.at ?? null}::timestamptz is null
+          or (coalesce(s.unsubscribed_at, s.consented_at), s.id) < (${options.before?.at ?? null}::timestamptz, ${options.before?.id ?? null}::uuid))
+      order by coalesce(s.unsubscribed_at, s.consented_at) desc, s.id desc
+      limit ${SUBSCRIBERS_PAGE + 1}
+    `,
+  );
+  return { rows: rows.slice(0, SUBSCRIBERS_PAGE).map(asSubscriberRow), more: rows.length > SUBSCRIBERS_PAGE };
+}
+
+/** A choice of the list's filters (D850): each form and each page people signed up by, with how many did, most first. */
+export type SubscriberSources = {
+  forms: { id: string; name: string | null; n: number }[];
+  pages: { path: string; n: number }[];
+};
+
+/** The forms and pages the store's subscribers signed up by, for the list's filters: at most 50 of each, the busiest first. */
+export async function subscriberSources(storeId: string): Promise<SubscriberSources> {
+  const [forms, pages] = await Promise.all([
+    typedRows(
+      z.object({ id: col.text, name: col.textOrNull, n: col.int }),
+      sql`
+        select s.source_ref as id, max(f.name) as name, count(*)::int as n
+        from commerce.marketing_subscribers s
+        ${FORM_OF}
+        where s.store_id = ${storeId}::uuid and s.source = 'form' and s.source_ref is not null
+        group by s.source_ref
+        order by n desc, name nulls last
+        limit 50
+      `,
+    ),
+    typedRows(
+      z.object({ path: col.text, n: col.int }),
+      sql`
+        select s.source_path as path, count(*)::int as n
+        from commerce.marketing_subscribers s
+        where s.store_id = ${storeId}::uuid and s.source_path is not null
+        group by s.source_path
+        order by n desc, path
+        limit 50
+      `,
+    ),
+  ]);
+  return { forms, pages };
 }
 
 export type SubscriberDetail = SubscriberRow & {
+  /** The form's editor is Kaizena Flow's own (D467: its sign-ups are kept on the house store's list), not the store's. */
+  formPlatform: boolean;
   marketCode: string | null;
   consentText: string;
   consentedAt: string;
@@ -373,10 +452,11 @@ export type SubscriberDetail = SubscriberRow & {
 export async function subscriberDetail(storeId: string, id: string): Promise<SubscriberDetail | null> {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;
   const [r] = await db().execute<Row>(sql`
-    select s.*, coalesce(s.unsubscribed_at, s.consented_at) as at,
+    select s.*, coalesce(s.unsubscribed_at, s.consented_at) as at, f.name as form_name, f.id is not null and f.store_id is null as form_platform,
       (select coalesce(json_agg(json_build_object('kind', e.kind, 'source', e.source, 'consentText', e.consent_text, 'at', e.created_at) order by e.id), '[]')
          from commerce.marketing_consent_events e where e.store_id = s.store_id and e.subscriber_id = s.id) as history
     from commerce.marketing_subscribers s
+    ${FORM_OF}
     where s.store_id = ${storeId}::uuid and s.id = ${id}::uuid
   `);
   if (!r) return null;
@@ -391,6 +471,9 @@ export async function subscriberDetail(storeId: string, id: string): Promise<Sub
     confirmed: r.confirmed_at != null,
     customer: r.customer_id != null,
     at: iso(r.at)!,
+    form: r.source === "form" && r.source_ref ? { id: String(r.source_ref), name: r.form_name ? String(r.form_name) : null } : null,
+    path: r.source_path ? String(r.source_path) : null,
+    formPlatform: Boolean(r.form_platform),
     marketCode: r.market_code ? String(r.market_code) : null,
     consentText: String(r.consent_text),
     consentedAt: iso(r.consented_at)!,
@@ -414,10 +497,12 @@ export async function unsubscribeByStaff(storeId: string, accountId: string, id:
 /** Every row with its consent facts, as a CSV (owner only, a POST); audited with the count only, never an address. */
 export async function subscribersCsv(storeId: string, accountId: string): Promise<{ csv: string; count: number }> {
   const rows = await db().execute<Row>(sql`
-    select email, name, status, locale, market_code, source, consent_text, consented_at, confirmed_at, unsubscribed_at, unsubscribe_source,
-      customer_id is not null as customer, created_at
-    from commerce.marketing_subscribers where store_id = ${storeId}::uuid
-    order by created_at, id
+    select s.email, s.name, s.status, s.locale, s.market_code, s.source, s.consent_text, s.consented_at, s.confirmed_at, s.unsubscribed_at,
+      s.unsubscribe_source, s.customer_id is not null as customer, s.created_at, coalesce(f.name, s.source_ref) as form, s.source_path
+    from commerce.marketing_subscribers s
+    ${FORM_OF}
+    where s.store_id = ${storeId}::uuid
+    order by s.created_at, s.id
   `);
   const iso = (v: unknown) => (v ? new Date(String(v)).toISOString() : "");
   const csv = writeCsv([
@@ -436,6 +521,8 @@ export async function subscribersCsv(storeId: string, accountId: string): Promis
       r.unsubscribe_source ? String(r.unsubscribe_source) : "",
       r.customer ? "yes" : "no",
       iso(r.created_at),
+      r.source === "form" && r.form ? String(r.form) : "",
+      r.source_path ? String(r.source_path) : "",
     ]),
   ]);
   await audit(accountId, storeId, "subscribers.exported", { count: rows.length });

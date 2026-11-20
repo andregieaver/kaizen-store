@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead, Select } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "@/lib/marketing-consent";
-import { listSubscribers, newsletterFormPages, subscriberCounts } from "@/server/marketing-subscribers";
+import { listSubscribers, newsletterFormPages, subscriberCounts, subscriberSources } from "@/server/marketing-subscribers";
 import { countWords } from "@/lib/admin-fill";
 import { featureOn } from "@/lib/store-features";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
@@ -30,9 +30,17 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   const query = await searchParams;
   const q = first(query.q).slice(0, 100);
   const status = (SUBSCRIBER_STATUSES as readonly string[]).includes(first(query.status)) ? (first(query.status) as SubscriberStatus) : null;
+  // Narrowed to one form's sign-ups or one page's (D850): the form by its id, the page by its path on the site.
+  const form = first(query.form).slice(0, 64) || null;
+  const path = first(query.page).startsWith("/") ? first(query.page).slice(0, 500) : null;
   const [at, id] = first(query.before).split("_");
   const before = at && id && !Number.isNaN(Date.parse(at)) && /^[0-9a-f-]{36}$/.test(id) ? { at, id } : null;
-  const [counts, page, formPages] = await Promise.all([subscriberCounts(store.id), listSubscribers(store.id, { query: q, status, before }), newsletterFormPages(store.id)]);
+  const [counts, page, formPages, sources] = await Promise.all([
+    subscriberCounts(store.id),
+    listSubscribers(store.id, { query: q, status, form, path, before }),
+    newsletterFormPages(store.id),
+    subscriberSources(store.id),
+  ]);
   const base = `/admin/${store.slug}/subscribers`;
   const lang = adminLangOf(member.account.adminLocale);
   const w = MARKETING_WORDS[lang];
@@ -45,6 +53,8 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
     if (q) p.set("q", q);
     const s = next.status === undefined ? status : next.status;
     if (s) p.set("status", s);
+    if (form) p.set("form", form);
+    if (path) p.set("page", path);
     if (next.before) p.set("before", next.before);
     const text = p.toString();
     return text ? `${base}?${text}` : base;
@@ -52,6 +62,10 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   const last = page.rows.at(-1);
   const total = counts.subscribed + counts.pending + counts.unsubscribed;
   const shop = featureOn(store, "shop");
+  // A form record since deleted has a uuid; a page's own sign-up form from before forms were records (D705 F2) has its block's id.
+  const formName = (f: { id: string; name: string | null }) => f.name ?? (/^[0-9a-f-]{36}$/.test(f.id) ? ws.formGone : ws.pageForm);
+  const chosenForm = form ? sources.forms.find((f) => f.id === form) : undefined;
+  const narrowed = Boolean(q || status || form || path);
 
   return (
     <div className="flex flex-col gap-6">
@@ -119,13 +133,33 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
       {total > 0 && (
         <Card
           compact
-          title={status ? ws.statuses[status] : ws.everyone}
+          title={chosenForm ? formName(chosenForm) : status ? ws.statuses[status] : ws.everyone}
           aside={
             <form method="get" action={base} className="flex flex-wrap items-center gap-2">
               {status && <input type="hidden" name="status" value={status} />}
+              {sources.forms.length > 0 && (
+                <Select name="form" defaultValue={form ?? ""} aria-label={ws.formFilter} className="max-w-56" data-subscriber-form-filter>
+                  <option value="">{ws.anyForm}</option>
+                  {sources.forms.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {formName(f)} ({n(f.n)})
+                    </option>
+                  ))}
+                </Select>
+              )}
+              {sources.pages.length > 0 && (
+                <Select name="page" defaultValue={path ?? ""} aria-label={ws.pageFilter} className="max-w-56" data-subscriber-page-filter>
+                  <option value="">{ws.anyPage}</option>
+                  {sources.pages.map((p) => (
+                    <option key={p.path} value={p.path}>
+                      {p.path} ({n(p.n)})
+                    </option>
+                  ))}
+                </Select>
+              )}
               <input type="search" name="q" defaultValue={q} placeholder={ws.search} aria-label={ws.search} className="min-h-10 w-64 rounded-md border border-line px-3" />
               <Button type="submit">{ws.searchButton}</Button>
-              {(q || status) && (
+              {narrowed && (
                 <Link href={base} className="text-body text-ink-2 underline-offset-2 hover:underline">
                   {ws.showEveryone}
                 </Link>
@@ -142,7 +176,15 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
                   <RowLead
                     title={<span className="block max-w-80 truncate">{row.email}</span>}
                     href={`${base}/${row.id}`}
-                    sub={[row.name, ws.sources[row.source], row.status === "subscribed" && !row.confirmed && row.source === "form" ? ws.notConfirmed : null].filter(Boolean).join(" · ")}
+                    sub={[
+                      row.name,
+                      // A form's sign-up says which form and page (D850).
+                      row.form ? formName(row.form) : ws.sources[row.source],
+                      row.path,
+                      row.status === "subscribed" && !row.confirmed && row.source === "form" ? ws.notConfirmed : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   />
                   <RowFact className="hidden sm:block">{date(row.at)}</RowFact>
                   <Chip signal={SIGNAL[row.status]} dot>

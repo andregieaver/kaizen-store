@@ -196,7 +196,7 @@
     "src/server/manager-tools.ts": 4,
     "src/server/market-prices.ts": 7,
     "src/server/marketing-email.ts": 1,
-    "src/server/marketing-subscribers.ts": 16,
+    "src/server/marketing-subscribers.ts": 15,
     "src/server/media-alts.ts": 1,
     "src/server/media-compress.ts": 4,
     "src/server/media-library.ts": 15,

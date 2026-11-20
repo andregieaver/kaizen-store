@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."marketing_subscribers" ADD COLUMN "source_path" text;

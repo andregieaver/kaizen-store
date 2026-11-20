@@ -213,7 +213,7 @@ describe("the admin's list", () => {
   it("exports every row with its consent facts, audited with the count only", async () => {
     const { csv, count } = await subs.subscribersCsv(storeId, account);
     const lines = csv.trim().split("\r\n");
-    expect(lines[0]).toBe("email,name,status,language,market,source,consent_text,consented_at,confirmed_at,unsubscribed_at,unsubscribe_source,customer,created_at");
+    expect(lines[0]).toBe("email,name,status,language,market,source,consent_text,consented_at,confirmed_at,unsubscribed_at,unsubscribe_source,customer,created_at,form,page");
     expect(lines).toHaveLength(count + 1);
     expect(csv).not.toContain("fremmed-");
     const [entry] = await db().execute<Row>(sql`

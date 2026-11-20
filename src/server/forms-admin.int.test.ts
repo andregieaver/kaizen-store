@@ -13,6 +13,7 @@ delete process.env.RESEND_API_KEY;
 
 const admin = await import("./forms-admin");
 const { submitForm } = await import("./forms");
+const { listSubscribers, subscriberSources, subscribersCsv } = await import("./marketing-subscribers");
 const { fileForStaff, pruneFormFiles, standInFormFiles } = await import("./form-files");
 
 type Row = Record<string, unknown>;
@@ -220,6 +221,39 @@ describe("forms as their own records (D705)", () => {
     const { responses } = await admin.listResponses(storeId, made.id);
     expect(responses).toHaveLength(1);
     expect(responses[0].contactEmail).toBe(`reader-${run}@example.com`);
+  });
+
+  it("keeps on the subscriber which form and page they signed up by, and narrows the list to either (D850)", async () => {
+    const draft = draftFromStarter(FORM_STARTERS.find((s) => s.key === "newsletter")!, "en", ["en"], [`owner-${run}@example.com`]);
+    const winter = await admin.saveForm(actor(), null, { ...draft, name: "Winter list", signup: { confirm: false, askName: false } });
+    const spring = await admin.saveForm(actor(), null, { ...draft, name: "Spring list", signup: { confirm: false, askName: false } });
+    if (!winter.ok || !spring.ok) throw new Error("made");
+    await placeOnPage(winter.id, `vinter-${run}`);
+    await placeOnPage(spring.id, `var-${run}`);
+    const signUp = (formId: string, email: string, page: string) =>
+      submitForm({ store: storeId, block: formId, values: { email }, consent: true, website: "", lang: "en", path: page, elapsed: 5000 }, `visitor-${Math.random()}`);
+    expect((await signUp(winter.id, `ada-${run}@example.com`, `/blog/vinter-${run}`)).status).toBe(200);
+    expect((await signUp(winter.id, `bo-${run}@example.com`, `/kampanje-${run}?utm_campaign=x`)).status).toBe(200);
+    expect((await signUp(spring.id, `cy-${run}@example.com`, `/blog/vinter-${run}`)).status).toBe(200);
+
+    const all = (await listSubscribers(storeId, { query: run })).rows;
+    const ada = all.find((r) => r.email === `ada-${run}@example.com`)!;
+    expect(ada).toMatchObject({ source: "form", form: { id: winter.id, name: "Winter list" }, path: `/blog/vinter-${run}` });
+    // One form's sign-ups, one page's, and both together.
+    expect((await listSubscribers(storeId, { query: run, form: winter.id })).rows.map((r) => r.email).sort()).toEqual([`ada-${run}@example.com`, `bo-${run}@example.com`]);
+    expect((await listSubscribers(storeId, { query: run, path: `/blog/vinter-${run}` })).rows.map((r) => r.email).sort()).toEqual([`ada-${run}@example.com`, `cy-${run}@example.com`]);
+    expect((await listSubscribers(storeId, { form: spring.id, path: `/blog/vinter-${run}` })).rows.map((r) => r.email)).toEqual([`cy-${run}@example.com`]);
+    // The filters' choices, the busiest first, and the forms' names and pages in the export.
+    const sources = await subscriberSources(storeId);
+    expect(sources.forms.find((f) => f.id === winter.id)).toEqual({ id: winter.id, name: "Winter list", n: 2 });
+    expect(sources.pages.find((p) => p.path === `/blog/vinter-${run}`)?.n).toBe(2);
+    const { csv } = await subscribersCsv(storeId, accountId);
+    expect(csv.split("\r\n")[0]).toMatch(/,form,page$/);
+    expect(csv).toContain(`Spring list,/blog/vinter-${run}`);
+    // A form deleted later leaves its sign-ups, still found by its id, named as gone.
+    await db().execute(sql`delete from commerce.pages where store_id = ${storeId}::uuid and slug = ${`var-${run}`}`);
+    expect(await admin.deleteForm(actor(), spring.id)).toMatchObject({ ok: true });
+    expect((await listSubscribers(storeId, { form: spring.id })).rows[0]).toMatchObject({ email: `cy-${run}@example.com`, form: { id: spring.id, name: null } });
   });
 
   it("offers the builder its forms without where they send", async () => {
