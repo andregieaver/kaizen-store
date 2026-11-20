@@ -398,6 +398,8 @@ export type AccountExtension = {
   id: ExtensionId;
   name: string;
   description: string;
+  /** Sold on its own (the catalogue's `standalone`): what an account without a store is offered (D748 E7). */
+  standalone: boolean;
   state: ExtensionState;
   source: StateSource;
   trialEndsAt: string | null;
@@ -428,6 +430,7 @@ export async function accountExtensions(organisationId: string, currency: string
         id: e.id,
         name: e.name,
         description: e.description,
+        standalone: e.standalone,
         state: standings[e.id].state,
         source: standings[e.id].source,
         trialEndsAt: row?.trial_ends_at ?? null,

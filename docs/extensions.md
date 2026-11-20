@@ -469,7 +469,9 @@ the paths its customers use. `getServingStore()` (an active store, a workspace i
 website chat (`widgetShop()`, in the workspace's one market); the storefront's frame says nothing of opening for a workspace.
 `getOpenStore()` still refuses it everywhere else. **Still open, so `STANDALONE_SIGNUP_OPEN` stays off:** email automation without a store
 has no way in for contacts (they come from a site's forms, checkout, My account or a Shopify or WooCommerce import, `SUBSCRIBE_SOURCES`):
-either email automation is not offered on its own until a contacts import exists, or that import is built first (the owner's choice).
+either email automation is not offered on its own until a contacts import exists, or that import is built first. **The owner chose the
+first (20 November 2026):** email automation is no longer sold on its own (`extensions.standalone` false, still in plans, bundles and for
+store owners), Add to your account offers an account without a store only what is sold on its own, and `STANDALONE_SIGNUP_OPEN` is on.
 
 **E7 as built, part four (20 November 2026).** The four product pages, `/support-desk`, `/email-automation`, `/work` and `/deals`, made by
 `docs/site-pages/standalone-products.test.ts` from `docs/site-design.md` (the feature pages' shape), each claim built and its source in the

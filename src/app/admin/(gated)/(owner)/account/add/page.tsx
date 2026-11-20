@@ -6,7 +6,7 @@ import { AdminLink, Card, List, ListRow, PageHeader, RowActions, RowFact, RowLea
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { HOME_WORDS } from "@/lib/admin-words/home";
-import { EXTENSION_TRIAL_DAYS, WORKSPACE_EXTENSIONS } from "@/lib/extensions";
+import { EXTENSION_TRIAL_DAYS } from "@/lib/extensions";
 import { formatMoney } from "@/lib/money";
 import { accountCurrency, getAccountBilling } from "@/server/account-billing";
 import { listStores, listWorkspaces, requireAccount } from "@/server/auth";
@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Add to your account" };
  * Add to your account (D748 E7 part three, `docs/extensions.md` 7), from the account menu: an online store and each extension the account
  * does not have, one press each. An account with no store opens its first one here with the plan's free trial; one with stores is sent to
  * Your stores. An extension never tried starts its free trial; one whose trial ended is added (the checkout, as on Extensions). An account
- * with only a workspace is never offered a store-only extension (A/B tests need a site).
+ * with only a workspace is offered only what is sold on its own (the catalogue's `standalone`, never a store-only extension).
  */
 export default async function AddToAccountPage() {
   await connection();
@@ -40,7 +40,7 @@ export default async function AddToAccountPage() {
   ]);
   const extensions = await accountExtensions(own.id, currency);
   const storeless = !stores.some((store) => store.role === "owner");
-  const offered = extensions.filter((e) => !storeless || WORKSPACE_EXTENSIONS.includes(e.id));
+  const offered = extensions.filter((e) => !storeless || e.standalone);
   const missing = offered.filter((e) => e.state === "absent");
   const has = offered.filter((e) => e.state !== "absent");
   const businessName = workspaces.find((place) => place.role === "owner")?.name ?? "";

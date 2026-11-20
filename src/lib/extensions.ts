@@ -8,11 +8,11 @@ import { featureOn } from "./store-features";
  */
 
 /**
- * The sign-up for extensions without a store (D748 E7 part two) is open. Off while email automation, sold on its own, has no way in for a
- * workspace's contacts (part three b: its customers' other paths now reach it). Off, its page answers 404, its action refuses, and the store's
- * sign-up does not link to it.
+ * The sign-up for extensions without a store (D748 E7 part two) is open: on since a workspace's customers reach it (part three b). It offers
+ * what the catalogue sells on its own (`standalone`): not email automation, which has no way in for a workspace's contacts yet (the owner's
+ * choice, 20 November 2026). Off, its page answers 404, its action refuses, and the store's sign-up does not link to it.
  */
-export const STANDALONE_SIGNUP_OPEN = false;
+export const STANDALONE_SIGNUP_OPEN = true;
 
 /** Days an extension's own trial lasts (section 2 of the spec): once per account per extension. */
 export const EXTENSION_TRIAL_DAYS = 14;
