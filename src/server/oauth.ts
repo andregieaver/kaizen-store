@@ -480,10 +480,10 @@ async function endGrant(grantId: string, where: SQL = sql`true`): Promise<boolea
 }
 
 /**
- * Every live grant of a person ends (D439 review): their password was set or changed, or their second step was reset or removed, so
- * what they let apps do before is asked again. Each in their account's log (`oauth.ended`, with why); the number ended.
+ * Every live grant of a person ends (D439 review): their password was set or changed, their second step was reset or removed, or their
+ * email was changed (D836), so what they let apps do before is asked again. Each in their account's log (`oauth.ended`, with why); the number ended.
  */
-export async function endAccountGrants(accountId: string, why: "password" | "two_step"): Promise<number> {
+export async function endAccountGrants(accountId: string, why: "password" | "two_step" | "email"): Promise<number> {
   const grants = await typedRows(
     z.object({ id: col.uuid, name: col.text }),
     sql`select g.id, c.name from commerce.oauth_grants g join commerce.oauth_clients c on c.id = g.client_id where g.account_id = ${accountId}::uuid and g.revoked_at is null`,

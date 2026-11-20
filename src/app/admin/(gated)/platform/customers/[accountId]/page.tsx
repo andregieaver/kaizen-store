@@ -12,16 +12,19 @@ import { listEmails } from "@/server/email";
 import { houseCustomerOfAccount } from "@/server/house-customers";
 import { getPlatformCustomer } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
-import { requirePlatformReader } from "@/server/auth";
+import { platformCan, requirePlatformReader } from "@/server/auth";
+import { pendingEmailChange } from "@/server/email-change";
 import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
-import { CARD_CLASS, List, ListRow, PageHeader, RowDate, RowFact, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
+import { CARD_CLASS, Field, List, ListRow, PageHeader, RowDate, RowFact, RowLead, TextInput } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { NAME_MAX } from "@/lib/email-change";
 
-import { resetTwoStepAction } from "./actions";
+import { cancelEmailChangeForAction, correctNameAction, resetTwoStepAction, sendEmailChangeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -60,6 +63,10 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
   const twoStep = await twoStepOfAccount(accountId);
   // The same person as a customer of Kaizena Flow's own store (D467): its tags, deals, notes and timeline are kept there.
   const house = await houseCustomerOfAccount(accountId);
+  // Their name corrected by the stores area (support and owners), a link to a new address sent by an owner (D836); their own on Your account.
+  const pending = await pendingEmailChange(accountId);
+  const mayName = platformCan(admin, "stores") && customer.id !== admin.id && !customer.disabled;
+  const maySend = admin.platformAdmin && customer.id !== admin.id && !customer.disabled;
 
   return (
     <div className="flex flex-col gap-6">
@@ -93,6 +100,55 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
           </div>
         ))}
       </div>
+
+      <section aria-labelledby="details" className={card} data-customer-details="">
+        <h2 id="details" className="mb-1 text-title text-ink">
+          {w.details}
+        </h2>
+        {customer.id === admin.id ? (
+          <p className="text-sm text-muted">
+            <Link href="/admin/account" className="underline">
+              {w.yourOwn}
+            </Link>
+          </p>
+        ) : (
+          <div className="flex flex-col gap-5">
+            <p className="text-sm text-muted">{w.detailsText}</p>
+            {mayName && (
+              <ActionForm action={correctNameAction.bind(null, accountId)} className="flex max-w-md flex-col gap-3">
+                <Field label={w.name} required>
+                  {(control) => <TextInput name="name" defaultValue={customer.name} maxLength={NAME_MAX} autoComplete="off" full {...control} />}
+                </Field>
+                <div>
+                  <SubmitButton variant="secondary">{w.saveName}</SubmitButton>
+                </div>
+              </ActionForm>
+            )}
+            {pending && (
+              <div role="status" className="flex flex-wrap items-center gap-3 text-sm [overflow-wrap:anywhere]">
+                <span>{fillWords(w.pending, { email: pending.email, until: adminDate(PLATFORM_TIME_ZONE, pending.expiresAt, "dayTime", lang) })}</span>
+                {maySend && (
+                  <QuietActionForm action={cancelEmailChangeForAction.bind(null, accountId)}>
+                    <SubmitButton variant="secondary">{w.cancelChange}</SubmitButton>
+                  </QuietActionForm>
+                )}
+              </div>
+            )}
+            {maySend ? (
+              <ActionForm action={sendEmailChangeAction.bind(null, accountId)} className="flex max-w-md flex-col gap-3">
+                <Field label={w.newEmail} required>
+                  {(control) => <TextInput name="email" type="email" autoComplete="off" spellCheck={false} full {...control} />}
+                </Field>
+                <div>
+                  <SubmitButton variant="secondary">{w.sendLink}</SubmitButton>
+                </div>
+              </ActionForm>
+            ) : (
+              !admin.platformAdmin && <p className="text-sm text-muted">{w.ownersSend}</p>
+            )}
+          </div>
+        )}
+      </section>
 
       <section aria-labelledby="two-step" className={card}>
         <h2 id="two-step" className="mb-1 text-title text-ink">

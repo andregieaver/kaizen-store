@@ -16,6 +16,7 @@ import { isOfferedScheme } from "@/lib/admin-schemes";
 import { isAdminView } from "@/lib/admin-view";
 import { isColorChoice } from "@/lib/color-mode";
 import { audit, requireAccount, saveAdminLang, saveAdminScheme, saveAdminView, saveColorMode } from "@/server/auth";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { endAccountGrants } from "@/server/oauth";
@@ -29,6 +30,8 @@ import { GRACE_DAYS } from "@/lib/account-billing";
 import { fillWords } from "@/lib/admin-fill";
 import { isExtensionId } from "@/lib/extensions";
 import { NO_COUNTRY } from "@/server/billing";
+import { EMAIL_CHANGE_HOURS, NAME_MAX } from "@/lib/email-change";
+import { cancelEmailChange, changeOwnName, confirmEmailChange, requestEmailChange, resendEmailChange } from "@/server/email-change";
 
 async function origin(): Promise<string> {
   const header = (await headers()).get("origin");
@@ -254,4 +257,78 @@ export async function setExtensionAction(extension: string, on: boolean): Promis
   if ("checkoutUrl" in result && result.checkoutUrl) redirect(result.checkoutUrl);
   refresh();
   return { status: "ok", messages: [on ? w.added : fillWords(w.ended, { days: GRACE_DAYS })] };
+}
+
+// ---------------------------------------------------------------------------
+// Name and email (D836)
+// ---------------------------------------------------------------------------
+
+const EMAIL_PAGE = "/admin/account/email";
+
+/** The person's own name, shown wherever their account is named. */
+export async function changeNameAction(_state: FormState, form: FormData): Promise<FormState> {
+  const account = await requireAccount();
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.profile;
+  const result = await changeOwnName(account, form.get("name"));
+  if (!result.ok) {
+    const problem = fillWords(w.problems[result.problem], { n: NAME_MAX });
+    return { status: "error", messages: [problem], fields: { name: problem } };
+  }
+  refresh();
+  return { status: "ok", messages: [w.nameSaved] };
+}
+
+/** Asks to move the account to a new address: a link goes to it, a notice to the current one. Needs a fresh sign-in (and its second step). */
+export async function requestEmailChangeAction(_state: FormState, form: FormData): Promise<FormState> {
+  const account = await requireAccount();
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
+  const result = await requestEmailChange(account, form.get("email"));
+  if (!result.ok) {
+    const problem = w.problems[result.problem];
+    const field = result.problem === "invalid" || result.problem === "same" || result.problem === "taken";
+    return { status: "error", messages: [problem], ...(field ? { fields: { email: problem } } : {}) };
+  }
+  refresh();
+  return { status: "ok", messages: [fillWords(w.sent, { email: result.email, hours: EMAIL_CHANGE_HOURS })] };
+}
+
+/** The waiting change's link again: a new one, and the old one stops working. */
+export async function resendEmailChangeAction(): Promise<FormState> {
+  const account = await requireAccount();
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
+  const result = await resendEmailChange(account);
+  if (!result.ok) return { status: "error", messages: [w.problems[result.problem]] };
+  refresh();
+  return { status: "ok", messages: [fillWords(w.resent, { email: result.email })] };
+}
+
+/** Cancels the waiting change: its link stops working. */
+export async function cancelEmailChangeAction(): Promise<FormState> {
+  const account = await requireAccount();
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
+  if (!(await cancelEmailChange(account.id))) return { status: "error", messages: [w.problems.none] };
+  refresh();
+  return { status: "ok", messages: [w.cancelled] };
+}
+
+/** Signs the person out and back in, so asking for the change has a sign-in from the last ten minutes. */
+export async function signInForEmailAction(): Promise<void> {
+  try {
+    await (await createClient()).auth.signOut();
+  } finally {
+    redirect(`/admin/sign-in?next=${encodeURIComponent(EMAIL_PAGE)}`);
+  }
+}
+
+/**
+ * The button on the page the link opens (`/admin/account/email/confirm`): nobody needs to be signed in (the link may be opened on another
+ * device), and nobody is signed in by it. The token comes with the form; `confirmEmailChange()` decides everything. Done, the page is
+ * drawn again for the used link, which says the address is changed; refused, the reason in the person's language.
+ */
+export async function confirmEmailChangeAction(form: FormData): Promise<FormState> {
+  const token = String(form.get("token") ?? "");
+  const result = await confirmEmailChange(token);
+  if (result.ok) redirect(`${EMAIL_PAGE}/confirm?token=${encodeURIComponent(token)}&done=1`);
+  const w = adminText(result.lang ?? (await requestAdminLang()), "bookings").account.confirmEmail;
+  return { status: "error", messages: [w[result.problem]] };
 }

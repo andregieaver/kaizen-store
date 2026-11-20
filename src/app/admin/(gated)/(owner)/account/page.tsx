@@ -26,14 +26,17 @@ import { accountOfficer, officerCandidates, ownedAccount, storedChoice } from "@
 import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { twoStepStatus } from "@/server/two-step";
-import { PageHeader } from "@/components/admin/ui";
+import { buttonClass, ButtonLink, Field, PageHeader, TextInput } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
+import { NAME_MAX } from "@/lib/email-change";
+import { pendingEmailChange } from "@/server/email-change";
 
 import {
   accountAvatarAction,
   adminLangAction,
   adminSchemeAction,
   adminViewAction,
+  changeNameAction,
   colorModeAction,
   connectKaizenLifeAction,
   disconnectKaizenLifeAction,
@@ -79,9 +82,59 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
     ? await Promise.all([storedChoice(ownAccount.id, null), officerCandidates(ownAccount.id, null), accountOfficer(ownAccount.id)]).then(([choice, people, current]) => ({ choice, people, current }))
     : null;
   const pw = adminText(lang, "privacyOfficer");
+  // Name and email (D836): each with its Change; the email's waiting change is one line here, its details on the email page.
+  const pending = await pendingEmailChange(account.id);
+  const pf = w.profile;
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={fillWords(w.signedInAs, { who: account.name ? `${account.name} (${account.email})` : account.email })} />
+
+      <section aria-labelledby="profile-heading" className="flex max-w-md flex-col gap-4">
+        <h2 id="profile-heading" className="text-title text-ink">
+          {pf.title}
+        </h2>
+        <div className="flex flex-col gap-2" data-profile="name">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-col">
+              <span className="text-sm text-muted">{pf.name}</span>
+              <span className="text-body text-ink [overflow-wrap:anywhere]">{account.name ?? <span className="text-muted">{pf.noName}</span>}</span>
+            </div>
+          </div>
+          <details>
+            <summary aria-label={pf.changeName} className={`${buttonClass("secondary")} w-fit cursor-pointer list-none`}>
+              {pf.change}
+            </summary>
+            <ActionForm action={changeNameAction} className="mt-3 flex flex-col gap-3">
+              <Field label={pf.name} hint={pf.nameHint} required>
+                {(control) => <TextInput name="name" defaultValue={account.name ?? ""} maxLength={NAME_MAX} autoComplete="name" full {...control} />}
+              </Field>
+              <div>
+                <SubmitButton>{pf.saveName}</SubmitButton>
+              </div>
+            </ActionForm>
+          </details>
+        </div>
+        <div className="flex flex-col gap-2" data-profile="email">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-col">
+              <span className="text-sm text-muted">{pf.email}</span>
+              <span className="text-body text-ink [overflow-wrap:anywhere]">{account.email}</span>
+            </div>
+          </div>
+          <ButtonLink href="/admin/account/email" aria-label={pf.changeEmail} className="w-fit">
+            {pf.change}
+          </ButtonLink>
+          <p className="text-xs text-muted">{pf.emailHint}</p>
+          {pending && (
+            <p role="status" className="text-sm">
+              {fillWords(pf.pending, { email: pending.email })}{" "}
+              <Link href="/admin/account/email" className="underline underline-offset-2">
+                {pf.seePending}
+              </Link>
+            </p>
+          )}
+        </div>
+      </section>
 
       <section aria-labelledby="picture-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="picture-heading" className="text-title text-ink">
