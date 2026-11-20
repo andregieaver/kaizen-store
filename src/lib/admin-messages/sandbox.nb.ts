@@ -86,17 +86,14 @@ export const sandboxNb: SandboxMessages = {
     notice: "Forhåndsvisning: ingenting lagres eller kopieres",
     by: "Av {publisher}",
   },
+  /** Hvor langt sandkassens besøkende kom (D457 S4), under bryteren på Tilgangsforespørsler (D847). */
   funnel: {
-    title: "Sandkassen for sidebyggeren",
     description: "Besøkende som prøvde byggeren uten å registrere seg, etter når de startet. Beholdt: ble noens butikk.",
     period: { one: "Siste {n} dag", many: "Siste {n} dager" },
     made: "Startet",
     changed: "Endret noe",
     published: "Publiserte",
     kept: "Beholdt",
-    off: "Sandkassen er av. Slå den på under Tilgangsforespørsler.",
-    on: "Sandkassen er på.",
-    switchLink: "Tilgangsforespørsler",
   },
   guide: {
     title: "Ting å prøve",

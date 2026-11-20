@@ -14,7 +14,7 @@ import { requirePlatformReader } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 import { designChoices } from "@/server/design-presets";
 import { Card, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
@@ -22,9 +22,11 @@ type W = PlatformMessages["requests"];
 
 import { decideAction, sandboxAction, selfServeAction } from "../actions";
 import { selfServeOn, unconfirmedCount } from "@/server/self-signup";
-import { sandboxCounts, sandboxSettings } from "@/server/sandbox";
+import { sandboxCounts, sandboxFunnel, sandboxSettings, type FunnelPeriod } from "@/server/sandbox";
 import { SANDBOX_PATH } from "@/lib/sandbox";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
+import type { SandboxMessages } from "@/lib/admin-messages/sandbox.en";
 
 export const metadata: Metadata = { title: "Access requests" };
 
@@ -38,13 +40,14 @@ export default async function PlatformPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = PLATFORM_WORDS[lang].requests;
   // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
-  const [requests, { cards }, selfServe, unconfirmed, sandbox, sandboxes] = await Promise.all([
+  const [requests, { cards }, selfServe, unconfirmed, sandbox, sandboxes, funnel] = await Promise.all([
     listAccessRequests(),
     designChoices(),
     selfServeOn(),
     unconfirmedCount(),
     sandboxSettings(),
     sandboxCounts(),
+    sandboxFunnel(),
   ]);
   const designs = cards.filter((card) => card.id);
   const pending = requests.filter((r) => r.status === "pending");
@@ -75,14 +78,18 @@ export default async function PlatformPage() {
         </div>
       </Card>
       </PhoneRow>
+      {/* The sandbox's switch, and how far its visitors went beside it (D457 S4; on Stores until D847): one row on a phone, as on Stores (D827). */}
       <PhoneRow flat last title={w.sandbox.title} sub={sandbox.on ? w.phone.on : w.phone.off} change={w.phone.open} done={w.phone.close}>
       <Card title={w.sandbox.title} description={fillWords(sandbox.on ? w.sandbox.on : w.sandbox.off, { address: SANDBOX_PATH })}>
-        <div className="flex flex-wrap items-center gap-3">
-          <ActionForm action={sandboxAction}>
-            {!sandbox.on && <input type="hidden" name="on" value="on" />}
-            <SubmitButton variant="secondary">{sandbox.on ? w.sandbox.turnOff : w.sandbox.turnOn}</SubmitButton>
-          </ActionForm>
-          <span className="text-sm text-muted">{fillWords(w.sandbox.counts, { today: sandboxes.today, cap: sandbox.dailyCap, open: sandboxes.open })}</span>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <ActionForm action={sandboxAction}>
+              {!sandbox.on && <input type="hidden" name="on" value="on" />}
+              <SubmitButton variant="secondary">{sandbox.on ? w.sandbox.turnOff : w.sandbox.turnOn}</SubmitButton>
+            </ActionForm>
+            <span className="text-sm text-muted">{fillWords(w.sandbox.counts, { today: sandboxes.today, cap: sandbox.dailyCap, open: sandboxes.open })}</span>
+          </div>
+          <SandboxFunnel funnel={funnel} f={SANDBOX_WORDS[lang].funnel} />
         </div>
       </Card>
       </PhoneRow>
@@ -241,3 +248,38 @@ async function PendingRequest({ request, designs, w, lang, last }: { request: Ac
 
 /** A look as the Theme field lists it: its name and the demo store it starts a store with (D273). */
 const lookOption = (name: string, demo: string | null | undefined, w: W) => (demo ? fillWords(w.withDemo, { name, demo }) : name);
+
+/**
+ * How far the sandbox's visitors went (D457 S4), by when they started: how many started, changed something, published and were kept (became
+ * someone's store), each with its share of those who started. Under the sandbox's switch since D847; the Stores page lists only stores.
+ */
+function SandboxFunnel({ funnel, f }: { funnel: FunnelPeriod[]; f: SandboxMessages["funnel"] }) {
+  const share = (n: number, of: number) => (of > 0 ? ` (${Math.round((n / of) * 100)} %)` : "");
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-body">
+        <caption className="pb-1 text-left text-caption text-muted">{f.description}</caption>
+        <thead className="text-muted">
+          <tr>
+            <th scope="col" className="py-1 pr-4 font-normal" />
+            <th scope="col" className="py-1 pr-4 font-normal">{f.made}</th>
+            <th scope="col" className="py-1 pr-4 font-normal">{f.changed}</th>
+            <th scope="col" className="py-1 pr-4 font-normal">{f.published}</th>
+            <th scope="col" className="py-1 font-normal">{f.kept}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {funnel.map((period) => (
+            <tr key={period.days} className="border-t border-line">
+              <th scope="row" className="py-2 pr-4 font-normal text-ink-2">{countWords(period.days, f.period)}</th>
+              <td className="py-2 pr-4 text-ink">{period.made}</td>
+              <td className="py-2 pr-4 text-ink">{period.changed}{share(period.changed, period.made)}</td>
+              <td className="py-2 pr-4 text-ink">{period.published}{share(period.published, period.made)}</td>
+              <td className="py-2 text-ink">{period.kept}{share(period.kept, period.made)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

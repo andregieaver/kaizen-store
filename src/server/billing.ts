@@ -1,13 +1,15 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import Stripe from "stripe";
 import { z } from "zod";
 
 import { db } from "@/db/client";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { PlatformDiscount } from "@/lib/discounts";
+import { escapeLike } from "@/lib/order-search";
 import { effectiveFeeBps, isOnPlan, type PlanInterval } from "@/lib/plans";
+import { STORE_SEARCH_MAX, type StoreBillingFilter, type StoreListFilter, type StoreState } from "@/lib/platform-stores";
 import { storeBase, storeOrigin } from "@/lib/paths";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
@@ -449,7 +451,8 @@ export type StoreBilling = {
   }) | null;
 };
 
-const billingQuery = (where: ReturnType<typeof sql>) => sql`
+/** The stores' billing rows, ordered by name and id; `extra` adds columns after the owner's (the Stores page's count). */
+const billingQuery = (where: SQL, extra: SQL = sql``) => sql`
   select s.id as store_id, s.slug, s.name, s.country, s.time_zone, s.status as store_status, b.by_account,
          b.plan_id, p.name as plan_name, p.sale_fee_bps as plan_fee_bps, b.price_id,
          pp.currency, pp.interval, pp.amount_minor, b.mode, b.subscription_id, b.status,
@@ -458,7 +461,7 @@ const billingQuery = (where: ReturnType<typeof sql>) => sql`
          case when d.id is null then null else jsonb_build_object(
            'id', d.id, 'code', d.code, 'kind', d.kind, 'percent', d.percent, 'amounts', d.amounts,
            'duration', d.duration, 'durationMonths', d.duration_months) end as discount,
-         o.email as owner_email, o.name as owner_name
+         o.email as owner_email, o.name as owner_name${extra}
   from commerce.stores s
   left join commerce.store_plans b on b.store_id = s.id
   left join commerce.plans p on p.id = b.plan_id
@@ -523,26 +526,85 @@ const billingWhere = (includeClosed: boolean) =>
     : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house and not s.workspace`;
 
 /**
- * Every store's billing; closed stores only for the platform's own list, which must find them to reopen them (D171). With `limit`, one page
- * of that list (the platform's Stores page reads 100 at a time); without it, every store, as the AI manager's tool and the account's billing page read it.
+ * Every store's billing, as the AI manager's tool and the account's billing page read it; closed stores only with `includeClosed`. The
+ * platform's Stores page reads a page of them with its filters (`storeBillingPage()`).
  */
-export async function listStoreBilling({
-  includeClosed = false,
-  limit,
-  offset,
-}: { includeClosed?: boolean; limit?: number; offset?: number } = {}): Promise<StoreBilling[]> {
-  const where = billingWhere(includeClosed);
-  const [rows, defaultBps] = await Promise.all([
-    typedRows(BILLING_ROW, limit === undefined ? billingQuery(where) : sql`${billingQuery(where)} limit ${limit} offset ${offset ?? 0}`),
-    getSaleFeeBps(),
-  ]);
+export async function listStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<StoreBilling[]> {
+  const [rows, defaultBps] = await Promise.all([typedRows(BILLING_ROW, billingQuery(billingWhere(includeClosed))), getSaleFeeBps()]);
   return rows.map((row) => toBilling(row, defaultBps));
 }
 
-/** How many stores `listStoreBilling()` lists with the same `includeClosed`: the Stores page's total. */
-export async function countStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<number> {
-  const row = await typedRow(z.object({ n: col.int }), sql`select count(*)::int as n from commerce.stores s where ${billingWhere(includeClosed)}`);
-  return row?.n ?? 0;
+/** The subscription filters of the Stores page (D847), read from the plan the store counts (`store_plans`, its account's or its own). */
+const BILLING_FILTERS: Record<StoreBillingFilter, SQL> = {
+  trialing: sql`b.status = 'trialing'`,
+  paying: sql`b.status = 'active'`,
+  overdue: sql`b.status in ('past_due', 'unpaid')`,
+  cancelling: sql`b.cancel_at_period_end and b.status not in ('canceled', 'incomplete_expired')`,
+  cancelled: sql`b.status = 'canceled'`,
+};
+
+const BILLING_PAGE_ROW = BILLING_ROW.extend({ total: col.int });
+
+/**
+ * A page of the platform's Stores list (code review step 2.10, D847; the shape of D834): every store the list holds, closed ones too (D171),
+ * matching a search by the store's name or address, an owner's name or email, or one of its domains (those it serves, pending or active,
+ * and those Kaizena Flow registered for it), case-insensitively; and its own state, its plan (`none`: no plan) and its subscription. `limit`
+ * from `offset`, and how many match in all, counted in the same statement; the order ends on the store's id, so a page's edge never loses
+ * or repeats one. Every value a person typed is a bound parameter, `%`, `_` and `\` in it literal.
+ */
+export async function storeBillingPage({
+  q = "",
+  state = null,
+  plan = null,
+  billing = null,
+  limit = 100,
+  offset = 0,
+}: Partial<StoreListFilter> & { limit?: number; offset?: number } = {}): Promise<{ rows: StoreBilling[]; total: number }> {
+  const filters: SQL[] = [billingWhere(true)];
+  const search = q.trim().toLowerCase().slice(0, STORE_SEARCH_MAX);
+  if (search) {
+    const like = `%${escapeLike(search)}%`;
+    filters.push(sql`(lower(s.name) like ${like} or s.slug like ${like}
+      or exists (select 1 from commerce.store_members m join commerce.accounts a on a.id = m.account_id
+                 where m.store_id = s.id and m.role = 'owner' and m.disabled_at is null
+                   and (lower(a.email) like ${like} or lower(coalesce(a.name, '')) like ${like}))
+      or exists (select 1 from commerce.store_domains d where d.store_id = s.id and d.hostname like ${like})
+      or exists (select 1 from commerce.domain_registrations r
+                 where r.store_id = s.id and r.status <> 'transferred_out' and r.apex like ${like}))`);
+  }
+  if (state) filters.push(sql`s.status::text = ${state}`);
+  if (plan === "none") filters.push(sql`b.plan_id is null`);
+  else if (plan) filters.push(sql`b.plan_id = ${plan}::uuid`);
+  if (billing) filters.push(BILLING_FILTERS[billing]);
+  const where = sql.join(filters, sql` and `);
+  const [rows, defaultBps] = await Promise.all([
+    typedRows(BILLING_PAGE_ROW, sql`${billingQuery(where, sql`, count(*) over ()::int as total`)} limit ${limit} offset ${offset}`),
+    getSaleFeeBps(),
+  ]);
+  return { rows: rows.map((row) => toBilling(row, defaultBps)), total: rows[0]?.total ?? 0 };
+}
+
+/**
+ * What the Stores page's chips and filters show (D847), in one statement: how many stores the list holds in all and in each state, and the
+ * plans to filter by, those on sale first.
+ */
+export async function storeListFacts(): Promise<{ counts: Record<"all" | StoreState, number>; plans: { id: string; name: string }[] }> {
+  const row = await typedRow(
+    z.object({ stores: col.int, active: col.int, suspended: col.int, closed: col.int, plans: z.array(z.object({ id: col.uuid, name: col.text })) }),
+    sql`
+      select count(*)::int as stores,
+             count(*) filter (where s.status = 'active')::int as active,
+             count(*) filter (where s.status = 'suspended')::int as suspended,
+             count(*) filter (where s.status = 'closed')::int as closed,
+             (select coalesce(json_agg(json_build_object('id', p.id, 'name', p.name) order by p.active desc, p.position, lower(p.name), p.id), '[]')
+                from commerce.plans p) as plans
+      from commerce.stores s where ${billingWhere(true)}
+    `,
+  );
+  return {
+    counts: { all: row?.stores ?? 0, active: row?.active ?? 0, suspended: row?.suspended ?? 0, closed: row?.closed ?? 0 },
+    plans: row?.plans ?? [],
+  };
 }
 
 export async function getStoreBilling(storeId: string): Promise<StoreBilling | null> {
