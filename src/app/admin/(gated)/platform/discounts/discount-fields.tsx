@@ -3,13 +3,13 @@ import type { PlatformDiscount } from "@/lib/discounts";
 import type { PlanOfferDraft } from "@/lib/plan-offers";
 import { formatPriceInput } from "@/lib/product-input";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { platformEn, type PlatformMessages } from "@/lib/admin-messages/platform.en";
+import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
 /** What deleting a code asks first. */
-export const deleteQuestion = (code: string, stores: number, w: PlatformMessages["discounts"] = platformEn.discounts) =>
+export const deleteQuestion = (code: string, stores: number, w: PlatformMessages["discounts"]) =>
   fillWords(w.deleteQuestion, { code }) + (stores > 0 ? countWords(stores, w.deleteKeep) : "");
 
 /** `YYYY-MM-DD` of a time, in Norwegian time. */
@@ -23,14 +23,14 @@ const osloDate = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "iso", "en"
 export function PlatformDiscountFields({
   discount,
   currencies,
-  w = platformEn.discountFields,
+  w,
   campaign = Boolean(discount?.campaign),
   plans = [],
   draft,
 }: {
   discount: PlatformDiscount | null;
   currencies: string[];
-  w?: PlatformMessages["discountFields"];
+  w: PlatformMessages["discountFields"];
   campaign?: boolean;
   /** The plans a campaign may name. */
   plans?: { id: string; name: string }[];

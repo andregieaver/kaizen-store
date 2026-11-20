@@ -4,13 +4,13 @@ import { PLATFORM_BASE } from "@/lib/platform-nav";
 import type { VatCategoryRow } from "@/lib/vat";
 import type { CoverageCountry } from "@/server/vat-admin";
 
-import { card, VAT_EN, type VatWords } from "./styles";
+import { card, type VatWords } from "./styles";
 
 /**
  * Category by country (D157): each cell is the rate, or *the standard rate applies* where no reduced rate is known, never a silent
  * different number. A dot marks a rate nobody has verified. Countries any open store sells to come first.
  */
-export function CoverageCard({ categories, countries, words = VAT_EN }: { categories: VatCategoryRow[]; countries: CoverageCountry[]; words?: VatWords }) {
+export function CoverageCard({ categories, countries, words }: { categories: VatCategoryRow[]; countries: CoverageCountry[]; words: VatWords }) {
   const w = words.coverage;
   const [beforeStandard, rest] = w.text.split("{standard}");
   const [betweenDot, afterDot] = (rest ?? "").split("{dot}");

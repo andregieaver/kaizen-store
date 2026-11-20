@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { costWords, type UsageRow } from "@/lib/ai-usage";
+import { platformToolsEn } from "@/lib/admin-messages/platform-tools.en";
 
 import { UsageReport } from "./usage-report";
 
@@ -31,7 +32,7 @@ const row = (over: Partial<UsageRow>): UsageRow => ({
   ...over,
 });
 const days = [{ day: "2026-10-01", requests: 4, tokens: 3_000_000, costMicros: 3_500_000 }];
-const render = (rows: UsageRow[], scope: "platform" | "owner" = "platform") => renderToStaticMarkup(createElement(UsageReport, { rows, days, scope }));
+const render = (rows: UsageRow[], scope: "platform" | "owner" = "platform") => renderToStaticMarkup(createElement(UsageReport, { rows, days, scope, words: platformToolsEn.usage }));
 
 describe("cost in the usage report (D145)", () => {
   it("shows the cost beside the tokens: in the totals, each provider and model, each group and the daily chart", () => {

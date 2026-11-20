@@ -2,7 +2,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { VAT_CATEGORY_DESCRIPTION_MAX, VAT_CATEGORY_NAME_MAX, type VatCategoryRow } from "@/lib/vat";
 
-import { card, hint, input, label, VAT_EN, type VatWords } from "./styles";
+import { card, hint, input, label, type VatWords } from "./styles";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
@@ -14,13 +14,13 @@ export function CategoriesCard({
   categories,
   addAction,
   activeAction,
-  words = VAT_EN,
+  words,
 }: {
   categories: VatCategoryRow[];
   addAction: Action;
   /** Binds a category's code and the state to set. */
   activeAction: (code: string, active: boolean) => Action;
-  words?: VatWords;
+  words: VatWords;
 }) {
   const w = words.categories;
   return (

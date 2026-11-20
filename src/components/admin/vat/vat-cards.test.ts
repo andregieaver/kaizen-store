@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { VatCategoryRow } from "@/lib/vat";
 import type { CoverageCountry, ShippingRuleRow, VatRateRow } from "@/server/vat-admin";
+import { platformToolsEn } from "@/lib/admin-messages/platform-tools.en";
 
 import { CategoriesCard } from "./categories-card";
 import { CoverageCard } from "./coverage-card";
@@ -43,7 +44,7 @@ const rate = (extra: Partial<VatRateRow> = {}): VatRateRow => ({
 const name = (code: string) => categories.find((c) => c.code === code)?.nameEn ?? code;
 
 describe("CategoriesCard", () => {
-  const out = html(h(CategoriesCard, { categories, addAction: action, activeAction: bound }));
+  const out = html(h(CategoriesCard, { categories, addAction: action, activeAction: bound, words: platformToolsEn.vat }));
 
   it("lists every category, marks the built-in and the switched-off ones, and gives only the others a switch", () => {
     expect(out).toContain("Standard rate");
@@ -61,7 +62,7 @@ describe("CategoriesCard", () => {
 
 describe("UnverifiedCard and RateHistory", () => {
   it("lists each unverified rate with its source as a link and the date it was checked, and a way to verify it", () => {
-    const out = html(h(UnverifiedCard, { rows: [rate(), rate({ country: "SE", source: "Mervärdesskattelagen" })], categoryName: name, verify: bound }));
+    const out = html(h(UnverifiedCard, { rows: [rate(), rate({ country: "SE", source: "Mervärdesskattelagen" })], categoryName: name, verify: bound, words: platformToolsEn.vat }));
     expect(out).toContain("2 rates to verify.");
     expect(out).toContain('href="https://www.skatteetaten.no/en/rates/value-added-tax/"');
     expect(out).toContain("Mervärdesskattelagen");
@@ -72,7 +73,7 @@ describe("UnverifiedCard and RateHistory", () => {
   });
 
   it("says plainly when everything is verified", () => {
-    expect(html(h(UnverifiedCard, { rows: [], categoryName: name, verify: bound }))).toContain("has been verified");
+    expect(html(h(UnverifiedCard, { rows: [], categoryName: name, verify: bound, words: platformToolsEn.vat }))).toContain("has been verified");
   });
 
   it("shows a country's whole history: periods, state, who verified, and a button only on a live unverified row", () => {
@@ -85,6 +86,7 @@ describe("UnverifiedCard and RateHistory", () => {
         ],
         categoryName: name,
         verify: bound,
+        words: platformToolsEn.vat,
       }),
     );
     expect(out).toContain("Scheduled");
@@ -106,7 +108,7 @@ describe("CoverageCard", () => {
     { code: "NO", name: "Norway", inUse: true, cells: cells({ rate: 0.15, hasRow: true, fallback: false, verified: false }) },
     { code: "DK", name: "Denmark", inUse: false, cells: cells({}) },
   ];
-  const out = html(h(CoverageCard, { categories, countries: rows }));
+  const out = html(h(CoverageCard, { categories, countries: rows, words: platformToolsEn.vat }));
 
   it("leaves the exempt category out, since it has no rate", () => {
     expect(out).not.toContain("Exempt from VAT");
@@ -124,7 +126,7 @@ describe("CoverageCard", () => {
 
 describe("RateForm", () => {
   it("has the fields setVatRateAction reads, and no exempt choice when the caller leaves it out", () => {
-    const out = html(h(RateForm, { categories: categories.filter((c) => c.code !== "exempt"), countries, action }));
+    const out = html(h(RateForm, { categories: categories.filter((c) => c.code !== "exempt"), countries, action, words: platformToolsEn.vat }));
     for (const field of ["country", "category", "ratePercent", "validFrom", "source", "checkedOn", "note"]) expect(out).toContain(`name="${field}"`);
     expect(out).not.toContain("Exempt from VAT");
     expect(out).toContain("Books (off)");
@@ -132,7 +134,7 @@ describe("RateForm", () => {
   });
 
   it("fixes the country on a country's own page", () => {
-    const out = html(h(RateForm, { categories, countries, country: "NO", action }));
+    const out = html(h(RateForm, { categories, countries, country: "NO", action, words: platformToolsEn.vat }));
     expect(out).toContain('type="hidden" name="country" value="NO"');
     expect(out).not.toContain("<select name=\"country\"");
   });
@@ -146,7 +148,7 @@ describe("ShippingRulesCard", () => {
   ];
 
   it("lists only countries with a rule of its own, and says a draft is not applied", () => {
-    const out = html(h(ShippingRulesCard, { rules, countries, action }));
+    const out = html(h(ShippingRulesCard, { rules, countries, action, words: platformToolsEn.vat }));
     expect(out).not.toContain('pr-3">Norway<');
     expect(out).toContain("Germany");
     expect(out).toContain("Draft: not applied");
@@ -155,16 +157,16 @@ describe("ShippingRulesCard", () => {
   });
 
   it("says every country uses the standard rate when none has a rule", () => {
-    expect(html(h(ShippingRulesCard, { rules: [rules[0]], countries, action }))).toContain("every country uses the standard rate");
+    expect(html(h(ShippingRulesCard, { rules: [rules[0]], countries, action, words: platformToolsEn.vat }))).toContain("every country uses the standard rate");
   });
 
   it("has the fields setShippingVatRuleAction reads, including the verified box", () => {
-    const out = html(h(ShippingRulesCard, { rules, countries, action }));
+    const out = html(h(ShippingRulesCard, { rules, countries, action, words: platformToolsEn.vat }));
     for (const field of ["country", "rule", "source", "checkedOn", "note", "verified"]) expect(out).toContain(`name="${field}"`);
   });
 
   it("shows a country's own rule and fills the form with it", () => {
-    const out = html(h(ShippingRulesCard, { rules, countries, country: "DE", action }));
+    const out = html(h(ShippingRulesCard, { rules, countries, country: "DE", action, words: platformToolsEn.vat }));
     expect(out).toContain("Germany");
     expect(out).not.toContain("Sweden");
     expect(out).toContain('value="https://example.org/act"');

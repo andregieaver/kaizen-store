@@ -5,11 +5,10 @@ export const hint = "font-normal text-muted";
 export const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 import { adminDay } from "@/lib/admin-date";
-import { platformToolsEn, type PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
+import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
 
-/** The VAT pages' words (D312 A11), English unless the page hands its reader's. */
+/** The VAT pages' words (D312 A11), in the reader's language. */
 export type VatWords = PlatformToolsMessages["vat"];
-export const VAT_EN: VatWords = platformToolsEn.vat;
 
 /** A `yyyy-mm-dd` day for people ("3 Oct 2026" in English), never moved by a zone, or the text itself when it is not one. */
 export const dayText = (day: string | null, locale = "en-GB"): string => adminDay(day, "day", locale);

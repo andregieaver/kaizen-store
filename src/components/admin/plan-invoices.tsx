@@ -2,20 +2,20 @@ import Link from "next/link";
 
 import { formatMoney } from "@/lib/money";
 import type { PlanInvoice } from "@/server/billing";
-import { platformEn, type PlatformMessages } from "@/lib/admin-messages/platform.en";
+import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 /** A store's plan invoices, each opening its own page; or why they cannot be shown. */
 export function InvoiceList({
   storeSlug,
   invoices,
   date,
-  words = platformEn.invoiceList,
+  words,
 }: {
   storeSlug: string;
   invoices: PlanInvoice[] | null;
   date: (iso: string) => string;
-  /** The account's words (D312 A11); English unless given. */
-  words?: PlatformMessages["invoiceList"];
+  /** The account's words (D312 A11). */
+  words: PlatformMessages["invoiceList"];
 }) {
   if (invoices === null) return <p className="text-sm text-muted">{words.unreadable}</p>;
   if (invoices.length === 0) return <p className="text-sm text-muted">{words.none}</p>;

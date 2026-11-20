@@ -20,13 +20,12 @@ import {
 } from "@/lib/ai-usage";
 import { formatUsd } from "@/lib/ai-cost";
 import { fillWords } from "@/lib/admin-fill";
-import { platformToolsEn, type PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
+import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
 import type { DailyUsage } from "@/server/ai-usage";
 
 /** The report's words with its reader's number format (D312 A11). */
 type Words = PlatformToolsMessages["usage"] & { n: (value: number) => string };
 type Catalogue = PlatformToolsMessages["usage"];
-const EN: Catalogue = platformToolsEn.usage;
 
 /** What a row used besides tokens: characters spoken, audio heard or on a call, pictures made. */
 function otherUse(row: Pick<UsageSums, "characters" | "audioSeconds" | "images">, w: Words): string {
@@ -189,7 +188,7 @@ function DailyBars({ days, w }: { days: DailyUsage[]; w: Words }) {
   );
 }
 
-export function PeriodLinks({ base, period, extra = "", words = EN }: { base: string; period: string; extra?: string; words?: Catalogue }) {
+export function PeriodLinks({ base, period, extra = "", words }: { base: string; period: string; extra?: string; words: Catalogue }) {
   return (
     <nav aria-label={words.period} className="flex flex-wrap gap-1">
       {USAGE_PERIODS.map((p) => (
@@ -230,7 +229,7 @@ function Section({ id, title, note, last = false, open, close, children }: { id:
  * each opening to its own providers and models. Sums are worked out from the
  * recorded calls in `src/lib/ai-usage.ts`, never by the browser.
  */
-export function UsageReport({ rows, days, scope, words = EN, locale = "en-GB" }: { rows: UsageRow[]; days: DailyUsage[]; scope: "platform" | "owner"; words?: Catalogue; locale?: string }) {
+export function UsageReport({ rows, days, scope, words, locale = "en-GB" }: { rows: UsageRow[]; days: DailyUsage[]; scope: "platform" | "owner"; words: Catalogue; locale?: string }) {
   const number = new Intl.NumberFormat(locale);
   const w: Words = { ...words, n: (value) => number.format(value) };
   const total = totalOf(rows);

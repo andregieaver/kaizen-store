@@ -4,7 +4,7 @@ import { formatMoney } from "@/lib/money";
 import type { StoreBilling } from "@/server/billing";
 import { Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { billingEn, type BillingMessages } from "@/lib/admin-messages/billing.en";
+import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 
@@ -28,14 +28,14 @@ export function PlanDiscount({
   apply: Action;
   remove: Action | null;
   canEdit: boolean;
-  /** The account's words (D312 A8); English unless given. */
-  words?: BillingMessages;
+  /** The account's words (D312 A8). */
+  words: BillingMessages;
   /** How amounts are written. */
   locale?: string;
   /** The store's time zone: the day the code was applied is the store's (D786). */
   timeZone: string;
 }) {
-  const w = (words ?? billingEn).discount;
+  const w = words.discount;
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
   return (
     <Card title={w.title} className="text-sm" compact>
@@ -43,7 +43,7 @@ export function PlanDiscount({
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <p>
             <span className="rounded-full border border-line px-3 py-1 font-mono font-medium">{discount.code}</span>{" "}
-            {platformDiscountSummary(discount, money, words?.discount)}
+            {platformDiscountSummary(discount, money, words.discount)}
             {discount.appliedAt ? fillWords(w.applied, { date: adminDate(timeZone, discount.appliedAt, "day", locale) }) : w.applies}
           </p>
           {remove && !discount.appliedAt && canEdit && (

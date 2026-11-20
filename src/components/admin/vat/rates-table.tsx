@@ -9,7 +9,7 @@ import type { VatRateRow } from "@/server/vat-admin";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 
-import { card, dayText, VAT_EN, type VatWords } from "./styles";
+import { card, dayText, type VatWords } from "./styles";
 
 type VerifyAction = (country: string, category: string, validFrom: string) => (state: FormState, form: FormData) => Promise<FormState>;
 
@@ -31,7 +31,7 @@ function Source({ source }: { source: string }) {
  * through with an accountant. Marking a row verified records who and when. A rate is only relied on once a person has looked at it,
  * but an unverified rate is still the one that is charged: the list is the way to find them.
  */
-export function UnverifiedCard({ rows, categoryName, verify, words: w = VAT_EN, locale }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction; words?: VatWords; locale?: string }) {
+export function UnverifiedCard({ rows, categoryName, verify, words: w, locale }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction; words: VatWords; locale?: string }) {
   const u = w.unverified;
   return (
     <section aria-labelledby="unverified" className={card}>
@@ -102,7 +102,7 @@ export function UnverifiedCard({ rows, categoryName, verify, words: w = VAT_EN, 
  * One country's rates with their history, newest first for each category: the rate, when it applied, whether it is in force now, its source
  * and who verified it and when. A rate is never edited: a change ends one period and begins another, so this is the full record.
  */
-export function RateHistory({ rows, categoryName, verify, words: w = VAT_EN, locale }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction; words?: VatWords; locale?: string }) {
+export function RateHistory({ rows, categoryName, verify, words: w, locale }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction; words: VatWords; locale?: string }) {
   const hw = w.history;
   return (
     <section aria-labelledby="history" className={card}>

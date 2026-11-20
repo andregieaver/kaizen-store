@@ -5,7 +5,7 @@ import type { ShippingRuleRow } from "@/server/vat-admin";
 
 import { fillWords } from "@/lib/admin-fill";
 
-import { card, dayText, hint, input, label, VAT_EN, type VatWords } from "./styles";
+import { card, dayText, hint, input, label, type VatWords } from "./styles";
 
 /**
  * How shipping is taxed per country (D157). The default is the destination country's standard rate. Only a verified rule
@@ -17,7 +17,7 @@ export function ShippingRulesCard({
   countries,
   country,
   action,
-  words: w = VAT_EN,
+  words: w,
   locale,
 }: {
   rules: ShippingRuleRow[];
@@ -25,7 +25,7 @@ export function ShippingRulesCard({
   /** Fixed on a country's own page. */
   country?: string;
   action: (state: FormState, form: FormData) => Promise<FormState>;
-  words?: VatWords;
+  words: VatWords;
   locale?: string;
 }) {
   const sw = w.shipping;

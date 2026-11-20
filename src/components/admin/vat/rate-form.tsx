@@ -4,7 +4,7 @@ import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { VatCategoryRow } from "@/lib/vat";
 import { todayIn } from "@/lib/work-dates";
 
-import { card, hint, input, label, VAT_EN, type VatWords } from "./styles";
+import { card, hint, input, label, type VatWords } from "./styles";
 
 /**
  * Sets a country's rate for a category from a date (`commerce.set_vat_rate()`): the old period ends the day the new one begins and
@@ -16,14 +16,14 @@ export function RateForm({
   countries,
   country,
   action,
-  words: w = VAT_EN,
+  words: w,
 }: {
   /** Exempt has no rate and is left out by the caller; inactive ones can still be given a rate. */
   categories: VatCategoryRow[];
   countries: { code: string; name: string }[];
   country?: string;
   action: (state: FormState, form: FormData) => Promise<FormState>;
-  words?: VatWords;
+  words: VatWords;
 }) {
   const r = w.rateForm;
   const today = todayIn(PLATFORM_TIME_ZONE);
