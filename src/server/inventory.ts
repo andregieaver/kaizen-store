@@ -7,8 +7,6 @@ import {
   ADJUST_PROBLEM_WORDS,
   HISTORY_PAGE_SIZE,
   INVENTORY_PAGE_SIZE,
-  adjustInput,
-  bulkPolicyInput,
   byWords,
   isMovementReason,
   policyProblem,
@@ -17,6 +15,7 @@ import {
   type MovementReason,
   type StockPolicy,
 } from "@/lib/inventory";
+import { adjustInput, bulkPolicyInput } from "@/lib/inventory-schema";
 
 import { setBased } from "./analytics-totals";
 import { audit, type Membership } from "./auth";

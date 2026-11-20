@@ -11,8 +11,6 @@ import {
   MOVEMENT_SOURCES,
   NOTE_MAX,
   STOCK_MAX,
-  adjustInput,
-  bulkPolicyInput,
   byWords,
   compareRank,
   deactivationWords,
@@ -20,7 +18,6 @@ import {
   isAdjustReason,
   isMovementReason,
   isMovementSource,
-  locationInput,
   moveInRank,
   policyProblem,
   policyWords,
@@ -28,6 +25,7 @@ import {
   resultOf,
   stockContextArgs,
 } from "./inventory";
+import { adjustInput, bulkPolicyInput, locationInput } from "./inventory-schema";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const row = (over: Record<string, unknown> = {}) => ({ variantId: id(1), locationId: id(2), mode: "set", value: 5, was: 3, ...over });

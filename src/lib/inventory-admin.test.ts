@@ -22,7 +22,7 @@ import {
   takenFromWords,
   type CellRef,
 } from "./inventory-admin";
-import { adjustInput } from "./inventory";
+import { adjustInput } from "./inventory-schema";
 
 const V = "11111111-1111-4111-8111-111111111111";
 const L1 = "22222222-2222-4222-8222-222222222222";

@@ -3,7 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { LOCATIONS_MAX, deactivationWords, locationInput, moveInRank } from "@/lib/inventory";
+import { LOCATIONS_MAX, deactivationWords, moveInRank } from "@/lib/inventory";
+import { locationInput } from "@/lib/inventory-schema";
 
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
