@@ -5,7 +5,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
-import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
+import type { RecipeKey } from "@/lib/flow-recipes";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
@@ -19,8 +19,7 @@ import { rewriteEmail, suggestBroadcast, suggestSubjects, translateEmail } from 
 import { checkPermission } from "@/server/permissions";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { adminLangOf } from "@/lib/admin-lang";
-import { getAutomation } from "@/server/automations";
-import { flowReport, getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
+import { flowReport, getFlow, saveFlow, startRecipeFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
 import { storeAction } from "@/server/store-action";
 
@@ -35,17 +34,8 @@ const refusal = (message: string): FormState => ({ status: "error", messages: [m
 export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey | "own"): Promise<FormState> {
   const made = await storeAction(
     { store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" },
-    async (member, lang) => {
-      const locale = member.store.localization.locales[0] ?? "en-GB";
-      // The owner's own automation, when they wrote one, keeps its words, days and follow-ups (slice 3, M2.2); else the recipe.
-      if (key === "own") {
-        const saved = await saveFlow(member.store.id, member.account.id, null, ownFlow(locale));
-        return saved.ok ? { status: "ok" as const, messages: [saved.id] } : refusal(saved.problem);
-      }
-      const own = key in RECIPES ? await getAutomation(member.store, key) : null;
-      const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key]?.(locale);
-      if (!recipe) return refusal(FLOWS_WORDS[lang].problems.missing);
-      const saved = await saveFlow(member.store.id, member.account.id, null, recipe);
+    async (member) => {
+      const saved = await startRecipeFlow(member.store, member.account.id, key);
       return saved.ok ? { status: "ok" as const, messages: [saved.id] } : refusal(saved.problem);
     },
   );

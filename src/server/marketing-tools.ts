@@ -28,6 +28,10 @@ import { issueGiftCard } from "./gift-cards-admin";
 import { OwnerToolError } from "./owner-tool-error";
 import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type SavedSegment } from "./segments";
 import { storeById } from "./shopper-emails";
+import { flowProposals, flowReport, listFlows, startRecipeFlow } from "./flows";
+import { RECIPES, type RecipeKey } from "@/lib/flow-recipes";
+import { storyLead } from "@/lib/flow-story";
+import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
 import { typedRow } from "./typed-rows";
@@ -609,5 +613,46 @@ export async function issueGiftCardTool({ account, store }: Ctx, input: OwnerToo
         ? `Issued a gift card of ${value} and emailed it to ${input.to}. Its code is only in that email.`
         : `Issued a gift card of ${value}, but its email to ${input.to} did not go. Its code is not shown here: open the card's page to see what to do.`,
     link: adminLink(store, `/gift-cards/${outcome.cardId}`),
+  };
+}
+
+/** The store's flows and the goals it has no flow for, each with whom it would reach in the store's own data (D767, M3.9). Counts only. */
+export async function listFlowsTool({ store }: Ctx) {
+  const flows = await listFlows(store.id);
+  const made = new Set(flows.map((f) => f.replaces));
+  const goals = (Object.keys(RECIPES) as RecipeKey[]).filter((key) => !made.has(key));
+  const [reports, reach] = await Promise.all([Promise.all(flows.map((f) => flowReport(store.id, f.id))), goals.length > 0 ? flowProposals(store.id) : Promise.resolve({})]);
+  const w = FLOWS_WORDS.en;
+  return {
+    flows: flows.map((f, i) => ({
+      name: f.name,
+      on: f.enabled,
+      starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays),
+      started_last_30_days: reports[i].entered,
+      orders_after_last_30_days: reports[i].orders,
+      ...(f.guard && !f.enabled && { switched_off_by_guard: `${f.guard.left} of ${f.guard.sent} readers left the list within two days of its emails` }),
+      link: adminLink(store, `/flows/${f.id}`),
+    })),
+    goals_without_a_flow: goals.map((key) => ({
+      goal: key,
+      name: w.goals[key].title,
+      does: w.goals[key].text,
+      ...((reach as Partial<Record<RecipeKey, number>>)[key] !== undefined && {
+        would_reach_now: (reach as Partial<Record<RecipeKey, number>>)[key],
+      }),
+    })),
+    link: adminLink(store, "/flows"),
+  };
+}
+
+/** A flow started from a goal (M3.9), switched off and untested: nothing is sent until the owner tests it and switches it on. */
+export async function startFlowTool({ account, store }: Ctx, { goal }: OwnerToolInput<"start_flow">) {
+  const flows = await listFlows(store.id);
+  if (flows.some((f) => f.replaces === goal)) return fail(`The store already has a flow for ${FLOWS_WORDS.en.goals[goal].title.toLowerCase()}: see list_flows.`);
+  const saved = await startRecipeFlow(store, account.id, goal);
+  if (!saved.ok) return fail(saved.problem);
+  return {
+    done: `${FLOWS_WORDS.en.goals[goal].title} is started as a flow, switched off and untested: nothing is sent. The owner reads it, tests it and switches it on on its page.`,
+    link: adminLink(store, `/flows/${saved.id}`),
   };
 }

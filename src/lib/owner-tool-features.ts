@@ -193,6 +193,8 @@ export const TOOL_EXTENSIONS: Partial<Record<OwnerToolName, ExtensionId>> = {
   count_segment: "email_automation",
   save_segment: "email_automation",
   list_email_automations: "email_automation",
+  list_flows: "email_automation",
+  start_flow: "email_automation",
   write_email_automation: "email_automation",
   // Work (D122).
   work_overview: "work",

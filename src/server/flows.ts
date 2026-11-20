@@ -1,7 +1,7 @@
 import "server-only";
 
 import { withPicks } from "@/lib/automations";
-import { picksFor } from "./automations";
+import { getAutomation, picksFor } from "./automations";
 import { refreshBuyFacts } from "./buy-facts";
 import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -9,7 +9,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
 import { EVENT_TRIGGERS } from "@/lib/flow-triggers";
-import type { RecipeKey } from "@/lib/flow-recipes";
+import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { FLOW_GUARD, flowGuardPauses, guardCountsOf } from "@/lib/flow-guard";
 import {
   advance,
@@ -43,6 +43,7 @@ import { factsForEmail, marketingEmail, marketSlugFor, resolverFor } from "./mar
 import { segmentsOfAddress } from "./segment-membership";
 import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
+import type { Store } from "./stores";
 import { textList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -305,6 +306,20 @@ export async function guardFlows(options: { now?: Date; everyRun?: boolean } = {
     log("warn", "flows.guard_paused", { storeId: r.store_id, flowId: r.flow_id, ...counts });
   }
   return { judged: rows.length, paused };
+}
+
+/**
+ * A flow started from a goal (D767): the owner's own automation for it, when they wrote one, keeps its words, days and follow-ups (slice 3,
+ * M2.2); else the recipe; "own" is one email to start from. Saved off and untested, as every new flow. The Flows page's Start and the AI
+ * manager's `start_flow` (M3.9) both come here.
+ */
+export async function startRecipeFlow(store: Store, accountId: string, key: RecipeKey | "own"): Promise<SaveFlowResult> {
+  const locale = store.localization.locales[0] ?? "en-GB";
+  if (key === "own") return saveFlow(store.id, accountId, null, ownFlow(locale));
+  if (!(key in RECIPES)) return { ok: false, problem: "No such goal." };
+  const own = await getAutomation(store, key);
+  const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key](locale);
+  return saveFlow(store.id, accountId, null, recipe);
 }
 
 /**

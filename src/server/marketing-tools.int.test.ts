@@ -210,4 +210,15 @@ describe("the marketing tools", () => {
     `);
     expect(card).toMatchObject({ recipient_email: "friend@example.com" });
   });
+
+  it("lists the store's flows and the goals it lacks, and starts one switched off, once (D855, M3.9)", async () => {
+    const before = (await run("list_flows", {})) as { flows: unknown[]; goals_without_a_flow: { goal: string }[] };
+    expect(before.goals_without_a_flow.map((g) => g.goal)).toContain("win_back");
+    const started = (await run("start_flow", { goal: "win_back" })) as { done: string; link: string };
+    expect(started.done).toContain("switched off and untested");
+    const after = (await run("list_flows", {})) as { flows: { name: string; on: boolean }[]; goals_without_a_flow: { goal: string }[] };
+    expect(after.flows).toEqual(expect.arrayContaining([expect.objectContaining({ on: false })]));
+    expect(after.goals_without_a_flow.map((g) => g.goal)).not.toContain("win_back");
+    await expect(run("start_flow", { goal: "win_back" })).rejects.toThrow(/already has a flow/);
+  });
 });
