@@ -4,11 +4,12 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireExtension } from "@/components/admin/extension-off";
 import { AdminLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
+import { countWords } from "@/lib/admin-fill";
 import { RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { storyLead } from "@/lib/flow-story";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { getAutomations } from "@/server/automations";
-import { listFlows } from "@/server/flows";
+import { flowProposals, listFlows } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { startRecipeFlowAction } from "./actions";
@@ -32,7 +33,7 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
   const made = new Set(flows.map((f) => f.replaces));
   const goals = (Object.keys(RECIPES) as RecipeKey[]).filter((key) => !made.has(key));
   // A goal whose automation the owner already wrote starts from their words (slice 3, M2.2), and says so.
-  const automations = mayWrite && goals.length > 0 ? await getAutomations(store) : null;
+  const [automations, proposals] = mayWrite && goals.length > 0 ? await Promise.all([getAutomations(store), flowProposals(store.id)]) : [null, null];
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.lead} />
@@ -66,6 +67,12 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
                 <div role="group" aria-label={w.goals[key].title} className="flex h-full flex-col items-start gap-2">
                   <p className="text-body-strong text-ink">{w.goals[key].title}</p>
                   <p className="flex-1 text-caption text-muted">{automations?.[key].saved ? w.goals.fromOwn : w.goals[key].text}</p>
+                  {/* From the store's own data (M3.9): who this goal would reach now, only when someone would. */}
+                  {(proposals?.[key] ?? 0) > 0 && (
+                    <p className="text-caption text-ink" data-goal-reach={key}>
+                      {countWords(proposals?.[key] ?? 0, w.goals.reach[key as keyof typeof w.goals.reach])}
+                    </p>
+                  )}
                   <ActionForm action={startRecipeFlowAction.bind(null, store.slug, key)}>
                     <SubmitButton variant={flows.length === 0 ? "primary" : "secondary"}>{w.goals.start}</SubmitButton>
                   </ActionForm>

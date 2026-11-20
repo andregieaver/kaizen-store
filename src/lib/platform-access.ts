@@ -1,5 +1,5 @@
 import type { RoleTemplateKey } from "./permissions";
-import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
+import { PLAN_ITEMS, PLATFORM_BASE, PLATFORM_PAGE_AREAS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
 
 /**
  * Roles on the platform's team (C1 of `docs/platform-parity-plan.md`, D510): who may do what in the platform admin. Pure.
@@ -59,21 +59,38 @@ export function canPlatform(role: PlatformRole | null, area: PlatformArea, acces
   return ROLE_WRITES[role].includes(area);
 }
 
-const under = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
+/** An address of the platform's navigation with the area of the page there (D851). */
+export type PlatformNavArea = { path: string; area: PlatformArea };
 
 /**
- * The area of a platform page by its address (after `/admin/platform`, or the whole address), from the platform's navigation: what the
- * page's notice says and what the scan test holds each guard to. An address in no section is the owners' (`settings`).
+ * Every address the platform's navigation names, with its page's own area (D851): the pages outside a sidebar (`PLATFORM_PAGE_AREAS`) and
+ * every sidebar's pages, whichever list each is in: the lists only place them in the menu.
  */
-export function platformAreaOfPath(path: string): PlatformArea {
+export const platformNavAreas = (lists: readonly (readonly PlatformNavArea[])[] = [WEBSITE_ITEMS, PLAN_ITEMS, SUPPORT_ITEMS, SETTINGS_ITEMS]): PlatformNavArea[] => [
+  ...PLATFORM_PAGE_AREAS,
+  ...lists.flat(),
+];
+
+const PLATFORM_NAV_AREAS = platformNavAreas();
+
+/**
+ * The area of a platform address (after `/admin/platform`, or the whole address) among these navigation addresses: Home's for Home, else the
+ * area of the longest address it is or is inside, else the owners' (`settings`).
+ */
+export function platformAreaIn(areas: readonly PlatformNavArea[], path: string): PlatformArea {
   const p = path.startsWith(PLATFORM_BASE) ? path.slice(PLATFORM_BASE.length) : path;
   const clean = p === "" || p === "/" ? "" : `/${p.replace(/^\/+/, "").replace(/\/+$/, "")}`;
   if (clean === "") return "home";
-  if (under(clean, "/website") || under(clean, "/themes") || under(clean, "/articles") || under(clean, "/headers") || under(clean, "/footers")) return "website";
-  if (WEBSITE_ITEMS.some((i) => under(clean, i.path.split("/").slice(0, 2).join("/")))) return "website";
-  if (under(clean, "/stores") || under(clean, "/customers") || under(clean, "/requests")) return "stores";
-  if (PLAN_ITEMS.some((i) => under(clean, i.path))) return "plans";
-  if (SUPPORT_ITEMS.some((i) => under(clean, i.path))) return "support";
-  if (SETTINGS_ITEMS.some((i) => under(clean, i.path))) return "settings";
-  return "settings";
+  let best: PlatformNavArea | undefined;
+  for (const entry of areas) {
+    if ((clean === entry.path || clean.startsWith(`${entry.path}/`)) && (!best || entry.path.length > best.path.length)) best = entry;
+  }
+  return best?.area ?? "settings";
 }
+
+/**
+ * The area of a platform page by its address (after `/admin/platform`, or the whole address): the one its navigation entry names (D851),
+ * never the tab or section it sits under. What the page's notice says and what the scan test holds each guard to. An address in no entry
+ * is the owners' (`settings`).
+ */
+export const platformAreaOfPath = (path: string): PlatformArea => platformAreaIn(PLATFORM_NAV_AREAS, path);

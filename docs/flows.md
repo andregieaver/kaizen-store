@@ -137,5 +137,7 @@ left the list within 48 hours of it (unsubscribed, or marked it as spam, which u
 3 in 100 leaving (`flowGuardPauses()`, `src/lib/flow-guard.ts`), the flow goes off, the counts are kept on it (`guard_paused_at`,
 `guard_counts`) and audited (`marketing.flow_guard_paused`). Its page says why in those numbers, Home and the morning briefing name it as
 urgent for 14 days (`flows_paused`, counted in `heldCounts()`'s one statement), and the owner switches it on again after a test, which
-clears the mark. Still to come in M3.9: the autopilot proposing the recipes a store lacks, and suggesting split tests.
+clears the mark. The Flows page's goals say what each would reach in the store's own data (`flowProposals()`: joined, bought or
+not ordered for 90 days, bought twice; counts only), each above its Start. Still to come in M3.9: the autopilot proposing those goals on
+its own, and suggesting split tests.
 
