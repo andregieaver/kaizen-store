@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh:
 import { formatMoney } from "@/lib/money";
 import type { OrderRule } from "@/lib/order-rules";
 import { orderRuleInput } from "@/lib/order-rules-schema";
+import { notificationsEn } from "@/lib/admin-messages/notifications.en";
 import type { RuleRun } from "@/server/order-rules";
 
 import { draftOfRule, ruleBody, RuleEditor, typedMinor } from "./rule-editor";
@@ -79,6 +80,7 @@ describe("the automation views (D238, 2.5)", () => {
       describe: describe0,
       when: () => "1 Oct",
       actions: { switchRule: () => action, move: () => action, remove: () => action },
+      words: notificationsEn,
     })));
     expect(html).not.toMatch(BAD);
     expect(html).toContain('When an order is paid and the total is at least NOK 2,000.00 and the country is Sweden and it is tagged "VIP", tag "Big order" and hold it.');
@@ -90,9 +92,9 @@ describe("the automation views (D238, 2.5)", () => {
   });
 
   it("only reads without settings:write, and says when there are no rules", () => {
-    const html = plain(renderToString(h(RuleList, { rules: [{ ...rule, lastRun: null }], base: "/b", describe: describe0, when: () => "", actions: null })));
+    const html = plain(renderToString(h(RuleList, { rules: [{ ...rule, lastRun: null }], base: "/b", describe: describe0, when: () => "", actions: null, words: notificationsEn })));
     expect(html).not.toMatch(/Switch (off|on)|Delete|Move/);
-    expect(plain(renderToString(h(RuleList, { rules: [], base: "/b", describe: describe0, when: () => "", actions: null })))).toContain("No rules yet.");
+    expect(plain(renderToString(h(RuleList, { rules: [], base: "/b", describe: describe0, when: () => "", actions: null, words: notificationsEn })))).toContain("No rules yet.");
   });
 
   it("draws the editor with the rule's inputs and its sentence", () => {
@@ -110,7 +112,7 @@ describe("the automation views (D238, 2.5)", () => {
       { id: "r1", at: "2026-10-01T10:00:00Z", ruleId: rule.id, ruleName: "Big Swedish orders", ruleVersion: 3, orderId: "o1", orderNumber: "1001", matched: true, outcome: { conditions: [], actions: [{ kind: "tag", ok: true }, { kind: "hold", ok: false, problem: "already_held" }] } },
       { id: "r2", at: "2026-10-01T11:00:00Z", ruleId: rule.id, ruleName: "Big Swedish orders", ruleVersion: 3, orderId: "o2", orderNumber: "1002", matched: false, outcome: { conditions: [{ kind: "total_at_least", met: false, why: "no_rate" }], actions: [] } },
     ];
-    const html = plain(renderToString(h(RuleLog, { runs, base: "/admin/kaffe", when: () => "1 Oct", more: "/more" })));
+    const html = plain(renderToString(h(RuleLog, { runs, base: "/admin/kaffe", when: () => "1 Oct", more: "/more", words: notificationsEn })));
     expect(html).not.toMatch(BAD);
     expect(html).toContain('href="/admin/kaffe/orders/o1"');
     expect(html).toContain("Tag: done");

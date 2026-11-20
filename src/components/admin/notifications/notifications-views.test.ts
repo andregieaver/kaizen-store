@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh:
 
 import { NOTIFICATIONS } from "@/lib/notifications";
 import { STAFF_ALERT_EVENTS } from "@/lib/staff-alerts";
+import { notificationsEn } from "@/lib/admin-messages/notifications.en";
 import type { NotificationListItem } from "@/server/notifications";
 import type { StaffAlertsView } from "@/server/staff-alerts";
 
@@ -43,7 +44,7 @@ const action = async () => ({ status: "ok" as const, messages: [] });
 
 describe("the Notifications list (D238, 2.1 point 1)", () => {
   it("lists every email in its group, with a switch only where one may be switched", () => {
-    const html = plain(renderToString(h(NotificationList, { items: items(), base: "/admin/kaffe/settings/notifications", switchAction: () => action, handovers: true })));
+    const html = plain(renderToString(h(NotificationList, { items: items(), base: "/admin/kaffe/settings/notifications", switchAction: () => action, handovers: true, words: notificationsEn })));
     expect(html).not.toMatch(BAD);
     for (const group of ["Orders", "Pickup and local delivery", "Returns"]) expect(html).toContain(group);
     for (const def of NOTIFICATIONS) expect(html).toContain(def.label);
@@ -62,7 +63,7 @@ describe("the Notifications list (D238, 2.1 point 1)", () => {
   });
 
   it("only reads for someone who may not change settings, and says when pickup and local delivery are not offered", () => {
-    const html = plain(renderToString(h(NotificationList, { items: items(), base: "/admin/kaffe/settings/notifications", switchAction: null, handovers: false })));
+    const html = plain(renderToString(h(NotificationList, { items: items(), base: "/admin/kaffe/settings/notifications", switchAction: null, handovers: false, words: notificationsEn })));
     expect(html).not.toMatch(/Switch (off|on)/);
     expect(html).not.toContain('role="switch"');
     expect(html).toContain("The store offers no pickup or local delivery yet");
@@ -156,7 +157,7 @@ describe("the staff alerts form (D238, 2.4)", () => {
   });
 
   it("warns on Home only when alerts gave up", () => {
-    expect(renderToString(h(StaffAlertsFailedNote, { failed: 0, href: "/x" }))).toBe("");
-    expect(plain(renderToString(h(StaffAlertsFailedNote, { failed: 2, href: "/x" })))).toContain("Staff alerts could not be sent: 2 orders or returns");
+    expect(renderToString(h(StaffAlertsFailedNote, { failed: 0, href: "/x", words: notificationsEn }))).toBe("");
+    expect(plain(renderToString(h(StaffAlertsFailedNote, { failed: 2, href: "/x", words: notificationsEn })))).toContain("Staff alerts could not be sent: 2 orders or returns");
   });
 });

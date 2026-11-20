@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
+import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { describeRule, type DescribeContext, type OrderRule } from "@/lib/order-rules";
 
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
@@ -25,15 +25,15 @@ export function RuleList({
   describe,
   when,
   actions,
-  words = notificationsEn,
+  words,
 }: {
   rules: RuleRow[];
   base: string;
   describe: DescribeContext;
   when: (iso: string) => string;
   actions: RuleListActions | null;
-  /** The admin's words in the account's language; English unless given. */
-  words?: NotificationsMessages;
+  /** The admin's words in the account's language. */
+  words: NotificationsMessages;
 }) {
   const w = words.rules;
   const c = words.common;

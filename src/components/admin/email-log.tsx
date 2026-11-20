@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
+import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { emailDays } from "@/lib/email-log";
 import type { EmailLogRow } from "@/server/email";
 
@@ -12,7 +12,7 @@ export function EmailLog({
   base,
   showStore = false,
   locale = "nb-NO",
-  words = notificationsEn,
+  words,
   now,
   quietUnsent = false,
   timeZone,
@@ -21,8 +21,8 @@ export function EmailLog({
   base: string;
   showStore?: boolean;
   locale?: string;
-  /** The admin's words in the account's language; English unless given. */
-  words?: NotificationsMessages;
+  /** The admin's words in the account's language. */
+  words: NotificationsMessages;
   /** Group the emails by day, Today and Yesterday counted from this time (round 16, D650); a flat list without it. */
   now?: number;
   /** While email is not set up, a row leaves out "Not sent": the page's sentence says it once (round 17, D652). Failures still show. */
@@ -81,7 +81,7 @@ export function EmailLog({
 }
 
 /** One email as the shopper saw it, in a sandboxed frame (no scripts, no forms). */
-export function EmailView({ email, words = notificationsEn }: { email: EmailLogRow & { html: string }; words?: NotificationsMessages }) {
+export function EmailView({ email, words }: { email: EmailLogRow & { html: string }; words: NotificationsMessages }) {
   const w = words.log;
   return (
     <div className="flex flex-col gap-3">

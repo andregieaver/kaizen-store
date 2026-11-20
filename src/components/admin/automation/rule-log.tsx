@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Card, Chip } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
+import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import type { ConditionKind } from "@/lib/order-rules";
 import type { RuleRun } from "@/server/order-rules";
 
@@ -15,14 +15,14 @@ export function RuleLog({
   base,
   when,
   more,
-  words = notificationsEn,
+  words,
 }: {
   runs: RuleRun[];
   base: string;
   when: (iso: string) => string;
   more: string | null;
-  /** The admin's words in the account's language; English unless given. */
-  words?: NotificationsMessages;
+  /** The admin's words in the account's language. */
+  words: NotificationsMessages;
 }) {
   const w = words.rules.logPage;
   const outcome = (why: string) => (w.outcomes as Record<string, string>)[why] ?? why;

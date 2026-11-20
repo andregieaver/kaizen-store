@@ -4,7 +4,7 @@ import { ActionForm, type FormState } from "@/components/admin/action-form";
 import { SwitchButton } from "@/components/admin/notifications/switch-button";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { countWords } from "@/lib/admin-fill";
-import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
+import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { NOTIFICATION_GROUPS, notificationPath, type NotificationGroup } from "@/lib/notifications";
 import type { NotificationListItem } from "@/server/notifications";
 
@@ -12,7 +12,7 @@ import type { NotificationListItem } from "@/server/notifications";
 type SwitchAction = (state: FormState, form: FormData) => Promise<FormState>;
 
 /** A notification's name, when it is sent and why it is required, in the admin's words (`NOTIFICATIONS` in English). */
-export function notificationWords(def: { id: string; label: string; when: string; why: string | null }, w: NotificationsMessages = notificationsEn) {
+export function notificationWords(def: { id: string; label: string; when: string; why: string | null }, w: NotificationsMessages) {
   const own = w.emails.defs[def.id];
   return { label: own?.label ?? def.label, when: own?.when ?? def.when, why: own ? own.why || null : def.why };
 }
@@ -27,7 +27,7 @@ export function NotificationList({
   base,
   switchAction,
   handovers,
-  words = notificationsEn,
+  words,
 }: {
   items: NotificationListItem[];
   /** `/admin/{store}/settings/notifications`. */
@@ -36,8 +36,8 @@ export function NotificationList({
   switchAction: ((id: string) => SwitchAction) | null;
   /** Whether the store offers pickup or local delivery (the group of their emails is then in use). */
   handovers: boolean;
-  /** The admin's words in the account's language; English unless given. */
-  words?: NotificationsMessages;
+  /** The admin's words in the account's language. */
+  words: NotificationsMessages;
   /** Kept for callers; the languages are named on each email's own page since round 22. */
   display?: string;
 }) {
