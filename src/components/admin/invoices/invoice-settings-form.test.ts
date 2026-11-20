@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { INVOICE_NOTES } from "@/lib/invoice-admin";
+import { invoicesEn } from "@/lib/admin-messages/invoices.en";
 import type { InvoiceReadiness, InvoiceSettings, SeriesState } from "@/server/invoice-settings";
 
 import { InvoiceNotes, InvoiceReadinessList, InvoiceSettingsForm, SeriesForm } from "./invoice-settings-form";
@@ -34,7 +35,7 @@ const drawn = (element: Parameters<typeof renderToString>[0]) => {
 
 describe("what is missing before invoicing", () => {
   it("says the details are complete when they are", () => {
-    expect(drawn(h(InvoiceReadinessList, { base: "/admin/s", readiness: readiness() })).text).toContain("The business details and the tax profile an invoice needs are complete.");
+    expect(drawn(h(InvoiceReadinessList, { base: "/admin/s", readiness: readiness(), words: invoicesEn })).text).toContain("The business details and the tax profile an invoice needs are complete.");
   });
 
   it("lists each missing detail with where to give it", () => {
@@ -42,6 +43,7 @@ describe("what is missing before invoicing", () => {
       h(InvoiceReadinessList, {
         base: "/admin/s",
         readiness: readiness({ ready: false, missing: ["legal_name", "vat_number"], fixAt: { legal_name: "/settings/company", vat_number: "/settings/tax" } }),
+        words: invoicesEn,
       }),
     );
     expect(text).toContain("Legal name of the business is missing.");
@@ -52,7 +54,7 @@ describe("what is missing before invoicing", () => {
   });
 
   it("says when the tax profile is not saved, and warns about rates kept by hand", () => {
-    const { html, text } = drawn(h(InvoiceReadinessList, { base: "/admin/s", readiness: readiness({ ready: false, taxProfileSaved: false, ratesByHand: true }) }));
+    const { html, text } = drawn(h(InvoiceReadinessList, { base: "/admin/s", readiness: readiness({ ready: false, taxProfileSaved: false, ratesByHand: true }), words: invoicesEn }));
     expect(text).toContain("The tax profile is not saved");
     expect(text).toContain("keeps its exchange rates by hand");
     expect(html).toContain('href="/admin/s/settings/localization"');
@@ -60,7 +62,7 @@ describe("what is missing before invoicing", () => {
 });
 
 describe("the switch, the note and the email option", () => {
-  const form = (s = settings(), r = readiness()) => drawn(h(InvoiceSettingsForm, { timeZone: "Europe/Oslo", settings: s, readiness: r, paymentsHref: "/admin/s/settings/payments", saveAction: noop }));
+  const form = (s = settings(), r = readiness()) => drawn(h(InvoiceSettingsForm, { timeZone: "Europe/Oslo", settings: s, readiness: r, paymentsHref: "/admin/s/settings/payments", saveAction: noop, words: invoicesEn }));
 
   it("shows the switch and the email option as they are, and the note", () => {
     const { html, text } = form(settings({ footerNote: "Bank 1234" }));
@@ -93,7 +95,7 @@ describe("the switch, the note and the email option", () => {
 
 describe("a series' prefix and first number", () => {
   it("is open before the first document is issued, with what the first number will be", () => {
-    const { html, text } = drawn(h(SeriesForm, { state: series(), action: noop }));
+    const { html, text } = drawn(h(SeriesForm, { state: series(), action: noop, words: invoicesEn }));
     expect(text).toContain("Invoice numbers");
     expect(html).toContain('name="series" value="invoice"');
     expect(html).toContain('name="prefix"');
@@ -104,14 +106,14 @@ describe("a series' prefix and first number", () => {
   });
 
   it("names the credit note series as its own", () => {
-    const { html, text } = drawn(h(SeriesForm, { state: series({ series: "credit_note", prefix: "K-", nextDocumentNumber: "K-1" }), action: noop }));
+    const { html, text } = drawn(h(SeriesForm, { state: series({ series: "credit_note", prefix: "K-", nextDocumentNumber: "K-1" }), action: noop, words: invoicesEn }));
     expect(text).toContain("Credit note numbers");
     expect(html).toContain('name="series" value="credit_note"');
     expect(text).toContain("The first credit note will be K-1");
   });
 
   it("is locked once a document is issued: the count and the next number, no fields", () => {
-    const { html, text } = drawn(h(SeriesForm, { state: series({ issued: 17, locked: true, nextNumber: 18, nextDocumentNumber: "F-18" }), action: noop }));
+    const { html, text } = drawn(h(SeriesForm, { state: series({ issued: 17, locked: true, nextNumber: 18, nextDocumentNumber: "F-18" }), action: noop, words: invoicesEn }));
     expect(text).toMatch(/17 issued\. The next number is F-18\s?\./);
     expect(text).toContain("Numbers already issued cannot be changed, and none can be skipped or removed.");
     expect(html).not.toContain('name="prefix"');
@@ -121,7 +123,7 @@ describe("a series' prefix and first number", () => {
 
 describe("the notes for an accountant", () => {
   it("lists every note once and says it is not advice", () => {
-    const { text } = drawn(h(InvoiceNotes));
+    const { text } = drawn(h(InvoiceNotes, { words: invoicesEn }));
     for (const note of INVOICE_NOTES) expect(text).toContain(note);
     expect(text).toContain("This is not legal, tax or accounting advice.");
     expect(new Set(INVOICE_NOTES).size).toBe(INVOICE_NOTES.length);

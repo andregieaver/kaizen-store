@@ -1,9 +1,7 @@
-import { invoicesEn } from "@/lib/admin-messages/invoices.en";
-
 const block = "animate-pulse rounded-lg bg-card";
 
 /** The invoices page's shape while it is read: the heading, the four figures, the tabs, the filter and the table. */
-export function InvoicesSkeleton({ label = invoicesEn.view.loading }: { label?: string }) {
+export function InvoicesSkeleton({ label }: { label: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">{label}</span>
@@ -24,7 +22,7 @@ export function InvoicesSkeleton({ label = invoicesEn.view.loading }: { label?: 
 }
 
 /** The invoicing settings' shape while they are read. */
-export function InvoiceSettingsSkeleton({ label = invoicesEn.view.loadingSettings }: { label?: string }) {
+export function InvoiceSettingsSkeleton({ label }: { label: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">{label}</span>

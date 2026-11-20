@@ -2,13 +2,16 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import { DocumentsCard } from "./documents-card";
+import { invoicesEn } from "@/lib/admin-messages/invoices.en";
+import { screensEn } from "@/lib/admin-messages/screens.en";
 import { noop, orderDocuments, plain } from "./test-fixtures";
 
 const BAD = /\bNaN\b|Infinity|undefined|\[object|\bnull\b/;
 
 const draw = (documents = orderDocuments(), over: Partial<Parameters<typeof DocumentsCard>[0]> = {}) => {
-  const html = renderToString(h(DocumentsCard, { base: "/admin/s", documents, canWrite: true, sendAgain: () => noop, ...over }));
+  const html = renderToString(h(DocumentsCard, { base: "/admin/s", documents, canWrite: true, sendAgain: () => noop, ...over, words: invoicesEn, reasons: screensEn.invoiceReasons }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };
@@ -77,7 +80,7 @@ describe("the Documents card on an order", () => {
   });
 
   it("is not drawn for an order that has not been paid", () => {
-    expect(renderToString(h(DocumentsCard, { base: "/admin/s", documents: orderDocuments({ invoice: null, eligibility: "not_paid" }), canWrite: true, sendAgain: () => noop }))).toBe("");
+    expect(renderToString(h(DocumentsCard, { base: "/admin/s", documents: orderDocuments({ invoice: null, eligibility: "not_paid" }), canWrite: true, sendAgain: () => noop, words: invoicesEn, reasons: screensEn.invoiceReasons }))).toBe("");
   });
 
   it("still shows the credit notes of an unpaid-looking order that has documents", () => {

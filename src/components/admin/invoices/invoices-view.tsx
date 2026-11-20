@@ -3,8 +3,7 @@ import Link from "next/link";
 import type { FormState } from "@/components/admin/action-form";
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
-import { kitEn } from "@/lib/admin-messages/kit.en";
+import type { InvoicesMessages } from "@/lib/admin-messages/invoices.en";
 import {
   countryName,
   countsSentence,
@@ -52,8 +51,8 @@ export function InvoicesView({
   actions,
   exportProblem = null,
   locale = "en-GB",
-  words: w = invoicesEn,
-  pagerWords = kitEn.pager,
+  words: w,
+  pagerWords,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -75,9 +74,9 @@ export function InvoicesView({
   /** What the CSV route sent the person back for, as a fixed sentence. */
   exportProblem?: string | null;
   locale?: string;
-  words?: InvoicesMessages;
+  words: InvoicesMessages;
   /** The kit's pager words (`KIT_WORDS[lang].pager`, D834). */
-  pagerWords?: PagerWords;
+  pagerWords: PagerWords;
 }) {
   const v = w.view;
   const here = `${base}/invoices`;

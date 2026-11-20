@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
+import type { InvoicesMessages } from "@/lib/admin-messages/invoices.en";
 import { dayLabel, documentPdfHref, documentPrintHref, documentXmlHref, invoicesHref } from "@/lib/invoice-admin";
 import { WAITING_WORDS } from "@/lib/invoice-readiness";
 import { formatMoney } from "@/lib/money";
@@ -10,7 +10,7 @@ import type { DocumentLink, OrderDocuments } from "@/server/invoices";
 import { Card } from "@/components/admin/ui";
 
 import { SendAgainForm } from "./waiting-actions";
-import { screensEn, type ScreensMessages } from "@/lib/admin-messages/screens.en";
+import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
@@ -25,8 +25,8 @@ export function DocumentsCard({
   canWrite,
   sendAgain,
   locale = "en-GB",
-  words: w = invoicesEn,
-  reasons = screensEn.invoiceReasons,
+  words: w,
+  reasons,
   einvoice = {},
 }: {
   /** `/admin/{store}` */
@@ -37,10 +37,10 @@ export function DocumentsCard({
   /** A bound action for a document: `(type, id) => action`, made where the card is drawn. */
   sendAgain: (type: "invoice" | "credit_note", id: string) => Action;
   locale?: string;
-  /** The reader's words (D312 A4); English unless given. */
-  words?: InvoicesMessages;
-  /** Why there is no invoice yet, in the reader's words (`screens.invoiceReasons`); English unless given. */
-  reasons?: ScreensMessages["invoiceReasons"];
+  /** The reader's words (D312 A4). */
+  words: InvoicesMessages;
+  /** Why there is no invoice yet, in the reader's words (`screens.invoiceReasons`). */
+  reasons: ScreensMessages["invoiceReasons"];
   /** Each document's e-invoice line by `type:id` (D463, `einvoiceLines()`), in the reader's words; none for one that went by email alone. */
   einvoice?: Readonly<Record<string, string>>;
 }) {

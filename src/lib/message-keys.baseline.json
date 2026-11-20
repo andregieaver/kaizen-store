@@ -29,6 +29,7 @@
     "admin-messages/home.en.ts#homeEn.store.onlineShop",
     "admin-messages/home.en.ts#homeEn.today.allClear",
     "admin-messages/home.en.ts#homeEn.today.first.removeSamples",
+    "admin-messages/invoices.en.ts#invoicesEn.view.loadingSettings",
     "admin-messages/notifications.en.ts#notificationsEn.emails.noLongerOffered",
     "admin-messages/notifications.en.ts#notificationsEn.emails.standardText",
     "admin-messages/notifications.en.ts#notificationsEn.emails.yourText",

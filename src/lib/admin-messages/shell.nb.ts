@@ -63,6 +63,8 @@ export const shellNb: ShellMessages = {
     returns: "Laster returene…",
     vatReport: "Henter mva.-rapporten …",
     vatReportStatement: "Dine egne tall, for deg og regnskapsføreren din. Ikke en melding til myndighetene.",
+    invoices: "Laster fakturaene…",
+    invoiceSettings: "Laster innstillingene for fakturering…",
   },
   error: {
     title: "Denne siden kunne ikke lastes",

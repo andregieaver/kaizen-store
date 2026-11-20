@@ -73,6 +73,8 @@ export const shellEn = {
     returns: "Loading the returns…",
     vatReport: "Loading the VAT report…",
     vatReportStatement: "Your own figures, for you and your accountant. Not a tax return.",
+    invoices: "Loading the invoices…",
+    invoiceSettings: "Loading the invoicing settings…",
   },
   /** The page shown when an admin page fails to load (`(gated)/error.tsx`); `{reference}` is `reference` filled in, or nothing. */
   error: {

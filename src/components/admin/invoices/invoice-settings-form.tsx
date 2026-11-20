@@ -4,7 +4,7 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { PhoneRow } from "@/components/admin/phone-row";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
+import type { InvoicesMessages } from "@/lib/admin-messages/invoices.en";
 import { FOOTER_NOTE_MAX } from "@/lib/invoice-settings";
 import { dayLabel, sellerFieldLabel } from "@/lib/invoice-admin";
 import type { InvoiceReadiness, InvoiceSettings, SeriesState } from "@/server/invoice-settings";
@@ -21,7 +21,7 @@ const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
  * What is missing before invoices can be issued (D159, `docs/wave-1b-invoices.md` 2.3): the seller's details with a link to where each is
  * given, the tax profile, and the two things an owner should know before switching on (rates kept by hand, Stripe's own invoice).
  */
-export function InvoiceReadinessList({ base, readiness, words: w = invoicesEn }: { base: string; readiness: InvoiceReadiness; words?: InvoicesMessages }) {
+export function InvoiceReadinessList({ base, readiness, words: w }: { base: string; readiness: InvoiceReadiness; words: InvoicesMessages }) {
   const t = w.settings;
   const items: { key: string; text: string; href: string | null }[] = [];
   for (const field of readiness.missing) {
@@ -99,14 +99,14 @@ export function InvoiceSettingsForm({
   readiness,
   paymentsHref,
   saveAction,
-  words: w = invoicesEn,
+  words: w,
   timeZone,
 }: {
   settings: InvoiceSettings;
   readiness: InvoiceReadiness;
   paymentsHref: string;
   saveAction: Action;
-  words?: InvoicesMessages;
+  words: InvoicesMessages;
   /** The store's time zone: the day invoices were switched on is the store's (D786). */
   timeZone: string;
 }) {
@@ -188,7 +188,7 @@ export function InvoiceSettingsForm({
  * One series' prefix and first number. Open until its first document is issued, then shown and locked: numbers already issued cannot be
  * changed, and the next one always follows the last.
  */
-export function SeriesForm({ state, action, words: w = invoicesEn }: { state: SeriesState; action: Action; words?: InvoicesMessages }) {
+export function SeriesForm({ state, action, words: w }: { state: SeriesState; action: Action; words: InvoicesMessages }) {
   const t = w.settings;
   const title = t.series[state.series];
   const p = w.phone;
@@ -244,7 +244,7 @@ export function SeriesForm({ state, action, words: w = invoicesEn }: { state: Se
 }
 
 /** The plain-English notes for an accountant's eyes. */
-export function InvoiceNotes({ words: w = invoicesEn }: { words?: InvoicesMessages }) {
+export function InvoiceNotes({ words: w }: { words: InvoicesMessages }) {
   return (
     <PhoneRow title={w.settings.notesTitle} sub={w.phone.notesSub} change={w.phone.open} done={w.phone.close} flat>
     <section aria-labelledby="notes" className={card}>

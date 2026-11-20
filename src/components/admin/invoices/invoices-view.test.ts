@@ -2,7 +2,10 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import { InvoicesView } from "./invoices-view";
+import { invoicesEn } from "@/lib/admin-messages/invoices.en";
+import { kitEn } from "@/lib/admin-messages/kit.en";
 import { actions, counts, failing, note, noteRow, plain, query, row, TODAY, waiting } from "./test-fixtures";
 
 const BAD = /\bNaN\b|Infinity|undefined|\[object|\bnull\b/;
@@ -25,6 +28,8 @@ const draw = (over: Props = {}) => {
       failing: [],
       actions,
       ...over,
+      words: invoicesEn,
+      pagerWords: kitEn.pager,
     }),
   );
   const text = plain(html);
