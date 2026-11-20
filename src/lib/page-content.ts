@@ -971,6 +971,11 @@ export type ExtensionsBlock = PartBase & {
   decimals?: "hide_whole";
   /** The bundles under the extensions; shown unless set false. */
   bundles?: boolean;
+  /**
+   * The extensions and bundles switched off on this block, by id (an extension's id, a bundle's uuid): everything else shows, so one added to
+   * the catalogue later shows until it is switched off here too.
+   */
+  hide?: string[];
   /** The words on each card's button, and where it leads (sign-up unless chosen). */
   buttonLabel: string;
   buttonHref: string;
@@ -3013,6 +3018,7 @@ const extensionsBlock = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/, "Choose a currency such as NOK or EUR.").optional(),
   decimals: z.literal("hide_whole").optional(),
   bundles: z.boolean().optional(),
+  hide: z.array(z.string().trim().min(1).max(64)).max(40).optional(),
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
   buttonHref: z
     .string()

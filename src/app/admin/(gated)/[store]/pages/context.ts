@@ -66,6 +66,8 @@ import { planMotionAction } from "./motion-action";
 import { signupCodeChoices } from "@/server/discounts";
 import { builderForms } from "@/server/forms-admin";
 import { planChoices } from "@/lib/plan-offer";
+import { extensionChoices } from "@/lib/extension-offer";
+import { getPublicExtensions } from "@/server/public-extensions";
 import { getPublicPlans } from "@/server/public-plans";
 import { storeExtensionOn } from "@/lib/extensions";
 
@@ -182,6 +184,7 @@ export async function storePageContext(
     menusHref: `/admin/${store.slug}/menus`,
     // Kaizena Flow's own store (D469, step 4 of the plan) has Kaizena Flow's own parts: its plans, a domain search and the list of themes.
     plans: store.house ? planChoices(await getPublicPlans()) : null,
+    extensionChoices: store.house ? extensionChoices(await getPublicExtensions()) : null,
     house: store.house,
     ...(store.house && type === "page" ? { themeStore: { parts: ["list"] as const } } : {}),
     theme: {

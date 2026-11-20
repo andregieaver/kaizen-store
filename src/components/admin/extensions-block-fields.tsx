@@ -5,30 +5,42 @@ import { useId } from "react";
 import { useAdminText } from "@/components/admin/admin-text";
 import { Select, TextInput } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
+import type { ExtensionChoice } from "@/lib/extension-offer";
 import type { ExtensionsBlock } from "@/lib/page-content";
 import type { BlockPatch } from "@/lib/page-rows";
 
 import { Check } from "./check-field";
 
 /**
- * The Extensions block in the page builder (D748 E8): its settings (currency, whole amounts, the bundles, the button) and its stand-in on the
- * canvas, which reads no catalogue. The extensions, bundles and prices are edited under Plans → Extensions; a change there shows on the page.
+ * The Extensions block in the page builder (D748 E8): its settings (currency, whole amounts, which extensions and bundles show, the button)
+ * and its stand-in on the canvas, which reads no catalogue. The extensions, bundles and prices are edited under Plans → Extensions; a change
+ * there shows on the page. Each extension and bundle is on unless switched off here (`hide`), so one added to the catalogue later shows too.
  */
 
 export function ExtensionsFields({
   block,
   currencies,
+  choices,
   labelMax,
   onChange,
 }: {
   block: ExtensionsBlock;
   currencies: readonly string[];
+  /** The catalogue's extensions and bundles, each one a switch (`hide`). */
+  choices: readonly ExtensionChoice[];
   /** The longest button text (`BUTTON_LABEL_MAX`, handed in: the content rules are not this script's). */
   labelMax: number;
   onChange: (patch: BlockPatch<ExtensionsBlock>) => void;
 }) {
   const id = useId();
   const w = useAdminText("builder").extensions;
+  const hide = block.hide ?? [];
+  const show = (choice: ExtensionChoice, on: boolean) => {
+    const next = on ? hide.filter((hidden) => hidden !== choice.id) : [...hide.filter((hidden) => hidden !== choice.id), choice.id];
+    onChange({ hide: next.length > 0 ? next : undefined });
+  };
+  const extensions = choices.filter((choice) => choice.kind === "extension");
+  const bundles = choices.filter((choice) => choice.kind === "bundle");
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted">{w.hint}</p>
@@ -48,7 +60,23 @@ export function ExtensionsFields({
         </Select>
       </label>
       <Check label={w.wholeAmounts} hint={w.wholeAmountsHint} checked={block.decimals === "hide_whole"} onChange={(whole) => onChange({ decimals: whole ? "hide_whole" : undefined })} />
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">{w.show}</legend>
+        <p className="text-xs text-muted">{w.showHint}</p>
+        {extensions.length === 0 && <p className="text-sm text-muted">{w.noChoices}</p>}
+        {extensions.map((choice) => (
+          <Check key={choice.id} label={choice.name} checked={!hide.includes(choice.id)} onChange={(on) => show(choice, on)} />
+        ))}
+      </fieldset>
       <Check label={w.bundles} hint={w.bundlesHint} checked={block.bundles !== false} onChange={(shown) => onChange({ bundles: shown ? undefined : false })} />
+      {block.bundles !== false && bundles.length > 0 && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">{w.showBundles}</legend>
+          {bundles.map((choice) => (
+            <Check key={choice.id} label={choice.name} checked={!hide.includes(choice.id)} onChange={(on) => show(choice, on)} />
+          ))}
+        </fieldset>
+      )}
       <label htmlFor={`${id}-label`} className="flex flex-col gap-1 text-sm font-medium">
         {w.buttonText}
         <TextInput
@@ -75,6 +103,7 @@ export function ExtensionsStandIn({ block }: { block: ExtensionsBlock }) {
     block.currency ? fillWords(w.pricesIn, { currency: block.currency }) : w.mainCurrency,
     ...(block.decimals === "hide_whole" ? [w.wholePrices] : []),
     block.bundles === false ? w.withoutBundles : w.withBundles,
+    ...(block.hide && block.hide.length > 0 ? [fillWords(w.hiddenCount, { count: block.hide.length })] : []),
   ];
   return (
     <div className="rounded-md border border-dashed border-edge bg-sunken p-4 text-sm">

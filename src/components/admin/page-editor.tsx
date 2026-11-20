@@ -814,6 +814,7 @@ export function PageEditor({
           menus: context.menus,
           menusHref: context.menusHref,
           plans: context.plans,
+          extensionChoices: context.extensionChoices ?? null,
           themeStore: context.themeStore ?? null,
           features: context.features ?? null,
           shape,

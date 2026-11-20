@@ -27,6 +27,7 @@ import type { StoreTheme, ThemeSettings } from "@/lib/theme";
 import type { GridStore } from "@/server/content-grid";
 import type { ItemLinkTargets } from "@/server/link-targets";
 import type { PlanChoice } from "@/lib/plan-offer";
+import type { ExtensionChoice } from "@/lib/extension-offer";
 import type { BuilderForms } from "@/lib/form-records";
 import type { MenuPreview } from "@/server/menus";
 import type { EditablePage } from "@/server/pages";
@@ -167,6 +168,8 @@ export type PageOwnerContext = {
   features?: readonly string[];
   /** Kaizen's plans for the Plans component (D142), on Kaizen's own pages; null for a store, which does not sell Kaizen's plans. */
   plans: PlanChoice[] | null;
+  /** The extensions and bundles the Extensions component can switch off (D748 E8), where it is offered; absent elsewhere. */
+  extensionChoices?: ExtensionChoice[] | null;
   /** Kaizena Flow's own store (D466), which serves Kaizena Flow's site (D484): its headers offer *Start your store* too. */
   house?: boolean;
   /**

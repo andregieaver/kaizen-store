@@ -52,6 +52,8 @@ import { CREATE_KINDS } from "@/lib/dual-page";
 import { duplicatePageAction } from "./duplicate-action";
 import { platformCssVersionAction, platformCssVersionsAction, platformPageVersionAction, platformPageVersionsAction } from "./version-actions";
 import { planChoices } from "@/lib/plan-offer";
+import { extensionChoices } from "@/lib/extension-offer";
+import { getPublicExtensions } from "@/server/public-extensions";
 import { getPublicPlans } from "@/server/public-plans";
 
 import { planMotionAction } from "./motion-action";
@@ -95,6 +97,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
     plans: planChoices(plans),
+    extensionChoices: extensionChoices(await getPublicExtensions()),
     // Kaizena Flow's own content types (D326 H4), whose published entries a grid can list.
     contentTypes: (await listContentTypes(null)).map(({ key, name, fields }) => ({ key, name, fields })),
     // The list of themes on any of Kaizena Flow's pages (D285); a theme's parts only on the page edited as a theme's page (from Themes).

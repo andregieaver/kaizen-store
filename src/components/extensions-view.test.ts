@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { extensionOffer, offerCurrency, type PublicExtensions } from "@/lib/extension-offer";
+import { extensionChoices, extensionOffer, offerCurrency, type PublicExtensions } from "@/lib/extension-offer";
 import { extensionsIn } from "@/lib/extension-words";
 import { blockHasContent, pageBlockSchema, type ExtensionsBlock } from "@/lib/page-content";
 import { mapBlockTexts } from "@/lib/page-translation";
@@ -44,6 +44,24 @@ describe("extensionOffer", () => {
     expect(bundles).toEqual([expect.objectContaining({ name: "Customers", savingMinor: 18000, members: ["AI support desk", "Email automation", "Deals and contracts"] })]);
   });
 
+  it("leaves out what the block switched off, a bundle still saving against the prices of the extensions left out", () => {
+    const { extensions, bundles } = extensionOffer(data, "NOK", now, ["ab_testing", "email_automation"]);
+    expect(extensions.map((e) => e.id)).toEqual(["support_desk", "deals"]);
+    expect(bundles).toEqual([expect.objectContaining({ id: "b1", savingMinor: 18000 })]);
+    expect(extensionOffer(data, "NOK", now, ["b1"]).bundles).toEqual([]);
+  });
+
+  it("offers the builder each extension on offer, then each bundle, to switch off", () => {
+    expect(extensionChoices(data)).toEqual([
+      { id: "ab_testing", name: "A/B testing", kind: "extension" },
+      { id: "support_desk", name: "AI support desk", kind: "extension" },
+      { id: "email_automation", name: "Email automation", kind: "extension" },
+      { id: "deals", name: "Deals and contracts", kind: "extension" },
+      { id: "work", name: "Work", kind: "extension" },
+      { id: "b1", name: "Customers", kind: "bundle" },
+    ]);
+  });
+
   it("drops the founding prices once the offer has ended", () => {
     const after = extensionOffer(data, "NOK", new Date("2027-01-02T00:00:00Z"));
     expect(after.extensions[0].price.foundingMinor).toBeNull();
@@ -63,6 +81,17 @@ describe("ExtensionsView", () => {
     expect(html).toContain('href="/sign-up"');
     expect(html).toContain("Start free trial");
     expect(html).not.toContain("Work");
+  });
+
+  it("draws only what is left on, the bundles alone if every extension is off, and nothing when all is off", () => {
+    const some = renderToStaticMarkup(createElement(ExtensionsView, { block: { ...block, hide: ["ab_testing"] }, data, lang: "en", now }));
+    expect(some).not.toContain("A/B testing");
+    expect(some).toContain("AI support desk");
+    const off = ["ab_testing", "support_desk", "email_automation", "deals"];
+    const bundlesOnly = renderToStaticMarkup(createElement(ExtensionsView, { block: { ...block, hide: off }, data, lang: "en", now }));
+    expect(bundlesOnly).toContain("Customers");
+    expect(renderToStaticMarkup(createElement(ExtensionsView, { block: { ...block, hide: [...off, "b1"] }, data, lang: "en", now }))).toBe("");
+    expect(pageBlockSchema.safeParse({ ...block, hide: off }).success).toBe(true);
   });
 
   it("leaves the bundles out when told, and speaks Norwegian on a Norwegian page", () => {

@@ -23,14 +23,15 @@ export function ExtensionsView({ block, data, lang = "en", now }: { block: Exten
   const w = platformText(site).extensions;
   const currency = offerCurrency(data, block.currency);
   if (!currency) return null;
-  const { extensions, bundles } = extensionOffer(data, currency, now);
-  if (extensions.length === 0) return null;
+  const { extensions, bundles } = extensionOffer(data, currency, now, block.hide);
   const href = platformPath(site, block.buttonHref || "/sign-up");
   const label = block.buttonLabel || w.trial;
   const money = (minor: number) => formatMoney(minor, currency, lang, { decimals: block.decimals });
   const look = buttonLook({ variant: "outline" }, true);
   const founding = extensions.some((e) => e.price.foundingMinor !== null) && data.founding.until;
   const shownBundles = block.bundles === false ? [] : bundles;
+  // Every extension and bundle switched off on the block (`hide`): nothing to draw.
+  if (extensions.length === 0 && shownBundles.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-10">
@@ -39,11 +40,13 @@ export function ExtensionsView({ block, data, lang = "en", now }: { block: Exten
           {w.foundingUntil(dateIn(PLATFORM_TIME_ZONE, new Date(new Date(data.founding.until!).getTime() - 1).toISOString(), "dayMonth", lang))}
         </p>
       )}
-      <div className={`grid gap-4 kzb-md-cols-2 ${COLUMNS[Math.min(extensions.length, 3)]}`}>
-        {extensions.map((card) => (
-          <ExtensionCardView key={card.id} card={card} money={money} months={data.founding.months} href={href} label={label} look={look} w={w} />
-        ))}
-      </div>
+      {extensions.length > 0 && (
+        <div className={`grid gap-4 kzb-md-cols-2 ${COLUMNS[Math.min(extensions.length, 3)]}`}>
+          {extensions.map((card) => (
+            <ExtensionCardView key={card.id} card={card} money={money} months={data.founding.months} href={href} label={label} look={look} w={w} />
+          ))}
+        </div>
+      )}
       {shownBundles.length > 0 && (
         <section aria-labelledby={`bundles-${block.id}`} className="flex flex-col gap-4">
           <h3 id={`bundles-${block.id}`} className="text-xl font-semibold" data-kz-text="name">

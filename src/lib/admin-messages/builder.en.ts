@@ -964,6 +964,11 @@ export const builderEn = {
     withBundles: "with the bundles",
     withoutBundles: "without the bundles",
     wholePrices: "whole amounts without decimals",
+    show: "Extensions to show",
+    showHint: "Switch off what this page should not show. One added to the catalogue later shows until you switch it off here.",
+    showBundles: "Bundles to show",
+    noChoices: "No extension has a price yet: add one under Plans → Extensions.",
+    hiddenCount: "{count} switched off",
   },
   plans: {
     hint: "Draws a card for each of your active plans, with its price, fee per sale and what it includes. The plans, prices and features are edited under Plans: a change there shows on this page at once.",

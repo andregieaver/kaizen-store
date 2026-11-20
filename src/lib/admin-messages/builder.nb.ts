@@ -914,6 +914,11 @@ export const builderNb: BuilderMessages = {
     withBundles: "med pakkene",
     withoutBundles: "uten pakkene",
     wholePrices: "hele beløp uten desimaler",
+    show: "Utvidelser som vises",
+    showHint: "Slå av det denne siden ikke skal vise. En som legges til i katalogen senere vises til du slår den av her.",
+    showBundles: "Pakker som vises",
+    noChoices: "Ingen utvidelse har pris ennå: legg til en under Planer → Utvidelser.",
+    hiddenCount: "{count} slått av",
   },
   plans: {
     hint: "Tegner et kort for hver av de aktive planene dine, med pris, gebyr per salg og hva den inneholder. Planene, prisene og funksjonene redigeres under Planer: en endring der vises på denne siden med en gang.",

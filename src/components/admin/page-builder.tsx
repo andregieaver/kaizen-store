@@ -63,6 +63,7 @@ import { partDrawsWhenOff, partFeature, partFeatureOn } from "@/lib/part-feature
 import { requirementLabel } from "@/lib/feature-labels";
 import { type ColumnSpot, type DroppedColumns, columnsLostTo, copyBlock, copyColumn, copyRow, duplicateBlock, addColumn, duplicateColumn, duplicateRow, canDuplicateColumn, findBlock, findHolder, nestColumn, newColumnsBlock, htmlIds, insertBlock, insertColumn, insertColumnAt, insertRow, moveBlock, linesOf, locateColumn, moveColumnAt, moveRow, newBlock, newRow, removeBlock, removeColumn, removeRow, setLineLayout, setLineShares, clearLineShares, partOf, patchBlock, patchColumn, patchPart, patchRow, setSpacing, updateBlock, type BlockPatch, type Styled } from "@/lib/page-rows";
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
+import type { ExtensionChoice } from "@/lib/extension-offer";
 import { planCurrencies, type PlanChoice } from "@/lib/plan-offer";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
 import { siteFontFamilies } from "@/lib/fonts";
@@ -306,6 +307,8 @@ export type GridContext = {
   menusHref: string;
   /** Kaizen's plans for the Plans component (D142); null on a store's pages. */
   plans: PlanChoice[] | null;
+  /** The extensions and bundles the Extensions component can switch off (D748 E8); absent where it is not offered. */
+  extensionChoices?: ExtensionChoice[] | null;
   /** The theme store's components the page may hold (D285); absent or null on a store's pages and Kaizena Flow's other kinds of page. */
   themeStore?: { parts: readonly ThemeStorePart[] } | null;
   /**
@@ -4202,6 +4205,7 @@ function Dialogs({
             content: (<ExtensionsFields
                 block={block}
                 currencies={planCurrencies(grid.plans ?? [])}
+                choices={grid.extensionChoices ?? []}
                 labelMax={BUTTON_LABEL_MAX}
                 onChange={(patch) => onRows((current) => patchBlock<ExtensionsBlock>(current, block.id, patch))}
               />),

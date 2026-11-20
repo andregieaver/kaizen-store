@@ -420,6 +420,8 @@ bundles on or off, the button. Read where shown (`getPublicExtensions()`, cached
 catalogue writer), in the page's language: the block's words in `platformText(lang).extensions`, the catalogue's through `extensionsIn()`.
 The admin's Extensions page keeps its own list for now (its rows carry the account's standing and actions); drawing it with the same cards
 is left for when it is redesigned.
+Since 20 November 2026 the block switches off any extension or bundle (`hide`, a switch for each in its settings, from the catalogue):
+everything else shows, so one added later shows until it is switched off, and a bundle's saving still counts what is hidden.
 
 **E7, planned in four parts (19 November 2026).** 1. **The workspace, dark**: `stores.workspace`, a store row that holds a standalone
 account's extension data; never listed as a store, never served as a storefront, never counted against the store limit; its jobs run and

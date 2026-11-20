@@ -68,7 +68,13 @@ export function offerCurrency(data: PublicExtensions, asked?: string): string | 
  * The cards the block draws in `currency`: each extension with a monthly price there, then each bundle with one. A founding price shows
  * only while founding prices are offered (`foundingShown()`).
  */
-export function extensionOffer(data: PublicExtensions, currency: string, now?: Date): { extensions: ExtensionCard[]; bundles: BundleCard[] } {
+export function extensionOffer(
+  data: PublicExtensions,
+  currency: string,
+  now?: Date,
+  /** The extensions and bundles switched off on the block (`ExtensionsBlock.hide`): left out after a bundle's saving is worked out. */
+  hide: readonly string[] = [],
+): { extensions: ExtensionCard[]; bundles: BundleCard[] } {
   const founding = foundingShown(data, now);
   const monthOf = (prices: readonly PublicPrice[]): ExtensionCardPrice | null => {
     const p = prices.find((x) => x.currency === currency && x.interval === "month");
@@ -94,5 +100,17 @@ export function extensionOffer(data: PublicExtensions, currency: string, now?: D
     const names = b.members.map((id) => data.extensions.find((e) => e.id === id)?.name ?? id);
     return [{ id: b.id, name: b.name, description: b.description, members: names, price, savingMinor: sum === null ? null : Math.max(0, sum - paid) }];
   });
-  return { extensions, bundles };
+  const hidden = new Set(hide);
+  return { extensions: extensions.filter((e) => !hidden.has(e.id)), bundles: bundles.filter((b) => !hidden.has(b.id)) };
+}
+
+/** An extension or a bundle the page builder's Extensions block can switch off (`ExtensionsBlock.hide`). */
+export type ExtensionChoice = { id: string; name: string; kind: "extension" | "bundle" };
+
+/** What the block can show, in the catalogue's order: each extension on offer, then each bundle. */
+export function extensionChoices(data: PublicExtensions): ExtensionChoice[] {
+  return [
+    ...data.extensions.filter((e) => e.size).map((e) => ({ id: e.id, name: e.name, kind: "extension" as const })),
+    ...data.bundles.map((b) => ({ id: b.id, name: b.name, kind: "bundle" as const })),
+  ];
 }
