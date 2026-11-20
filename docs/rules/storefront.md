@@ -227,7 +227,12 @@ the path, component or table you change, or list the rules with a search for lin
   `attributeFilters()`), feeds take Google's category and colour, material and pattern from them, the structured data its path, the CSV
   Shopify's `Product Category`. A model only suggests (`categoryCandidates()` by code, `readCategoryChoice()` keeps a listed id, feature
   `product_taxonomy`), staff accept; the AI manager names a category by id or English path and attributes by name, resolved by code. A new
-  release that moves or retires an id comes with a migration mapping products' ids.
+  release that moves or retires an id comes with a migration mapping products' ids. A product keeps what its page shows of its category in
+  `products.standard_shown` (paths by language, Google's id, the chosen attributes' English names), written by `saveProduct()` and by the
+  dispatcher's `standardShown` job for every other writer (`refreshStandardShown()`; `standard-shown.scan.test.ts` holds every statement
+  that writes the category to write it too); `getProduct()` reads it and never opens the files. The key in it carries the release, so a
+  new release (`scripts/product-taxonomy.mjs` and `TAXONOMY_RELEASE`) derives every product again within a few runs (bloat review step
+  2.23). It is derived, never typed by a person or an import.
 
 ## Speed (wave 7 unit B, D336, `docs/analytics.md` Speed, `src/lib/picture-sizes.ts`, `src/lib/speed.ts`, `src/server/analytics-speed.ts`)
 

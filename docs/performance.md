@@ -556,6 +556,9 @@ was already traced only where it is reached, `next/og` included.
 | `/api/visit`'s trace | 16.0 MB | 2.5 MB |
 | Median trace | 64.8 MB | 52.9 MB |
 
+Once the product page reads its category from the product's row (`products.standard_shown`, step 2.23's second change), `catalog.ts`
+no longer imports the reader, and the traces carrying the taxonomy fall again, to 747.
+
 ## Cold starts in production (bloat review step 1.16)
 
 Each server instance notes its first answer once, as the log line `instance.start` and a row in `commerce.instance_starts`: what the
