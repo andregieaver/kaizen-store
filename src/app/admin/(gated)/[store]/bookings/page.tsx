@@ -11,7 +11,7 @@ import { hoursOn } from "@/lib/opening-hours";
 import { requirePermission } from "@/server/permissions";
 import { NoShowForm } from "@/components/admin/no-show-form";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -194,7 +194,8 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
 
       {/* Every booking this week by day, with what can be done about it. */}
       {bookings.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{w.none}</p>
+        // The week's arrows above lead to the weeks around it.
+        <EmptyState title={w.none} />
       ) : (
         <div className="flex max-w-3xl flex-col gap-6">
           {days

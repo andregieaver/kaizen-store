@@ -11,7 +11,7 @@ import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
-import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Wishlists" };
 
@@ -101,9 +101,8 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
 
           {lists.length === 0 ? (
-            <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS} max-sm:p-4 max-sm:text-left`}>
-              {q || customerId ? w.noMatch : w.none}
-            </p>
+            // A search that matched nothing has its way back beside the search box (Show every list).
+            <EmptyState title={q || customerId ? w.noMatch : w.none} className="max-sm:items-start max-sm:py-4 max-sm:text-left" />
           ) : (
             <Card compact>
               <List label={w.title}>

@@ -187,9 +187,9 @@ export const fieldsNb: FieldsMessages = {
     storeTitle: "Butikkdetaljer",
     storeDescription:
       "Ekstra opplysninger om hele butikken, fra gruppene av egendefinerte felt du har laget for den. Et felt vises bare på nettstedet hvis du har gjort det offentlig, og du plasserer det i en side, en produktlayout, en topptekst eller en bunntekst.",
-    storeEmptyBefore: "Ingen gruppe av egendefinerte felt er på butikken ennå.",
-    makeOne: "Lag en",
-    storeEmptyAfter: "med butikken krysset av under Kan brukes på.",
+    storeEmpty: "Ingen gruppe av egendefinerte felt er på butikken ennå",
+    storeEmptyText: "En gruppe laget med butikken krysset av under Kan brukes på, vises her, klar til å fylles ut.",
+    makeStoreGroup: "Lag en gruppe for butikken",
     storeIntro: "Vises på nettstedet når et felt er offentlig.",
   },
   actions: {

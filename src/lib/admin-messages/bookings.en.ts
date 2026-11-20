@@ -80,8 +80,8 @@ export const bookingsEn = {
     today: "Today",
     later: "Later →",
     noUnits: "No rooms or rental items yet.",
-    addThem: "Add them",
-    thenChoose: ", then choose them in a stay or a rental.",
+    unitsText: "Add the rooms, homes and items shoppers book, then choose them in a stay or a rental.",
+    addUnits: "Add rooms and items",
     caption: "Nights and days taken",
     unit: "Room or item",
     stays: "Stays",
@@ -343,6 +343,7 @@ export const bookingsEn = {
   subscriptions: {
     title: "Subscriptions",
     none: "No subscriptions yet. Offer one under a product's Subscriptions section; each shopper who subscribes appears here.",
+    toProducts: "Go to your products",
     items: {
       one: "1 item",
       many: "{n} items",

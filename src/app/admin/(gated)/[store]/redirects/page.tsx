@@ -8,7 +8,7 @@ import { RedirectForm } from "@/components/admin/redirects/redirect-form";
 import { RedirectTable } from "@/components/admin/redirects/redirect-table";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { card, hint, primary, secondary } from "@/components/admin/data/ui";
-import { Field, Select, TextInput } from "@/components/admin/ui";
+import { EmptyState, Field, Select, TextInput } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -139,7 +139,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           )}
         </form>
         {list.rows.length === 0 ? (
-          <p className="rounded-panel bg-sunken p-6 text-center text-sm max-sm:bg-transparent max-sm:p-0 max-sm:text-left max-sm:text-muted">{emptyListWords(q, filter, w)}</p>
+          // A search or kind that matched nothing has its way back beside the search box (Clear); a phone shows a plain line.
+          <EmptyState title={emptyListWords(q, filter, w)} className="max-sm:items-start max-sm:border-0 max-sm:p-0 max-sm:text-left" />
         ) : (
           <RedirectTable rows={list.rows} timeZone={store.timeZone} actions={actions} canWrite={canWrite} />
         )}

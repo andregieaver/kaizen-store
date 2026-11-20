@@ -8,7 +8,7 @@ import { exportDates } from "@/lib/calendar-sync";
 import { requirePermission } from "@/server/permissions";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
 import { blocksBetween } from "@/server/calendar-sync";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -92,13 +92,16 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
       </div>
 
       {units.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
-          {w.noUnits}{" "}
-          <Link href={`/admin/${store.slug}/bookings/units`} className="underline">
-            {w.addThem}
-          </Link>
-          {w.thenChoose}
-        </p>
+        <EmptyState
+          title={w.noUnits}
+          action={
+            <ButtonLink kind="main" href={`/admin/${store.slug}/bookings/units`}>
+              {w.addUnits}
+            </ButtonLink>
+          }
+        >
+          {w.unitsText}
+        </EmptyState>
       ) : (
         <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full min-w-[40rem] border-collapse text-sm">
@@ -157,7 +160,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
       )}
 
       {bookings.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{w.none}</p>
+        <EmptyState title={w.none} />
       ) : (
         <ul className={`flex max-w-3xl flex-col divide-y divide-line ${CARD_CLASS}`}>
           {bookings.map((b) => (

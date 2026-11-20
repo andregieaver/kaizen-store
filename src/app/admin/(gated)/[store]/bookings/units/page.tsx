@@ -4,7 +4,7 @@ import Link from "next/link";
 import { requireFeature } from "@/components/admin/feature-off";
 import { requirePermission } from "@/server/permissions";
 import { listResources, type BookingResource } from "@/server/bookings";
-import { PageHeader } from "@/components/admin/ui";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
@@ -25,7 +25,7 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
 
   const list = (items: BookingResource[], empty: string) =>
     items.length === 0 ? (
-      <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{empty}</p>
+      <EmptyState title={empty} />
     ) : (
       <ul className="divide-y divide-line rounded-panel border border-line bg-card">
         {items.map((u) => (

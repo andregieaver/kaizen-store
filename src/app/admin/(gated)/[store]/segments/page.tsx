@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ButtonLink, Card, CARD_CLASS, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, EmptyState, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { mainCurrency } from "@/lib/markets";
@@ -66,9 +66,8 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
       />
       {segments.length === 0 ? (
         starters.length === 0 && (
-          <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-            {w.segments.empty}
-          </p>
+          // The header's New segment is the next step.
+          <EmptyState title={w.segments.empty} />
         )
       ) : (
         <Card compact title={starters.length > 0 ? w.segments.yours : undefined}>

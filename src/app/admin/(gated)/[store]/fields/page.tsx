@@ -11,7 +11,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { FIELDS_WORDS } from "@/lib/admin-words/fields";
 import { requirePermission } from "@/server/permissions";
 import { listFieldGroups } from "@/server/custom-fields";
-import { Button, buttonClass, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, buttonClass, ButtonLink, Card, Chip, EmptyState, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import {
@@ -60,9 +60,8 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
         importGroups={importFieldGroupsAction.bind(null, store.slug)}
       />
       {groups.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {t.empty}
-        </p>
+        // The toolbar above starts a group from a preset or from nothing.
+        <EmptyState title={t.empty} />
       ) : (
         <Card compact>
           <List label={t.label}>

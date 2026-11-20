@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { DataSkeleton } from "@/components/admin/data/page-parts";
-import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
+import { hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { requireFeature } from "@/components/admin/feature-off";
-import { PageHeader } from "@/components/admin/ui";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
@@ -44,7 +44,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const w = PRODUCTS_WORDS[adminLangOf(member.account.adminLocale)].greenClaims;
   const { places, claims } = await greenClaimsReport(store.id, LIMIT);
   const editPath = (kind: string, id: string) => (kind === "product" ? `/admin/${store.slug}/products/${id}` : `/admin/${store.slug}/pages/${id}`);
-  if (places.length === 0) return <p className={`${card} text-sm`}>{w.none}</p>;
+  if (places.length === 0) return <EmptyState title={w.none} />;
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm font-medium" data-green-claims={claims}>
