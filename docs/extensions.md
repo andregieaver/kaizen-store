@@ -489,6 +489,16 @@ comes at most once in 30 days and never for 90 after a no. Work is never offered
 the autopilot never runs it. The eval case `manager-form-asks-trial` has a contact form message tell the manager to start a trial; the
 recording must be made again on Platform → AI. Section 9's price tuning is part two.
 
+**E9 as built, part two (20 November 2026, D854).** Section 9's platform side: Platform → Plans, AI and prices sets how far Kaizena Flow's
+own manager may change plan, extension and bundle prices (off by default; suggests, each change waiting for a yes; or on its own within 1 to
+50 % of the price a person last set, asking beyond it and while every AI acting on its own is paused). `platform_pricing_facts` counts what
+each price sells in code (extension figures once they are sold) and `set_platform_price` changes one price as a new row, so accounts paying
+the old one keep it (a plan's through `savePlan()` and Stripe, a size's or a bundle's through `setOneExtensionPrice()`); a list price never
+goes to or below its founding price. Every change is kept in `commerce.platform_price_changes` (migration `20261120144933_youthful_justice`)
+with its reasons and anchor, and the Plans page lists the latest. The eval plays Kaizena Flow's own manager for the first time
+(`platform-request-asks-prices`). The store side is the autopilot's catalogue level, largest price change and lowest margin (D309, D605),
+through `commerce.set_price`. Allowances, trial and grace lengths and founding offers stay the platform owner's to set on the Extensions page.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.

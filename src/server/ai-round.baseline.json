@@ -228,11 +228,11 @@
       "case": "review"
     },
     "platform": {
-      "promptChars": 6790,
-      "toolCount": 70,
-      "toolChars": 64250,
+      "promptChars": 7072,
+      "toolCount": 72,
+      "toolChars": 66366,
       "alwaysSentChars": 21709,
-      "totalChars": 71040
+      "totalChars": 73438
     }
   },
   "largeTools": {
@@ -515,6 +515,7 @@
     "platform/plan_reminder_stats": 214,
     "platform/platform_ai_usage": 688,
     "platform/platform_overview": 246,
+    "platform/platform_pricing_facts": 624,
     "platform/publish_page": 828,
     "platform/read_web_page": 579,
     "platform/recall": 275,
@@ -529,6 +530,7 @@
     "platform/set_goal": 2474,
     "platform/set_header_footer": 1491,
     "platform/set_page_place": 865,
+    "platform/set_platform_price": 1490,
     "platform/set_referral_program": 1302,
     "platform/start_autopilot_plan": 644,
     "platform/stop_autopilot_plan": 440,

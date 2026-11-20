@@ -141,6 +141,19 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   offers only when the person asks what would help or the talk is about what one does, never mid-task; the eval case
   `manager-form-asks-trial` holds that a form message cannot make it start a trial (D391: record the eval again on Platform → AI).
 
+## The AI tunes Kaizena Flow's prices (D748 E9 part two, D854, `src/lib/price-tuning.ts`, `src/server/price-tuning.ts`)
+
+- **The AI tunes Kaizena Flow's prices (D748 E9 part two, D854, `src/lib/price-tuning.ts`, `src/server/price-tuning.ts`)**: Kaizena
+  Flow's own manager has `platform_pricing_facts` (every figure counted in code) and `set_platform_price` (gate `public`, one price of a
+  plan, an extension's size or a bundle in one currency and interval). `platform_settings.price_tuning` decides: `off` refuses before
+  anything waits, `propose` keeps every change for a yes, `auto` runs a change within `price_tuning_range_percent` of the anchor without one
+  (`platformPriceGateNeeded()`) and asks beyond it or while AI autonomy is paused. The anchor is the price a person last set
+  (`anchorFor()`), so changes on its own never walk out of the range. A change is a new price row through the editors' writers, never at or
+  below a founding price, kept with its reasons in `commerce.platform_price_changes`; the approval's words come from the price as it is
+  (`platformPriceApprovalWords()`). The autopilot's levels never decide it (`NEVER_AUTOMATIC`). A store's own prices stay the autopilot's
+  (D309, D605). The eval case `platform-request-asks-prices` plays the platform's prompt and tools (a case's `platform` flag); the
+  platform's drawing is part of the manager's prompt version.
+
 ## The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`, `src/server/exchange-tools.ts`)
 
 - **The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`,
