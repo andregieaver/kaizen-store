@@ -328,6 +328,76 @@ describe("a store's pages (D53)", () => {
   });
 });
 
+describe("how far a publish reaches (bloat review step 2.14)", () => {
+  let storeId: string;
+  let category: string;
+
+  beforeAll(async () => {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.stores (slug, name) values (${`reach-${run}`}, 'Reach store') returning id
+    `);
+    storeId = String(row.id);
+    const [term] = await db().execute<Row>(sql`
+      insert into commerce.terms (store_id, content_type, kind, name, slug) values (${storeId}::uuid, 'page', 'category', 'Help', 'help') returning id
+    `);
+    category = String(term.id);
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.pages where store_id = ${storeId}::uuid`);
+  });
+
+  const words = (text: string) =>
+    oneRow([{ id: "block-1", type: "richText", doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] } }]);
+  /** A page with its own excerpt, so the words of its body are its own. */
+  const page = (slug: string, overrides: Partial<PageContent> = {}) => content(slug, { excerpt: "Who we are.", ...overrides });
+  const scopeOf = (result: PageResult) => (result.ok ? result.scope : `refused: ${result.problems.join(" ")}`);
+
+  it("reaches the site on a first publish, a list fact's change or a timed modal, and only the page on a change of its words", async () => {
+    const slug = `about-${run}`;
+    const first = await pages.savePage(admin, storeId, null, page(slug), { publish: true });
+    expect(scopeOf(first)).toBe("site");
+    const id = await saved(first);
+    const publish = async (overrides: Partial<PageContent>) => scopeOf(await pages.savePage(admin, storeId, id, page(slug, overrides), { publish: true }));
+
+    expect(await publish({ rows: words("We make mugs by hand, in Bergen.") })).toBe("page");
+    expect(await publish({ rows: words("We make mugs by hand, in Bergen."), title: "About us" })).toBe("site");
+    expect(await publish({ title: "About us", thumbnail: { url: "https://example.com/a.jpg", alt: "", width: 800, height: 600 } })).toBe("site");
+    expect(await publish({ title: "About us", thumbnail: { url: "https://example.com/a.jpg", alt: "", width: 800, height: 600 }, categories: [category] })).toBe("site");
+    const timed = {
+      id: "row-2",
+      type: "row",
+      layout: "1",
+      modal: { key: "join", triggers: { timer: { seconds: 5 } }, frequency: "session", size: "md" },
+      columns: [{ id: "column-2", blocks: [] }],
+    } as unknown as PageContent["rows"][number];
+    const before = { title: "About us", thumbnail: { url: "https://example.com/a.jpg", alt: "", width: 800, height: 600 }, categories: [category] };
+    expect(await publish({ ...before, rows: [...words("About."), timed] })).toBe("site");
+    expect(await publish({ ...before, rows: [...words("About."), timed], slug: `about-us-${run}` })).toBe("site");
+    // A draft's save reaches nothing: it has no scope.
+    expect(await pages.savePage(admin, storeId, id, page(`about-us-${run}`, { ...before, title: "Draft" }), { publish: false })).toEqual({ ok: true, id });
+  });
+
+  it("reaches the site from a page while a grid of pages ordered by date is published, and not with a grid by title", async () => {
+    const slug = `ordered-${run}`;
+    const id = await saved(await pages.savePage(admin, storeId, null, page(slug), { publish: true }));
+    const publish = async (text: string) => scopeOf(await pages.savePage(admin, storeId, id, page(slug, { rows: words(text) }), { publish: true }));
+    expect(await publish("One.")).toBe("page");
+
+    const grid = (sort: string) => content(`grid-${run}`, { rows: oneRow([{ ...newBlock("contentGrid", () => "g1"), source: { type: "pages" }, sort }]) });
+    const gridId = await saved(await pages.savePage(admin, storeId, null, grid("title"), { publish: true }));
+    expect(await publish("Two.")).toBe("page");
+    await saved(await pages.savePage(admin, storeId, gridId, grid("newest"), { publish: true }));
+    expect(await publish("Three.")).toBe("site");
+    await saved(await pages.savePage(admin, storeId, gridId, grid("oldest"), { publish: true }));
+    expect(await publish("Four.")).toBe("site");
+    // An article's grid orders by the first publishing, which a publish does not change.
+    await saved(await pages.savePage(admin, storeId, gridId, { ...grid("newest"), rows: oneRow([{ ...newBlock("contentGrid", () => "g1"), source: { type: "articles" } }]) }, { publish: true }));
+    expect(await publish("Five.")).toBe("page");
+    await pages.unpublishPage(admin, storeId, gridId);
+  });
+});
+
 describe("a store's front page and menu links (D54)", () => {
   let storeId: string;
   let otherId: string;

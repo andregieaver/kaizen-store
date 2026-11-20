@@ -140,6 +140,23 @@ export type PublishedPageEntry = {
   searchEngines: boolean;
 };
 
+/**
+ * The keys of a page index's entry, at run time: `page-list-facts.test.ts` maps each to a list fact or to what is not the page's
+ * content (bloat review step 2.14). Its record's type fails the type check when an entry gains a key it lacks.
+ */
+const INDEX_FIELDS: Record<keyof PublishedPageEntry, true> = {
+  id: true,
+  slug: true,
+  title: true,
+  titles: true,
+  publishedAt: true,
+  firstPublishedAt: true,
+  blogId: true,
+  aiAssistants: true,
+  searchEngines: true,
+};
+export const PAGE_INDEX_FIELDS: readonly string[] = Object.keys(INDEX_FIELDS);
+
 const indexRow = z.object({
   id: col.uuid,
   slug: col.text,
@@ -379,6 +396,27 @@ export async function publishedPageNames(
   cacheTag(pagesTag(owner));
   const rows = await readDb().execute<Row>(namesQuery(owner, locale, type));
   return rows.map((row) => [String(row.address), { slug: String(row.slug), title: String(row.title ?? row.slug) }]);
+}
+
+/**
+ * Whether any of the owner's published documents (a page, an article, a header, a footer, a layout) holds a content grid of pages
+ * ordered by when each was last published: every sort but by title (`gridPages()`: newest first, the default, and oldest first). There a
+ * page's publish moves it in the grid, so it refreshes the whole site (bloat review step 2.14). Read fresh, never cached: a grid added a
+ * moment ago counts at once.
+ */
+export async function hasPageGridByDate(owner: PageOwner, executor: Executor = db()): Promise<boolean> {
+  const row = await typedRow(
+    z.object({ found: col.bool }),
+    sql`
+      select exists (
+        select 1 from commerce.pages
+        where ${owned(owner)} and published_at is not null
+          and jsonb_path_exists(published, '$.** ? (@.type == "contentGrid" && @.source.type == "pages" && (!exists(@.sort) || @.sort != "title"))')
+      ) as found
+    `,
+    executor,
+  );
+  return row?.found ?? false;
 }
 
 /** A store's All products page (D83) while it is published, else null (the standard list). */

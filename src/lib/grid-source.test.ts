@@ -108,6 +108,7 @@ const READERS: Record<string, string> = {
   "src/server/content-grid.ts": "gridData() is an exhaustive switch: custom is answered from the block (no query); pages, articles and products are looked up",
   "src/lib/page-rules.ts": "the owner rules are about products' store and market: custom has none",
   "src/server/recommend-grid.ts": "recommendations are products' only: a custom grid never recommends",
+  "src/server/page-reads.ts": "hasPageGridByDate() asks only for a grid of pages ordered by publishing (bloat review step 2.14): custom items have no such order",
 };
 
 describe("every module that reads a grid's source", () => {

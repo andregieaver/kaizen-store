@@ -41,13 +41,14 @@ import { listTextStyles } from "./text-styles";
 import { scopedTermIds } from "./taxonomy";
 import { getStore, refreshStoreById, storeSlugOf } from "./stores";
 import { ownMarkets } from "@/lib/page-markets";
+import { listFacts, sameListFacts } from "@/lib/page-list-facts";
 import { linksToRemoved } from "@/lib/demo-content";
 import { withoutItems } from "@/lib/menu-structure";
 import { normalisePath } from "@/lib/redirect-path";
 import { refreshRedirects } from "./redirect-live";
 import { redirectDeletedPage } from "./redirects";
 import { owned } from "./owned";
-import { documentsById, iso, ownedBy, type PageOwner } from "./page-reads";
+import { documentsById, hasPageGridByDate, iso, ownedBy, type PageOwner } from "./page-reads";
 
 /**
  * Pages built in the page builder (D42), Kaizen's own (`owner` null, served
@@ -69,6 +70,7 @@ export {
   findPublishedPage,
   listPublishedPages,
   namesQuery,
+  PAGE_INDEX_FIELDS,
   pageCardColumns,
   pageCardRow,
   pageCards,
@@ -111,9 +113,13 @@ export type EditablePage = {
   updatedAt: string;
 };
 
-/** `pages`: how many other pages a change to a global part (D98) reached, so the site's cached pages are refreshed. */
+/**
+ * `pages`: how many other pages a change to a global part (D98) reached, so the site's cached pages are refreshed. `scope`, on a publish
+ * only (bloat review step 2.14): `page` when nothing other pages show changed (`publishScope()`), so refreshing the page's own tag is
+ * enough; `site` when the store's pages tag must be refreshed too.
+ */
 export type PageResult =
-  | { ok: true; id: string; pages?: number }
+  | { ok: true; id: string; pages?: number; scope?: "page" | "site" }
   /**
    * `code: "needs_confirmation"` (wave 1, 1e, docs/wave-1-trust.md 2.2): publishing was held because the checker found blocking issues the owner
    * has not acknowledged; nothing was saved or published, and `issues` lists them. Sending the same page again with `acknowledgedIssues` (the
@@ -493,6 +499,10 @@ export async function savePage(
     }
   }
   if (result.ok && spreadTo > 0) result = { ...result, pages: spreadTo };
+  if (result.ok && publish) {
+    const scope = await publishScope(owner, { isNew: id === null, type, spreadTo, before: before?.livePublished ?? null, wasSaved: before !== null, content });
+    result = { ...result, scope };
+  }
 
   if (result.ok) {
     const state: PageState = publish ? "published" : before === null || before.state === "draft" ? "draft" : before.livePublished && samePageContent(content, before.livePublished) ? "published" : "changed";
@@ -517,6 +527,23 @@ export async function savePage(
     }
   }
   return result;
+}
+
+/**
+ * How far a publish reaches (bloat review step 2.14): `site` for a new page, one that was not live, a change to a global part that reached
+ * other pages, any type but a page or an article (a header, a footer, a layout, a variant: every page draws them), a change to what other
+ * pages show of it (`listFacts()`), or a page while the site has a grid of pages ordered by when each was published (`hasPageGridByDate()`,
+ * whose order the publish changes). Else `page`: only the page's own tag needs refreshing.
+ */
+async function publishScope(
+  owner: PageOwner,
+  { isNew, type, spreadTo, before, wasSaved, content }: { isNew: boolean; type: PageType; spreadTo: number; before: PageContent | null; wasSaved: boolean; content: PageContent },
+): Promise<"page" | "site"> {
+  if (isNew || !wasSaved || before === null || spreadTo > 0) return "site";
+  if (type !== "page" && type !== "article") return "site";
+  if (!sameListFacts(listFacts(before), listFacts(content))) return "site";
+  if (type === "page" && (await hasPageGridByDate(owner))) return "site";
+  return "page";
 }
 
 /** An article's blog and author ids (D341), each kept only when it is one of the store's own; Kaizena Flow's articles have neither. */
