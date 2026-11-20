@@ -279,6 +279,7 @@ export const marketingEn = {
     joinedWith: "Signed up with",
     joinedOn: "On the page",
     notConfirmed: "not confirmed by email",
+    engagement: { active: "pressed a link this month", warm: "pressed a link in the last 3 months", cooling: "quiet for over 3 months", new: "new, no presses yet", asleep: "asleep: no press in 6 months" },
     older: "Older",
     statuses: { pending: "Waiting for their link", subscribed: "Subscribed", unsubscribed: "Unsubscribed" },
     sources: { form: "A form on the site", checkout: "Checkout", account: "My account", shopify: "Moved from Shopify, with Shopify's record of their consent", woocommerce: "Moved from WooCommerce, with MailPoet's record of their consent" },

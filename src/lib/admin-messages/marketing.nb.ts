@@ -343,6 +343,7 @@ export const marketingNb: MarketingMessages = {
     joinedWith: "Meldte seg på med",
     joinedOn: "På siden",
     notConfirmed: "ikke bekreftet på e-post",
+    engagement: { active: "trykket på en lenke denne måneden", warm: "trykket på en lenke de siste 3 månedene", cooling: "stille i over 3 måneder", new: "ny, ingen trykk ennå", asleep: "sover: ingen trykk på 6 måneder" },
     older: "Eldre",
     statuses: { pending: "Venter på lenken sin", subscribed: "Abonnerer", unsubscribed: "Meldt av" },
     sources: { form: "Et skjema på nettstedet", checkout: "Kassen", account: "Min konto", shopify: "Flyttet fra Shopify, med Shopifys registrering av samtykket", woocommerce: "Flyttet fra WooCommerce, med MailPoets registrering av samtykket" },

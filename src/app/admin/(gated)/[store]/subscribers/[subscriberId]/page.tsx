@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { engagementLevel } from "@/lib/engagement";
+
 import { AdminLink, Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -34,7 +36,13 @@ export default async function SubscriberPage({ params }: PageProps<"/admin/[stor
         back={{ href: `/admin/${store.slug}/subscribers`, label: ws.title }}
         title={subscriber.email}
         status={<Chip signal={subscriber.status === "subscribed" ? "positive" : subscriber.status === "pending" ? "warning" : "neutral"} dot>{ws.statuses[subscriber.status]}</Chip>}
-        meta={[subscriber.name, subscriber.customer ? ws.hasAccount : null, subscriber.locale]}
+        meta={[
+          subscriber.name,
+          subscriber.customer ? ws.hasAccount : null,
+          subscriber.locale,
+          // Their engagement in words (M2.8), from their latest press on a link.
+          subscriber.status === "subscribed" ? ws.engagement[engagementLevel(subscriber.joinedAt, subscriber.lastClickAt, new Date())] : null,
+        ]}
         actions={
           subscriber.status !== "unsubscribed" && memberCan(member, "marketing:write") ? (
             <QuietActionForm action={unsubscribeAction.bind(null, store.slug, subscriber.id)}>

@@ -200,6 +200,9 @@ describe("the admin's list", () => {
     expect(all.rows.some((r) => r.email.startsWith("fremmed-"))).toBe(false);
     const found = await subs.listSubscribers(storeId, { query: `retur-${run}` });
     expect(found.rows.map((r) => r.email)).toEqual([`retur-${run}@example.com`]);
+    // Their engagement's facts (M2.8): when they joined, and no press yet.
+    expect(found.rows[0]).toMatchObject({ lastClickAt: null });
+    expect(Date.parse(found.rows[0].joinedAt)).toBeGreaterThan(0);
     const left = await subs.listSubscribers(storeId, { status: "unsubscribed" });
     expect(left.rows.every((r) => r.status === "unsubscribed")).toBe(true);
     // A search's wildcard is a character, not a pattern.

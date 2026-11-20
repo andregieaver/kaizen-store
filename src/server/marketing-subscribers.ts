@@ -332,6 +332,10 @@ export type SubscriberRow = {
    */
   form: { id: string; name: string | null } | null;
   path: string | null;
+  /** When they last pressed a link in the store's emails (M2.8, kept 180 days); null for none. */
+  lastClickAt: string | null;
+  /** When they joined (consented), for their engagement in words. */
+  joinedAt: string;
 };
 
 export const SUBSCRIBERS_PAGE = 50;
@@ -352,6 +356,8 @@ const SUBSCRIBER_ROW = z.object({
   source_ref: col.textOrNull,
   form_name: col.textOrNull,
   source_path: col.textOrNull,
+  last_click_at: col.timestampOrNull,
+  joined_at: col.timestamp,
 });
 
 const asSubscriberRow = (r: z.output<typeof SUBSCRIBER_ROW>): SubscriberRow => ({
@@ -366,6 +372,8 @@ const asSubscriberRow = (r: z.output<typeof SUBSCRIBER_ROW>): SubscriberRow => (
   at: new Date(r.at).toISOString(),
   form: r.source === "form" && r.source_ref ? { id: r.source_ref, name: r.form_name } : null,
   path: r.source_path,
+  lastClickAt: r.last_click_at,
+  joinedAt: new Date(r.joined_at).toISOString(),
 });
 
 /** What the list may be narrowed to (D850): a form's sign-ups (its id, as `source_ref` holds it) and the page they were sent from. */
@@ -384,7 +392,8 @@ export async function listSubscribers(
     SUBSCRIBER_ROW,
     sql`
       select s.id, s.email, s.name, s.status, s.source, s.locale, s.confirmed_at is not null as confirmed, s.customer_id is not null as customer,
-        coalesce(s.unsubscribed_at, s.consented_at) as at, s.source_ref, f.name as form_name, s.source_path
+        coalesce(s.unsubscribed_at, s.consented_at) as at, s.source_ref, f.name as form_name, s.source_path, s.consented_at as joined_at,
+        (select max(c.clicked_at) from commerce.email_clicks c where c.store_id = s.store_id and c.subscriber_id = s.id) as last_click_at
       from commerce.marketing_subscribers s
       ${FORM_OF}
       where s.store_id = ${storeId}::uuid
@@ -453,6 +462,7 @@ export async function subscriberDetail(storeId: string, id: string): Promise<Sub
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;
   const [r] = await db().execute<Row>(sql`
     select s.*, coalesce(s.unsubscribed_at, s.consented_at) as at, f.name as form_name, f.id is not null and f.store_id is null as form_platform,
+      (select max(c.clicked_at) from commerce.email_clicks c where c.store_id = s.store_id and c.subscriber_id = s.id) as last_click_at,
       (select coalesce(json_agg(json_build_object('kind', e.kind, 'source', e.source, 'consentText', e.consent_text, 'at', e.created_at) order by e.id), '[]')
          from commerce.marketing_consent_events e where e.store_id = s.store_id and e.subscriber_id = s.id) as history
     from commerce.marketing_subscribers s
@@ -469,6 +479,8 @@ export async function subscriberDetail(storeId: string, id: string): Promise<Sub
     source: String(r.source) as SubscribeSource,
     locale: String(r.locale),
     confirmed: r.confirmed_at != null,
+    lastClickAt: iso(r.last_click_at),
+    joinedAt: iso(r.consented_at) ?? new Date(0).toISOString(),
     customer: r.customer_id != null,
     at: iso(r.at)!,
     form: r.source === "form" && r.source_ref ? { id: String(r.source_ref), name: r.form_name ? String(r.form_name) : null } : null,

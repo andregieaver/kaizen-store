@@ -136,6 +136,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   is refused by `sendProblems()` (broadcasts) and `contentChecks()` (a flow's `personal_field`, blocking). Broadcasts and flows pass the reader;
   the older automations show the fallback. A customer's staff-only fields (D120) are never personal fields.
 
+## Engagement in words (email plan M2.8, `src/lib/engagement.ts`)
+
+- **Engagement (M2.8)**: a subscriber's level is only `engagementLevel()`, from their latest press on a link (`email_clicks`, kept 180 days; no opens are
+  kept, M0.1 b) and when they joined: pressed this month, in 3 months, quiet over 3 months, new, or asleep (no press in 6 months). Shown on
+  the subscribers list and a subscriber's page, for those on the list.
+
 ## Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`, `src/server/segments.ts`)
 
 - **Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`,

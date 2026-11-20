@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { engagementLevel } from "@/lib/engagement";
 import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead, Select } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "@/lib/marketing-consent";
@@ -67,6 +68,8 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   const chosenForm = form ? sources.forms.find((f) => f.id === form) : undefined;
   const narrowed = Boolean(q || status || form || path);
 
+  // After the member is known: the engagement words count days from now (M2.8).
+  const now = new Date();
   return (
     <div className="flex flex-col gap-6">
       {/* Round 13 (D639): the list in a sentence, how people join as rows, counters only when not zero. */}
@@ -182,6 +185,8 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
                       row.form ? formName(row.form) : ws.sources[row.source],
                       row.path,
                       row.status === "subscribed" && !row.confirmed && row.source === "form" ? ws.notConfirmed : null,
+                      // Their engagement in words (M2.8), from their latest press on a link; only for those on the list.
+                      row.status === "subscribed" ? ws.engagement[engagementLevel(row.joinedAt, row.lastClickAt, now)] : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}
