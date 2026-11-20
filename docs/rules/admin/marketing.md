@@ -136,7 +136,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `matches()`/`countSegment()` each time it is read, never a stored member list; money is the main currency without VAT through
   `toMain()` (a currency with no rate makes it unknown, never zero) and the RFM group is D152's own `rfm()`. A new condition is a
   case in `conditionSchema`, `holds()`, `describeCondition()`, `newCondition()`, `CONDITION_KIND_WORDS`, the editor's
-  `ConditionFields` and a test, and reads only facts `segmentPeople()` loads. A segment's people are shown only to staff with
+  `ConditionFields` and a test, and reads only facts `segmentPeople()` loads (email engagement, M2.4: `clicked`, the latest press from
+  `email_clicks`, read by `readSegmentFacts()` only when a rule asks). A segment's people are shown only to staff with
   `customers:read`. Customer tags (`commerce.customer_tags`) are written only by `addTag()`/`removeTag()`, by address, audited
   without it, and are personal data (export, erasure).
   Segments everywhere (wave 11 unit A, D380): a segment's customer types are only `rfmGroups()` (`src/server/analytics-customers-data.ts`, the

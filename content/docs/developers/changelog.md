@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.49 — 2026-11-20
+
+Segment rules gain email engagement (email plan M2.4), wherever rules are read or written (the Admin API's segments, the AI manager's
+`save_segment`, the MCP catalogue).
+
+- `{"kind": "clicked", "op": "within", "days": n}`: pressed a link in the store's emails (a broadcast's or a flow's) in the last `n` days.
+- `{"kind": "clicked", "op": "never"}`: pressed none within the 180 days presses are kept.
+
 ## 1.48 — 2026-11-20
 
 `form_responses` in the AI manager's MCP catalogue says it reads the messages visitors sent with a form, the contact form's among them

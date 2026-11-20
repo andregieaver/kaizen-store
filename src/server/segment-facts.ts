@@ -18,7 +18,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * conditions hold for nobody then. People are keyed as the reader keys them: the account's address, else the row's own, in lower case.
  */
 
-export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms">;
+export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms" | "lastClickAt">;
 
 /** Which families were read (a person missing from one has none of it), and each person's facts by address. */
 export type ReadFacts = { read: Set<keyof SegmentFacts>; byEmail: Map<string, SegmentFacts> };
@@ -158,6 +158,20 @@ async function subscriptions(storeId: string, on: { subscriptions: boolean; boxe
  * Each person's consent to texts (D565): of the numbers kept with their address or their account, the best one (subscribed, then waiting for
  * its order, then the latest), as their customer page shows it.
  */
+/** When each person on the list last pressed a link in the store's emails (M2.4): a broadcast's or a flow's, within the clicks kept. */
+async function lastClicks(storeId: string, only: string | null) {
+  return typedRows(
+    z.object({ email: col.text, at: col.timestamp }),
+    sql`
+      select lower(m.email) as email, max(c.clicked_at) as at
+      from commerce.email_clicks c
+      join commerce.marketing_subscribers m on m.store_id = c.store_id and m.id = c.subscriber_id
+      where c.store_id = ${storeId}::uuid and ${asked(sql`lower(m.email)`, only)}
+      group by 1
+    `,
+  );
+}
+
 async function sms(storeId: string, only: string | null) {
   return typedRows(
     z.object({ email: col.text, status: z.enum(SMS_SUBSCRIBER_STATUSES) }),
@@ -191,7 +205,7 @@ async function featuresOn(storeId: string) {
 
 /** Whether the rules ask for any of these facts at all (most segments do not, and read nothing more). */
 export const needsFacts = (needs: SegmentNeeds) =>
-  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms;
+  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms || needs.clicks;
 
 /** Reads the families `needs` asks for (`only`: the JSON list of addresses asked for, or null for everyone). */
 export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, only: string | null): Promise<ReadFacts> {
@@ -252,6 +266,11 @@ export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, onl
       of(r.email).sms = r.status;
     });
   }
+  if (needs.clicks) {
+    job("lastClickAt", lastClicks(storeId, only), (r) => {
+      of(r.email).lastClickAt = r.at;
+    });
+  }
   await Promise.all(jobs);
   return { read, byEmail };
 }
@@ -268,5 +287,6 @@ export function applySegmentFacts(people: Person[], { read, byEmail }: ReadFacts
     if (read.has("reviews")) p.reviews = facts.reviews ?? { count: 0, lowestStars: null };
     if (read.has("subscriptions")) p.subscriptions = facts.subscriptions ?? 0;
     if (read.has("sms")) p.sms = facts.sms ?? "none";
+    if (read.has("lastClickAt")) p.lastClickAt = facts.lastClickAt ?? null;
   }
 }

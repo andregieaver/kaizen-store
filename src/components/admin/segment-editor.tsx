@@ -346,6 +346,26 @@ function ConditionFields({
           )}
         </>
       );
+    case "clicked":
+      return (
+        <>
+          <select
+            aria-label={w.kinds.clicked}
+            value={c.op}
+            onChange={(e) => onChange({ ...c, op: e.target.value as typeof c.op, days: e.target.value === "within" ? (c.days ?? 90) : undefined })}
+            className={field}
+          >
+            <option value="within">{ed.clickedWithin}</option>
+            <option value="never">{ed.clickedNever}</option>
+          </select>
+          {c.op === "within" && (
+            <>
+              {number(c.days ?? 90, (days) => onChange({ ...c, days: Math.max(1, days) }), ed.days)}
+              <span className="text-body text-ink-2">{ed.daysWord}</span>
+            </>
+          )}
+        </>
+      );
     case "review":
       return (
         <>

@@ -261,7 +261,7 @@ describe("what the people reader reads for some rules (E3.6)", () => {
       { match: "all", conditions: [{ kind: "bought", has: true, products: [MUG, TEA] }, { kind: "deal", status: "open" }] },
       { match: "any", conditions: [{ kind: "bought", has: false, products: [MUG] }, { kind: "boughtCategory", has: true, categories: [SHOES] }, { kind: "rfm", groups: ["VIP"] }] },
     ]);
-    expect(needs).toEqual({ rfm: true, products: [MUG, TEA], categories: [SHOES], deals: true, support: false, reviews: false, subscriptions: false, sms: false });
+    expect(needs).toEqual({ rfm: true, products: [MUG, TEA], categories: [SHOES], deals: true, support: false, reviews: false, subscriptions: false, sms: false, clicks: false });
     expect(segmentNeeds([{ match: "all", conditions: [{ kind: "orders", op: "atLeast", value: 1 }] }])).toEqual({
       rfm: false,
       products: [],
@@ -271,6 +271,7 @@ describe("what the people reader reads for some rules (E3.6)", () => {
       reviews: false,
       subscriptions: false,
       sms: false,
+      clicks: false,
     });
   });
 });
@@ -301,5 +302,26 @@ describe("the AI manager's segment tools (E3.6)", () => {
       expect([kind, input.safeParse({ rules: { match: "all", conditions: [c.kind === "bought" ? { ...c, products: [MUG] } : c.kind === "boughtCategory" ? { ...c, categories: [MUG] } : c] } }).success]).toEqual([kind, true]);
     }
     expect(input.safeParse({ rules: { match: "all", conditions: [{ kind: "lastOrder", op: "within" }] } }).success).toBe(false);
+  });
+});
+
+describe("email engagement (M2.4)", () => {
+  it("holds who pressed a link in the last days, who has not within the clicks kept, and nobody where it was not read", async () => {
+    const { holds } = await import("./segments");
+    expect(holds({ kind: "clicked", op: "within", days: 30 }, person({ lastClickAt: daysAgo(10) }), today)).toBe(true);
+    expect(holds({ kind: "clicked", op: "within", days: 5 }, person({ lastClickAt: daysAgo(10) }), today)).toBe(false);
+    expect(holds({ kind: "clicked", op: "never" }, person({ lastClickAt: null }), today)).toBe(true);
+    expect(holds({ kind: "clicked", op: "never" }, person({ lastClickAt: daysAgo(10) }), today)).toBe(false);
+    expect(holds({ kind: "clicked", op: "never" }, person(), today)).toBe(false);
+  });
+
+  it("keeps the days it says in step with the clicks kept, asks for days only with within, and reads clicks only when asked", async () => {
+    const { SEGMENT_CLICK_DAYS, segmentRulesSchema, segmentNeeds } = await import("./segments");
+    const { CLICK_DAYS } = await import("./email-clicks");
+    expect(SEGMENT_CLICK_DAYS).toBe(CLICK_DAYS);
+    expect(segmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "clicked", op: "within" }] }).success).toBe(false);
+    expect(segmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "clicked", op: "never" }] }).success).toBe(true);
+    expect(segmentNeeds([{ match: "all", conditions: [{ kind: "clicked", op: "never" }] }]).clicks).toBe(true);
+    expect(segmentNeeds([{ match: "all", conditions: [{ kind: "orders", op: "atLeast", value: 1 }] }]).clicks).toBe(false);
   });
 });
