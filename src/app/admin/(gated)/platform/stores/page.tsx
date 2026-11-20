@@ -1,44 +1,58 @@
 import type { Metadata } from "next";
 
-import { PhoneRow } from "@/components/admin/phone-row";
-import Link from "next/link";
+import { SlidersHorizontal } from "lucide-react";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { adminDate } from "@/lib/admin-date";
-import { listOffset, listPage, LIST_PAGE_SIZE } from "@/lib/list-page";
+import { listOffset, LIST_PAGE_SIZE } from "@/lib/list-page";
+import { pageAddress } from "@/components/admin/ui/pager";
 import { formatBps, priceLabel } from "@/lib/plans";
-import { countStoreBilling, listStoreBilling } from "@/server/billing";
-import { sandboxFunnel, sandboxSettings } from "@/server/sandbox";
+import { STORE_BILLINGS, STORE_STATES, storeListFilter, storeListFiltered, storeListQuery } from "@/lib/platform-stores";
+import { storeBillingPage, storeListFacts } from "@/server/billing";
 import { requirePlatformReader } from "@/server/auth";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, Pager, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
-import { countWords, fillWords } from "@/lib/admin-fill";
+import { AdminLink, ButtonLink, Card, Chip, EmptyState, Field, List, ListRow, ListSearch, PageHeader, Pager, RowAmount, RowFact, RowLead, Select } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { BILLING_WORDS } from "@/lib/admin-words/billing";
 import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
-import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 
 export const metadata: Metadata = { title: "Stores" };
 
-/** Every store with its plan, subscription and fee, a hundred a page with the count. */
+const BASE = "/admin/platform/stores";
+
+/**
+ * Every store with its plan, subscription and fee, a hundred a page with the count (code review step 2.10, D847): the store admin's list, a
+ * search by the store, its owner or a domain, the store's state as chips and its plan and subscription under Filters, all in one GET form,
+ * so each keeps the others and the pager keeps them all. The page builder's sandbox and its funnel are on Access requests.
+ */
 export default async function PlatformStoresPage({ searchParams }: PageProps<"/admin/platform/stores">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const w = PLATFORM_WORDS[lang].stores;
+  const all = PLATFORM_WORDS[lang];
+  const w = all.stores;
   const billingWords = BILLING_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const raw = (await searchParams).page;
-  const page = listPage(raw);
-  const [stores, total, funnel, sandbox] = await Promise.all([
-    listStoreBilling({ includeClosed: true, limit: LIST_PAGE_SIZE, offset: listOffset(page) }),
-    countStoreBilling({ includeClosed: true }),
-    sandboxFunnel(),
-    sandboxSettings(),
+  const { page, ...filter } = storeListFilter(await searchParams);
+  const kept = storeListQuery(filter);
+  const [{ rows: stores, total }, facts] = await Promise.all([
+    storeBillingPage({ ...filter, limit: LIST_PAGE_SIZE, offset: listOffset(page) }),
+    storeListFacts(),
   ]);
-  const f = SANDBOX_WORDS[lang].funnel;
-  const share = (n: number, of: number) => (of > 0 ? ` (${Math.round((n / of) * 100)} %)` : "");
+  // A page past the last (stores closed or filtered away, a link kept from before) opens the first.
+  if (stores.length === 0 && page > 1) redirect(pageAddress(BASE, kept, 1));
+  const filtered = storeListFiltered(filter);
+  // The chips: every store, then each state that has a store (or is the one chosen), each with how many the list holds in all.
+  const chips = [
+    { key: "all", label: w.all, n: facts.counts.all, on: filter.state === null },
+    ...STORE_STATES.map((state) => ({ key: state, label: all.storeStatus[state], n: facts.counts[state], on: filter.state === state })),
+  ].filter((chip) => chip.key === "all" || chip.n > 0 || chip.on);
+  const chip = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-pill px-3.5 text-sm";
+  const narrowed = Boolean(filter.plan || filter.billing);
+
   return (
     <>
       <PageHeader
@@ -51,104 +65,146 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
           </ButtonLink>
         }
       />
-      {/* The page builder's sandbox (D457 S4): how far visitors who tried it went, beside the stores they became. */}
-      {/* Round 63 (D827): on a phone the sandbox is one row saying whether it is on, and each store one row of two lines. */}
-      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
-      <PhoneRow flat last title={f.title} sub={sandbox.on ? f.on : f.off} change={w.phoneOpen} done={w.phoneClose}>
-      <Card
-        compact
-        title={f.title}
-        description={f.description}
-        aside={
-          <span>
-            {sandbox.on ? f.on : f.off}{" "}
-            <Link href="/admin/platform/requests" className="underline">
-              {f.switchLink}
-            </Link>
-          </span>
+      <ListSearch
+        action={BASE}
+        id="store-search"
+        value={filter.q}
+        label={w.search}
+        placeholder={w.searchPlaceholder}
+        maxLength={100}
+        words={KIT_WORDS[lang].search}
+        button="hidden"
+        keep={{ state: filter.state }}
+        // Each part of the page eases in (admin.css), so each is its own layer: the search's is lifted, so Filters opens over the list.
+        className="z-10"
+        tools={
+          // Lisa's step (D847): the plan and the subscription, in the same form, so a chip or the search keeps them.
+          <details className="relative">
+            <summary className="inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-pill bg-sunken px-3.5 text-caption text-ink [&::-webkit-details-marker]:hidden">
+              <SlidersHorizontal aria-hidden className="size-3.5" />
+              {w.filters}
+              {narrowed && <span className="size-1.5 rounded-pill bg-brand" aria-hidden />}
+            </summary>
+            <div className="absolute right-0 z-30 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-panel border border-line bg-card p-3 shadow-[var(--shadow-float)]">
+              <Field label={w.plan}>
+                {(control) => (
+                  <Select name="plan" defaultValue={filter.plan ?? ""} full {...control}>
+                    <option value="">{w.anyPlan}</option>
+                    <option value="none">{w.noPlan}</option>
+                    {facts.plans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+              <Field label={w.billing}>
+                {(control) => (
+                  <Select name="billing" defaultValue={filter.billing ?? ""} full {...control}>
+                    <option value="">{w.anyBilling}</option>
+                    {STORE_BILLINGS.map((billing) => (
+                      <option key={billing} value={billing}>
+                        {w.billings[billing]}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+              <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-body font-medium text-brand-ink">
+                {w.apply}
+              </button>
+            </div>
+          </details>
         }
-      >
-        <table className="w-full text-left text-body">
-          <thead className="text-muted">
-            <tr>
-              <th scope="col" className="py-1 pr-4 font-normal" />
-              <th scope="col" className="py-1 pr-4 font-normal">{f.made}</th>
-              <th scope="col" className="py-1 pr-4 font-normal">{f.changed}</th>
-              <th scope="col" className="py-1 pr-4 font-normal">{f.published}</th>
-              <th scope="col" className="py-1 font-normal">{f.kept}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {funnel.map((period) => (
-              <tr key={period.days} className="border-t border-line">
-                <th scope="row" className="py-2 pr-4 font-normal text-ink-2">{countWords(period.days, f.period)}</th>
-                <td className="py-2 pr-4 text-ink">{period.made}</td>
-                <td className="py-2 pr-4 text-ink">{period.changed}{share(period.changed, period.made)}</td>
-                <td className="py-2 pr-4 text-ink">{period.published}{share(period.published, period.made)}</td>
-                <td className="py-2 text-ink">{period.kept}{share(period.kept, period.made)}</td>
-              </tr>
+        aside={
+          <>
+            {/* The store's own state (D171): the form's buttons, each a count of every store the list holds; on a phone a row that scrolls. */}
+            <div role="group" aria-label={w.show} className="flex flex-wrap gap-1.5 max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4">
+              {chips.map((one) => (
+                <button
+                  key={one.key}
+                  type="submit"
+                  name="state"
+                  value={one.key}
+                  aria-pressed={one.on}
+                  className={`${chip} ${one.on ? "bg-inverse text-inverse-ink" : "bg-card text-ink-2 hover:text-ink"}`}
+                >
+                  {one.label} <span className="tabular-nums opacity-80">{one.n}</span>
+                </button>
+              ))}
+            </div>
+            {/* The bar's own way back (D845): the empty state below needs none. */}
+            {filtered && (
+              <AdminLink href={BASE} className="flex min-h-10 items-center px-2 text-sm underline">
+                {w.everyStore}
+              </AdminLink>
+            )}
+          </>
+        }
+      />
+      {stores.length === 0 ? (
+        <EmptyState title={filter.q ? fillWords(w.noMatch, { q: filter.q }) : filtered ? w.noMatchFilters : w.none} />
+      ) : (
+        <Card compact>
+          {/* Round 63 (D827): on a phone each store is one row of two lines. */}
+          <List label={w.title}>
+            {stores.map((store) => (
+              <ListRow key={store.storeId}>
+                <RowLead
+                  title={store.name}
+                  href={`/admin/platform/stores/${store.slug}`}
+                  sub={
+                    <>
+                      <span className="max-sm:hidden">
+                        {store.slug} · {store.ownerEmail ? (store.ownerName ? `${store.ownerName}, ${store.ownerEmail}` : store.ownerEmail) : w.noOwner}
+                      </span>
+                      <span className="sm:hidden">
+                        {store.slug} · {store.planName ?? w.noPlan} · {fillWords(w.aSale, { fee: formatBps(store.feeBps, locale) })}
+                      </span>
+                    </>
+                  }
+                />
+                <span className="contents max-sm:hidden">
+                  <RowFact
+                    sub={[
+                      store.status ? (billingWords.statuses[store.status] ?? store.status) : null,
+                      store.cancelAtPeriodEnd && w.endsAtPeriodEnd,
+                      store.mode === "test" && w.testMode,
+                      store.currentPeriodEnd && !store.cancelAtPeriodEnd && store.status !== "canceled" && fillWords(w.nextInvoice, { date: adminDate(store, store.currentPeriodEnd, "day", lang) }),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  >
+                    {store.planName ? `${store.planName}${store.price ? `, ${priceLabel(store.price.amountMinor, store.price.currency, store.price.interval, billingWords.intervals)}` : ""}` : w.noPlan}
+                  </RowFact>
+                </span>
+                {store.storeStatus !== "active" && (
+                  <Chip signal={store.storeStatus === "closed" ? "neutral" : "danger"} dot>
+                    {store.storeStatus === "closed" ? w.closed : w.suspended}
+                  </Chip>
+                )}
+                <span className="contents max-sm:hidden">
+                  <RowAmount>
+                    {fillWords(w.aSale, { fee: formatBps(store.feeBps, locale) })}
+                    {store.saleFeeBpsOverride !== null && <span className="block text-caption text-muted">{w.ownFee}</span>}
+                  </RowAmount>
+                </span>
+              </ListRow>
             ))}
-          </tbody>
-        </table>
-      </Card>
-      </PhoneRow>
-      </div>
-      <Card compact>
-        <List label={w.title}>
-          {stores.map((store) => (
-            <ListRow key={store.storeId}>
-              <RowLead
-                title={store.name}
-                href={`/admin/platform/stores/${store.slug}`}
-                sub={
-                  <>
-                    <span className="max-sm:hidden">
-                      {store.slug} · {store.ownerEmail ? (store.ownerName ? `${store.ownerName}, ${store.ownerEmail}` : store.ownerEmail) : w.noOwner}
-                    </span>
-                    <span className="sm:hidden">
-                      {store.slug} · {store.planName ?? w.noPlan} · {fillWords(w.aSale, { fee: formatBps(store.feeBps, locale) })}
-                    </span>
-                  </>
-                }
-              />
-              <span className="contents max-sm:hidden">
-              <RowFact
-                sub={[
-                  store.status ? (billingWords.statuses[store.status] ?? store.status) : null,
-                  store.cancelAtPeriodEnd && w.endsAtPeriodEnd,
-                  store.mode === "test" && w.testMode,
-                  store.currentPeriodEnd && !store.cancelAtPeriodEnd && store.status !== "canceled" && fillWords(w.nextInvoice, { date: adminDate(store, store.currentPeriodEnd, "day", lang) }),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              >
-                {store.planName ? `${store.planName}${store.price ? `, ${priceLabel(store.price.amountMinor, store.price.currency, store.price.interval, billingWords.intervals)}` : ""}` : w.noPlan}
-              </RowFact>
-              </span>
-              {store.storeStatus !== "active" && (
-                <Chip signal={store.storeStatus === "closed" ? "neutral" : "danger"} dot>
-                  {store.storeStatus === "closed" ? w.closed : w.suspended}
-                </Chip>
-              )}
-              <span className="contents max-sm:hidden">
-              <RowAmount>
-                {fillWords(w.aSale, { fee: formatBps(store.feeBps, locale) })}
-                {store.saleFeeBpsOverride !== null && <span className="block text-caption text-muted">{w.ownFee}</span>}
-              </RowAmount>
-              </span>
-            </ListRow>
-          ))}
-        </List>
-        <Pager
-          words={{ ...KIT_WORDS[lang].pager, shownOf: w.shownOf, previous: w.previous, next: w.next }}
-          label={w.title}
-          base="/admin/platform/stores"
-          page={page}
-          size={LIST_PAGE_SIZE}
-          shown={stores.length}
-          total={total}
-        />
-      </Card>
+          </List>
+          <Pager
+            words={{ ...KIT_WORDS[lang].pager, shownOf: w.shownOf, previous: w.previous, next: w.next }}
+            label={w.title}
+            base={BASE}
+            query={kept}
+            page={page}
+            size={LIST_PAGE_SIZE}
+            shown={stores.length}
+            total={total}
+          />
+        </Card>
+      )}
     </>
   );
 }

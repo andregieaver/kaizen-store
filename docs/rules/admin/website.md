@@ -953,8 +953,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   sandbox owe a theme while `adopt_sandbox()` makes a kept one owe its live premium theme; *See your store*
   (`/admin/try/{sandbox}/store`) hands the browser the storefront's `staff` pass only after the sandbox's own; *Try it with this
   theme* starts from a free theme's demo store (`sandboxDemo()`); dual page opens the sandbox's own documents only; the funnel is
-  on Platform → Stores. Every `sendEmail()` call names its store, so the gate that refuses a sandbox's emails sees each one
-  (`sandbox.scan.test.ts`). Steps S1 to S4 are built; the switch and the *Try the builder* page are the owner's (the doc's section
+  beside the switch (D847). Every `sendEmail()` call names its store, so the gate that refuses a sandbox's emails sees each one
+  (`sandbox.scan.test.ts`). S1 to S4 are built; the switch and the *Try the builder* page are the owner's (the doc's section
   8).
 
 ## Find and replace (D307)

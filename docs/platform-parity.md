@@ -101,6 +101,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Home and Overview: revenue, a comparison, alerts and the briefing (D348) | Home, Analytics → Overview | Platform home (D513): this month's recurring revenue and how it moved, paying and trying stores, sales against last month to the same day, sign-ups today, what the figures raise in the attention list, and the morning briefing by email (daily or weekly, to owners and finance) |
 | Targets (Analytics settings) | Analytics → Settings | Plans → Analytics, *Targets* (D513): a month's recurring revenue, sales, paying and new stores, their progress on the home and in the briefing |
 | Live (sign-ups today) | Analytics → Live | Kaizena Flow's store for visitors (D484); the platform home for who asked for a store and opened one today (D513) |
+| A list's search, views and filters, a hundred a page (D834; the platform's D847) | Customers, Products: one search bar, its views and filters in the same form, *Next 100* | Customers; Stores: by store, owner or domain, the store's state, plan and subscription, the pager keeping them |
 
 ## Store-only: cannot apply to Kaizena Flow
 
