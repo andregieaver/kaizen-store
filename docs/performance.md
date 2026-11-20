@@ -536,6 +536,26 @@ No beacon loads a module of the `stripe` package. The store home is still over i
 words (`src/lib/admin-map.ts`, `src/lib/admin-messages/`), the AI manager's tools (`owner-tools.ts`, `owner-assistant.ts`) and the
 Supabase client are loaded with it, which other steps of the plan own.
 
+### The product taxonomy beside the functions that read it (bloat review step 2.23)
+
+The taxonomy's five data files (12.7 MB) are traced only beside the functions that reach `src/server/product-taxonomy.ts`.
+`next.config.ts` has no include for them: Turbopack's trace follows the reader's reads, each a literal
+`path.join(process.cwd(), "src/data/product-taxonomy", "<file>")` (`product-taxonomy.scan.test.ts` holds the form). An exclude would
+not have done it: in Next 16.4 Turbopack applies `outputFileTracingExcludes` only to the modules it traces, never to the files an
+include adds (`crates/next-api/src/nft.rs`, v16.4.6). After a build, `node scripts/trace-sizes.mjs --check` (CI's e2e job) also
+fails when one of eleven routes that read the taxonomy on purpose (`TAXONOMY_ROUTES`: the product page, the store home, a
+category, search, the admin's product editor, new product and import, the AI manager, the admin API, the feeds, the dispatcher)
+lacks a file. A new route that reads the taxonomy or draws a picture needs nothing by hand: the trace follows its imports. Sharp
+was already traced only where it is reached, `next/og` included.
+
+| `node scripts/trace-sizes.mjs`, local build, 891 traces | Before (the budgets on main) | After |
+|---|---|---|
+| Traces carrying the taxonomy | 883 | 757 |
+| Traces carrying sharp | 776 | 749 |
+| `/api/health`'s trace | 15.4 MB | 2.1 MB |
+| `/api/visit`'s trace | 16.0 MB | 2.5 MB |
+| Median trace | 64.8 MB | 52.9 MB |
+
 ## Cold starts in production (bloat review step 1.16)
 
 Each server instance notes its first answer once, as the log line `instance.start` and a row in `commerce.instance_starts`: what the
