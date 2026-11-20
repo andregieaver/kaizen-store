@@ -7,6 +7,13 @@ import { featureOn } from "./store-features";
  * holds the two together).
  */
 
+/**
+ * The sign-up for extensions without a store (D748 E7 part two) is open: off until the workspace's own admin (part three) exists, so nobody
+ * signs up into an admin that shows them nothing. While off, its page answers 404, its action refuses, and the store's sign-up does not
+ * link to it.
+ */
+export const STANDALONE_SIGNUP_OPEN = false;
+
 /** Days an extension's own trial lasts (section 2 of the spec): once per account per extension. */
 export const EXTENSION_TRIAL_DAYS = 14;
 

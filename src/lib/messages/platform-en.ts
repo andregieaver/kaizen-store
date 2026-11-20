@@ -85,6 +85,29 @@ export const platformEn = {
       message: "Keep the message under 1,000 characters.",
     },
     /** Self-serve sign-up (D359): the form's words while it is on, and the page the email's link opens. */
+    /** The sign-up for extensions (D748 E7): what the business needs, without an online store or with one. */
+    extensions: {
+      title: "Start with extensions",
+      description: "The AI support desk, email automation, Work or deals and contracts for your business, free for 14 days, with or without an online store.",
+      intro: "Pick what your business needs. Each is free for 14 days, and you can add an online store or more at any time.",
+      pick: "What does your business need?",
+      store: "Also open an online store",
+      storeHint: "Your store is made with them, ready to try with demo products.",
+      business: "Business name",
+      businessHint: "Shown on your invoices and emails. You can change it later.",
+      country: "Country",
+      countryHint: "Where your business is. Its currency is the one you invoice in.",
+      choose: "Choose a country",
+      submit: "Start my free trial",
+      pickOne: "Tick at least one.",
+      countryMissing: "Choose the country your business is in.",
+      received: "Thanks! We have your request. When your account is ready you will get an email with a link to sign in.",
+      receivedSelfServe: "Check your email: we have sent you a link to confirm your address. Your account is made when you press the button in it.",
+      instead: "Only want the support desk, email automation, Work or deals?",
+      insteadLink: "Start with extensions",
+      storeInstead: "Want an online store?",
+      storeInsteadLink: "Start your store",
+    },
     selfServe: {
       intro: "Tell us about your store and we will make it at once, ready to try with demo products. It is free for 14 days and private until you open it.",
       /** The last step's line (D456): what happens to the address. */

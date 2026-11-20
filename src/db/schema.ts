@@ -634,6 +634,14 @@ export const accessRequests = commerce.table(
      */
     adConsentAt: timestamp("ad_consent_at", { withTimezone: true }),
     adSignals: jsonb("ad_signals"),
+    /**
+     * What the sign-up ticked (D748 E7): an online store (`wants_store`, every request before E7) and the extensions to start a trial of.
+     * A request without a store is approved into a workspace (`commerce.approve_workspace_request()`) in `country`, whose currency its
+     * invoices and deals are in.
+     */
+    wantsStore: boolean("wants_store").notNull().default(true),
+    extensions: text("extensions").array().notNull().default(sql`'{}'::text[]`),
+    country: char("country", { length: 2 }),
     confirmHash: text("confirm_hash"),
     confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
@@ -657,6 +665,9 @@ export const accessRequests = commerce.table(
   },
   (t) => [
     check("access_requests_confirm", sql`${t.confirmHash} is null or (${t.selfServe} and ${t.confirmExpiresAt} is not null)`),
+    check("access_requests_extensions", sql`${t.extensions} <@ array[${sqlList(EXTENSION_IDS)}]::text[]`),
+    check("access_requests_wants_something", sql`${t.wantsStore} or cardinality(${t.extensions}) > 0`),
+    check("access_requests_workspace_country", sql`${t.wantsStore} or ${t.country} is not null`),
     uniqueIndex("access_requests_confirm_hash_idx").on(t.confirmHash),
     check("access_requests_locale", sql`${t.locale} is null or ${t.locale} in ('en', 'nb-NO')`),
     check("access_requests_first_channel", sql`${t.firstChannel} is null or ${t.firstChannel} in (${channelList})`),

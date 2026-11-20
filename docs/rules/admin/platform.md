@@ -558,6 +558,9 @@ under *What the router fetches ahead*.
   with a link kept as its hash; a store is made only by `confirmSelfSignup()` from the press on `/sign-up/confirm/{token}` (never by opening
   the link), through `approveAccessRequest(null, …)`, and starts `store_billing.trial_ends_at`, which `choosePlan()` passes to Stripe as
   `trial_end` (`trialEndFor()`). A new way to make a store without an admin goes through the same path and audits `store.self_signup`.
+- **For extensions (D748 E7)**: `/sign-up/extensions` keeps what was ticked on the request (`wants_store`, `extensions`, `country`); a request
+  without a store is approved into a workspace by the same `approveAccessRequest()` (`commerce.approve_workspace_request()`), and every
+  approval starts the ticked trials (`startChosenTrials()`). A workspace never gets a store's own trial.
 
 ## Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`, `src/server/content-moderation.ts`)
 

@@ -221,7 +221,8 @@ export async function confirmSelfSignup(
       log("error", "self_signup.store_failed", { requestId, problems: made.problems.length });
       return { ok: false, problem: "failed" };
     }
-    await writeTrial(made.storeId);
+    // A store's own trial; a workspace (D748 E7) has no store to try, only the extensions' trials its approval started.
+    if (!made.workspace) await writeTrial(made.storeId);
     const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where lower(email) = lower(${made.email})`);
     await audit(owner ? String(owner.id) : null, made.storeId, "store.self_signup", { requestId, trialDays: TRIAL_DAYS }, { area: "settings", target: { type: "store", id: made.storeId } });
     log("info", "self_signup.store_made", { requestId, storeId: made.storeId });

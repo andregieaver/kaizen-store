@@ -13,6 +13,7 @@ import { KaizenLifePrefill } from "@/app/(platform)/sign-up/kaizen-life-prefill"
 import { ReferralKeeper } from "@/app/(platform)/sign-up/referral-keeper";
 import { SignUpWizard, type SignUpStep } from "@/app/(platform)/sign-up/sign-up-wizard";
 import { ThemeFromAddress } from "@/app/(platform)/sign-up/theme-from-address";
+import { STANDALONE_SIGNUP_OPEN } from "@/lib/extensions";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 import { platformText } from "@/lib/platform-text";
@@ -27,8 +28,9 @@ export async function signUpMetadata(lang: PlatformLang): Promise<Metadata> {
   };
 }
 
-const field = "flex flex-col gap-1.5 text-sm font-medium";
-const control =
+/** A sign-up field's label and its control, shared by the store's and the extensions' sign-ups. */
+export const field = "flex flex-col gap-1.5 text-sm font-medium";
+export const control =
   "min-h-12 rounded-lg border border-border bg-background px-3.5 text-base font-normal transition-colors hover:border-muted focus:border-foreground focus:ring-2 focus:ring-foreground/15 focus:outline-none aria-invalid:border-red-600";
 
 /**
@@ -132,24 +134,7 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
             steps={steps}
             submitLabel={submit}
             words={w.steps}
-            note={
-              // What sending the form agrees to (PSI REG-02): the terms and the privacy notice, linked; the request records the terms' version.
-              <p className="text-sm text-muted">
-                {acceptanceParts(w.acceptance, submit).map((part, i) =>
-                  part === "{terms}" ? (
-                    <Link key={i} href={platformPath(lang, `/${PLATFORM_LEGAL_SLUGS.terms}`)} className="underline">
-                      {w.termsLink}
-                    </Link>
-                  ) : part === "{privacy}" ? (
-                    <Link key={i} href={platformPath(lang, `/${PLATFORM_LEGAL_SLUGS.privacy}`)} className="underline">
-                      {w.privacyLink}
-                    </Link>
-                  ) : (
-                    <span key={i}>{part}</span>
-                  ),
-                )}
-              </p>
-            }
+            note={<SignUpAcceptance lang={lang} submit={submit} />}
           />
           {/* Hidden from people and screen readers; a filled-in value marks a bot. */}
           <div aria-hidden="true" className="hidden">
@@ -159,6 +144,14 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
             </label>
           </div>
         </ActionForm>
+        {STANDALONE_SIGNUP_OPEN && (
+          <p className="text-center text-sm text-muted">
+            {w.extensions.instead}{" "}
+            <Link href={platformPath(lang, "/sign-up/extensions")} className="font-medium text-foreground underline underline-offset-4">
+              {w.extensions.insteadLink}
+            </Link>
+          </p>
+        )}
         <p className="text-center text-sm text-muted">
           {w.haveAccount}{" "}
           <Link href="/admin/sign-in" prefetch={false} className="font-medium text-foreground underline underline-offset-4">
@@ -167,6 +160,28 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
         </p>
       </div>
     </main>
+  );
+}
+
+/** What sending a sign-up agrees to (PSI REG-02): the terms and the privacy notice, linked; the request records the terms' version. */
+export function SignUpAcceptance({ lang, submit }: { lang: PlatformLang; submit: string }) {
+  const w = platformText(lang).signUp;
+  return (
+    <p className="text-sm text-muted">
+      {acceptanceParts(w.acceptance, submit).map((part, i) =>
+        part === "{terms}" ? (
+          <Link key={i} href={platformPath(lang, `/${PLATFORM_LEGAL_SLUGS.terms}`)} className="underline">
+            {w.termsLink}
+          </Link>
+        ) : part === "{privacy}" ? (
+          <Link key={i} href={platformPath(lang, `/${PLATFORM_LEGAL_SLUGS.privacy}`)} className="underline">
+            {w.privacyLink}
+          </Link>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </p>
   );
 }
 

@@ -12,7 +12,9 @@ import { consentCookieName } from "@/lib/cookie-consent";
 import { touchCookieName } from "@/lib/first-touch";
 import { signupAdSignals } from "@/lib/platform-ad-conversions";
 import { houseStoreId } from "@/server/house-customers";
-import { createAccessRequest } from "@/server/platform";
+import { createAccessRequest, type AccessRequestInput } from "@/server/platform";
+import { getPublicExtensions } from "@/server/public-extensions";
+import { isExtensionId, STANDALONE_SIGNUP_OPEN, type ExtensionId } from "@/lib/extensions";
 import { signupFirstTouch } from "@/server/platform-channels";
 import { addressOf } from "@/server/analytics-visits";
 import { recordSignup } from "@/server/experiments";
@@ -52,23 +54,14 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
     message: formData.get("message") ?? "",
   });
   if (!parsed.success) return formProblems(parsed.error.issues);
-  // A referral (D131): the code the link put in the form, else the cookie, which only exists when the visitor allowed it.
-  // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
-  const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
-  // Where the person first came from (C2, D522): the house store's first-touch cookie on Kaizena Flow's site, which exists only when they
-  // allowed statistics cookies; nothing is kept without it.
-  const house = await houseStoreId();
-  const jar = await cookies();
-  const firstTouch = house ? signupFirstTouch(jar.get(touchCookieName(house))?.value) : null;
-  // A sign-up as an ad conversion (C2, D523): the ad platforms' ids, only when they allowed marketing cookies on Kaizena Flow's site.
-  const adSignals = house ? signupAdSignals((name) => jar.get(name)?.value, jar.get(consentCookieName(house))?.value) : null;
+  const context = await signupContext(formData);
   try {
     // The theme and its preset (`docs/theme-showcase-phase-1.md` step 4) chosen, kept only when published (checked inside), and the demo
     // store the look starts a store with (D273): never chosen apart.
     const look = designLookChoice(formData.get("design"));
     const input = {
       ...parsed.data,
-      referralCode,
+      referralCode: context.referralCode,
       starterId: await contentForLook(look),
       designPresetId: look?.id ?? null,
       designVariation: look?.variation ?? null,
@@ -76,16 +69,73 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       dream: formData.get("dream") === "on",
       // The form is sent under the sentence that links the terms and the privacy notice (PSI REG-02).
       termsAccepted: true,
-      firstTouch,
-      adSignals,
+      firstTouch: context.firstTouch,
+      adSignals: context.adSignals,
     };
-    // Self-serve (D359): the address is confirmed by a link first, and the store is made on the press; the answer is the same either way.
-    const selfServe = await selfServeOn();
-    if (selfServe) await startSelfSignup(input, addressOf(await headers()) || null);
-    else await createAccessRequest(input);
-    // A sign-up as an A/B test's goal on Kaizena Flow's own store (D148 phase 19): only a visitor in a test, counted once; never in the way.
-    if (house) await recordSignup(house);
+    const selfServe = await sendRequest(input, context.house);
     return { status: "ok", messages: [selfServe ? w.selfServe.received : w.received] };
+  } catch {
+    return { status: "error", messages: [w.failed] };
+  }
+}
+
+/**
+ * What every sign-up carries besides its fields: a referral (D131: the code the link put in the form, else the cookie, which only exists
+ * when the visitor allowed it; an unknown or blocked code is dropped inside), where the person first came from (C2, D522: the house store's
+ * first-touch cookie, only with statistics cookies allowed) and the ad platforms' ids (C2, D523: only with marketing cookies allowed).
+ */
+async function signupContext(formData: FormData) {
+  const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
+  const house = await houseStoreId();
+  const jar = await cookies();
+  const firstTouch = house ? signupFirstTouch(jar.get(touchCookieName(house))?.value) : null;
+  const adSignals = house ? signupAdSignals((name) => jar.get(name)?.value, jar.get(consentCookieName(house))?.value) : null;
+  return { referralCode, house, firstTouch, adSignals };
+}
+
+/**
+ * Sends a request: self-serve (D359) emails a link to confirm the address first and makes the account on the press; else the request waits
+ * for a platform admin. A sign-up counts as an A/B test's goal on Kaizena Flow's own store (D148 phase 19). Answers whether it was self-serve.
+ */
+async function sendRequest(input: AccessRequestInput, house: string | null): Promise<boolean> {
+  const selfServe = await selfServeOn();
+  if (selfServe) await startSelfSignup(input, addressOf(await headers()) || null);
+  else await createAccessRequest(input);
+  if (house) await recordSignup(house);
+  return selfServe;
+}
+
+/**
+ * The sign-up for extensions (D748 E7): the extensions ticked (those sold on their own, or any with an online store ticked too), the
+ * business's name and country, and the person. Without a store it is approved into a workspace in that country; the trials of what was
+ * ticked start when the account is made.
+ */
+export async function requestExtensions(_state: FormState, formData: FormData): Promise<FormState> {
+  const lang = langOfForm(formData);
+  const w = platformText(lang).signUp;
+  const x = w.extensions;
+  if (!STANDALONE_SIGNUP_OPEN) return { status: "error", messages: [w.failed] };
+  if (String(formData.get("website") ?? "") !== "") return { status: "ok", messages: [x.received] };
+  const wantsStore = formData.get("store") === "on";
+  const offered = (await getPublicExtensions()).extensions.filter((e) => wantsStore || e.standalone).map((e) => e.id);
+  const extensions = [...new Set(formData.getAll("extension").map(String))].filter((id): id is ExtensionId => isExtensionId(id) && offered.includes(id));
+  const country = String(formData.get("country") ?? "").trim().toUpperCase();
+  const parsed = inputIn(w.errors)
+    .pick({ name: true, email: true, storeName: true })
+    .safeParse({ name: formData.get("name") ?? "", email: String(formData.get("email") ?? "").trim(), storeName: formData.get("storeName") ?? "" });
+  const problems = [
+    ...(extensions.length === 0 ? [x.pickOne] : []),
+    ...(!/^[A-Z]{2}$/.test(country) ? [x.countryMissing] : []),
+    ...(parsed.success ? [] : parsed.error.issues.map((issue) => issue.message)),
+  ];
+  if (!parsed.success || problems.length > 0) return { status: "error", messages: [...new Set(problems)] };
+  const context = await signupContext(formData);
+  try {
+    const selfServe = await sendRequest(
+      { ...parsed.data, message: "", referralCode: context.referralCode, lang, termsAccepted: true, firstTouch: context.firstTouch, adSignals: context.adSignals, wantsStore, extensions, country },
+      context.house,
+    );
+    return { status: "ok", messages: [selfServe ? x.receivedSelfServe : x.received] };
   } catch {
     return { status: "error", messages: [w.failed] };
   }

@@ -1,0 +1,6 @@
+ALTER TABLE "commerce"."access_requests" ADD COLUMN "wants_store" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD COLUMN "extensions" text[] DEFAULT '{}'::text[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD COLUMN "country" char(2);--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD CONSTRAINT "access_requests_extensions" CHECK ("commerce"."access_requests"."extensions" <@ array['ab_testing', 'support_desk', 'email_automation', 'work', 'deals']::text[]);--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD CONSTRAINT "access_requests_wants_something" CHECK ("commerce"."access_requests"."wants_store" or cardinality("commerce"."access_requests"."extensions") > 0);--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD CONSTRAINT "access_requests_workspace_country" CHECK ("commerce"."access_requests"."wants_store" or "commerce"."access_requests"."country" is not null);

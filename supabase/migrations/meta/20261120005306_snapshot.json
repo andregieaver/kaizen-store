@@ -1,6 +1,6 @@
 {
-  "id": "7c976bc0-2aba-4aa9-a219-e492952a63bc",
-  "prevId": "0c3d8c5d-5345-4743-a9b4-861121f05262",
+  "id": "70c1a751-9527-4ea2-bc3b-1da7aead2d61",
+  "prevId": "1d54f972-fc3c-4a55-af29-175ea8334a70",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -619,6 +619,26 @@
           "primaryKey": false,
           "notNull": false
         },
+        "wants_store": {
+          "name": "wants_store",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "extensions": {
+          "name": "extensions",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "country": {
+          "name": "country",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "confirm_hash": {
           "name": "confirm_hash",
           "type": "text",
@@ -878,6 +898,18 @@
         "access_requests_confirm": {
           "name": "access_requests_confirm",
           "value": "\"commerce\".\"access_requests\".\"confirm_hash\" is null or (\"commerce\".\"access_requests\".\"self_serve\" and \"commerce\".\"access_requests\".\"confirm_expires_at\" is not null)"
+        },
+        "access_requests_extensions": {
+          "name": "access_requests_extensions",
+          "value": "\"commerce\".\"access_requests\".\"extensions\" <@ array['ab_testing', 'support_desk', 'email_automation', 'work', 'deals']::text[]"
+        },
+        "access_requests_wants_something": {
+          "name": "access_requests_wants_something",
+          "value": "\"commerce\".\"access_requests\".\"wants_store\" or cardinality(\"commerce\".\"access_requests\".\"extensions\") > 0"
+        },
+        "access_requests_workspace_country": {
+          "name": "access_requests_workspace_country",
+          "value": "\"commerce\".\"access_requests\".\"wants_store\" or \"commerce\".\"access_requests\".\"country\" is not null"
         },
         "access_requests_locale": {
           "name": "access_requests_locale",

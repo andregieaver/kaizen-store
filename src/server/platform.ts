@@ -1,8 +1,10 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
+import { isExtensionId, type ExtensionId } from "@/lib/extensions";
 import { limitRefusal } from "@/lib/usage-format";
 import { ACCESS_EMAIL_KINDS, accessEmail, requestLang, requestLocale, type AccessEmailKind } from "@/lib/access-emails";
 import { renderEmail } from "@/lib/email-layout";
@@ -14,6 +16,7 @@ import { starterRefusal } from "@/lib/store-starters";
 
 import { checkOwnerStores, forgetLimits } from "./limits";
 import { activeAccount, audit, type Account } from "./auth";
+import { col, typedRow } from "./typed-rows";
 import { sendEmail } from "./email";
 import { markDemoContent } from "./demo-content";
 import { applyDesignPreset, isOfferedDesign } from "./design-presets";
@@ -42,6 +45,13 @@ export type AccessRequestInput = {
   designVariation?: string | null;
   /** The language the form was sent in (D312 P6): its emails are written in it. English when left out. */
   lang?: PlatformLang;
+  /**
+   * What the sign-up ticked (D748 E7): an online store (the default) and the extensions to start a trial of. Without a store, the request
+   * is approved into a workspace in `country` (a country Kaizena Flow sells in), and needs at least one extension.
+   */
+  wantsStore?: boolean;
+  extensions?: readonly ExtensionId[];
+  country?: string | null;
   /** A domain the requester holds here, to connect to the store on approval (D317 decision 3). */
   domain?: string | null;
   /** The Dream Factory (D409): build the store with AI from `message` when it is made; kept only with a description long enough to build from. */
@@ -84,9 +94,13 @@ export async function createAccessRequest(
   options: { quiet?: boolean } = {},
 ): Promise<void> {
   const referralCode = await usableReferralCode(input.referralCode);
+  // What was ticked (D748 E7): known extensions only; a request for no store asks for at least one, else it is a store's.
+  const extensions = [...new Set((input.extensions ?? []).filter(isExtensionId))];
+  const wantsStore = input.wantsStore !== false || extensions.length === 0;
   const [made] = await db().execute<Row>(sql`
     insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain, dream,
-      terms_accepted_at, terms_version, sandbox_id, first_channel, first_source, first_campaign, ad_consent_at, ad_signals)
+      terms_accepted_at, terms_version, sandbox_id, first_channel, first_source, first_campaign, ad_consent_at, ad_signals,
+      wants_store, extensions, country)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
@@ -100,7 +114,8 @@ export async function createAccessRequest(
         : sql`null`},
       (select x.id from commerce.sandboxes x where x.id = ${input.sandboxId ?? null}::uuid and x.state = 'open'),
       ${input.firstTouch?.channel ?? null}, ${input.firstTouch ? input.firstTouch.source || null : null}, ${input.firstTouch ? input.firstTouch.campaign || null : null},
-      ${input.adSignals ? sql`now()` : sql`null`}, ${input.adSignals ? JSON.stringify(cleanAdSignals(input.adSignals)) : null}::jsonb)
+      ${input.adSignals ? sql`now()` : sql`null`}, ${input.adSignals ? JSON.stringify(cleanAdSignals(input.adSignals)) : null}::jsonb,
+      ${wantsStore}, ${`{${extensions.join(",")}}`}::text[], (select c.code from commerce.countries c where c.code = ${input.country ?? null}))
     on conflict ((lower(email))) where status = 'pending' do nothing
     returning id
   `);
@@ -233,6 +248,10 @@ export type ApproveResult =
        * store) and the design profile (the store keeps its template's own look), by title.
        */
       fellBack: { starter: string | null; design: string | null };
+      /** How many trials of the extensions the sign-up ticked started (D748 E7). */
+      trials?: number;
+      /** The request ticked no store (D748 E7): `storeId` is its account's workspace. */
+      workspace?: true;
     }
   | { ok: false; problems: string[] };
 
@@ -260,6 +279,8 @@ export async function approveAccessRequest(
   /** With a design profile the admin chose: its preset's key (`docs/theme-showcase-phase-1.md` step 4), null for its own look. */
   designVariation: string | null = null,
 ): Promise<ApproveResult> {
+  // A sign-up for extensions only (D748 E7): its workspace, not a store.
+  if (await wantsNoStore(requestId)) return approveWorkspace(admin, requestId, origin);
   const problem = slugProblem(slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
   if (!storeName.trim()) return { ok: false, problems: ["Enter a store name."] };
@@ -359,6 +380,50 @@ export async function approveAccessRequest(
     storeId,
     domain,
     fellBack: { starter: starterFellBack, design: designFellBack },
+    // The trials of the extensions the sign-up ticked beside its store (D748 E7), loaded here: the catalogue is no page's that lists requests.
+    trials: await (await import("./workspace-signup")).startChosenTrials(requestId),
+  };
+}
+
+/** Whether a pending request ticked no store (D748 E7): it is approved into a workspace. */
+async function wantsNoStore(requestId: string): Promise<boolean> {
+  const row = await typedRow(
+    z.object({ none: col.bool }),
+    sql`select not wants_store as none from commerce.access_requests where id = ${requestId}::uuid and status = 'pending'`,
+  );
+  return row?.none === true;
+}
+
+/**
+ * Approves a sign-up for extensions only into its account's workspace (`approveWorkspaceRequest()`, which starts the trials it ticked),
+ * then as an approval: the owner's admin in the request's language, the approval and a sign-in link emailed.
+ */
+async function approveWorkspace(admin: Account | null, requestId: string, origin: string): Promise<ApproveResult> {
+  const { approveWorkspaceRequest } = await import("./workspace-signup");
+  const made = await approveWorkspaceRequest(admin, requestId);
+  if (!made.ok) return made;
+  const row = await typedRow(
+    z.object({ slug: col.text, locale: col.textOrNull }),
+    sql`select s.slug, r.locale from commerce.access_requests r join commerce.stores s on s.id = r.store_id where r.id = ${requestId}::uuid`,
+  );
+  await db()
+    .execute(sql`
+      update commerce.accounts a set admin_locale = r.locale
+      from commerce.access_requests r
+      where r.id = ${requestId}::uuid and r.locale is not null and lower(a.email) = lower(r.email) and a.admin_locale is null
+    `)
+    .catch(() => null);
+  await sendAccessEmail("approved", requestId, `${origin}/admin/sign-in`);
+  return {
+    ok: true,
+    slug: String(row?.slug ?? ""),
+    email: made.email,
+    invited: await emailSignInLink(made.email, origin, row?.locale ? String(row.locale) : null),
+    design: null,
+    storeId: made.storeId,
+    domain: null,
+    fellBack: { starter: null, design: null },
+    workspace: true,
   };
 }
 
