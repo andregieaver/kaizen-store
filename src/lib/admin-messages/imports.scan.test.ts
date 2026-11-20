@@ -47,6 +47,7 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/order-rule-limits.ts": "The automation rules' numbers, which a rule's log says out loud (asksPerDay).",
   "lib/order-rules-labels.ts": "The automation conditions' names, a rule's sentence and its log's outcomes, read by order-rules.ts's describeRule() and the AI manager as well.",
   "lib/staff-alerts-labels.ts": "The staff alerts' names, read by the alerts' emails and the settings' actions as well.",
+  "lib/store-parts.ts": "Imports nothing but types: each component, piece and note of the store is defined once with its English name and hint, which the builder draws when no words are handed down.",
   "lib/tripletex-labels.ts": "What the Tripletex connection says to an owner, read by tripletex-errors.ts's failureWords() and its tests as well.",
   "lib/order-status.ts": "An order's status and its chip's signal: a label module already (no imports), read by the order table and a subscription's page as well.",
 };
