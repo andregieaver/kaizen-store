@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 
 import { AdminColorSwitch } from "@/components/admin/admin-colors";
 import { SignOutForm } from "@/components/admin/admin-trail";
@@ -53,6 +53,12 @@ export async function LevelSwitcher({ account, level, label, currentSlug }: { ac
   );
 }
 
+/** The way back to Kaizen Life (docs/life-work-summary.md 3.6), read in its own Suspense so the account menu does not wait for it. */
+async function LifeLink({ accountId, label }: { accountId: string; label: string }) {
+  const life = await kaizenLifeAppUrl(accountId);
+  return life ? <MenuLink href={life}>{label} ↗</MenuLink> : null;
+}
+
 /**
  * The account menu (D107): who is signed in, their account, the colours and signing out; and the way back to Kaizen Life for an
  * account linked to it (docs/life-work-summary.md 3.6).
@@ -61,7 +67,7 @@ export async function AdminAccountMenu({ account, role }: { account: Account; ro
   // In the account's language (D312 A0).
   const w = COMMON_WORDS[adminLangOf(account.adminLocale)].accountMenu;
   const avatar = avatarFor(account);
-  const [life, owner] = await Promise.all([kaizenLifeAppUrl(account.id), ownsAccount(account)]);
+  const owner = await ownsAccount(account);
   return (
     <AccountMenu avatar={<Avatar avatar={avatar} size={32} />} initials={avatar.initials} name={account.name} email={account.email}>
       <MenuLink href="/admin/account">
@@ -72,7 +78,9 @@ export async function AdminAccountMenu({ account, role }: { account: Account; ro
       {owner ? <MenuLink href="/admin/account/add">{w.addToAccount}</MenuLink> : null}
       <MenuNotices label={ASSISTANT_WORDS[adminLangOf(account.adminLocale)].notices.menu} href="/admin/account/notices" />
       <MenuLink href="/admin/account/kaizen-support">{w.contactSupport}</MenuLink>
-      {life ? <MenuLink href={life}>{w.kaizenLife} ↗</MenuLink> : null}
+      <Suspense fallback={null}>
+        <LifeLink accountId={account.id} label={w.kaizenLife} />
+      </Suspense>
       <MenuRow label={w.colours}>
         <AdminColorSwitch save={colorModeAction} labels={{ toDark: w.toDark, toLight: w.toLight }} />
       </MenuRow>

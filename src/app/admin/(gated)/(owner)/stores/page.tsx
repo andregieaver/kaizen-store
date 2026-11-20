@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignCards } from "@/components/admin/design-cards";
 import { StoresList } from "@/components/admin/stores-list";
-import { listClosedStores, listStores, listWorkspaces, requireAccount } from "@/server/auth";
+import { storesOf } from "@/components/admin/admin-shell-parts";
+import { listClosedStores, listWorkspaces, requireAccount } from "@/server/auth";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { PROMPT_MAX, PROMPT_MIN } from "@/lib/dream-factory";
@@ -31,7 +32,8 @@ export default async function AllStoresPage() {
   const words = HOME_WORDS[lang];
   const { stores: w, common: c } = words;
   const [stores, hostings, copies, closed, workspaces] = await Promise.all([
-    listStores(account),
+    // The reader the owner's layout already called in this request.
+    storesOf(account),
     listHostings(account),
     listStoreCopies(account),
     listClosedStores(account),

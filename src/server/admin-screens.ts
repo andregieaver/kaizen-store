@@ -38,18 +38,23 @@ async function supportWaiting(desk: Desk): Promise<number> {
   return conversations + requests;
 }
 
-/** The store shell (`[store]/layout.tsx`): the member's stores, what waits in Support, the starter and the trial's end. */
+/**
+ * The store shell (`[store]/layout.tsx`): the member's stores, what waits in Support, the starter and the trial's end. None needs another's
+ * answer, so the four run together, one wave after the member guard (bloat review step 2.32).
+ */
 export async function storeShellReads(member: Membership) {
   const { account, store } = member;
   const open = store.status === "active";
-  const stores = await storesOf(account);
-  // Support (D216): the conversations waiting for a person, and the requests the chat assistant passed to the team (ecosystem plan E1.7),
-  // on the Support tab of those who may read it.
-  const waiting = memberCan(member, "support:read") ? await supportWaiting(memberDesk(member).desk) : 0;
-  // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
-  const starter = store.starter ? await starterOfStore(store.id) : null;
-  // A store whose free trial or plan ended with no plan running was made private again (D420): its members are told why, and how to open it.
-  const trialPaused = open ? await pausedAfter(store.id) : null;
+  const [stores, waiting, starter, trialPaused] = await Promise.all([
+    storesOf(account),
+    // Support (D216): the conversations waiting for a person, and the requests the chat assistant passed to the team (ecosystem plan E1.7),
+    // on the Support tab of those who may read it.
+    memberCan(member, "support:read") ? supportWaiting(memberDesk(member).desk) : 0,
+    // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
+    store.starter ? starterOfStore(store.id) : null,
+    // A store whose free trial or plan ended with no plan running was made private again (D420): its members are told why, and how to open it.
+    open ? pausedAfter(store.id) : null,
+  ]);
   return { stores, waiting, starter, trialPaused };
 }
 
