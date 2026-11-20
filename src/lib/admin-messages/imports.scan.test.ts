@@ -38,6 +38,8 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/inventory-admin-labels.ts": "The reasons a person gives for a stock change, read by the stock table as well.",
   "lib/inventory-labels.ts": "Stock movements' reasons and the stock policy in words, read by inventory.ts's functions (reasonWord, policyWords) as well.",
   "lib/vat-treatment-labels.ts": "Why an order has its VAT treatment, read by vat-treatment.ts's reasonStaffText() as well.",
+  "lib/booking-bucket-labels.ts": "The booking buckets in English and Norwegian, read by the Fiken and Tripletex settings and the accountant's summary as well.",
+  "lib/fiken-labels.ts": "What the Fiken connection says to an owner, read by fiken-errors.ts's fikenFailureWords() and its tests as well.",
   "lib/order-status.ts": "An order's status and its chip's signal: a label module already (no imports), read by the order table and a subscription's page as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;

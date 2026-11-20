@@ -1,9 +1,5 @@
 {
   "already": [
-    "fiken.en.ts -> lib/accounting-docs.ts",
-    "fiken.en.ts -> lib/fiken-errors.ts",
-    "fiken.en.ts -> lib/fiken-setup.ts",
-    "fiken.nb.ts -> lib/accounting-docs.ts",
     "notifications.en.ts -> components/admin/automation/rule-labels.ts",
     "notifications.en.ts -> lib/email-template.ts",
     "notifications.en.ts -> lib/integrations.ts",
