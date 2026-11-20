@@ -175,7 +175,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       order by o.placed_at desc
       limit 8
     `),
-    usageRows({ days: 7, ownedBy: account.id, storeId: onlyId }),
+    // One store's Home reads only its figures and latest orders: the AI figures are the owner's control center's (bloat review step 2.32).
+    onlyStore ? Promise.resolve<Awaited<ReturnType<typeof usageRows>>>([]) : usageRows({ days: 7, ownedBy: account.id, storeId: onlyId }),
     workAttention(workStores, WORK_WORDS.en.attention),
     // Withdrawals waiting for a refund, an acknowledgement or an answer (D153).
     returnAttention(orderIds),

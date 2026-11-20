@@ -2100,7 +2100,6 @@
         "workflows"
       ],
       "ownerHome": [
-        "ai_usage",
         "assistant_approvals",
         "assistant_plan_steps",
         "audit_log",

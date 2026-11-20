@@ -6,7 +6,6 @@ import type { Membership } from "@/server/auth";
 import { controlCenter } from "@/server/control-center";
 import { cronJobRows } from "@/server/cron-runs";
 import { listJobs } from "@/server/data-jobs";
-import { demoContent } from "@/server/demo-content";
 import { orderPreviews } from "@/server/home";
 import { listOrdersPage, resolveOrderList } from "@/server/order-list";
 import { tagSuggestions } from "@/server/order-tags";
@@ -54,17 +53,15 @@ export async function storeShellReads(member: Membership) {
   return { stores, waiting, starter, trialPaused };
 }
 
-/** The store Home (`[store]/page.tsx`). */
+/**
+ * The store Home (`[store]/page.tsx`): the setup progress and the store's figures. The demo content card reads its own after the page is
+ * shown, in the page's Suspense (bloat review step 2.32). The setup progress stays here: the redesigned Home draws its title, Next up and
+ * the first week's path from it.
+ */
 export async function storeHomeReads(member: Membership) {
   const { account, store } = member;
-  const owner = memberCan(member, "owner");
-  const [progress, center, demo] = await Promise.all([
-    getSetupProgress(store),
-    controlCenter(account, store.slug),
-    // What the store template brought and the owner has not changed (`docs/theme-showcase-phase-1.md` step 4b): theirs to remove.
-    owner ? demoContent(store.id, store.localization.locales[0] ?? "en") : null,
-  ]);
-  return { progress, center, demo };
+  const [progress, center] = await Promise.all([getSetupProgress(store), controlCenter(account, store.slug)]);
+  return { progress, center };
 }
 
 /** The orders list (`[store]/orders/page.tsx`, its body): the address resolved, then the page, the saved views and the tag suggestions, then each order's lines. */

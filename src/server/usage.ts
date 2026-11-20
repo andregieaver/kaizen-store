@@ -11,7 +11,7 @@ import { usageLine, type UsageLine } from "@/lib/usage-view";
 
 import { ownedStores } from "./ai-usage";
 import { storeDomainCurrency } from "./domain-prices";
-import { storeLimits, usageNow } from "./limits";
+import { onForgetLimits, storeLimits, usageNow } from "./limits";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -161,8 +161,31 @@ export async function usageDays(storeId: string, days = 30, now: Date = new Date
   return rows.map((r) => ({ day: String(r.day), values: Object.fromEntries(Object.entries((r.values ?? {}) as Record<string, unknown>).map(([k, v]) => [k, Number(v)])) }));
 }
 
+/**
+ * The count below is kept a minute per store and server instance, as `storeLimits()` keeps the limits (`LIMITS_FRESH_MS` in
+ * `src/server/limits.ts`): the store Home and the control center ask it on every render (bloat review step 2.32). `forgetLimits()` forgets
+ * it with the limits.
+ */
+const REACHED_FRESH_MS = 60_000;
+const reachedMemo = new Map<string, { at: number; value: number }>();
+
+/** Forget one store's kept count, or every store's. */
+export function forgetLimitsReached(storeId?: string): void {
+  if (storeId) reachedMemo.delete(storeId);
+  else reachedMemo.clear();
+}
+onForgetLimits(forgetLimitsReached);
+
 /** How many hard limits a store has used up, for the control center; 0 at once when its plan sets none. */
 export async function limitsReachedCount(storeId: string, now: Date = new Date()): Promise<number> {
+  const kept = reachedMemo.get(storeId);
+  if (kept && now.getTime() - kept.at < REACHED_FRESH_MS) return kept.value;
+  const value = await readLimitsReached(storeId, now);
+  reachedMemo.set(storeId, { at: now.getTime(), value });
+  return value;
+}
+
+async function readLimitsReached(storeId: string, now: Date): Promise<number> {
   const { limits } = await storeLimits(storeId);
   if (!OWNER_LINES.some(({ key }) => LIMITS[key].enforce === "hard" && limits[key].value !== null)) return 0;
   const lines = await storeUsageLines(storeId, now);

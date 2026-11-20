@@ -27,6 +27,7 @@ import { demoTotal, demoWords } from "@/lib/demo-content";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { storeHomeReads } from "@/server/admin-screens";
+import { demoContent } from "@/server/demo-content";
 import { latestDreamRun } from "@/server/dream-factory";
 import { platformModes } from "@/server/stripe";
 
@@ -44,6 +45,16 @@ import { HOME_DRAFTS_WORDS } from "@/lib/admin-words/home-drafts";
 import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 
 type Props = PageProps<"/admin/[store]">;
+
+/** The demo content card (bloat review step 2.32): its read runs inside the page's Suspense, after the figures are shown. */
+async function DemoSection({ storeId, storeSlug, locale, words }: { storeId: string; storeSlug: string; locale: string; words: (typeof HOME_WORDS)["en"]["demo"] }) {
+  const demo = await demoContent(storeId, locale);
+  const demoSummary =
+    demo && demoTotal(demo.counts) > 0
+      ? { words: demoWords(demo.counts, words), items: demo.items.map(({ noun, title }) => ({ noun, title })), changed: demo.changed.map(({ noun, title }) => ({ noun, title })) }
+      : null;
+  return <DemoContentCard summary={demoSummary} action={removeDemoContentAction.bind(null, storeSlug)} words={words} />;
+}
 
 export default async function AdminOverview({ params, searchParams }: Props) {
   const current = await requireMemberAny((await params).store);
@@ -64,11 +75,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
   const words = HOME_WORDS[lang];
   const { store: h } = words;
   const statuses = COMMON_WORDS[lang].orderStatus;
-  const { progress, center, demo } = await storeHomeReads(current);
-  const demoSummary =
-    demo && demoTotal(demo.counts) > 0
-      ? { words: demoWords(demo.counts, words.demo), items: demo.items.map(({ noun, title }) => ({ noun, title })), changed: demo.changed.map(({ noun, title }) => ({ noun, title })) }
-      : null;
+  const { progress, center } = await storeHomeReads(current);
   const figures = center.stores[0];
   const attention = figures ? attentionFor([figures], undefined, words.attention) : [];
   const base = `/admin/${store.slug}`;
@@ -389,7 +396,12 @@ export default async function AdminOverview({ params, searchParams }: Props) {
     <AskCard title={t.ask} placeholder={t.askPlaceholder} asks={t.asks} />
   );
 
-  const demoCard = owner && <DemoContentCard summary={demoSummary} action={removeDemoContentAction.bind(null, store.slug)} words={words.demo} />;
+  // What the store template brought and the owner has not changed (`docs/theme-showcase-phase-1.md` step 4b): read after the page is shown.
+  const demoCard = owner && (
+    <Suspense fallback={null}>
+      <DemoSection storeId={store.id} storeSlug={store.slug} locale={store.localization.locales[0] ?? "en"} words={words.demo} />
+    </Suspense>
+  );
 
   const firstWeekPath = firstWeek && nextStep && (
     <section aria-labelledby="path-step" className={`${CARD_CLASS} flex flex-col gap-7 p-6 sm:p-7`}>

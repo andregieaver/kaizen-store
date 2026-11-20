@@ -33,10 +33,17 @@ type Row = Record<string, unknown>;
 const LIMITS_FRESH_MS = 60_000;
 const memo = new Map<string, { at: number; value: StoreLimits }>();
 
+/** What else is kept from the limits and forgotten with them (`usage.ts` registers its count of limits reached; it imports this file). */
+const alsoForget: ((storeId?: string) => void)[] = [];
+export const onForgetLimits = (fn: (storeId?: string) => void): void => {
+  alsoForget.push(fn);
+};
+
 /** After a change to a store's plan or overrides, or to the plans' limits (no store): read again on the next ask. */
 export function forgetLimits(storeId?: string): void {
   if (storeId) memo.delete(storeId);
   else memo.clear();
+  for (const fn of alsoForget) fn(storeId);
 }
 
 const onPlan = sql.raw(ON_PLAN_STATUSES.map((s) => `'${s}'`).join(", "));
