@@ -8,7 +8,7 @@ import { parsePageContent, type PageContent } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
 import { CATALOG_TAG, catalogTag } from "./catalog";
-import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
+import { siteTests, siteVersionContent, type SiteTest } from "./experiments-read";
 import { withPageAlts } from "./media-alts";
 import { pagesTag } from "@/lib/cache-tags";
 import { refreshStoreById } from "./stores";

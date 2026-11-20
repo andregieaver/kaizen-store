@@ -37,6 +37,7 @@ const admin = await import("./experiment-admin");
 const results = await import("./experiment-results");
 const jobs = await import("./experiment-jobs");
 const engine = await import("./experiments");
+const reads = await import("./experiments-read");
 const emails = await import("./experiment-emails");
 const stores = await import("./stores");
 const pages = await import("./pages");
@@ -171,9 +172,9 @@ describe("making a test (D148)", () => {
     // The copy is a page made for the test: no address on the site, and not in the page list.
     const copy = test.variants.find((v) => v.key === "b")!;
     const [row] = await db().execute<Row>(sql`select type, slug, published_at is not null as live from commerce.pages where id = ${copy.pageId}::uuid`);
-    expect(row).toMatchObject({ type: "variant", slug: engine.variantSlug(made.id, "b"), live: true });
-    expect(await pages.findPublishedPage(storeId, engine.variantSlug(made.id, "b"))).toBeNull();
-    expect((await pages.listPublishedPages(storeId)).map((p) => p.slug)).not.toContain(engine.variantSlug(made.id, "b"));
+    expect(row).toMatchObject({ type: "variant", slug: reads.variantSlug(made.id, "b"), live: true });
+    expect(await pages.findPublishedPage(storeId, reads.variantSlug(made.id, "b"))).toBeNull();
+    expect((await pages.listPublishedPages(storeId)).map((p) => p.slug)).not.toContain(reads.variantSlug(made.id, "b"));
     expect(copy.changed).toBe(false);
     expect((await admin.deleteDraft(account, storeId, made.id)).ok).toBe(true);
     const gone = await db().execute<Row>(sql`select 1 from commerce.pages where id = ${copy.pageId}::uuid`);
@@ -863,7 +864,7 @@ describe("tests of the header, the footer and the product layout (D148, phase 3)
 
     // The running test is read by the pages that draw the header, and its version stands in for the header for a visitor in it.
     const token = abSite.testToken(made.id);
-    const [site] = await engine.siteTests(storeId);
+    const [site] = await reads.siteTests(storeId);
     expect(site).toMatchObject({ id: made.id, token, kind: "header", targetPageId: header });
     const headingOf = (layout: { content: PageContent } | null) => JSON.stringify(layout?.content.rows ?? []);
     const original = await layoutsMod.siteLayoutForVisitor(storeId, "header", {});
@@ -886,7 +887,7 @@ describe("tests of the header, the footer and the product layout (D148, phase 3)
 
     // After it stops the header is the header again, and a winner becomes it, keeping its place.
     expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
-    expect(await engine.siteTests(storeId)).toEqual([]);
+    expect(await reads.siteTests(storeId)).toEqual([]);
     expect(headingOf((await layoutsMod.siteLayoutForVisitor(storeId, "header", { [token]: "b" })).layout)).toContain("Header A");
     expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
     expect(headingOf(await layoutsMod.siteLayoutFor(storeId, "header"))).toContain("Header B");
@@ -1038,10 +1039,10 @@ describe("tests of a modal and of a working page (D148, phase 9)", () => {
     const [running] = (await engine.runningExperiments(storeId)).filter((t) => t.id === made.id);
     expect(running).toMatchObject({ kind: "role", role: "cart", targetPageId: aboutId });
     const token = abSite.testToken(made.id);
-    const [site] = await engine.siteTests(storeId);
+    const [site] = await reads.siteTests(storeId);
     expect(site).toMatchObject({ id: made.id, token, kind: "role", role: "cart", targetPageId: aboutId });
     // The page's own address is not where it is served: no marker there.
-    expect(await engine.experimentOfPage(storeId, aboutId)).toBeNull();
+    expect(await reads.experimentOfPage(storeId, aboutId)).toBeNull();
 
     // The cart's route draws the visitor's version of the page chosen for it.
     const rolePages = await import("./role-pages");
@@ -1099,9 +1100,9 @@ describe("tests of the front page and the All products page (D148, phase 10)", (
     const [running] = (await engine.runningExperiments(storeId)).filter((t) => t.id === made.id);
     expect(running).toMatchObject({ kind: "role", role: "front", targetPageId: frontId });
     const token = abSite.testToken(made.id);
-    expect(await engine.siteTests(storeId)).toEqual([expect.objectContaining({ id: made.id, token, kind: "role", role: "front", targetPageId: frontId })]);
+    expect(await reads.siteTests(storeId)).toEqual([expect.objectContaining({ id: made.id, token, kind: "role", role: "front", targetPageId: frontId })]);
     // The page's own address redirects to the front page, so it draws no marker there.
-    expect(await engine.experimentOfPage(storeId, frontId)).toBeNull();
+    expect(await reads.experimentOfPage(storeId, frontId)).toBeNull();
 
     const rolePages = await import("./role-pages");
     const chosen = (await pages.listPublishedPages(storeId)).find((p) => p.id === frontId)!;
@@ -1366,8 +1367,8 @@ describe("phase 20: going on to a page, forms elsewhere, new or returning visito
     await changeVariant(made.id, "b");
     expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
     engine.forgetRunning(storeId);
-    expect(await engine.pageGoalTests(storeId, front)).toEqual([made.id]);
-    expect(await engine.pageGoalTests(storeId, aboutId)).toEqual([]);
+    expect(await reads.pageGoalTests(storeId, front)).toEqual([made.id]);
+    expect(await reads.pageGoalTests(storeId, aboutId)).toEqual([]);
 
     const visitor = await visitorFor(made.id, "b");
     browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
@@ -1473,29 +1474,29 @@ describe("the questions about running tests are one read (bloat review step 2.18
     const pageVersionB = (await admin.getExperiment(storeId, pageTest))!.variants.find((v) => v.key === "b")!.pageId!;
     expect(pageVersionB).toBeTruthy();
 
-    expect(await engine.experimentOfPage(storeId, aboutId)).toEqual({
+    expect(await reads.experimentOfPage(storeId, aboutId)).toEqual({
       id: pageTest,
       goal: "orders",
       goalBlock: null,
       variants: [
         { key: "a", slug: null },
-        { key: "b", slug: engine.variantSlug(pageTest, "b") },
+        { key: "b", slug: reads.variantSlug(pageTest, "b") },
       ],
     });
-    expect(await engine.storeHasExperiments(storeId)).toBe(true);
-    expect(await engine.siteTests(storeId)).toEqual([
+    expect(await reads.storeHasExperiments(storeId)).toBe(true);
+    expect(await reads.siteTests(storeId)).toEqual([
       { id: headerTest, token: abSite.testToken(headerTest), kind: "header", role: null, targetPageId: header, goalBlock: null, versions: [{ key: "b", pageId: versionB }] },
     ]);
-    expect(await engine.runningExperimentIds(storeId)).toEqual([pageTest, headerTest].sort());
-    expect(await engine.pageGoalTests(storeId, aboutId)).toEqual([]);
+    expect(await reads.runningExperimentIds(storeId)).toEqual([pageTest, headerTest].sort());
+    expect(await reads.pageGoalTests(storeId, aboutId)).toEqual([]);
 
     // next/cache is a stand-in here, so each question reads: each sends the one statement of runningTests(), and nothing else.
     const questions: (() => Promise<unknown>)[] = [
-      () => engine.experimentOfPage(storeId, aboutId),
-      () => engine.storeHasExperiments(storeId),
-      () => engine.siteTests(storeId),
-      () => engine.runningExperimentIds(storeId),
-      () => engine.pageGoalTests(storeId, aboutId),
+      () => reads.experimentOfPage(storeId, aboutId),
+      () => reads.storeHasExperiments(storeId),
+      () => reads.siteTests(storeId),
+      () => reads.runningExperimentIds(storeId),
+      () => reads.pageGoalTests(storeId, aboutId),
     ];
     for (const ask of questions) {
       const { count, statements } = await countStatements(ask);
@@ -1504,8 +1505,8 @@ describe("the questions about running tests are one read (bloat review step 2.18
     }
 
     await endAll();
-    expect(await engine.storeHasExperiments(storeId)).toBe(false);
-    expect(await engine.experimentOfPage(storeId, aboutId)).toBeNull();
+    expect(await reads.storeHasExperiments(storeId)).toBe(false);
+    expect(await reads.experimentOfPage(storeId, aboutId)).toBeNull();
     await db().execute(sql`update commerce.stores set header_id = null where id = ${storeId}::uuid`);
   }, 30_000);
 });

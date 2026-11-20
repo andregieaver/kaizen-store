@@ -218,13 +218,13 @@
       "DOCS_GUIDE_TAG, AI_TAG"
     ]
   },
-  "src/server/experiments.ts#runningTests": {
+  "src/server/experiments-read.ts#runningTests": {
     "life": "\"hours\"",
     "tags": [
       "experimentsTag(storeId)"
     ]
   },
-  "src/server/experiments.ts#siteVersionContent": {
+  "src/server/experiments-read.ts#siteVersionContent": {
     "life": "\"hours\"",
     "tags": [
       "experimentsTag(storeId), `pages:${storeId}`"

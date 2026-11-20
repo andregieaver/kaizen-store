@@ -7,7 +7,7 @@ import { db, readDb } from "@/db/client";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
-import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
+import { siteTests, siteVersionContent, type SiteTest } from "./experiments-read";
 import { withPageAlts } from "./media-alts";
 import { pagesTag } from "@/lib/cache-tags";
 import { refreshStoreById } from "./stores";

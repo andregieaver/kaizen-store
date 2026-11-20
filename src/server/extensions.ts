@@ -25,7 +25,7 @@ import { audit, type Account } from "./auth";
 import { planCurrencies } from "./billing";
 import { EXTENSIONS_TAG } from "./public-extensions";
 import { refreshTag } from "./refresh";
-import { experimentsTag } from "./experiments";
+import { experimentsTag } from "@/lib/cache-tags";
 import { storeTag } from "./stores";
 import type { SaveResult } from "./settings";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";

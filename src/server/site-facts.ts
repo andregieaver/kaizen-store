@@ -7,11 +7,10 @@ import { z } from "zod";
 import { readDb } from "@/db/client";
 import { cookieNoteInput, parseScannedItems, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 import { REFERRAL_DEFAULTS } from "@/lib/referrals";
-import { cookiesTag, pagesTag } from "@/lib/cache-tags";
+import { cookiesTag, pagesTag, experimentsTag } from "@/lib/cache-tags";
 
 import { affiliateCapture, affiliateTag } from "./affiliates";
 import { chatTag } from "./chat-agent";
-import { experimentsTag } from "./experiments";
 import { owned } from "./owned";
 import { rememberedModalExists } from "./page-modals";
 import { offeredLangs, PLATFORM_NAVIGATION_TAG } from "./platform-navigation";

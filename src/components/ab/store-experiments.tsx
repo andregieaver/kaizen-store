@@ -1,4 +1,4 @@
-import { runningExperimentIds } from "@/server/experiments";
+import { runningExperimentIds } from "@/server/experiments-read";
 
 import { AbAssign } from "../lazy/blocks";
 

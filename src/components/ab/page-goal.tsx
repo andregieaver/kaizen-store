@@ -1,4 +1,4 @@
-import { pageGoalTests } from "@/server/experiments";
+import { pageGoalTests } from "@/server/experiments-read";
 
 import { AbPageGoal } from "../lazy/blocks";
 

@@ -1,6 +1,6 @@
 // What a server entry reaches by static value imports (bloat review step 1.8), shared by `scripts/route-load.mjs` (which writes
 // src/server/route-load.baseline.json) and `src/server/route-load.graph.test.ts` (which holds the code to it). Built on import-walk.mjs.
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { largestCycle, packagesReached, reach, sourceFiles } from "./import-walk.mjs";
@@ -126,6 +126,35 @@ export const FORBIDDEN = {
   stores: STORE_READ_LIST,
 };
 
+/** A line that is exactly the directive "use cache" (or one with a suffix such as ": remote"): the file defines cached reads. */
+export const USE_CACHE_LINE = /^\s*["']use cache(?:: [a-z]+)?["'];?\s*$/m;
+/** A line that is exactly the directive "use server": every export of the file is a server action. */
+export const USE_SERVER_LINE = /^\s*["']use server["'];?\s*$/m;
+
+/**
+ * The reader files (bloat review step 2.24): `src/server/*-read.ts` and `src/server/page-reads.ts`, a feature's cached reads apart from its
+ * writers. Each may reach no file with "use server" and none of READER_FORBIDDEN.
+ */
+export function readerFiles(root) {
+  return readdirSync(path.join(root, "src", "server"))
+    .filter((name) => name.endsWith("-read.ts") || name === "page-reads.ts")
+    .map((name) => `src/server/${name}`)
+    .filter((file) => !(file in READER_NAME_ONLY))
+    .sort();
+}
+export const READER_FORBIDDEN = ["src/server/auth.ts", "src/server/audit.ts", "src/server/pages.ts"];
+/** Files named *-read.ts before step 2.24 that hold no cached read and are not reader files in its sense, each with its reason. Only shrinks. */
+export const READER_NAME_ONLY = {
+  "src/server/page-heat-read.ts": "the admin's heatmap reads (D656), with no cached read; its totals reach analytics-settings.ts, which reaches auth",
+  "src/server/recordings-read.ts": "the admin's recording reads (D656), with no cached read; it audits a recording watched (auth's audit())",
+};
+
+/** The files with a "use cache" line that the admin's store layout reaches (held in the baseline as adminStoreLayoutCachedFiles). */
+export function adminStoreLayoutCachedFiles(root, memo) {
+  const seen = reach(path.join(root, "src"), path.join(root, ENTRIES["admin-store-layout"]), { ...WALK, ...(memo ? { memo } : {}) });
+  return [...seen.keys()].filter((file) => USE_CACHE_LINE.test(readFileSync(file, "utf8"))).map((file) => posix(root, file)).sort();
+}
+
 /** A route.ts whose function loads more files than this is named, with its reason, in the baseline. */
 export const HEAVY = 1500;
 
@@ -153,7 +182,8 @@ function reachedItems(root, seen, packages, list) {
 
 /**
  * The counts held: `largestCycle` (the size among the source files of src/server), `entries` (files reached per entry), `exceptions`
- * (the forbidden items each entry reaches today) and `handlers` (files reached by every route.ts over HEAVY).
+ * (the forbidden items each entry reaches today), `handlers` (files reached by every route.ts over HEAVY) and `adminStoreLayoutCachedFiles`
+ * (the files with a "use cache" line the admin's store layout reaches, bloat review step 2.24).
  */
 export function routeLoadCounts(root) {
   const src = path.join(root, "src");
@@ -172,7 +202,7 @@ export function routeLoadCounts(root) {
     const size = reach(src, file, { ...WALK, memo }).size;
     if (size > HEAVY) handlers[posix(root, file)] = size;
   }
-  return { largestCycle: cycle.size, entries, exceptions, handlers };
+  return { largestCycle: cycle.size, entries, exceptions, handlers, adminStoreLayoutCachedFiles: adminStoreLayoutCachedFiles(root, memo).length };
 }
 
 /** The chain of imports from the walk's entry to `file`, as repo-relative paths joined by arrows. */

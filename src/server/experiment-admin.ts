@@ -37,9 +37,10 @@ import { houseStoreId } from "./house-customers";
 import { limitFor } from "./limits";
 import { owned } from "./owned";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
+import { forgetRunning } from "./experiments";
+import { variantSlug } from "./experiments-read";
+import { experimentsTag, pagesTag } from "@/lib/cache-tags";
 import { ownerLanguages, savePage } from "./pages";
-import { pagesTag } from "@/lib/cache-tags";
 
 type Row = Record<string, unknown>;
 

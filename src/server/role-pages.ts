@@ -3,7 +3,7 @@ import "server-only";
 import { isTestedPlace, type TestedPlace } from "@/lib/ab-site";
 import type { PageRole } from "@/lib/page-roles";
 
-import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
+import { siteTests, siteVersionContent, type SiteTest } from "./experiments-read";
 import { pageForRole, type PublishedPage } from "./page-reads";
 
 /**

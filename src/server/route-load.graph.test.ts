@@ -4,7 +4,20 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { importsOf, largestCycle, packageOf, reach } from "../../scripts/lib/import-walk.mjs";
-import { BEACONS, ENTRIES, FORBIDDEN, HEAVY, PROXY_FILES_MAX, chainTo, routeLoadCounts, walkOf } from "../../scripts/lib/route-load.mjs";
+import {
+  BEACONS,
+  ENTRIES,
+  FORBIDDEN,
+  HEAVY,
+  PROXY_FILES_MAX,
+  READER_FORBIDDEN,
+  USE_SERVER_LINE,
+  adminStoreLayoutCachedFiles,
+  chainTo,
+  readerFiles,
+  routeLoadCounts,
+  walkOf,
+} from "../../scripts/lib/route-load.mjs";
 import baseline from "./route-load.baseline.json";
 
 /**
@@ -21,12 +34,14 @@ const now = routeLoadCounts(root) as {
   entries: Record<string, number>;
   exceptions: Record<string, string[]>;
   handlers: Record<string, number>;
+  adminStoreLayoutCachedFiles: number;
 };
 const recorded = baseline as {
   largestCycle: number;
   entries: Record<string, number>;
   exceptions: Record<string, string[]>;
   heavyHandlers: Record<string, { files: number; reason: string }>;
+  adminStoreLayoutCachedFiles: number;
 };
 const names = Object.keys(ENTRIES as Record<string, string>);
 /** Everyday work adds a file or two to a large entry; a module that drags in a tree adds dozens. Room: max(5 files, 3 %). */
@@ -116,6 +131,29 @@ describe("what a server entry loads (bloat review 1.8)", () => {
     ];
     if (stale.length > 0) console.info(`route-load: fell, lower it with node scripts/route-load.mjs --write: ${stale.join("; ")}`);
     expect(Array.isArray(stale)).toBe(true);
+  });
+
+  it("a reader file reaches no action file, and not auth, audit or pages (bloat review step 2.24)", () => {
+    const posixRel = (file: string) => path.relative(root, file).split(path.sep).join("/");
+    const found = (readerFiles(root) as string[]).flatMap((file) => {
+      const seen = reach(path.join(root, "src"), path.join(root, file), { dynamic: false, clientLeaf: true }) as Map<string, string>;
+      return [...seen.keys()]
+        .filter((reached) => (READER_FORBIDDEN as string[]).includes(posixRel(reached)) || (USE_SERVER_LINE as RegExp).test(readFileSync(reached, "utf8")))
+        .map((reached) => `${file} reaches ${posixRel(reached)}: ${chainTo(root, seen, reached)}`);
+    });
+    expect(
+      found,
+      "a reader file (src/server/*-read.ts, page-reads.ts) holds a feature's cached reads apart from its writers: it imports the database client, typed-rows, the log, the tag leaf, pure src/lib code and other reader files",
+    ).toEqual([]);
+  });
+
+  it("the admin's store layout reaches no more files with 'use cache' than its stored number (bloat review step 2.24)", () => {
+    const files = adminStoreLayoutCachedFiles(root) as string[];
+    console.info(`route-load: the admin's store layout reaches ${files.length} files with "use cache" (baseline ${recorded.adminStoreLayoutCachedFiles})`);
+    expect(
+      files.length,
+      `every cached read the store layout reaches is listed by each of the admin's store routes in the server-reference manifest: import the reader file (x-read.ts) or the tag leaf, not the feature. Reached: ${files.join(", ")}`,
+    ).toBeLessThanOrEqual(recorded.adminStoreLayoutCachedFiles);
   });
 
   it("the walker would notice", () => {

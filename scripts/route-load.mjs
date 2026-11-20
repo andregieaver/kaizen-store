@@ -20,6 +20,7 @@ const now = routeLoadCounts(root);
 console.log("| Entry | Files reached | Forbidden reached today |\n|---|---|---|");
 for (const [name, files] of Object.entries(now.entries)) console.log(`| ${name} | ${files.toLocaleString("en")} | ${now.exceptions[name].join(", ") || "none"} |`);
 console.log(`\nLargest import cycle in src/server: ${now.largestCycle} files. Route handlers over 1,500 files: ${Object.keys(now.handlers).length}.`);
+console.log(`Files with "use cache" the admin's store layout reaches: ${now.adminStoreLayoutCachedFiles}.`);
 
 const write = process.argv.includes("--write") || process.argv.includes("--first");
 if (!write) process.exit(0);
@@ -39,6 +40,8 @@ if (before && !process.argv.includes("--first")) {
     for (const item of now.exceptions[name]) if (!(before.exceptions[name] ?? []).includes(item)) raised.push(`${name} reaches ${item}`);
   }
   for (const [file, files] of Object.entries(now.handlers)) if (!before.heavyHandlers[file]) raised.push(`${file}: ${files} files, a new handler over 1,500`);
+  if (before.adminStoreLayoutCachedFiles !== undefined && now.adminStoreLayoutCachedFiles > before.adminStoreLayoutCachedFiles)
+    raised.push(`admin-store-layout: ${before.adminStoreLayoutCachedFiles} → ${now.adminStoreLayoutCachedFiles} files with "use cache"`);
   if (raised.length > 0) {
     console.error(`The route load only falls. Not written:\n  ${raised.join("\n  ")}\nImport the helper from the file that defines it, or load the module with import() where it is used; or accept it on purpose with node scripts/route-load.mjs --first.`);
     process.exit(1);
@@ -49,7 +52,10 @@ const heavyHandlers = Object.fromEntries(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([file, files]) => [file, { files, reason: before?.heavyHandlers?.[file]?.reason ?? "TODO" }]),
 );
-writeFileSync(out, `${JSON.stringify({ largestCycle: now.largestCycle, entries: now.entries, exceptions: now.exceptions, heavyHandlers }, null, 2)}\n`);
+writeFileSync(
+  out,
+  `${JSON.stringify({ largestCycle: now.largestCycle, entries: now.entries, exceptions: now.exceptions, heavyHandlers, adminStoreLayoutCachedFiles: now.adminStoreLayoutCachedFiles }, null, 2)}\n`,
+);
 console.log(`Wrote ${path.relative(root, out)}.`);
 const todo = Object.entries(heavyHandlers).filter(([, h]) => h.reason === "TODO");
 if (todo.length > 0) {

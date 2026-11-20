@@ -18,7 +18,7 @@ import { localizePage } from "@/lib/page-translation";
 import { houseLanguageAlternates } from "@/lib/house-alternates";
 import { adminOrigin, marketHome, marketMetaPath, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
-import { experimentOfPage } from "@/server/experiments";
+import { experimentOfPage } from "@/server/experiments-read";
 import { findEntryPage } from "@/server/content-site";
 import { findPublishedPage, type PublishedPage } from "@/server/page-reads";
 import { missOrRedirect } from "@/server/redirect-resolve";

@@ -10,7 +10,7 @@ import { EXTENSION_IDS, isExtensionId, LAUNCH_TRIAL_DAYS, type ExtensionId } fro
 import { movePreviews, moveAccount } from "./account-move";
 import { audit, type Account } from "./auth";
 import { forgetLimits } from "./limits";
-import { experimentsTag } from "./experiments";
+import { experimentsTag } from "@/lib/cache-tags";
 import { refreshTag } from "./refresh";
 import type { SaveResult } from "./settings";
 import { storeTag } from "./stores";
