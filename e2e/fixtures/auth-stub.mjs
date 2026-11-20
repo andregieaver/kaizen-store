@@ -18,7 +18,9 @@ import { totpMatches } from "./totp.mjs";
 // Kept in step with e2e/signed-in/accounts.ts.
 export const E2E_PASSWORD = "e2e-Password-1";
 const ADMINS = ["e2e-admin@example.com", "e2e-admin-nb@example.com"];
-const USERS = ["e2e-owner@example.com", "e2e-reader@example.com", "e2e-eier@example.com", ...ADMINS];
+// The mover (e2e/signed-in/account-details.spec.ts) is a throwaway member who changes their own name and asks for a new email, so no
+// other spec's people change.
+const USERS = ["e2e-owner@example.com", "e2e-reader@example.com", "e2e-eier@example.com", "e2e-mover@example.com", ...ADMINS];
 
 const SECRET = "kaizen-e2e-auth-stub";
 const port = Number(process.env.AUTH_STUB_PORT ?? 3912);

@@ -6,6 +6,7 @@ import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
 import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import { normaliseEmail } from "./email-address";
+import { EMAIL_CHANGE_HOURS, NAME_MAX } from "./email-change-limits";
 import type { EmailContent } from "./email-layout";
 import type { RandomBytes } from "./recovery-codes";
 
@@ -15,11 +16,7 @@ import type { RandomBytes } from "./recovery-codes";
  * who may change what, and when (`src/server/email-change.ts`). Never import this from a "use client" file: it hashes with `node:crypto`.
  */
 
-/** The longest name kept: as long as the platform team's form takes. */
-export const NAME_MAX = 120;
-
-/** How long a link works. */
-export const EMAIL_CHANGE_HOURS = 24;
+export { EMAIL_CHANGE_HOURS, NAME_MAX };
 
 export type NameProblem = "empty" | "long";
 

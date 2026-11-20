@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { dateIn, PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { normaliseEmail } from "@/lib/email-address";
 import {
@@ -36,6 +37,9 @@ import { adminAuth, type AdminClient } from "./supabase-admin";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/** The two numbers the forms print, for Your account's actions, which load this module only when they run. */
+export { EMAIL_CHANGE_HOURS, NAME_MAX } from "@/lib/email-change-limits";
 
 /**
  * A person's own name and email (D836): the name changed on Your account (or corrected by a platform admin), and the email changed only
@@ -73,7 +77,8 @@ export type EmailChangeDeps = {
   now?: Date;
 };
 
-const stamp = (date: Date) => `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+/** When it happened, on the platform's clock in the reader's language (`dateIn()`, D796), as the emails say it. */
+const when = (at: Date | string, lang: AdminLang) => dateIn(PLATFORM_TIME_ZONE, at, "dayTime", lang);
 
 // ---------------------------------------------------------------------------
 // The name
@@ -248,7 +253,7 @@ async function startChange(accountId: string, raw: unknown, requestedBy: string,
     storeId: null,
     kind: "security.email_change_confirm",
     to: checked.email,
-    email: renderEmail(emailChangeEmail("confirm", { person: greeting, email: checked.email, when: stamp(new Date(row.created_at)), byAdmin, url: link }, STAFF_EMAILS_WORDS[lang], lang)),
+    email: renderEmail(emailChangeEmail("confirm", { person: greeting, email: checked.email, when: when(row.created_at, lang), byAdmin, url: link }, STAFF_EMAILS_WORDS[lang], lang)),
     fromName: "Kaizena Flow",
     idempotencyKey: `security.email_change_confirm:${row.id}:${row.created_at}`,
     // The link is the change's whole key: the log's copy never holds it.
@@ -284,7 +289,7 @@ async function notify(accountId: string, kind: Exclude<EmailChangeEmailKind, "co
       kind: `security.email_change_${kind}`,
       to,
       email: renderEmail(
-        emailChangeEmail(kind, { person: person.name || to, email: facts.email, when: stamp(facts.at), byAdmin: facts.byAdmin, url: `${siteUrl()}/admin/sign-in` }, STAFF_EMAILS_WORDS[lang], lang),
+        emailChangeEmail(kind, { person: person.name || to, email: facts.email, when: when(facts.at, lang), byAdmin: facts.byAdmin, url: `${siteUrl()}/admin/sign-in` }, STAFF_EMAILS_WORDS[lang], lang),
       ),
       fromName: "Kaizena Flow",
       idempotencyKey: `security.email_change_${kind}:${accountId}:${facts.at.toISOString()}`,

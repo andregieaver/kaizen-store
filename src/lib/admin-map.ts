@@ -1201,8 +1201,12 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["help", "contact kaizen", "kaizen support", "bug", "problem", "ask kaizen"],
     tasks: ["Ask Kaizena Flow for help", "Read Kaizena Flow's answer to a request"],
   }),
-  account("account", "/account", "Your account", "Your name, picture, password, light or dark, and Kaizen Life.", {
-    keywords: ["profile", "password", "avatar", "dark mode"],
+  account("account", "/account", "Your account", "Your name, email, picture, password, light or dark, and Kaizen Life.", {
+    keywords: ["profile", "password", "avatar", "dark mode", "name", "change name"],
+  }),
+  account("account.email", "/account/email", "Change your email", "Moves your account to a new email address: a link goes to the new address and your email changes when you open it; your current address is told. Needs a sign-in from the last ten minutes. Shows a change waiting for its link, to send again or cancel.", {
+    keywords: ["email", "change email", "new email", "email address", "e-post", "endre e-post"],
+    tasks: ["Change your email address", "Send the link again", "Cancel a change of email"],
   }),
 
   // Platform ---------------------------------------------------------------------------------

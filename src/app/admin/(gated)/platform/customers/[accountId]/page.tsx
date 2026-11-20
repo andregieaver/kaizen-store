@@ -22,7 +22,7 @@ import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { NAME_MAX } from "@/lib/email-change";
+import { NAME_MAX } from "@/lib/email-change-limits";
 
 import { cancelEmailChangeForAction, correctNameAction, resetTwoStepAction, sendEmailChangeAction } from "./actions";
 

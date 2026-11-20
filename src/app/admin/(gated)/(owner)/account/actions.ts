@@ -30,8 +30,6 @@ import { GRACE_DAYS } from "@/lib/account-billing";
 import { fillWords } from "@/lib/admin-fill";
 import { isExtensionId } from "@/lib/extensions";
 import { NO_COUNTRY } from "@/server/billing";
-import { EMAIL_CHANGE_HOURS, NAME_MAX } from "@/lib/email-change";
-import { cancelEmailChange, changeOwnName, confirmEmailChange, requestEmailChange, resendEmailChange } from "@/server/email-change";
 
 async function origin(): Promise<string> {
   const header = (await headers()).get("origin");
@@ -265,15 +263,21 @@ export async function setExtensionAction(extension: string, on: boolean): Promis
 
 const EMAIL_PAGE = "/admin/account/email";
 
+/**
+ * The name and email's server code, loaded when one of these actions runs: every store's admin imports this file for its Basic and
+ * Advanced switch (`adminViewAction`), and would otherwise carry it on every route (`route-load.graph.test.ts`).
+ */
+const emailChange = () => import("@/server/email-change");
+
+/** A refusal of these forms, under the field it is about where it names one. */
+const refusedHere = (message: string, field?: "name" | "email"): FormState => ({ status: "error", messages: [message], ...(field ? { fields: { [field]: message } } : {}) });
+
 /** The person's own name, shown wherever their account is named. */
 export async function changeNameAction(_state: FormState, form: FormData): Promise<FormState> {
   const account = await requireAccount();
   const w = adminText(adminLangOf(account.adminLocale), "bookings").account.profile;
-  const result = await changeOwnName(account, form.get("name"));
-  if (!result.ok) {
-    const problem = fillWords(w.problems[result.problem], { n: NAME_MAX });
-    return { status: "error", messages: [problem], fields: { name: problem } };
-  }
+  const result = await (await emailChange()).changeOwnName(account, form.get("name"));
+  if (!result.ok) return refusedHere(fillWords(w.problems[result.problem], { n: (await emailChange()).NAME_MAX }), "name");
   refresh();
   return { status: "ok", messages: [w.nameSaved] };
 }
@@ -282,22 +286,21 @@ export async function changeNameAction(_state: FormState, form: FormData): Promi
 export async function requestEmailChangeAction(_state: FormState, form: FormData): Promise<FormState> {
   const account = await requireAccount();
   const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
-  const result = await requestEmailChange(account, form.get("email"));
+  const result = await (await emailChange()).requestEmailChange(account, form.get("email"));
   if (!result.ok) {
-    const problem = w.problems[result.problem];
-    const field = result.problem === "invalid" || result.problem === "same" || result.problem === "taken";
-    return { status: "error", messages: [problem], ...(field ? { fields: { email: problem } } : {}) };
+    const field = result.problem === "invalid" || result.problem === "same" || result.problem === "taken" ? "email" : undefined;
+    return refusedHere(w.problems[result.problem], field);
   }
   refresh();
-  return { status: "ok", messages: [fillWords(w.sent, { email: result.email, hours: EMAIL_CHANGE_HOURS })] };
+  return { status: "ok", messages: [fillWords(w.sent, { email: result.email, hours: (await emailChange()).EMAIL_CHANGE_HOURS })] };
 }
 
 /** The waiting change's link again: a new one, and the old one stops working. */
 export async function resendEmailChangeAction(): Promise<FormState> {
   const account = await requireAccount();
   const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
-  const result = await resendEmailChange(account);
-  if (!result.ok) return { status: "error", messages: [w.problems[result.problem]] };
+  const result = await (await emailChange()).resendEmailChange(account);
+  if (!result.ok) return refusedHere(w.problems[result.problem]);
   refresh();
   return { status: "ok", messages: [fillWords(w.resent, { email: result.email })] };
 }
@@ -306,7 +309,7 @@ export async function resendEmailChangeAction(): Promise<FormState> {
 export async function cancelEmailChangeAction(): Promise<FormState> {
   const account = await requireAccount();
   const w = adminText(adminLangOf(account.adminLocale), "bookings").account.email;
-  if (!(await cancelEmailChange(account.id))) return { status: "error", messages: [w.problems.none] };
+  if (!(await (await emailChange()).cancelEmailChange(account.id))) return refusedHere(w.problems.none);
   refresh();
   return { status: "ok", messages: [w.cancelled] };
 }
@@ -327,8 +330,8 @@ export async function signInForEmailAction(): Promise<void> {
  */
 export async function confirmEmailChangeAction(form: FormData): Promise<FormState> {
   const token = String(form.get("token") ?? "");
-  const result = await confirmEmailChange(token);
+  const result = await (await emailChange()).confirmEmailChange(token);
   if (result.ok) redirect(`${EMAIL_PAGE}/confirm?token=${encodeURIComponent(token)}&done=1`);
   const w = adminText(result.lang ?? (await requestAdminLang()), "bookings").account.confirmEmail;
-  return { status: "error", messages: [w[result.problem]] };
+  return refusedHere(w[result.problem]);
 }

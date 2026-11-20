@@ -315,6 +315,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   work_time_entries: "business_customers",
   accounts: "platform_service",
   push_subscriptions: "platform_service",
+  account_email_changes: "platform_service",
   status_subscribers: "platform_applicants",
   content_reports: "illegal_content",
   access_requests: "platform_applicants",

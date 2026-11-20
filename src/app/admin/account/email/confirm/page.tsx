@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { SubmitButton } from "@/components/admin/action-form";
-import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
-import { ButtonLink, FocusFrame } from "@/components/admin/ui";
+import { Button, ButtonLink, FocusFrame } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { bookingsEn } from "@/lib/admin-messages/bookings.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
 import { emailChangeLink } from "@/server/email-change";
@@ -38,7 +36,6 @@ async function ConfirmEmail({ searchParams }: Pick<PageProps<"/admin/account/ema
   const link = await emailChangeLink(token);
   const lang = link.state === "unknown" ? await requestAdminLang() : link.lang;
   const w = adminText(lang, "bookings").account.confirmEmail;
-  const texts = adminTexts(lang, ["common"]);
 
   if (link.state === "used") {
     // Done here or before: Your account for someone signed in on this device, the sign-in page for anyone else.
@@ -63,16 +60,17 @@ async function ConfirmEmail({ searchParams }: Pick<PageProps<"/admin/account/ema
     );
   }
 
+  // The kit's server Button: the form marks it pressed while it works (`admin.css` spins it), so no words are handed to the browser.
   return (
-    <AdminTextProvider lang={lang} texts={texts}>
-      <FocusFrame lang={lang} title={w.title} description={<span className="[overflow-wrap:anywhere]">{fillWords(w.description, { email: link.email })}</span>}>
-        <QuietActionForm action={confirmEmailChangeAction} className="flex flex-col gap-3">
-          <input type="hidden" name="token" value={token} />
-          <div>
-            <SubmitButton>{w.button}</SubmitButton>
-          </div>
-        </QuietActionForm>
-      </FocusFrame>
-    </AdminTextProvider>
+    <FocusFrame lang={lang} title={w.title} description={<span className="[overflow-wrap:anywhere]">{fillWords(w.description, { email: link.email })}</span>}>
+      <QuietActionForm action={confirmEmailChangeAction} className="flex flex-col gap-3">
+        <input type="hidden" name="token" value={token} />
+        <div>
+          <Button type="submit" kind="main">
+            {w.button}
+          </Button>
+        </div>
+      </QuietActionForm>
+    </FocusFrame>
   );
 }

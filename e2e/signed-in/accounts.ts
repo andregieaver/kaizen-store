@@ -12,6 +12,11 @@ export const READER = { email: "e2e-reader@example.com", name: "Rune Reader", st
  * in e2e/fixtures/totp.mjs): signed in through the password and then the two-step form, so its browser state holds an `aal2` session.
  */
 export const ADMIN = { email: "e2e-admin@example.com", name: "Pia Platform", state: "e2e/.auth/admin.json" } as const;
+/**
+ * A throwaway member of `E2E_STORE` who changes their own name and asks for a new email (D836, `account-details.spec.ts`), signed in by
+ * that spec itself, so its sign-in is from the last ten minutes and no other spec's person changes.
+ */
+export const MOVER = { email: "e2e-mover@example.com", name: "Mona Mover" } as const;
 /** A member who never signs in or acts: who may see their name is the Team page's to say. */
 export const QUIET = { email: "e2e-quiet@example.com", name: "Quentin Quiet" } as const;
 

@@ -28,7 +28,7 @@ import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen
 import { twoStepStatus } from "@/server/two-step";
 import { buttonClass, ButtonLink, Field, PageHeader, TextInput } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
-import { NAME_MAX } from "@/lib/email-change";
+import { NAME_MAX } from "@/lib/email-change-limits";
 import { pendingEmailChange } from "@/server/email-change";
 
 import {
