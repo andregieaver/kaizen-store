@@ -15,6 +15,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => 
 const EXP = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
 const OTHER = "11111111-1111-4111-8111-111111111111";
 vi.mock("./experiments", () => ({ runningExperiments: async () => [{ id: EXP }] }));
+vi.mock("./experiments-running", async (importOriginal) => ({ ...(await importOriginal<typeof import("./experiments-running")>()), runningExperiments: async () => [{ id: EXP }] }));
 
 const { recordHeat, pruneHeat } = await import("./page-heat");
 const { POST } = await import("@/app/api/signals/heat/route");

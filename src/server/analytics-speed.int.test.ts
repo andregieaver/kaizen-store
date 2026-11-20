@@ -15,9 +15,10 @@ vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typ
 // One running A/B test, so a load's versions can be checked against the visitor's cookie (D148 phase 19).
 const EXP = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
 const OTHER = "8a7b6c5d-4e3f-4a2b-9c1d-0e9f8a7b6c5d";
-vi.mock("./experiments", () => ({ runningExperiments: async () => [{ id: EXP }] }));
+vi.mock("./experiments-running", () => ({ runningExperiments: async () => [{ id: EXP }] }));
 
 const { recordSpeed, speedReport, pruneSpeedSamples } = await import("./analytics-speed");
+const { forgetVisitStore } = await import("./store-facts");
 const { MIN_SPEED_SAMPLES, SPEED_KEEP_DAYS } = await import("@/lib/speed");
 const { POST } = await import("@/app/api/visit/speed/route");
 
@@ -39,7 +40,11 @@ const page = (suffix = "") => `/s/${slug}/${market.toLowerCase()}${suffix}`;
 const load = (path: string, figures: Record<string, unknown> = { lcp: 1800, inp: 90, cls: 20, ttfb: 300 }, screen = "phone") => ({ store: slug, path, screen, figures });
 
 const samples = () => db().execute<Row>(sql`select * from commerce.speed_samples where store_id = ${storeId}::uuid order by created_at, id`);
-const setCounting = (on: boolean) => db().execute(sql`update commerce.stores set visit_counting = ${on} where id = ${storeId}::uuid`);
+// The beacons remember a store's visit facts for FACTS_MS (bloat review step 2.24): a switch made here forgets them at once.
+const setCounting = async (on: boolean) => {
+  await db().execute(sql`update commerce.stores set visit_counting = ${on} where id = ${storeId}::uuid`);
+  forgetVisitStore(slug);
+};
 
 beforeAll(async () => {
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Test', 'Test') returning id`);

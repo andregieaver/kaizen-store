@@ -22,7 +22,7 @@ import {
   visitBody,
 } from "@/lib/visit-record";
 
-import { getOpenStore } from "./stores";
+import { visitStoreOf } from "./store-facts";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -127,7 +127,7 @@ export async function recordVisit({ headers: h, body, now = new Date() }: { head
   if (isBot(userAgent)) return { recorded: false, reason: "bot" };
   if (wantsPrivacy(h)) return { recorded: false, reason: "privacy" };
 
-  const store = await getOpenStore(input.store);
+  const store = await visitStoreOf(input.store);
   if (!store) return { recorded: false, reason: "unknown_store" };
   if (!store.visitCounting) return { recorded: false, reason: "off" };
   const secret = visitSecret();
@@ -216,7 +216,7 @@ export async function recordPageError({ headers: h, body, now = new Date() }: { 
   if (!parsed.success) return false;
   const userAgent = h.get("user-agent");
   if (isBot(userAgent) || wantsPrivacy(h)) return false;
-  const store = await getOpenStore(parsed.data.store);
+  const store = await visitStoreOf(parsed.data.store);
   if (!store?.visitCounting) return false;
   const secret = visitSecret();
   if (!secret) return false;
@@ -255,7 +255,7 @@ export async function recordTouch({ headers: h, body, now = new Date() }: { head
   if (!(age >= -1 && age <= 31)) return false;
   const userAgent = h.get("user-agent");
   if (isBot(userAgent) || wantsPrivacy(h)) return false;
-  const store = await getOpenStore(storeSlug);
+  const store = await visitStoreOf(storeSlug);
   if (!store?.visitCounting) return false;
   const secret = visitSecret();
   if (!secret) return false;

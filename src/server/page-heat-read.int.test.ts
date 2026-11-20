@@ -11,6 +11,7 @@ vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typ
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 const EXP = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
 vi.mock("./experiments", async (importOriginal) => ({ ...(await importOriginal<typeof import("./experiments")>()), runningExperiments: async () => [{ id: EXP }] }));
+vi.mock("./experiments-running", async (importOriginal) => ({ ...(await importOriginal<typeof import("./experiments-running")>()), runningExperiments: async () => [{ id: EXP }] }));
 
 const { recordHeat } = await import("./page-heat");
 const { heatPages, pageDevices, pageHeat, taggedTests, versionBehaviour } = await import("./page-heat-read");

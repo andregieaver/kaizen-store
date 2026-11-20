@@ -32,6 +32,16 @@ const names = Object.keys(ENTRIES as Record<string, string>);
 /** Everyday work adds a file or two to a large entry; a module that drags in a tree adds dozens. Room: max(5 files, 3 %). */
 const roomFor = (held: number) => Math.max(5, Math.ceil(held * 0.03));
 
+/** A line that is exactly a directive that makes server references: "use cache" (or one with a suffix such as ": remote") or "use server". */
+const REFERENCE_DIRECTIVE = /^\s*["'](?:use cache(?:: [a-z]+)?|use server)["'];?\s*$/m;
+const relOf = (file: string) => path.relative(root, file).split(path.sep).join("/");
+
+/** The files an entry's walk reaches whose text has a "use cache" or "use server" line, each with the chain of imports to it. */
+function referenceFiles(name: string): string[] {
+  const seen = walkOf(root, name) as Map<string, string>;
+  return [...seen.keys()].filter((file) => REFERENCE_DIRECTIVE.test(readFileSync(file, "utf8"))).map((file) => `${relOf(file)} (${chainTo(root, seen, file)})`);
+}
+
 /** The first file the walk reached that matches a forbidden item (a file, a folder ending in `/`, or a package), with the chain to it. */
 function whyReached(name: string, item: string): string {
   const seen = walkOf(root, name) as Map<string, string>;
@@ -126,6 +136,14 @@ describe("what a server entry loads (bloat review 1.8)", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("the five beacons reach no 'use cache' and no 'use server' file (bloat review step 2.24)", () => {
+    const found = (BEACONS as string[]).flatMap((name) => referenceFiles(name).map((file) => `${name} reaches ${file}`));
+    expect(
+      found,
+      "every cached read and action a beacon reaches is listed for it in the server-reference manifest, which each cold function parses: import a tag from @/lib/cache-tags, a pure helper from its leaf file, and read the store with visitStoreOf() (src/server/store-facts.ts)",
+    ).toEqual([]);
   });
 
   it("the proxy and the beacons reach no admin catalogue", () => {

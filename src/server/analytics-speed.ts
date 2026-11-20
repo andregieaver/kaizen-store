@@ -28,7 +28,7 @@ import { wantsPrivacy } from "./analytics-visits";
 import { log } from "./log";
 import { verifiedTags } from "./signal-tags";
 import { textList } from "./sql-arrays";
-import { getOpenStore } from "./stores";
+import { visitStoreOf } from "./store-facts";
 import { col, typedRows } from "./typed-rows";
 
 /**
@@ -66,7 +66,7 @@ export async function recordSpeed({ headers: h, body, now = new Date() }: { head
   if (speedProblem(input.figures)) return { recorded: false, reason: "invalid" };
   if (isBot(h.get("user-agent"))) return { recorded: false, reason: "bot" };
   if (wantsPrivacy(h)) return { recorded: false, reason: "privacy" };
-  const store = await getOpenStore(input.store);
+  const store = await visitStoreOf(input.store);
   if (!store) return { recorded: false, reason: "unknown_store" };
   if (!store.visitCounting) return { recorded: false, reason: "off" };
   const requestHost = h.get("x-forwarded-host") ?? h.get("host");

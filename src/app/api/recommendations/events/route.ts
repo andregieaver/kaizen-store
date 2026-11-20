@@ -7,7 +7,7 @@ import { fail } from "@/lib/route-fail";
 import { sameSite } from "@/lib/same-site";
 import { recordRecommendEvents, takeRecommendRequest } from "@/server/recommend-events";
 import { featureOn } from "@/lib/store-features";
-import { getOpenStore } from "@/server/stores";
+import { visitStoreOf } from "@/server/store-facts";
 
 /**
  * A tab's report of the recommendations it showed and the ones clicked (D139), for the owner's figures: product ids, the
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   }
   const parsed = recommendEvents.safeParse(body);
   if (!parsed.success) return new Response(null, { status: 400 });
-  const store = await getOpenStore(parsed.data.store);
+  const store = await visitStoreOf(parsed.data.store);
   // A website (D178 step 5: the online shop off) shows no recommendations, so none are counted.
   if (!store || !featureOn(store, "shop")) return fail(404, "No such store.");
   const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";

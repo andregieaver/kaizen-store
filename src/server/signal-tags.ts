@@ -3,7 +3,7 @@ import "server-only";
 import { decodeAssignments, OUTSIDE, dataCookieName } from "@/lib/experiments";
 import { tagOf } from "@/lib/page-heat";
 
-import { runningExperiments } from "./experiments";
+import { runningExperiments } from "./experiments-running";
 
 /**
  * The cookies a beacon brought, and the A/B versions it may be tagged with (D656, `docs/heatmaps-and-recordings.md` 8.4). The browser says

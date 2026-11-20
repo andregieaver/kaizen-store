@@ -15,6 +15,7 @@ const jar = vi.hoisted(() => new Map<string, string>());
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined) }) }));
 const EXP = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
 vi.mock("./experiments", async (importOriginal) => ({ ...(await importOriginal<typeof import("./experiments")>()), runningExperiments: async () => [{ id: EXP }] }));
+vi.mock("./experiments-running", async (importOriginal) => ({ ...(await importOriginal<typeof import("./experiments-running")>()), runningExperiments: async () => [{ id: EXP }] }));
 
 const { recordSegment, forgetRecordings, pruneRecordings, forgetRecordingMemos, sealRecordings } = await import("./recordings");
 const { mintUnlock } = await import("./private-mode");

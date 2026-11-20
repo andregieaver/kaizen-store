@@ -19,6 +19,7 @@ vi.mock("next/headers", () => ({
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 
 const { recordVisit, recordTouch, recordPageError, attachVisitToCart, pruneVisits, visitKeyOf } = await import("./analytics-visits");
+const { forgetVisitStore } = await import("./store-facts");
 const { logSearch } = await import("./search");
 const { NEW_VISITS_PER_ADDRESS_WINDOW, NEW_VISITS_PER_STORE_DAY } = await import("@/lib/visit-record");
 const { POST } = await import("@/app/api/visit/route");
@@ -57,7 +58,11 @@ async function visits() {
   return db().execute<Row>(sql`select * from commerce.visits where store_id = ${storeId}::uuid order by first_seen, id`);
 }
 
-const setCounting = (on: boolean) => db().execute(sql`update commerce.stores set visit_counting = ${on} where id = ${storeId}::uuid`);
+// The beacons remember a store's visit facts for FACTS_MS (bloat review step 2.24): a switch made here forgets them at once.
+const setCounting = async (on: boolean) => {
+  await db().execute(sql`update commerce.stores set visit_counting = ${on} where id = ${storeId}::uuid`);
+  forgetVisitStore(slug);
+};
 
 beforeAll(async () => {
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Test', 'Test') returning id`);
