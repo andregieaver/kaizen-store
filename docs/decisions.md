@@ -836,6 +836,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D831 | **A save keeps its redraw; the store menu sends each address once** | 2026-11-19 | [text](decisions/D831.md) |
 | D832 | **Admin redesign round 65: Kaizena Flow's duty rates, content notices and usage and limits on a phone** | 2026-11-19 | [text](decisions/D832.md) |
 | D833 | **One part draws an order's totals, and the catalogue one product card query (bloat review step 3.16)** | 2026-11-19 | [text](decisions/D833.md) |
+| D834 | **One way to search and page a list: Customers, Products, Invoices and Returns page with Pager, search with ListSearch, an** | 2026-11-20 | [text](decisions/D834.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireExtension } from "@/components/admin/extension-off";
-import { AdminLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { AdminLink, ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { flowSuggestion } from "@/lib/flow-report";
@@ -43,7 +43,10 @@ function emailsOf(steps: readonly FlowStep[], into = new Map<string, Extract<Flo
  */
 export default async function FlowPage({ params, searchParams }: PageProps<"/admin/[store]/flows/[flowId]">) {
   const { store: slug, flowId } = await params;
-  const see = (await searchParams).see === "1";
+  const query = await searchParams;
+  const see = query.see === "1";
+  // The width the drawn emails are seen at (M3.4): a phone's or a desktop's.
+  const phone = query.width === "phone";
   const member = await requirePermission(slug, "marketing:read");
   const notInAccount = requireExtension(member, "email_automation");
   if (notInAccount) return notInAccount;
@@ -231,8 +234,29 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
         <Card compact>
           <div className="flex flex-col gap-4" data-flow-drawn>
             <p className="text-body-strong text-ink">{drawn.person ? w.seeingEmails.replace("{person}", drawn.person) : w.noPerson}</p>
+            {drawn.emails.length > 0 && (
+              <nav aria-label={w.widths.label} className="flex gap-2 text-sm">
+                {(["desktop", "phone"] as const).map((k) => (
+                  <ButtonLink
+                    key={k}
+                    href={`/admin/${store.slug}/flows/${flow.id}?see=1${k === "phone" ? "&width=phone" : ""}`}
+                    aria-current={(k === "phone") === phone ? "true" : undefined}
+                    kind={(k === "phone") === phone ? "secondary" : "quiet"}
+                    size="dense"
+                  >
+                    {w.widths[k]}
+                  </ButtonLink>
+                ))}
+              </nav>
+            )}
             {drawn.emails.map((e) => (
-              <iframe key={e.stepId} title={w.frame.replace("{subject}", e.subject)} srcDoc={e.html} sandbox="" className="h-[60vh] w-full rounded-panel border border-line bg-white" />
+              <iframe
+                key={e.stepId}
+                title={w.frame.replace("{subject}", e.subject)}
+                srcDoc={e.html}
+                sandbox=""
+                className={`h-[60vh] rounded-panel border border-line bg-white ${phone ? "w-[375px] max-w-full self-center" : "w-full"}`}
+              />
             ))}
           </div>
         </Card>

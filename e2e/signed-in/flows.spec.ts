@@ -54,6 +54,11 @@ test("a welcome series is started with one press, read as a story, tested and sw
   await page.getByRole("link", { name: "See the emails as the newest person on your list would get them" }).click();
   await expect(page.locator("[data-flow-drawn] iframe")).toHaveCount(2);
   await expect(page.locator("[data-flow-drawn]")).toContainText(`The emails as ida-${RUN}@example.com would get them`);
+  // Seen at a phone's width (M3.4).
+  await page.getByRole("navigation", { name: "Seen at" }).getByRole("link", { name: "Phone" }).click();
+  await expect(page).toHaveURL(/width=phone/);
+  expect((await page.locator("[data-flow-drawn] iframe").first().boundingBox())?.width ?? 0).toBeLessThanOrEqual(380);
+  await page.screenshot({ path: "test-results/flow-phone.png", fullPage: true });
   await page.getByRole("button", { name: "Test it" }).click();
   await expect(page.getByText(`Tested on ida-${RUN}@example.com: Welcome!, What others like best. Then it ends.`)).toBeVisible();
   await page.getByRole("button", { name: "Switch on" }).click();
