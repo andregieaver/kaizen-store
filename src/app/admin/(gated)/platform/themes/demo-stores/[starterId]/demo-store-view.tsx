@@ -20,7 +20,7 @@ import {
 } from "../demo-actions";
 import { wearsWords } from "../live-demo-stores-card";
 import { fillWords } from "@/lib/admin-fill";
-import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
@@ -34,7 +34,7 @@ export function DemoStoreView({
   demo,
   preset,
   unthemed,
-  w = platformSiteEn,
+  w,
   lang = "en",
 }: {
   demo: DemoStore;
@@ -42,7 +42,7 @@ export function DemoStoreView({
   preset: { ok: true } | { ok: false; problems: string[] };
   /** Just made, but its theme could not be applied. */
   unthemed: boolean;
-  w?: PlatformSiteMessages;
+  w: PlatformSiteMessages;
   lang?: AdminLang;
 }) {
   const d = w.demo;

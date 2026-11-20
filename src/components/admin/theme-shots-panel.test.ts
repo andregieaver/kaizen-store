@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { ShotStatus } from "@/server/theme-shots";
+import { platformSiteEn } from "@/lib/admin-messages/platform-site.en";
 
 import { ThemeShotsPanel } from "./theme-shots-panel";
 
@@ -20,7 +21,7 @@ const shot = (variation: string | null, kind: "computer" | "phone", status: Shot
 });
 const retry = async () => ({ status: "idle" as const, messages: [] });
 const draw = (shots: ShotStatus[], published = true) =>
-  renderToStaticMarkup(createElement(ThemeShotsPanel, { looks: [{ key: null, name: "Calm" }, { key: "sand", name: "Sand" }], shots, published, retry })).replaceAll("<!-- -->", "");
+  renderToStaticMarkup(createElement(ThemeShotsPanel, { looks: [{ key: null, name: "Calm" }, { key: "sand", name: "Sand" }], shots, published, retry, words: platformSiteEn.shots, tables: platformSiteEn.tables })).replaceAll("<!-- -->", "");
 
 /** A theme's photographs on its admin page (`docs/theme-showcase-phase-2.md` step 1). */
 describe("the Pictures panel", () => {
@@ -81,7 +82,7 @@ describe("the Pictures panel", () => {
     const upload = async () => ({ ok: true as const, url: "/media/x.webp" });
     const computer = shot(null, "computer", "done", { pictures: { card: file("card.webp", 800, 600), share: file("share.jpg", 1200, 630) } });
     const html = renderToStaticMarkup(
-      createElement(ThemeShotsPanel, { looks: [{ key: null, name: "Calm" }], shots: [computer], published: true, retry, own: { collage: "/media/mine.webp" }, ownAction: own, upload }),
+      createElement(ThemeShotsPanel, { looks: [{ key: null, name: "Calm" }], shots: [computer], published: true, retry, own: { collage: "/media/mine.webp" }, ownAction: own, upload, words: platformSiteEn.shots, tables: platformSiteEn.tables }),
     ).replaceAll("<!-- -->", "");
     expect(html).toContain("Use your own pictures");
     // Closed, saying how many are in use (opened from the props, a save would close it under the person).
@@ -95,7 +96,7 @@ describe("the Pictures panel", () => {
     expect(html).toContain("Nothing made yet.");
     // Without the action the section is not drawn; with none set it says nothing is in use.
     expect(draw([computer])).not.toContain("Use your own pictures");
-    const none = renderToStaticMarkup(createElement(ThemeShotsPanel, { looks: [], shots: [], published: true, retry, ownAction: own, upload }));
+    const none = renderToStaticMarkup(createElement(ThemeShotsPanel, { looks: [], shots: [], published: true, retry, ownAction: own, upload, words: platformSiteEn.shots, tables: platformSiteEn.tables }));
     expect(none).not.toContain("in use");
   });
 

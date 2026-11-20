@@ -2,10 +2,10 @@ import { ButtonLink, Card, Chip, List, ListRow, RowLead } from "@/components/adm
 import { NEW_DEMO_STORE, demoStoreHref } from "@/lib/theme-admin-paths";
 import type { DemoStore } from "@/server/demo-stores";
 import { fillWords } from "@/lib/admin-fill";
-import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 /** "Calm · Coast", or "its own look" for a demo store that wears no theme. */
-export function wearsWords(wears: DemoStore["wears"], ownLook: string = platformSiteEn.demo.ownLook): string {
+export function wearsWords(wears: DemoStore["wears"], ownLook: string): string {
   if (!wears) return ownLook;
   return wears.presetName ? `${wears.title} · ${wears.presetName}` : wears.title;
 }

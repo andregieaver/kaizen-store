@@ -7,7 +7,7 @@ import { OWN_SLOTS, type OwnPictures, type OwnSlot } from "@/lib/theme-store";
 import type { ShotKind } from "@/lib/theme-shots";
 import type { ShotStatus } from "@/server/theme-shots";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 /** A look of the theme as the panel names it: its own (`key` null) or a preset. */
 export type ShotLook = { key: string | null; name: string };
@@ -36,8 +36,8 @@ export function ThemeShotsPanel({
   own = {},
   ownAction,
   upload,
-  words: w = platformSiteEn.shots,
-  tables = platformSiteEn.tables,
+  words: w,
+  tables,
   locale = "en-GB",
 }: {
   looks: ShotLook[];
@@ -48,8 +48,8 @@ export function ThemeShotsPanel({
   own?: OwnPictures;
   ownAction?: (slot: OwnSlot, state: FormState, formData: FormData) => Promise<FormState>;
   upload?: Upload;
-  words?: PlatformSiteMessages["shots"];
-  tables?: PlatformSiteMessages["tables"];
+  words: PlatformSiteMessages["shots"];
+  tables: PlatformSiteMessages["tables"];
   /** `ADMIN_LANG_FACTS[lang].locale`, for the dates. */
   locale?: string;
 }) {

@@ -4,7 +4,7 @@ import { formatPriceInput } from "@/lib/product-input";
 import { type ThemePrice, type ThemePurchaseStatus } from "@/lib/theme-prices";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 import { saveThemePricesAction } from "../actions";
 
@@ -22,7 +22,7 @@ export function ThemePriceCard({
   currencies,
   counts,
   stuck,
-  w = platformSiteEn,
+  w,
 }: {
   presetId: string;
   title: string;
@@ -30,7 +30,7 @@ export function ThemePriceCard({
   currencies: string[];
   counts: Record<ThemePurchaseStatus, number>;
   stuck: { store: string; problem: string; tries: number }[];
-  w?: PlatformSiteMessages;
+  w: PlatformSiteMessages;
 }) {
   const p = w.price;
   const premium = prices.length > 0;

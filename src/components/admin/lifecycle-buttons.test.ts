@@ -2,7 +2,9 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import type { FormState } from "./action-form";
+import { platformSiteEn } from "@/lib/admin-messages/platform-site.en";
 import { LifecycleBadge, LifecycleButtons } from "./lifecycle-buttons";
 import { PreviewLink } from "./preview-link";
 
@@ -16,7 +18,7 @@ const facts: { published: boolean; archivedAt: string | null; publishedAt: strin
   used: false,
 };
 const render = (over: Partial<typeof facts>) =>
-  renderToString(createElement(LifecycleButtons, { kind: "theme", title: "Nordic calm", facts: { ...facts, ...over }, actions }));
+  renderToString(createElement(LifecycleButtons, { kind: "theme", title: "Nordic calm", facts: { ...facts, ...over }, actions, words: platformSiteEn.lifecycle }));
 const buttons = (html: string) => (html.match(/<button[^>]*>.*?<\/button>/g) ?? []).map((b) => b.replace(/<[^>]+>/g, ""));
 
 describe("the life of a theme or a demo store on the platform (D177, D273)", () => {
@@ -42,10 +44,10 @@ describe("the life of a theme or a demo store on the platform (D177, D273)", () 
   });
 
   it("names the state, and opens previews in a new window", () => {
-    expect(renderToString(createElement(LifecycleBadge, { facts: { ...facts, published: true, publishedAt: "x", changed: true } }))).toContain(
+    expect(renderToString(createElement(LifecycleBadge, { facts: { ...facts, published: true, publishedAt: "x", changed: true }, words: platformSiteEn.lifecycle }))).toContain(
       "Published, with unpublished changes",
     );
-    const link = renderToString(createElement(PreviewLink, { href: "/s/spa-v1", label: "Preview as published", title: "Spa" }));
+    const link = renderToString(createElement(PreviewLink, { href: "/s/spa-v1", label: "Preview as published", title: "Spa", of: platformSiteEn.preview.of }));
     expect(link).toMatch(/target="_blank" rel="noopener"/);
     expect(link).toContain("(opens in a new window)");
   });

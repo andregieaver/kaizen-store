@@ -3,11 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { ThemeCheckResult } from "@/lib/theme-check";
+import { platformSiteEn } from "@/lib/admin-messages/platform-site.en";
 
 import { ThemeChecks } from "./theme-checks";
 
 /** The theme checks on a theme's Details tab (D246): passed, or each finding by check, what blocks first. */
-const draw = (result: ThemeCheckResult | null) => renderToStaticMarkup(createElement(ThemeChecks, { result })).replaceAll("<!-- -->", "");
+const draw = (result: ThemeCheckResult | null) => renderToStaticMarkup(createElement(ThemeChecks, { result, words: platformSiteEn.checks, names: platformSiteEn.tables.checks })).replaceAll("<!-- -->", "");
 
 describe("Theme checks (D246)", () => {
   it("says a draft that passes can be published", () => {

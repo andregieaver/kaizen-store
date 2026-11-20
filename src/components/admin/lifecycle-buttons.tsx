@@ -1,5 +1,4 @@
 import { fillWords } from "@/lib/admin-fill";
-import { platformSiteEn } from "@/lib/admin-messages/platform-site.en";
 import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 import { lifecycleActions, lifecycleState, type LifecycleFacts } from "@/lib/lifecycle";
 
@@ -8,10 +7,10 @@ import { ActionForm, SubmitButton, type FormState } from "./action-form";
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
 /** The state of a theme or a demo store (D177, D273), as a small badge. */
-/** The lifecycle's words; English unless the page hands in the admin's (D312 A11). */
+/** The lifecycle's words, in the admin's language (D312 A11). */
 type Words = PlatformSiteMessages["lifecycle"];
 
-export function LifecycleBadge({ facts, words = platformSiteEn.lifecycle }: { facts: LifecycleFacts; words?: Words }) {
+export function LifecycleBadge({ facts, words }: { facts: LifecycleFacts; words: Words }) {
   return <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{words.states[lifecycleState(facts)]}</span>;
 }
 
@@ -25,13 +24,13 @@ export function LifecycleButtons({
   title,
   facts,
   actions,
-  words = platformSiteEn.lifecycle,
+  words,
 }: {
   kind: "demo store" | "theme";
   title: string;
   facts: LifecycleFacts & { used: boolean };
   actions: { publish: Action; unpublish: Action; archive: Action; restore: Action; remove: Action };
-  words?: Words;
+  words: Words;
 }) {
   const offered = lifecycleActions(facts);
   const named = <span className="sr-only"> {title}</span>;

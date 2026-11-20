@@ -1,13 +1,13 @@
 import { Card, Chip } from "@/components/admin/ui";
 import { THEME_CHECKS, type ThemeCheckResult } from "@/lib/theme-check";
 import { fillWords } from "@/lib/admin-fill";
-import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 /**
  * The theme checks on what Publish would publish (D246, `themeCheck()`): passed, or each finding grouped by check, blocking first. Server-drawn,
  * on a theme's Details tab.
  */
-export function ThemeChecks({ result, words: w = platformSiteEn.checks, names = platformSiteEn.tables.checks }: { result: ThemeCheckResult | null; words?: PlatformSiteMessages["checks"]; names?: PlatformSiteMessages["tables"]["checks"] }) {
+export function ThemeChecks({ result, words: w, names }: { result: ThemeCheckResult | null; words: PlatformSiteMessages["checks"]; names: PlatformSiteMessages["tables"]["checks"] }) {
   if (!result) return null;
   const warnings = result.findings.length - result.blocking;
   const groups = (Object.keys(THEME_CHECKS) as (keyof typeof THEME_CHECKS)[])

@@ -1,7 +1,7 @@
 import { PLATFORM_LANG_FACTS, PLATFORM_LANGS } from "@/lib/platform-lang";
 import { HIGHLIGHT_KINDS, HIGHLIGHT_WORDS_MAX } from "@/lib/theme-highlights";
 import { fillWords } from "@/lib/admin-fill";
-import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 import { LISTING_WORDS_MAX, type ListingLanguages } from "@/lib/theme-store";
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
@@ -13,12 +13,12 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
  */
 export function ListingWordsFields({
   initial,
-  words: f = platformSiteEn.fields,
-  names = platformSiteEn.tables.highlights,
+  words: f,
+  names,
 }: {
   initial: ListingLanguages | undefined;
-  words?: PlatformSiteMessages["fields"];
-  names?: PlatformSiteMessages["tables"]["highlights"];
+  words: PlatformSiteMessages["fields"];
+  names: PlatformSiteMessages["tables"]["highlights"];
 }) {
   const langs = PLATFORM_LANGS.filter((lang) => lang !== "en");
   return (
