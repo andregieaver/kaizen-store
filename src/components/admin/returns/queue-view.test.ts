@@ -92,11 +92,21 @@ describe("the returns queue", () => {
     expect(text).not.toContain("Clear");
   });
 
-  it("pages through a long queue, keeping the filter in the links", () => {
+  it("pages through a long queue with the kit's pager, saying how many of all are shown and keeping the filter in the links (D834)", () => {
     const { html, text } = draw([row()], { filter: filter({ status: "all" }), total: 60, page: 2 });
-    expect(text).toContain("Page 2 of 3");
+    expect(text).toContain("26 of 60");
+    expect(text).toContain("Previous 25");
     expect(html).toContain('href="/admin/s/returns?status=all"');
     expect(html).toContain('href="/admin/s/returns?status=all&amp;page=3"');
+    expect(draw().text).not.toContain(" of 1");
+  });
+
+  it("searches with the kit's search box, the queue's other filters kept as hidden values", () => {
+    const { html } = draw([], { filter: filter({ status: "all", kind: "return", q: "Kari" }) });
+    expect(html).toContain('role="search"');
+    expect(html).toContain('<input type="hidden" name="status" value="all"/>');
+    expect(html).toContain('<input type="hidden" name="kind" value="return"/>');
+    expect(html).not.toContain('<input type="hidden" name="q"');
   });
 
   it("is not drawn at a fixed width: the admin uses the whole of its room", () => {

@@ -819,6 +819,11 @@ describe("the store's queue", () => {
     // Oldest first.
     const times = open.rows.map((x) => Date.parse(x.createdAt));
     expect(times).toEqual([...times].sort((a, b) => a - b));
+    // A page at a time (D834): every page says how many the filter finds in all, and the pages meet with none lost or repeated.
+    const all = await r.listReturns(storeId, { status: "all" }, { pageSize: 100 });
+    const halves = [await r.listReturns(storeId, { status: "all" }, { pageSize: 2, page: 1 }), await r.listReturns(storeId, { status: "all" }, { pageSize: 2, page: 2 })];
+    expect(halves.map((h) => h.total)).toEqual([all.total, all.total]);
+    expect(halves.flatMap((h) => h.rows.map((x) => x.id))).toEqual(all.rows.slice(0, 4).map((x) => x.id));
     expect((await r.listReturns(storeId, { q: number })).rows).toMatchObject([{ id: returnId, kind: "withdrawal", status: "approved", orderNumber: order.number, email: order.email, overdue: false }]);
     expect((await r.listReturns(storeId, { q: order.email.toUpperCase().slice(0, 12), kind: "return" })).rows).toEqual([]);
     expect((await r.listReturns(storeId, { status: "closed", q: number })).rows).toEqual([]);
