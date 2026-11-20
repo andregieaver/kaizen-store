@@ -5,6 +5,7 @@ import { runSms } from "@/server/sms";
 import { runSupplierOrders } from "@/server/supplier-orders";
 import { markAiPictures } from "@/server/ai-picture-marks";
 import { refreshAltTexts } from "@/server/alt-texts";
+import { refreshStandardShown } from "@/server/product-taxonomy";
 import { runAffiliateJobs } from "@/server/affiliate-emails";
 import { runBonusJobs } from "@/server/bonus";
 import { syncDueFeeds } from "@/server/calendar-sync";
@@ -106,6 +107,9 @@ export const DISPATCHER_JOBS = {
   houseCustomers: () => syncHouseCustomers(),
   media: () => refreshMediaEmbeddings(),
   altTexts: () => refreshAltTexts(),
+  // What a product's page shows of its standard category (bloat review step 2.23): derived for products whose words are missing or from an
+  // older release (a copied store's, a new taxonomy release), up to 200 a run; an idle run is one statement. The route refreshes their catalogues.
+  standardShown: () => refreshStandardShown(200),
   deliveries: () => prepareDueDeliveries(),
   recurring: () => prepareDueRecurringWork(),
   // Tripletex (D453): the issued invoices and credit notes of stores whose connection is on, booked as vouchers, within 40 seconds.

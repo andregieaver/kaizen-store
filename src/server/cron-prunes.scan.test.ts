@@ -12,7 +12,7 @@ const DISPATCHER = "src/app/api/cron/cart-reminders/route.ts";
 // The job list itself moved to its own module (bloat review step 1.10); the hourly prunes stay in the route.
 const JOBS = "src/server/dispatcher-jobs.ts";
 const DAILY = "src/app/api/cron/subscription-reminders/route.ts";
-const DISPATCHER_JOBS = 80; // 78 when the step was written, 84 when it was carried out, minus the nine prunes; 78 with the domain watch (E4.2) and the autopilot's tests (E4.1); 79 with the contracts' upkeep (D795); 80 with the documents' PDFs asked for (D807).
+const DISPATCHER_JOBS = 81; // 78 when the step was written, 84 when it was carried out, minus the nine prunes; 78 with the domain watch (E4.2) and the autopilot's tests (E4.1); 79 with the contracts' upkeep (D795); 80 with the documents' PDFs asked for (D807); 81 with the products' standard category words (bloat review step 2.23).
 
 const NINE = [
   "pruneSearchLog",

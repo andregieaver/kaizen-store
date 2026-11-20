@@ -101,3 +101,6 @@ for (const lang of langs) {
   await writeFile(path.join(OUT, `names-${lang}.json`), text);
 }
 console.log(`wrote ${Object.keys(categories).length} categories, ${Object.keys(attributes).length} attributes, ${Object.keys(values).length} values, ${langs.length} languages`);
+// A product keeps the words its page shows of its category with the release in their key (bloat review step 2.23): the constant
+// re-derives them, and src/lib/product-taxonomy.test.ts fails until it names this release.
+console.log(`set TAXONOMY_RELEASE in src/lib/product-taxonomy.ts to ${tag}`);

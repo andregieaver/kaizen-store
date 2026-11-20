@@ -834,6 +834,10 @@
         "statements": 4,
         "rowsRead": 0
       },
+      "dispatcher.standard-shown": {
+        "statements": 1,
+        "rowsRead": 10
+      },
       "dispatcher.status": {
         "statements": 7,
         "rowsRead": 10
@@ -1216,6 +1220,10 @@
         "statements": 4,
         "rowsRead": 0
       },
+      "dispatcher.standard-shown": {
+        "statements": 1,
+        "rowsRead": 0
+      },
       "dispatcher.status": {
         "statements": 7,
         "rowsRead": 146
@@ -1593,6 +1601,10 @@
       "dispatcher.sms": {
         "statements": 0,
         "rowsRead": 0
+      },
+      "dispatcher.standard-shown": {
+        "statements": 0,
+        "rowsRead": -10
       },
       "dispatcher.status": {
         "statements": 0,

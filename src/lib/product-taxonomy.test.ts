@@ -17,6 +17,7 @@ import {
   standardProblems,
   taxonomyLang,
   TAXONOMY_LANGS,
+  TAXONOMY_RELEASE,
   type TaxonomyNames,
   type TaxonomyStructure,
   type TaxonomyWords,
@@ -126,6 +127,10 @@ describe("the release kept in the repository", () => {
     expect(structure.google).toBe("2021-09-21");
     expect(readFileSync(path.join(dir, "LICENSE"), "utf8")).toMatch(/Copyright \(c\) Shopify[\s\S]*Permission is hereby granted, free of charge/);
     expect(Object.keys(structure.categories)).toHaveLength(14606);
+  });
+
+  it("is the release TAXONOMY_RELEASE names, which a product's stored words carry (bloat review step 2.23)", () => {
+    expect(structure.release, "set TAXONOMY_RELEASE in src/lib/product-taxonomy.ts to the release's tag").toBe(TAXONOMY_RELEASE);
   });
 
   it("holds together: every category's parent, attributes and extended names, every attribute's values, every name in every language", () => {

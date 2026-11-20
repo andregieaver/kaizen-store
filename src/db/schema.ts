@@ -2994,6 +2994,12 @@ export const products = commerce.table(
     /** The category's attributes' chosen values: an attribute id to its value ids (`{"1": [2503]}`); `{}` for none. */
     standardAttributes: jsonb("standard_attributes").notNull().default({}),
     /**
+     * What the shop shows of the standard category, derived from the taxonomy release when the product is saved or by the dispatcher
+     * (bloat review step 2.23): `{ for: <key>, paths: { en, nb, sv, da }, google: number | null, english: { <attribute handle>: [value
+     * names] } }`; null until derived. Never typed by a person.
+     */
+    standardShown: jsonb("standard_shown"),
+    /**
      * The product's own words around its price (D429, `src/lib/price-words.ts`): null follows the store's (`stores.price_words`);
      * `{"mode": "none"}` shows none; `{"mode": "own", "words": {"nb-NO": {"prefix": "Fra kun", "suffix": "/stk"}}}` its own by language.
      */

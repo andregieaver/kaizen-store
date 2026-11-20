@@ -1290,6 +1290,28 @@ describe("product words' change marker (bloat review step 0.28)", () => {
   });
 });
 
+describe("what a product shows of its standard category (bloat review step 2.23)", () => {
+  it("standard_shown takes null or a JSON object, and a store copy carries the category without failing", async () => {
+    const template = await createStore("shown-template", ["NO"]);
+    const { productId } = await createProduct({ storeId: template });
+    const shown = { for: 'aa-1-1|{}|v2026-10', paths: { en: "Apparel & Accessories > Clothing > Activewear" }, google: 5322, english: {} };
+    await db.query("update commerce.products set standard_category = 'aa-1-1', standard_shown = $1 where id = $2", [JSON.stringify(shown), productId]);
+    expect((await one<{ standard_shown: unknown }>("select standard_shown from commerce.products where id = $1", [productId])).standard_shown).toEqual(shown);
+    await db.query("update commerce.products set standard_shown = null where id = $1", [productId]);
+    await db.query("update commerce.products set standard_shown = $1 where id = $2", [JSON.stringify(shown), productId]);
+
+    const owner = await createAccount("shown-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'shown-copy', 'Copy', $2) as id", [template, owner]);
+    const copied = await one<{ standard_category: string; standard_shown: unknown }>(
+      "select standard_category, standard_shown from commerce.products where store_id = $1",
+      [copy],
+    );
+    expect(copied.standard_category).toBe("aa-1-1");
+    // Copied as it is, or left null for the dispatcher's job to derive: either is a row the page reads correctly.
+    expect(copied.standard_shown === null || JSON.stringify(copied.standard_shown) === JSON.stringify(shown)).toBe(true);
+  });
+});
+
 describe("webhook events", () => {
   it("stores each provider event once per store", async () => {
     const insert = (storeId: string) =>

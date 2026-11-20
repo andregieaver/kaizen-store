@@ -6,7 +6,7 @@ import { connection } from "next/server";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
-import { attributeName, categoryPath, googleCategory, isCategory, valueName } from "@/lib/product-taxonomy";
+import { shownKey, taxonomyLang, type StandardShown } from "@/lib/product-taxonomy";
 import { parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { parseRentalPeriod, type RentalPeriod } from "@/lib/booking-ranges";
 import { isNative, shown, type Market } from "@/lib/markets";
@@ -22,7 +22,6 @@ import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability"
 import type { MediaItemKind, VideoSource } from "@/lib/product-media";
 import { CATALOG_TAG, catalogTag } from "@/lib/cache-tags";
 
-import { taxonomy, taxonomyWords } from "./product-taxonomy";
 import { shownRegistrationNumbers, type ShownRegistration } from "./producer-registrations";
 import { bundleItemsOf } from "./bundles";
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
@@ -393,7 +392,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     PRODUCT_ROW,
     sql`
     select
-      p.id, p.handle, p.group_id::text as group_id, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.price_on_request,
+      p.id, p.handle, p.group_id::text as group_id, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.standard_shown, p.price_on_request,
       p.audience, p.price_words, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       -- The country's own description over its language's (D338), else the language's. A country whose language the product is not
@@ -553,25 +552,21 @@ export async function getProduct(storeId: string, market: Market, handle: string
     kind:
       product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" || product.kind === "gift_card" ? product.kind : "goods",
     bundleItems,
-    standard: await standardOf(product.standard_category, product.standard_attributes, locale),
+    standard: standardShown(product.standard_category, product.standard_attributes, product.standard_shown, locale),
     producerNumbers,
     priceOnRequest: Boolean(product.price_on_request),
   };
 }
 
-/** A product's standard category as its page and the feeds read it (D327); null for none or one the release no longer knows. */
-async function standardOf(category: unknown, attributes: unknown, locale: string): Promise<ProductDetail["standard"]> {
-  if (typeof category !== "string") return null;
-  const [t, words, english] = await Promise.all([taxonomy(), taxonomyWords(locale), taxonomyWords("en")]);
-  if (!isCategory(t, category)) return null;
-  const chosen: Record<string, string[]> = {};
-  for (const [attributeId, valueIds] of Object.entries((attributes ?? {}) as Record<string, unknown>)) {
-    const attribute = attributeName(t, english, Number(attributeId));
-    if (!attribute || !Array.isArray(valueIds)) continue;
-    const names = valueIds.flatMap((v) => (typeof v === "number" ? [valueName(t, english, v)?.name ?? ""] : [])).filter(Boolean);
-    if (names.length > 0) chosen[attribute.handle] = names;
-  }
-  return { id: category, path: categoryPath(words, category), google: googleCategory(t, category), english: chosen };
+/**
+ * A product's standard category as its page and the feeds read it (D327): from the words kept on its row (`products.standard_shown`,
+ * bloat review step 2.23), never the taxonomy's files; null for none, one the release no longer knows, or words derived from another
+ * category, attributes or release, until the dispatcher derives them again.
+ */
+function standardShown(category: unknown, attributes: unknown, stored: unknown, locale: string): ProductDetail["standard"] {
+  const kept = stored as StandardShown | null;
+  if (typeof category !== "string" || !kept || !kept.paths || kept.for !== shownKey(category, attributes)) return null;
+  return { id: category, path: kept.paths[taxonomyLang(locale)] ?? kept.paths.en, google: kept.google ?? null, english: kept.english ?? {} };
 }
 
 /**

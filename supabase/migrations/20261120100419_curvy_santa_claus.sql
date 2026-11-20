@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."products" ADD COLUMN "standard_shown" jsonb;
