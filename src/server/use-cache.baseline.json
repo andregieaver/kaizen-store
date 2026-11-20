@@ -140,7 +140,8 @@
   "src/server/content-site.ts#findEntryPage": {
     "life": "\"hours\"",
     "tags": [
-      "contentTag(owner), pagesTag(owner)"
+      "contentTag(owner), pagesTag(owner)",
+      "pageTag(type.layoutId)"
     ]
   },
   "src/server/content-site.ts#listIndexedEntries": {
@@ -393,7 +394,8 @@
   "src/server/recommend-grid.ts#recommendingGrid": {
     "life": "\"hours\"",
     "tags": [
-      "recommendTag(owner), catalogTag(owner), termsTag({ storeId: owner, contentType: \"product\" }), fieldsTag(owner), pagesTag(owner)"
+      "recommendTag(owner), catalogTag(owner), termsTag({ storeId: owner, contentType: \"product\" }), fieldsTag(owner), pagesTag(owner)",
+      "pageTag(where.pageId)"
     ]
   },
   "src/server/recommend-settings.ts#getRecommendSettings": {
@@ -405,7 +407,8 @@
   "src/server/recommend.ts#standInFor": {
     "life": "\"hours\"",
     "tags": [
-      "CATALOG_TAG, catalogTag(storeId), recommendTag(storeId), termsTag({ storeId, contentType: \"product\" }), fieldsTag(storeId), pagesTag(storeId)"
+      "CATALOG_TAG, catalogTag(storeId), recommendTag(storeId), termsTag({ storeId, contentType: \"product\" }), fieldsTag(storeId), pagesTag(storeId)",
+      "pageTag(place.pageId)"
     ]
   },
   "src/server/redirect-resolve.ts#lookupCached": {

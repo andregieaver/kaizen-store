@@ -25,7 +25,7 @@ import { summarize } from "@/lib/seo";
 import { tileLines } from "@/lib/tile-fields";
 
 import { contentTypeByKey, getContentType } from "./content-types-read";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag, pagesTag } from "@/lib/cache-tags";
 import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { marketIn } from "./shop";
 import { col, typedRows } from "./typed-rows";
@@ -155,6 +155,8 @@ export async function findEntryPage(owner: string | null, typeSlug: string, entr
   if (!type) return null;
   let layout: PageContent | null = null;
   if (type.layoutId) {
+    // The layout is one page's document: its own tag too (bloat review step 2.14).
+    cacheTag(pageTag(type.layoutId));
     const [page] = await readDb().execute<Record<string, unknown>>(sql`
       select published from commerce.pages
       where id = ${type.layoutId}::uuid and ${owned(owner)} and type = 'entry_layout' and published_at is not null

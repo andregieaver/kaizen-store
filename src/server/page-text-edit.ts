@@ -12,7 +12,8 @@ import type { TextStyle } from "@/lib/text-styles";
 import { audit, getAccount, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { keepVersion } from "./page-versions";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag, pagesTag } from "@/lib/cache-tags";
+import { listFacts, sameListFacts } from "@/lib/page-list-facts";
 import { checkPageTypeAccess, checkPassPageTypeAccess } from "./permissions";
 import { refreshTagNow } from "./refresh";
 import { listTextStyles } from "./text-styles";
@@ -117,7 +118,7 @@ export async function applyPageText(input: {
     const test = await runningTestOf(owner, page);
     if (test) return runningTest(test.name);
   }
-  const outcome = await db().transaction(async (tx): Promise<{ ok: true; draftKept: boolean; slug: string; title: string; type: PageType } | PageTextFailure> => {
+  const outcome = await db().transaction(async (tx): Promise<{ ok: true; draftKept: boolean; slug: string; title: string; type: PageType; site: boolean } | PageTextFailure> => {
     const [row] = await tx.execute<Row>(sql`
       select slug, type, draft, published from commerce.pages
       where id = ${page}::uuid and ${owned(owner)} and type in ('page', 'article')
@@ -155,7 +156,9 @@ export async function applyPageText(input: {
       where id = ${page}::uuid
     `);
     await keepVersion(tx, { owner, page, kind: "site_text", content: JSON.stringify(next), account: account.id });
-    return { ok: true, draftKept: draft !== null && nextDraft === null, slug: String(row.slug), title: next.title, type: String(row.type) as PageType };
+    // A heading's or a text's words can be the page's excerpt (`pageExcerpt()`), which other pages show (bloat review step 2.14).
+    const site = !sameListFacts(listFacts(published), listFacts(next));
+    return { ok: true, draftKept: draft !== null && nextDraft === null, slug: String(row.slug), title: next.title, type: String(row.type) as PageType, site };
   });
   if (!outcome.ok) return outcome;
   // Written down with where and what kind, never the words.
@@ -166,8 +169,10 @@ export async function applyPageText(input: {
     { label: outcome.title, page, slug: outcome.slug, block, kind: edit.kind, draftKept: outcome.draftKept },
     { target: { type: "page", id: page } },
   );
-  // The storefront's cached pages, menus and grids that draw this page: at once, as the person is looking at the page they changed.
-  refreshTagNow(pagesTag(owner));
+  // The storefront's cached page at once, as the person is looking at the page they changed; its menus, grids and lists only when what
+  // they show of it changed (bloat review step 2.14).
+  refreshTagNow(pageTag(page));
+  if (outcome.site) refreshTagNow(pagesTag(owner));
   return { ok: true, draftKept: outcome.draftKept };
 }
 

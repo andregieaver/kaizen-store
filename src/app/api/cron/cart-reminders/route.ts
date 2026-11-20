@@ -5,6 +5,7 @@ import { cronAuthorised } from "@/server/cron-auth";
 import { runJobs, tracked } from "@/server/cron-runs";
 import { DISPATCHER_JOBS } from "@/server/dispatcher-jobs";
 import { PAGES_TAG, pagesTag } from "@/lib/cache-tags";
+import { publishedTags } from "@/server/page-refresh";
 import { STATUS_TAG } from "@/server/status";
 import { DESIGNS_TAG, designTags, runPlatformThemeUpdates, runThemeUpdates } from "@/server/design-presets";
 import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purchases";
@@ -56,7 +57,8 @@ async function dispatch() {
   const hourly = new Date().getUTCMinutes() < 5;
   const apiIdempotency = hourly ? await tracked("hourly.api-idempotency", 3600, () => pruneApiIdempotency()) : null;
   const oauthTokens = hourly ? await tracked("hourly.oauth-tokens", 3600, () => pruneOAuthTokens()) : null;
-  for (const storeId of r.schedules?.stores ?? []) revalidateTag(pagesTag(storeId), "max");
+  // Each scheduled page's own tag, and a store's pages tag only for a revert or a publish that reached its site (bloat review step 2.14).
+  for (const tag of publishedTags(r.schedules)) revalidateTag(tag, "max");
   if ((r.status?.measured ?? 0) > 0) revalidateTag(STATUS_TAG, "max");
   for (const store of r.schedules?.themeStores ?? []) for (const tag of designTags(store)) revalidateTag(tag, "max");
   // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.

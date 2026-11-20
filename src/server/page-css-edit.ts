@@ -10,7 +10,7 @@ import { audit, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { keepVersion } from "./page-versions";
 import { PLATFORM_NAVIGATION_TAG } from "./platform-navigation";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag } from "@/lib/cache-tags";
 import { checkPassPermission, checkPermission } from "./permissions";
 import { refreshTagNow } from "./refresh";
 import { authorise, pageRow, revisionOf, type PageTextFailure } from "./page-text-edit";
@@ -153,7 +153,8 @@ export async function savePageCss(input: {
       { label: outcome.title, page: input.page, slug: outcome.slug, length: pageCss.length, draftKept: outcome.draftKept },
       { target: { type: "page", id: input.page } },
     );
-    refreshTagNow(pagesTag(owner));
+    // A page's own CSS is its body: only the page draws it (bloat review step 2.14).
+    refreshTagNow(pageTag(input.page));
   }
   if (siteChanged) {
     const saved = await saveSiteCss(account, owner, siteCss);

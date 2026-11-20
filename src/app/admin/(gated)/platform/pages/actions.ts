@@ -13,6 +13,7 @@ import type { PageSaveState } from "@/components/admin/page-context";
 import { stopPageJob } from "@/server/page-jobs";
 import { deletePage, getPageForEdit, pageTitles, savePage, unpublishPage } from "@/server/pages";
 import { PAGES_TAG } from "@/lib/cache-tags";
+import { tagsAfterPublish } from "@/server/page-refresh";
 import type { DualChoice } from "@/lib/dual-page";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import { createPlatformRolePage, createThemeStorePage, setPlatformPageRole, themeStorePageStates, themeStoreRoleOf } from "@/server/platform-roles";
@@ -69,7 +70,9 @@ export async function savePageAction(
   const result = await savePage(admin, null, id, json, { publish: publish === true, type, acknowledgedIssues });
   if (!result.ok) return { status: "error", problems: result.problems, code: result.code, issues: result.issues };
   // Drafts are not on the site; publishing changes pages, menus, sitemap and llms.txt, and so does a global part's change (D98).
-  if (publish || result.pages) updateTag(PAGES_TAG);
+  // A publish refreshes the page, and the whole site only when what other pages show of it changed (bloat review step 2.14).
+  if (publish) for (const tag of tagsAfterPublish(null, result.id, result.scope)) updateTag(tag);
+  else if (result.pages) updateTag(PAGES_TAG);
   const page = await getPageForEdit(null, result.id, type);
   if (!page) return { status: "error", problems: [(await platformActionWords()).pageNotBack] };
   return { status: "saved", page };

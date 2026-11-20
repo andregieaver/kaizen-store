@@ -186,7 +186,18 @@ const FAILURE_WORDS: Record<ScheduleFailure, string> = {
   costs: "The theme costs money the store has not agreed to pay.",
 };
 
-export type ScheduleRun = { published: number; reverted: number; failed: number; stores: string[]; themeStores: { id: string; slug: string }[] };
+/**
+ * `pages`: each page published, with how far its publish reached (savePage()'s scope, bloat review step 2.14); `stores`: the stores whose
+ * pages tag is refreshed whole, for a revert or a publish that reached the site.
+ */
+export type ScheduleRun = {
+  published: number;
+  reverted: number;
+  failed: number;
+  pages: { store: string; id: string; scope: "page" | "site" }[];
+  stores: string[];
+  themeStores: { id: string; slug: string }[];
+};
 
 const DUE = z.object({
   id: col.uuid,
@@ -208,7 +219,7 @@ const DUE = z.object({
  * whose looks changed, for their tags.
  */
 export async function runSchedules(now: Date = new Date()): Promise<ScheduleRun> {
-  const run: ScheduleRun = { published: 0, reverted: 0, failed: 0, stores: [], themeStores: [] };
+  const run: ScheduleRun = { published: 0, reverted: 0, failed: 0, pages: [], stores: [], themeStores: [] };
   const changed = (store: string) => {
     if (!run.stores.includes(store)) run.stores.push(store);
   };
@@ -216,7 +227,10 @@ export async function runSchedules(now: Date = new Date()): Promise<ScheduleRun>
     const outcome = await publishOne(now);
     if (outcome === null) break;
     run[outcome.kind]++;
-    if (outcome.kind === "published") changed(outcome.store);
+    if (outcome.kind === "published" && outcome.page) {
+      run.pages.push({ store: outcome.store, id: outcome.page.id, scope: outcome.page.scope });
+      if (outcome.page.scope === "site") changed(outcome.store);
+    }
   }
   for (let i = 0; i < SCHEDULES_PER_RUN; i++) {
     const outcome = await revertOne(now);
@@ -232,7 +246,8 @@ export async function runSchedules(now: Date = new Date()): Promise<ScheduleRun>
   return run;
 }
 
-type Outcome = { kind: "published" | "reverted" | "failed"; store: string } | null;
+/** `page`, for a publish: the page and how far its publish reached. */
+type Outcome = { kind: "published" | "reverted" | "failed"; store: string; page?: { id: string; scope: "page" | "site" } } | null;
 
 /** One due publish, claimed and settled in its own transaction. */
 async function publishOne(now: Date): Promise<Outcome> {
@@ -294,7 +309,7 @@ async function publishOne(now: Date): Promise<Outcome> {
       where id = ${due.id}::uuid
     `);
     log("info", "page_schedule.published", { store: due.store_id, page: due.page_id });
-    return { kind: "published" as const, store: due.store_id };
+    return { kind: "published" as const, store: due.store_id, page: { id: due.page_id, scope: saved.scope ?? "site" } };
   });
 }
 

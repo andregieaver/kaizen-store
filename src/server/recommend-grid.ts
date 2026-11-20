@@ -13,7 +13,7 @@ import { tileFieldIds } from "@/lib/tile-fields";
 import { catalogTag } from "./catalog";
 import { gridData, storeAndMarket, type GridPlace } from "./content-grid";
 import { fieldsTag } from "./custom-fields";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag, pagesTag } from "@/lib/cache-tags";
 import { standInFor } from "./recommend";
 import { getRecommendSettings, recommendTag } from "./recommend-settings";
 import { termsTag } from "./taxonomy";
@@ -75,6 +75,8 @@ export async function recommendingGrid(
   "use cache";
   cacheLife("hours");
   cacheTag(recommendTag(owner), catalogTag(owner), termsTag({ storeId: owner, contentType: "product" }), fieldsTag(owner), pagesTag(owner));
+  // On a page or an article, the stand-in follows its own words (bloat review step 2.14).
+  if (where.kind === "page" || where.kind === "article") cacheTag(pageTag(where.pageId));
   const shop = await storeAndMarket(owner, marketCode);
   if (!shop) return null;
   const enabled = (await getRecommendSettings(owner)).enabled;

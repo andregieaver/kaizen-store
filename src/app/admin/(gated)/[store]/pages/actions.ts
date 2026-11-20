@@ -24,6 +24,7 @@ import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
 import { stopPageJob } from "@/server/page-jobs";
+import { tagsAfterPublish } from "@/server/page-refresh";
 import { deletePage, getPageForEdit, pageTitles, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
 import { pagesTag } from "@/lib/cache-tags";
 import { isDualKind, type DualChoice } from "@/lib/dual-page";
@@ -104,8 +105,10 @@ export async function saveStorePageAction(
       return { status: "error", problems: [`The ${type} was saved, but not its custom fields:`, ...problems] };
     }
   }
-  // A global part's change (D98) reaches live pages even when this page is only a draft.
-  if (publish || result.pages) pagesChanged(member);
+  // A publish refreshes the page, and the whole site only when what other pages show of it changed (bloat review step 2.14); a global
+  // part's change (D98) reaches live pages even when this page is only a draft.
+  if (publish) for (const tag of tagsAfterPublish(member.store.id, result.id, result.scope)) updateTag(tag);
+  else if (result.pages) pagesChanged(member);
   const page = await getPageForEdit(member.store.id, result.id, type);
   if (!page) return { status: "error", problems: [(await said()).notReadBack] };
   return { status: "saved", page };

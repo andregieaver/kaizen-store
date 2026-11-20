@@ -64,6 +64,7 @@ import { listPlatformMenus, listStoreMenus, menuUses, savePlatformMenu, saveStor
 import { saveNavigation } from "./navigation";
 import { getPageForEdit, savePage, setFrontPage, setPageRole, setProductsPage } from "./pages";
 import { pagesTag } from "@/lib/cache-tags";
+import { tagsAfterPublish } from "./page-refresh";
 import { memberCan } from "./permissions";
 import { PLATFORM_NAVIGATION_TAG, getPlatformSiteCss, getPlatformTheme, savePlatformNavigation } from "./platform-navigation";
 import { setPlatformPageRole } from "./platform-roles";
@@ -447,7 +448,8 @@ export async function publishPageTool(ctx: SiteToolContext, { page: ref, type }:
   }
   const saved = await savePage(ctx.account, ownerOf(ctx), id, page.draft, { publish: true, type });
   if (!saved.ok) return fail(`The page could not be published: ${saved.problems.join(" ")}`);
-  ctx.invalidate(pagesTag(ownerOf(ctx)));
+  // The page, and the whole site only when what other pages show of it changed (bloat review step 2.14).
+  for (const tag of tagsAfterPublish(ownerOf(ctx), id, saved.scope)) ctx.invalidate(tag);
   const waiting = (await pictureCounts(id)).waiting;
   return {
     done: `"${page.draft.title}" is published.${waiting > 0 ? ` ${waiting} of its pictures are still being made: they go into its draft, to publish again when they are in.` : ""}`,

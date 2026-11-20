@@ -21,7 +21,7 @@ import { deviceCartIds, getCart } from "./cart";
 import { gridScope, productItem, storeAndMarket, withTileFields } from "./content-grid";
 import { getCustomer } from "./customers";
 import { fieldsTag, shownFieldsFor } from "./custom-fields";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag, pagesTag } from "@/lib/cache-tags";
 import { convertedSql, inStockNow, OFFERED } from "./product-conditions";
 import { queryVector } from "./query-vector";
 import { getRecommendSettings, recommendTag, tokensUsedThisMonth } from "./recommend-settings";
@@ -640,6 +640,8 @@ export async function standInFor(storeId: string, marketSlug: string, place: Rec
   cacheLife("hours");
   // What a stand-in depends on: the catalogue, the owner's rules, the grid's categories and tags, custom fields, and the pages' words.
   cacheTag(CATALOG_TAG, catalogTag(storeId), recommendTag(storeId), termsTag({ storeId, contentType: "product" }), fieldsTag(storeId), pagesTag(storeId));
+  // On a page or an article, what it is about is its own words, which a publish of its body changes (bloat review step 2.14).
+  if (place.kind === "page" || place.kind === "article") cacheTag(pageTag(place.pageId));
   const shop = await storeAndMarket(storeId, marketSlug);
   if (!shop) return [];
   const settings = await getRecommendSettings(storeId);
