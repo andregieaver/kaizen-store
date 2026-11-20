@@ -87,6 +87,7 @@ export const flowsNb: FlowsMessages = {
   noPerson: "Ingen står på listen din ennå å vise dem for.",
   frame: "E-posten {subject}",
   newestPerson: "den nyeste på listen din",
+  contactPolicy: "Hvor ofte hver person kan høre fra deg: kontaktreglene, for alle flyter og utsendelser",
   report: {
     title: "De siste 30 dagene",
     nobody: "Ingen startet det de siste 30 dagene.",

@@ -223,6 +223,12 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           languages={languages}
         />
       )}
+      {/* Lisa's depth on the same screen (M3.10, pass mark 5): how often each person may hear from the store, the one contact policy. */}
+      {mayWrite && (
+        <AdminLink href={`/admin/${store.slug}/marketing#contact-policy`} className="self-start text-caption text-ink-2 underline underline-offset-2" data-flow-contact-policy>
+          {w.contactPolicy}
+        </AdminLink>
+      )}
       {/* The checks before switching on (M3.6): each a line with what to fix; a blocking one keeps Switch on refused. */}
       {mayWrite && checks.length > 0 && (
         <Card compact>

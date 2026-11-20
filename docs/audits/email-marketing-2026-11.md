@@ -114,7 +114,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 | M3.7 | Words that write themselves and stay the owner's | M | Done 2026-11-20: write per email, 3 subjects, shorter, warmer, direct, translate, past earnings (D767); split-testing them is M2.5 | Write with AI per step from the store's facts and voice; three subject lines to choose from or split-test; shorter, warmer or more direct; the store's other languages written for review; the AI reads what earlier emails earned before it suggests |
 | M3.8 | Reports in words | S | Done 2026-11-20: flow page, Home and briefing (D767) | Each flow says what it brought in 30 days, which step does most, how many left the list, and one suggestion; on Home and in the morning briefing through E2.1's one source |
 | M3.9 | The autopilot runs retention | M | Part: the flow guard; goals say whom they reach; the manager lists and starts flows (D767, D855) | It proposes the recipes the store lacks from its own data (*40 customers bought twice and stopped*), watches each flow as it watches its other changes (D628), pauses a flow whose unsubscribes or complaints jump, and suggests split tests; within the store's autonomy settings |
-| M3.10 | The usability test | S | Open | Five timed tasks against the pass mark above: a first flow on, a broadcast to a segment, a word changed in step 2, what a flow brought, a flow stopped |
+| M3.10 | The usability test | S | Done 2026-11-20: five tasks walked in CI (`email-marketing-usability-2026-11.md`); 3 of 5 marks met, 2 in part | Five timed tasks against the pass mark above: a first flow on, a broadcast to a segment, a word changed in step 2, what a flow brought, a flow stopped |
 
 ## Phase 4: depth
 

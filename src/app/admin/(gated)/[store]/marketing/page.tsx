@@ -228,11 +228,13 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
       </div>
 
       {/* One contact policy across email and texts (D764): the sentence, and its settings under Change. */}
-      <ContactPolicyCard
-        policy={policy}
-        words={MARKETING_WORDS[lang].contactPolicy}
-        action={memberCan(member, "marketing:write") ? contactPolicyAction.bind(null, store.slug) : null}
-      />
+      <div id="contact-policy" className="scroll-mt-20">
+        <ContactPolicyCard
+          policy={policy}
+          words={MARKETING_WORDS[lang].contactPolicy}
+          action={memberCan(member, "marketing:write") ? contactPolicyAction.bind(null, store.slug) : null}
+        />
+      </div>
 
       <section aria-labelledby="tools" className={`flex flex-col gap-3 px-5.5 py-4.5 ${CARD_CLASS}`}>
         <h2 id="tools" className="text-body-strong text-ink">
