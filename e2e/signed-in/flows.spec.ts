@@ -141,7 +141,15 @@ test("on the canvas, a step is added in a branch, dragged to a new place, change
   await words.press("Tab");
   await expect(page.locator("[data-email-in-place]").getByRole("status")).toHaveText("Saved. The flow is off until you test it again.");
   await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toContainText("Written where it reads.");
+  // A block added between (M3.4): a button after the words, then removed again.
+  const inPlace = page.locator("[data-email-in-place]");
+  await inPlace.locator("[data-in-place-between]").last().getByRole("button", { name: "Add here" }).click();
+  await inPlace.getByRole("group", { name: "Add here" }).getByRole("button", { name: "Button" }).click();
+  await expect(inPlace.getByRole("textbox", { name: "Button words" })).toHaveText("See more");
   await page.screenshot({ path: "test-results/flow-in-place.png", fullPage: true });
+  await inPlace.getByRole("textbox", { name: "Button words" }).hover();
+  await inPlace.getByRole("button", { name: "Remove this" }).last().click();
+  await expect(inPlace.getByRole("textbox", { name: "Button words" })).toHaveCount(0);
 
   // Removed in the panel: gone from the story.
   await board.getByRole("button", { name: "Email: A new email" }).click();

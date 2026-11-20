@@ -150,3 +150,18 @@ describe("words changed where they are (email plan M3.4)", () => {
     expect(withBlockText(steps, "e", "nb-NO", 9, "x")).toEqual(steps);
   });
 });
+
+describe("blocks added between and removed (email plan M3.4)", () => {
+  it("adds a block at a place and removes one, never the last", async () => {
+    const { withBlockAt } = await import("./flows");
+    const steps: FlowStep[] = [{ id: "e", kind: "email", content: { "nb-NO": { subject: "Hei", preview: "", blocks: [{ type: "paragraph", text: "A" }] } } }];
+    const added = withBlockAt(steps, "e", "nb-NO", { add: "button", at: 1, words: "Se" });
+    expect(stepAt(added, ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [{ text: "A" }, { type: "button", text: "Se", url: "/" }] } } });
+    const first = withBlockAt(added, "e", "nb-NO", { add: "heading", at: 0, words: "Tittel" });
+    expect(stepAt(first, ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [{ type: "heading" }, { type: "paragraph" }, { type: "button" }] } } });
+    expect(stepAt(withBlockAt(first, "e", "nb-NO", { remove: 1 }), ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [{ type: "heading" }, { type: "button" }] } } });
+    // The last block stays; a place outside the email changes nothing.
+    expect(withBlockAt(steps, "e", "nb-NO", { remove: 0 })).toEqual(steps);
+    expect(withBlockAt(steps, "e", "nb-NO", { add: "divider", at: 5, words: "" })).toEqual(steps);
+  });
+});

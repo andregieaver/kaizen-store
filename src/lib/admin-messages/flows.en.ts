@@ -92,7 +92,7 @@ export const flowsEn = {
     },
   },
   widths: { label: "Seen at", desktop: "Desktop", phone: "Phone" },
-  inPlace: { hint: "Click any words to change them; they save when you click away.", heading: "Heading", button: "Button words", product: "Product" },
+  inPlace: { hint: "Click any words to change them; they save when you click away.", heading: "Heading", button: "Button words", product: "Product", add: "Add here", remove: "Remove this", newHeading: "A heading", newButton: "See more", kinds: { heading: "Heading", paragraph: "Words", button: "Button", divider: "Line" } },
   change: "Change",
   subject: "Subject",
   words: "Words",
