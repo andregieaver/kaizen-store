@@ -2310,6 +2310,16 @@ const ALL_OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "list_flows",
+    "The store's flows (D767: email sequences a person goes through from something they did, such as joining the list, an order or days without ordering): each one's name, whether it is on, what starts it, and what it brought in 30 days; and the goals the store has no flow for yet, each with how many people in the store's own data it would reach now. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "start_flow",
+    "Starts a flow from a goal the store has no flow for yet (from list_flows): from the store's own email automation's words when the owner wrote one, else the ready-made one. It is saved switched off and untested, so nothing is sent: the owner reads it, tests it and switches it on on its page (the link).",
+    z.object({ goal: z.enum(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse"]) }),
+  ),
+  tool(
     "issue_gift_card",
     "Issues a gift card by hand (a goodwill gesture, a prize) and emails it to the person it is for: its code goes only in that email and is never shown here or kept. In a currency the store sells in, the store's main one unless said; the store's expiry applies. A card is money the store owes until it is spent. Needs the owner's approval.",
     z.object({

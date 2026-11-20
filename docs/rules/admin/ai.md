@@ -112,7 +112,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`draft_text_message`, its words through `findClaims()` and `findAvoided()`) and `startSmsCampaign()` behind the `send` gate
   (`send_text_message`, never automatic, checked by `preflightSendTextMessage()` with 46elks's own price against the cap);
   `issue_gift_card` through `issueGiftCard()` behind the `spend` gate, always emailed, its code never in an answer). Answers carry
-  counts, never who is on a list. Review moderation has no tool: a review's words never reach a model.
+  counts, never who is on a list. Flows (D855): `list_flows` and `start_flow` (off and untested, through `startRecipeFlow()`); switching one on has no tool. Review moderation has no tool: a review's words never reach a model.
 
 ## The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)
 

@@ -9,12 +9,21 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D855]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.47 — 2026-11-20
+
+Two tools for flows in the AI manager's MCP catalogue (D855), behind Email automation (`feature_off` without it).
+
+- `list_flows` (`marketing:read`): each flow's name, whether it is on, what starts it and what it brought in 30 days; and the goals
+  without a flow, each with how many people in the store's own data it would reach now. Counts only.
+- `start_flow` (`marketing:write`): a flow from one of those goals, saved switched off and untested; nothing is sent until the owner
+  tests it and switches it on.
 
 ## 1.46 — 2026-11-19
 

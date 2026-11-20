@@ -31,9 +31,9 @@
     "shop|marketing": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 158558,
-      "alwaysSentChars": 36542,
-      "totalChars": 174206
+      "toolChars": 158122,
+      "alwaysSentChars": 36543,
+      "totalChars": 173770
     },
     "shop|analytics": {
       "promptChars": 15648,
@@ -122,9 +122,9 @@
     "all|marketing": {
       "promptChars": 16509,
       "toolCount": 128,
-      "toolChars": 159120,
+      "toolChars": 158214,
       "alwaysSentChars": 36573,
-      "totalChars": 175629
+      "totalChars": 174723
     },
     "all|analytics": {
       "promptChars": 16509,
@@ -221,10 +221,10 @@
     },
     "autopilot_event": {
       "promptChars": 17214,
-      "toolCount": 44,
-      "toolChars": 31032,
+      "toolCount": 45,
+      "toolChars": 31507,
       "alwaysSentChars": 0,
-      "totalChars": 48246,
+      "totalChars": 48721,
       "case": "review"
     },
     "platform": {
@@ -407,6 +407,7 @@
     "list_experiments": 737,
     "list_features": 658,
     "list_field_groups": 544,
+    "list_flows": 474,
     "list_follow_ups": 207,
     "list_forms": 664,
     "list_goals": 278,
@@ -637,6 +638,7 @@
     "start_dns_move_here": 819,
     "start_experiment": 1090,
     "start_extension_trial": 517,
+    "start_flow": 543,
     "stock_history": 1101,
     "stock_levels": 1356,
     "stop_autopilot_plan": 440,

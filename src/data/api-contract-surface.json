@@ -1,5 +1,5 @@
 {
- "version": "1.46",
+ "version": "1.47",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2455,6 +2455,8 @@
   "mcp list_features <- store (required)",
   "mcp list_field_groups",
   "mcp list_field_groups <- store (required)",
+  "mcp list_flows",
+  "mcp list_flows <- store (required)",
   "mcp list_forms",
   "mcp list_forms <- store (required)",
   "mcp list_integrations",
@@ -2896,6 +2898,9 @@
   "mcp start_experiment",
   "mcp start_experiment <- experiment (required)",
   "mcp start_experiment <- store (required)",
+  "mcp start_flow",
+  "mcp start_flow <- goal (required)",
+  "mcp start_flow <- store (required)",
   "mcp stock_history",
   "mcp stock_history <- sku (required)",
   "mcp stock_history <- store (required)",

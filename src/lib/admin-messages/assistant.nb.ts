@@ -653,6 +653,8 @@ export const assistantNb: AssistantMessages = {
     list_price_lists: "Ser på prislistene",
     tag_customer: "Merker kunden",
     list_email_automations: "Ser på de automatiske e-postene",
+    list_flows: "Ser på flytene",
+    start_flow: "Starter flyten",
     switch_email_automation: "Forbereder bryteren",
     tell_customer_about_order: "Forbereder beskjeden til kunden",
     carry_out_address_change: "Endrer leveringsadressen",
