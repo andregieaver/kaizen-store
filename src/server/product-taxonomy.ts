@@ -26,7 +26,7 @@ import {
   type TaxonomyWords,
 } from "@/lib/product-taxonomy";
 
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 import { col, typedRows } from "./typed-rows";
 
 /**
