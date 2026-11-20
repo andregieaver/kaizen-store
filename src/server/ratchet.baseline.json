@@ -88,7 +88,7 @@
     "src/server/custom-fields.ts": 31,
     "src/server/customer-accounts.ts": 2,
     "src/server/customer-addresses.ts": 7,
-    "src/server/customer-admin.ts": 8,
+    "src/server/customer-admin.ts": 7,
     "src/server/customer-export.ts": 2,
     "src/server/customer-import.ts": 5,
     "src/server/customer-merge.ts": 5,

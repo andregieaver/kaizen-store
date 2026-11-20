@@ -4,12 +4,13 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { LIST_PAGE_SIZE } from "@/lib/list-page";
 import type { SubscriptionStatus } from "@/lib/subscriptions";
 
 import { customerReturns, type CustomerReturns } from "./dispute-evidence";
 import type { Address, OrderStatus } from "./orders";
 import { bought } from "./bought-sql";
-import { col, typedRow } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -131,14 +132,43 @@ export type CustomerListRow = {
 export type CustomerShow = "new" | "back" | "subscribed";
 export type CustomerSort = "recent" | "orders" | "name";
 
+/** What the list shows: a search by email or name, a tag, a view and an order (D603). */
+export type CustomerFilter = { q?: string; tag?: string | null; show?: CustomerShow | null; sort?: CustomerSort };
+
+const CUSTOMER_ROW = z.object({
+  email: col.text,
+  customer_id: col.uuid.nullable(),
+  latest_order: col.uuid.nullable(),
+  name: col.text,
+  avatar_path: col.textOrNull,
+  verified: col.bool.nullable(),
+  orders: col.int,
+  live: col.int,
+  spent: z.record(z.string(), col.int),
+  last_order: col.timestampOrNull,
+  since: col.timestamp,
+  city: col.textOrNull,
+  subscribed: col.bool,
+  /** How many the filter finds in all, on every page (code review 1.13, D834). */
+  total: col.int,
+});
+
 /** Everyone with an account or a paid order, most recently active first; optionally matching a search. */
-export async function listCustomers(
+export async function listCustomers(storeId: string, options: CustomerFilter & { limit?: number } = {}): Promise<CustomerListRow[]> {
+  return (await customerPage(storeId, options)).rows;
+}
+
+/**
+ * A page of the list (code review 1.13, D834): the rows from `offset`, `limit` of them (a hundred unless said), and how many the same
+ * filter finds in all. The order ends on the email, so a page's edge never loses or repeats a person.
+ */
+export async function customerPage(
   storeId: string,
-  { q = "", tag = null, limit = 100, show = null, sort = "recent" }: { q?: string; tag?: string | null; limit?: number; show?: CustomerShow | null; sort?: CustomerSort } = {},
-): Promise<CustomerListRow[]> {
+  { q = "", tag = null, limit = LIST_PAGE_SIZE, offset = 0, show = null, sort = "recent" }: CustomerFilter & { limit?: number; offset?: number } = {},
+): Promise<{ rows: CustomerListRow[]; total: number }> {
   const search = q.trim().toLowerCase().slice(0, 100);
   const like = `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(CUSTOMER_ROW, sql`
     with bought as (
       -- An order placed signed in belongs to the account, whatever email it was sent to.
       select lower(coalesce(c.email, o.email)) as email, o.id, o.placed_at, o.currency, o.total_minor, o.status,
@@ -174,7 +204,8 @@ export async function listCustomers(
       coalesce(a.name, b.name, '') as name, a.avatar_path, a.verified,
       coalesce(b.orders, 0) as orders, coalesce(s.live, 0) as live, coalesce(sp.spent, '{}') as spent,
       b.last_order, least(a.created_at, b.first_order) as since, b.city,
-      exists (select 1 from commerce.marketing_subscribers ms where ms.store_id = ${storeId}::uuid and ms.email = coalesce(a.email, b.email) and ms.status = 'subscribed') as subscribed
+      exists (select 1 from commerce.marketing_subscribers ms where ms.store_id = ${storeId}::uuid and ms.email = coalesce(a.email, b.email) and ms.status = 'subscribed') as subscribed,
+      count(*) over ()::int as total
     from accounts a
     full join by_email b on b.email = a.email
     left join subs s on s.email = coalesce(a.email, b.email)
@@ -183,24 +214,27 @@ export async function listCustomers(
       -- A tag (D296, D366) is the store's own, by its key: the people staff tagged so.
       and ${tag ? sql`exists (select 1 from commerce.customer_tags t where t.store_id = ${storeId}::uuid and t.email = coalesce(a.email, b.email) and t.key = ${tag})` : sql`true`}
       and ${customerShowWhere(storeId, show)}
-    order by ${sort === "orders" ? sql`coalesce(b.orders, 0) desc, ` : sort === "name" ? sql`lower(coalesce(a.name, b.name, coalesce(a.email, b.email))), ` : sql``}coalesce(b.last_order, a.created_at) desc nulls last
-    limit ${limit}
+    order by ${sort === "orders" ? sql`coalesce(b.orders, 0) desc, ` : sort === "name" ? sql`lower(coalesce(a.name, b.name, coalesce(a.email, b.email))), ` : sql``}coalesce(b.last_order, a.created_at) desc nulls last, coalesce(a.email, b.email)
+    limit ${limit} offset ${offset}
   `);
-  return rows.map((row) => ({
-    key: String(row.customer_id ?? row.latest_order),
-    email: String(row.email),
-    name: String(row.name ?? ""),
-    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
-    account: row.customer_id ? (row.verified ? "verified" : "unverified") : null,
-    orders: Number(row.orders),
-    liveSubscriptions: Number(row.live),
-    spentMinor: (row.spent ?? {}) as Record<string, number>,
-    lastOrderAt: row.last_order ? new Date(String(row.last_order)).toISOString() : null,
-    since: new Date(String(row.since)).toISOString(),
-    latestOrderId: row.latest_order ? String(row.latest_order) : null,
-    city: row.city ? String(row.city) : null,
-    subscribed: row.subscribed === true,
-  }));
+  return {
+    rows: rows.map((row) => ({
+      key: String(row.customer_id ?? row.latest_order),
+      email: row.email,
+      name: row.name,
+      avatarPath: row.avatar_path,
+      account: row.customer_id ? (row.verified ? "verified" : "unverified") : null,
+      orders: row.orders,
+      liveSubscriptions: row.live,
+      spentMinor: row.spent,
+      lastOrderAt: row.last_order,
+      since: row.since,
+      latestOrderId: row.latest_order,
+      city: row.city,
+      subscribed: row.subscribed,
+    })),
+    total: rows[0]?.total ?? 0,
+  };
 }
 
 /** The view's rule, over the list's `a` (accounts) and `b` (by email) rows: new since the month began, bought twice or more, or on the store's list. */

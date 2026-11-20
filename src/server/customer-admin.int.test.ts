@@ -7,7 +7,7 @@ type Row = Record<string, unknown>;
 
 vi.mock("server-only", () => ({}));
 
-const { customerSummary, findCustomer, getCustomerDetail, listCustomers } = await import("./customer-admin");
+const { customerPage, customerSummary, findCustomer, getCustomerDetail, listCustomers } = await import("./customer-admin");
 const { listPlatformCustomers, getPlatformCustomer, listStorePeople } = await import("./platform-customers");
 
 const run = Date.now().toString(36);
@@ -99,6 +99,55 @@ describe("a store's customers (D35)", () => {
     expect((await listCustomers(storeId, { q: "gunnar" })).map((c) => c.account)).toEqual([null]);
     expect(await listCustomers(storeId, { q: "nobody-by-this-name" })).toEqual([]);
     expect(await findCustomer(storeId, "00000000-0000-4000-8000-000000000000")).toBeNull();
+  });
+});
+
+describe("a page of a store's customers (code review 1.13, D834)", () => {
+  let pagedStore: string;
+
+  beforeAll(async () => {
+    const [request] = await db().execute<Row>(sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`pager-${run}@example.com`}, 'Per Pager', 'Pager') returning id
+    `);
+    const [store] = await db().execute<Row>(sql`
+      select commerce.approve_access_request(${String(request.id)}::uuid, ${`pager-${run}`}, ${`Pager ${run}`}, null) as id
+    `);
+    pagedStore = String(store.id);
+    // 150 accounts made in one statement: one moment for all, so only the order's last key keeps a page's edge.
+    await db().execute(sql`
+      insert into commerce.customers (store_id, email, name)
+      select ${pagedStore}::uuid, 'p' || lpad(i::text, 3, '0') || '@example.com', 'Person ' || lpad(i::text, 3, '0') from generate_series(1, 150) i
+    `);
+    await db().execute(sql`
+      insert into commerce.customer_tags (store_id, email, key, label)
+      select ${pagedStore}::uuid, 'p' || lpad(i::text, 3, '0') || '@example.com', 'fair', 'Fair' from generate_series(1, 120) i
+    `);
+  });
+
+  it("shows a hundred, says how many there are in all, and the next page holds the rest with none lost or repeated", async () => {
+    const first = await customerPage(pagedStore, { limit: 100, offset: 0 });
+    const second = await customerPage(pagedStore, { limit: 100, offset: 100 });
+    expect(first.rows).toHaveLength(100);
+    expect(second.rows).toHaveLength(50);
+    expect([first.total, second.total]).toEqual([150, 150]);
+    const emails = [...first.rows, ...second.rows].map((c) => c.email);
+    expect(new Set(emails).size).toBe(150);
+    expect((await customerPage(pagedStore, { limit: 100, offset: 200 })).rows).toEqual([]);
+    // By name too: the same people, each once.
+    const byName = [...(await customerPage(pagedStore, { sort: "name", offset: 0 })).rows, ...(await customerPage(pagedStore, { sort: "name", offset: 100 })).rows];
+    expect(byName.map((c) => c.name)).toEqual(Array.from({ length: 150 }, (_, i) => `Person ${String(i + 1).padStart(3, "0")}`));
+  });
+
+  it("counts what the search, the tag and the view find, not the whole store", async () => {
+    const tagged = await customerPage(pagedStore, { tag: "fair", limit: 100 });
+    expect([tagged.rows.length, tagged.total]).toEqual([100, 120]);
+    expect((await customerPage(pagedStore, { tag: "fair", offset: 100 })).rows).toHaveLength(20);
+    const found = await customerPage(pagedStore, { q: "person 14", limit: 100 });
+    expect(found.total).toBe(found.rows.length);
+    expect(found.rows.map((c) => c.name).sort()).toEqual(["Person 140", "Person 141", "Person 142", "Person 143", "Person 144", "Person 145", "Person 146", "Person 147", "Person 148", "Person 149"]);
+    // Nobody has bought twice, and the list's other callers get its rows alone.
+    expect(await customerPage(pagedStore, { show: "back" })).toEqual({ rows: [], total: 0 });
+    expect(await listCustomers(pagedStore, { q: "person 150" })).toEqual([expect.objectContaining({ email: "p150@example.com", account: "unverified", orders: 0 })]);
   });
 });
 
