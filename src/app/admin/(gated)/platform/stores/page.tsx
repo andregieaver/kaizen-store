@@ -75,6 +75,8 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
         words={KIT_WORDS[lang].search}
         button="hidden"
         keep={{ state: filter.state }}
+        // Each part of the page eases in (admin.css), so each is its own layer: the search's is lifted, so Filters opens over the list.
+        className="z-10"
         tools={
           // Lisa's step (D847): the plan and the subscription, in the same form, so a chip or the search keeps them.
           <details className="relative">
