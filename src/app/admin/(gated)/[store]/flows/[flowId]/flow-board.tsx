@@ -28,6 +28,7 @@ import {
   changeFlowBlockAction,
   changeFlowBlocksAction,
   startFlowLanguageAction,
+  writeFlowEmailAction,
   changeFlowLapseAction,
   changeFlowPicksAction,
   changeFlowTriggerAction,
@@ -414,6 +415,12 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
         })}
         {step.picks && <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">{w.canvas.pickKinds[step.picks]}</p>}
       </div>
+      <WriteWithAi w={w} busy={busy} onWrite={(brief) =>
+        start(async () => {
+          const result = await writeFlowEmailAction(p.storeSlug, p.flowId, step.id, locale, brief);
+          setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
+        })
+      } />
       {said && (
         <p role="status" className={`text-sm ${said.ok ? "text-ink-2" : "text-danger-text"}`}>
           {said.text}
@@ -678,5 +685,40 @@ function FactFinder({ w, storeSlug, busy, onAdd }: { w: FlowsMessages; storeSlug
           </ul>
         ))}
     </div>
+  );
+}
+
+/**
+ * Words written with AI (email plan M3.7): the owner says what the email is about; the store's writer writes it from the store's facts and
+ * voice for the people this email reaches, and the words replace this language's, each still changed where it is.
+ */
+function WriteWithAi({ w, busy, onWrite }: { w: FlowsMessages; busy: boolean; onWrite: (brief: string) => void }) {
+  const [brief, setBrief] = useState("");
+  return (
+    <details className="rounded border border-line bg-card px-3 py-2" data-write-with-ai>
+      <summary className="cursor-pointer text-sm text-ink">{w.inPlace.write.open}</summary>
+      <div className="mt-2 flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-caption text-muted">
+          {w.inPlace.write.label}
+          <textarea
+            value={brief}
+            maxLength={1000}
+            rows={2}
+            placeholder={w.inPlace.write.placeholder}
+            onChange={(e) => setBrief(e.target.value)}
+            className="rounded border border-line bg-card px-2 py-1 text-sm text-ink"
+          />
+        </label>
+        <p className="text-caption text-muted">{w.inPlace.write.note}</p>
+        <button
+          type="button"
+          disabled={busy || brief.trim().length < 5}
+          onClick={() => onWrite(brief)}
+          className="self-start rounded-full bg-ink px-3 py-1 text-sm text-card disabled:opacity-50"
+        >
+          {busy ? w.inPlace.write.writing : w.inPlace.write.go}
+        </button>
+      </div>
+    </details>
   );
 }

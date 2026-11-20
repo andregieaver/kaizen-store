@@ -81,7 +81,10 @@ reads, its subject and each heading, paragraph and button changed where it is an
 editor's finder, `findBroadcastFactsAction()`), a block code draws for each reader's market when the email is made (D352), never a price
 written by hand. With more than one language, a tab per store language sits above the email; one not
 written yet starts from the first language's words, copied to translate in place (`startFlowLanguageAction()`, `withLanguageCopy()`,
-never over words already written). Each change is a new
+never over words already written). Write with AI under the email (M3.7, `writeFlowEmailAction()`) takes a line of what it is about and
+hands it to the store's writer (`suggestBroadcast()`: the store's facts, brand and rules) with who the email reaches and when
+(`flowAudience()`: the trigger, its place, days and branch, picks it may not name); the words replace that language's, and an email with
+picks takes no products the writer chose. Each change is a new
 version, off until tested; the story above is drawn from the same tree.
 
 ## Presses in a flow's emails (19 November 2026)

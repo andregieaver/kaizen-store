@@ -10,9 +10,14 @@ import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withCondition, withEmailWords, withStepPicks, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
-import { broadcastBlockSchema } from "@/lib/broadcasts";
+import { findStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withLanguageContent, withCondition, withEmailWords, withStepPicks, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { broadcastBlockSchema, suggestionBlocks } from "@/lib/broadcasts";
+import { flowAudience } from "@/lib/flow-audience";
+import { marketingProblem } from "@/lib/marketing-words";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
+import { suggestBroadcast } from "@/server/broadcasts";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
+import { adminLangOf } from "@/lib/admin-lang";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -119,15 +124,17 @@ type Flow = NonNullable<Awaited<ReturnType<typeof getFlow>>>;
 async function saveTree(
   storeSlug: string,
   flowId: string,
-  change: (flow: Flow, storeId: string) => Promise<FlowStep[] | null> | FlowStep[] | null,
+  change: (flow: Flow, storeId: string, member: Parameters<Parameters<typeof storeAction>[1]>[0]) => Promise<FlowStep[] | string | null> | FlowStep[] | string | null,
   over: { trigger?: string; triggerDays?: number | null } = {},
 ): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
     const w = FLOWS_WORDS[lang];
     const flow = await getFlow(member.store.id, flowId);
     if (!flow) return refusal(w.problems.missing);
-    const steps = await change(flow, member.store.id);
+    const steps = await change(flow, member.store.id, member);
     if (!steps) return refusal(w.problems.step);
+    // A change may answer with its own reason, already in the member's words.
+    if (typeof steps === "string") return refusal(steps);
     const saved = await saveFlow(member.store.id, member.account.id, flowId, {
       name: flow.name,
       trigger: over.trigger ?? flow.trigger,
@@ -236,4 +243,24 @@ export async function changeFlowBlocksAction(storeSlug: string, flowId: string, 
 /** Starts an email in a language not yet written from another (M3.4), to change in place: a new version, off until tested. */
 export async function startFlowLanguageAction(storeSlug: string, flowId: string, stepId: string, from: string, to: string): Promise<FormState> {
   return saveTree(storeSlug, flowId, (flow) => withLanguageCopy(flow.steps, stepId, from, to));
+}
+
+/**
+ * Writes an email's words with AI (email plan M3.7) in one language, from what the owner says it is about: the store's writer
+ * (`suggestBroadcast()`, its facts, its brand and its rules) told who the email reaches and when (`flowAudience()`). The words replace that
+ * language's as a new version, off until tested, the owner's to change in place. An email whose products are picked for each reader keeps
+ * its picks and takes none the writer chose.
+ */
+export async function writeFlowEmailAction(storeSlug: string, flowId: string, stepId: string, locale: string, brief: string): Promise<FormState> {
+  return saveTree(storeSlug, flowId, async (flow, _storeId, member) => {
+    const problems = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].problems;
+    if (typeof brief !== "string" || typeof locale !== "string" || !member.store.localization.keptLocales.includes(locale)) return problems.storeLanguage;
+    const step = findStep(flow.steps, stepId);
+    if (!step || step.kind !== "email") return null;
+    const suggested = await suggestBroadcast(member.store, member.account.id, brief, locale, { audience: flowAudience(flow.steps, stepId, flow.trigger, flow.triggerDays) });
+    if (!suggested.ok) return marketingProblem(suggested.problem, problems);
+    const s = suggested.suggestion;
+    const blocks = suggestionBlocks(step.picks ? { ...s, products: [] } : s);
+    return withLanguageContent(flow.steps, stepId, locale, { subject: s.subject, preview: s.preview, blocks });
+  });
 }

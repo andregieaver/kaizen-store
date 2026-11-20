@@ -252,6 +252,11 @@ export function withBlockAt(
   });
 }
 
+/** An email's words in one language replaced whole (M3.7: the writer's suggestion, the owner's to change), other languages kept. */
+export function withLanguageContent(steps: readonly FlowStep[], id: string, locale: string, content: BroadcastContent[string]): FlowStep[] {
+  return replaceStep(steps, id, (step) => (step.kind === "email" ? { ...step, content: { ...step.content, [locale]: content } } : step));
+}
+
 /** An email's words in one language copied to another not yet written, to change there (email plan M3.4: languages side by side). Pure. */
 export function withLanguageCopy(steps: readonly FlowStep[], id: string, from: string, to: string): FlowStep[] {
   return replaceStep(steps, id, (step) => {

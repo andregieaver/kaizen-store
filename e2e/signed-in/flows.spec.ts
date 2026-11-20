@@ -167,6 +167,13 @@ test("on the canvas, a step is added in a branch, dragged to a new place, change
   await inPlace.locator("[data-in-place-fact=product]").hover();
   await inPlace.getByRole("button", { name: "Remove this" }).last().click();
   await expect(inPlace.locator("[data-in-place-fact=product]")).toHaveCount(0);
+  // Written with AI (M3.7): without an AI set up for the store, nothing changes and the owner is told why.
+  await inPlace.locator("[data-write-with-ai] summary").click();
+  await inPlace.getByLabel("What is this email about?").fill("Thank them, and show our favourites");
+  await inPlace.getByRole("button", { name: "Write", exact: true }).click();
+  await expect(inPlace.getByRole("status")).toHaveText("No AI with a text model is set up for this store.");
+  await expect(inPlace.getByRole("textbox", { name: "Words" }).first()).toHaveText("Written where it reads.");
+  await page.screenshot({ path: "test-results/flow-write-ai.png", fullPage: true });
   // Languages side by side (M3.4): Norwegian is not written yet, started from the English words to translate in place.
   await inPlace.getByRole("group", { name: "Languages" }).getByRole("button", { name: /Norsk bokmål/ }).click();
   await inPlace.getByRole("button", { name: "Start from the English words" }).click();
