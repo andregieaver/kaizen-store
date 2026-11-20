@@ -1,5 +1,5 @@
 import { CampaignEnds } from "@/components/campaign-ends";
-import { cardNotices, noticeText, type CampaignNotice } from "@/lib/campaign-notices";
+import { cardNotices, cardText, noticeText, type CampaignNotice, type CardWords } from "@/lib/campaign-notices";
 import { dateIn } from "@/lib/dates";
 import type { Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -36,7 +36,7 @@ export function CampaignNotices({ notices, market, timeZone, m }: { notices: Cam
 }
 
 /** The campaign badges on a product card (D115): the offers on the price, two at most, over the picture's corner. */
-export function CampaignBadge({ notices, m }: { notices: CampaignNotice[]; m: Messages }) {
+export function CampaignBadge({ notices, m }: { notices: CampaignNotice[]; m: { campaigns: CardWords } }) {
   const shown = cardNotices(notices);
   if (shown.length === 0) return null;
   // A card carries offers on the price only, which need no amount.
@@ -45,7 +45,7 @@ export function CampaignBadge({ notices, m }: { notices: CampaignNotice[]; m: Me
     <span className="pointer-events-none absolute top-2 left-2 z-10 flex flex-col items-start gap-1">
       {shown.map((notice) => (
         <CampaignEnds key={notice.id} endsAt={notice.endsAt}>
-          <span className="rounded-button bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">{noticeText(notice, m, money, { card: true })}</span>
+          <span className="rounded-button bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">{cardText(notice, m.campaigns, money)}</span>
         </CampaignEnds>
       ))}
     </span>

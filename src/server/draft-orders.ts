@@ -48,7 +48,7 @@ import { settleOrderSessions } from "./draft-sessions";
 import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
 import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;

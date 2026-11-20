@@ -1,8 +1,9 @@
+import { daBrowser } from "./da-browser";
 import type { QuotesMessages } from "./en-quotes";
 
 /** Bed om tilbud og spørgsmål om produktet (D431), skrevet i hånden (`en-quotes.ts`). */
 export const daQuotes: QuotesMessages = {
-  priceOnRequest: "Pris på forespørgsel",
+  priceOnRequest: daBrowser.quotes.priceOnRequest,
   wishlist: "Bed om et tilbud på produktsiden.",
   request: "Bed om tilbud",
   requestCart: "Bed om tilbud på disse varer",

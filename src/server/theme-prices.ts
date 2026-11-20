@@ -24,7 +24,7 @@ import { createStripeAccount, ensureTestAccount, getStripeAccounts } from "./con
 import { log } from "./log";
 import { platformStripe } from "./stripe";
 import { getStore } from "./stores";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Premium themes (D286, `docs/theme-prices.md`): a theme's prices, what making one live costs a store, and the purchases the database makes

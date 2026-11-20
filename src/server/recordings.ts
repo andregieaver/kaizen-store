@@ -41,7 +41,7 @@ import { cookieValue, verifiedTags } from "./signal-tags";
 import { textList } from "./sql-arrays";
 import { getOpenStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Recordings of visits on the server (D656, `docs/heatmaps-and-recordings.md` 8.2 and 8.3): a segment from the storefront's recorder is

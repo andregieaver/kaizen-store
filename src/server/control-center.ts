@@ -70,7 +70,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
            exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready,
            -- The paid extensions the store's account has now (D748): their items are asked only of those stores.
            commerce.extension_on(s.id, 'work') as work_ext, commerce.extension_on(s.id, 'deals') as deals_ext,
-           commerce.extension_on(s.id, 'support_desk') as support_ext
+           commerce.extension_on(s.id, 'support_desk') as support_ext, commerce.extension_on(s.id, 'email_automation') as email_ext
     from commerce.store_members m
     -- Store templates (D175) are the platform's work, not the account's stores.
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.starter and not s.sandbox and not s.workspace
@@ -110,6 +110,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   // leads view's and the *Today* card's), and blog comments `website:read` (the Comments page's).
   const dealIds = new Set(storeRows.filter((r) => r.deals_ext === true && featureOn(((r.features ?? []) as unknown[]).map(String), "sales")).map((r) => String(r.id)));
   const salesCustomerIds = customerIds.filter((id) => dealIds.has(id));
+  // Flows losing readers (M3.8) are Email automation's (D748): asked only where the account has it, for those who may read marketing.
 
   const none = <T>() => Promise.resolve<T[]>([]);
   const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows, booksRows, requestRows, queues] = await Promise.all([
@@ -284,7 +285,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
           `,
         ),
     queueCounts(
-      { disputes: orderIds, decisions: ownerIds, leads: salesCustomerIds, activities: salesCustomerIds, comments: idsWith(storeRows, "website:read"), questions: supportIds, flows: idsWith(storeRows, "marketing:read") },
+      { disputes: orderIds, decisions: ownerIds, leads: salesCustomerIds, activities: salesCustomerIds, comments: idsWith(storeRows, "website:read"), questions: supportIds, flows: idsWith(storeRows.filter((r) => r.email_ext === true), "marketing:read") },
       account.id,
     ),
   ]);

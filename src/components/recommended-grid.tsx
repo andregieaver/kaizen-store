@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
+import { browserText } from "@/lib/browser-text";
 import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import type { ContentGridBlock } from "@/lib/page-content";
@@ -11,9 +12,9 @@ import type { Placement } from "@/lib/recommendations";
 import type { RecommendBlock, RecommendPlace } from "@/lib/recommendations-schema";
 import type { TileAsk } from "@/lib/shop-tiles";
 
-// The grid's own view is loaded only when the shopper's products arrive: until then the server's stand-in is shown, and the
-// view (with the page model it reads) stays out of the page's first scripts.
-const ContentGridView = lazy(() => import("./content-grid").then((module) => ({ default: module.ContentGridView })));
+// The grid's tiles are loaded only when the shopper's products arrive: until then the server's stand-in is shown, and the tiles stay
+// out of the page's first scripts. They are handed the browser's words (`browserText()`), so no whole language comes with them.
+const ContentGridTiles = lazy(() => import("./content-grid-tiles").then((module) => ({ default: module.ContentGridTiles })));
 
 type Outcome = { items: GridData["items"]; arm: "ai" | "baseline"; placement: Placement };
 
@@ -130,7 +131,7 @@ export function RecommendedGrid({
     <div onClick={clicked}>
       {outcome ? (
         <Suspense fallback={children}>
-          <ContentGridView block={block} data={data} notices={notices} tiles={tiles} />
+          <ContentGridTiles block={block} data={data} notices={notices} tiles={tiles} m={browserText(data.lang)} />
         </Suspense>
       ) : (
         children

@@ -18,7 +18,7 @@ import { sendEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { emailFooter, storeById } from "./shopper-emails";
 import { alertRecipients } from "./staff-alerts";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

@@ -24,7 +24,7 @@ import { GIFT_CARD_LINE, PAID, dayOf, soldIn } from "./analytics-sql";
 import { log } from "./log";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`): the only writer of `commerce.autopilot_effects`. Once an hour the

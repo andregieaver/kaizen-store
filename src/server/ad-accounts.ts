@@ -41,7 +41,7 @@ import { addDays, todayIn } from "@/lib/analytics-period";
 import { toMainOne } from "./analytics-sql";
 import { pgTextArray } from "./pg-arrays";
 import { storeOf } from "./product-data";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * A store's ad account, connected for its budgets (D585, step 1 of `docs/agent-spending.md`): the only writer of `commerce.ad_accounts` and

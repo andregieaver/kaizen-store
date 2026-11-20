@@ -44,7 +44,7 @@ import { currentFlags } from "./platform-flags";
 import { getStore } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { OPEN_QUESTION } from "./unanswered-questions";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The platform's own figures, targets, alerts and morning briefing (C2 of `docs/platform-parity-plan.md`, D513, `src/lib/platform-briefing.ts`):

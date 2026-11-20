@@ -268,11 +268,29 @@ describe.skipIf(WRITE)("the visitor's scripts", () => {
 
   it("scripts loaded later reach zod, the page model or a whole language only where the baseline says, and that list only shrinks", () => {
     const pairs = laterPairs();
-    const known = new Set(baseline.laterChains);
+    // An empty list in the JSON reads as `never[]`.
+    const listed: string[] = baseline.laterChains;
+    const known = new Set(listed);
     const added = pairs.filter((pair) => !known.has(pair));
     expect(added, "a view loaded with import() must take its words as a prop and read no schema: see docs/performance.md").toEqual([]);
-    const gone = baseline.laterChains.filter((pair) => !pairs.includes(pair));
+    const gone = listed.filter((pair) => !pairs.includes(pair));
     expect(gone, "remove the line from src/lib/storefront-bundle.baseline.json").toEqual([]);
+  });
+
+  it("the grid a recommending grid loads later reaches no zod, no page model and no whole language", () => {
+    // RecommendedGrid loads the tiles with import() once the shopper's products arrive (bloat review step 2.10): they take the browser's
+    // words as a prop (`browserText()`) and read the page model's helpers from modules without a schema (`grid-view.ts`, `grid-list-style.ts`).
+    const recommended = reach(join(SRC, "components/recommended-grid.tsx"), true);
+    expect([...recommended.keys()].map(rel)).toContain("components/content-grid-tiles");
+    const seen = reach(join(SRC, "components/content-grid-tiles.tsx"), true);
+    const chains = [...seen.keys()]
+      .filter((target) => ["zod", "lib/page-content", "lib/i18n"].includes(rel(target)) || /^lib\/messages\/[a-z]{2}$/.test(rel(target)))
+      .map((target) => {
+        const chain = [rel(target)];
+        for (let at = seen.get(target); at; at = seen.get(at)) chain.unshift(rel(at));
+        return chain.join(" -> ");
+      });
+    expect(chains, "the tiles take their words as a prop and read no schema: see docs/performance.md").toEqual([]);
   });
 
   it.each(PAGE_KEYS)("a store page's server code imports only the client modules its list names: %s", (key) => {

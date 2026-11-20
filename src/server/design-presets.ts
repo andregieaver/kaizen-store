@@ -67,7 +67,7 @@ import { parseSiteFonts } from "@/lib/fonts-schema";
 
 import { platformTheme } from "./platform-navigation";
 import { PLATFORM_INSTALLS_MAX, platformInstallCount, type PlatformLook } from "./platform-theme-installs";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Design profiles (D176, `docs/design-profiles.md`): a frozen snapshot of a store's look (theme, header, footer, standard product layout

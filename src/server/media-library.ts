@@ -20,7 +20,7 @@ import { copyStoredFile, removeStoredFiles, storedVideo, uploadProductImage, typ
 import { storageRefusal } from "./limits";
 import { getStore } from "./stores";
 import { owned } from "./owned";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

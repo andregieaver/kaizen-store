@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { audienceClass } from "@/lib/b2b";
 import { snapAttribute } from "@/lib/carousel-settings";
-import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
+import { noticesFor, type CampaignNotices, type CardWords } from "@/lib/campaign-notices";
 import type { GridData, GridItem } from "@/lib/content-grid";
 import { dateIn } from "@/lib/dates";
 import { fontClass } from "@/lib/fonts";
@@ -10,8 +10,9 @@ import { familyClassOf, textRoles } from "@/lib/typography";
 import type { Messages } from "@/lib/i18n";
 import { inlinePlain } from "@/lib/inline-text";
 import { sourceTraits } from "@/lib/grid-source";
-import { contentSides, frameStyle, gridImageShape, type ContentGridBlock, type Sides } from "@/lib/page-content";
-import { gridListStyle } from "@/lib/part-css";
+import { contentSides, frameStyle, gridImageShape } from "@/lib/grid-view";
+import type { ContentGridBlock, Sides } from "@/lib/page-content";
+import { gridListStyle } from "@/lib/grid-list-style";
 import { gridSizes } from "@/lib/picture-sizes";
 import { carouselAnywhere, valueAt } from "@/lib/responsive";
 import type { Size } from "@/lib/breakpoints";
@@ -34,6 +35,38 @@ import { SizedPicture } from "./sized-picture";
  * site (`ContentGridSection`, through `ContentGridView`) and in the page builder's canvas. Columns
  * follow the screen sizes (D179): the grid's own at Extra large, overrides below.
  */
+/**
+ * The words a grid's tiles say, at their paths in `Messages`, all held by the browser files (D212): the server hands `t()`, a recommending
+ * grid in the browser `browserText()`.
+ */
+export type GridWords = Pick<
+  Messages,
+  | "readMore"
+  | "viewProduct"
+  | "addToCart"
+  | "adding"
+  | "added"
+  | "capped"
+  | "goToCart"
+  | "planConflict"
+  | "tryAgain"
+  | "unavailable"
+  | "quantity"
+  | "quantityLess"
+  | "quantityMore"
+  | "fromPrice"
+  | "yourPrice"
+  | "priorPrice"
+  | "vatIncluded"
+  | "vatExcluded"
+> & {
+  quotes: Pick<Messages["quotes"], "priceOnRequest">;
+  preorder: Pick<Messages["preorder"], "page">;
+  group: Pick<Messages["group"], "choose">;
+  unitPrice: Pick<Messages["unitPrice"], "spoken" | "bases">;
+  campaigns: CardWords;
+};
+
 /** How many tiles of a grid that may be on the first screen load their pictures at once: a row of them on a computer. */
 const EAGER_TILES = 4;
 
@@ -62,8 +95,11 @@ export function ContentGridTiles({
   notices?: CampaignNotices;
   /** In a row that may be on the first screen: its first tiles' pictures load at once, the first before anything else. */
   eager?: boolean;
-  /** The grid's language, read by the caller: the storefront reads it with `t()`, the page builder's canvas loads one language on demand (`useSiteWords()`), so this file never holds a language. */
-  m: Messages;
+  /**
+   * The grid's words, read by the caller: the server reads them with `t()`, a recommending grid in the browser with `browserText()` (bloat
+   * review step 2.10), the page builder's canvas loads one language on demand (`useSiteWords()`), so this file never holds a language.
+   */
+  m: GridWords;
 }) {
   if (data.items.length === 0) {
     return block.emptyText ? (
@@ -309,7 +345,7 @@ function TileImage({
   shape: ReturnType<typeof gridImageShape>;
   isProduct: boolean;
   notices?: CampaignNotices;
-  m: Messages;
+  m: GridWords;
   only: boolean;
   fallbackName: string;
 }) {

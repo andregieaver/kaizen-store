@@ -12,7 +12,8 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }) }));
 vi.mock("./stripe", () => ({ platformStripe: () => null, WEBHOOK_EVENTS: [] }));
 
-const { houseCustomerOfAccount, houseStoreId, syncHouseCustomers } = await import("./house-customers");
+const { DRILL_ADDRESSES, houseCustomerOfAccount, houseStoreId, syncHouseCustomers } = await import("./house-customers");
+const { DRILL_EMAIL_DOMAIN } = await import("@/lib/live-drills");
 const { eraseSubject } = await import("./privacy-erasure");
 
 /**
@@ -106,6 +107,8 @@ describe("Kaizena Flow's own customers (D467)", () => {
   });
 
   it("never brings in the live drills' test addresses, as owner or applicant (D409)", async () => {
+    // The address is written in the sync (store pages reach it); it is the drills' own.
+    expect(DRILL_ADDRESSES).toBe(`%${DRILL_EMAIL_DOMAIN}`);
     const shop = await store("drill-shop", true);
     const drillOwner = `delivered+dream${run}@resend.dev`;
     await owner(drillOwner, shop);

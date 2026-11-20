@@ -23,7 +23,7 @@ import { log } from "./log";
 import { sendAccountingAlert } from "./staff-alerts";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { workEvent } from "./work";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Fiken (D460): sending a store's documents, the only writer of `commerce.fiken_sync`. The same engine as Tripletex's (D453): every five

@@ -11,7 +11,7 @@ import { audit } from "./auth";
 import { log } from "./log";
 import { SYSTEM_ACTOR, writeOrderEvent, type OrderActor } from "./order-actor";
 import { uuidList } from "./sql-arrays";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

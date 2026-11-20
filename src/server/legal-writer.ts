@@ -52,7 +52,7 @@ import { memberCan, NO_ACCESS } from "./permissions";
 import { refreshTag } from "./refresh";
 import type { Store } from "./stores";
 import { typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The AI writing and keeping a store's legal pages (D311, unit L, `docs/ai-autopilot.md` 8.3 to 8.6). An owner asks for one kind of page

@@ -22,7 +22,7 @@ paths:
   (`src/server/cron-runs.ts`): each run is kept in `commerce.cron_jobs`, a job that throws is logged and the others finish, and
   the platform home and Usage and limits say which job is late or failing (`src/lib/cron-health.ts`); `cron-routes.scan.test.ts`
   holds new routes to it.
-- A scheduled job's entry function never swallows an error: `const report = jobReport();` (`src/server/job-report.ts`), then
+- A scheduled job's entry function never swallows an error: `const report = jobReport();` (`src/server/cache-events.ts`), then
   `report(error, "part")` in each catch, which logs it and counts the run failed after the other parts ran; a business outcome (a declined
   card, Stripe's or a registrar's refusal) stays quiet and only other errors report. Work after a route's answer runs inside
   `trackedWork("route.<name>", …)`. `cron-entry-catches.scan.test.ts` holds both, with the owner's named normal states (D843).

@@ -14,7 +14,7 @@ import { OPEN_QUESTION } from "./unanswered-questions";
 import { textList, uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
-import { dealsOn } from "@/lib/extensions";
+import { dealsOn, storeExtensionOn } from "@/lib/extensions";
 
 /**
  * One attention source (ecosystem plan E2.1, D713): the queues that wait on a store's people, counted in SQL for any number of stores at
@@ -226,7 +226,7 @@ export type StoreAttention = Record<AdminLang, StoreAttentionItem[]>;
 export async function storeAttention(store: Store, now: Date = new Date()): Promise<StoreAttention> {
   const ids = [store.id];
   const sales = dealsOn(store) ? ids : [];
-  const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids, flows: ids }, null, now);
+  const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids, flows: storeExtensionOn(store, "email_automation", now) ? ids : [] }, null, now);
   const figures: QueueFigures = { slug: store.slug, name: store.name, role: "owner", ...queueFiguresOf(store.id, counts) };
   return Object.fromEntries(ADMIN_LANGS.map((lang) => [lang, storeAttentionItems(figures, now.getTime(), HOME_WORDS[lang].attention)])) as StoreAttention;
 }

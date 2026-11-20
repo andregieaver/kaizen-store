@@ -500,7 +500,7 @@ export const nb: Messages = {
    */
   // legal: needs review
   preorder: {
-    page: (date: string) => `Forhåndsbestilling: forventes sendt fra ${date}`,
+    ...nbBrowser.preorder,
     line: (n: number, date: string) => `${n} forhåndsbestilt: forventes sendt fra ${date}`,
     order: (n: number, quantity: number, date: string) => `${n} av ${quantity} forhåndsbestilt: forventes sendt fra ${date}`,
   },
@@ -615,8 +615,7 @@ export const nb: Messages = {
   customFields: { yes: "Ja", no: "Nei" },
   /** What a store's campaigns say on product pages and cards (D115). */
   campaigns: {
-    percent: (percent: number) => `${percent} % rabatt`,
-    multiBuy: (buy: number, pay: number) => `${buy} for ${pay}`,
+    ...nbBrowser.campaigns,
     gift: (title: string, amount: string) => `Gratis ${title} når du handler for ${amount}`,
     inCart: "Tilbudet trekkes fra i handlekurven.",
     signIn: "Logg inn på Min konto for å få det.",
@@ -625,22 +624,17 @@ export const nb: Messages = {
     amountOver: (amount: string, over: string) => `${amount} rabatt når du handler for ${over}`,
     freeShipping: "Gratis frakt",
     freeShippingOver: (over: string) => `Gratis frakt når du handler for ${over}`,
-    upTo: (percent: number) => `Opptil ${percent} % rabatt`,
     tierQuantity: (percent: number, items: number) => `${percent} % rabatt når du kjøper ${items}`,
     tierSpend: (percent: number, amount: string) => `${percent} % rabatt når du handler for ${amount}`,
     nextQuantity: (items: number, percent: number) => `Kjøp ${items} til for å få ${percent} % rabatt`,
     nextSpend: (amount: string, percent: number) => `Handle for ${amount} til for å få ${percent} % rabatt`,
-    upToAmount: (amount: string) => `Opptil ${amount} rabatt`,
     tierQuantityAmount: (amount: string, items: number) => `${amount} rabatt når du kjøper ${items}`,
     tierSpendAmount: (amount: string, spend: string) => `${amount} rabatt når du handler for ${spend}`,
     nextQuantityAmount: (items: number, amount: string) => `Kjøp ${items} til for å få ${amount} rabatt`,
     nextSpendAmount: (spend: string, amount: string) => `Handle for ${spend} til for å få ${amount} rabatt`,
     nextAmount: (amount: string, off: string) => `Handle for ${amount} til for å få ${off} rabatt`,
     nextFreeShipping: (amount: string) => `Handle for ${amount} til for å få gratis frakt`,
-    bxgyBuy: (items: number) => `Kjøp ${items}`,
     bxgySpend: (amount: string) => `Handle for ${amount}`,
-    bxgyGetFree: (items: number) => `få ${items} gratis`,
-    bxgyGetPercent: (items: number, percent: number) => `få ${items} med ${percent} % rabatt`,
     bxgyGetAmount: (items: number, amount: string) => `få ${items} med ${amount} rabatt`,
   },
   total: "Totalt",
@@ -679,18 +673,8 @@ export const nb: Messages = {
   toHome: "Til forsiden",
   cart: "Handlekurv",
   cartCount: (n: number) => `Handlekurv (${n})`,
-  addToCart: "Legg i handlekurven",
-  adding: "Legger til …",
-  added: "Lagt i handlekurven.",
-  capped: "Du har nå alt vi har på lager i handlekurven.",
-  unavailable: "Denne varen er ikke tilgjengelig.",
-  tryAgain: "Noe gikk galt. Prøv igjen.",
-  goToCart: "Gå til handlekurven",
   emptyCart: "Handlekurven er tom.",
-  quantity: "Antall",
   update: "Oppdater",
-  quantityLess: "Reduser antall",
-  quantityMore: "Øk antall",
   quantitySaving: "Oppdaterer handlekurven …",
   remove: "Fjern",
   subtotal: "Sum varer",
@@ -699,17 +683,13 @@ export const nb: Messages = {
   noLongerAvailable: "Ikke lenger tilgjengelig. Fjern varen for å fortsette.",
   continueShopping: "Fortsett å handle",
   products: "Produkter",
-  vatIncluded: "inkl. mva.",
-  vatExcluded: "ekskl. mva.",
   /**
    * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
    * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
    */
   unitPrice: {
+    ...nbBrowser.unitPrice,
     label: "Enhetspris",
-    /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
-    spoken: (amount: string, base: string) => `Enhetspris: ${amount} per ${base}`,
-    bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "stk." },
   },
   /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
   buyer: {
@@ -738,9 +718,6 @@ export const nb: Messages = {
     savedProductNote: "Mot laveste pris de siste 30 dagene.",
     goesWith: "Passer godt med handlekurven din",
   },
-  priorPrice: "Laveste pris siste 30 dager",
-  fromPrice: "Fra",
-  yourPrice: "Din pris",
   inStock: "På lager",
   productPassport: "Produktpass",
   fromSupplier: (days: number) => `På lager: sendes innen ${days} ${days === 1 ? "virkedag" : "virkedager"}`,
@@ -796,13 +773,10 @@ export const nb: Messages = {
   chooseLanguage: "Velg språk",
   chooseCurrency: "Velg valuta",
   noProducts: "Ingen produkter ennå.",
-  /** Content grids (D51): a tile's button, and a grid with nothing to show. */
-  readMore: "Les mer",
   /** Videos (D91): the play button, and where a YouTube or Vimeo video plays from. */
   googleRating: (rating: string, count: number) => `${rating} av 5 · ${count} anmeldelser på Google`,
   googleReviews: "Anmeldelser på Google",
   seeOnGoogle: "Se alle på Google",
-  viewProduct: "Se produktet",
   blog: "Blogg",
   byAuthor: (name: string) => `Av ${name}`,
   noArticles: "Ingen artikler ennå.",
@@ -974,10 +948,6 @@ export const nb: Messages = {
     stripeLine: (number) => `Faktura for ordre ${number}`,
     dueShort: (day) => `Forfaller ${day}`,
   },
-  /** Combined listings (D566): the shared option's chooser on a product's card and page. */
-  group: {
-    choose: (option: string) => `Velg: ${option}`,
-  },
   /** SMS-markedsføring (D565): skrevet for hånd, trenger juridisk gjennomlesing. */
   // legal: needs review
   sms: {
@@ -1085,7 +1055,6 @@ export const nb: Messages = {
     `Fornyes ${every.toLowerCase()} for ${amount} til du sier opp. Du kan si opp når som helst.`,
   subscriptionConsent: (every: string, amount: string) =>
     `Jeg godtar et abonnement som fornyes ${every.toLowerCase()} for ${amount} til jeg sier det opp, og vet at jeg kan si opp når som helst.`,
-  planConflict: "Handlekurven har allerede et abonnement med en annen frekvens. Kjøp det først, eller velg samme frekvens.",
   problemPlans: "Abonnementene i handlekurven fornyes ulikt. Behold én frekvens og prøv igjen.",
   problemSubscriptionConsent: "Kryss av for at du godtar abonnementet for å gå videre.",
   serviceRequest:

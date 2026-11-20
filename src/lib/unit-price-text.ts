@@ -8,6 +8,8 @@ import type { PriceVat } from "./pricing";
 import { unitPrice, unitPriceShown, type Base, type ShownMeasure } from "./unit-price";
 
 type UnitPriceMessages = Pick<Messages, "unitPrice">;
+/** What a unit line says, held by the browser files too: a price drawn in the browser hands only these (bloat review step 2.10). */
+export type UnitWords = { unitPrice: Pick<Messages["unitPrice"], "spoken" | "bases"> };
 
 /**
  * The words a unit line needs, as plain data so a client component can be given them (the sentence a screen reader
@@ -16,7 +18,7 @@ type UnitPriceMessages = Pick<Messages, "unitPrice">;
  */
 export type UnitLabels = { spoken: string; bases: Record<Base, string> };
 
-export function unitLabelsOf(m: UnitPriceMessages): UnitLabels {
+export function unitLabelsOf(m: UnitWords): UnitLabels {
   return { spoken: m.unitPrice.spoken("{amount}", "{base}"), bases: m.unitPrice.bases };
 }
 

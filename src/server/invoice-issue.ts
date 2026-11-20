@@ -11,7 +11,7 @@ import { log } from "./log";
 import { col, typedRow } from "./typed-rows";
 import { reconcilePendingRefunds } from "./stripe-refunds";
 import { ensureSubscriptionEvents } from "./subscriptions";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

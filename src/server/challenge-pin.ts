@@ -11,7 +11,7 @@ import { promptVersions, toolsVersion } from "./agent-eval";
 import { getAiSettings } from "./ai";
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Challenge stores protected from deploys (`docs/100-day-challenge.md` F5): what each one's AI runs on is pinned when the challenge is set,
