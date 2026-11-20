@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
+import { Attention, Section, Stat, StatGrid, type AttentionWords } from "@/components/admin/overview-parts";
 import { formatMoney } from "@/lib/money";
 import { formatDay } from "@/lib/work-dates";
 import { WORK_LOCALE, type WorkStore } from "@/lib/work-owner";
@@ -70,7 +70,7 @@ function Figures({ f, many }: { f: CurrencyFigures; many: boolean }) {
  * needs attention, the overdue invoices, unbilled time by client and the timers running. Every row links to its
  * store's own screen.
  */
-export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; stores: WorkStore[] }) {
+export function OwnerOverviewBody({ view, stores, attention }: { view: OwnerOverviewView; stores: WorkStore[]; /** `HOME_WORDS[lang].attention`. */ attention: AttentionWords }) {
   const tw = workText().ownerOverview;
   const { combined } = view;
   const many = stores.length > 1;
@@ -131,7 +131,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
         </section>
       ) : (
         <>
-          <Attention items={combined.attention} empty={tw.nothingNeedsYourAttention} />
+          <Attention items={combined.attention} empty={tw.nothingNeedsYourAttention} words={attention} />
 
           {combined.currencies.length > 0 ? (
             <section aria-labelledby="figures-heading" className="flex flex-col gap-4">

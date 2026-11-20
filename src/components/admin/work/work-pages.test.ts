@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_WORK_SETTINGS, sellerReadiness } from "@/lib/work-settings";
 import { workOverview, type OverviewEntry, type OverviewInvoice } from "@/lib/work-overview";
 import { workEn } from "@/lib/admin-messages/work.en";
+import { homeEn } from "@/lib/admin-messages/home.en";
 
 import { SeriesForm, WorkSettingsForm } from "./settings-form";
 import { OverviewBody, type OverviewProps } from "./work-overview";
@@ -23,6 +24,7 @@ const BASE = "/admin/account/work/s/kaffe";
 
 const base = (over: Partial<OverviewProps> = {}): OverviewProps => ({
   base: BASE,
+  attention: homeEn.attention,
   settingsHref: "/admin/account/work/s/kaffe/settings",
   locale: "en",
   today: TODAY,
@@ -246,7 +248,7 @@ describe("the numbering form", () => {
 
 describe("the stand-ins", () => {
   it("point to the switch when Work is off", () => {
-    const off = html(createElement(WorkOff, { storeSlug: "kaffe", title: "Clients" }));
+    const off = html(createElement(WorkOff, { storeSlug: "kaffe", title: "Clients", words: workEn.off }));
     expect(off).toContain('href="/admin/account/work/settings"');
     expect(off).toContain("Work is off");
   });

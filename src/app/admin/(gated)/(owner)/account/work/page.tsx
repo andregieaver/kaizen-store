@@ -8,6 +8,7 @@ import { getOwnerOverview, getOwnerSettings, workStoresFor } from "@/server/work
 import { switchActionsFor } from "./owner-page";
 import { workText } from "@/lib/work-text";
 import { workWords } from "@/server/work-words";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 
 export const metadata: Metadata = { title: "Work" };
 
@@ -17,7 +18,7 @@ export const metadata: Metadata = { title: "Work" };
  * to are read; while none uses Work the page explains it and offers the switches.
  */
 export default async function OwnerWorkPage() {
-  await workWords();
+  const { lang } = await workWords();
   const tw = workText().pagePage;
   const account = await requireAccount();
   const { using, off } = await workStoresFor(account);
@@ -25,5 +26,5 @@ export default async function OwnerWorkPage() {
     const rows = await getOwnerSettings(off);
     return <OwnerWorkStart title={tw.work} rows={rows} actions={switchActionsFor(rows)} />;
   }
-  return <OwnerOverviewBody view={await getOwnerOverview(using)} stores={using} />;
+  return <OwnerOverviewBody view={await getOwnerOverview(using)} stores={using} attention={HOME_WORDS[lang].attention} />;
 }

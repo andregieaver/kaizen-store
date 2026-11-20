@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { AREA_LABELS, ROLE_AREAS, levelIn, type AreaLevel } from "@/lib/permissions";
 import { LEVELS, levelField } from "@/lib/role-form";
-import { staffEn, type StaffMessages } from "@/lib/admin-messages/staff.en";
+import type { StaffMessages } from "@/lib/admin-messages/staff.en";
 
 const field = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
@@ -23,10 +23,10 @@ export function RoleEditor({
   submitLabel: string;
   /** Makes the field ids unique where several editors share a page. */
   idPrefix: string;
-  /** The account's words (D312 A8); English unless given. */
-  words?: StaffMessages;
+  /** The account's words (D312 A8). */
+  words: StaffMessages;
 }) {
-  const w = (words ?? staffEn).editor;
+  const w = words.editor;
   const areaName = (area: keyof typeof AREA_LABELS) => (words ? words.areas[area] : AREA_LABELS[area]);
   const levelName = (level: (typeof LEVELS)[number]["level"], label: string) => (words ? w.levels[level] : label);
   return (

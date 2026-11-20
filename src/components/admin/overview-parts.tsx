@@ -2,7 +2,7 @@ import { AdminLink } from "./ui/link";
 import type { ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
+import type { HomeMessages } from "@/lib/admin-messages/home.en";
 
 import { CARD_CLASS, CountBadge, dotClass } from "./ui";
 
@@ -37,15 +37,18 @@ export function StatGrid({ children }: { children: ReactNode }) {
 export type AttentionItem = { text: ReactNode; href: string; action: string; urgent?: boolean };
 
 /** What needs doing first, each with the page that does it, the urgent ones said so in words too. Says so when there is nothing. */
+/** What the attention card says itself: the `home` catalogue's `attention` words, or a cut of them. */
+export type AttentionWords = Pick<HomeMessages["attention"], "heading" | "toDo" | "urgent">;
+
 export function Attention({
   items,
   empty,
-  words: w = homeEn.attention,
+  words: w,
 }: {
   items: AttentionItem[];
   empty: string;
   /** The `home` catalogue's `attention` words in the account's language (D312 A3). */
-  words?: Pick<HomeMessages["attention"], "heading" | "toDo" | "urgent">;
+  words: AttentionWords;
 }) {
   return (
     <section aria-labelledby="attention-heading" className={`flex flex-col gap-3 p-6 ${CARD_CLASS}`}>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
+import type { HomeMessages } from "@/lib/admin-messages/home.en";
 import { changeText, hidden, money, type StoreFigures } from "@/lib/control-center";
 import { storeBase, storeHref } from "@/lib/paths";
 
@@ -31,12 +31,12 @@ function Figure({ label, value, sub, href }: { label: string; value: string; sub
  */
 export function StoreCard({
   store,
-  words = homeEn,
+  words,
   locale = "en",
 }: {
   store: StoreFigures;
   /** The `home` catalogue in the account's language (D312 A3), and its number format. */
-  words?: HomeMessages;
+  words: HomeMessages;
   locale?: string;
 }) {
   const w = words.card;

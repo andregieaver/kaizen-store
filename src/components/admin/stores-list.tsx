@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/admin/ui";
-import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
+import type { HomeMessages } from "@/lib/admin-messages/home.en";
 import { copyWizardPath } from "@/lib/store-copy-paths";
 import type { StoreSummary } from "@/server/auth";
 
@@ -14,7 +14,7 @@ export function StoresList({
   stores,
   canDuplicate = false,
   platformAdmin = false,
-  words: w = homeEn.stores,
+  words: w,
   emptyText,
   emptyAction,
 }: {
@@ -22,7 +22,7 @@ export function StoresList({
   canDuplicate?: boolean;
   platformAdmin?: boolean;
   /** The `home` catalogue's `stores` words in the account's language (D312 A3). */
-  words?: HomeMessages["stores"];
+  words: HomeMessages["stores"];
   /** With no store (code review 2.9, D845): how to be let in, and the one next step where the page offers none below. */
   emptyText?: ReactNode;
   emptyAction?: ReactNode;

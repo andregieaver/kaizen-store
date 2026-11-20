@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
+import { Attention, Section, Stat, StatGrid, type AttentionWords } from "@/components/admin/overview-parts";
 import { formatMoney } from "@/lib/money";
 import { formatDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
@@ -13,6 +13,8 @@ import { fillWords } from "@/lib/admin-fill";
 
 /** What the overview shows, from the reader's rows and the names to put on them (`getWorkOverview`). */
 export type OverviewProps = {
+  /** The `home` catalogue's `attention` words in the account's language (`HOME_WORDS[lang].attention`). */
+  attention: AttentionWords;
   /** `workBase(store)`. */
   base: string;
   settingsHref: string;
@@ -128,7 +130,7 @@ export function OverviewBody(props: OverviewProps) {
         </section>
       ) : (
         <>
-          <Attention items={overview.attention} empty={tw.nothingNeedsYourAttention} />
+          <Attention items={overview.attention} empty={tw.nothingNeedsYourAttention} words={props.attention} />
 
           {hasFigures ? (
             <section aria-labelledby="figures-heading" className="flex flex-col gap-4">

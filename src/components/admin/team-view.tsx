@@ -5,7 +5,7 @@ import { Avatar } from "@/components/avatar";
 import { COLLABORATOR_DAYS, accessEnded } from "@/lib/permissions";
 import { roleChoiceValue } from "@/lib/role-form";
 import { fillWords } from "@/lib/admin-fill";
-import { staffEn, type StaffMessages } from "@/lib/admin-messages/staff.en";
+import type { StaffMessages } from "@/lib/admin-messages/staff.en";
 import { roleNameIn } from "@/lib/staff-words";
 import { avatarFor } from "@/server/avatars";
 import type { StaffMember } from "@/server/settings";
@@ -27,10 +27,10 @@ export function RoleOptions({
 }: {
   roles: readonly Pick<StoreRole, "id" | "name">[];
   collaborator?: boolean;
-  /** The account's words (D312 A8); English unless given. */
-  words?: StaffMessages;
+  /** The account's words (D312 A8). */
+  words: StaffMessages;
 }): ReactNode {
-  const w = words ?? staffEn;
+  const w = words;
   return (
     <>
       {!collaborator && <option value="owner">{w.roles.owner}</option>}
@@ -48,8 +48,8 @@ const day = (iso: string | null | undefined, zone: string, locale = "en-GB") =>
   iso ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: zone }).format(new Date(iso)) : "";
 
 /** A member's role as the Team page says it, with no control: "Owner", "Admin", or the custom role's name. */
-export const roleLabel = (member: Pick<StaffMember, "role" | "roleName">, words?: StaffMessages): string => {
-  const w = words ?? staffEn;
+export const roleLabel = (member: Pick<StaffMember, "role" | "roleName">, words: StaffMessages): string => {
+  const w = words;
   return member.role === "owner" ? w.roles.owner : member.roleName ? roleNameIn(member.roleName, words) : w.roles.admin;
 };
 
@@ -73,12 +73,12 @@ export function TeamList({
   now: Date;
   zone: string;
   actions: { assign: Action; extend: Action; disable: Action };
-  /** The account's words (D312 A8); English unless given. */
-  words?: StaffMessages;
+  /** The account's words (D312 A8). */
+  words: StaffMessages;
   /** How dates are written in them. */
   locale?: string;
 }) {
-  const w = (words ?? staffEn).team;
+  const w = words.team;
   const ended = (m: StaffMember) => m.disabled || (m.kind === "collaborator" && accessEnded(m.expiresAt ? new Date(m.expiresAt) : null, now));
   const active = members.filter((m) => !ended(m));
   const past = members.filter(ended);
@@ -177,10 +177,10 @@ export function InviteForms({
 }: {
   roles: readonly Pick<StoreRole, "id" | "name">[];
   actions: { staff: Action; collaborator: Action };
-  /** The account's words (D312 A8); English unless given. */
-  words?: StaffMessages;
+  /** The account's words (D312 A8). */
+  words: StaffMessages;
 }) {
-  const w = (words ?? staffEn).invite;
+  const w = words.invite;
   return (
     // Round 8 (D626): one way to invite; a collaborator with an end date is the same invite, one fold away.
     <Card title={w.title} compact className="scroll-mt-6">
@@ -246,10 +246,10 @@ export function TwoStepRequirement({
   withIt: number;
   total: number;
   action: Action;
-  /** The account's words (D312 A8); English unless given. */
-  words?: StaffMessages;
+  /** The account's words (D312 A8). */
+  words: StaffMessages;
 }) {
-  const w = (words ?? staffEn).twoStep;
+  const w = words.twoStep;
   // Round 8 (D626): one row, how many have it, and the switch with its Save; the rest of what it does in its title.
   return (
     <section aria-labelledby="two-step" className={`flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 ${CARD_CLASS}`}>

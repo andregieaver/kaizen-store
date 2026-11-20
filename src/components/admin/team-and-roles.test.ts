@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { ROLE_TEMPLATES } from "@/lib/permissions";
+import { staffEn } from "@/lib/admin-messages/staff.en";
 import type { StaffMember } from "@/server/settings";
 
 import { RoleEditor } from "./role-editor";
@@ -22,7 +23,7 @@ const html = (element: Parameters<typeof renderToString>[0]) =>
 const action = async () => ({ status: "ok" as const, messages: [] });
 
 describe("the role editor", () => {
-  const editor = (role?: { name: string; permissions: readonly string[] }) => html(createElement(RoleEditor, { action, role, submitLabel: "Save role", idPrefix: "r" }));
+  const editor = (role?: { name: string; permissions: readonly string[] }) => html(createElement(RoleEditor, { action, role, submitLabel: "Save role", idPrefix: "r", words: staffEn }));
 
   it("has a name and one choice of no access, can view or can change for each working area", () => {
     const out = editor();
@@ -70,12 +71,12 @@ describe("the team", () => {
   });
   const roles = [{ id: "6f1c0b9e-1111-4222-8333-444455556666", name: "Orders" }];
   const list = (members: StaffMember[], now = new Date("2026-10-03T12:00:00Z")) =>
-    html(createElement(TeamList, { members, roles, viewerId: "me", now, zone: "Europe/Oslo", actions: { assign: action, extend: action, disable: action } }));
+    html(createElement(TeamList, { members, roles, viewerId: "me", now, zone: "Europe/Oslo", actions: { assign: action, extend: action, disable: action }, words: staffEn }));
 
   it("says each member's role: owner, a custom role's name, or admin", () => {
-    expect(roleLabel({ role: "owner", roleName: null })).toBe("Owner");
-    expect(roleLabel({ role: "admin", roleName: "Orders" })).toBe("Orders");
-    expect(roleLabel({ role: "admin", roleName: null })).toBe("Admin");
+    expect(roleLabel({ role: "owner", roleName: null }, staffEn)).toBe("Owner");
+    expect(roleLabel({ role: "admin", roleName: "Orders" }, staffEn)).toBe("Orders");
+    expect(roleLabel({ role: "admin", roleName: null }, staffEn)).toBe("Admin");
   });
 
   it("badges a collaborator with the end date, and says who has two-step sign-in", () => {
@@ -117,7 +118,7 @@ describe("the team", () => {
   });
 
   it("invites staff and collaborators with the roles to choose from", () => {
-    const out = html(createElement(InviteForms, { roles, actions: { staff: action, collaborator: action } }));
+    const out = html(createElement(InviteForms, { roles, actions: { staff: action, collaborator: action }, words: staffEn }));
     expect(out).toContain("Invite someone");
     // Round 8 (D626): the collaborator's invite is one fold away under the one invite.
     expect(out).toContain("For a limited time, as for an agency or a freelancer");
@@ -126,14 +127,14 @@ describe("the team", () => {
     expect(out).toContain('value="30"');
     // The collaborator form has no owner option: one owner option in all, in the staff form.
     expect(out.match(/<option value="owner"/g)).toHaveLength(1);
-    expect(html(createElement("select", null, createElement(RoleOptions, { roles })))).toContain("Orders");
+    expect(html(createElement("select", null, createElement(RoleOptions, { roles, words: staffEn })))).toContain("Orders");
   });
 
   it("says how many of the team have two-step sign-in, and the store's requirement", () => {
-    const off = html(createElement(TwoStepRequirement, { required: false, withIt: 1, total: 3, action }));
+    const off = html(createElement(TwoStepRequirement, { required: false, withIt: 1, total: 3, action, words: staffEn }));
     expect(off).toContain("1 of 3 have it.");
     expect(off).toMatch(/name="required"(?![^>]*checked)/);
-    const on = html(createElement(TwoStepRequirement, { required: true, withIt: 3, total: 3, action }));
+    const on = html(createElement(TwoStepRequirement, { required: true, withIt: 3, total: 3, action, words: staffEn }));
     expect(on).toContain("3 of 3 have it.");
     expect(on).toMatch(/name="required"[^>]*checked=""/);
     expect(on).toContain("You need it on yourself first");

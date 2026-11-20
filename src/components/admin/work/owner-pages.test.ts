@@ -8,6 +8,7 @@ import { workEn } from "@/lib/admin-messages/work.en";
 import { parseInvoiceListParams } from "@/lib/work-invoice-ui";
 import { parseReportParams, type PeriodReport } from "@/lib/work-reports";
 import { EMPTY_TIME_FILTERS } from "@/lib/work-ui";
+import { homeEn } from "@/lib/admin-messages/home.en";
 import type { OwnerInvoiceList, OwnerOverviewView, OwnerSettingsRow } from "@/server/work-owner";
 
 import { OwnerClientsList } from "./owner-clients";
@@ -97,7 +98,7 @@ const view = (parts: StoreOverview[]): OwnerOverviewView => ({
 
 describe("the overview", () => {
   it("asks for a first client when there is none", () => {
-    const out = html(createElement(OwnerOverviewBody, { view: view([part(NO, [], [], 0)]), stores: [NO] }));
+    const out = html(createElement(OwnerOverviewBody, { view: view([part(NO, [], [], 0)]), stores: [NO], attention: homeEn.attention }));
     expect(out).toContain("Add your first client");
     expect(out).toContain("/admin/account/work/s/kaffe/clients");
   });
@@ -107,7 +108,7 @@ describe("the overview", () => {
       part(NO, [invoice({ id: "i1" })], [entry({})], 2),
       part(SE, [invoice({ id: "i2", currency: "SEK", totalMinor: 90_000 })], [entry({ currency: "SEK" })], 1),
     ];
-    const out = html(createElement(OwnerOverviewBody, { view: view(parts), stores: [NO, SE] }));
+    const out = html(createElement(OwnerOverviewBody, { view: view(parts), stores: [NO, SE], attention: homeEn.attention }));
     expect(out).toContain("all stores");
     expect(out).toMatch(/NOK/);
     expect(out).toMatch(/SEK/);
@@ -128,7 +129,7 @@ describe("the overview", () => {
         problems: [{ code: "bank_account", severity: "error", where: "settings", message: "Add a bank account." } as never],
       },
     ];
-    const out = html(createElement(OwnerOverviewBody, { view: v, stores: [NO] }));
+    const out = html(createElement(OwnerOverviewBody, { view: v, stores: [NO], attention: homeEn.attention }));
     expect(out).toContain("Add a bank account.");
     expect(out).toContain("/admin/account/work/s/kaffe/settings");
   });
