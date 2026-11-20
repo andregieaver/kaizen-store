@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CONTRACT_FIELDS, type ContractField } from "./contract-field-keys";
 import { contractDoc, contractDocText, fillContractDoc } from "./contract-rich";
 import type { RichTextDoc } from "./rich-text-doc";
 
@@ -16,27 +17,7 @@ export const CONTRACT_TEXT_MAX = 20_000;
 export const CONTRACT_HEADING_MAX = 200;
 export const CONTRACT_BLOCKS_MAX = 200;
 
-/** The fields a template may name, as `{key}` in its words. Their values come from the deal, its person and company, the store and today. */
-export const CONTRACT_FIELDS = [
-  "customer.name",
-  "customer.email",
-  "customer.phone",
-  "customer.address",
-  "company.name",
-  "company.org_number",
-  "company.address",
-  "store.name",
-  "store.org_number",
-  "store.address",
-  "store.email",
-  "deal.title",
-  "deal.owner",
-  "deal.value",
-  "contract.title",
-  "contract.date",
-  "contract.expires",
-] as const;
-export type ContractField = (typeof CONTRACT_FIELDS)[number];
+export { CONTRACT_FIELDS, type ContractField } from "./contract-field-keys";
 const isField = (key: string): key is ContractField => (CONTRACT_FIELDS as readonly string[]).includes(key);
 
 /** `{customer.name}`: a field's key in braces, letters, dots and underscores. */
