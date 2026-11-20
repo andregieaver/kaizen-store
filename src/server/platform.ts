@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { isExtensionId, type ExtensionId } from "@/lib/extensions";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { ACCESS_EMAIL_KINDS, accessEmail, requestLang, requestLocale, type AccessEmailKind } from "@/lib/access-emails";
 import { renderEmail } from "@/lib/email-layout";
 import type { PlatformLang } from "@/lib/platform-lang";
@@ -621,7 +622,7 @@ export async function createStoreForOwner(
   // The plan's stores per owner (D314), under the ceiling above; a platform admin is never limited.
   if (!account.platformAdmin) {
     const room = await checkOwnerStores(account.id);
-    if (!room.ok) return { ok: false, problems: [limitRefusal("stores_owned", room.limit)] };
+    if (!room.ok) return { ok: false, problems: [limitRefusal("stores_owned", room.limit, LIMIT_REFUSALS)] };
   }
   if (await isSlugTaken(slug)) return { ok: false, problems: [`The address ${slug} is taken. Choose another.`] };
 

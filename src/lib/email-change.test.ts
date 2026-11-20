@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
+import { staffEmailsEn } from "./admin-messages/staff-emails.en";
 import { EMAIL_CHANGE_HOURS, NAME_MAX } from "./email-change-limits";
 import { renderEmail } from "./email-layout";
 import {
@@ -78,21 +79,21 @@ describe("the emails of a change", () => {
   const facts = { person: "Ada", email: "new@example.com", when: "2026-11-20 12:00 UTC", byAdmin: false, url: "https://kaizenaflow.com/admin/account/email/confirm?token=t" };
 
   it("sends the new address its link, saying how long it works and that it signs nobody in", () => {
-    const email = renderEmail(emailChangeEmail("confirm", facts));
+    const email = renderEmail(emailChangeEmail("confirm", facts, staffEmailsEn));
     expect(email.subject).toBe("Confirm your new email address for Kaizena Flow");
     expect(email.text).toContain("new@example.com");
     expect(email.text).toContain(facts.url);
     expect(email.text).toContain("24 hours");
     expect(email.text).toContain("does not sign you in");
-    expect(renderEmail(emailChangeEmail("confirm", { ...facts, byAdmin: true })).text).toContain("Kaizena Flow admin asked, for you");
+    expect(renderEmail(emailChangeEmail("confirm", { ...facts, byAdmin: true }, staffEmailsEn)).text).toContain("Kaizena Flow admin asked, for you");
   });
 
   it("tells the old address what was asked and what was done, with no link but the sign-in page", () => {
-    const asked = renderEmail(emailChangeEmail("requested", { ...facts, email: "n•••@example.com", url: "https://kaizenaflow.com/admin/sign-in" }));
+    const asked = renderEmail(emailChangeEmail("requested", { ...facts, email: "n•••@example.com", url: "https://kaizenaflow.com/admin/sign-in" }, staffEmailsEn));
     expect(asked.text).toContain("n•••@example.com");
     expect(asked.text).toContain("cancel the change");
     expect(asked.text).not.toContain("token=");
-    const done = renderEmail(emailChangeEmail("changed", { ...facts, email: "n•••@example.com", url: "https://kaizenaflow.com/admin/sign-in" }));
+    const done = renderEmail(emailChangeEmail("changed", { ...facts, email: "n•••@example.com", url: "https://kaizenaflow.com/admin/sign-in" }, staffEmailsEn));
     expect(done.subject).toBe("Your Kaizena Flow email address was changed");
     expect(done.text).toContain("If this was not you");
   });

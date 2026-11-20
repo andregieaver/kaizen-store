@@ -1,6 +1,6 @@
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 
 /**
@@ -19,7 +19,7 @@ export type LinkedFacts = {
   connectedUrl: string;
 };
 
-export function kaizenLifeLinkedEmail(facts: LinkedFacts, words: StaffEmailsMessages = staffEmailsEn, lang: AdminLang = "en"): EmailContent {
+export function kaizenLifeLinkedEmail(facts: LinkedFacts, words: StaffEmailsMessages, lang: AdminLang = "en"): EmailContent {
   const w = words.kaizenLife;
   return {
     subject: w.subject,

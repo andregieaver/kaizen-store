@@ -106,7 +106,7 @@ const CEILINGS: Record<string, number> = {
   "src/app/api/visit/speed/route.ts": 0,
   "src/app/api/visit/speed/own/route.ts": 0,
   "src/app/api/recommendations/events/route.ts": 0,
-  "src/app/s/[store]/[market]/layout.tsx": 8,
+  "src/app/s/[store]/[market]/layout.tsx": 7,
 };
 
 describe("the admin's words outside the admin (bloat review step 0.7)", () => {

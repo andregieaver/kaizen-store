@@ -33,6 +33,7 @@ import {
 } from "@/lib/broadcasts";
 import { roomLeft } from "@/lib/limits";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { AVOIDED_LABEL, brandGuide } from "@/lib/brand";
 import { CLAIM_LABELS } from "@/lib/claims";
 import { mainCurrency } from "@/lib/markets";
@@ -359,7 +360,7 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
     return { ok: true as const, recipients: inserted.length };
   }).catch((error: unknown) => {
     if (error instanceof Nobody) return { ok: false as const, problem: "Nobody on your list wants your emails yet, so nobody would get it." };
-    if (error instanceof OverLimit && allowed !== null) return { ok: false as const, problem: limitRefusal("marketing_emails_month", allowed) };
+    if (error instanceof OverLimit && allowed !== null) return { ok: false as const, problem: limitRefusal("marketing_emails_month", allowed, LIMIT_REFUSALS) };
     throw error;
   });
   if (result.ok) await audit(accountId, storeId, "broadcast.started", { title: broadcast.title, recipients: result.recipients }, { target: { type: "broadcast", id: id } });

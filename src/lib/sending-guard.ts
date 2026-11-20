@@ -1,6 +1,6 @@
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import { dateIn } from "./dates";
 import type { EmailContent } from "./email-layout";
 
@@ -49,7 +49,7 @@ export function shareText(part: number, whole: number, locale = "en-GB"): string
 export type PausedFacts = { storeName: string; timeZone: string; reason: GuardReason; counts: GuardCounts; since: Date; url: string };
 
 /** The email to a store's owners when the guard pauses its marketing email, in their admin language. */
-export function pausedEmail(facts: PausedFacts, words: StaffEmailsMessages = staffEmailsEn, lang: AdminLang = "en"): EmailContent {
+export function pausedEmail(facts: PausedFacts, words: StaffEmailsMessages, lang: AdminLang = "en"): EmailContent {
   const w = words.sendingPaused;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const n = (v: number) => v.toLocaleString(locale);

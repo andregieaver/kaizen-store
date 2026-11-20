@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_WORK_SETTINGS, sellerReadiness } from "@/lib/work-settings";
 import { workOverview, type OverviewEntry, type OverviewInvoice } from "@/lib/work-overview";
+import { workEn } from "@/lib/admin-messages/work.en";
 
 import { SeriesForm, WorkSettingsForm } from "./settings-form";
 import { OverviewBody, type OverviewProps } from "./work-overview";
@@ -25,7 +26,7 @@ const base = (over: Partial<OverviewProps> = {}): OverviewProps => ({
   settingsHref: "/admin/account/work/s/kaffe/settings",
   locale: "en",
   today: TODAY,
-  overview: workOverview({
+  overview: workOverview({ words: workEn.attention,
     today: TODAY,
     now: Date.parse("2026-09-29T12:00:00Z"),
     invoices: [],
@@ -98,7 +99,7 @@ describe("the Work overview", () => {
 
   it("shows figures per currency, attention items, unbilled time, overdue invoices and running timers", () => {
     const now = Date.parse("2026-09-29T12:00:00Z");
-    const overview = workOverview({
+    const overview = workOverview({ words: workEn.attention,
       today: TODAY,
       now,
       invoices: [

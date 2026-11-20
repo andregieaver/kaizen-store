@@ -27,6 +27,7 @@ import { taxAttention } from "./tax-attention";
 import { taxReturnsAttention } from "./tax-returns-attention";
 import { turnoverWatch } from "./turnover-watch";
 import { workAttention } from "./work-attention";
+import { WORK_WORDS } from "@/lib/admin-words/work";
 import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
 
 type Row = Record<string, unknown>;
@@ -175,7 +176,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       limit 8
     `),
     usageRows({ days: 7, ownedBy: account.id, storeId: onlyId }),
-    workAttention(workStores),
+    workAttention(workStores, WORK_WORDS.en.attention),
     // Withdrawals waiting for a refund, an acknowledgement or an answer (D153).
     returnAttention(orderIds),
     // A VAT number not checked, or an IOSS or OSS registration left half done (D157).

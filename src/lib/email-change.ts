@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import { normaliseEmail } from "./email-address";
 import { EMAIL_CHANGE_HOURS, NAME_MAX } from "./email-change-limits";
 import type { EmailContent } from "./email-layout";
@@ -89,7 +89,7 @@ export type EmailChangeFacts = {
 };
 
 /** One of a change's three emails, from the `staffEmails` catalogue in the account's admin language (D312 A10); none signs anyone in. */
-export function emailChangeEmail(kind: EmailChangeEmailKind, facts: EmailChangeFacts, words: StaffEmailsMessages = staffEmailsEn, lang: AdminLang = "en"): EmailContent {
+export function emailChangeEmail(kind: EmailChangeEmailKind, facts: EmailChangeFacts, words: StaffEmailsMessages, lang: AdminLang = "en"): EmailContent {
   const w = words.emailChange;
   const values = { email: facts.email, when: facts.when, hours: EMAIL_CHANGE_HOURS };
   const head = { lang: ADMIN_LANG_FACTS[lang].tag, footer: [words.footer] };

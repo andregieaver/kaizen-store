@@ -7,6 +7,7 @@ import {
   type OverviewEntry,
   type OverviewInvoice,
 } from "./work-overview";
+import { workEn } from "./admin-messages/work.en";
 
 const TODAY = "2026-09-29";
 const NOW = Date.parse("2026-09-29T12:00:00Z");
@@ -41,7 +42,7 @@ const entry = (o: Partial<OverviewEntry>): OverviewEntry => ({
 });
 
 const overview = (o: Partial<Parameters<typeof workOverview>[0]> = {}) =>
-  workOverview({ today: TODAY, now: NOW, invoices: [], entries: [], timers: [], base: BASE, ...o });
+  workOverview({ words: workEn.attention, today: TODAY, now: NOW, invoices: [], entries: [], timers: [], base: BASE, ...o });
 
 describe("an empty Work area", () => {
   it("has no figures and nothing to attend to", () => {

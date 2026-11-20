@@ -18,6 +18,7 @@ import {
 } from "./work-reports-test-support";
 import { workBase } from "@/lib/work-paths";
 import { homeEn } from "@/lib/admin-messages/home.en";
+import { workEn } from "@/lib/admin-messages/work.en";
 
 vi.mock("next/cache", () => ({
   cacheLife: () => {},
@@ -114,20 +115,20 @@ describe("Work in the control center", () => {
 
   it("counts several stores together and keeps each store's items to its own", async () => {
     const stores = [on.f, empty].map((f) => ({ id: f.storeId, slug: f.slug, name: "Arbeid", timeZone: "Europe/Oslo" }));
-    const items = await attention.workAttention(stores);
+    const items = await attention.workAttention(stores, workEn.attention);
     expect(items.get(on.f.storeId)!).toHaveLength(3);
     expect(items.get(on.f.storeId)!.every((i) => i.href.startsWith(workBase(on.f.slug)))).toBe(true);
     expect(items.get(empty.storeId)).toEqual([]);
     // a store not asked about is not in the answer, and no stores is no queries
     expect(items.has(off.f.storeId)).toBe(false);
-    expect((await attention.workAttention([])).size).toBe(0);
+    expect((await attention.workAttention([], workEn.attention)).size).toBe(0);
   });
 
   it("is per store's day: the same overdue invoice is not overdue a day before its due date", async () => {
     const [store] = [{ id: on.f.storeId, slug: on.f.slug, name: "Arbeid", timeZone: "Europe/Oslo" }];
     const dueDay = addCalendarDays(on.today, -26);
     const before = Date.parse(`${addCalendarDays(dueDay, -1)}T12:00:00Z`);
-    const items = (await attention.workAttention([store], before)).get(on.f.storeId)!;
+    const items = (await attention.workAttention([store], workEn.attention, before)).get(on.f.storeId)!;
     expect(items.some((i) => /overdue/.test(i.text))).toBe(false);
   });
 });

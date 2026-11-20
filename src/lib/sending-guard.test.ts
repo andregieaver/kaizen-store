@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
+import { staffEmailsEn } from "./admin-messages/staff-emails.en";
 import { GUARD_MIN_SENT, guardVerdict, pausedEmail, shareText } from "./sending-guard";
 
 describe("the sending guard's verdict (D730)", () => {
@@ -33,7 +34,7 @@ describe("the email to the owners", () => {
   const facts = { storeName: "Nordlys Te", timeZone: "Europe/Oslo", reason: "bounces" as const, counts: { sent: 1200, bounced: 84, complained: 1 }, since: new Date("2026-11-10T00:00:00Z"), url: "https://kaizenaflow.com/admin/nordlys/marketing" };
 
   it("says what was counted, what is held and what goes on", () => {
-    const email = pausedEmail(facts);
+    const email = pausedEmail(facts, staffEmailsEn);
     expect(email.subject).toBe("Marketing email from Nordlys Te is paused");
     const text = email.blocks.map((b) => ("text" in b ? b.text : "")).join("\n");
     expect(text).toContain("84 of the 1,200 marketing emails Nordlys Te sent since 10 November 2026 bounced back (7 %).");

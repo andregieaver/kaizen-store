@@ -35,9 +35,9 @@ const idList = (ids: string[]) =>
  */
 export async function workAttention(
   stores: readonly { id: string; slug: string; name: string; timeZone: string }[],
+  /** The items' words (the `work` catalogue's `attention`, D312 A10). */
+  words: WorkMessages["attention"],
   now = Date.now(),
-  /** The items' words (the `work` catalogue's `attention`, D312 A10); English when none are given. */
-  words?: WorkMessages["attention"],
 ): Promise<Map<string, AttentionItem[]>> {
   const result = new Map<string, AttentionItem[]>(stores.map((s) => [s.id, []]));
   if (stores.length === 0) return result;

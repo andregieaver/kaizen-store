@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { combineOverviews, mergeReports, type StoreOverview, type WorkStore } from "@/lib/work-owner";
 import { workOverview, type OverviewEntry, type OverviewInvoice } from "@/lib/work-overview";
+import { workEn } from "@/lib/admin-messages/work.en";
 import { parseInvoiceListParams } from "@/lib/work-invoice-ui";
 import { parseReportParams, type PeriodReport } from "@/lib/work-reports";
 import { EMPTY_TIME_FILTERS } from "@/lib/work-ui";
@@ -74,7 +75,7 @@ const part = (s: WorkStore, invoices: OverviewInvoice[], entries: OverviewEntry[
   store: s,
   today: TODAY,
   clientCount,
-  overview: workOverview({
+  overview: workOverview({ words: workEn.attention,
     today: TODAY,
     now: NOW,
     invoices,

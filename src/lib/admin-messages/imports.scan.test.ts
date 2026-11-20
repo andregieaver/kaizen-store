@@ -33,6 +33,7 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/data-job-labels.ts": "A data job's status in words, read by the job's email, the AI manager's job tool and the redirect import's pages as well.",
   "lib/inventory-admin-labels.ts": "The reasons a person gives for a stock change, read by the stock table as well.",
   "lib/inventory-labels.ts": "Stock movements' reasons and the stock policy in words, read by inventory.ts's functions (reasonWord, policyWords) as well.",
+  "lib/usage-labels.ts": "What a store is told at a hard limit of its plan, read by the server's refusals (limitRefusal() in English) as well.",
   "lib/vat-treatment-labels.ts": "Why an order has its VAT treatment, read by vat-treatment.ts's reasonStaffText() as well.",
   "lib/booking-bucket-labels.ts": "The booking buckets in English and Norwegian, read by the Fiken and Tripletex settings and the accountant's summary as well.",
   "lib/fiken-labels.ts": "What the Fiken connection says to an owner, read by fiken-errors.ts's fikenFailureWords() and the tests as well.",

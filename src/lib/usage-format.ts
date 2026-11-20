@@ -4,7 +4,7 @@
  * measured against a limit.
  */
 
-import { capacityEn, type CapacityMessages } from "./admin-messages/capacity.en";
+import type { CapacityMessages } from "./admin-messages/capacity.en";
 import { fillWords } from "./admin-fill";
 import { GIB, LIMITS, type LimitKey, limitUnit } from "./limits";
 import { formatMoney, minorUnitDigits, type PriceDecimals } from "./money";
@@ -48,7 +48,7 @@ export function formatLimit(key: LimitKey, value: number, locale = "en-GB", mone
   return limitUnit(key) === "count" ? Math.round(value).toLocaleString(locale) : String(value);
 }
 
-/** The sentence that refuses an action at a hard limit, in the admin's words (English unless given). */
-export function limitRefusal(key: LimitKey, limit: number, words: CapacityMessages = capacityEn, locale = "en-GB"): string {
-  return fillWords(words.refusals[key] || capacityEn.refusals[key], { limit: formatLimit(key, limit, locale) });
+/** The sentence that refuses an action at a hard limit, in the words given (`capacity.refusals`, or `LIMIT_REFUSALS` in English). */
+export function limitRefusal(key: LimitKey, limit: number, refusals: CapacityMessages["refusals"], locale = "en-GB"): string {
+  return fillWords(refusals[key], { limit: formatLimit(key, limit, locale) });
 }

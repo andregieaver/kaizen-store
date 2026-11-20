@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { fillWords } from "@/lib/admin-fill";
-import { workEn } from "@/lib/admin-messages/work.en";
+import { WORK_WORDS } from "@/lib/admin-words/work";
 
 /**
  * What went wrong in Work, in words for the person using the admin (English here, the
@@ -35,13 +35,13 @@ export const problem = (...problems: string[]): { ok: false; problems: string[] 
  * detail after them (`not_ready`, `date_before_previous`) are worded by
  * `workErrorMessage()`, which adds the detail.
  */
-export const WORK_ERROR_MESSAGES: Record<string, string> = workEn.errors.messages;
+export const WORK_ERROR_MESSAGES: Record<string, string> = WORK_WORDS.en.errors.messages;
 
 /** What a readiness code from `commerce.work_invoice_problems()` means for the owner, and where to fix it. */
-export const READINESS_MESSAGES: Record<string, string> = workEn.errors.readiness;
+export const READINESS_MESSAGES: Record<string, string> = WORK_WORDS.en.errors.readiness;
 
 export const readinessMessage = (code: string): string =>
-  READINESS_MESSAGES[code.trim()] ?? fillWords(workEn.errors.notReady, { what: code.trim().replace(/_/g, " ") });
+  READINESS_MESSAGES[code.trim()] ?? fillWords(WORK_WORDS.en.errors.notReady, { what: code.trim().replace(/_/g, " ") });
 
 type Failure = { code?: unknown; constraint?: unknown; message?: unknown };
 
@@ -95,9 +95,9 @@ export function workErrorMessage(error: unknown): string | null {
   }
   if (parts.code.endsWith(".date_before_previous")) {
     const date = /\d{4}-\d{2}-\d{2}/.exec(parts.detail)?.[0];
-    return date ? `${known} ${fillWords(workEn.errors.datedAt, { date })}` : known;
+    return date ? `${known} ${fillWords(WORK_WORDS.en.errors.datedAt, { date })}` : known;
   }
-  return known ?? (parts.detail || fillWords(workEn.errors.notAllowed, { code: parts.code }));
+  return known ?? (parts.detail || fillWords(WORK_WORDS.en.errors.notAllowed, { code: parts.code }));
 }
 
 /** The codes of a `work_invoice.not_ready` error, for the readiness panel; empty when it is another error. */
@@ -111,7 +111,7 @@ export function notReadyCodes(error: unknown): string[] {
 }
 
 /** Constraints a person can run into, by name (docs/work.md 4.2, 4.2a). */
-const CONSTRAINT_MESSAGES: Record<string, string> = workEn.errors.constraints;
+const CONSTRAINT_MESSAGES: Record<string, string> = WORK_WORDS.en.errors.constraints;
 
 /**
  * What to show for an error from Work's database code: a rule's message, a
@@ -127,11 +127,11 @@ export function workProblems(error: unknown): string[] | null {
     if (constraint && CONSTRAINT_MESSAGES[constraint]) return [CONSTRAINT_MESSAGES[constraint]];
     if (failure.code === "23503") {
       return typeof failure.message === "string" && /update or delete on table/.test(failure.message)
-        ? [workEn.errors.dependents]
-        : [workEn.errors.gone];
+        ? [WORK_WORDS.en.errors.dependents]
+        : [WORK_WORDS.en.errors.gone];
     }
     if (failure.code === "40001" || failure.code === "40P01")
-      return [workEn.errors.sameTime];
+      return [WORK_WORDS.en.errors.sameTime];
   }
   return null;
 }

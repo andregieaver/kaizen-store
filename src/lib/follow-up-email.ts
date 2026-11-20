@@ -1,6 +1,6 @@
 import { fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 
 /**
@@ -27,7 +27,7 @@ const short = (task: string) => {
   return flat.length > SHORT ? `${flat.slice(0, SHORT - 1)}…` : flat;
 };
 
-export function followUpEmail(facts: FollowUpFacts, words: StaffEmailsMessages = staffEmailsEn, lang: AdminLang = "en"): EmailContent {
+export function followUpEmail(facts: FollowUpFacts, words: StaffEmailsMessages, lang: AdminLang = "en"): EmailContent {
   const w = words.followUp;
   const where = facts.store ? fillWords(w.where, { store: facts.store }) : "";
   const task = facts.task.replace(/\s+/g, " ").trim();

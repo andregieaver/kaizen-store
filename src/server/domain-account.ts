@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { limitRefusal } from "@/lib/usage-format";
+import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 
 import { audit, type Account } from "./auth";
 import { accountHolder } from "./domain-holder";
@@ -107,7 +108,7 @@ export async function linkDomain(account: Account, apex: string, storeId: string
     return { ok: false, problems: [`${held.store.name} still uses ${name}. Disconnect it there first.`] };
   }
   const room = await checkLimit(store.id, "custom_domains");
-  if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit)] };
+  if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit, LIMIT_REFUSALS)] };
   await db().transaction(async (tx) => {
     await tx.execute(sql`
       update commerce.domain_registrations set store_id = ${store.id}::uuid, updated_at = now()

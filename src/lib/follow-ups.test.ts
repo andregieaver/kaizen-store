@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { followUpEmail } from "./follow-up-email";
 import { dueFrom, dueWords, followUpMessage, localInstant, localTimeOf, nextDue } from "./follow-ups";
 import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
+import { staffEmailsEn } from "./admin-messages/staff-emails.en";
 
 const OSLO = "Europe/Oslo";
 const now = new Date("2026-10-20T10:00:00Z");
@@ -55,7 +56,7 @@ describe("the follow-up email", () => {
   const facts = { task: "Check whether order 1042 was sent", store: "Demo", url: "https://kaizenaflow.com/admin/demo/assistant?c=x", waiting: true, next: null };
 
   it("names the task and where to read the answer, never the answer", () => {
-    const email = followUpEmail({ ...facts, outcome: "done" });
+    const email = followUpEmail({ ...facts, outcome: "done" }, staffEmailsEn);
     expect(email.subject).toBe('The AI manager followed up: "Check whether order 1042 was sent"');
     const text = JSON.stringify(email.blocks);
     expect(text).toContain("in Demo");
@@ -71,7 +72,7 @@ describe("the follow-up email", () => {
   });
 
   it("shortens a long task in the subject", () => {
-    const email = followUpEmail({ ...facts, task: "x".repeat(200), outcome: "done" });
+    const email = followUpEmail({ ...facts, task: "x".repeat(200), outcome: "done" }, staffEmailsEn);
     expect(email.subject.length).toBeLessThan(100);
   });
 });

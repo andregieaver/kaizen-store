@@ -1,4 +1,4 @@
-import { capacityEn } from "./admin-messages/capacity.en";
+import { CAPACITY_WORDS } from "./admin-words/capacity";
 import type { EmailContent } from "./email-layout";
 import { formatLimit, formatUsage } from "./usage-format";
 import type { UsageLine } from "./usage-view";
@@ -21,7 +21,7 @@ const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
 
 export function usageEmail(facts: UsageEmailFacts): EmailContent {
   const { storeName: name, level, lines } = facts;
-  const listed = lines.map((l) => `${capacityEn.metrics[l.metric]}: ${formatUsage(l.metric, l.used)} of ${l.limit === null ? "no limit" : formatLimit(l.key, l.limit)}`);
+  const listed = lines.map((l) => `${CAPACITY_WORDS.en.metrics[l.metric]}: ${formatUsage(l.metric, l.used)} of ${l.limit === null ? "no limit" : formatLimit(l.key, l.limit)}`);
   const soft = lines.every((l) => l.enforce === "soft");
   const subject = level === "reached" ? `${name} has used what its plan includes` : `${name} is close to its plan's limits`;
   return {
