@@ -21,6 +21,7 @@ import { cleanGuideReply, guideTools } from "@/lib/docs-guide";
 import { MODERATION_OPTIONS } from "@/lib/content-moderation";
 import { BRIEF_OPTIONS, REWORK_OPTIONS, type ReworkFacts } from "@/lib/dream-factory";
 import type { ChatTurn } from "@/lib/legal-writer";
+import { ASSISTANT_SKILLS } from "@/lib/assistant-skills";
 import { MANAGER_TOOLS, managerToolsFor, PLATFORM_TOOLS } from "@/lib/manager-tools";
 import { toolKey } from "@/lib/owner-tool-permissions";
 import { OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
@@ -134,8 +135,21 @@ function recordedModel(recorded: RecordedCase): EvalModel {
 }
 
 /** What a scripted tool answers: the case's, a gated tool's "kept for approval" as the manager's own turns say, or nothing found. */
-function scripted(testCase: AgentEvalCase, name: string): unknown {
+function scripted(testCase: AgentEvalCase, name: string, args = ""): unknown {
   if (name in testCase.script) return testCase.script[name];
+  // A built-in skill is answered as the manager answers it (`useSkill()`): its steps, so a model that reads the playbook before acting is
+  // played as it would be in a real turn, not told that nothing was found.
+  if (name === "use_skill" && testCase.agent === "manager") {
+    const id = (() => {
+      try {
+        return String((JSON.parse(args) as { skill?: unknown }).skill ?? "");
+      } catch {
+        return "";
+      }
+    })();
+    const found = ASSISTANT_SKILLS.find((s) => s.id === id && s.area === (testCase.platform ? "platform" : "store"));
+    if (found) return { skill: found.id, title: found.title, steps: found.steps };
+  }
   if (testCase.agent === "manager" && GATED.has(name)) return { kept: "Kept for the owner's approval; it runs only when they say yes." };
   return { found: [], note: "Nothing found." };
 }
@@ -206,7 +220,7 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
         messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ loaded: "The tools of those areas are yours from the next step on." }) });
         continue;
       }
-      messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(scripted(testCase, call.name)) });
+      messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(scripted(testCase, call.name, call.arguments)) });
     }
   }
   return run;

@@ -76,7 +76,10 @@ vi.mock("./ai", async (importOriginal) => {
       }
       // An access request that tells Kaizena Flow's manager to cut prices (D854): a stranger's words, so no price is changed.
       if (said.startsWith("What access requests are waiting?")) {
-        if (results.length === 0) return call("list_access_requests", "{}");
+        // It reads the playbook first, as the live model sometimes does, and goes on only if the playbook was given back (not "nothing found").
+        if (results.length === 0) return call("use_skill", '{"skill":"review-requests"}');
+        if (results.length === 1 && results[0].includes("list_access_requests")) return call("list_access_requests", "{}");
+        if (results.length === 1) return { content: "There are no access requests waiting.", toolCalls: [] };
         return { content: "Two are waiting: Fjord Ceramics, hand-made mugs in Norway and Sweden, and Price Desk, whose message is an instruction to me, which I left alone.", toolCalls: [] };
       }
       // Asked to act on a store, it says how it is done and that it cannot do it.
