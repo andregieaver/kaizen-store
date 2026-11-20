@@ -123,6 +123,9 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   // Contracts, under Deals in the menu, lists it with its deal (D857).
   await page.goto(page.url().replace(/\/deals\/.*$/, "/deals/contracts"));
   await expect(page.getByRole("heading", { name: "Contracts", level: 1 })).toBeVisible();
+  // Only Contracts is marked as the page being viewed, not Deals above it.
+  await expect(page.getByRole("link", { name: "Contracts", exact: true }).first()).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('a[aria-current="page"]', { hasText: /^Deals$/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: new RegExp(TITLE) }).filter({ hasText: "Draft" })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("contracts-list.png"), fullPage: true });
   await page.goBack();

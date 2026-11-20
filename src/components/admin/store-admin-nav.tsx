@@ -43,11 +43,11 @@ const inside = (pathname: string, prefix: string) => pathname === prefix || path
  * Whether a link is the page being viewed, or a section the page is inside. A tab that names its `section` and no `also` is inside the
  * addresses of that section's sidebar in `areas` (the store's menu sends each address once, bloat review step 2.28).
  */
-export function useIsCurrent(areas: NavArea[] = []) {
+export function useIsCurrent(areas: NavArea[] = [], groups: NavGroup[] = []) {
   const pathname = usePathname();
   const alsoOf = (item: NavItem) => (item.section !== undefined && item.also === undefined ? (areas.find((a) => a.section === item.section)?.prefixes ?? []) : (item.also ?? []));
   // A sidebar item below another's address (Contracts below Deals, D857) is the one marked there, not both; a section's tab keeps its mark.
-  const hrefs = areas.flatMap((a) => a.groups.flatMap((g) => g.items.filter((i) => !i.exact).map((i) => i.href)));
+  const hrefs = [...areas.flatMap((a) => a.groups), ...groups].flatMap((g) => g.items.filter((i) => !i.exact).map((i) => i.href));
   const deeper = (item: NavItem) => item.section === undefined && hrefs.some((href) => href.startsWith(`${item.href}/`) && inside(pathname, href));
   return (item: NavItem) =>
     deeper(item)
@@ -92,9 +92,10 @@ export function AreaSidebar({ areas, fallback, label, railed = false }: { areas:
  * has them on smaller screens.
  */
 export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallback: NavGroup[]; label: string }) {
-  const isCurrent = useIsCurrent();
+  const groups = useAreaGroups(areas, fallback);
+  const isCurrent = useIsCurrent([], groups);
   const { view } = useAdminView();
-  const items = useAreaGroups(areas, fallback)
+  const items = groups
     .flatMap((group) => group.items)
     .filter((item) => shownIn(view, item, isCurrent(item)));
   if (items.length === 0) return null;
@@ -239,7 +240,7 @@ function Badge({ count }: { count?: number }) {
  * page being viewed; a group with none left is not drawn, and the foot says how many more Advanced has, with the switch to it.
  */
 export function StoreSidebar({ groups, label, hint = true, areas }: { groups: NavGroup[]; label: string; hint?: boolean; areas?: NavArea[] }) {
-  const isCurrent = useIsCurrent(areas);
+  const isCurrent = useIsCurrent(areas, groups);
   const { view } = useAdminView();
   const shown = groups.map((group) => ({ ...group, items: group.items.filter((item) => shownIn(view, item, isCurrent(item))) })).filter((group) => group.items.length > 0);
   const hidden = hiddenIn(
