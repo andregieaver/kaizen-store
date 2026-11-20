@@ -77,7 +77,9 @@ an `if` opening into its Yes and No columns. A card is dragged onto a place betw
 and a card pressed opens its settings beside the chart (picks, days, condition, what starts it, Remove); an email's opens as it
 reads, its subject and each heading, paragraph and button changed where it is and saved on clicking away (`changeFlowBlockAction()`,
 `withBlockText()`, email plan M3.4); a + between blocks adds a heading, words, a button or a line, and a block's ✕ removes it, never the last
-(`changeFlowBlocksAction()`, `withBlockAt()`). Each change is a new
+(`changeFlowBlocksAction()`, `withBlockAt()`). With more than one language, a tab per store language sits above the email; one not
+written yet starts from the first language's words, copied to translate in place (`startFlowLanguageAction()`, `withLanguageCopy()`,
+never over words already written). Each change is a new
 version, off until tested; the story above is drawn from the same tree.
 
 ## Presses in a flow's emails (19 November 2026)

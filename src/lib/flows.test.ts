@@ -165,3 +165,13 @@ describe("blocks added between and removed (email plan M3.4)", () => {
     expect(withBlockAt(steps, "e", "nb-NO", { add: "divider", at: 5, words: "" })).toEqual(steps);
   });
 });
+
+describe("a language started from another (email plan M3.4)", () => {
+  it("copies an email's words to a language not yet written, never over one that is", async () => {
+    const { withLanguageCopy } = await import("./flows");
+    const copied = withLanguageCopy(tree, "welcome", "nb-NO", "en-GB");
+    expect(stepAt(copied, ["0"])).toMatchObject({ content: { "en-GB": { subject: "Hei" }, "nb-NO": { subject: "Hei" } } });
+    expect(withLanguageCopy(copied, "welcome", "en-GB", "nb-NO")).toEqual(copied);
+    expect(withLanguageCopy(tree, "welcome", "sv-SE", "en-GB")).toEqual(tree);
+  });
+});

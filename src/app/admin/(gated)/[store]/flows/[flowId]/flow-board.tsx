@@ -25,6 +25,7 @@ import {
   changeFlowConditionAction,
   changeFlowBlockAction,
   changeFlowBlocksAction,
+  startFlowLanguageAction,
   changeFlowLapseAction,
   changeFlowPicksAction,
   changeFlowTriggerAction,
@@ -50,6 +51,8 @@ type Props = {
   triggerDays: number | null;
   w: FlowsMessages;
   segments: ReadonlyArray<{ id: string; name: string }>;
+  /** The store's languages, its first first (M3.4: each written side by side). */
+  languages: readonly string[];
 };
 
 type Selected = { kind: "trigger" } | { kind: "step"; id: string } | null;
@@ -234,12 +237,56 @@ function find(steps: readonly FlowStep[], id: string): FlowStep | null {
  */
 function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "email" }> }) {
   const { w } = p;
-  const locale = step.content[p.locale] ? p.locale : (Object.keys(step.content)[0] ?? p.locale);
+  const first = step.content[p.locale] ? p.locale : (Object.keys(step.content)[0] ?? p.locale);
+  const [locale, setLocale] = useState(first);
   const c = step.content[locale];
+  const nameOf = (l: string) => {
+    const name = new Intl.DisplayNames([l], { type: "language" }).of(l.split("-")[0]) ?? l;
+    return name.charAt(0).toLocaleUpperCase(l) + name.slice(1);
+  };
+  const languages = p.languages.length > 1 ? p.languages : [];
   const [busy, start] = useTransition();
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
   const [adding, setAdding] = useState<number | null>(null);
-  if (!c) return null;
+  // Each of the store's languages one press away (M3.4); one not yet written starts from the first language's words.
+  const tabs =
+    languages.length > 0 ? (
+      <div role="group" aria-label={w.inPlace.languages} className="flex flex-wrap gap-1">
+        {languages.map((l) => (
+          <button
+            key={l}
+            type="button"
+            aria-pressed={l === locale}
+            onClick={() => setLocale(l)}
+            className={`rounded-full border px-2.5 py-0.5 text-xs ${l === locale ? "border-ink text-ink" : "border-line text-ink-2"}`}
+          >
+            {nameOf(l)}
+            {step.content[l] ? "" : " \u00b7 " + w.inPlace.notYet}
+          </button>
+        ))}
+      </div>
+    ) : null;
+  if (!c)
+    return (
+      <div className="flex flex-col gap-2" data-email-in-place>
+        {tabs}
+        <p className="text-sm text-ink-2">{w.inPlace.notWritten.replace("{language}", nameOf(locale))}</p>
+        <button
+          type="button"
+          disabled={busy || !step.content[first]}
+          onClick={() =>
+            start(async () => {
+              const result = await startFlowLanguageAction(p.storeSlug, p.flowId, step.id, first, locale);
+              setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
+            })
+          }
+          className="self-start rounded-full border border-line px-3 py-1 text-sm text-ink hover:border-ink"
+        >
+          {w.inPlace.startFrom.replace("{language}", nameOf(first))}
+        </button>
+        {said && <p role="status" className="text-sm text-ink-2">{said.text}</p>}
+      </div>
+    );
   const change = (body: { add: (typeof ADDED_BLOCKS)[number]; at: number; words: string } | { remove: number }) =>
     start(async () => {
       const result = await changeFlowBlocksAction(p.storeSlug, p.flowId, step.id, locale, body);
@@ -327,6 +374,7 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
   );
   return (
     <div className="flex flex-col gap-2" data-email-in-place>
+      {tabs}
       <p className="text-caption text-muted">{w.inPlace.hint}</p>
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4">
         <div>

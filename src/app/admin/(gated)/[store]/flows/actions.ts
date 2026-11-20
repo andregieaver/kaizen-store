@@ -11,7 +11,7 @@ import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -226,4 +226,9 @@ const blockChangeSchema = z.union([
 export async function changeFlowBlocksAction(storeSlug: string, flowId: string, stepId: string, locale: string, change: unknown): Promise<FormState> {
   const parsed = blockChangeSchema.safeParse(change);
   return saveTree(storeSlug, flowId, (flow) => (parsed.success ? withBlockAt(flow.steps, stepId, locale, parsed.data) : null));
+}
+
+/** Starts an email in a language not yet written from another (M3.4), to change in place: a new version, off until tested. */
+export async function startFlowLanguageAction(storeSlug: string, flowId: string, stepId: string, from: string, to: string): Promise<FormState> {
+  return saveTree(storeSlug, flowId, (flow) => withLanguageCopy(flow.steps, stepId, from, to));
 }

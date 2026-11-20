@@ -247,6 +247,14 @@ export function withBlockAt(
   });
 }
 
+/** An email's words in one language copied to another not yet written, to change there (email plan M3.4: languages side by side). Pure. */
+export function withLanguageCopy(steps: readonly FlowStep[], id: string, from: string, to: string): FlowStep[] {
+  return replaceStep(steps, id, (step) => {
+    if (step.kind !== "email" || !step.content[from] || step.content[to]) return step;
+    return { ...step, content: { ...step.content, [to]: step.content[from] } };
+  });
+}
+
 /** A wait step with a new number of days (D767 slice 2). */
 export function withWaitDays(steps: readonly FlowStep[], id: string, days: number): FlowStep[] {
   return replaceStep(steps, id, (step) => (step.kind === "wait" ? { ...step, hours: Math.round(days * 24) } : step));

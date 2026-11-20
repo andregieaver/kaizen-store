@@ -92,7 +92,7 @@ export const flowsNb: FlowsMessages = {
     },
   },
   widths: { label: "Vist som", desktop: "Datamaskin", phone: "Mobil" },
-  inPlace: { hint: "Klikk på en tekst for å endre den; den lagres når du klikker et annet sted.", heading: "Overskrift", button: "Knappetekst", product: "Vare", add: "Legg til her", remove: "Fjern denne", newHeading: "En overskrift", newButton: "Se mer", kinds: { heading: "Overskrift", paragraph: "Tekst", button: "Knapp", divider: "Strek" } },
+  inPlace: { languages: "Språk", notYet: "ikke skrevet", notWritten: "Denne e-posten er ikke skrevet på {language} ennå.", startFrom: "Start fra teksten på {language}", hint: "Klikk på en tekst for å endre den; den lagres når du klikker et annet sted.", heading: "Overskrift", button: "Knappetekst", product: "Vare", add: "Legg til her", remove: "Fjern denne", newHeading: "En overskrift", newButton: "Se mer", kinds: { heading: "Overskrift", paragraph: "Tekst", button: "Knapp", divider: "Strek" } },
   change: "Endre",
   subject: "Emne",
   words: "Tekst",

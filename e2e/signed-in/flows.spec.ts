@@ -150,6 +150,11 @@ test("on the canvas, a step is added in a branch, dragged to a new place, change
   await inPlace.getByRole("textbox", { name: "Button words" }).hover();
   await inPlace.getByRole("button", { name: "Remove this" }).last().click();
   await expect(inPlace.getByRole("textbox", { name: "Button words" })).toHaveCount(0);
+  // Languages side by side (M3.4): Norwegian is not written yet, started from the English words to translate in place.
+  await inPlace.getByRole("group", { name: "Languages" }).getByRole("button", { name: /Norsk bokmål/ }).click();
+  await inPlace.getByRole("button", { name: "Start from the English words" }).click();
+  await expect(inPlace.getByRole("textbox", { name: "Words" }).first()).toHaveText("Written where it reads.");
+  await page.screenshot({ path: "test-results/flow-in-place-languages.png", fullPage: true });
 
   // Removed in the panel: gone from the story.
   await board.getByRole("button", { name: "Email: A new email" }).click();
