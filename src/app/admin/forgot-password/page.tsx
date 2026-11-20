@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { FocusFrame } from "@/components/admin/ui";
-import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { areaTexts } from "@/lib/admin-area";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
@@ -13,7 +12,7 @@ import { requestAdminLang } from "@/server/admin-request-lang";
 import { requestPasswordReset } from "../sign-in/actions";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
-export const metadata: Metadata = { title: signInEn.titles.forgot };
+export const metadata: Metadata = { title: SIGN_IN_WORDS.en.titles.forgot };
 
 /** In the request's language (D312 A1), so it waits for the request; an empty frame until then. */
 export default function ForgotPasswordPage() {

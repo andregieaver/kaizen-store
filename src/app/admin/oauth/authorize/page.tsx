@@ -7,7 +7,6 @@ import { OAuthConsentForm } from "@/components/admin/oauth-consent";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { oauthEn } from "@/lib/admin-messages/oauth.en";
 import { ACCESS_LEVELS, clientHost, levelScopes, STORES_READ } from "@/lib/oauth";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
@@ -19,7 +18,7 @@ import { scopeLabel } from "@/lib/oauth-words";
 import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
-export const metadata: Metadata = { title: oauthEn.consent.title, referrer: "same-origin" };
+export const metadata: Metadata = { title: OAUTH_WORDS.en.consent.title, referrer: "same-origin" };
 
 /**
  * Kaizena Flow's consent screen (wave 14 unit B, D439, B4), where `/oauth/authorize` lands: an AI assistant or app asks a person to connect

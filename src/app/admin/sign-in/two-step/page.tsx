@@ -7,7 +7,6 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
-import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminLang } from "@/lib/admin-lang";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS, heldPath } from "@/lib/two-step";
@@ -20,7 +19,7 @@ import { getAssurance } from "@/server/auth";
 import { leaveTwoStepAction, verifyTwoStepAction } from "./actions";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
-export const metadata: Metadata = { title: signInEn.titles.twoStep };
+export const metadata: Metadata = { title: SIGN_IN_WORDS.en.titles.twoStep };
 
 /**
  * The second step of signing in (wave 1, 1f, docs/wave-1-trust.md 2.6): the six digits from the authenticator app. Outside the gated

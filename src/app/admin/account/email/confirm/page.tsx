@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { Button, ButtonLink, FocusFrame } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { bookingsEn } from "@/lib/admin-messages/bookings.en";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
@@ -14,7 +13,7 @@ import { confirmEmailChangeAction } from "@/app/admin/(gated)/(owner)/account/ac
 
 // Never in a search engine, and the token in the address never leaves in a Referer when a link on the page is followed. The tab's title stays
 // fixed (in English): a title read from the request would stream the page's metadata out of `<head>`.
-export const metadata: Metadata = { title: bookingsEn.account.confirmEmail.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: BOOKINGS_WORDS.en.account.confirmEmail.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 /**
  * What the link of an email change opens (D836): nobody needs to be signed in, as the person may read their new address's mail on another

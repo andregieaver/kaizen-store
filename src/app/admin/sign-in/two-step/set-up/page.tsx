@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { EnrolPanel } from "@/components/admin/two-step-panel";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
-import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS, enrolReasonText } from "@/lib/two-step";
@@ -22,7 +21,7 @@ import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
-export const metadata: Metadata = { title: signInEn.titles.setUp };
+export const metadata: Metadata = { title: SIGN_IN_WORDS.en.titles.setUp };
 
 /**
  * Setting up two-step sign-in (wave 1, 1f, docs/wave-1-trust.md 2.6.2): for someone a store or the platform requires it of, who is held

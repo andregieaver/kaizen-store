@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";
 import { createClient } from "@/lib/supabase/server";
 import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
@@ -16,7 +15,7 @@ import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
-export const metadata: Metadata = { title: signInEn.titles.consent };
+export const metadata: Metadata = { title: SIGN_IN_WORDS.en.titles.consent };
 
 /** What each scope an app asks for shares: its words in the catalogue. */
 const SCOPE_WORDS = { openid: "whoYouAre", email: "yourEmail", profile: "yourName", phone: "yourPhone" } as const;
