@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import type { TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import { TAX_REPORTS_WORDS } from "@/lib/admin-words/tax-reports";
 import { formatCount, MINUS, NO_FIGURE } from "@/lib/analytics-core";
 import type { ConversionGroup, Part2Line, RateCard, ReturnMode, ReturnScheme } from "@/lib/oss-return";
 import { taxHref } from "@/lib/tax-admin";
@@ -58,15 +59,15 @@ export type OssViewProps = {
   exportProblem: string | null;
   /** The rate forms' actions; null for a member who is not an owner. */
   actions: RateActions | null;
-  /** The page's words in the account's language; English unless given. */
-  words?: TaxReportsMessages;
+  /** The page's words in the account's language. */
+  words: TaxReportsMessages;
 };
 
 const PART_ORDER: ReturnPart[] = ["2a", "2b", "2d", "NU", "IOSS"];
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
-export function OssView({ base, locale, scheme, mode, view, periods, canExport, isOwner, drift, lastExportedAt, timeZone, exportProblem, actions, words = taxReportsEn }: OssViewProps) {
+export function OssView({ base, locale, scheme, mode, view, periods, canExport, isOwner, drift, lastExportedAt, timeZone, exportProblem, actions, words }: OssViewProps) {
   const w = words;
   const o = w.oss;
   const { data } = view;
@@ -142,7 +143,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
       <p className="-mt-4 max-w-3xl text-sm text-muted">{o.modeText[mode]}</p>
 
       <p role="status" className="text-sm">
-        {w === taxReportsEn ? view.deadline.sentence : deadlineText(data.period, view.today, w)}
+        {w === TAX_REPORTS_WORDS.en ? view.deadline.sentence : deadlineText(data.period, view.today, w)}
         {view.deadline.state === "due_soon" || view.deadline.state === "passed" ? <span className="ml-2 align-middle"><StatusPill tone={view.deadline.state === "passed" ? "warning" : "info"}>{view.deadline.state === "passed" ? o.deadlinePassed : o.dueSoon}</StatusPill></span> : null}
       </p>
 
@@ -281,7 +282,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
             <DataTable
               caption={o.leftOutCaption}
               columns={[
-                { key: "reason", label: o.reason, cell: (n) => <span className="whitespace-normal">{w === taxReportsEn ? n.text : reasonWords(n.reason, w)}</span> },
+                { key: "reason", label: o.reason, cell: (n) => <span className="whitespace-normal">{w === TAX_REPORTS_WORDS.en ? n.text : reasonWords(n.reason, w)}</span> },
                 { key: "currency", label: o.currency, cell: (n) => n.currency },
                 { key: "lines", label: o.documentLines, align: "right", cell: (n) => formatCount(n.documentLines) },
                 { key: "taxable", label: o.net, align: "right", cell: (n) => moneyWriter(n.currency, locale)(n.taxableMinor).replace(/^-/, MINUS) },

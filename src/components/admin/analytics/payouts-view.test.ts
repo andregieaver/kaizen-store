@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { payoutReportOf, type PayoutInput } from "@/lib/payouts";
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 import { PayoutDetailView, PayoutsView, settlesWords } from "./payouts-view";
 
@@ -28,7 +29,7 @@ const input = (over: Partial<PayoutInput> = {}): PayoutInput => ({
 });
 
 const toMain = (currency: string, minor: number) => (currency === "NOK" ? minor : currency === "EUR" ? Math.round(minor * 11.5) : null);
-const draw = (inputs: PayoutInput[]) => renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report: payoutReportOf(inputs, toMain) }));
+const draw = (inputs: PayoutInput[]) => renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report: payoutReportOf(inputs, toMain), words: financeEn }));
 
 describe("the Payouts page (D290)", () => {
   it("lists a payout with its date, amount, Stripe's fees, what it settles and that it adds up", () => {
@@ -50,7 +51,7 @@ describe("the Payouts page (D290)", () => {
     ];
     const report = payoutReportOf([input({ lines })], toMain);
     expect(report.totals).toMatchObject({ feesMinor: 900, providerFeesMinor: 500, platformFeesMinor: 400 });
-    const t = text(renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report })));
+    const t = text(renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report, words: financeEn })));
     expect(t).toContain("Kaizena Flow's fee");
     expect(t).toContain("5,00");
     expect(t).toContain("4,00");
@@ -73,7 +74,7 @@ describe("the Payouts page (D290)", () => {
     const report = payoutReportOf([euro, test, sek], toMain);
     expect(report.totals).toEqual({ paidMinor: 21_850, feesMinor: 1_150, providerFeesMinor: 1_150, platformFeesMinor: 0, paid: 1 });
     expect(report).toMatchObject({ unconverted: 1, missingCurrencies: ["SEK"], testPayouts: 1 });
-    const t = text(renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report })));
+    const t = text(renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report, words: financeEn })));
     expect(t).toContain("€");
     expect(t).toContain("Paid (test)");
     expect(t).toContain("1 test payout is listed but not in the totals.");
@@ -81,8 +82,8 @@ describe("the Payouts page (D290)", () => {
   });
 
   it("says when it cannot tell", () => {
-    expect(settlesWords(payoutReportOf([input({ linesRead: false, lines: [] })], toMain).payouts[0])).toBe("Not read yet");
-    expect(settlesWords(payoutReportOf([input({ automatic: false, lines: [] })], toMain).payouts[0])).toMatch(/manual payout/);
+    expect(settlesWords(payoutReportOf([input({ linesRead: false, lines: [] })], toMain).payouts[0], financeEn)).toBe("Not read yet");
+    expect(settlesWords(payoutReportOf([input({ automatic: false, lines: [] })], toMain).payouts[0], financeEn)).toMatch(/manual payout/);
     expect(text(draw([]))).toContain("No payout arrives in this period");
   });
 });
@@ -98,7 +99,7 @@ describe("one payout (D290)", () => {
         { id: "l2", kind: "refund" as const, providerType: "refund", sourceReference: "re_1", amountMinor: -250, feeMinor: 0, netMinor: -250, orderId: "o1", orderNumber: "1042", createdAt: "2026-10-19T10:00:00.000Z" },
       ],
     };
-    const html = renderToString(h(PayoutDetailView, { base: "/admin/s", locale: "nb-NO", detail, row }));
+    const html = renderToString(h(PayoutDetailView, { base: "/admin/s", locale: "nb-NO", detail, row, words: financeEn }));
     const t = text(html);
     expect(t).toContain("Not tied to an order");
     expect(html).toContain('href="/admin/s/orders/o1"');

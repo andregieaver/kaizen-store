@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { exchangeShare, gatedRate, reasonBreakdown, timingOf } from "@/lib/analytics-returns";
 import type { ReturnsReport } from "@/server/analytics-returns-data";
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 import { moneyWriter } from "./overview-view";
 import { returnCards, ReturnsView, type ReturnsViewProps } from "./returns-view";
@@ -90,7 +91,7 @@ function normalReport(over: Partial<ReturnsReport> = {}): ReturnsReport {
   });
 }
 
-const props = (report: ReturnsReport, over: Partial<ReturnsViewProps> = {}): ReturnsViewProps => ({ currency: "NOK", locale: "nb-NO", report, queueHref: "/admin/shop/returns?overdue=1", ...over });
+const props = (report: ReturnsReport, over: Partial<ReturnsViewProps> = {}): ReturnsViewProps => ({ currency: "NOK", locale: "nb-NO", report, queueHref: "/admin/shop/returns?overdue=1", words: financeEn, ...over });
 
 describe("returnCards", () => {
   it("shows the counts, the two rates, the refunded amount, the typical time and the overdue count", () => {

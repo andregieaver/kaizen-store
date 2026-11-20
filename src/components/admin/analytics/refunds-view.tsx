@@ -1,5 +1,5 @@
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
 import { financeNumbers } from "@/lib/finance-words";
 import { asWritten, type Say } from "@/lib/analytics-notes";
@@ -26,14 +26,14 @@ export type RefundsViewProps = {
   report: RefundsReport;
   /** Market codes to names, for the table by market; a code without a name is shown as it is. */
   marketNames?: Readonly<Record<string, string>>;
-  /** The words in the admin's language (D312 A9); English unless given. */
-  words?: FinanceMessages;
+  /** The words in the admin's language (D312 A9). */
+  words: FinanceMessages;
   /** The report's notes in the admin's language (`sayIn()`); as written unless given. */
   say?: Say;
 };
 
 /** The four cards: how much, as a share of sales, how many orders, how many refunds. */
-export function refundCards({ currency, locale, report: r, words = financeEn }: RefundsViewProps): KpiCardProps[] {
+export function refundCards({ currency, locale, report: r, words }: RefundsViewProps): KpiCardProps[] {
   const w = words.refunds;
   const HELP = w.help;
   const pct = financeNumbers(words).percent;
@@ -68,7 +68,7 @@ export function refundCards({ currency, locale, report: r, words = financeEn }: 
 export const marketName = (names: RefundsViewProps["marketNames"], code: string) => names?.[code] ?? names?.[code.toUpperCase()] ?? code;
 
 export function RefundsView(props: RefundsViewProps) {
-  const { currency, locale, report: r, marketNames, words = financeEn, say = asWritten } = props;
+  const { currency, locale, report: r, marketNames, words, say = asWritten } = props;
   const w = words.refunds;
   const pct = financeNumbers(words).percent;
   const money = safeMoney(currency, locale);

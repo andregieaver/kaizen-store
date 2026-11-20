@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount } from "@/lib/analytics-core";
 import type { LiabilityLine } from "@/lib/gift-card-admin";
 
@@ -13,7 +13,7 @@ import { safeMoney, signedMoney } from "./subscriptions-view";
  * movements, each currency on its own row and never added across currencies or converted. A card sold is money owed, not a sale: Finance's
  * figures above leave gift cards sold out and count what is bought with them. Drawn only when the store has a card.
  */
-export function GiftCardsView({ base, locale, lines, words = financeEn }: { base: string; locale: string; lines: LiabilityLine[]; words?: FinanceMessages }) {
+export function GiftCardsView({ base, locale, lines, words }: { base: string; locale: string; lines: LiabilityLine[]; words: FinanceMessages }) {
   if (lines.length === 0) return null;
   const w = words.giftCards;
   const in_ = (l: LiabilityLine) => safeMoney(l.currency, locale);

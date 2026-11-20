@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { paymentsByMethod } from "@/lib/analytics-payments";
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 import { PaymentsView } from "./payments-view";
 
@@ -20,7 +21,7 @@ describe("payments by method on the Finance page (D288)", () => {
       (currency, minor) => (currency === "NOK" ? minor : null),
       200,
     );
-    const html = renderToString(h(PaymentsView, { currency: "NOK", locale: "nb-NO", report }));
+    const html = renderToString(h(PaymentsView, { currency: "NOK", locale: "nb-NO", report, words: financeEn }));
     const words = text(html);
     expect(words).toContain("Payments by method");
     expect(words).toContain("Card");
@@ -32,7 +33,7 @@ describe("payments by method on the Finance page (D288)", () => {
   });
 
   it("says when nothing was paid", () => {
-    const html = renderToString(h(PaymentsView, { currency: "NOK", locale: "nb-NO", report: paymentsByMethod([], () => 0, 0) }));
+    const html = renderToString(h(PaymentsView, { currency: "NOK", locale: "nb-NO", report: paymentsByMethod([], () => 0, 0), words: financeEn }));
     expect(text(html)).toContain("No order was paid in this period.");
   });
 });

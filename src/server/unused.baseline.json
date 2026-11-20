@@ -30,7 +30,6 @@
     "src/components/admin/admin-text-later.ts#settledEnglish",
     "src/components/admin/analytics/customers-view.tsx#SEGMENT_COPY",
     "src/components/admin/analytics/customers-view.tsx#countOf",
-    "src/components/admin/analytics/finance-view.tsx#FINANCE_DEFINITIONS",
     "src/components/admin/analytics/overview-view.tsx#OverviewView",
     "src/components/admin/analytics/overview-view.tsx#factorRows",
     "src/components/admin/analytics/overview-view.tsx#forecastLines",

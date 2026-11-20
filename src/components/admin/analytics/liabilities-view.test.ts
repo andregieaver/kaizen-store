@@ -3,10 +3,11 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { liabilityRow, rollForward, BONUS_ROLL_KINDS } from "@/lib/liabilities";
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 import { LiabilitiesView } from "./liabilities-view";
 
-const html = (rows: ReturnType<typeof liabilityRow>[]) => renderToString(createElement(LiabilitiesView, { locale: "en-GB", rows }));
+const html = (rows: ReturnType<typeof liabilityRow>[]) => renderToString(createElement(LiabilitiesView, { locale: "en-GB", rows, words: financeEn }));
 
 describe("what the store owes customers on Finance (D381)", () => {
   it("draws nothing without a ledger", () => {

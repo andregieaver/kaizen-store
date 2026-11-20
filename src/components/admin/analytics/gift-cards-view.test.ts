@@ -2,14 +2,16 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import { GiftCardsView } from "./gift-cards-view";
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/[  ]/g, " ");
 
 /** Gift cards on the Finance page (D300 F4): one row per currency, never added across, said not to be sales, and nothing drawn without a card. */
 describe("the gift cards section", () => {
   it("draws nothing for a store with no card", () => {
-    expect(renderToString(h(GiftCardsView, { base: "/admin/shop", locale: "nb-NO", lines: [] }))).toBe("");
+    expect(renderToString(h(GiftCardsView, { base: "/admin/shop", locale: "nb-NO", lines: [], words: financeEn }))).toBe("");
   });
 
   it("shows each currency on its own row and says gift cards sold are not sales", () => {
@@ -21,6 +23,7 @@ describe("the gift cards section", () => {
           { currency: "NOK", outstandingMinor: 69_000, cards: 2, issuedMinor: 80_000, spentMinor: 12_500, refundedMinor: 2_500, adjustedMinor: -1_000, expiredMinor: 0, voidedMinor: 0 },
           { currency: "EUR", outstandingMinor: 4_000, cards: 1, issuedMinor: 5_000, spentMinor: 0, refundedMinor: 0, adjustedMinor: 0, expiredMinor: 700, voidedMinor: 300 },
         ],
+        words: financeEn,
       }),
     );
     expect(out).toContain("NOK");

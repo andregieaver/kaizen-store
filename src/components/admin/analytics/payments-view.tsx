@@ -1,5 +1,5 @@
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
 import type { PaymentMethodLine, PaymentsByMethod } from "@/lib/analytics-payments";
 import { financeNumbers } from "@/lib/finance-words";
@@ -13,7 +13,7 @@ import { safeMoney } from "./subscriptions-view";
  * the provider said, with the money received, refunds and Stripe's fee estimated from Analytics settings. Amounts are with VAT, as the money moved
  * (unlike the bridge above it); the rows add up to the money received. *Unknown* holds Stripe payments whose method was not read.
  */
-export function PaymentsView({ currency, locale, report: r, words = financeEn }: { currency: string; locale: string; report: PaymentsByMethod; words?: FinanceMessages }) {
+export function PaymentsView({ currency, locale, report: r, words }: { currency: string; locale: string; report: PaymentsByMethod; words: FinanceMessages }) {
   const w = words.payments;
   const pct = financeNumbers(words).percent;
   const money = safeMoney(currency, locale);

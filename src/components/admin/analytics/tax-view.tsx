@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import type { TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import { TAX_REPORTS_WORDS } from "@/lib/admin-words/tax-reports";
 
 import { formatCount, MINUS, NO_FIGURE } from "@/lib/analytics-core";
 import { addDays } from "@/lib/analytics-period";
@@ -45,11 +46,11 @@ export type TaxViewProps = {
   canExport: boolean;
   /** A fixed sentence the export route sent the person back with. */
   exportProblem: string | null;
-  /** The page's words in the account's language; English unless given. */
-  words?: TaxReportsMessages;
+  /** The page's words in the account's language. */
+  words: TaxReportsMessages;
 };
 
-export const basisLabel = (basis: string, w: TaxReportsMessages = taxReportsEn): string => (w.basis as Record<string, string>)[basis] ?? basis;
+export const basisLabel = (basis: string, w: TaxReportsMessages): string => (w.basis as Record<string, string>)[basis] ?? basis;
 
 const rowKey = (r: VatRow): string => [r.country, r.rate, r.basis, r.currency, r.place, r.part ?? "", r.reason].join("|");
 
@@ -70,7 +71,7 @@ function writers(locale: string) {
   };
 }
 
-export function TaxView({ base, locale, range, report, reconciliation, drift, canExport, exportProblem, words = taxReportsEn }: TaxViewProps) {
+export function TaxView({ base, locale, range, report, reconciliation, drift, canExport, exportProblem, words }: TaxViewProps) {
   const w = words;
   const v = w.vat;
   const p = w.parts.phone;
@@ -118,7 +119,7 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
           main(r.vatAfterMainMinor)
         ),
     },
-    { key: "reported", label: c.reportedIn, cell: (r) => <span title={reasonWords(r.reason, w)}>{w === taxReportsEn ? r.reportedIn : placeText(r, w)}</span> },
+    { key: "reported", label: c.reportedIn, cell: (r) => <span title={reasonWords(r.reason, w)}>{w === TAX_REPORTS_WORDS.en ? r.reportedIn : placeText(r, w)}</span> },
   ];
 
   const bars: BarRow[] = report.byCountry
@@ -250,7 +251,7 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
 const SIGN_MARK: Record<-1 | 0 | 1, string> = { [-1]: MINUS, 0: "", 1: "+" };
 
 function BridgeTable({ caption, lines, money, main, w }: { caption: string; lines: readonly ReconLine[]; money: (minor: number) => string; main: boolean; w: TaxReportsMessages }) {
-  const said = (l: ReconLine) => (w === taxReportsEn ? { label: l.label, text: l.text } : lineWords(l, main, w));
+  const said = (l: ReconLine) => (w === TAX_REPORTS_WORDS.en ? { label: l.label, text: l.text } : lineWords(l, main, w));
   const columns: Column<ReconLine>[] = [
     {
       key: "line",
@@ -301,7 +302,7 @@ export function ReconciliationPanel({
   range,
   last,
   canExport,
-  words = taxReportsEn,
+  words,
   phoneQuiet = false,
 }: {
   view: ReconciliationView;
@@ -310,7 +311,7 @@ export function ReconciliationPanel({
   range: { from: string; to: string };
   last: string;
   canExport: boolean;
-  words?: TaxReportsMessages;
+  words: TaxReportsMessages;
   /** Inside a phone row that names it (round 39, D731). */
   phoneQuiet?: boolean;
 }) {
@@ -341,7 +342,7 @@ export function ReconciliationPanel({
       </div>
       {view.bridges.length === 0 ? <p className="text-sm text-muted">{fillWords(r.nothing, { period: key })}</p> : null}
       <p role="status" className={`text-sm font-medium ${view.balanced ? "" : "text-(--chart-bad)"}`}>
-        {w === taxReportsEn ? view.sentence : view.balanced ? r.equal : r.notReconciled}
+        {w === TAX_REPORTS_WORDS.en ? view.sentence : view.balanced ? r.equal : r.notReconciled}
       </p>
       {view.undocumented.orders > 0 ? (
         <p className="text-sm text-muted">
@@ -367,7 +368,7 @@ export function ReconciliationPanel({
                 finance: writer(line.currency)(line.financeMinor),
                 credits: writer(line.currency)(line.creditNotesMinor),
                 refunds: countWords(line.refunds, r.refunds, { n: count(line.refunds) }),
-                text: w === taxReportsEn ? line.text : line.withinRounding ? r.refundsAgree : r.refundsDiffer,
+                text: w === TAX_REPORTS_WORDS.en ? line.text : line.withinRounding ? r.refundsAgree : r.refundsDiffer,
               })}
             </p>
           ))}

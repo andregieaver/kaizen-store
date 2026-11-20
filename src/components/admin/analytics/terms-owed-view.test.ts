@@ -2,12 +2,14 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+
 vi.mock("server-only", () => ({}));
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 const { TermsOwedView } = await import("./terms-owed-view");
 
 const render = (owed: Parameters<typeof TermsOwedView>[0]["owed"]) =>
-  renderToString(createElement(TermsOwedView, { base: "/admin/shop", currency: "NOK", locale: "en-GB", owed }));
+  renderToString(createElement(TermsOwedView, { base: "/admin/shop", currency: "NOK", locale: "en-GB", owed, words: financeEn }));
 
 describe("invoices on payment terms on the Finance page (D293)", () => {
   it("draws nothing when nothing is owed", () => {

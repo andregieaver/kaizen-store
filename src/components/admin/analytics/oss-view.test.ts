@@ -10,6 +10,7 @@ import { DEFAULT_TAX_PROFILE } from "@/lib/tax-profile";
 import { deadlineOf, deadlineSentence, deadlineState, monthPeriod, quarterPeriod, type TaxPeriod } from "@/lib/tax-periods";
 import type { DocGroup } from "@/lib/tax-report";
 import type { ReturnView } from "@/server/tax-reports";
+import { taxReportsEn } from "@/lib/admin-messages/tax-reports.en";
 
 import { OssView, type OssViewProps } from "./oss-view";
 
@@ -95,6 +96,7 @@ const props = (over: Partial<OssViewProps> & { view?: ReturnView } = {}): OssVie
     lastExportedAt: null,
     exportProblem: null,
     actions: { fetch: idle, override: idle },
+    words: taxReportsEn,
     ...over,
   };
 };

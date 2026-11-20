@@ -10,6 +10,7 @@ import { taxReportsNb } from "@/lib/admin-messages/tax-reports.nb";
 import { reconcile, reconcileMain, bridgeSentence, refundsLine, type CurrencySums } from "@/lib/tax-reconciliation";
 import { buildVatReport, type DocGroup } from "@/lib/tax-report";
 import type { ReconciliationView } from "@/server/tax-reconciliation";
+import { taxReportsEn } from "@/lib/admin-messages/tax-reports.en";
 
 import { ExportButton, TaxStatement, TaxViewTabs } from "./tax-parts";
 import { TaxSkeleton } from "./tax-skeletons";
@@ -88,6 +89,7 @@ const props = (over: Partial<TaxViewProps> = {}): TaxViewProps => ({
   drift: null,
   canExport: true,
   exportProblem: null,
+  words: taxReportsEn,
   ...over,
 });
 
@@ -191,7 +193,7 @@ describe("the VAT view", () => {
 
 describe("the reconciliation panel", () => {
   const panel = (view: ReconciliationView, canExport = true) =>
-    html(h(ReconciliationPanel, { view, base: "/admin/shop", locale: "en", range: { from: "2026-09-01", to: "2026-10-01" }, last: "2026-09-30", canExport }));
+    html(h(ReconciliationPanel, { view, base: "/admin/shop", locale: "en", range: { from: "2026-09-01", to: "2026-10-01" }, last: "2026-09-30", canExport, words: taxReportsEn }));
 
   it("shows Finance's VAT and this report's VAT in each currency and says every difference is named", () => {
     const out = panel(reconciliationOf());
@@ -227,13 +229,13 @@ describe("the reconciliation panel", () => {
 
 describe("the shared parts", () => {
   it("the statement is a note that is always the same line", () => {
-    const out = html(h(TaxStatement));
+    const out = html(h(TaxStatement, { words: taxReportsEn }));
     expect(out).toContain('role="note"');
     expect(out).toContain("Not a tax return");
   });
 
   it("the tabs are three links and mark the current one", () => {
-    const out = html(h(TaxViewTabs, { current: "oss", hrefs: { vat: "/a", oss: "/b?view=oss", ioss: "/c?view=ioss" } }));
+    const out = html(h(TaxViewTabs, { current: "oss", hrefs: { vat: "/a", oss: "/b?view=oss", ioss: "/c?view=ioss" }, words: taxReportsEn }));
     expect(out).toContain('aria-current="page"');
     expect(out.match(/<a /g)).toHaveLength(3);
     expect(out).toContain("OSS return data");
@@ -249,7 +251,7 @@ describe("the shared parts", () => {
   });
 
   it("the loading placeholder says the figures are not a tax return and sweeps", () => {
-    const out = html(h(TaxSkeleton));
+    const out = html(h(TaxSkeleton, { words: taxReportsEn.skeleton }));
     expect(out).toContain("Not a tax return");
     expect(out).toContain("animate-pulse");
     expect(out).toContain('aria-busy="true"');

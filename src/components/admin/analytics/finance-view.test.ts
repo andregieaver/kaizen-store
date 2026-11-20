@@ -6,10 +6,10 @@ import { financeStatement, type FinanceLine } from "@/lib/analytics-finance";
 import { FINANCE_STATEMENT_EN } from "@/lib/finance-statement-labels";
 import { DEFAULT_ANALYTICS_SETTINGS, EMPTY_TOTALS, type AnalyticsSettings, type Totals } from "@/lib/analytics-kpi";
 import type { SeriesPoint } from "@/server/analytics-totals";
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 import {
   currencyNotes,
-  FINANCE_DEFINITIONS,
   FinanceView,
   hasNoSales,
   lineChange,
@@ -94,6 +94,7 @@ function view(over: Partial<FinanceViewProps> = {}): string {
     series: SERIES,
     comparisonSeries: SERIES.map((p) => ({ ...p, netRevenueMinor: 200_000 })),
     setup: SETUP,
+    words: financeEn,
     ...over,
   };
   return html(h(FinanceView, props));
@@ -139,13 +140,13 @@ describe("lineChange", () => {
 
 describe("profitLines", () => {
   it("opens with a calm sentence for an empty period", () => {
-    const lines = profitLines(period(EMPTY_TOTALS), money);
+    const lines = profitLines(period(EMPTY_TOTALS), money, financeEn);
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain("No orders were paid in this period yet");
   });
 
   it("says what is left after each step, and that the last is an estimate", () => {
-    const lines = profitLines(period(NORMAL), money).join(" ");
+    const lines = profitLines(period(NORMAL), money, financeEn).join(" ");
     expect(lines).toContain("40 paid orders brought in");
     expect(lines).toContain("gross profit of");
     expect(lines).toContain("contribution profit is about");
@@ -153,19 +154,19 @@ describe("profitLines", () => {
   });
 
   it("never states a profit when no cost is known", () => {
-    const lines = profitLines(period(totals({ ...NORMAL, knownCostRevenueMinor: 0, cogsMinor: 0 })), money).join(" ");
+    const lines = profitLines(period(totals({ ...NORMAL, knownCostRevenueMinor: 0, cogsMinor: 0 })), money, financeEn).join(" ");
     expect(lines).toContain("no profit to show");
     expect(lines).not.toContain("gross profit of");
   });
 
   it("says a shortfall is a shortfall", () => {
-    const lines = profitLines(period(totals({ ...NORMAL, cogsMinor: 1_400_000 })), money).join(" ");
+    const lines = profitLines(period(totals({ ...NORMAL, cogsMinor: 1_400_000 })), money, financeEn).join(" ");
     expect(lines).toContain("more than they brought in");
     expect(lines).toContain("short");
   });
 
   it("does not claim sales for a period with refunds only", () => {
-    const lines = profitLines(period(totals({ refundsMinor: 20_000 })), money);
+    const lines = profitLines(period(totals({ refundsMinor: 20_000 })), money, financeEn);
     expect(lines[0]).toContain("No orders were paid");
     expect(lines[0]).toContain("refunds of");
   });
@@ -173,11 +174,11 @@ describe("profitLines", () => {
 
 describe("currencyNotes and missingCostCount", () => {
   it("is silent when nothing was left out", () => {
-    expect(currencyNotes(period(NORMAL), null, "NOK")).toEqual([]);
+    expect(currencyNotes(period(NORMAL), null, "NOK", financeEn)).toEqual([]);
   });
 
   it("names the currencies left out, for the period and for the comparison", () => {
-    const notes = currencyNotes(period(NORMAL, { unconverted: 3, missingCurrencies: ["SEK", "DKK"] }), period(EARLIER, { unconverted: 1, missingCurrencies: ["SEK"] }), "NOK");
+    const notes = currencyNotes(period(NORMAL, { unconverted: 3, missingCurrencies: ["SEK", "DKK"] }), period(EARLIER, { unconverted: 1, missingCurrencies: ["SEK"] }), "NOK", financeEn);
     expect(notes).toHaveLength(2);
     expect(notes[0]).toContain("3 orders and refunds in SEK, DKK are left out of these figures");
     expect(notes[1]).toContain("1 order or refund in SEK is left out of the comparison period");
@@ -276,7 +277,7 @@ describe("FinanceView, a normal store", () => {
 
   it("closes with every definition in a disclosure", () => {
     expect(markup).toContain("<details");
-    for (const d of FINANCE_DEFINITIONS) expect(words).toContain(d.term);
+    for (const d of financeEn.view.definitions) expect(words).toContain(d.term);
     expect(words).toContain("How these are worked out");
   });
 

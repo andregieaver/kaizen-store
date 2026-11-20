@@ -1,5 +1,5 @@
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
 import { asWritten, type Say } from "@/lib/analytics-notes";
 import { MIN_PRODUCT_UNITS, MIN_TIMING_SAMPLE } from "@/lib/analytics-returns";
@@ -27,16 +27,16 @@ export type ReturnsViewProps = {
   report: ReturnsReport;
   /** Where the returns queue is (a path under the store's admin), for the overdue figure. */
   queueHref?: string;
-  /** The words in the admin's language (D312 A9); English unless given. */
-  words?: FinanceMessages;
+  /** The words in the admin's language (D312 A9). */
+  words: FinanceMessages;
   /** The report's notes in the admin's language (`sayIn()`); as written unless given. */
   say?: Say;
-  /** The reasons' names in the admin's language (`returns.labels.reason`); the report's English unless given. */
+  /** The reasons' names in the admin's language (`returns.labels.reason`); the report's */
   reasonLabels?: Readonly<Record<string, string>>;
 };
 
 /** The seven cards. A rate that cannot be given is a missing card with its reason; the counts are always numbers. */
-export function returnCards({ currency, locale, report: r, queueHref, words = financeEn, say = asWritten }: ReturnsViewProps): KpiCardProps[] {
+export function returnCards({ currency, locale, report: r, queueHref, words, say = asWritten }: ReturnsViewProps): KpiCardProps[] {
   const w = words.returns;
   const HELP = w.help;
   const { percent: pct, days: formatDays } = financeNumbers(words);
@@ -136,7 +136,7 @@ export function returnCards({ currency, locale, report: r, queueHref, words = fi
 }
 
 export function ReturnsView(props: ReturnsViewProps) {
-  const { currency, locale, report: r, words = financeEn, say = asWritten, reasonLabels } = props;
+  const { currency, locale, report: r, words, say = asWritten, reasonLabels } = props;
   const w = words.returns;
   const { percent: pct, days: formatDays } = financeNumbers(words);
   const money = safeMoney(currency, locale);

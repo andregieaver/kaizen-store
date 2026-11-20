@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Chip } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
 import { formatMoney } from "@/lib/money";
 import { payoutFlagged, type PayoutReport, type PayoutRow, type PayoutState } from "@/lib/payouts";
@@ -37,7 +37,7 @@ function StateChip({ row, money, w }: { row: PayoutRow; money: (minor: number) =
  * fees in it, what it settles, and whether it adds up (its lines' net against the payout) or holds money Kaizena Flow cannot tie to an order. Totals of the
  * paid live payouts are in the main currency. Nothing here is estimated: a payout not read yet says so.
  */
-export function PayoutsView({ base, currency, locale, report: r, words = financeEn }: { base: string; currency: string; locale: string; report: PayoutReport; words?: FinanceMessages }) {
+export function PayoutsView({ base, currency, locale, report: r, words }: { base: string; currency: string; locale: string; report: PayoutReport; words: FinanceMessages }) {
   const w = words.payouts;
   const main = safeMoney(currency, locale);
   const own = (row: PayoutRow) => (minor: number) => formatMoney(minor, row.currency, locale);
@@ -101,7 +101,7 @@ export function PayoutsView({ base, currency, locale, report: r, words = finance
 }
 
 /** What a payout settles, in words: "12 payments, 1 refund". */
-export function settlesWords(p: Pick<PayoutRow, "payments" | "refunds" | "disputes" | "others" | "reconciliation">, words: FinanceMessages = financeEn): string {
+export function settlesWords(p: Pick<PayoutRow, "payments" | "refunds" | "disputes" | "others" | "reconciliation">, words: FinanceMessages): string {
   const w = words.payouts;
   if (p.reconciliation.state === "not_read") return w.settlesNotRead;
   if (p.reconciliation.state === "manual") return w.settlesManual;
@@ -115,7 +115,7 @@ export function settlesWords(p: Pick<PayoutRow, "payments" | "refunds" | "disput
 }
 
 /** One payout's lines: each payment, refund, dispute and fee Stripe lists in it, with the order it is for, and whether the payout adds up. */
-export function PayoutDetailView({ base, locale, detail, row, words = financeEn }: { base: string; locale: string; detail: PayoutDetail; row: PayoutRow; words?: FinanceMessages }) {
+export function PayoutDetailView({ base, locale, detail, row, words }: { base: string; locale: string; detail: PayoutDetail; row: PayoutRow; words: FinanceMessages }) {
   const w = words.payouts;
   const money = (minor: number) => formatMoney(minor, detail.payout.currency, locale);
   const r = row.reconciliation;

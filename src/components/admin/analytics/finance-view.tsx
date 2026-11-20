@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { change, formatChange, formatCount, NO_FIGURE, safeRatio, verdictOf, type GoodDirection, type Verdict } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import type { FinanceLine, FinanceLineKey, FinanceStatement } from "@/lib/analytics-finance";
@@ -71,8 +71,8 @@ export type FinanceViewProps = {
   comparisonSeries: readonly (SeriesPoint | null)[] | null;
   /** Null when the count could not be read; the page then does not say how many products lack a cost. */
   setup: FinanceSetup | null;
-  /** The words in the admin's language (D312 A9); English unless given. */
-  words?: FinanceMessages;
+  /** The words in the admin's language (D312 A9). */
+  words: FinanceMessages;
 };
 
 // ---------------------------------------------------------------------------
@@ -123,16 +123,14 @@ export const shownWhere = (s: FinanceStatement, key: FinanceLineKey): boolean =>
 
 const WHERE_KEYS = ["netRevenue", "cogs", "paymentFees", "platformFees", "shippingCosts", "handlingCosts", "returnLabels", "replacements", "marketing", "lostDisputes", "fixedCosts", "operatingProfit"] as const;
 
-/** The bars with their labels in the admin's language; English unless given. */
-export const whereItWent = (w: FinanceMessages["view"]["where"] = financeEn.view.where): readonly (readonly [FinanceLineKey, string])[] => WHERE_KEYS.map((key) => [key, w[key]] as const);
-
-export const WHERE_IT_WENT = whereItWent();
+/** The bars with their labels in the admin's language. */
+export const whereItWent = (w: FinanceMessages["view"]["where"]): readonly (readonly [FinanceLineKey, string])[] => WHERE_KEYS.map((key) => [key, w[key]] as const);
 
 /**
  * The sentences that open the page: what came in, what is left after the cost of goods, after what follows each sale, and after fixed
  * costs. Written in code from the statement, never flattering: a shortfall is a shortfall, and profit that cannot be known says so.
  */
-export function profitLines(d: FinancePeriodData, money: (minor: number) => string, words: FinanceMessages = financeEn, numbers: FinanceNumbers = financeNumbers(words)): string[] {
+export function profitLines(d: FinancePeriodData, money: (minor: number) => string, words: FinanceMessages, numbers: FinanceNumbers = financeNumbers(words)): string[] {
   const w = words.view.profit;
   const pct = numbers.percent;
   const t = d.totals;
@@ -181,7 +179,7 @@ export function profitLines(d: FinancePeriodData, money: (minor: number) => stri
 }
 
 /** Words for orders and refunds left out because their currency has no rate; empty when nothing was left out. */
-export function currencyNotes(current: FinancePeriodData, comparison: FinancePeriodData | null, currency: string, words: FinanceMessages = financeEn): string[] {
+export function currencyNotes(current: FinancePeriodData, comparison: FinancePeriodData | null, currency: string, words: FinanceMessages): string[] {
   const w = words.view.currencies;
   const out: string[] = [];
   const one = (d: FinancePeriodData, which: string) => {
@@ -199,13 +197,6 @@ export function missingCostCount(setup: FinanceSetup | null): number | null {
   if (!setup) return null;
   return Math.max(0, setup.activeVariants - setup.variantsWithCost);
 }
-
-// ---------------------------------------------------------------------------
-// Definitions
-// ---------------------------------------------------------------------------
-
-/** docs/analytics.md's definitions, in plain words, for the closing disclosure. */
-export const FINANCE_DEFINITIONS: readonly { term: string; text: string }[] = financeEn.view.definitions;
 
 // ---------------------------------------------------------------------------
 // Pieces
@@ -318,7 +309,7 @@ function BridgeTable({ current, comparison, money, w, n }: { current: FinancePer
 // The view
 // ---------------------------------------------------------------------------
 
-export function FinanceView({ base, currency, locale, isOwner, current, comparison, bucket, series, comparisonSeries, setup, words = financeEn }: FinanceViewProps) {
+export function FinanceView({ base, currency, locale, isOwner, current, comparison, bucket, series, comparisonSeries, setup, words }: FinanceViewProps) {
   const v = words.view;
   const n = financeNumbers(words);
   const pct = n.percent;

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { countWords } from "@/lib/admin-fill";
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount } from "@/lib/analytics-core";
 import type { TermsOwed } from "@/server/payment-terms";
 
@@ -12,7 +12,7 @@ import { safeMoney } from "./subscriptions-view";
  * What companies owe on payment terms (wave 4 unit F, D293, docs/analytics.md "Owed on payment terms"): the invoices not yet paid, due and overdue, as
  * they stand today in the main currency. Not revenue: an order on terms is a sale when its money arrives. Drawn only when something is owed.
  */
-export function TermsOwedView({ base, currency, locale, owed, words = financeEn }: { base: string; currency: string; locale: string; owed: TermsOwed; words?: FinanceMessages }) {
+export function TermsOwedView({ base, currency, locale, owed, words }: { base: string; currency: string; locale: string; owed: TermsOwed; words: FinanceMessages }) {
   const w = words.termsOwed;
   if (owed.dueOrders + owed.overdueOrders === 0) return null;
   const money = safeMoney(currency, locale);

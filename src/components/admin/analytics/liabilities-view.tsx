@@ -1,4 +1,4 @@
-import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import type { FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { fillWords } from "@/lib/admin-fill";
 import type { LiabilityRow } from "@/lib/liabilities";
 
@@ -12,7 +12,7 @@ import { safeMoney, signedMoney } from "./subscriptions-view";
  * own row and never added across currencies. Bonus credit in another currency than the main one shows the main one beside it, for display
  * only. Drawn only when the store has either ledger.
  */
-export function LiabilitiesView({ locale, rows, words = financeEn }: { locale: string; rows: LiabilityRow[]; words?: FinanceMessages }) {
+export function LiabilitiesView({ locale, rows, words }: { locale: string; rows: LiabilityRow[]; words: FinanceMessages }) {
   if (rows.length === 0) return null;
   const w = words.liabilities;
   const money = (r: LiabilityRow) => safeMoney(r.currency, locale);

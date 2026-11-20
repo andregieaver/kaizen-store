@@ -9,7 +9,7 @@ import { Note } from "@/components/admin/analytics/section";
 import { TaxViewTabs } from "@/components/admin/analytics/tax-parts";
 import { TaxView } from "@/components/admin/analytics/tax-view";
 import { fillWords } from "@/lib/admin-fill";
-import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import type { TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
 import { addDays, rangeLabel, todayIn } from "@/lib/analytics-period";
 import { parseTaxQuery, periodOptions, taxHref, type TaxViewId } from "@/lib/tax-admin";
 import type { ReturnMode } from "@/lib/oss-return";
@@ -95,7 +95,7 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
   const { store } = ctx;
-  const w = ctx.lang === "en" ? taxReportsEn : TAX_REPORTS_WORDS[ctx.lang];
+  const w = TAX_REPORTS_WORDS[ctx.lang];
   const today = todayIn(ctx.now, store.timeZone);
   const query = parseTaxQuery(raw, today);
   // Amounts are written the way the files write them (a decimal point), whatever the store's first market or the admin's language speaks:

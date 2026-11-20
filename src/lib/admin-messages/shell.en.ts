@@ -71,6 +71,8 @@ export const shellEn = {
     erasePlan: "Working out what erasing would do…",
     retention: "Loading the retention schedule…",
     returns: "Loading the returns…",
+    vatReport: "Loading the VAT report…",
+    vatReportStatement: "Your own figures, for you and your accountant. Not a tax return.",
   },
   /** The page shown when an admin page fails to load (`(gated)/error.tsx`); `{reference}` is `reference` filled in, or nothing. */
   error: {

@@ -61,6 +61,8 @@ export const shellNb: ShellMessages = {
     erasePlan: "Regner ut hva slettingen vil gjøre…",
     retention: "Laster oppbevaringsreglene…",
     returns: "Laster returene…",
+    vatReport: "Henter mva.-rapporten …",
+    vatReportStatement: "Dine egne tall, for deg og regnskapsføreren din. Ikke en melding til myndighetene.",
   },
   error: {
     title: "Denne siden kunne ikke lastes",

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import type { TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import { TAX_REPORTS_WORDS } from "@/lib/admin-words/tax-reports";
 import { TAX_VIEWS, type ExportFormKind, type TaxViewId } from "@/lib/tax-admin";
 
 import { SelectNav } from "@/components/admin/select-nav";
@@ -16,9 +17,9 @@ import { Note } from "./section";
  */
 
 /** The line every view starts with and every file carries: whose figures these are, and what they are not. */
-export const NOT_A_RETURN = taxReportsEn.parts.notReturn;
+export const NOT_A_RETURN = TAX_REPORTS_WORDS.en.parts.notReturn;
 
-export function TaxStatement({ children, words = taxReportsEn }: { children?: ReactNode; words?: TaxReportsMessages }) {
+export function TaxStatement({ children, words }: { children?: ReactNode; words: TaxReportsMessages }) {
   // On a phone (round 39, D731) the statement is one line, its full words under More.
   return (
     <>
@@ -40,7 +41,7 @@ export function TaxStatement({ children, words = taxReportsEn }: { children?: Re
 }
 
 /** The three views as tabs: links, so each is an address of its own. */
-export function TaxViewTabs({ current, hrefs, words = taxReportsEn }: { current: TaxViewId; hrefs: Record<TaxViewId, string>; words?: TaxReportsMessages }) {
+export function TaxViewTabs({ current, hrefs, words }: { current: TaxViewId; hrefs: Record<TaxViewId, string>; words: TaxReportsMessages }) {
   // On a phone (round 39, D731) the three views are one choice.
   return (
     <>
@@ -90,6 +91,6 @@ export function ExportButton({ base, kind, fields, children, disabled = false, p
 }
 
 /** What a member who may only read sees in place of the export buttons. */
-export function ExportsNeedWrite({ words = taxReportsEn }: { words?: TaxReportsMessages }) {
+export function ExportsNeedWrite({ words }: { words: TaxReportsMessages }) {
   return <p className="text-sm text-muted">{words.parts.needWrite}</p>;
 }

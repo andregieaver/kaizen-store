@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { RefundsReport } from "@/server/analytics-refunds-data";
+import { financeEn } from "@/lib/admin-messages/finance.en";
 
 import { moneyWriter } from "./overview-view";
 import { refundCards, RefundsView, type RefundsViewProps } from "./refunds-view";
@@ -93,6 +94,7 @@ const props = (report: RefundsReport, over: Partial<RefundsViewProps> = {}): Ref
   locale: "nb-NO",
   report,
   marketNames: { NO: "Norway", SE: "Sweden" },
+  words: financeEn,
   ...over,
 });
 
