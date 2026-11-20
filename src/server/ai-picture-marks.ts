@@ -11,7 +11,7 @@ import { log } from "./log";
 import { downloadStoredFile, overwriteStoredFile } from "./media";
 import { col, typedRows } from "./typed-rows";
 import { loadSharp } from "./sharp-load";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The AI pictures made before their files were marked (AI Act Art. 50(2), `docs/ai-act.md`): each is given IPTC's digital source type in

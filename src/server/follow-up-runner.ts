@@ -20,7 +20,7 @@ import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Gives the AI manager's follow-ups back to it when they are due (PSI AGT-04, AGT-11), from the five-minute dispatcher: a few at a time,

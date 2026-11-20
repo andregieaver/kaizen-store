@@ -19,7 +19,7 @@ import { refreshTag } from "./refresh";
 import { currentStore, type Store } from "./stores";
 import { switchToInstall } from "./theme-installs";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Watch and roll back (`docs/100-day-challenge.md` F4): every hour, each change the autopilot made itself in the last two days that can be

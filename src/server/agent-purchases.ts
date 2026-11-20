@@ -26,7 +26,7 @@ import { getWallet, walletCall, type CardWallet, type WalletDeps } from "./card-
 import { log } from "./log";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Purchases the owner approved for the AI (D599, step 2 of `docs/agent-spending.md`): the only writer of `commerce.agent_purchases` and

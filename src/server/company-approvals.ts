@@ -20,7 +20,7 @@ import { openPaymentSession, paymentConnection } from "./payment-session";
 import { sendApprovalDecided, sendApprovalWaiting } from "./shopper-emails";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Company approvals (wave 6 unit C2, D321, `docs/wave-6-catalogue.md` C.2): an orderer's order over the company's limit is placed by `placeOrder()`

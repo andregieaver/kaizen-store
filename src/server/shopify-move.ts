@@ -38,7 +38,7 @@ import { issueLeftGiftCard, issueReadGiftCard, lowerSpentOnShopify, lowerSpentOn
 import { addressView, type AddressDeps } from "./shopify-address";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { db } from "@/db/client";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Move day, part 1 (D445 step 7a, `docs/moving-from-shopify.md` 4.6, the steps in `src/lib/shopify-move.ts`): *Ready to move?*, then

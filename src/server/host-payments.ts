@@ -10,7 +10,7 @@ import { audit } from "./auth";
 import { BASE_CAPABILITIES, INCLUDE, makeTestAccount, requestIp, stripeProblem, type StripeAccount } from "./connect";
 import type { Hosting } from "./hosts";
 import { platformStripe } from "./stripe";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Paying hosts (D71). A host's booking is a direct charge on the host's own

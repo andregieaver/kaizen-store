@@ -17,7 +17,7 @@ import {
 import { audit, type Account } from "./auth";
 import { CATALOG_TAG } from "./catalog";
 import { listVatCategories, ratesNow } from "./vat-categories";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

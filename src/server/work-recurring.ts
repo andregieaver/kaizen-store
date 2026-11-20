@@ -27,7 +27,7 @@ import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors"
 import { sendInvoiceEmail } from "./work-emails";
 import { deleteDraft, issueInvoice, type WorkActor } from "./work-invoices";
 import { memberCan } from "./permissions";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

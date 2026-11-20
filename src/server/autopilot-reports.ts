@@ -27,7 +27,7 @@ import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The autopilot's daily digest and weekly report (D309, `docs/ai-autopilot.md` 7.5), the only writer of `commerce.autopilot_reports`, from the

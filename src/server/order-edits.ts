@@ -56,7 +56,7 @@ import { uuidList } from "./sql-arrays";
 import { applyRestock, planRestock, type RestockItem } from "./stock-restock";
 import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Runner = Pick<Db, "execute">;
 

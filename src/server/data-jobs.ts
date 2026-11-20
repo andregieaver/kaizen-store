@@ -47,7 +47,7 @@ import { applyCustomerImport, checkCustomerImport, customerDryCountsOf, customer
 import { applyInventoryImport, checkInventoryImport, countInventoryExportRows, inventoryDryCountsOf, inventoryExportReader, inventoryProblemsCsv, parseInventoryExportOptions, registerInventoryImport, runInventoryApply, runInventoryCheck, startInventoryUpload, type InventoryExportOptions } from "./inventory-jobs";
 import { storeOf } from "./product-data";
 import type { Store } from "./stores";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

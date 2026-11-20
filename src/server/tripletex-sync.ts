@@ -23,7 +23,7 @@ import { getTripletexConnection, readChart, tripletexAttention, tripletexCredent
 import { listAll, openSession, type TripletexDeps, type TripletexSession } from "./tripletex-client";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { workEvent } from "./work";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Tripletex (D453): sending a store's documents, the only writer of `commerce.tripletex_sync`. Every five minutes, per store

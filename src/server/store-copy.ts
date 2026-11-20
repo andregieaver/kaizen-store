@@ -25,7 +25,7 @@ import { log } from "./log";
 import { isSlugTaken, MAX_STORES_PER_OWNER } from "./platform";
 import { copyStoreMedia, tablesPointingAtOriginal, type MediaCopyDeps } from "./store-copy-media";
 import { storeSlugOf } from "./stores";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

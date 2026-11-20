@@ -13,7 +13,7 @@ import { marketUrl } from "@/lib/paths";
 import { bonusProgram } from "./bonus";
 import { sendEmail, type SendOutcome } from "./email";
 import { emailContext, emailFooter } from "./shopper-emails";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

@@ -50,7 +50,7 @@ import { connectWebhookUrl, platformStripe, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import { normaliseEmail } from "@/lib/email-address";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

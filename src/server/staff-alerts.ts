@@ -53,7 +53,7 @@ import { staffSummaryFigures, type StaffSummaryFigures } from "./staff-summary";
 import { uuidList } from "./sql-arrays";
 import type { CheckupFinding } from "./store-checkup";
 import { getStore, type Store } from "./stores";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

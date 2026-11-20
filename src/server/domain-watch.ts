@@ -16,7 +16,7 @@ import { log } from "./log";
 import { allowPrivate } from "./replicate-fetch";
 import { uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The domain watch (ecosystem plan E4.2, D729): each active domain of an open store, the house store's too, and Kaizena Flow's own host

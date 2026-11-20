@@ -25,7 +25,7 @@ import { fetchCarrierEvents, type CarrierAnswer } from "./carrier-tracking";
 import { textList } from "./sql-arrays";
 import type { SendOutcome } from "./email";
 import { sendParcelEvent } from "./shopper-emails";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

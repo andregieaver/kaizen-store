@@ -28,7 +28,7 @@ import { deskSettings } from "./support";
 import type { Desk, StaffDesk } from "./support-desk";
 import { systemDesk } from "./support-desk";
 import { owned } from "./owned";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 
