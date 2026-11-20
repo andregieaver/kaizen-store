@@ -4,20 +4,11 @@ import { useState } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
 import { FieldsForm, type FieldFileUploader, type PictureUpload } from "@/components/admin/fields-form";
-import {
-  groupApplies,
-  hasTranslations,
-  type Facts,
-  type FieldData,
-  type FieldGroup,
-  type FieldLookups,
-} from "@/lib/custom-fields";
+import { hasTranslations, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
+
+export { applicableGroups } from "./entity-field-groups";
 
 const card = "rounded-lg border border-line bg-card p-5";
-
-/** The groups of a store's custom fields (D118) that apply to what is being edited, as it is now (unsaved changes count). */
-export const applicableGroups = (groups: FieldGroup[], facts: Facts): FieldGroup[] =>
-  groups.filter((group) => groupApplies(group, facts));
 
 /**
  * The custom fields of a product, page or article in its editor: the groups

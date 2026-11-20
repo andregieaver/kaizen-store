@@ -15,8 +15,8 @@ import { SharingChoice } from "./templates-sharing";
 /** What the page editor tells a person when a page's layout was saved as a template (D127). */
 export const SAVED_AS_TEMPLATE = "Saved as a template. Find it under Saved.";
 
-/** The name a page's layout starts with: the page's title, else "Untitled". */
-export const defaultTemplateName = (title: string): string => title.trim().slice(0, SAVED_NAME_MAX) || "Untitled";
+/** The name a page's layout starts with (`template-name.ts`, so the page editor reads it without this dialog, bloat review step 2.30). */
+export { defaultTemplateName } from "./template-name";
 
 /**
  * Saves a page's layout as a template (D127): its rows and CSS, nothing else of the page. It is saved under Saved

@@ -76,6 +76,57 @@ vi.mock("@/components/admin/lazy/editors", async () => {
   };
 });
 
+/** The page editor's dialogs (bloat review step 2.30): each stand-in is the dialog itself, drawn whether or not it was opened, as before. */
+vi.mock("@/components/admin/lazy/builder-dialogs", async () => ({
+  DualOpenDialog: await pick(() => import("@/components/admin/dual-page-dialogs"), "DualOpenDialog"),
+  DualCreateDialog: await pick(() => import("@/components/admin/dual-page-dialogs"), "DualCreateDialog"),
+  MakeCoolDialog: await pick(() => import("@/components/admin/make-cool-dialog"), "MakeCoolDialog"),
+  AiChangeDialog: await pick(() => import("@/components/admin/ai-change-dialog"), "AiChangeDialog"),
+  FindReplaceDialog: await pick(() => import("@/components/admin/find-replace-dialog"), "FindReplaceDialog"),
+  PageVersionsDialog: await pick(() => import("@/components/admin/page-versions-dialog"), "PageVersionsDialog"),
+  SaveTemplateDialog: await pick(() => import("@/components/admin/save-template-dialog"), "SaveTemplateDialog"),
+  PublishWithIssuesDialog: await pick(() => import("@/components/admin/page-issues-panel"), "PublishWithIssuesDialog"),
+  TemplatesModal: await pick(() => import("@/components/admin/templates-modal"), "TemplatesModal"),
+  ApplyLayoutDialog: await pick(() => import("@/components/admin/templates-apply"), "ApplyLayoutDialog"),
+  TemplatePreviewDialog: await pick(() => import("@/components/admin/templates-preview"), "TemplatePreviewDialog"),
+  SavedLayoutDialog: await pick(() => import("@/components/admin/saved-layout-dialog"), "SavedLayoutDialog"),
+  warmBuilderDialogs: () => {},
+}));
+
+/** The builder's settings fields, the terms manager, the custom fields and the theme's sections (bloat review step 2.30). */
+vi.mock("@/components/admin/lazy/builder-fields", async () => ({
+  SpacingFields: await pick(() => import("@/components/admin/page-builder-fields"), "SpacingFields"),
+  ImageFields: await pick(() => import("@/components/admin/page-builder-fields"), "ImageFields"),
+  ImageLinkFields: await pick(() => import("@/components/admin/page-builder-fields"), "ImageLinkFields"),
+  SettingsTabs: await pick(() => import("@/components/admin/page-builder-fields"), "SettingsTabs"),
+  BackgroundFields: await pick(() => import("@/components/admin/page-builder-fields"), "BackgroundFields"),
+  RowWidthChoices: await pick(() => import("@/components/admin/page-builder-fields"), "RowWidthChoices"),
+  RowLayoutFields: await pick(() => import("@/components/admin/page-builder-fields"), "RowLayoutFields"),
+  RowColumnFields: await pick(() => import("@/components/admin/page-builder-fields"), "RowColumnFields"),
+  RowContentMaxField: await pick(() => import("@/components/admin/page-builder-fields"), "RowContentMaxField"),
+  SectionStyleField: await pick(() => import("@/components/admin/page-builder-fields"), "SectionStyleField"),
+  ColumnSizeFields: await pick(() => import("@/components/admin/page-builder-fields"), "ColumnSizeFields"),
+  BackgroundAtSize: await pick(() => import("@/components/admin/page-builder-fields"), "BackgroundAtSize"),
+  ColumnLinkFields: await pick(() => import("@/components/admin/page-builder-fields"), "ColumnLinkFields"),
+  ShapeChoice: await pick(() => import("@/components/admin/page-builder-fields"), "ShapeChoice"),
+  AnchorField: await pick(() => import("@/components/admin/page-builder-fields"), "AnchorField"),
+  ClassesField: await pick(() => import("@/components/admin/page-builder-fields"), "ClassesField"),
+  NewTabField: await pick(() => import("@/components/admin/page-builder-fields"), "NewTabField"),
+  NumberField: await pick(() => import("@/components/admin/page-builder-fields"), "NumberField"),
+  FrameFields: await pick(() => import("@/components/admin/page-builder-fields"), "FrameFields"),
+  HeadingFields: await pick(() => import("@/components/admin/page-builder-fields"), "HeadingFields"),
+  ButtonFields: await pick(() => import("@/components/admin/page-builder-fields"), "ButtonFields"),
+  ButtonStyleFields: await pick(() => import("@/components/admin/page-builder-fields"), "ButtonStyleFields"),
+  GridPreview: await pick(() => import("@/components/admin/page-builder-fields"), "GridPreview"),
+  ContentGridFields: await pick(() => import("@/components/admin/page-builder-fields"), "ContentGridFields"),
+  GridStyleFields: await pick(() => import("@/components/admin/page-builder-fields"), "GridStyleFields"),
+  ColumnsFields: await pick(() => import("@/components/admin/page-builder-fields"), "ColumnsFields"),
+  TermPicker: await pick(() => import("@/components/admin/terms"), "TermPicker"),
+  EntityFields: await pick(() => import("@/components/admin/entity-fields"), "EntityFields"),
+  ThemeSectionsList: await pick(() => import("@/components/admin/theme-sections-list"), "ThemeSectionsList"),
+  warmBuilderFields: () => {},
+}));
+
 /**
  * The builder's previews read one storefront language with `useSiteWords()`, which gives nothing until the language has been fetched
  * (`components/admin/site-words.ts`): a unit test cannot wait, so the four languages are settled here and a preview draws their words at once.

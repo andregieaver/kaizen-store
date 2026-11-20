@@ -3,11 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 
-import { applicableGroups, EntityFields } from "@/components/admin/entity-fields";
+import { applicableGroups } from "@/components/admin/entity-field-groups";
 import { fieldFileUploader } from "@/components/admin/field-file-upload";
-import { shrinkAndUpload } from "@/components/admin/fields-form";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
-import { TermPicker } from "@/components/admin/terms";
+import { EntityFields, TermPicker } from "@/components/admin/lazy/builder-fields";
 import { changesFrom, EMPTY_DATA, EMPTY_LOOKUPS, withParents, type FieldData } from "@/lib/custom-fields";
 import { shrinkImage } from "@/lib/image-resize";
 import {
@@ -39,14 +38,11 @@ import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
 import { ChevronDown, ChevronUp, History, Redo2, Replace, Sparkles, Undo2, WandSparkles, X } from "lucide-react";
 import { formatDualWith, withCopiedTranslations, type DualSide, type DualWith } from "@/lib/dual-page";
-import { DualCreateDialog, DualOpenDialog } from "./dual-page-dialogs";
 import { PAGE_TYPE_COPY } from "./page-type-copy";
 import { emptyHistory, historyKey, record, redo as redoStep, undo as undoStep, type History as EditHistory } from "@/lib/edit-history";
 import type { PageVersionItem } from "@/lib/page-versions";
 import { draftKey } from "@/lib/browser-draft";
 
-import { MakeCoolDialog } from "./make-cool-dialog";
-import { AiChangeDialog } from "./ai-change-dialog";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { defaultFooter, defaultHeader, type StandardMenus } from "@/lib/site-layout";
@@ -86,10 +82,18 @@ import { PictureEditorProvider, PictureMakerProvider } from "./picture-maker";
 import { FormsContext, SignupCodesContext } from "./block-fields";
 import { HeaderStageFields } from "./header-stage-fields";
 import { newId, PageBuilder, type DualBuilder } from "./page-builder";
-import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
-import { FindReplaceDialog } from "./find-replace-dialog";
-import { PageVersionsDialog } from "./page-versions-dialog";
-import { SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
+import { PageIssuesPanel } from "./page-issues-panel";
+import {
+  AiChangeDialog,
+  DualCreateDialog,
+  DualOpenDialog,
+  FindReplaceDialog,
+  MakeCoolDialog,
+  PageVersionsDialog,
+  PublishWithIssuesDialog,
+  SaveTemplateDialog,
+} from "./lazy/builder-dialogs";
+import { defaultTemplateName } from "./template-name";
 import { ScheduleButton } from "./schedule-dialog";
 import { DraftOffer, useLeaveGuard } from "./leave-guard";
 import { useBrowserDraft } from "./use-browser-draft";
@@ -440,8 +444,9 @@ export function PageEditor({
         })
       : [];
   const pictureUpload = upload
-    ? (file: File) =>
-        shrinkAndUpload(file, async (image, thumbnail) => {
+    ? // The fields form loads where it is drawn (bloat review step 2.30): its shrinking is fetched with the first picture.
+      async (file: File) =>
+        (await import("@/components/admin/fields-form")).shrinkAndUpload(file, async (image, thumbnail) => {
           const data = new FormData();
           data.set("image", image);
           data.set("name", file.name);

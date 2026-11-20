@@ -36,17 +36,15 @@ import { MenuHoverFields } from "./menu-hover-fields";
 import { PixelRange } from "./pixel-range";
 import { ModalFields, ModalPicker } from "./modal-fields";
 import { DualSplitter, dualBareTemplate, dualRailTemplate, FoldButton, Rail, RailHeader, RailResizer, RailTabsHeader, railTemplate, useDualSplit, useFolded, useRailWidth, type RailSide } from "./builder-rails";
-import { TemplatesModal } from "./templates-modal";
 import { SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
 import { useTemplateLists, type TemplateController } from "./templates-lists";
-import { ApplyLayoutDialog, type PendingLayout } from "./templates-apply";
+import type { PendingLayout } from "./templates-apply";
+import { ApplyLayoutDialog, SavedLayoutDialog, TemplatePreviewDialog, TemplatesModal, warmBuilderDialogs } from "./lazy/builder-dialogs";
 import { fitsPage, blockedReason, type KindFilter } from "./templates-helpers";
 import { PageTypeBadge } from "./templates-parts";
-import { TemplatePreviewDialog } from "./templates-preview";
 import { useTemplateUse, type TemplateUse } from "./templates-use";
-import { ThemeSectionsList, type ThemeSectionActions } from "./theme-sections-list";
-import { SavedLayoutDialog } from "./saved-layout-dialog";
+import type { ThemeSectionActions } from "./theme-sections-list";
 import { ModalBar } from "./modal-preview";
 import { AnimationFields, MotionFields } from "./motion-fields";
 import { ShopPartIcon } from "./shop-part-icons";
@@ -97,7 +95,8 @@ import { Modal } from "./modal";
 import { InlineMarkupEditor, InlineRichEditor, RichTextEditor, warmEditors } from "./lazy/editors";
 import { DisplayBadge, DisplayFields, DisplayLegend, ScheduleFields, showPatch, type DisplaySetup } from "./display-fields";
 import { displayLocked, factsOffered, type Show } from "@/lib/visibility";
-import { SpacingFields, ImageFields, ImageLinkFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowLayoutFields, RowColumnFields, RowContentMaxField, SectionStyleField, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AnchorField, ClassesField, NewTabField, linkKindOf, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
+import { ThemeSectionsList, SpacingFields, ImageFields, ImageLinkFields, SettingsTabs, BackgroundFields, RowWidthChoices, RowLayoutFields, RowColumnFields, RowContentMaxField, SectionStyleField, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AnchorField, ClassesField, NewTabField, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields , warmBuilderFields } from "./lazy/builder-fields";
+import { ThemeRowWidths, ThemeSections, useStyleName, linkKindOf } from "./page-builder-fields-base";
 import { DesignSizeStrip, Fold, Folds, PanelTrail, PartMenu, SettingsMemoryProvider, VisibilitySentence, frameWords, spacingWords, typographyWords, useCopiedStyle, type Crumb, type MenuItem } from "./settings-panel-parts";
 import { canPaste, copyStyle, hasOwnStyle, pasteStylePatch, styleKindOf, type StyleKind } from "@/lib/style-copy";
 import { BookmarkPlus, ClipboardPaste, Copy, Paintbrush, Trash2 } from "lucide-react";
@@ -118,6 +117,9 @@ import { BlockIcon, Icon, LayoutPreview } from "./page-builder-icons";
 type Rows = (update: (rows: PageRow[]) => PageRow[]) => void;
 
 // A uuid, also where the browser has no `randomUUID` (an address without https): a global's uses (D98) work on ids of 128 bits.
+/** The builder's plain field box (in `page-builder-fields.tsx` until bloat review step 2.30). */
+const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -761,7 +763,11 @@ export function PageBuilder({
   // The editors (Tiptap) are not in the builder's first scripts (bloat review step 2.29): their chunks are fetched once the browser is idle,
   // so a press on a heading or a text field finds them there. The same shape as `whenIdle()` in `components/lazy/lazy-view.tsx`.
   useEffect(() => {
-    const run = () => warmEditors();
+    const run = () => {
+      warmEditors();
+      warmBuilderDialogs();
+      warmBuilderFields();
+    };
     if ("requestIdleCallback" in window) {
       const id = window.requestIdleCallback(run, { timeout: 2000 });
       return () => window.cancelIdleCallback(id);

@@ -17,7 +17,7 @@ import baseline from "./admin-bundle.baseline.json";
  *      schema to a `-schema.ts` file beside the helper, or read the helper from a module without zod. Rewrite the list, once a module
  *      has stopped (or when growth is accepted on purpose, shown in the diff), with
  *      `WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts`.
- * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below, step 2.29's rule 5.
+ * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below, step 2.29's rule 5, step 2.30's (the dialogs) rule 6.
  * 4. The full Supabase client loads on the press (step 2.31): no client module reaches `@supabase/supabase-js`, `@supabase/ssr` (both
  *    named `@supabase` by the walk) or `lib/supabase/client.ts` by a static import. The session is kept by `lib/supabase/auth-client.ts`
  *    (loaded with `import()` by `session.tsx`), and an upload loads the client inside its handler (`lib/supabase/signed-upload.ts`).
@@ -152,6 +152,26 @@ function languageOffences(planted?: Map<string, string[]>): string[] {
   return [...found].sort();
 }
 
+/**
+ * 6. The page editor opens its dialogs through `lazy/builder-dialogs.tsx` (bloat review step 2.30): `page-editor.tsx`, `page-builder.tsx` and
+ *    `dual-page-editor.tsx` import none of them by a value import, so they stay out of the builder's first scripts and load when first opened.
+ *    A type import is free.
+ */
+const DIALOG_IMPORTERS = ["components/admin/page-editor.tsx", "components/admin/page-builder.tsx", "components/admin/dual-page-editor.tsx"];
+const DIALOG_MODULE =
+  /from "\.\/(dual-page-dialogs|make-cool-dialog|ai-change-dialog|find-replace-dialog|page-versions-dialog|save-template-dialog|templates-modal|templates-apply|templates-preview|saved-layout-dialog)"/;
+
+/** The value import statements of `text` that bring a dialog in directly. */
+function directDialogImports(text: string): string[] {
+  return [...text.matchAll(/^import\s[^;]*;/gm)]
+    .map((match) => match[0])
+    .filter((statement) => !statement.startsWith("import type"))
+    .filter(
+      (statement) =>
+        DIALOG_MODULE.test(statement) || (statement.includes('from "./page-issues-panel"') && /(^|[{,\s])PublishWithIssuesDialog\b/.test(statement.replace(/type PublishWithIssuesDialog/g, ""))),
+    );
+}
+
 describe.runIf(WRITE)("the baseline writer", () => {
   it("writes the baseline", () => {
     writeFileSync(join(SRC, "components/admin/admin-bundle.baseline.json"), JSON.stringify({ zodReach: zodReach() }, null, 2) + "\n");
@@ -239,6 +259,18 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     const first = clientParts(join(SRC, FRAME_LAYOUTS[0]))[0];
     const planted = new Map([[first, ["@supabase/supabase-js"]]]);
     expect(frameOffences(planted).some((line) => line.endsWith("-> @supabase"))).toBe(true);
+  });
+
+  it("the page editor opens its dialogs through lazy/builder-dialogs.tsx", () => {
+    const found = DIALOG_IMPORTERS.flatMap((file) => directDialogImports(read(join(SRC, file))).map((statement) => `src/${file}: ${statement}`));
+    expect(found, "Import the dialog from ./lazy/builder-dialogs: a direct import puts it back in the editor's first scripts (bloat review step 2.30).").toEqual([]);
+  });
+
+  it("would notice: a dialog imported directly, and not a type import", () => {
+    expect(directDialogImports('import { MakeCoolDialog } from "./make-cool-dialog";')).toHaveLength(1);
+    expect(directDialogImports('import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";')).toHaveLength(1);
+    expect(directDialogImports('import type { PendingLayout } from "./templates-apply";')).toHaveLength(0);
+    expect(directDialogImports('import { PageIssuesPanel } from "./page-issues-panel";')).toHaveLength(0);
   });
 
   it("would notice: the product editor reaches zod exactly when it is on the list", () => {

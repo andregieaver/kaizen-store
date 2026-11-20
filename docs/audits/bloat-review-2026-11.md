@@ -188,7 +188,7 @@ commit as the fix.
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | In progress | D821: product editor 431,497 to 236,060 B, builder 606,658 to 460,097; words handed 13.2 to 6.1 MB; shared held. 3 sites left. |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Done | 19 Nov, D831: menu 17,307 to 14,757 chars; saves and a shell redraw measured and held. Commit 3 dropped: a save without a redraw would serve stale pages. |
 | 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | In progress | D800: builder 2,791,016 to 2,007,139 B; ProseMirror 26 routes to 0; drafts to 840,961. Owner: a press on production. |
-| 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | In progress | Stopped 20 Nov: cuts sum 197,435 B (310,000 needed); needs code review 3.1. See 2.30 below. |
+| 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | In progress | Local 20 Nov: builder 2,007,139 to 1,831,452 B; words, document, idle not lowered (no 3.1). |
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | In progress | D801: idle home 953,731 to 812,820 B (800,000 held at today's); orders 798,324. Owner: a tab past the hour. |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
 | 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | 19 Nov, 00d7bddd, D781: mirror set at sign-in and for all; commit 2 waits for the owner. |
@@ -1134,3 +1134,14 @@ beyond the table show what is missing: every cut above plus every edge into `blo
 and the dual dialogs cut also in `dual-page-editor.tsx` adds 4 KB (201,519). The rest is in `page-builder.tsx` itself (136 KB in
 the first load), whose settings panel (`Dialogs` and the 22 declarations only it uses, about 2,370 of its 6,741 lines) no cut can
 reach: that is code review step 3.1, the builder's own split, with `block-fields.tsx`'s shared fields in a module of their own.
+
+**After commit 2 (20 November 2026, local).** The reviewer let the step go on without code review step 3.1: every cut above that removes
+bytes is made (the twelve dialogs through `lazy/builder-dialogs.tsx`, the dual dialogs also in `dual-page-editor.tsx`; the settings
+fields, the terms manager, the custom fields and the theme's sections through `lazy/builder-fields.tsx`), and `block-fields.tsx` and
+`page-builder.tsx` stay whole. On a signed-in build: `/admin/[store]/pages/[pageId]` 2,007,139 to 1,831,452 bytes in
+`scripts/bundle-budget.baseline.json` (175,687 off; the table's sum with the dual cut is 201,519), the platform's builder 2,012,456 to
+1,829,912, the sandbox's 1,900,624 to 1,726,973; first scripts in the browser 2,101,839 to 1,931,752 (`admin-scripts.spec.ts`, budget
+2,190,000 to 2,010,000). The words handed, the document and the script by idle did not fall (184,847 and 192,954 bytes handed, documents
+461,369 and 464,345, script by idle 2,783,258 against 2,747,092: the warm-up fetches the new chunks at idle): no words moved, as each
+lazy form reads groups of `builder` or `blocks` that the canvas also reads, or is drawn on the server. The table was not measured again:
+`next analyze --output` was killed twice for lack of memory on the shared machine.

@@ -2,12 +2,11 @@
 
 import { ButtonHoverField } from "./hover-fields";
 import { type Size } from "@/lib/breakpoints";
-import { type ThemeTabValue } from "@/lib/theme";
 import { rowWidthPatch } from "@/lib/theme-elements";
-import { sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
+import { sectionStyleChoices } from "@/lib/section-styles";
 import { MarkupInput } from "@/components/admin/lazy/editors";
 import { carouselAnywhere, carouselAt, clearAt, inheritedAt, setAt, sizeSource, stackAt, stackPatchAt, valueAt } from "@/lib/responsive";
-import { createContext, useContext, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
 import { SETTINGS_TABS, type SettingsTab } from "@/lib/settings-memory";
 import { useRememberedScroll, useRememberedTab } from "./settings-panel-parts";
 import dynamic from "next/dynamic";
@@ -25,7 +24,6 @@ import { backgroundMoves, switchBackground } from "@/lib/motion-edit";
 import type { BackgroundLayer } from "@/lib/background-layers";
 import type { BackdropPatch } from "@/lib/backdrops";
 import { partFeatureOn } from "@/lib/part-features";
-import { keyFromHash } from "@/lib/page-modal";
 import { linesOf, locateColumn, type BlockPatch, type ColumnPatch, type RowPatch } from "@/lib/page-rows";
 import type { GridData } from "@/lib/content-grid";
 import { tileEntity } from "@/lib/tile-fields";
@@ -40,6 +38,7 @@ import { ButtonLookFields, CarouselFields, Check, Choices, ColorField, TileField
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
 import type { GridContext } from "./page-builder";
+import { ThemeRowWidths, ThemeSections, useStyleName, linkKindOf, type LinkKind } from "./page-builder-fields-base";
 
 /**
  * The page builder's settings fields (D43, D179, D182, CODE-06): a row's, column's and component's spacing, background, frame,
@@ -663,14 +662,6 @@ function OverlayFields({
 }
 
 /**
- * What the theme's Row says about every row's width (D190): a row's own choice wins, so its fields show what it comes to (its own, else
- * the theme's) and write its own only where that is not what it would be without it.
- */
-export const ThemeRowWidths = createContext<{ width?: "content" | "full"; contentWidth?: "content" | "full" }>({});
-/** The live theme's section styles (D242), for a row's choice; undefined where the builder has no Theme tab. */
-export const ThemeSections = createContext<ThemeTabValue["sections"]>(undefined);
-
-/**
  * The theme's section style a row is drawn in (D242): None keeps the row on the site's elements; a style the theme does not have
  * draws as its Plain. The name is all the row keeps, so switching themes restyles it.
  */
@@ -704,12 +695,6 @@ export function SectionStyleField({ row, onChange }: { row: PageRow; onChange: (
       <p className="text-xs text-muted">{rw.sectionHint}</p>
     </div>
   );
-}
-
-/** A section style's name in the account's language: the core styles' from the design words (D312 A7), a theme's own as it is written. */
-export function useStyleName(): (name: string) => string {
-  const names = useAdminText("designEditor").changes.styles;
-  return (name) => names[name] ?? sectionStyleLabel(name);
 }
 
 /** A row's width and what it holds, the same two choices on a row and on the theme's Row (D48, D190). */
@@ -1161,8 +1146,6 @@ export function ColumnLinkFields({ link, onChange }: { link: ColumnLink | undefi
   );
 }
 
-
-
 const SHAPE_PICTURES: Record<ImageShape | "original", string> = {
   original: "h-4 w-6 rounded-sm border-dashed",
   landscape: "h-[18px] w-6 rounded-sm",
@@ -1463,7 +1446,6 @@ function ShadowOpacityField({
   );
 }
 
-
 const LEVELS = [1, 2, 3, 4, 5, 6] as const;
 
 /** A heading's text and level (D49). */
@@ -1547,18 +1529,6 @@ function HeadingStackField({ block, onChange }: { block: HeadingBlock; onChange:
     </div>
   );
 }
-
-/** What a button's address is, read from it: a page or web address, a popup on the page, an email or a phone number (D631). */
-export type LinkKind = "address" | "popup" | "email" | "phone";
-
-export const linkKindOf = (href: string): LinkKind | null => {
-  const value = href.trim();
-  if (!value) return null;
-  if (keyFromHash(value)) return "popup";
-  if (/^mailto:/i.test(value)) return "email";
-  if (/^tel:/i.test(value)) return "phone";
-  return "address";
-};
 
 /**
  * A button's text and where it leads (D49): *Link to* asks what kind of place first, then shows the one field that fits it (D631),
@@ -1657,7 +1627,6 @@ export function ButtonStyleFields({
     </div>
   );
 }
-
 
 /** Merges settings into an optional object; ones set to undefined go, and an empty object goes too. */
 function mergeOptional<T extends object>(current: T | undefined, patch: Partial<T>): T | undefined {
@@ -2265,5 +2234,3 @@ export function GridStyleFields({ block, onChange }: { block: ContentGridBlock; 
     </div>
   );
 }
-
-export const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";

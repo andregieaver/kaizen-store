@@ -776,9 +776,7 @@
         "nb": 8802
       },
       "whole": [],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/customers/import/[jobId]/page.tsx#customersStaff+inventoryImport": {
       "areas": [
@@ -1013,9 +1011,7 @@
       "whole": [
         "fieldsEditor"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocksForm+formTemplates": {
       "areas": [
@@ -1396,9 +1392,7 @@
       "whole": [
         "drafts"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/orders/drafts/[draftId]/page.tsx#drafts": {
       "areas": [
@@ -1530,8 +1524,8 @@
         "nb": 179418
       },
       "named": {
-        "en": 167718,
-        "nb": 175543
+        "en": 167677,
+        "nb": 175278
       },
       "whole": [
         "builder",
@@ -1566,8 +1560,8 @@
         "nb": 179418
       },
       "named": {
-        "en": 167718,
-        "nb": 175543
+        "en": 167677,
+        "nb": 175278
       },
       "whole": [
         "builder",
@@ -1602,8 +1596,8 @@
         "nb": 179418
       },
       "named": {
-        "en": 167718,
-        "nb": 175543
+        "en": 167677,
+        "nb": 175278
       },
       "whole": [
         "builder",
@@ -1715,9 +1709,7 @@
         "product",
         "fieldsEditor"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/products/[productId]/passport/page.tsx#products": {
       "areas": [
@@ -1785,9 +1777,7 @@
       "whole": [
         "fieldsEditor"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/products/import/[jobId]/page.tsx#products": {
       "areas": [
@@ -1839,9 +1829,7 @@
         "product",
         "fieldsEditor"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/products/page.tsx#products": {
       "areas": [
@@ -3039,8 +3027,8 @@
         "nb": 176190
       },
       "named": {
-        "en": 164736,
-        "nb": 172355
+        "en": 164695,
+        "nb": 172090
       },
       "whole": [
         "builder",
@@ -3073,8 +3061,8 @@
         "nb": 176190
       },
       "named": {
-        "en": 164736,
-        "nb": 172355
+        "en": 164695,
+        "nb": 172090
       },
       "whole": [
         "builder",
@@ -3107,8 +3095,8 @@
         "nb": 176190
       },
       "named": {
-        "en": 164736,
-        "nb": 172355
+        "en": 164695,
+        "nb": 172090
       },
       "whole": [
         "builder",
@@ -3483,8 +3471,8 @@
         "nb": 179418
       },
       "named": {
-        "en": 167718,
-        "nb": 175543
+        "en": 167677,
+        "nb": 175278
       },
       "whole": [
         "builder",
@@ -3566,9 +3554,7 @@
       "whole": [
         "fieldsEditor"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/components/admin/content-type-views.tsx#content+fields+fieldsEditor+builderText+websitePick": {
       "areas": [
@@ -3590,9 +3576,7 @@
         "fields",
         "fieldsEditor"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/components/admin/content-type-views.tsx#content+fields+fieldsEditor+builderText+websitePick#2": {
       "areas": [
@@ -3614,9 +3598,7 @@
         "fields",
         "fieldsEditor"
       ],
-      "unnamed": [
-        "builderText"
-      ]
+      "unnamed": []
     },
     "src/components/admin/content-views.tsx#content": {
       "areas": [
@@ -3665,9 +3647,7 @@
         "nb": 0
       },
       "whole": [],
-      "unnamed": [
-        "fieldsEditor"
-      ]
+      "unnamed": []
     }
   }
 }

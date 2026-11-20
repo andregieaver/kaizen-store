@@ -25,10 +25,9 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
 import { CssPanel } from "./css-panel";
-import { DualCreateDialog, DualOpenDialog } from "./dual-page-dialogs";
+import { DualCreateDialog, DualOpenDialog, PublishWithIssuesDialog } from "./lazy/builder-dialogs";
 import { DualFrame, DualHalf } from "./page-builder";
 import { PageEditor, type DualEditorHandle, type DualEditorState } from "./page-editor";
-import { PublishWithIssuesDialog } from "./page-issues-panel";
 import { PAGE_TYPE_COPY } from "./page-type-copy";
 
 type EditorProps = Omit<ComponentProps<typeof PageEditor>, "dual">;

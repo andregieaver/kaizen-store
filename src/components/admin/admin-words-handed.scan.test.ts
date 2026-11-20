@@ -25,6 +25,8 @@ const WRITE = process.env.WRITE_ADMIN_WORDS_BASELINE === "1";
 const ROOT = process.cwd();
 const SRC = join(ROOT, "src");
 
+const LAZY = /^src\/components\/admin\/lazy\//;
+const LAZY_IMPORT = /import\(\s*["']([^"']+)["']\s*\)/g;
 const IMPORT = /(?:^|\n)\s*(?:import|export)\s+([^;]*?)\s+from\s+["']([^"']+)["']|(?:^|\n)\s*import\s+["']([^"']+)["']/g;
 
 function typesOnly(clause: string): boolean {
@@ -72,6 +74,14 @@ function importsOf(file: string): string[] {
       if (match[2] !== undefined && typesOnly(match[1])) continue;
       const target = resolve(file, match[2] ?? match[3]);
       if (target) found.push(target);
+    }
+    // A stand-in of the admin's lazy modules (`components/admin/lazy/`, `next/dynamic`) is drawn under the site that imports it, so the part its
+    // `import()` loads reads the site's words too (bloat review step 2.30).
+    if (LAZY.test(repo(file))) {
+      for (const match of read(file).matchAll(LAZY_IMPORT)) {
+        const target = resolve(file, match[1]);
+        if (target) found.push(target);
+      }
     }
     imports.set(file, found);
   }

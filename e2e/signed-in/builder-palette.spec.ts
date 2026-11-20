@@ -34,3 +34,22 @@ test("a click on a sidebar tile adds nothing; its Add button adds, by pointer or
   await page.getByRole("button", { name: "Add heading", exact: true }).click();
   await expect(blocks).toHaveCount(blocksBefore + 1);
 });
+
+/**
+ * The settings panel's fields load with the panel (bloat review step 2.30, `lazy/builder-fields.tsx`) and are fetched when the builder is
+ * idle. A component added and opened as soon as the page is awake still opens with its fields, and what is typed lands in it.
+ */
+test("a component opened before the builder is idle opens with its fields", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/pages/new`);
+  // The tab answering is the page awake; the fields' chunk is fetched later, when the browser is idle.
+  const components = page.getByRole("tab", { name: "Components" });
+  await components.click();
+  await expect(components).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "Add button", exact: true }).press("Enter");
+  const panel = page.locator("[data-settings-panel]");
+  await expect(panel.getByRole("tab", { name: "Content" })).toHaveAttribute("aria-selected", "true");
+  const text = panel.getByRole("textbox", { name: "Text", exact: true });
+  await text.click();
+  await page.keyboard.type("Shop now");
+  await expect(text).toContainText("Shop now");
+});
