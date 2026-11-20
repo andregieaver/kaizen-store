@@ -842,6 +842,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D837 | **Admin redesign round 67: Kaizena Flow's domains, AI and change log on a phone** | 2026-11-20 | [text](decisions/D837.md) |
 | D838 | **Built pages' links stay in the app for an address of the app** | 2026-11-20 | [text](decisions/D838.md) |
 | D839 | **The product taxonomy is traced only where its reader is reached; a product keeps its category's words** | 2026-11-20 | [text](decisions/D839.md) |
+| D840 | **A store is read without the Stripe SDK and without the page model** | 2026-11-20 | [text](decisions/D840.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
