@@ -5,11 +5,9 @@ import {
   applyChanges,
   changesFrom,
   emptyGroup,
-  fieldGroupInput,
   fieldListsOf,
   groupToInput,
   hasTranslations,
-  importGroups,
   isRowsType,
   isStructural,
   layoutOf,
@@ -30,6 +28,7 @@ import {
   type FieldGroup,
   type FieldValue,
 } from "./custom-fields";
+import { fieldGroupInput, importGroups } from "./custom-fields-schema";
 import { needsLookups } from "./custom-fields";
 import { drawable, drawableBlocks } from "./field-parts";
 import { searchBodies } from "./field-search";

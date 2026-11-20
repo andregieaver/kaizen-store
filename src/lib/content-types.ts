@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import {
   EMPTY_DATA,
-  fieldDefsSchema,
   isEmptyValue,
   newFieldId,
   nameOf,
@@ -20,6 +19,7 @@ import {
   type FieldValue,
   type Values,
 } from "./custom-fields";
+import { fieldDefsSchema } from "./custom-fields-schema";
 import {
   EMPTY_DOC,
   newPageContent,

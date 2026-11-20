@@ -9,7 +9,6 @@ import {
   conditionHolds,
   displayText,
   emptyGroup,
-  fieldGroupInput,
   isEmptyValue,
   moneyProblems,
   needsLookups,
@@ -26,6 +25,7 @@ import {
   type FieldDef,
   type FieldGroup,
 } from "./custom-fields";
+import { fieldGroupInput } from "./custom-fields-schema";
 import { MAX_MONEY_MINOR } from "./field-money";
 import { coerceFieldValue, fieldValueText, isSimpleType } from "./field-tools";
 

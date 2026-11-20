@@ -21,7 +21,8 @@ import {
   withoutFields,
   type EntryContent,
 } from "./content-types";
-import { fieldGroupInput, newField, type FieldDef } from "./custom-fields";
+import { newField, type FieldDef } from "./custom-fields";
+import { fieldGroupInput } from "./custom-fields-schema";
 
 /** Content types (wave 6 unit H, D326): the shapes, checks and helpers shared by the admin and the server. */
 

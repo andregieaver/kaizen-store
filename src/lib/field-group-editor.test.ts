@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { fieldsEn } from "@/lib/admin-messages/fields.en";
 
-import { emptyGroup, fieldGroupInput, newField, type FieldDef } from "./custom-fields";
+import { emptyGroup, newField, type FieldDef } from "./custom-fields";
+import { fieldGroupInput } from "./custom-fields-schema";
 import {
   SUB_FIELD_TYPES,
   addSubField,

@@ -3,7 +3,6 @@ import {
   LOCATION_CHOICES,
   LOCATION_PARAMS,
   displayText,
-  fieldGroupInput,
   hasChoices,
   isFieldEntity,
   isStructural,
@@ -22,6 +21,7 @@ import {
   type FieldWords,
   type LocationRule,
 } from "./custom-fields";
+import { fieldGroupInput } from "./custom-fields-schema";
 import { richTextPlain, type BlockNode, type InlineNode, type RichTextDoc } from "./page-content";
 
 /**

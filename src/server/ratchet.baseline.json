@@ -2,7 +2,7 @@
   "unknownCasts": 122,
   "anySuppressed": 0,
   "filesOver100Kb": 17,
-  "filesOver2000Lines": 12,
+  "filesOver2000Lines": 11,
   "untypedReads": {
     "src/app/admin/(gated)/(owner)/account/domains/buy/actions.ts": 1,
     "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts": 1,

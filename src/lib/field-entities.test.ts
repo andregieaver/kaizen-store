@@ -4,9 +4,7 @@ import { fieldsEn } from "@/lib/admin-messages/fields.en";
 
 import {
   emptyGroup,
-  fieldGroupInput,
   groupApplies,
-  importGroups,
   isStaffEntity,
   newField,
   staffGroupProblem,
@@ -16,6 +14,7 @@ import {
   type ShownField,
   type ShownGroup,
 } from "./custom-fields";
+import { fieldGroupInput, importGroups } from "./custom-fields-schema";
 import { bindPage, hasBindings, hasStoreBindings } from "./field-binding";
 import { draftProblems } from "./field-group-editor";
 import { newPageContent, pageInput, type HeadingBlock, type PageBlock, type PageContent } from "./page-content";

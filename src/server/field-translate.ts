@@ -3,15 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import {
-  fieldGroupInput,
-  groupApplies,
-  groupToInput,
-  hasTranslations,
-  type FieldData,
-  type FieldGroup,
-  type Values,
-} from "@/lib/custom-fields";
+import { groupApplies, groupToInput, hasTranslations, type FieldData, type FieldGroup, type Values } from "@/lib/custom-fields";
+import { fieldGroupInput } from "@/lib/custom-fields-schema";
 import {
   definitionItems,
   definitionUnit,

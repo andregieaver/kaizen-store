@@ -21,9 +21,7 @@ import {
   MAX_FIELD_GROUPS,
   applyChanges,
   exportGroups,
-  fieldGroupInput,
   groupApplies,
-  importGroups,
   isFieldEntity,
   isStaffEntity,
   isTranslatable,
@@ -41,6 +39,7 @@ import {
   type ShownGroup,
   type FieldWords,
 } from "@/lib/custom-fields";
+import { fieldGroupInput, importGroups } from "@/lib/custom-fields-schema";
 import { contentTag, readEntryContent, typeAsGroup } from "@/lib/content-types";
 import { moneyCurrencies, shownMoney } from "@/lib/field-money";
 import { usesSearch } from "@/lib/field-search";

@@ -8,11 +8,9 @@ import {
   conditionHolds,
   emptyGroup,
   exportGroups,
-  fieldGroupInput,
   fieldShows,
   groupApplies,
   groupFromPreset,
-  importGroups,
   isEmptyValue,
   newField,
   newFieldId,
@@ -28,6 +26,7 @@ import {
   type FieldDef,
   type FieldGroup,
 } from "./custom-fields";
+import { fieldGroupInput, importGroups } from "./custom-fields-schema";
 
 const def = (over: Partial<FieldDef> & Pick<FieldDef, "type">): FieldDef => ({
   id: newFieldId(),

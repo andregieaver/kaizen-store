@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   applyChanges,
   emptyGroup,
-  fieldGroupInput,
   newField,
   newRowId,
   parseFieldChanges,
@@ -12,6 +11,7 @@ import {
   type FieldDef,
   type FieldGroup,
 } from "./custom-fields";
+import { fieldGroupInput } from "./custom-fields-schema";
 import {
   definitionItems,
   definitionUnit,
