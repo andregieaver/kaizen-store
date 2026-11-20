@@ -30,6 +30,7 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/order-list-labels.ts": "The order list's columns, filters and cells, read by the filter chips and the AI manager's order tools as well.",
   "lib/order-tags-labels.ts": "Why a tag is refused, read by the admin API as well.",
   "lib/pick-list-labels.ts": "What the pick list leaves out, read by the AI manager's pick list tool as well.",
+  "lib/order-status.ts": "An order's status and its chip's signal: a label module already (no imports), read by the order table and a subscription's page as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
 
