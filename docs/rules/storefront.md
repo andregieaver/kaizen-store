@@ -89,6 +89,9 @@ the path, component or table you change, or list the rules with a search for lin
   `src/lib/i18n.ts` or a language's module (`admin-bundle.scan.test.ts`, bloat review step 2.29): a screen that needs a storefront
   language's words gets them from the server as a prop, and a preview on the builder's canvas loads one language when it is drawn
   with `useSiteWords()` (`src/components/admin/site-words.ts`: null until it arrives, English for a language translated by AI).
+  The admin's own catalogues (`src/lib/admin-messages`) are imported only by their area modules, the three words' context files and
+  tests, and no store page reaches more than 0.21 MB of them (`admin-text-reach.scan.test.ts`, bloat review step 2.50); a catalogue
+  file imports no code (`src/lib/admin-messages/imports.scan.test.ts`), so English that shoppers' code reads lives in a leaf.
 
 ## Language and currency are apart from the country (D109; offered only while Several languages and Several currencies are on, D178 step 4)
 

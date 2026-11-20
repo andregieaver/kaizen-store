@@ -235,6 +235,13 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   read lives in a `-english.ts` twin (`return-admin-english.ts`), which no admin client module may reach (`admin-bundle.scan.test.ts`,
   bloat review step 2.26). Where the server writes English sentences (a saver's refusal, a check's finding), they are turned into the
   account's language on the server, in the page or the action's answer (`redirectAnswer()`, `experimentAnswer()`), never in the browser.
+  Since bloat review step 2.50 (20 November 2026) a catalogue file is imported only by its area module, the three words' context
+  files (`admin-text.tsx`, `admin-text-context.tsx`, `sign-in-text.tsx`) and tests, and no part keeps a `words = xEn` default: the
+  words are a required prop, the page passes `<AREA>_WORDS[lang]`, and a route's loading screen, which has no words, says its line
+  through `LoadingWords` from the shell. English that code with no language reads (the AI manager, a CSV, an email subject) is a
+  `<thing>-labels.ts` leaf the catalogue spreads, and a catalogue file imports nothing else (`admin-messages/imports.scan.test.ts`).
+  Not met yet: /admin/[store]/orders lists 10,676 KB of server chunks at start (12,068 KB before), over the step's 6.5 MB; its
+  words are under 1 MB of that, the rest is the AI manager's import chain (step 2.24's new plan).
 - **Cuts:** a page hands its parts the groups they read, not a whole area, where they read few of them (bloat review step 2.27). A cut
   is some top-level groups of an area, the same objects in each language (`cut()` in `src/lib/admin-area.ts`, each cut a module of its
   own in `src/lib/admin-words`, `BUILDER_TEXT_WORDS`), so no string moves and
