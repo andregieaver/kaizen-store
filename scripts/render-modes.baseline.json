@@ -116,8 +116,8 @@
   "meta": {
     "entries": 267,
     "withList": 0,
-    "withBothTags": 0,
-    "medianBytes": 12577
+    "withBothTags": 45,
+    "medianBytes": 12601
   },
   "totals": {
     "routesByCompute": {
