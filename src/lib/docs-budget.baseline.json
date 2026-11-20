@@ -1,10 +1,10 @@
 {
   "claudeOutsideIndex": 13164,
   "claude": {
-    "bytes": 10152,
-    "lines": 134
+    "bytes": 10326,
+    "lines": 135
   },
-  "loaded": 10831,
+  "loaded": 11005,
   "imports": [
     "AGENTS.md"
   ],
@@ -140,7 +140,7 @@
     "docs/rules/admin/website.md#Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)": 11321,
     "docs/rules/admin/website.md#Custom grid items and the carousel (D155, `docs/content-grid-custom-items.md`, `src/lib/custom-grid.ts`, `src/lib/custom-picture.ts`,…": 4030,
     "docs/rules/admin/website.md#Editing words where they are (D191, D192, D193)": 6896,
-    "docs/rules/admin/website.md#The page builder's sandbox (D457, `docs/builder-sandbox.md`, `src/lib/sandbox.ts`, `src/server/sandbox.ts`, `/admin/try`)": 4558,
+    "docs/rules/admin/website.md#The page builder's sandbox (D457, `docs/builder-sandbox.md`, `src/lib/sandbox.ts`, `src/server/sandbox.ts`, `/admin/try`)": 4554,
     "docs/rules/admin/website.md#Kaizena Flow's own site in more than one language (D312, `docs/platform-admin-i18n.md`, `src/lib/platform-lang.ts`)": 9967,
     "docs/rules/admin/website.md#The docs portal (wave 14 unit E, D442, `src/lib/docs-content.ts`, `src/lib/docs-host.ts`, `src/server/docs.ts`, `content/docs/`)": 5075
   },

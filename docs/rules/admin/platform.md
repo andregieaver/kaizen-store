@@ -257,6 +257,17 @@ under *What the router fetches ahead*.
   change after; `completePlanCheckout()` records it on return), and create
   more stores at `/admin/stores` (`createStoreForOwner()`, decision D19).
 
+## The platform's Stores list (code review 2.10, D847, `src/lib/platform-stores.ts`, `storeBillingPage()` in `src/server/billing.ts`)
+
+- Platform → Stores lists only stores, closed ones too (D171), a hundred a page with the count (D834). Its search matches the
+  store's name or address, an owner's name or email (not other members) and its domains (`store_domains`, pending or active, and
+  live `domain_registrations`), case-insensitively, `%`, `_` and `\` as typed. The store's state (open, suspended, closed) is the
+  search form's chips with their counts (`storeListFacts()`); the plan (or *No plan*) and the subscription (trial, paying,
+  overdue, ending, cancelled, read from `store_plans`) are under *Filters* in the same form, so each keeps the others and the
+  pager keeps them all. `storeListFilter()` is the one parser of its address. A search that finds nothing says so in its words,
+  and *Show every store* beside the bar is the way back. The page builder sandbox's funnel is beside its switch on Access requests.
+  The AI manager's tool and the account's billing page read every store through `listStoreBilling()`.
+
 ## Accounts that own stores (D748, `docs/extensions.md`)
 
 - **Accounts (E1)**: plans, billing and paid extensions belong to the account that owns a store, `commerce.organisations` (steps E1 to E11;

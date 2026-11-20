@@ -93,7 +93,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 2.7 | Fit the menu to a phone | FN10 | M | Open | |
 | 2.8 | One way to start | FS7 | M | Open | |
 | 2.9 | Empty screens with a next step | FS8 | M | Done | 20 Nov 2026, a206cc62, f02aeaa0, 56b72317, 4cf988ce, aacb659d, 07158aca, 3f7c458a, 3949058c, D845: EmptyState everywhere, hand-written blocks 88 to 4 (named); see Notes below |
-| 2.10 | Give the platform's Stores list the store admin's list | FS9 | M | Open | Stores (2.10) paged at 100 with a count by bloat step 0.19, 14 Nov 2026, on the kit's Pager since D818 and the shared page size since D834 (Invoices and Returns: step 1.13); the Stores search and filters remain. |
+| 2.10 | Give the platform's Stores list the store admin's list | FS9 | M | Done | 20 Nov 2026, this change, D847: search by store, owner or domain; state chips, plan and subscription filters the pager keeps; the funnel on Requests; see Notes below |
 | 2.11 | A Basic view in the builder | FB3 | M | Open | |
 | 2.12 | Select parts in the builder | FB4 | M | Open | |
 | 2.13 | A trail on the storefront | FF7 | S | Open | |
@@ -192,6 +192,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 20 November 2026: step 1.13 done (D834, finding FS2): Customers, Products, Invoices and Returns, and the platform's Customers, show a hundred a page with "100 of 150" on `Pager` and search with `ListSearch`; the products table says whether a choice is this page or every match; row 2.10's note corrected (the Stores search and filters remain).
 - 20 November 2026: bloat review step 2.22 (local, not yet pushed): a constraint under step 3.2 (the part-style schemas in a leaf with no block schema; `stores.ts` and the beacons reach none) and `stripe-keys.ts` under step 4.2.
 - 20 November 2026: step 2.9 done (D845, finding FS8): every empty admin list and screen, at all three levels, is `EmptyState` with one next step or *Clear filters*; a person with no store gets *Start a store*; the ratchet's `emptyBlocks` 88 to 4 (named) and `emptyLines` 287 to 185.
+- 20 November 2026: step 2.10 done (D847, finding FS9): the platform's Stores list searches by store, owner or domain, filters by the store's state, plan and subscription with a pager that keeps them, and lists only stores; the sandbox funnel is beside its switch on Access requests.
 
 **Notes on the steps**
 
@@ -420,6 +421,17 @@ platform's pages in the same change; the panels' bare lines (185 in 144 files, `
 block but the four named, and `e2e/signed-in/empty-states.spec.ts` sees the next step and *Clear filters* work on a store and the
 platform.
 
+**Step 2.10.** 20 Nov 2026, D847: `storeBillingPage()` (`src/server/billing.ts`) reads a page of the Stores list in D834's shape
+(`count(*) over ()`, the order ending on the store's id) with a search by the store's name or address, an owner's name or email and
+its domains (served or registered), the store's own state, its plan or none, and its subscription; `storeListFacts()` gives the
+state chips' counts and the plans in one statement; `src/lib/platform-stores.ts` reads the address once. The page is the store
+admin's list: `ListSearch` with the state as the form's chips (as Products' views), the plan and subscription under *Filters* (as
+Customers' tags), `Pager` keeping all four, `EmptyState` in the search's words with *Show every store* beside the bar. The sandbox
+funnel moved under its switch on Access requests, in that switch's phone row; Stores lists only stores. `listStoreBilling()` keeps
+its two other callers; its paging and `countStoreBilling()` went with the page. Done when met: `platform-stores.int.test.ts` finds
+stores by name, owner and domain, filters and pages them; `e2e/signed-in/platform-stores.spec.ts` does it in a browser as the
+platform admin and sees the funnel on Requests.
+
 **Step 1.20.** 19 Nov 2026, D796: `src/lib/dates.ts` gives D786's formatter neutral names for code outside the admin
 (`dateIn(where, instant, style, locale)`, `calendarDate(day, style, locale)`) and `storeZoneOf(row.time_zone)` for an untyped row.
 Articles, blog comments, article grids, campaign notices, the subscription and order pages (terms, bonus, downloads, parcels,
@@ -582,7 +594,7 @@ Severity 1: **FV11** the key that stops a double plan subscription changes every
 | FN10 | 2 | On a phone the menu is one long scroll: every section, then the section's pages (over 40 links in Settings in Advanced; always 9 plus 26 on the platform). The top bar does not name the section. Judged from the code. | `A/store-admin-nav.tsx:111-120`; `A/admin-frame.tsx:105-146` | The sections as a scrolling row of icons pinned at the top of `AreaMenu`, only the current section's pages below; the section's name beside the menu button. *Audit N12, phase 2: not built.* | M |
 | FS7 | 2 | The first run offers three ways to start on one screen, and *Your stores* shows two open create forms. Once the store is open, the unfinished setup steps are the last card on Home, and the checklist is worked out in two files. | `S/setup/[step]/page.tsx:78-101, 392-409`; `src/app/admin/(gated)/(owner)/stores/page.tsx:52-112`; `S/page.tsx:75-99, 192-214` | One start screen with two choices in plain words (*Build it for me*, *I'll set it up myself*); one *New store* button; the setup card first on Home (*audit N8, phase 1*); both checklists from one function. | M |
 | FS8 ✓ | 2 | Empty screens state a fact and stop: 31 of 33 offer no next step, and "no match" and "none yet" share one block. A person with no store gets a title and one line. | `S/discounts/page.tsx:48-49`; `S/customers/page.tsx:122-125`; `(owner)/page.tsx:42-44`; the good one: `S/products/page.tsx:150-158` | The shared `EmptyState`: what this is for, the main action, optionally import or a docs link; a filtered form with *Clear filters*. Convert the 28 files; give the no-access page a way on. | M |
-| FS9 | 2 | The platform admin lags on the same patterns: its Stores list has no search, filter or paging and is a raw table, with the sandbox funnel above the stores. | `P/stores/page.tsx:25, 32-60` | The store admin's list pieces on Stores (search by name, owner or domain; plan and state filters; pager); the funnel below or on Requests; platform pages in the scan test for shared pieces. | M |
+| FS9 | 2 | The platform admin lags on the same patterns: its Stores list has no search, filter or paging and is a raw table, with the sandbox funnel above the stores. | `P/stores/page.tsx:25, 32-60` | The store admin's list pieces on Stores (search by name, owner or domain; plan and state filters; pager); the funnel below or on Requests; platform pages in the scan test for shared pieces. *Built: step 2.10, D847.* | M |
 | FF6 | 2 | Sorting and filtering a listing do nothing without JavaScript: the button has only a click handler and the form cancels its own submit. | `src/components/filter-dialog.tsx:196-199, 231-235`; `docs/performance.md:46-49` | `method=get` with real named inputs, so a submit without script is a navigation; a `noscript` block of sort links built with `listingQuery()`. | M |
 | FA7 | 2 | What the AI did is shown as raw tool names ("used: list orders, edit page"). Changes made without a yes are not listed as changes, do not link to what changed and cannot be undone from the chat. | `A/ai-manager.tsx:749, 328`; `owner-assistant.ts:138-143`; `src/server/owner-tools.ts:2610` | The same translated labels after the answer as during it; the trail carries what changed and a link, shown as a *Changed* line; *Undo* where a version exists. | M |
 
