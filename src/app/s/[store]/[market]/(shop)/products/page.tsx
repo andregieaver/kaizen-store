@@ -104,7 +104,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
           products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />
         }
       >
-        <ProductListingFor store={store} market={market} scope={{}} searchParams={searchParams} base={base} path={path} />
+        <ProductListingFor store={store} market={market} scope={{}} searchParams={searchParams} base={base} path={path} products={products} firstPage />
       </Suspense>
     </>
   );

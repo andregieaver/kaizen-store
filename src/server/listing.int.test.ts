@@ -12,7 +12,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {} }));
 
 const listing = await import("./listing");
-const { GRID_PRODUCTS_MAX } = await import("./catalog");
+const catalog = await import("./catalog");
+const { GRID_PRODUCTS_MAX } = catalog;
 type Viewer = import("./listing").Viewer;
 
 const run = Date.now().toString(36);
@@ -112,6 +113,25 @@ describe("product listings' sort and filters (D78)", () => {
     expect(inHome.total).toBe(2);
     expect(inHome.categories.map((category) => category.value)).toEqual(["belysning"]);
     expect(inHome.kinds).toEqual([]);
+  });
+
+  it("lists a page's prerendered first page as its own first page: the same products in the same order (bloat review step 2.12)", async () => {
+    // All products: the page prerenders the oldest first, and the listing's featured order without choices is the same.
+    const viewer: Viewer = privateBuyer;
+    const ids = (products: { id: string }[]) => products.map((p) => p.id);
+    const drawn = await catalog.listGridProducts(storeId, no, { categoryIds: [], tagIds: [], sort: "oldest", limit: 48 });
+    const read = await listing.listingPage(storeId, no, {}, NO_FILTERS, viewer, 1);
+    expect(drawn.length).toBeGreaterThan(0);
+    expect(ids(drawn)).toEqual(ids(read.products));
+    // A category: the owner's order of it (D319), then the newest, on both sides.
+    const [hjem] = await db().execute<Row>(sql`
+      select id from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' and slug = 'hjem'
+    `);
+    const category = String(hjem.id);
+    const drawnIn = await catalog.listGridProducts(storeId, no, { categoryIds: [category], tagIds: [], orderTerm: category, sort: "manual", limit: 48 });
+    const readIn = await listing.listingPage(storeId, no, { categoryIds: [category], tagIds: [], orderTerm: category }, NO_FILTERS, viewer, 1);
+    expect(drawnIn.length).toBeGreaterThan(0);
+    expect(ids(drawnIn)).toEqual(ids(readIn.products));
   });
 
   it("in a store selling to both, shows each kind of buyer only their products", async () => {

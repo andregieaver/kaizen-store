@@ -195,6 +195,8 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
           searchParams={query}
           base={base}
           path={`${base}/${kind}/${term.slug}`}
+          products={products}
+          firstPage
         />
       </Suspense>
     </>

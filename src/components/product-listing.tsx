@@ -49,6 +49,7 @@ export async function ProductListing({
   countText,
   page = 1,
   givenMore = false,
+  firstPage = false,
 }: {
   store: Store;
   market: Market;
@@ -70,23 +71,35 @@ export async function ProductListing({
   page?: number;
   /** The given products stopped at their limit, so there may be more of them (a search): *Show more* is offered without a total. */
   givenMore?: boolean;
+  /**
+   * The given products are this listing's own first page as prerendered (a category, a tag, All products): with nothing chosen
+   * they are shown as given and the list is not read again.
+   */
+  firstPage?: boolean;
 }) {
   const m = t(market.lang);
   const buyer = await getBuyer(store);
   const viewer = { buyer, audienceBoth: store.audience === "both" };
   const chosen = chosenFilters(filters);
   const asGiven = Boolean(given) && chosen.length === 0 && filters.sort === "featured";
+  // The page's own first page, prerendered (bloat review step 2.12): not read again. A store selling to both reads it per viewer.
+  const ownFirst = Boolean(given) && Boolean(firstPage) && chosen.length === 0 && filters.sort === "featured" && page === 1 && store.audience !== "both";
   const [facets, listed, terms, notices] = await Promise.all([
     listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
-    given && asGiven
-      ? { products: given, total: given.length }
-      : listingPage(store.id, market, scope, filters, viewer, page),
+    given && ownFirst
+      ? // A marker, replaced below once the facets give the count.
+        { products: given, total: -1 }
+      : given && asGiven && !firstPage
+        ? { products: given, total: given.length }
+        : listingPage(store.id, market, scope, filters, viewer, page),
     // Names as this language has them (D319), for the filters' words.
     siteTerms(store.id, "product").then((list) => termsIn(list, market.locale)),
     campaignNotices(store.id, market),
   ]);
 
-  const { products, total } = listed;
+  const { products } = listed;
+  // The prerendered first page's count is the page's products before filters, as a built grid counts (content-grid-section.tsx).
+  const total = ownFirst ? Math.max(facets.total, products.length) : listed.total;
   // More than shows (code review FF1): say so, and offer the rest as a plain link that works without JavaScript.
   const more = total > products.length;
   const count = more && !countText ? m.listing.countOf(products.length, total) : (countText ?? m.listing.count)(more ? total : products.length);
