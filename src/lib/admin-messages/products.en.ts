@@ -408,6 +408,8 @@ export const productsEn = {
   },
   /** `TermPicker` and `TermsManager` (`src/components/admin/terms.tsx`), on the screens of this area. */
   terms: {
+    /** Round 72 (D858): categories and tags on a phone. */
+    phone: { newSub: { category: "Can hold subcategories", tag: "A flat list across categories" }, close: "Close" },
     labels: { category: { one: "Category", many: "Categories" }, tag: { one: "Tag", many: "Tags" } },
     noneYet: "None yet.",
     byRules: "filled by rules",

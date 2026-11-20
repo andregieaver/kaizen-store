@@ -23,6 +23,7 @@ import { TermSeoFields, seoLanguagesOf, type TermSeoSetup } from "./term-seo-fie
 import { TermPageFields, TermProductOrder, type TermPageDraft, type TermPageSetup } from "./term-page-fields";
 import { TermRulesFields, type TermRulesDraft } from "./term-rules-fields";
 import { Card } from "@/components/admin/ui";
+import { PhoneRow } from "./phone-row";
 
 /**
  * Categories and tags in the admin (D50): `TermPicker` chooses an item's
@@ -251,10 +252,15 @@ export function TermsManager({
             key={kind}
             title={w.labels[kind].many}
             description={fillWords(w.descriptions[kind], { usedBy })}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-4 max-sm:[&>header>.basis-full]:hidden"
             compact
           >
-            <NewTerm kind={kind} terms={terms} actions={actions} onTerms={setTerms} unitPrice={kind === "category" && unitPrice !== undefined} />
+            {/* Round 72 (D858): on a phone what there is comes first, adding one a row under it; from sm up the form as before. */}
+            <div className="max-sm:order-last">
+              <PhoneRow inset last title={w.newTerm[kind]} sub={w.phone.newSub[kind]} change={w.add} done={w.phone.close}>
+                <NewTerm kind={kind} terms={terms} actions={actions} onTerms={setTerms} unitPrice={kind === "category" && unitPrice !== undefined} />
+              </PhoneRow>
+            </div>
             {list.length === 0 ? (
               <p className="text-sm text-muted">{w.emptyList[kind]}</p>
             ) : (

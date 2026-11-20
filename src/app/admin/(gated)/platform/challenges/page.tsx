@@ -18,6 +18,7 @@ import { challengeStores, type ChallengeStore, type Queue } from "@/server/chall
 
 import { endChallengeAction } from "./actions";
 import { ChallengeForm } from "./challenge-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 export const metadata: Metadata = { title: "100-day challenge" };
 
@@ -39,15 +40,28 @@ export default async function PlatformChallengesPage() {
   const canWrite = admin.platformAdmin;
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title={w.title} description={w.description} />
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
+      />
       {stores.length === 0 && <EmptyState title={w.none} />}
       {stores.map((s) => (
         <StoreCard key={s.storeId} s={s} w={w} lang={lang} locale={locale} canWrite={canWrite} />
       ))}
+      {/* Round 72 (D858): on a phone setting a challenge is a row that opens its form, under the stores in one. */}
       {canWrite && (
-        <Card title={w.setTitle} description={w.setText}>
-          <ChallengeForm w={w} />
-        </Card>
+        <PhoneRows>
+          <PhoneRow flat last title={w.setTitle} sub={w.phone.setSub} change={w.phone.open} done={w.phone.close}>
+            <Card title={w.setTitle} description={w.setText}>
+              <ChallengeForm w={w} />
+            </Card>
+          </PhoneRow>
+        </PhoneRows>
       )}
     </div>
   );

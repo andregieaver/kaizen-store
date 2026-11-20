@@ -529,6 +529,7 @@ export const platformSiteNb: PlatformSiteMessages = {
     },
   },
   pages: {
+    phoneTerms: "Sorter dem så et innholdsrutenett kan vise en kategori eller etikett.",
     types: {
       page: {
         list: "Sider",
@@ -619,6 +620,7 @@ export const platformSiteNb: PlatformSiteMessages = {
         "Det Kaizena Flows eget nettsted lagrer i besøkendes nettlesere, verktøyene det bruker til måling og markedsføring, og valgene besøkende tar. Hver butikk setter sitt eget under Informasjonskapsler og sporing i sin administrasjon.",
     },
     fonts: {
+      phoneLead: "Hvilken som helst Google Fonts-familie for Kaizena Flows eget nettsted, levert fra nettstedet.",
       title: "Skrifttyper",
       description:
         "En hvilken som helst Google Fonts-familie til overskriftene og den øvrige teksten på Kaizena Flows eget nettsted. Komponenter på sidene kan bruke sine egne. Skrifttypene kopieres til Kaizena Flow og lastes fra nettstedet selv, aldri fra Google. Hver butikk velger sine egne under Skrifttyper i sin administrasjon.",

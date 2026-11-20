@@ -219,6 +219,7 @@ export const consoleNb: ConsoleMessages = {
     },
   },
   challenges: {
+    phone: { lead: "Butikker autopiloten driver alene i 100 dager, vurdert etter tre forholdstall.", setSub: "Låser eierens innstillinger unntatt pausen", open: "Åpne", close: "Lukk" },
     title: "100-dagersutfordringen",
     description:
       "Hver butikk autopiloten driver alene i 100 dager: hva som holder den igjen, hva som venter på eieren, KI-kostnaden og de tre forholdstallene den bedømmes på.",
