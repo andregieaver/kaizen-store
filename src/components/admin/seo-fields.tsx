@@ -85,15 +85,22 @@ export function SearchSnippetFields({
         />
         <Count id={`${id}-description`} length={description.length} advice={DESCRIPTION_ADVICE} words={words} />
       </label>
-      <figure className="min-w-0 rounded-md border border-border p-3">
-        <figcaption className="mb-2 text-xs text-muted">{words.preview}</figcaption>
-        <div lang={lang}>
-          <p className="truncate text-xs text-muted">{url.replace(/^https?:\/\//, "").replace(/\//g, " › ")}</p>
-          <p className="truncate text-lg text-blue-800 dark:text-blue-300">{summarize(title, TITLE_ADVICE)}</p>
-          <p className="text-sm">{summarize(description, DESCRIPTION_ADVICE)}</p>
-        </div>
-      </figure>
+      <SnippetPreview title={title} description={description} url={url} lang={lang} caption={words.preview} />
     </div>
+  );
+}
+
+/** How a search engine would show the title and description (round 68, D841: also the platform's Search page's first sight on a phone). */
+export function SnippetPreview({ title, description, url, lang, caption, className = "" }: { title: string; description: string; url: string; lang: string; caption: string; className?: string }) {
+  return (
+    <figure className={`min-w-0 rounded-md border border-border p-3 ${className}`}>
+      <figcaption className="mb-2 text-xs text-muted">{caption}</figcaption>
+      <div lang={lang}>
+        <p className="truncate text-xs text-muted">{url.replace(/^https?:\/\//, "").replace(/\//g, " › ")}</p>
+        <p className="truncate text-lg text-blue-800 dark:text-blue-300">{summarize(title, TITLE_ADVICE)}</p>
+        <p className="text-sm">{summarize(description, DESCRIPTION_ADVICE)}</p>
+      </div>
+    </figure>
   );
 }
 

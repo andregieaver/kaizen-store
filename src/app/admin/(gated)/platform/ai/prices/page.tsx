@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { formatPerMillion, formatUnitPrice } from "@/lib/ai-cost";
 import { requirePlatformReader } from "@/server/auth";
@@ -45,18 +46,26 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
   const [prices, unpriced, query] = await Promise.all([listPrices(), unpricedModels(), searchParams]);
   const text = (key: string) => (typeof query[key] === "string" ? (query[key] as string) : "");
   const models = new Map<string, typeof prices>();
+  const ph = w.phone;
+  const priceLink = (provider: string, model: string) => `/admin/platform/ai/prices?provider=${encodeURIComponent(provider)}&model=${encodeURIComponent(model)}#set-price`;
   for (const price of prices) models.set(`${price.provider}\u0000${price.model}`, [...(models.get(`${price.provider}\u0000${price.model}`) ?? []), price]);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={<>{w.intro}{" "}<Link href="/admin/platform/ai/usage" className="underline">{w.usageLink}</Link>{" "}{w.introEnd}</>}
+        description={
+          <>
+            <span className="sm:hidden">{ph.lead}</span>
+            <span className="max-sm:hidden">{w.intro}</span> <Link href="/admin/platform/ai/usage" className="underline">{w.usageLink}</Link>{" "}
+            <span className="max-sm:hidden">{w.introEnd}</span>
+          </>
+        }
       />
 
       {unpriced.length > 0 && (
         <Card title={w.unpriced} compact>
-          <p className="mb-3 mt-1 text-sm text-muted">{w.unpricedText}</p>
+          <p className="mb-3 mt-1 text-sm text-muted max-sm:hidden">{w.unpricedText}</p>
           <ul className="flex flex-col divide-y divide-line text-sm">
             {unpriced.map((m) => (
               <li key={`${m.provider}/${m.model}`} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2">
@@ -64,7 +73,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
                   <span className="font-medium">{m.model}</span> <span className="text-muted">{m.provider}</span>
                 </span>
                 <span className="tabular-nums text-muted">{usedWords(m, w, locale)}</span>
-                <Link href={`/admin/platform/ai/prices?provider=${encodeURIComponent(m.provider)}&model=${encodeURIComponent(m.model)}#set-price`} className="underline">
+                <Link href={priceLink(m.provider, m.model)} className="underline">
                   {w.setPrice}
                 </Link>
               </li>
@@ -73,6 +82,10 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
         </Card>
       )}
 
+      {/* Round 68 (D841): on a phone setting a price is a row that opens its form (open when a model's Set a price or Change led here);
+          its anchor is the one those links name. */}
+      <PhoneRows>
+      <PhoneRow flat last id="set-price" defaultOpen={Boolean(text("model"))} title={ph.add} sub={ph.addSub} change={ph.open} done={ph.close}>
       <Card title={w.setPrice} compact>
         <ActionForm action={setAiPriceAction} className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -115,12 +128,31 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
         </ActionForm>
         <p className="mt-2 text-xs text-muted">{fillWords(w.versionsNote, { example: "gpt-4.1-mini", dated: "gpt-4.1-mini-2025-04-14" })}</p>
       </Card>
+      </PhoneRow>
+      </PhoneRows>
 
       <Card title={w.prices} compact>
         {models.size === 0 ? (
           <p className="mt-2 text-sm text-muted">{w.noPrices}</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
+          <>
+          {/* Round 68 (D841): on a phone each model's price now is one row, Change opening the form filled with it; earlier prices are in the table from sm up. */}
+          <ul className="mt-2 flex flex-col divide-y divide-line sm:hidden">
+            {[...models.values()].flatMap((lines) => lines.filter((line) => line.current)).map((line) => (
+              <li key={line.id} className="flex min-h-14 items-center justify-between gap-3 py-2">
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-body text-ink">{line.model}</span>
+                  <span className="text-caption text-ink-2">
+                    {fillWords(ph.line, { provider: line.provider, input: formatPerMillion(line.inputPerMillion), output: formatPerMillion(line.outputPerMillion) })}
+                  </span>
+                </span>
+                <Link href={priceLink(line.provider, line.model)} className="inline-flex min-h-10 shrink-0 items-center text-sm font-medium text-ink underline underline-offset-2">
+                  {ph.change}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 overflow-x-auto max-sm:hidden">
             <table className="w-full min-w-[56rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-muted">
@@ -157,6 +189,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>

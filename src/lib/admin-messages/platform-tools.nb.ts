@@ -71,6 +71,15 @@ export const platformToolsNb: PlatformToolsMessages = {
     dreamOpenStore: "Åpne butikkens admin",
   },
   prices: {
+    phone: {
+      lead: "Hva hver modell koster, i amerikanske dollar. En endring gjelder fra i dag.",
+      add: "Sett pris på en annen modell",
+      addSub: "Tokener, bilder, lyd, tale, søk",
+      line: "{provider} · inn {input} · ut {output}",
+      open: "Åpne",
+      change: "Endre",
+      close: "Lukk",
+    },
     title: "KI-priser",
     intro:
       "Hva hver modell koster, i amerikanske dollar, etter leverandørens prisliste: per million tokens, og der den tar betalt slik, per bilde, per minutt lyd (tale til tekst og direkte samtaler) og per million opplest tegn.",
@@ -270,6 +279,15 @@ export const platformToolsNb: PlatformToolsMessages = {
     weekZero: "Fant ingenting (ord / hybrid)",
   },
   experiments: {
+    phone: {
+      lead: "Alle butikkenes tester, de som må ses på først. Eierne endrer dem.",
+      houseOn: "Testes i Kaizena Flows butikk",
+      houseOff: "Når nettstedet serveres fra butikken sin",
+      ownCount: { one: "1 test", many: "{n} tester" },
+      noneOwn: "Ingen kjører",
+      open: "Åpne",
+      close: "Lukk",
+    },
     title: "A/B-tester",
     intro:
       "A/B-testene i alle butikker. Tester som trenger et blikk kommer først: en versjon som gir færre bestillinger, besøkende som er skjevt fordelt, en test ingen ser, en som har gått forbi slutten sin eller er stoppet og glemt. Her kan du lese dem; butikkens eier starter, stopper og endrer dem.",

@@ -512,6 +512,23 @@ export const platformSiteEn = {
     google: "Google Search Console code",
     bing: "Bing Webmaster Tools code",
     save: "Save search and sharing",
+    /** Round 68 (D841): Search on a phone. `{profiles}`, `{ai}`, `{codes}`, `{n}`. */
+    phone: {
+      lead: "How Kaizena Flow's own pages show in search, when shared and to AI.",
+      front: "Title and description",
+      tooLong: { one: "The description is 1 character too long", many: "The description is {n} characters too long" },
+      shareYours: "Your picture",
+      shareDrawn: "Drawn from the name",
+      moreSub: "{profiles} · {ai} · {codes}",
+      profiles: { one: "1 profile", many: "{n} profiles" },
+      aiText: "text for AI",
+      noAiText: "no text for AI",
+      codes: "site codes added",
+      noCodes: "no site codes",
+      files: "See",
+      change: "Change",
+      close: "Close",
+    },
   },
   pages: {
     types: {

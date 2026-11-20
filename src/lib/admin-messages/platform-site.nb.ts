@@ -511,6 +511,22 @@ export const platformSiteNb: PlatformSiteMessages = {
     google: "Kode for Google Search Console",
     bing: "Kode for Bing Webmaster Tools",
     save: "Lagre søk og deling",
+    phone: {
+      lead: "Hvordan Kaizena Flows egne sider vises i søk, når de deles og for KI.",
+      front: "Tittel og beskrivelse",
+      tooLong: { one: "Beskrivelsen er 1 tegn for lang", many: "Beskrivelsen er {n} tegn for lang" },
+      shareYours: "Ditt bilde",
+      shareDrawn: "Tegnet ut fra navnet",
+      moreSub: "{profiles} · {ai} · {codes}",
+      profiles: { one: "1 profil", many: "{n} profiler" },
+      aiText: "tekst for KI",
+      noAiText: "ingen tekst for KI",
+      codes: "nettstedskoder lagt inn",
+      noCodes: "ingen nettstedskoder",
+      files: "Se",
+      change: "Endre",
+      close: "Lukk",
+    },
   },
   pages: {
     types: {

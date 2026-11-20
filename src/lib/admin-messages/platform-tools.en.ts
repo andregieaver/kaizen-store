@@ -75,6 +75,16 @@ export const platformToolsEn = {
     dreamOpenStore: "Open the store's admin",
   },
   prices: {
+    /** Round 68 (D841): AI prices on a phone. `{provider}`, `{input}`, `{output}`. */
+    phone: {
+      lead: "What each model costs, in US dollars. A change counts from today.",
+      add: "Price another model",
+      addSub: "Tokens, pictures, audio, speech, searches",
+      line: "{provider} · in {input} · out {output}",
+      open: "Open",
+      change: "Change",
+      close: "Close",
+    },
     title: "AI prices",
     intro:
       "What each model costs, in US dollars, from the provider's price list: per million tokens, and where it bills them so, per picture, per minute of audio (speech to text and live voice calls) and per million characters spoken.",
@@ -276,6 +286,16 @@ export const platformToolsEn = {
     weekZero: "Found nothing (keyword / hybrid)",
   },
   experiments: {
+    /** Round 68 (D841): A/B tests on a phone. `{n}`. */
+    phone: {
+      lead: "Every store's tests, those that need a look first. Owners change them.",
+      houseOn: "Tested in Kaizena Flow's store",
+      houseOff: "Once the site is served from its store",
+      ownCount: { one: "1 test", many: "{n} tests" },
+      noneOwn: "None running",
+      open: "Open",
+      close: "Close",
+    },
     title: "A/B tests",
     intro:
       "The A/B tests of every store. Tests that need a look come first: a version that lowers orders, visitors divided unevenly, a test nobody sees, one past its end or stopped and forgotten. You can read them here; the store's owner starts, stops and changes them.",
