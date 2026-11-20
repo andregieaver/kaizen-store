@@ -1,16 +1,15 @@
 import type { Widen } from "./common.en";
-import { ARCHIVE_REASON_TEXT } from "../order-archive";
-import { BULK_ACTION_LABELS, BULK_REASON_TEXT, BULK_REQUEST_TEXT } from "../order-bulk";
-import { BULK_MAX, VIEWS_MAX, VIEW_TITLE_MAX } from "../order-limits";
-import { COLUMN_LABELS, RANGE_LABELS, SOURCE_LABELS, VIEW_TITLE_PROBLEM_TEXT } from "../order-list";
-import { PAY_CELL_LABELS, SHIP_CELL_LABELS } from "../order-list-row";
-import { TAG_CHANGE_TEXT, TAG_PROBLEM_TEXT } from "../order-tags";
-import { PICK_SKIP_WORDS, PICK_WARNING_WORDS } from "../pick-list";
+import { ARCHIVE_REASON_TEXT } from "../order-archive-labels";
+import { BULK_ACTION_LABELS, BULK_REASON_TEXT, BULK_REQUEST_TEXT } from "../order-bulk-labels";
+import { BULK_MAX, TAGS_PER_ORDER, VIEWS_MAX, VIEW_TITLE_MAX } from "../order-limits";
+import { COLUMN_LABELS, PAY_CELL_LABELS, RANGE_LABELS, SHIP_CELL_LABELS, SOURCE_LABELS } from "../order-list-labels";
+import { TAG_PROBLEM_TEXT } from "../order-tags-labels";
+import { PICK_SKIP_WORDS, PICK_WARNING_WORDS } from "../pick-list-labels";
 
 /**
  * The words of the Orders list (D312 A4): the page, its views, search and filters, the table and its bulk bar, saved views, the pick list, the packing slips' page and
- * the order file's page, and what the list's and the tags' and archive's actions answer. The lists that already live beside their code (`COLUMN_LABELS`,
- * `BULK_REASON_TEXT`, …) are spread in, so the English is written once. `{name}`-style placeholders are filled by `fillWords()`; a count is a `{ one, many }` pair
+ * the order file's page, and what the list's and the tags' and archive's actions answer. The lists that code reads in English too (`COLUMN_LABELS`,
+ * `BULK_REASON_TEXT`, …) are spread in from their label modules (`*-labels.ts`, which import no code), so the English is written once. `{name}`-style placeholders are filled by `fillWords()`; a count is a `{ one, many }` pair
  * read by `countWords()`, with `{n}` the number.
  */
 export const ordersEn = {
@@ -252,7 +251,7 @@ export const ordersEn = {
     updatedView: "Updated the view “{title}”.",
     deleted: "Deleted the view.",
     moved: "Moved.",
-    titleProblems: { ...VIEW_TITLE_PROBLEM_TEXT },
+    titleProblems: { empty: "Give the view a name.", too_long: `A view's name is at most ${VIEW_TITLE_MAX} characters.` },
     problems: {
       title_empty: "Give the view a name.",
       title_too_long: `A view's name is at most ${VIEW_TITLE_MAX} characters.`,
@@ -268,7 +267,7 @@ export const ordersEn = {
     removed: "Removed {tags}.",
     alreadyHad: "The order {already} {tags}.",
     refused: "The order {limit}, so {tags} was not added.",
-    tagChange: { ...TAG_CHANGE_TEXT },
+    tagChange: { alreadyHad: "already had", didNotHave: "did not have", limit: `already has ${TAGS_PER_ORDER} tags` },
     tagProblems: { ...TAG_PROBLEM_TEXT },
     archived: "Archived.",
     unarchived: "Unarchived.",

@@ -19,6 +19,20 @@ const FOLDER = join(SRC, "lib/admin-messages");
 const CATALOGUES = files(FOLDER).filter((file) => file.slice(FOLDER.length + 1).indexOf("/") === -1);
 const inFolder = (file: string) => file.startsWith(FOLDER + "/");
 
+/**
+ * The modules outside the folder a catalogue file may import (bloat review step 2.50), each with its reason: a leaf holds English or numbers that
+ * code reads too, and imports nothing but types and other leaves here, so the walk from a catalogue ends in it. A new entry is a reviewed change.
+ */
+const ALLOWED_LEAVES: Record<string, string> = {
+  "lib/order-limits.ts": "The order list's numbers that its sentences say out loud (BULK_MAX, VIEWS_MAX, TAGS_PER_ORDER); one reviewed module for a limit.",
+  "lib/order-archive-labels.ts": "Why an order cannot be archived, read by the archive action and its test as well.",
+  "lib/order-bulk-labels.ts": "The bulk actions' labels and refusals, read by the AI manager's order tools as well.",
+  "lib/order-list-labels.ts": "The order list's columns, filters and cells, read by the filter chips and the AI manager's order tools as well.",
+  "lib/order-tags-labels.ts": "Why a tag is refused, read by the admin API as well.",
+  "lib/pick-list-labels.ts": "What the pick list leaves out, read by the AI manager's pick list tool as well.",
+};
+const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
+
 /** `file -> target` for the direct value imports of code, outside the folder or from a package; `planted` adds specifiers to a file. */
 function directImports(planted?: Map<string, string[]>): string[] {
   const found = new Set<string>();
@@ -30,7 +44,7 @@ function directImports(planted?: Map<string, string[]>): string[] {
     }
     for (const specifier of specifiers) {
       const target = resolve(file, specifier);
-      if (target && !inFolder(target)) found.add(`${rel(file).replace("lib/admin-messages/", "")} -> ${rel(target)}`);
+      if (target && !inFolder(target) && !isLeaf(target)) found.add(`${rel(file).replace("lib/admin-messages/", "")} -> ${rel(target)}`);
     }
   }
   return [...found].sort();
@@ -42,7 +56,7 @@ function outside(file: string, planted?: Map<string, string[]>): string[] {
 }
 function allowed(file: string, already: readonly string[]): Set<string> {
   const name = rel(file).replace("lib/admin-messages/", "");
-  const result = new Set<string>();
+  const result = new Set<string>(Object.keys(ALLOWED_LEAVES));
   for (const line of already) {
     const [from, to] = line.split(" -> ");
     if (from !== name) continue;
@@ -92,6 +106,19 @@ describe.skipIf(WRITE)("a catalogue file holds text only (bloat review step 1.4)
 
   it("a catalogue file reaches no code but through its listed imports", () => {
     expect(leaks(), "A catalogue file reaches code through another catalogue file: import the type only, or keep the label beside the code that uses it.").toEqual([]);
+  });
+
+  it("an allowed leaf imports nothing but types and other leaves (bloat review step 2.50)", () => {
+    const wrong: string[] = [];
+    for (const leaf of Object.keys(ALLOWED_LEAVES)) {
+      const file = join(SRC, leaf);
+      for (const match of read(file).matchAll(IMPORT)) {
+        if (match[2] !== undefined && typesOnly(match[1])) continue;
+        const target = resolve(file, match[2] ?? match[3]);
+        if (!target || !isLeaf(target)) wrong.push(`${leaf} -> ${target ? rel(target) : (match[2] ?? match[3])}`);
+      }
+    }
+    expect(wrong, "A leaf a catalogue file imports holds text or numbers only: import types, or another leaf.").toEqual([]);
   });
 
   it("would notice, by the walk: an import behind another catalogue file", () => {

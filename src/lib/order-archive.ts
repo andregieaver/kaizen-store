@@ -8,16 +8,10 @@
  */
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS } from "./order-limits";
 
+export { ARCHIVE_REASON_TEXT } from "./order-archive-labels";
+
 export const ARCHIVE_REASONS = ["needs_sending", "unfinished_checkout", "open_return", "already_archived"] as const;
 export type ArchiveReason = (typeof ARCHIVE_REASONS)[number];
-
-/** What staff read for each refusal (the code is `order-bulk.ts`'s reason code too). */
-export const ARCHIVE_REASON_TEXT: Record<ArchiveReason, string> = {
-  needs_sending: "It is paid and still has to be sent.",
-  unfinished_checkout: "It was never paid.",
-  open_return: "A return is still open on it.",
-  already_archived: "It is already archived.",
-};
 
 export type ArchiveFacts = {
   status: "pending_payment" | "paid" | "fulfilled" | "cancelled" | "closed";

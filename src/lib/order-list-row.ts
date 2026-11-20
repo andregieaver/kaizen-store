@@ -4,6 +4,9 @@
  * An order whose person was erased (restricted or anonymised, D162) shows its number, date, status and total and `erased: true`, never the person.
  */
 import type { Tag } from "./order-tags";
+import { PAY_CELL_LABELS, SHIP_CELL_LABELS } from "./order-list-labels";
+
+export { PAY_CELL_LABELS, SHIP_CELL_LABELS };
 
 export type OrderStatusValue = "pending_payment" | "authorized" | "paid" | "fulfilled" | "cancelled" | "closed";
 
@@ -132,22 +135,3 @@ export function shipCellOf(order: {
   return "none";
 }
 
-export const PAY_CELL_LABELS: Record<PayCell, string> = {
-  unpaid: "Unpaid",
-  authorized: "Card held",
-  paid: "Paid",
-  partially_refunded: "Partially refunded",
-  refunded: "Refunded",
-  balance_due: "Balance due",
-  copied: "Copied",
-};
-
-export const SHIP_CELL_LABELS: Record<ShipCell, string> = {
-  to_send: "To send",
-  partly_sent: "Partly sent",
-  waiting: "Waiting for stock",
-  sent: "Sent",
-  no_shipping: "Nothing to ship",
-  none: "-",
-  copied: "Copied",
-};
