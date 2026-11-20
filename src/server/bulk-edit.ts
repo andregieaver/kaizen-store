@@ -49,6 +49,7 @@ import { refreshStoreEmbeddings } from "./embeddings";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { pgUuidArray } from "./pg-arrays";
 import { getEditorContext, getProductForEdit, saveProduct, setArchived, type EditorContext, type StockMode } from "./products";
+import { productIdsOf, type ProductListFilter } from "./product-list";
 import { refreshTag } from "./refresh";
 import type { Store } from "./stores";
 import { listTerms } from "./taxonomy";
@@ -895,18 +896,12 @@ export async function undoBatch(member: Membership, batchId: string): Promise<Un
 // "Select all N matching"
 // ---------------------------------------------------------------------------
 
-export type MatchFilter = { status?: "active" | "draft" | "archived"; q?: string };
+/** The products list's filter (its view and search, D834): what *Choose all that match* takes. */
+export type MatchFilter = ProductListFilter;
 
-/** The products of a list filter, the first `BULK_MAX_PRODUCTS` of them (the list's own order), and how many match in all. */
+/** The products of a list filter on all its pages, the first `BULK_MAX_PRODUCTS` of them (the list's own order), and how many match in all. */
 export async function matchingProductIds(storeId: string, filter: MatchFilter): Promise<{ ids: string[]; total: number }> {
-  const q = (filter.q ?? "").trim().toLowerCase().slice(0, 100);
-  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const where = sql`p.store_id = ${storeId}::uuid
-    ${filter.status ? sql`and p.status = ${filter.status}` : sql`and p.status <> 'archived'`}
-    ${q ? sql`and (lower(p.handle) like ${like} or exists (select 1 from commerce.product_translations t where t.product_id = p.id and lower(t.title) like ${like}) or exists (select 1 from commerce.product_variants v where v.product_id = p.id and lower(v.sku) like ${like}))` : sql``}`;
-  const [count] = await db().execute<Row>(sql`select count(*)::int as n from commerce.products p where ${where}`);
-  const rows = await db().execute<Row>(sql`select p.id from commerce.products p where ${where} order by p.updated_at desc, p.handle limit ${BULK_MAX_PRODUCTS}`);
-  return { ids: rows.map((r) => String(r.id)), total: Number(count?.n ?? 0) };
+  return productIdsOf(storeId, filter, BULK_MAX_PRODUCTS);
 }
 
 export { BULK_ACTIONS, listTerms };

@@ -115,8 +115,9 @@ describe("a custom item's picture and links", () => {
 
   it("is the pointing link for a linked item, with the heading and button the links for keyboards", () => {
     const out = draw(grid({ items: [item({ link: { kind: "page", slug: "om-oss" }, picture })] }));
-    expect(out).toMatch(/<a href="\/s\/demo\/no\/om-oss" tabindex="-1" aria-hidden="true"[^>]*><img[^>]*alt=""/);
-    expect(out).toMatch(/<h3[^>]*><a href="\/s\/demo\/no\/om-oss"[^>]*>Fjord tour<\/a><\/h3>/);
+    // An address of the app is drawn by next/link (`BlockLink`, bloat review step 2.7), which writes `href` after the other attributes.
+    expect(out).toMatch(/<a (?=[^>]*href="\/s\/demo\/no\/om-oss")(?=[^>]*tabindex="-1")(?=[^>]*aria-hidden="true")[^>]*><img[^>]*alt=""/);
+    expect(out).toMatch(/<h3[^>]*><a [^>]*href="\/s\/demo\/no\/om-oss"[^>]*>Fjord tour<\/a><\/h3>/);
     expect(out.match(/href="\/s\/demo\/no\/om-oss"/g)).toHaveLength(3);
   });
 
@@ -198,7 +199,7 @@ describe("the other sources, unchanged", () => {
     const block = newBlock("contentGrid", () => "g1") as ContentGridBlock;
     const data: GridData = { lang: "en", locale: "en-GB", items: [{ id: "p1", href: "/s/demo/no/om", title: "About", excerpt: "Us", image: { url: "https://example.com/a.webp", alt: "" }, price: null }] };
     const out = renderToString(createElement(ContentGridView, { block, data })).replace(/<!-- -->/g, "");
-    expect(out).toMatch(/<a href="\/s\/demo\/no\/om" tabindex="-1" aria-hidden="true" class="relative z-\[2\] block">/);
+    expect(out).toMatch(/<a (?=[^>]*href="\/s\/demo\/no\/om")(?=[^>]*tabindex="-1")(?=[^>]*aria-hidden="true")(?=[^>]*class="relative z-\[2\] block")[^>]*>/);
     expect(out).toContain("Read more");
     expect(out).toContain('width="800"');
     // No wrapper is added around a picture without a badge.

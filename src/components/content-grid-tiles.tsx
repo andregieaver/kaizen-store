@@ -20,6 +20,7 @@ import { releaseDate } from "@/lib/stock-words";
 import type { TileAsk } from "@/lib/shop-tiles";
 
 import { Carousel } from "./carousel";
+import { BlockLink } from "./block-link";
 import { TileShop } from "./lazy/blocks";
 import type { TileShopWords } from "./tile-shop";
 import { Inline } from "./inline-text";
@@ -44,11 +45,14 @@ export function ContentGridTiles({
   eager = false,
   tiles = null,
   redraw = false,
+  plain: plainLinks = false,
 }: {
   block: ContentGridBlock;
   data: GridData;
   /** The page holds a note about the shopper's basket: a tile's Add to cart redraws it (bloat review step 2.4). */
   redraw?: boolean;
+  /** Draw the tiles' links as plain anchors, fetching nothing ahead (`BlockLink`, bloat review step 2.7). */
+  plain?: boolean;
   /**
    * What a store's product tiles may show besides the price (D557): the stock left and a quantity chooser with Add to cart, as the grid's
    * own choices allow (`tileAsk()`); the store's settings come with the facts. Null, as in the builder's canvas, shows neither.
@@ -143,6 +147,7 @@ export function ContentGridTiles({
               fallbackName={plain(item.title || item.buttonLabel || label)}
               load={eager && index < EAGER_TILES ? (index === 0 ? "first" : "eager") : "lazy"}
               sizes={sizes}
+              plain={plainLinks}
             />
           )}
           <TileBody padding={tile?.contentPadding}>
@@ -154,9 +159,9 @@ export function ContentGridTiles({
               className={`leading-snug font-heading text-balance text-lg ${titleFamily ? fontClass(titleFamily) : ""}`}
             >
               {item.href !== "" ? (
-                <a href={item.href} className="relative z-[2] hover:underline focus-visible:outline-2" {...externalAttributes(item)}>
+                <BlockLink plain={plainLinks || item.external} href={item.href} className="relative z-[2] hover:underline focus-visible:outline-2" {...externalAttributes(item)}>
                   {words(item.title)}
-                </a>
+                </BlockLink>
               ) : (
                 words(item.title)
               )}
@@ -234,7 +239,8 @@ export function ContentGridTiles({
           {block.show.button && item.href !== "" && (
             <div className="mt-auto pt-1">
               {/* Named with the item, so "Read more" links are told apart; the visible text starts the name. */}
-              <a
+              <BlockLink
+                plain={plainLinks || item.external}
                 href={item.href}
                 // Named with the item; with no title, with what its picture shows, so the buttons are still told apart.
                 aria-label={itemName(block, item) ? `${inlinePlain(item.buttonLabel || label)}: ${plain(itemName(block, item))}` : undefined}
@@ -244,7 +250,7 @@ export function ContentGridTiles({
                 {...externalAttributes(item)}
               >
                 <Inline text={item.buttonLabel || label} />
-              </a>
+              </BlockLink>
             </div>
           )}
           </TileBody>
@@ -292,7 +298,10 @@ function TileImage({
   fallbackName,
   load,
   sizes,
+  plain = false,
 }: {
+  /** Plain anchors, as in the builder's canvas (`BlockLink`). */
+  plain?: boolean;
   load: TileLoad;
   sizes: string;
   item: GridData["items"][number];
@@ -308,7 +317,8 @@ function TileImage({
     item.href === "" ? (
       <TilePicture image={image} alt={image.alt} shape={shape} load={load} sizes={sizes} />
     ) : only ? (
-      <a
+      <BlockLink
+        plain={plain || item.external}
         href={item.href}
         // The picture's own description names the link; without one, the item's title (or the button's words) does.
         aria-label={image.alt.trim() === "" ? fallbackName : undefined}
@@ -316,12 +326,12 @@ function TileImage({
         {...externalAttributes(item)}
       >
         <TilePicture image={image} alt={image.alt} shape={shape} load={load} sizes={sizes} />
-      </a>
+      </BlockLink>
     ) : (
-      <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block" {...externalAttributes(item)}>
+      <BlockLink plain={plain || item.external} href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block" {...externalAttributes(item)}>
         {isProduct && <CampaignBadge notices={noticesFor(notices, item.id)} m={m} />}
         <TilePicture image={image} alt="" shape={shape} load={load} sizes={sizes} />
-      </a>
+      </BlockLink>
     );
   return item.badge ? (
     <div className="relative">

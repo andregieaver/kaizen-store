@@ -10,6 +10,8 @@ import { adminSchemeScript } from "@/lib/admin-schemes";
 import { ADMIN_COLOR_KEY, colorModeScript } from "@/lib/color-mode";
 import { siteIcons } from "@/lib/site-icons";
 import { getPlatformFavicon } from "@/server/platform-navigation";
+// The client parts nearly every admin page draws, in the chunk every admin route loads (see the file).
+import "@/components/admin/shared-client-parts";
 
 import "../globals.css";
 // The colour schemes (docs/admin-style.md section 4), each setting the colour roles; `admin.css` reads only the roles.

@@ -8957,3 +8957,36 @@ describe("a page's title and flags are columns the database fills (bloat review 
     }
   });
 });
+
+describe("a change of email waits for its link (D836)", () => {
+  const hash = (n: number) => n.toString(16).padStart(64, "0");
+  const account = async (email: string): Promise<string> =>
+    (await one<{ id: string }>("insert into commerce.accounts (email) values ($1) returning id", [email])).id;
+  const insert = (accountId: string, newEmail: string, tokenHash: string, expires = "now() + interval '24 hours'") =>
+    db.query(
+      `insert into commerce.account_email_changes (account_id, new_email, token_hash, requested_by, expires_at) values ($1, $2, $3, $1, ${expires})`,
+      [accountId, newEmail, tokenHash],
+    );
+
+  it("keeps one change per account, a token only as a SHA-256, and the new address as the accounts compare it", async () => {
+    const id = await account("mover-d836@example.com");
+    await insert(id, "new-d836@example.com", hash(1));
+    await expect(insert(id, "other-d836@example.com", hash(2))).rejects.toThrow(/account_email_changes_account_key/);
+    const second = await account("second-d836@example.com");
+    await expect(insert(second, "new2-d836@example.com", hash(1))).rejects.toThrow(/account_email_changes_token_key/);
+    await expect(insert(second, "new2-d836@example.com", "not-a-hash")).rejects.toThrow(/account_email_changes_token/);
+    await expect(insert(second, "New2-D836@Example.com", hash(3))).rejects.toThrow(/account_email_changes_email/);
+    await expect(insert(second, "no-at-sign", hash(3))).rejects.toThrow(/account_email_changes_email/);
+    await expect(insert(second, "new2-d836@example.com", hash(3), "now() - interval '1 minute'")).rejects.toThrow(/account_email_changes_times/);
+    await insert(second, "new2-d836@example.com", hash(3));
+  });
+
+  it("refuses a used time before the change was asked for, and is closed to the Data API like every commerce table", async () => {
+    const id = await account("times-d836@example.com");
+    await insert(id, "times-new-d836@example.com", hash(4));
+    await expect(
+      db.query("update commerce.account_email_changes set used_at = created_at - interval '1 second' where account_id = $1", [id]),
+    ).rejects.toThrow(/account_email_changes_times/);
+    expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.account_email_changes'::regclass")).on).toBe(true);
+  });
+});

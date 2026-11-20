@@ -299,9 +299,6 @@ export const returnsEn = {
     labelNotBooked: "Label not booked",
     waitingAnswer: "Waiting for your answer",
     pages: "Pages of returns",
-    previous: "Previous",
-    next: "Next",
-    pageOf: "Page {page} of {pages} · {total} returns",
     loading: "Loading the returns…",
   },
   detail: {

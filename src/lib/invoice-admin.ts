@@ -1,6 +1,7 @@
 import { countWords, fillWords } from "./admin-fill";
 import { invoicesEn, type InvoicesMessages } from "./admin-messages/invoices.en";
 import type { QueueReason } from "./invoice-readiness";
+import { listPage } from "./list-page";
 
 const EN = invoicesEn;
 const lookup = (table: Record<string, string>, key: string): string | undefined => (Object.hasOwn(table, key) ? table[key] : undefined);
@@ -13,9 +14,6 @@ const lookup = (table: Record<string, string>, key: string): string | undefined 
 
 export const INVOICE_TABS = ["invoices", "credit-notes", "waiting"] as const;
 export type InvoiceTab = (typeof INVOICE_TABS)[number];
-
-/** Documents on a page of the lists (the server's own page size). */
-export const DOCUMENTS_PER_PAGE = 50;
 
 export type InvoiceQuery = {
   tab: InvoiceTab;
@@ -53,22 +51,26 @@ export function parseInvoiceQuery(query: Record<string, string | string[] | unde
   let from = all ? null : isDay(fromText) ? fromText : monthStart(today);
   let to = all ? null : isDay(toText) ? toText : today;
   if (from && to && from > to) [from, to] = [to, from];
-  const page = /^\d{1,6}$/.test(first(query.page) ?? "") ? Math.max(1, Number(first(query.page))) : 1;
-  return { tab, from, to, q: (first(query.q) ?? "").trim().slice(0, 100), all, page };
+  return { tab, from, to, q: (first(query.q) ?? "").trim().slice(0, 100), all, page: listPage(query.page) };
+}
+
+/** A query's values in the list's address, only what differs from the default: what its pager keeps on every page (D834). */
+export function invoiceQueryValues(query: Partial<InvoiceQuery>, today?: string): Record<string, string> {
+  const values: Record<string, string> = {};
+  if (query.tab && query.tab !== "invoices") values.tab = query.tab;
+  if (query.all) values.all = "1";
+  else {
+    if (query.from && (!today || query.from !== monthStart(today))) values.from = query.from;
+    if (query.to && (!today || query.to !== today)) values.to = query.to;
+  }
+  if (query.q) values.q = query.q;
+  if (query.page && query.page > 1) values.page = String(query.page);
+  return values;
 }
 
 /** The list's address for a query: only what differs from the default is written. */
 export function invoicesHref(base: string, query: Partial<InvoiceQuery>, today?: string): string {
-  const search = new URLSearchParams();
-  if (query.tab && query.tab !== "invoices") search.set("tab", query.tab);
-  if (query.all) search.set("all", "1");
-  else {
-    if (query.from && (!today || query.from !== monthStart(today))) search.set("from", query.from);
-    if (query.to && (!today || query.to !== today)) search.set("to", query.to);
-  }
-  if (query.q) search.set("q", query.q);
-  if (query.page && query.page > 1) search.set("page", String(query.page));
-  const text = search.toString();
+  const text = new URLSearchParams(invoiceQueryValues(query, today)).toString();
   return text ? `${base}?${text}` : base;
 }
 

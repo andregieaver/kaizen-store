@@ -1,5 +1,6 @@
 import { SelectNav } from "@/components/admin/select-nav";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ArrowUpDown, SlidersHorizontal } from "lucide-react";
 
 import { requireFeature } from "@/components/admin/feature-off";
@@ -11,7 +12,7 @@ import { Avatar } from "@/components/avatar";
 import { Initials } from "@/components/admin/home/home-parts";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
-import { customerCounts, listCustomers, type CustomerShow, type CustomerSort } from "@/server/customer-admin";
+import { customerCounts, customerPage, type CustomerShow, type CustomerSort } from "@/server/customer-admin";
 import { orderPreviews } from "@/server/home";
 import { whenWords } from "@/lib/home";
 import { storeTags } from "@/server/segments";
@@ -19,7 +20,8 @@ import { tagKey } from "@/lib/order-tags";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { AdminLink, ButtonLink, CARD_CLASS, EmptyState, ListSearch, PageHeader, Select, TextInput } from "@/components/admin/ui";
+import { LIST_PAGE_SIZE, listOffset, listPage } from "@/lib/list-page";
+import { AdminLink, ButtonLink, CARD_CLASS, EmptyState, ListSearch, PageHeader, Pager, Select, TextInput } from "@/components/admin/ui";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 
 import { bulkTagAction, tagTickedAction } from "./actions";
@@ -51,7 +53,13 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
   const show = SHOWS.find((s) => s === query.show) ?? null;
   const sort = SORTS.find((s) => s === query.sort) ?? "recent";
   const currency = store.markets[0]?.currency ?? "EUR";
-  const [customers, tags, counts] = await Promise.all([listCustomers(store.id, { q, tag, show, sort }), storeTags(store.id), customerCounts(store.id, currency)]);
+  // A hundred a page, with how many the search finds in all (code review 1.13, D834).
+  const page = listPage(query.page);
+  const [{ rows: customers, total }, tags, counts] = await Promise.all([
+    customerPage(store.id, { q, tag, show, sort, limit: LIST_PAGE_SIZE, offset: listOffset(page) }),
+    storeTags(store.id),
+    customerCounts(store.id, currency),
+  ]);
   const previews = await orderPreviews(store.id, customers.flatMap((c) => (c.latestOrderId ? [c.latestOrderId] : [])));
   const linesOf = new Map(previews.map((p) => [p.id, p.lines.map(({ title, picture }) => ({ title, picture }))]));
   const locale = store.markets[0]?.locale ?? "nb-NO";
@@ -74,6 +82,8 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
     const text = next.toString();
     return text ? `${base}?${text}` : base;
   };
+  // A page past the last (people tagged off, a link kept from before) opens the first.
+  if (customers.length === 0 && page > 1) redirect(hrefWith({}));
   const lead =
     counts.people === 0
       ? words.leadNobody
@@ -264,6 +274,16 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           }}
         />
       )}
+      <Pager
+        words={adminText(lang, "kit").pager}
+        label={words.title}
+        base={base}
+        query={{ q: q || undefined, tag: tag ?? undefined, show: show ?? undefined, sort: sort === "recent" ? undefined : sort }}
+        page={page}
+        size={LIST_PAGE_SIZE}
+        shown={customers.length}
+        total={total}
+      />
 
       {canWrite && customers.length > 0 && (
         <details className={`px-5 py-4 ${CARD_CLASS}`}>
@@ -272,6 +292,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           <ActionForm action={bulkTagAction.bind(null, store.slug)} className="mt-3 flex flex-wrap items-end gap-2">
             <input type="hidden" name="q" value={q} />
             <input type="hidden" name="filterTag" value={tag ?? ""} />
+            <input type="hidden" name="show" value={show ?? ""} />
             <label className="flex flex-col gap-1 text-body">
               {staff.bulk.tag}
               <TextInput name="tag" required maxLength={40} className="w-56" />

@@ -14,7 +14,7 @@ import type { Localization } from "@/lib/localization";
 import type { Market } from "@/lib/markets";
 import { isTermsMode, type TermsMode } from "@/lib/checkout-terms";
 import { isLegalRole, type LegalRole } from "@/lib/legal-roles";
-import { isPageRole, type PageRole } from "@/lib/page-roles";
+import { isPageRole, type PageRole } from "@/lib/page-role-copy";
 import { isStoreSlug, rememberSiteStore } from "@/lib/paths";
 import { type TrackingSettings } from "@/lib/cookie-consent";
 import { parseTracking } from "@/lib/cookie-consent-schema";

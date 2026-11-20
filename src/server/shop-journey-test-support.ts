@@ -218,4 +218,4 @@ export const ownerHome = (member: Membership) => storeHomeReads(member);
 export const adminOrders = (member: Membership, input: OrderListInput = {}) => ordersListReads(member.store, input);
 
 /** The products list (`src/app/admin/(gated)/[store]/products/page.tsx`), through `productsListReads()`, as an owner sees it. */
-export const adminProducts = (member: Membership) => productsListReads(member, { archived: false, needsFilter: false, canWrite: true, locale: "en" });
+export const adminProducts = (member: Membership) => productsListReads(member, { show: "all", q: "", page: 1, needsFilter: false, canWrite: true, locale: "en" });

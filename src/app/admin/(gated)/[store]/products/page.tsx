@@ -1,5 +1,6 @@
 import { AdminLink } from "@/components/admin/ui/link";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AdminLink as Link } from "@/components/admin/ui/link";
 import { Suspense } from "react";
 
@@ -9,13 +10,16 @@ import type { BulkTools } from "@/components/admin/products-bulk";
 import { ProductCatalogue } from "@/components/admin/product-catalogue";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
+import { LIST_PAGE_SIZE, listPage } from "@/lib/list-page";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { productsListReads } from "@/server/admin-screens";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { PRODUCT_SHOWS, type ProductShow } from "@/server/product-list";
+import { CARD_CLASS, ListSearch, PageHeader, Pager } from "@/components/admin/ui";
+import { pageAddress } from "@/components/admin/ui/pager";
 
 import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
 
@@ -78,11 +82,20 @@ async function ProductList({
   const canWrite = memberCan(member, "products:write");
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "products").list;
+  const c = adminText(lang, "products").catalogue;
   const query = await searchParams;
-  const archived = query.show === "archived";
+  // The view (code review 1.13, D834): the chips are the search form's buttons, sent after the view it keeps, so the last one named wins.
+  const show = [query.show].flat().reduce<ProductShow>((was, value) => PRODUCT_SHOWS.find((s) => s === value) ?? was, "all");
+  const archived = show === "archived";
   const needsFilter = !archived && query.needs === "unit-price";
+  const q = typeof query.q === "string" ? query.q.trim().slice(0, 100) : "";
+  const page = listPage(query.page);
   const locale = store.markets[0]?.locale ?? "en";
-  const { products, needingCount, needing, terms, imports, skus } = await productsListReads(member, { archived, needsFilter, canWrite, locale });
+  const { products, total, counts, needingCount, needing, terms, imports } = await productsListReads(member, { show, q, page, needsFilter, canWrite, locale });
+  const base = `/admin/${store.slug}/products`;
+  const kept = { show: show === "all" ? undefined : show, q: q || undefined };
+  // A page past the last (products archived, a link kept from before) opens the first.
+  if (!needsFilter && products.length === 0 && page > 1) redirect(pageAddress(base, kept, 1));
   const openImport = imports.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const bulk: BulkTools | null = terms
     ? {
@@ -95,8 +108,18 @@ async function ProductList({
         markets: store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency })),
       }
     : null;
-  const base = `/admin/${store.slug}/products`;
   const needsHref = `${base}?needs=unit-price`;
+  // Nothing in the store's current (or archived) products at all: the first-product card, not a search.
+  const none = total === 0 && !q && (show === "all" || archived);
+  const chips: { key: ProductShow; label: string; n: number; warn?: boolean }[] = counts
+    ? [
+        { key: "all", label: c.all, n: counts.all },
+        { key: "active", label: c.onSale, n: counts.active },
+        { key: "draft", label: c.drafts, n: counts.draft },
+        { key: "stock", label: c.needsStock, n: counts.stock, warn: true },
+      ]
+    : [];
+  const chip = "inline-flex h-9 items-center gap-1.5 rounded-pill px-3.5 text-sm";
 
   const market = store.markets[0];
   return (
@@ -138,7 +161,7 @@ async function ProductList({
       </nav>
       {needsFilter ? (
         <NeedsContentList products={needing} base={base} words={adminText(lang, "screens").unitGaps} />
-      ) : products.length === 0 ? (
+      ) : none ? (
         <div className={`p-8 text-center ${CARD_CLASS}`}>
           <p className="mb-3">{archived ? w.noArchived : w.none}</p>
           {!archived && (
@@ -148,15 +171,60 @@ async function ProductList({
           )}
         </div>
       ) : (
-        <ProductCatalogue
-          slug={store.slug}
-          archived={archived}
-          locale={locale}
-          bulk={bulk}
-          skus={skus}
-          priceHeader={market ? fillWords(store.audience === "businesses" ? w.priceInExclVat : w.priceIn, { market: market.name }) : w.price}
-          rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
-        />
+        <>
+          {/* On a phone and above the list (round 8, D626): what costs sales, from the figures of every current product. */}
+          {counts && counts.soldOut > 0 && (
+            <p className="text-body text-ink-2">
+              <span className="text-ink">{countWords(counts.soldOut, c.soldOutSentence)}</span>
+              {fillWords(c.restSentence, { active: counts.active, drafts: countWords(counts.draft, c.draftCount) })}
+            </p>
+          )}
+          <ProductCatalogue
+            slug={store.slug}
+            archived={archived}
+            locale={locale}
+            bulk={bulk}
+            total={total}
+            filter={{ show, q }}
+            priceHeader={market ? fillWords(store.audience === "businesses" ? w.priceInExclVat : w.priceIn, { market: market.name }) : w.price}
+            rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
+            toolbar={
+              // The kit's search (D834): a GET form over every page, by name or SKU; the views are its buttons, each a count of every current product.
+              <ListSearch
+                action={base}
+                value={q}
+                label={c.search}
+                placeholder={c.searchPlaceholder}
+                maxLength={100}
+                words={adminText(lang, "kit").search}
+                button="hidden"
+                keep={{ show: kept.show }}
+                className="min-w-0 flex-[1_1_16rem]"
+                aside={
+                  !archived && (
+                    <div role="group" aria-label={c.show} className="flex flex-wrap gap-1.5 max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4">
+                      {chips
+                        .filter((one) => one.key === "all" || one.n > 0 || one.key === show)
+                        .map((one) => (
+                          <button
+                            key={one.key}
+                            type="submit"
+                            name="show"
+                            value={one.key}
+                            aria-pressed={show === one.key}
+                            className={`${chip} shrink-0 ${show === one.key ? "bg-inverse text-inverse-ink" : one.warn ? "bg-warning-soft text-warning-text" : "bg-card text-ink-2 hover:text-ink"}`}
+                          >
+                            {one.label} <span className="tabular-nums opacity-80">{one.n}</span>
+                          </button>
+                        ))}
+                    </div>
+                  )
+                }
+              />
+            }
+            pager={<Pager words={adminText(lang, "kit").pager} label={w.title} base={base} query={kept} page={page} size={LIST_PAGE_SIZE} shown={products.length} total={total} />}
+          />
+        </>
       )}
     </AdminTextScope>
   );

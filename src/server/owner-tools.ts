@@ -243,7 +243,8 @@ import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrder
 import { listPages, unpublishPage } from "./pages";
 import { pagesTag } from "@/lib/cache-tags";
 import { runningTestOf } from "./experiment-admin";
-import { availabilityOf, listAdminProducts, setArchived } from "./products";
+import { listAdminProducts } from "./product-list";
+import { availabilityOf, setArchived } from "./products";
 import { sendBookingCancelled, sendCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
 import { effectiveFeatures, featureOn } from "@/lib/store-features";

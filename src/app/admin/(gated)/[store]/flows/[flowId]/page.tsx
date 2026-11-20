@@ -193,6 +193,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           triggerDays={flow.triggerDays}
           w={w}
           segments={segmentList}
+          languages={languages}
         />
       )}
       {/* The checks before switching on (M3.6): each a line with what to fix; a blocking one keeps Switch on refused. */}

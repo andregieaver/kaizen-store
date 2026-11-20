@@ -498,6 +498,38 @@ and `page-article` with the four forbidden.
 | Reading a page | 183 through `pages.ts` (1,307 on 12 November) | 72 (`page-reads.ts`) |
 | The page renderer (`page-article.tsx`) | 467, `pages.ts` among them (1,396 on 12 November) | 430, none of the four |
 
+The cut moved the admin's client chunks, though it changed server imports only. The root admin layout had reached, through
+`getPlatformFavicon()` and `pages.ts`, server components that draw `AdminLink` and Lucide icons, so Turbopack put the link wrapper
+(with `PolicyLink` and next/link) and Lucide's icon base among the root layout's client references, in the chunk every admin route
+loads. Without that path each layout's and page's own first chunks took a copy: 459 of 482 admin routes grew by a median of 12.6 KB
+(CI run 1732). The root layout now imports `src/components/admin/shared-client-parts.ts`, which names them on purpose
+(`shared-client-parts.scan.test.ts`); on a local build the admin routes fell by a median of 10.5 KB, 481 of 482.
+
+### A store read without the Stripe SDK or the block schemas (bloat review step 2.22)
+
+Two rules hold what reading a store loads. A store is read without the Stripe SDK: which payment modes Kaizena Flow has comes from
+`src/server/stripe-keys.ts` (step 0.6), so `src/server/stores.ts` and the five beacons may not reach `src/server/stripe.ts` or the
+`stripe` package. `stores.ts` reaches no file that defines a block schema: a theme's part styles (spacing, border, corners, shadow,
+colour, the per-size overrides and `themeElementSchema`) live in `src/lib/part-styles.ts`, a leaf that imports zod, the
+typography schemas and `src/lib/content-width.ts` and never `page-content.ts`; the role names come from `src/lib/page-role-copy.ts`,
+the reserved addresses from `src/lib/reserved-slugs.ts`, and `mapChildBlocks()` from `src/lib/block-walk.ts` (type-only imports of
+the page model). `page-content.ts` re-exports every moved name. `route-load.graph.test.ts` holds the entry `stores` and the beacons
+to it; the speed beacon still reaches the page model through the heat tags' running tests (`signal-tags.ts` imports
+`runningExperiments` through `experiments.ts`), kept as its exception.
+
+| Measured on a local build (`next analyze --output`, `server-graph.mjs`) | Before (main, 19 November) | After |
+|---|---|---|
+| `/api/visit` and `/api/visit/touch`, server modules (KB) | 461 (891) | 431 (797) |
+| `/api/visit/speed` | 477 (919) | 477 (914) |
+| `/api/visit/speed/own` | 463 (896) | 433 (802) |
+| `/api/recommendations/events` | 457 (877) | 426 (784) |
+| `/s/[store]/[market]` | 1,534 (4,994) | 1,538 (4,995) |
+| `src/server/stores.ts`, files reached by static imports | 102 | 72 |
+
+No beacon loads a module of the `stripe` package. The store home is still over its bar of 1,500 modules and 4.0 MB: the admin's
+words (`src/lib/admin-map.ts`, `src/lib/admin-messages/`), the AI manager's tools (`owner-tools.ts`, `owner-assistant.ts`) and the
+Supabase client are loaded with it, which other steps of the plan own.
+
 ## Cold starts in production (bloat review step 1.16)
 
 Each server instance notes its first answer once, as the log line `instance.start` and a row in `commerce.instance_starts`: what the
@@ -744,7 +776,7 @@ three policies. `e2e/prefetch.spec.ts` holds the counts per page.
 | Policy | What it does | Links |
 | --- | --- | --- |
 | sight | Next's default: fetched when it scrolls into view | the cart link on phones, a header menu's top links, product tiles (bounded by step 2.8), the site's sign-up button |
-| intent | fetched when the pointer, a touch or the focus reaches it | the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, every admin link (`AdminLink`) |
+| intent | fetched when the pointer, a touch or the focus reaches it | the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, builder blocks (`BlockLink`, step 2.7: a built page's tiles, buttons, pictures, icon lists and column links to an address of the app; a pay path, a file, a handler, a new tab or another site stays a plain anchor), every admin link (`AdminLink`) |
 | never | not fetched ahead | countries, languages and currencies, links that leave their root layout, file links, the cart link from 768 px (a plain anchor) |
 
 A link states its policy through `PolicyLink` or `AdminLink` and `next/link` is imported only by them (ratchet count `directLinks`, in

@@ -28,23 +28,24 @@ export const statusFilters = (w: ReturnsMessages): { value: ReturnQueueFilter["s
 export const kindFilters = (w: ReturnsMessages): { value: ReturnQueueFilter["kind"]; label: string }[] =>
   (["all", "withdrawal", "return"] as const).map((value) => ({ value, label: w.labels.kindFilters[value] }));
 
-/** The queue's address for a filter: only what differs from the defaults is in it. */
-export function queueHref(base: string, filter: Partial<ReturnQueueFilter> & { page?: number; /** The exchange mark filter (D239). */ exchange?: string | null } = {}): string {
-  const query = new URLSearchParams();
-  if (filter.status && filter.status !== "open") query.set("status", filter.status);
-  if (filter.kind && filter.kind !== "all") query.set("kind", filter.kind);
-  if (filter.q && filter.q.trim()) query.set("q", filter.q.trim());
-  if (filter.overdue) query.set("overdue", "1");
-  if (filter.exchange) query.set("exchange", filter.exchange);
-  if (filter.page && filter.page > 1) query.set("page", String(filter.page));
-  const text = query.toString();
-  return text ? `${base}?${text}` : base;
+type QueueAddress = Partial<ReturnQueueFilter> & { page?: number; /** The exchange mark filter (D239). */ exchange?: string | null };
+
+/** The queue's values in its address, only what differs from the defaults: what its pager keeps on every page (D834). */
+export function queueQuery(filter: QueueAddress = {}): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (filter.status && filter.status !== "open") query.status = filter.status;
+  if (filter.kind && filter.kind !== "all") query.kind = filter.kind;
+  if (filter.q && filter.q.trim()) query.q = filter.q.trim();
+  if (filter.overdue) query.overdue = "1";
+  if (filter.exchange) query.exchange = filter.exchange;
+  if (filter.page && filter.page > 1) query.page = String(filter.page);
+  return query;
 }
 
-/** The queue's filter from the address: anything unknown falls back to the default (`returnQueueFilter` does the same). */
-export function pageNumber(value: string | string[] | undefined): number {
-  const n = Number(Array.isArray(value) ? value[0] : value);
-  return Number.isSafeInteger(n) && n >= 1 && n <= 10_000 ? n : 1;
+/** The queue's address for a filter: only what differs from the defaults is in it. */
+export function queueHref(base: string, filter: QueueAddress = {}): string {
+  const text = new URLSearchParams(queueQuery(filter)).toString();
+  return text ? `${base}?${text}` : base;
 }
 
 // ---------------------------------------------------------------------------

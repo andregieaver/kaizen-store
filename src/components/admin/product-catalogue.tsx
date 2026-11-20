@@ -1,17 +1,16 @@
 "use client";
 
-import { LayoutGrid, List, Search } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { LayoutGrid, List } from "lucide-react";
+import { useSyncExternalStore, type ReactNode } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { LOW_STOCK_AT } from "@/lib/control-center";
 import { formatMoney } from "@/lib/money";
+import type { MatchFilter } from "@/server/bulk-edit";
 
 import { useAdminText } from "./admin-text";
 import { ProductsTable, type BulkTools, type ProductRowView } from "./products-bulk";
 import { AdminLink } from "./ui/link";
-
-type Filter = "all" | "active" | "draft" | "stock";
 
 const VIEW_KEY = "kz-products-view";
 const viewListeners = new Set<() => void>();
@@ -28,41 +27,45 @@ const readView = (): "grid" | "table" => {
     return "grid";
   }
 };
-const PAGE = 60;
 
 const keepsStock = (p: ProductRowView) => !(p.digitalVariants > 0 && p.digitalVariants === p.variants);
-/** A product that needs stock: it keeps stock and has LOW_STOCK_AT or fewer over its variants (the control center's line for "running low"). */
-export const needsStock = (p: ProductRowView) => p.status !== "archived" && keepsStock(p) && p.stock <= LOW_STOCK_AT;
 
 /**
- * The products list (round 2, D597): the catalogue as pictures by default, the table (with its bulk tools) one press away; a search over names and
- * SKUs and filters by state and stock, applied in the browser over the list the page read; sixty at a time with *Show more*. The choice of view is kept
- * in this browser only.
+ * The products list (round 2, D597): the catalogue as pictures by default, the table (with its bulk tools) one press away. The page reads a
+ * hundred at a time on the server (code review 1.13, D834): its search and views are the `toolbar` (the kit's `ListSearch`, a GET form), its
+ * pages the `pager` (the kit's `Pager`, "100 of 150"), both drawn on the server; `total` and `filter` are what *Choose all that match* takes.
+ * The choice of view is kept in this browser only.
  */
 export function ProductCatalogue({
   slug,
   rows,
+  total,
+  filter,
   archived,
   priceHeader,
   locale,
   bulk,
-  skus,
+  toolbar,
+  pager,
 }: {
   slug: string;
+  /** The page's products. */
   rows: ProductRowView[];
+  /** How many the view and search find on all pages. */
+  total: number;
+  filter: MatchFilter;
   archived: boolean;
   priceHeader: string;
   locale: string;
   bulk: BulkTools | null;
-  /** Each product's SKUs, by id, for the search. */
-  skus: Record<string, string[]>;
+  /** The search and the views, beside the choice of pictures or table. */
+  toolbar: ReactNode;
+  /** Under the list: how many of all are shown, and the pages before and after. */
+  pager: ReactNode;
 }) {
   const w = useAdminText("products").catalogue;
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
   // The browser's remembered choice: pictures on the server and until the browser says otherwise.
   const view = useSyncExternalStore(subscribeView, readView, () => "grid" as const);
-  const [shown, setShown] = useState(PAGE);
   const setView = (next: "grid" | "table") => {
     try {
       window.localStorage.setItem(VIEW_KEY, next);
@@ -71,76 +74,11 @@ export function ProductCatalogue({
     }
     for (const listener of viewListeners) listener();
   };
-  const counts = useMemo(
-    () => ({ all: rows.length, active: rows.filter((r) => r.status === "active").length, draft: rows.filter((r) => r.status === "draft").length, stock: rows.filter(needsStock).length }),
-    [rows],
-  );
-  const matching = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase();
-    return rows.filter((r) => {
-      if (filter === "active" && r.status !== "active") return false;
-      if (filter === "draft" && r.status !== "draft") return false;
-      if (filter === "stock" && !needsStock(r)) return false;
-      if (!q) return true;
-      return r.title.toLocaleLowerCase().includes(q) || (skus[r.id] ?? []).some((sku) => sku.toLocaleLowerCase().includes(q));
-    });
-  }, [rows, filter, query, skus]);
-  // Round 8 (D626): in All, what costs sales comes first: sold out, then drafts, then the rest as listed.
-  const soldOutOf = (r: ProductRowView) => keepsStock(r) && r.stock <= 0 && r.status !== "archived";
-  const soldOutCount = rows.filter(soldOutOf).length;
-  const ordered = filter === "all" && !archived ? [...matching].sort((a, b) => Number(soldOutOf(b)) - Number(soldOutOf(a)) || Number(b.status === "draft") - Number(a.status === "draft")) : matching;
-  const page = ordered.slice(0, shown);
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale, { decimals: "hide_whole" });
-  const chip = "inline-flex h-9 items-center gap-1.5 rounded-pill px-3.5 text-sm";
-  const chips: { key: Filter; label: string; n: number; warn?: boolean }[] = [
-    { key: "all", label: w.all, n: counts.all },
-    { key: "active", label: w.onSale, n: counts.active },
-    { key: "draft", label: w.drafts, n: counts.draft },
-    { key: "stock", label: w.needsStock, n: counts.stock, warn: true },
-  ];
   return (
     <div className="flex flex-col gap-5">
-      {!archived && soldOutCount > 0 && (
-        <p className="text-body text-ink-2">
-          <span className="text-ink">{countWords(soldOutCount, w.soldOutSentence)}</span>
-          {fillWords(w.restSentence, { active: counts.active, drafts: countWords(counts.draft, w.draftCount) })}
-        </p>
-      )}
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex h-11 min-w-0 flex-[1_1_16rem] items-center gap-2.5 rounded-pill bg-card px-4 ring-1 ring-edge sm:max-w-sm">
-          <Search aria-hidden className="size-4 shrink-0 text-muted" />
-          <span className="sr-only">{w.search}</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setShown(PAGE);
-            }}
-            placeholder={w.searchPlaceholder}
-            className="min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
-          />
-        </label>
-        {!archived && (
-          <div role="group" aria-label={w.show} className="flex flex-wrap gap-1.5 max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4">
-            {chips
-              .filter((c) => c.key === "all" || c.n > 0)
-              .map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  aria-pressed={filter === c.key}
-                  onClick={() => {
-                    setFilter(c.key);
-                    setShown(PAGE);
-                  }}
-                  className={`${chip} shrink-0 ${filter === c.key ? "bg-inverse text-inverse-ink" : c.warn ? "bg-warning-soft text-warning-text" : "bg-card text-ink-2 hover:text-ink"}`}
-                >
-                  {c.label} <span className="tabular-nums opacity-80">{c.n}</span>
-                </button>
-              ))}
-          </div>
-        )}
+        {toolbar}
         <div role="group" aria-label={w.view} className="ml-auto flex gap-0.5 rounded-pill bg-card p-[3px] max-sm:hidden">
           <button type="button" aria-pressed={view === "grid"} aria-label={w.pictures} title={w.pictures} onClick={() => setView("grid")} className={`flex h-9 w-10 items-center justify-center rounded-pill ${view === "grid" ? "bg-inverse text-inverse-ink" : "text-ink-2"}`}>
             <LayoutGrid aria-hidden className="size-4" />
@@ -151,14 +89,14 @@ export function ProductCatalogue({
         </div>
       </div>
 
-      {matching.length === 0 ? (
-        <p className="rounded-card bg-card p-8 text-center text-body text-muted">{fillWords(w.noMatch, { q: query.trim() })}</p>
+      {rows.length === 0 ? (
+        <p className="rounded-card bg-card p-8 text-center text-body text-muted">{filter.q ? fillWords(w.noMatch, { q: filter.q }) : w.noneShown}</p>
       ) : view === "table" ? (
-        <ProductsTable slug={slug} rows={page} archived={archived} priceHeader={priceHeader} locale={locale} bulk={bulk} />
+        <ProductsTable slug={slug} rows={rows} total={total} filter={filter} archived={archived} priceHeader={priceHeader} locale={locale} bulk={bulk} />
       ) : (
         // On a phone (round 8, D626) each product is a row: a small picture, the name, the price and one line of state with its action.
         <ul className="grid gap-4 max-sm:gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr))]">
-          {page.map((p) => {
+          {rows.map((p) => {
             const soldOut = keepsStock(p) && p.stock <= 0 && p.status !== "archived";
             const low = keepsStock(p) && p.stock > 0 && p.stock <= LOW_STOCK_AT;
             return (
@@ -214,16 +152,12 @@ export function ProductCatalogue({
           })}
         </ul>
       )}
+      {pager}
       {/* On a phone the one green button is under the list, in the thumb's reach (round 8). */}
       {bulk && !archived && (
         <AdminLink href={`/admin/${slug}/products/new`} className="flex h-12 items-center justify-center rounded-pill bg-brand text-body-strong text-brand-ink sm:hidden">
           + {w.addProduct}
         </AdminLink>
-      )}
-      {matching.length > shown && (
-        <button type="button" onClick={() => setShown((n) => n + PAGE)} className="self-center rounded-pill border border-edge bg-card px-5 py-2.5 text-body text-ink hover:bg-sunken">
-          {fillWords(w.showMore, { n: Math.min(PAGE, matching.length - shown) })}
-        </button>
       )}
     </div>
   );

@@ -95,6 +95,11 @@ under *What the router fetches ahead*.
   `TextInput`, `Select` or `TextArea` (`fieldClass()` for a box drawn another way); an empty list is `EmptyState` (title, a line, one next
   step); a list's pages are `Pager` (by number or by cursor, links that work without script) and its search `ListSearch` (a GET form,
   `keep` for the list's other values, `tools` in the bar, `aside` beside it).
+- A list shows a hundred a page by number (`LIST_PAGE_SIZE`, `listPage()`, `listOffset()` in `src/lib/list-page.ts`; code review 1.13, D834): its read
+  counts what its filters find in the same statement and ends its order on a unique key, the page draws `Pager` with the query's other values, so
+  a list that holds more than it shows says "100 of 150", and a page past the last opens the first. Only a list whose rows keep arriving pages by
+  cursor (Orders). Its search is `ListSearch`, its views and filters in the same form; a bulk *choose all* says whether it means this page or every
+  match on all pages. Customers, Products, Invoices, Returns, Pages, Articles and the platform's Stores and Customers do.
 - Anything that asks first is `ConfirmButton`: the admin's `Modal` with the action's own words (the question's first sentence its title,
   the confirm word, *Cancel* focused), then its `action`, or its form submitted with it as the submitter; `ask={false}` where nothing needs
   asking, `cancel` where *Cancel* would read as the action's own. Never `window.confirm`.
@@ -361,6 +366,20 @@ under *What the router fetches ahead*.
   `src/server/sign-in-limit.ts`: `SIGN_IN_TRIES` wrong tries per `SIGN_IN_WINDOW_MINUTES`, `chat_usage` rows with no store keyed
   by a keyed hash of the address, never the address; every address counted alike so the answer never says which have access).
   Two-step pages live under `/admin/sign-in/two-step` and `/admin/account`.
+
+## A person's own name and email (D836, `src/server/email-change.ts`)
+
+- Your account changes the person's own name (`changeOwnName()`, `cleanName()`: 1 to 120 characters) and, one step away at
+  `/admin/account/email`, their email. Nothing else writes `accounts.name` or `accounts.email` after an account is made (and the account's
+  erasure); a platform admin corrects a name with `correctName()` (the stores area) and never sets an address.
+- An email moves only by `confirmEmailChange()`, the button of the page the link opens (`/admin/account/email/confirm`, outside the gate):
+  asked with `requestEmailChange()` (the second step where the account has one, a sign-in from the last ten minutes, `freshness()`) or sent
+  by an owner of the platform with `sendEmailChangeFor()` after their own fresh sign-in. The change waits in `commerce.account_email_changes`
+  (one per account, a SHA-256 of the token, 24 hours); the token is in no log; Supabase Auth's email is set last in the same transaction, and
+  its refusal rolls the change back. The old address is told when it is asked and when it is done.
+- The person's customer of Kaizena Flow's own store follows a new name or address only while it still matches the account; a store owner
+  never renames a member (the account is theirs across stores). Every step is `auditAccount()` with the field `{ changed: true }`, never a
+  name or an address as a value. A new reader of a person's address reads `accounts.email`; a new copy of it is kept in step here.
 
 ## Permissions (D158)
 

@@ -150,3 +150,31 @@ describe("words changed where they are (email plan M3.4)", () => {
     expect(withBlockText(steps, "e", "nb-NO", 9, "x")).toEqual(steps);
   });
 });
+
+describe("blocks added between and removed (email plan M3.4)", () => {
+  it("adds a block at a place and removes one, never the last", async () => {
+    const { withBlockAt } = await import("./flows");
+    const steps: FlowStep[] = [{ id: "e", kind: "email", content: { "nb-NO": { subject: "Hei", preview: "", blocks: [{ type: "paragraph", text: "A" }] } } }];
+    const added = withBlockAt(steps, "e", "nb-NO", { add: "button", at: 1, words: "Se" });
+    expect(stepAt(added, ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [{ text: "A" }, { type: "button", text: "Se", url: "/" }] } } });
+    const first = withBlockAt(added, "e", "nb-NO", { add: "heading", at: 0, words: "Tittel" });
+    expect(stepAt(first, ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [{ type: "heading" }, { type: "paragraph" }, { type: "button" }] } } });
+    expect(stepAt(withBlockAt(first, "e", "nb-NO", { remove: 1 }), ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [{ type: "heading" }, { type: "button" }] } } });
+    // The last block stays; a place outside the email changes nothing.
+    expect(withBlockAt(steps, "e", "nb-NO", { remove: 0 })).toEqual(steps);
+    expect(withBlockAt(steps, "e", "nb-NO", { add: "divider", at: 5, words: "" })).toEqual(steps);
+    // A product from the store's facts (D352), put where it was chosen.
+    const product = { type: "product" as const, product: "00000000-0000-4000-8000-000000000001", handle: "mug", label: "Mug" };
+    expect(stepAt(withBlockAt(steps, "e", "nb-NO", { fact: product, at: 0 }), ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [product, { type: "paragraph" }] } } });
+  });
+});
+
+describe("a language started from another (email plan M3.4)", () => {
+  it("copies an email's words to a language not yet written, never over one that is", async () => {
+    const { withLanguageCopy } = await import("./flows");
+    const copied = withLanguageCopy(tree, "welcome", "nb-NO", "en-GB");
+    expect(stepAt(copied, ["0"])).toMatchObject({ content: { "en-GB": { subject: "Hei" }, "nb-NO": { subject: "Hei" } } });
+    expect(withLanguageCopy(copied, "welcome", "en-GB", "nb-NO")).toEqual(copied);
+    expect(withLanguageCopy(tree, "welcome", "sv-SE", "en-GB")).toEqual(tree);
+  });
+});

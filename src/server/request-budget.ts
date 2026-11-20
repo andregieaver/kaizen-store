@@ -107,6 +107,10 @@ export const BUDGETS = {
   rec: { window: "minute", visitor: 20, store: 2000 },
   // A visitor's browser asking for its recordings to be deleted (D656): rare, and never refused for want of consent.
   forget: { window: "minute", visitor: 10, store: 600 },
+  // A change of email (D836): each request sends a link to an address the person typed and a notice to their own address, so a few an
+  // hour for one account (the visitor is the account's id; a platform admin's sends count on the person's) and a ceiling for the whole site,
+  // under no store. A failed count refuses, as the form must not become a way to send mail from Kaizena Flow's address.
+  email_change: { window: "hour", visitor: 5, store: 300 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;
@@ -115,9 +119,9 @@ export type BudgetEndpoint = keyof typeof BUDGETS;
  * Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles,
  * nor the notice form become a way to send mail from Kaizena Flow's address, nor the docs' search or guide a way to spend the platform's AI
  * unmetered (D443: each search may embed its words; D444: each message to the guide asks its text model), nor the sandbox a way to copy
- * stores or call the AI unmetered (D457).
+ * stores or call the AI unmetered (D457), nor a change of email a way to send links to any address (D836).
  */
-export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox", "sandbox_ai", "rec"]);
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox", "sandbox_ai", "rec", "email_change"]);
 
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {

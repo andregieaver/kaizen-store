@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { countsSentence, dayText, declineReasonText, dueMark, eventSentence, exchangeFilterOf, exchangeSentence, exclusionLabel, labelSentence, outcomeLabel, outcomeSentence, isReturnEvent, pageNumber, previewData, queueHref, statusFilters, timeText, todayIn } from "./return-admin";
+import { countsSentence, dayText, declineReasonText, dueMark, eventSentence, exchangeFilterOf, exchangeSentence, exclusionLabel, labelSentence, outcomeLabel, outcomeSentence, isReturnEvent, previewData, queueHref, queueQuery, statusFilters, timeText, todayIn } from "./return-admin";
 import { ACTION_LABELS, KIND_LABELS, REASON_LABELS, STATUS_HINTS, STATUS_LABELS } from "./return-admin-english";
 import { RETURN_CONDITIONS, RETURN_FILTER_STATUSES } from "./return-input";
 import { refundFor } from "./return-refund";
@@ -53,10 +53,9 @@ describe("the queue's addresses", () => {
     expect(queueHref(base, { status: "all", kind: "withdrawal", q: " 1001 ", page: 3 })).toBe(`${base}?status=all&kind=withdrawal&q=1001&page=3`);
   });
 
-  it("read a page number from the address, and fall back to the first", () => {
-    expect(pageNumber("3")).toBe(3);
-    expect(pageNumber(["2", "5"])).toBe(2);
-    for (const bad of [undefined, "0", "-1", "x", "1.5", "99999"]) expect(pageNumber(bad), String(bad)).toBe(1);
+  it("hand the pager the same values, without the page (D834)", () => {
+    expect(queueQuery({ status: "open", kind: "all", q: "", overdue: false })).toEqual({});
+    expect(queueQuery({ status: "all", q: " 1001 ", overdue: true, exchange: "wished" })).toEqual({ status: "all", q: "1001", overdue: "1", exchange: "wished" });
   });
 });
 

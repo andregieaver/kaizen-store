@@ -1,6 +1,6 @@
 {
-  "id": "70c1a751-9527-4ea2-bc3b-1da7aead2d61",
-  "prevId": "1d54f972-fc3c-4a55-af29-175ea8334a70",
+  "id": "307f1c8b-8582-4d79-89c0-f2791c6ef93e",
+  "prevId": "597fd800-c794-4795-83cf-8520fcdf2807",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1090,6 +1090,126 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.account_email_changes": {
+      "name": "account_email_changes",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "new_email": {
+          "name": "new_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_email_changes_account_id_accounts_id_fk": {
+          "name": "account_email_changes_account_id_accounts_id_fk",
+          "tableFrom": "account_email_changes",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "account_email_changes_requested_by_accounts_id_fk": {
+          "name": "account_email_changes_requested_by_accounts_id_fk",
+          "tableFrom": "account_email_changes",
+          "columnsFrom": [
+            "requested_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "account_email_changes_account_key": {
+          "name": "account_email_changes_account_key",
+          "columns": [
+            "account_id"
+          ],
+          "nullsNotDistinct": false
+        },
+        "account_email_changes_token_key": {
+          "name": "account_email_changes_token_key",
+          "columns": [
+            "token_hash"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "account_email_changes_token": {
+          "name": "account_email_changes_token",
+          "value": "\"commerce\".\"account_email_changes\".\"token_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "account_email_changes_email": {
+          "name": "account_email_changes_email",
+          "value": "\"commerce\".\"account_email_changes\".\"new_email\" = lower(btrim(\"commerce\".\"account_email_changes\".\"new_email\")) and length(\"commerce\".\"account_email_changes\".\"new_email\") between 3 and 254 and \"commerce\".\"account_email_changes\".\"new_email\" ~ '^[^@[:space:]]+@[^@[:space:]]+$'"
+        },
+        "account_email_changes_times": {
+          "name": "account_email_changes_times",
+          "value": "\"commerce\".\"account_email_changes\".\"expires_at\" > \"commerce\".\"account_email_changes\".\"created_at\" and (\"commerce\".\"account_email_changes\".\"used_at\" is null or \"commerce\".\"account_email_changes\".\"used_at\" >= \"commerce\".\"account_email_changes\".\"created_at\")"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.account_recovery_codes": {
       "name": "account_recovery_codes",

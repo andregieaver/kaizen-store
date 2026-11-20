@@ -32,8 +32,11 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account/wordpress", icon: "blocks", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
 ];
 
-/** Addresses inside the Account section besides its pages: Kaizen Life's sign-in return, deleting one's account (D377), and where the theme store's *Try it in your store* lands. */
-export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/delete"];
+/**
+ * Addresses inside the Account section besides its pages: Kaizen Life's sign-in return, deleting one's account (D377), changing one's email
+ * (D836), and where the theme store's *Try it in your store* lands.
+ */
+export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/delete", "/account/email"];
 
 type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName };
 /** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */

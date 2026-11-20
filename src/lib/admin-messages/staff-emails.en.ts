@@ -27,6 +27,29 @@ export const staffEmailsEn = {
       "If it was not you, someone else may have access to your account. Sign in, change your password at once and set up two-step sign-in again, then tell the owner of your store.",
     signIn: "Sign in",
   },
+  /** A change of email (D836): the link to the new address, and the two notices to the old one. None signs anyone in. */
+  emailChange: {
+    hello: "Hello {person},",
+    confirm: {
+      subject: "Confirm your new email address for Kaizena Flow",
+      intro: "You asked to use {email} for your Kaizena Flow account. Open the link to make the change.",
+      introByAdmin: "A Kaizena Flow admin asked, for you, to use {email} for your Kaizena Flow account. Open the link to make the change.",
+      button: "Use this address",
+      expires: "The link works once, for {hours} hours. It does not sign you in: you sign in with this address afterwards.",
+      ignore: "If you did not ask for this, ignore this email. Nothing changes.",
+    },
+    requested: {
+      subject: "A change of your Kaizena Flow email address was asked for",
+      intro: "On {when} someone signed in to your Kaizena Flow account asked to change its email address to {email}. It changes only when the link sent to that address is opened.",
+      introByAdmin: "On {when} a Kaizena Flow admin asked to change your account's email address to {email}. It changes only when the link sent to that address is opened.",
+      notYou: "If this was not you, sign in at once, change your password and cancel the change under Your account → Email. Someone else may know your password.",
+    },
+    changed: {
+      subject: "Your Kaizena Flow email address was changed",
+      intro: "On {when} your Kaizena Flow account's email address was changed to {email}. Kaizena Flow writes to that address from now on, and you sign in with it.",
+      notYou: "If this was not you, someone else may have your account. Contact Kaizena Flow's support at kaizenaflow.com at once, so a platform admin can put it back.",
+    },
+  },
   kaizenLife: {
     subject: "Your Kaizena Flow account is linked to Kaizen Life",
     hello: "Hello {person},",

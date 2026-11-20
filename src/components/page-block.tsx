@@ -34,6 +34,7 @@ import { faqJsonLd } from "@/lib/seo";
 import { fixedSizes } from "@/lib/picture-sizes";
 import { embedUrl } from "@/lib/video-embed";
 
+import { BlockLink } from "./block-link";
 import { SHAPES, buttonLook } from "./button-look";
 import { AnimationPlayer, BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo, CountdownView, StatsView } from "./lazy/blocks";
 import { STAT_DURATION_DEFAULT } from "@/lib/stats-count";
@@ -81,7 +82,7 @@ export function PageBlockView({
     case "heading":
       return <Heading block={block} />;
     case "button":
-      return <Button block={block} />;
+      return <Button block={block} plain={preview} />;
     case "contentGrid":
       // Its items are looked up where it is shown: `ContentGridSection` on the site, a preview in the editor.
       return null;
@@ -135,7 +136,7 @@ export function PageBlockView({
     case "separator":
       return <Separator block={block} />;
     case "dualButton":
-      return <DualButton block={block} />;
+      return <DualButton block={block} plain={preview} />;
     case "accordion":
       return <Accordion block={block} />;
     case "tabs":
@@ -184,10 +185,10 @@ export function PageBlockView({
       );
       const href = block.href?.trim() ?? "";
       return href !== "" && isLinkAddress(href) ? (
-        <a href={href} className="inline-block max-w-full focus-visible:outline-2" {...(block.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+        <BlockLink plain={preview} href={href} className="inline-block max-w-full focus-visible:outline-2" {...(block.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
           {player}
           {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}
-        </a>
+        </BlockLink>
       ) : (
         player
       );
@@ -252,14 +253,15 @@ export function PageBlockView({
       return (
         <figure>
           {href !== "" && isLinkAddress(href) ? (
-            <a
+            <BlockLink
+              plain={preview}
               href={href}
               className="inline-block max-w-full focus-visible:outline-2"
               {...(block.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             >
               {picture}
               {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}
-            </a>
+            </BlockLink>
           ) : (
             picture
           )}
@@ -304,11 +306,12 @@ function Heading({ block }: { block: HeadingBlock }) {
  * outline's line and text, or colours a text link; its text colour is for
  * a filled button. It stays usable above a column's own link.
  */
-function Button({ block }: { block: ButtonBlock }) {
+function Button({ block, plain = false }: { block: ButtonBlock; plain?: boolean }) {
   // Its weight, medium unless its typography sets one (D179).
   const look = buttonLook(block, block.fullWidth);
   return (
-    <a
+    <BlockLink
+      plain={plain}
       href={block.href}
       // An A/B test counts clicks on a button by its block (D148).
       data-block-id={block.id}
@@ -321,7 +324,7 @@ function Button({ block }: { block: ButtonBlock }) {
     >
       <Inline text={block.label} />
       {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}
-    </a>
+    </BlockLink>
   );
 }
 
@@ -352,7 +355,7 @@ function Separator({ block }: { block: SeparatorBlock }) {
  * address, sharing size, corners and weight; one under another, each the
  * column's width, on phones if set.
  */
-function DualButton({ block }: { block: DualButtonBlock }) {
+function DualButton({ block, plain = false }: { block: DualButtonBlock; plain?: boolean }) {
   return (
     <div
       // One under another where it stacks (D179: the block's rules, `blockStyle()`).
@@ -363,16 +366,17 @@ function DualButton({ block }: { block: DualButtonBlock }) {
       {(["first", "second"] as const)
         .filter((which) => buttonShows(block[which]))
         .map((which) => (
-          <SideButton key={which} which={which} side={block[which]} block={block} />
+          <SideButton key={which} which={which} side={block[which]} block={block} plain={plain} />
         ))}
     </div>
   );
 }
 
-function SideButton({ which, side, block }: { which: "first" | "second"; side: DualButtonSide; block: DualButtonBlock }) {
+function SideButton({ which, side, block, plain = false }: { which: "first" | "second"; side: DualButtonSide; block: DualButtonBlock; plain?: boolean }) {
   const look = buttonLook({ ...side, size: block.size, shape: block.shape, hover: block.hover });
   return (
-    <a
+    <BlockLink
+      plain={plain}
       href={side.href}
       data-hover={look.hover}
       {...(side.newTab && { target: "_blank", rel: "noopener noreferrer" })}
@@ -383,7 +387,7 @@ function SideButton({ which, side, block }: { which: "first" | "second"; side: D
     >
       <Inline text={side.label} />
       {side.newTab && <span className="sr-only"> (opens in a new tab)</span>}
-    </a>
+    </BlockLink>
   );
 }
 

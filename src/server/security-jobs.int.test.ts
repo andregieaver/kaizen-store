@@ -133,6 +133,6 @@ describe("recovery codes", () => {
 
   it("the daily run reports all three, and one failing does not stop the others", async () => {
     const result = await jobs.runSecurityJobs();
-    expect(Object.keys(result).sort()).toEqual(["auditEntriesPruned", "collaboratorsEnded", "recoveryCodesPruned"]);
+    expect(Object.keys(result).sort()).toEqual(["auditEntriesPruned", "collaboratorsEnded", "emailChangesPruned", "recoveryCodesPruned"]);
   });
 });

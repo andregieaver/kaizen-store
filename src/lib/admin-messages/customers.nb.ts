@@ -510,7 +510,7 @@ export const customersNb: CustomersMessages = {
     tagLabel: "Merke",
     bulk: {
       title: "Merk alle i denne listen",
-      description: "Legger til et merke, eller tar det bort, for alle søket og merket over finner, opptil 1 000 personer.",
+      description: "Legger til et merke, eller tar det bort, for alle listen over finner på alle sidene sine (søket, merket og visningen), opptil 1 000 personer.",
       tag: "Merke",
       add: "Legg til merket",
       remove: "Ta bort merket",

@@ -441,9 +441,9 @@ until part three names workspaces there.
 **E7 as built, part two (20 November 2026).** The sign-up for extensions: `/sign-up/extensions` (and `/no/sign-up/extensions`), linked from
 the store's sign-up and back, ticks each extension sold on its own (a product page sends `?with=support_desk`), an online store too if
 wanted, the business's name and country, and the person; `requestExtensions()` keeps it on the request (`access_requests.wants_store`,
-`extensions`, `country`: migration `20261120005252_colorful_salo`, a request asks for something, and one without a store has a country).
+`extensions`, `country`: migration `20261120070223_past_namora`, a request asks for something, and one without a store has a country).
 Approval, by a platform admin or the person's own confirmation, goes through `approveAccessRequest()`: a request without a store is approved
-into its account's workspace (`commerce.approve_workspace_request()`, `20261120005306_approve_workspace_request`: the account made or found,
+into its account's workspace (`commerce.approve_workspace_request()`, `20261120070225_approve_workspace_request`: the account made or found,
 `make_workspace()` in the request's country with its currency and first language), never with a store's trial; every approval then starts
 the trials of what was ticked (`startChosenTrials()`, as the owner would: none before extensions are sold). The confirmation page still says
 "store" (part three words it for a workspace). Dark until part three: `STANDALONE_SIGNUP_OPEN` is off, so the page answers 404, its action

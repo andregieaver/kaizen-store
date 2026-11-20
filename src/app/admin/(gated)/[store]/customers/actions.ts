@@ -76,7 +76,7 @@ export async function cancelCustomerImportAction(storeSlug: string, jobId: strin
 }
 
 /**
- * Adds a tag to, or takes it off, everyone the list's search and tag find (D380, `customers:write`): the people are read again here from the
+ * Adds a tag to, or takes it off, everyone the list's search, tag and view find on all its pages (D380, D834, `customers:write`): the people are read again here from the
  * same filter, never sent from the browser, at most `BULK_TAG_MAX`.
  */
 export async function bulkTagAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
@@ -86,8 +86,11 @@ export async function bulkTagAction(storeSlug: string, _state: FormState, form: 
   const q = text(form.get("q"), 100);
   const tagText = text(form.get("filterTag"), 80);
   const filter = tagText ? tagKey(tagText) : null;
+  // The list's view (D603) too, so "everyone" is everyone the list finds on all its pages (D834).
+  const shown = form.get("show");
+  const show = shown === "new" || shown === "back" || shown === "subscribed" ? shown : null;
   const mode = form.get("mode") === "remove" ? "remove" : "add";
-  const people = await listCustomers(member.store.id, { q, tag: filter, limit: BULK_TAG_MAX + 1 });
+  const people = await listCustomers(member.store.id, { q, tag: filter, show, limit: BULK_TAG_MAX + 1 });
   if (people.length > BULK_TAG_MAX) return { status: "error", messages: [w.bulk.tooMany] };
   const result = await tagMany(member.store.id, member.account.id, people.map((p) => p.email), text(form.get("tag"), 200), mode);
   if (!result.ok) return { status: "error", messages: [result.problem === "too_many" ? w.bulk.tooMany : w.bulk.badTag] };

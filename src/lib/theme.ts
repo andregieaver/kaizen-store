@@ -6,7 +6,7 @@ import { hoverTimingVars, themeHoverSchema, type ThemeHover } from "./hover-timi
 import { DEFAULT_BREAKPOINTS, type Breakpoints } from "./breakpoints";
 import { breakpointsSchema } from "./breakpoints-schema";
 import { fontFamily, type SiteFonts } from "./fonts-schema";
-import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./page-content";
+import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./content-width";
 import { colourLibrarySchema, type ColourLibrary } from "./colour-library";
 import { sectionStylesSchema, themeElementsSchema, type ThemeElements } from "./theme-elements";
 import type { SectionStyles } from "./section-styles";

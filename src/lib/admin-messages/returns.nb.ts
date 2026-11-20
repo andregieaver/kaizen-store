@@ -288,9 +288,6 @@ export const returnsNb: ReturnsMessages = {
     labelNotBooked: "Etikett ikke bestilt",
     waitingAnswer: "Venter på svaret ditt",
     pages: "Sider med returer",
-    previous: "Forrige",
-    next: "Neste",
-    pageOf: "Side {page} av {pages} · {total} returer",
     loading: "Laster returene…",
   },
   detail: {

@@ -24,6 +24,28 @@ export const staffEmailsNb: StaffEmailsMessages = {
       "Hvis det ikke var deg, kan noen andre ha tilgang til kontoen din. Logg inn, bytt passord med en gang og sett opp innlogging i to trinn igjen, og si så fra til eieren av butikken din.",
     signIn: "Logg inn",
   },
+  emailChange: {
+    hello: "Hei {person},",
+    confirm: {
+      subject: "Bekreft den nye e-postadressen din hos Kaizena Flow",
+      intro: "Du ba om å bruke {email} for Kaizena Flow-kontoen din. Åpne lenken for å gjøre endringen.",
+      introByAdmin: "En administrator hos Kaizena Flow ba, på dine vegne, om å bruke {email} for Kaizena Flow-kontoen din. Åpne lenken for å gjøre endringen.",
+      button: "Bruk denne adressen",
+      expires: "Lenken virker én gang, i {hours} timer. Den logger deg ikke inn: du logger inn med denne adressen etterpå.",
+      ignore: "Hvis du ikke ba om dette, kan du se bort fra denne e-posten. Ingenting endres.",
+    },
+    requested: {
+      subject: "Noen ba om å endre e-postadressen din hos Kaizena Flow",
+      intro: "{when} ba noen som var logget inn på Kaizena Flow-kontoen din, om å endre e-postadressen til {email}. Den endres først når lenken som er sendt til den adressen, blir åpnet.",
+      introByAdmin: "{when} ba en administrator hos Kaizena Flow om å endre e-postadressen til kontoen din til {email}. Den endres først når lenken som er sendt til den adressen, blir åpnet.",
+      notYou: "Hvis det ikke var deg, logg inn med en gang, bytt passord og avbryt endringen under Din konto → E-post. Noen andre kan kjenne passordet ditt.",
+    },
+    changed: {
+      subject: "E-postadressen din hos Kaizena Flow ble endret",
+      intro: "{when} ble e-postadressen til Kaizena Flow-kontoen din endret til {email}. Kaizena Flow skriver til den adressen fra nå av, og du logger inn med den.",
+      notYou: "Hvis det ikke var deg, kan noen andre ha kontoen din. Kontakt kundestøtten til Kaizena Flow på kaizenaflow.com med en gang, så en plattformadministrator kan sette den tilbake.",
+    },
+  },
   kaizenLife: {
     subject: "Kaizena Flow-kontoen din er koblet til Kaizen Life",
     hello: "Hei {person},",

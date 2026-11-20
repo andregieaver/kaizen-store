@@ -14899,6 +14899,40 @@ export const accountRecoveryCodes = commerce.table(
   ],
 );
 
+/**
+ * A person's change of email waiting for its link (D836, `src/server/email-change.ts`): the new address and a SHA-256 of the 32 random
+ * bytes the link carries (never the token), sent to the new address. One per account (a new request replaces it, its old link stops
+ * working); `used_at` is set once, in the transaction that moves the account to the address. `requested_by` is the person, or the platform
+ * admin who sent it for them. Used or expired rows are deleted a day later by the daily job (`pruneEmailChanges()`), and with the account
+ * when it is erased. RLS on, as every commerce table: only server code reaches it.
+ */
+export const accountEmailChanges = commerce
+  .table(
+    "account_email_changes",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      accountId: uuid("account_id")
+        .notNull()
+        .references(() => accounts.id),
+      newEmail: text("new_email").notNull(),
+      tokenHash: text("token_hash").notNull(),
+      requestedBy: uuid("requested_by")
+        .notNull()
+        .references(() => accounts.id),
+      createdAt: createdAt(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+      usedAt: timestamp("used_at", { withTimezone: true }),
+    },
+    (t) => [
+      unique("account_email_changes_account_key").on(t.accountId),
+      unique("account_email_changes_token_key").on(t.tokenHash),
+      check("account_email_changes_token", sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+      check("account_email_changes_email", sql`${t.newEmail} = lower(btrim(${t.newEmail})) and length(${t.newEmail}) between 3 and 254 and ${t.newEmail} ~ '^[^@[:space:]]+@[^@[:space:]]+$'`),
+      check("account_email_changes_times", sql`${t.expiresAt} > ${t.createdAt} and (${t.usedAt} is null or ${t.usedAt} >= ${t.createdAt})`),
+    ],
+  )
+  .enableRLS();
+
 
 // ---------------------------------------------------------------------------
 // GDPR export, erasure and retention (wave 1, 1g, D162, docs/wave-1g-gdpr.md)

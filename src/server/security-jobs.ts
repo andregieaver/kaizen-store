@@ -1,19 +1,21 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { AUDIT_RETENTION_MONTHS } from "@/lib/audit";
 
 import { audit } from "./auth";
 import { log } from "./log";
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
 /**
  * The daily jobs of staff security (wave 1, 1f, docs/wave-1-trust.md 3.3, 3.6), plain application code run from the daily cron
  * (`/api/cron/subscription-reminders`). Deletion lives here and not in a database function: a collaborator's expiry, the pruning of
- * the activity log and of old recovery codes are statements the migration tool never has to take. Each takes the clock, so a test
+ * the activity log, of old recovery codes and of email changes (D836) are statements the migration tool never has to take. Each takes the clock, so a test
  * holds it still.
  */
 
@@ -68,8 +70,26 @@ export async function pruneRecoveryCodes(now: Date = new Date()): Promise<number
   return rows.length;
 }
 
-/** The three jobs for the daily cron, each isolated so one failing does not stop the others. */
-export async function runSecurityJobs(now: Date = new Date()): Promise<{ collaboratorsEnded: number; auditEntriesPruned: number; recoveryCodesPruned: number }> {
+/**
+ * Removes email changes (D836, `src/server/email-change.ts`) used or run out more than a day ago: the new address they hold is a person's
+ * data, kept no longer than its link.
+ */
+export async function pruneEmailChanges(now: Date = new Date()): Promise<number> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`
+      delete from commerce.account_email_changes
+      where coalesce(used_at, expires_at) < ${now.toISOString()}::timestamptz - interval '1 day'
+      returning id
+    `,
+  );
+  return rows.length;
+}
+
+/** The four jobs for the daily cron, each isolated so one failing does not stop the others. */
+export async function runSecurityJobs(
+  now: Date = new Date(),
+): Promise<{ collaboratorsEnded: number; auditEntriesPruned: number; recoveryCodesPruned: number; emailChangesPruned: number }> {
   const run = async (name: string, job: () => Promise<number>) => {
     try {
       return await job();
@@ -82,5 +102,7 @@ export async function runSecurityJobs(now: Date = new Date()): Promise<{ collabo
     collaboratorsEnded: await run("endExpiredCollaborators", () => endExpiredCollaborators(now)),
     auditEntriesPruned: await run("pruneAuditLog", () => pruneAuditLog(now)),
     recoveryCodesPruned: await run("pruneRecoveryCodes", () => pruneRecoveryCodes(now)),
+    // Email changes used or run out a day ago (D836): the new address they hold goes with them.
+    emailChangesPruned: await run("pruneEmailChanges", () => pruneEmailChanges(now)),
   };
 }

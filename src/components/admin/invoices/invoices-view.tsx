@@ -4,13 +4,14 @@ import type { FormState } from "@/components/admin/action-form";
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
+import { kitEn } from "@/lib/admin-messages/kit.en";
 import {
   countryName,
   countsSentence,
   dayLabel,
   documentPdfHref,
   documentPrintHref,
-  DOCUMENTS_PER_PAGE,
+  invoiceQueryValues,
   INVOICE_TABS,
   invoicesHref,
   sourceLabel,
@@ -18,15 +19,16 @@ import {
   type InvoiceQuery,
   type InvoiceTab,
 } from "@/lib/invoice-admin";
+import { LIST_PAGE_SIZE } from "@/lib/list-page";
 import { formatMoney } from "@/lib/money";
 import type { DocumentListRow, DocumentPage, FailingPdf, InvoiceCounts, WaitingCreditNote, WaitingInvoice } from "@/server/invoices";
-import { Card, CARD_CLASS, List, ListRow, PageHeader, RowActions, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowLead, TextInput } from "@/components/admin/ui";
+import type { PagerWords } from "@/components/admin/ui/pager";
 
 import { CheckAgainForm, RetryPdfForm } from "./waiting-actions";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
-const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 const th = "px-4 py-2 font-medium";
 const td = "px-4 py-2";
 
@@ -51,6 +53,7 @@ export function InvoicesView({
   exportProblem = null,
   locale = "en-GB",
   words: w = invoicesEn,
+  pagerWords = kitEn.pager,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -73,6 +76,8 @@ export function InvoicesView({
   exportProblem?: string | null;
   locale?: string;
   words?: InvoicesMessages;
+  /** The kit's pager words (`adminText(lang, "kit").pager`, D834). */
+  pagerWords?: PagerWords;
 }) {
   const v = w.view;
   const here = `${base}/invoices`;
@@ -135,7 +140,7 @@ export function InvoicesView({
           w={w}
         />
       ) : (
-        documents && <ListTab base={base} here={here} query={query} today={today} documents={documents} canWrite={canWrite} money={money} w={w} />
+        documents && <ListTab base={base} here={here} query={query} today={today} documents={documents} canWrite={canWrite} money={money} w={w} pagerWords={pagerWords} />
       )}
     </div>
   );
@@ -164,6 +169,7 @@ function ListTab({
   canWrite,
   money,
   w,
+  pagerWords,
 }: {
   base: string;
   here: string;
@@ -173,45 +179,57 @@ function ListTab({
   canWrite: boolean;
   money: (minor: number, currency: string) => string;
   w: InvoicesMessages;
+  pagerWords: PagerWords;
 }) {
   const v = w.view;
   const credit = query.tab === "credit-notes";
   const count = (n: number) => countWords(n, credit ? v.creditNoteCount : v.invoiceCount);
-  const pages = Math.max(1, Math.ceil(documents.total / DOCUMENTS_PER_PAGE));
   const orders = `${base}/orders`;
   const filtered = query.q !== "" || query.all || query.from !== `${today.slice(0, 7)}-01` || query.to !== today;
   const from = query.from ?? "";
   const to = query.to ?? today;
   return (
     <div className="flex flex-col gap-6">
-      <form method="get" action={here} className="flex flex-wrap items-end gap-3" aria-label={credit ? v.filterCreditNotes : v.filterInvoices}>
-        {credit && <input type="hidden" name="tab" value="credit-notes" />}
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {v.from}
-          <input type="date" name="from" defaultValue={query.from ?? ""} className={control} />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {v.to}
-          <input type="date" name="to" defaultValue={query.to ?? ""} className={control} />
-        </label>
-        <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-          {v.search}
-          <input name="q" type="search" defaultValue={query.q} placeholder={credit ? v.searchCreditNotes : v.searchInvoices} maxLength={100} className={`${control} w-full`} />
-        </label>
-        <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-          {v.filter}
-        </button>
-        {!query.all && (
-          <Link href={invoicesHref(here, { tab: query.tab, all: true, q: query.q })} className="flex min-h-10 items-center text-sm underline">
-            {v.allPeriods}
-          </Link>
-        )}
-        {filtered && (
-          <Link href={invoicesHref(here, { tab: query.tab })} className="flex min-h-10 items-center text-sm underline">
-            {v.thisMonth}
-          </Link>
-        )}
-      </form>
+      {/* The kit's search over the list (code review 1.13, D834), the period under it in the same GET form. */}
+      <ListSearch
+        action={here}
+        value={query.q}
+        label={v.search}
+        placeholder={credit ? v.searchCreditNotes : v.searchInvoices}
+        maxLength={100}
+        words={{ label: v.search, button: v.search }}
+        button="hidden"
+        keep={{ tab: credit ? "credit-notes" : null }}
+        formLabel={credit ? v.filterCreditNotes : v.filterInvoices}
+        aside={
+          <>
+            {!query.all && (
+              <Link href={invoicesHref(here, { tab: query.tab, all: true, q: query.q })} className="flex min-h-10 items-center text-sm underline">
+                {v.allPeriods}
+              </Link>
+            )}
+            {filtered && (
+              <Link href={invoicesHref(here, { tab: query.tab })} className="flex min-h-10 items-center text-sm underline">
+                {v.thisMonth}
+              </Link>
+            )}
+          </>
+        }
+      >
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {v.from}
+            <TextInput type="date" name="from" defaultValue={query.from ?? ""} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {v.to}
+            <TextInput type="date" name="to" defaultValue={query.to ?? ""} />
+          </label>
+          <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+            {v.filter}
+          </button>
+        </div>
+      </ListSearch>
       <p className="text-sm text-muted">
         {query.all ? v.allPeriods : fillWords(v.period, { from: dayLabel(query.from, w), to: dayLabel(query.to, w) })} · {count(documents.total)}
       </p>
@@ -250,25 +268,16 @@ function ListTab({
         </div>
       )}
 
-      {pages > 1 && (
-        <nav aria-label={credit ? v.pagesCreditNotes : v.pagesInvoices} className="flex items-center gap-3 text-sm">
-          {query.page > 1 ? (
-            <Link href={invoicesHref(here, { ...query, page: query.page - 1 }, today)} className="underline">
-              {v.previous}
-            </Link>
-          ) : (
-            <span className="text-muted">{v.previous}</span>
-          )}
-          <span className="text-muted">{fillWords(v.pageOf, { page: query.page, pages, count: count(documents.total) })}</span>
-          {query.page < pages ? (
-            <Link href={invoicesHref(here, { ...query, page: query.page + 1 }, today)} className="underline">
-              {v.next}
-            </Link>
-          ) : (
-            <span className="text-muted">{v.next}</span>
-          )}
-        </nav>
-      )}
+      <Pager
+        words={pagerWords}
+        label={credit ? v.pagesCreditNotes : v.pagesInvoices}
+        base={here}
+        query={invoiceQueryValues({ ...query, page: 1 }, today)}
+        page={query.page}
+        size={LIST_PAGE_SIZE}
+        shown={documents.rows.length}
+        total={documents.total}
+      />
 
       {canWrite ? (
         <Card title={v.csvTitle} compact>
@@ -277,11 +286,11 @@ function ListTab({
             <input type="hidden" name="type" value={credit ? "credit_notes" : "invoices"} />
             <label className="flex flex-col gap-1 text-sm font-medium">
               {v.from}
-              <input type="date" name="from" required defaultValue={from || `${today.slice(0, 7)}-01`} className={control} />
+              <TextInput type="date" name="from" required defaultValue={from || `${today.slice(0, 7)}-01`} />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium">
               {v.to}
-              <input type="date" name="to" required defaultValue={to} className={control} />
+              <TextInput type="date" name="to" required defaultValue={to} />
             </label>
             <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
               {v.download}
