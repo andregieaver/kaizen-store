@@ -69,6 +69,23 @@ export const platformEn = {
     namePlaceholder: "Tell Slack about big plans",
   },
   referrals: {
+    /** Round 69 (D844): Referrals on a phone. `{state}`, `{percent}`, `{months}`, `{days}`, `{n}`. */
+    phone: {
+      lead: "Owners who refer a store earn credit on their own invoices.",
+      programSub: "{state} · {percent} % for {months} months · credit after {days} days",
+      on: "On",
+      off: "Off",
+      referrers: "Referrers",
+      stores: "Referred stores",
+      earned: "Earned",
+      used: "Used",
+      owed: "Owed",
+      referrerCount: { one: "1 referrer", many: "{n} referrers" },
+      storeCount: { one: "1 store", many: "{n} stores" },
+      change: "Change",
+      open: "Open",
+      close: "Close",
+    },
     title: "Referrals",
     description:
       "Store owners refer other store owners and earn credit on their own Kaizena Flow invoices: a share of the plan and the sales fee the referred store pays Kaizena Flow, for a number of months. The terms a referral is made with are the ones below on the day the request is approved; changing them later does not change stores already referred.",
@@ -690,6 +707,18 @@ export const platformEn = {
   },
   /** The docs' AI guide (D444). */
   docsGuide: {
+    /** Round 69 (D844): the docs guide on a phone. `{days}`, `{n}`. */
+    phone: {
+      howSub: "Only from the docs · kept {days}",
+      needsAi: "Needs Kaizena Flow's AI with a text model",
+      look: "Name, picture and greeting",
+      picture: "your picture",
+      greeting: "greetings in two languages",
+      perDay: "At most {n}",
+      read: "Read",
+      change: "Change",
+      close: "Close",
+    },
     title: "Docs guide",
     off: "The AI guide is off: the docs show its button, and readers are told it is not answering.",
     onReady: "{name} answers readers in the docs, from the docs alone.",

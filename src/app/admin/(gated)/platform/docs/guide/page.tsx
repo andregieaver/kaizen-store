@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { DocsGuideForm } from "@/components/admin/docs-guide-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -41,6 +42,10 @@ export default async function DocsGuidePage() {
     <AdminTextScope texts={areaTexts(lang, { platformTools: PLATFORM_TOOLS_WORDS, websitePick: WEBSITE_PICK_WORDS, platformDocsGuide: PLATFORM_DOCS_GUIDE_WORDS })}>
       <div className="flex max-w-3xl flex-col gap-6">
         <PageHeader title={w.title} description={guide.enabled ? (ready ? fillWords(w.onReady, { name: guide.name }) : w.onNoModel) : w.off} />
+        {/* Round 69 (D844): on a phone the guide's switch and settings come first, how it works is a row under them. */}
+        <div className="max-sm:order-last">
+        <PhoneRows>
+        <PhoneRow flat last title={w.how} sub={ready ? fillWords(w.phone.howSub, { days }) : w.phone.needsAi} change={w.phone.read} done={w.phone.close}>
         <Card title={w.how}>
           <div className="flex flex-col gap-2 text-sm">
             <p>{w.howText}</p>
@@ -61,7 +66,10 @@ export default async function DocsGuidePage() {
             )}
           </div>
         </Card>
-        <Card title={w.settings}>
+        </PhoneRow>
+        </PhoneRows>
+        </div>
+        <Card title={w.settings} className="max-sm:p-4 max-sm:[&>header]:sr-only">
           <DocsGuideForm
             guide={guide}
             greetings={{ en: platformText("en").docs.guide.greeting, nb: platformText("nb").docs.guide.greeting }}
