@@ -9,6 +9,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
 import { EVENT_TRIGGERS } from "@/lib/flow-triggers";
+import { FLOW_GUARD, flowGuardPauses, guardCountsOf } from "@/lib/flow-guard";
 import {
   advance,
   checkFlow,
@@ -74,6 +75,8 @@ export type FlowView = {
   replaces: string | null;
   /** A lapse trigger's days (slice 4), or null. */
   triggerDays: number | null;
+  /** When the flow guard switched it off and what it counted (M3.9); null once switched on again. */
+  guard: { at: string; sent: number; left: number } | null;
 };
 
 const flowRow = z.object({
@@ -85,6 +88,8 @@ const flowRow = z.object({
   tested_version: z.number().int().nullable(),
   replaces: col.text.nullable(),
   trigger_days: z.number().int().nullable(),
+  guard_paused_at: col.timestampOrNull,
+  guard_counts: z.unknown(),
   steps: z.unknown(),
   goals: z.unknown(),
 });
@@ -98,11 +103,15 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   tested: r.tested_version === r.version,
   replaces: r.replaces,
   triggerDays: r.trigger_days,
+  guard: (() => {
+    const counts = guardCountsOf(r.guard_counts);
+    return r.guard_paused_at && counts ? { at: r.guard_paused_at, ...counts } : null;
+  })(),
   steps: z.array(flowStepSchema).parse(r.steps),
   goals: z.array(z.object({ kind: z.literal("ordered") })).parse(r.goals),
 });
 
-const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, v.steps, v.goals
+const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, f.guard_paused_at, f.guard_counts, v.steps, v.goals
   from commerce.flows f join commerce.flow_versions v on v.flow_id = f.id and v.version = f.version`;
 
 /** A store's flows, newest first. */
@@ -235,7 +244,8 @@ export async function drawFlowEmails(storeId: string, id: string): Promise<{ per
 export async function switchFlow(storeId: string, accountId: string | null, id: string, on: boolean): Promise<"ok" | "replaced" | "untested" | "missing"> {
   const outcome = await db().transaction(async (tx) => {
     const [row] = await tx.execute(sql`
-      update commerce.flows set enabled = ${on}, enabled_at = case when ${on} and not enabled then now() else enabled_at end, updated_at = now()
+      update commerce.flows set enabled = ${on}, enabled_at = case when ${on} and not enabled then now() else enabled_at end, updated_at = now(),
+             guard_paused_at = case when ${on} then null else guard_paused_at end, guard_counts = case when ${on} then null else guard_counts end
        where store_id = ${storeId}::uuid and id = ${id}::uuid and (${!on} or tested_version = version) returning replaces`);
     if (!row) return null;
     const replaces = z.object({ replaces: col.text.nullable() }).parse(row).replaces;
@@ -252,6 +262,48 @@ export async function switchFlow(storeId: string, accountId: string | null, id: 
   if (outcome.replaced) refreshBuyFacts(storeId);
   await audit(accountId, storeId, on ? "marketing.flow_on" : "marketing.flow_off", { flow: id, ...(outcome.replaced ? { automationOff: outcome.replaced } : {}) });
   return outcome.replaced ? "replaced" : "ok";
+}
+
+/**
+ * The flow guard (email plan M3.9, `flowGuardPauses()`): each switched-on flow's readers of the last `FLOW_GUARD.days` (people who got one
+ * of its emails) and how many of them left the list within `FLOW_GUARD.withinHours` of it; a flow past the line is switched off, the
+ * counts kept on it (`guard_paused_at`, `guard_counts`, which its page and Home say), and audited as the system's
+ * (`marketing.flow_guard_paused`). Hourly, in the first five minutes, from the every-minute flows job (`tickFlows()`, which logs a throw).
+ */
+export async function guardFlows(options: { now?: Date; everyRun?: boolean } = {}): Promise<{ judged: number; paused: number }> {
+  const now = options.now ?? new Date();
+  if (!options.everyRun && now.getUTCMinutes() >= 5) return { judged: 0, paused: 0 };
+  const at = now.toISOString();
+  const rows = await typedRows(
+    z.object({ store_id: col.uuid, flow_id: col.uuid, sent: col.int, left_list: col.int }),
+    sql`
+      select f.store_id, f.id as flow_id, count(distinct r.subscriber_id)::int as sent,
+        count(distinct r.subscriber_id) filter (
+          where m.unsubscribed_at >= st.created_at and m.unsubscribed_at < st.created_at + make_interval(hours => ${FLOW_GUARD.withinHours})
+        )::int as left_list
+      from commerce.flows f
+      join commerce.flow_runs r on r.store_id = f.store_id and r.flow_id = f.id
+      join commerce.flow_run_steps st on st.store_id = r.store_id and st.run_id = r.id and st.outcome in ('sent', 'logged')
+        and st.created_at > ${at}::timestamptz - make_interval(days => ${FLOW_GUARD.days})
+      join commerce.marketing_subscribers m on m.store_id = r.store_id and m.id = r.subscriber_id
+      where f.enabled
+      group by f.store_id, f.id
+    `,
+  );
+  let paused = 0;
+  for (const r of rows) {
+    const counts = { sent: r.sent, left: r.left_list };
+    if (!flowGuardPauses(counts)) continue;
+    const off = await db().execute(sql`
+      update commerce.flows set enabled = false, guard_paused_at = ${at}::timestamptz, guard_counts = ${JSON.stringify(counts)}::jsonb, updated_at = now()
+       where store_id = ${r.store_id}::uuid and id = ${r.flow_id}::uuid and enabled returning id`);
+    if (off.length === 0) continue;
+    paused++;
+    await dropProductViewsUnlessBrowsing(r.store_id);
+    await audit(null, r.store_id, "marketing.flow_guard_paused", { flow: r.flow_id, ...counts });
+    log("warn", "flows.guard_paused", { storeId: r.store_id, flowId: r.flow_id, ...counts });
+  }
+  return { judged: rows.length, paused };
 }
 
 /** The switched-on flow of a store that does an automation's work, by name; null for none (an automation stays off while one is on). */
@@ -621,6 +673,8 @@ export async function tickFlows(): Promise<void> {
     await enterLapsed();
     await enterBrowsed();
     await runFlows();
+    // The flow guard (M3.9): hourly inside, in the first five minutes.
+    await guardFlows();
   } catch (error) {
     log("error", "flows.tick_failed", {}, error);
   }

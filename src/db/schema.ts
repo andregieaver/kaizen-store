@@ -8656,6 +8656,10 @@ export const flows = commerce.table(
     triggerDays: integer("trigger_days"),
     // When it was last switched on: a date trigger counts only from then, so switching one on never emails everyone at once.
     enabledAt: timestamp("enabled_at", { withTimezone: true }),
+    // The flow guard (email plan M3.9, `guardFlows()`): when it switched the flow off because readers left the list after its emails, and
+    // what it counted (`{sent, left}`); cleared when the flow is switched on again.
+    guardPausedAt: timestamp("guard_paused_at", { withTimezone: true }),
+    guardCounts: jsonb("guard_counts"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

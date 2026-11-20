@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireExtension } from "@/components/admin/extension-off";
 import { AdminLink, ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
 import { flowSuggestion } from "@/lib/flow-report";
 import { formatMoney } from "@/lib/money";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
@@ -93,6 +94,15 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           </Chip>
         }
       />
+      {/* The flow guard (M3.9): why it is off, in numbers counted by code; Switch on below starts it again. */}
+      {flow.guard && !flow.enabled && (
+        <div role="alert" className="rounded-panel border border-danger-line bg-danger-soft px-4 py-3 text-body text-ink" data-flow-guard>
+          {w.guard.paused
+            .replace("{left}", flow.guard.left.toLocaleString(numbers))
+            .replace("{sent}", flow.guard.sent.toLocaleString(numbers))
+            .replace("{date}", adminDate(store, flow.guard.at, "day", lang))}
+        </div>
+      )}
       <Card compact>
         <div className="flex flex-col gap-4" data-flow-story>
           <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays)}</p>

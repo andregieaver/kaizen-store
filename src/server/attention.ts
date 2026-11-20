@@ -95,13 +95,14 @@ export async function heldCounts(
   commentStores: readonly string[],
   questionStores: readonly string[],
   flowStores: readonly string[] = [],
-): Promise<{ comments: Map<string, number>; questions: Map<string, number>; flows: Map<string, LosingFlows> }> {
-  if (commentStores.length === 0 && questionStores.length === 0 && flowStores.length === 0) return { comments: new Map(), questions: new Map(), flows: new Map() };
+): Promise<{ comments: Map<string, number>; questions: Map<string, number>; flows: Map<string, LosingFlows>; paused: Map<string, LosingFlows> }> {
+  if (commentStores.length === 0 && questionStores.length === 0 && flowStores.length === 0) return { comments: new Map(), questions: new Map(), flows: new Map(), paused: new Map() };
   const rows = await typedRows(
-    z.object({ store_id: col.uuid, comments: col.int, questions: col.int, flows: col.int, first_flow: col.uuid.nullable() }),
+    z.object({ store_id: col.uuid, comments: col.int, questions: col.int, flows: col.int, first_flow: col.uuid.nullable(), paused: col.int, first_paused: col.uuid.nullable() }),
     sql`
       select x.store_id, count(*) filter (where x.kind = 'comment')::int as comments, count(*) filter (where x.kind = 'question')::int as questions,
-        count(*) filter (where x.kind = 'flow')::int as flows, (array_agg(x.ref order by x.ref) filter (where x.kind = 'flow'))[1] as first_flow
+        count(*) filter (where x.kind = 'flow')::int as flows, (array_agg(x.ref order by x.ref) filter (where x.kind = 'flow'))[1] as first_flow,
+        count(*) filter (where x.kind = 'paused')::int as paused, (array_agg(x.ref order by x.ref) filter (where x.kind = 'paused'))[1] as first_paused
       from (
         select c.store_id, 'comment' as kind, null::uuid as ref from commerce.blog_comments c
         where c.store_id = any(${uuidList(commentStores)}) and c.status = 'pending'
@@ -117,13 +118,18 @@ export async function heldCounts(
         ) c
         where f.store_id = any(${uuidList(flowStores)}) and f.enabled
           and c.entered >= ${LOSING.entered} and c.left_list > c.entered * ${LOSING.share}::numeric
+        union all
+        -- Flows the flow guard switched off (M3.9) in the last 14 days and still off: the owner decides whether they go on again.
+        select f.store_id, 'paused' as kind, f.id as ref from commerce.flows f
+        where f.store_id = any(${uuidList(flowStores)}) and not f.enabled and f.guard_paused_at > now() - interval '14 days'
       ) x
       group by x.store_id
     `,
   );
   const of = (key: "comments" | "questions") => new Map(rows.filter((r) => r[key] > 0).map((r) => [r.store_id, r[key]]));
   const flows = new Map(rows.filter((r) => r.flows > 0).map((r) => [r.store_id, { flows: r.flows, only: r.flows === 1 ? r.first_flow : null }]));
-  return { comments: of("comments"), questions: of("questions"), flows };
+  const paused = new Map(rows.filter((r) => r.paused > 0).map((r) => [r.store_id, { flows: r.paused, only: r.paused === 1 ? r.first_paused : null }]));
+  return { comments: of("comments"), questions: of("questions"), flows, paused };
 }
 
 /** Flows losing readers alone (M3.8), as `heldCounts()` counts them. */
@@ -177,6 +183,8 @@ export type QueueCounts = {
   comments: Map<string, number>;
   questions: Map<string, number>;
   flows: Map<string, LosingFlows>;
+  /** Flows the flow guard switched off (M3.9). */
+  paused: Map<string, LosingFlows>;
 };
 
 /**
@@ -184,18 +192,18 @@ export type QueueCounts = {
  * calls kept for their yes; null for the team's (everyone's activities, the autopilot's calls).
  */
 export async function queueCounts(gates: QueueGates, accountId: string | null, now: Date = new Date()): Promise<QueueCounts> {
-  const [disputes, decisions, leads, activities, { comments, questions, flows }] = await Promise.all([
+  const [disputes, decisions, leads, activities, { comments, questions, flows, paused }] = await Promise.all([
     disputeCounts(gates.disputes, now),
     decisionCounts(gates.decisions, accountId),
     leadCounts(gates.leads),
     activityCounts(gates.activities, accountId, now),
     heldCounts(gates.comments, gates.questions ?? [], gates.flows ?? []),
   ]);
-  return { disputes, decisions, leads, activities, comments, questions, flows };
+  return { disputes, decisions, leads, activities, comments, questions, flows, paused };
 }
 
 /** A store's figures of the queues, only those that wait: what `queueItems()` reads, spread into its `StoreFigures`. */
-export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing"> {
+export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing" | "flowsPaused"> {
   const disputes = counts.disputes.get(storeId);
   const leads = counts.leads.get(storeId) ?? 0;
   const decisions = counts.decisions.get(storeId) ?? 0;
@@ -203,6 +211,7 @@ export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<Queue
   const activities = counts.activities.get(storeId);
   const questions = counts.questions.get(storeId) ?? 0;
   const flows = counts.flows.get(storeId);
+  const paused = counts.paused.get(storeId);
   return {
     ...(disputes && disputes.waiting > 0 ? { disputes } : {}),
     ...(decisions > 0 ? { aiDecisions: decisions } : {}),
@@ -211,6 +220,7 @@ export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<Queue
     ...(comments > 0 ? { blogComments: comments } : {}),
     ...(questions > 0 ? { unansweredQuestions: questions } : {}),
     ...(flows && flows.flows > 0 ? { flowsLosing: flows } : {}),
+    ...(paused && paused.flows > 0 ? { flowsPaused: paused } : {}),
   };
 }
 

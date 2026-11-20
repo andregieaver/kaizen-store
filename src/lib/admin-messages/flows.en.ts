@@ -69,6 +69,7 @@ export const flowsEn = {
     too_big: "“{subject}” ({language}) is long: Gmail cuts an email off near 102 KB. Shorten it.",
   },
   stepReach: { measured: "About {n} would get it in the next 30 days, judged from who got it before.", all: "About {n} would get it in the next 30 days.", up_to: "Up to {n} would get it in the next 30 days, by which way they go." },
+  guard: { paused: "Switched off on {date}: {left} of the {sent} people who got its emails in the week before left your list within two days of one. Look at its emails and how often they go, then test it and switch it on again." },
   reach: {
     none: "Nobody would have started it in the last 30 days.",
     one: "About 1 person would start it in the next 30 days, judged from the last 30.",
