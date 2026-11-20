@@ -8,7 +8,7 @@ type Row = Record<string, unknown>;
 vi.mock("server-only", () => ({}));
 
 const { customerPage, customerSummary, findCustomer, getCustomerDetail, listCustomers } = await import("./customer-admin");
-const { listPlatformCustomers, getPlatformCustomer, listStorePeople } = await import("./platform-customers");
+const { listPlatformCustomers, getPlatformCustomer, listStorePeople, platformCustomerPage } = await import("./platform-customers");
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -158,5 +158,22 @@ describe("Kaizena Flow's customers (D35)", () => {
     expect(found[0].stores).toEqual([expect.objectContaining({ slug: `cust-${run}`, role: "owner", planName: null })]);
     expect((await getPlatformCustomer(ownerId))?.stores).toHaveLength(1);
     expect(await listStorePeople(storeId)).toEqual([expect.objectContaining({ id: ownerId, role: "owner" })]);
+  });
+
+  it("come a page at a time with the count of all the search finds, none lost or repeated at a page's edge (D834)", async () => {
+    for (const letter of ["a", "b", "c"]) {
+      const [request] = await db().execute<Row>(sql`
+        insert into commerce.access_requests (email, name, store_name) values (${`sider-${letter}-${run}@example.com`}, ${`Side ${letter}`}, 'Sider') returning id
+      `);
+      await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`sider-${letter}-${run}`}, ${`Sider ${run} ${letter}`}, null)`);
+    }
+    // One moment for all three: only the order's last key keeps the edge.
+    await db().execute(sql`update commerce.accounts set created_at = '2026-01-01T00:00:00Z' where email like ${`sider-%-${run}@example.com`}`);
+    const first = await platformCustomerPage({ q: `sider ${run}`, limit: 2, offset: 0 });
+    const second = await platformCustomerPage({ q: `sider ${run}`, limit: 2, offset: 2 });
+    expect([first.rows.length, first.total, second.rows.length, second.total]).toEqual([2, 3, 1, 3]);
+    expect(new Set([...first.rows, ...second.rows].map((c) => c.email))).toEqual(new Set(["a", "b", "c"].map((l) => `sider-${l}-${run}@example.com`)));
+    expect(second.rows[0].stores).toEqual([expect.objectContaining({ role: "owner", planName: null, cancelAtPeriodEnd: false })]);
+    expect(await platformCustomerPage({ q: `nobody-${run}` })).toEqual({ rows: [], total: 0 });
   });
 });

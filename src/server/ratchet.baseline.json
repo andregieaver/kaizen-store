@@ -259,7 +259,7 @@
     "src/server/plan-features.ts": 4,
     "src/server/plan-reminders.ts": 21,
     "src/server/platform-api-tokens.ts": 2,
-    "src/server/platform-customers.ts": 4,
+    "src/server/platform-customers.ts": 3,
     "src/server/platform-discounts.ts": 10,
     "src/server/platform-endpoints.ts": 2,
     "src/server/platform-experiment-tools.ts": 1,

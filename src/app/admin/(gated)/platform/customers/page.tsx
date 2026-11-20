@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { Avatar } from "@/components/avatar";
-import { listPlatformCustomers } from "@/server/platform-customers";
+import { platformCustomerPage } from "@/server/platform-customers";
 import { requirePlatformReader } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
-import { ButtonLink, Card, EmptyState, List, ListRow, ListSearch, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, EmptyState, List, ListRow, ListSearch, PageHeader, Pager, RowDate, RowLead } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { LIST_PAGE_SIZE, listOffset, listPage } from "@/lib/list-page";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -23,9 +25,12 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
   const w = adminText(lang, "platform").customers;
   const billingWords = adminText(lang, "billing");
   const roleWord = (role: string) => (adminText(lang, "staff").roles as Record<string, string>)[role] ?? role;
-  const raw = (await searchParams).q;
-  const q = typeof raw === "string" ? raw : "";
-  const customers = await listPlatformCustomers({ q });
+  const query = await searchParams;
+  const q = typeof query.q === "string" ? query.q : "";
+  // A hundred a page, with how many the search finds in all (code review 1.13, D834); a page past the last opens the first.
+  const page = listPage(query.page);
+  const { rows: customers, total } = await platformCustomerPage({ q, limit: LIST_PAGE_SIZE, offset: listOffset(page) });
+  if (customers.length === 0 && page > 1) redirect(q ? `/admin/platform/customers?q=${encodeURIComponent(q)}` : "/admin/platform/customers");
   const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
 
   return (
@@ -83,6 +88,16 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
               </ListRow>
             ))}
           </List>
+          <Pager
+            words={adminText(lang, "kit").pager}
+            label={w.title}
+            base="/admin/platform/customers"
+            query={{ q: q || undefined }}
+            page={page}
+            size={LIST_PAGE_SIZE}
+            shown={customers.length}
+            total={total}
+          />
         </Card>
       )}
     </div>
