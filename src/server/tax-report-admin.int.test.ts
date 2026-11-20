@@ -1,9 +1,15 @@
 import { sql } from "drizzle-orm";
+import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FormState } from "@/components/admin/action-form";
+import { AdminTextProvider } from "@/components/admin/admin-text";
 import { closeDb, db } from "@/db/client";
+import { areaTexts } from "@/lib/admin-area";
+import type { AdminLang } from "@/lib/admin-lang";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 import { presetPeriod, rangeLabel, todayIn } from "@/lib/analytics-period";
 
 import { addMember, auditRows, fakeAuthState, fakeSupabase, linkAuthUser, makeAccount } from "./trust-fixtures";
@@ -215,9 +221,16 @@ describe("the page", () => {
   });
 
   it("has a loading placeholder in the admin's own style", () => {
-    const out = renderToString(loading.default());
+    // A route's loading screen is drawn inside the signed-in layout, whose provider hands down the shell's words in the account's language
+    // (`(gated)/layout.tsx`); outside it the shell would be fetched in English and the screen would wait for it.
+    const inLayout = (lang: AdminLang) =>
+      renderToString(
+        createElement(AdminTextProvider, { lang, texts: areaTexts(lang, { common: COMMON_WORDS, shell: SHELL_WORDS }) } as Parameters<typeof AdminTextProvider>[0], loading.default()),
+      );
+    const out = inLayout("en");
     expect(out).toContain("animate-pulse");
     expect(out).toContain("Not a tax return");
+    expect(inLayout("nb")).toContain(SHELL_WORDS.nb.loading.vatReportStatement);
   });
 });
 
