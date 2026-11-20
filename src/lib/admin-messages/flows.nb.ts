@@ -91,6 +91,7 @@ export const flowsNb: FlowsMessages = {
       build_on_top: "Bygg videre på det som virker: e-posten som ga mest, kunne få en oppfølging en uke senere.",
     },
   },
+  widths: { label: "Vist som", desktop: "Datamaskin", phone: "Mobil" },
   change: "Endre",
   subject: "Emne",
   words: "Tekst",

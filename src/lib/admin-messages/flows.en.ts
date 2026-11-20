@@ -91,6 +91,7 @@ export const flowsEn = {
       build_on_top: "Build on what works: the email that brought the most could have a follow-up a week later.",
     },
   },
+  widths: { label: "Seen at", desktop: "Desktop", phone: "Phone" },
   change: "Change",
   subject: "Subject",
   words: "Words",
