@@ -856,6 +856,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D851 | **A page's permission is its own, not its place in the menu: every nav item names its area, areaOfPath and platformAreaOfPath read it,…** | 2026-11-20 | [text](decisions/D851.md) |
 | D852 | **The AI manager suggests an extension from a fact and starts its trial on the owner's yes (D748 E9 part one)** | 2026-11-20 | [text](decisions/D852.md) |
 | D853 | **Admin redesign round 71: Kaizena Flow's Stripe, stores' support and docs feedback on a phone** | 2026-11-20 | [text](decisions/D853.md) |
+| D854 | **The AI tunes Kaizena Flow's prices, as far as the platform admin allows (D748 E9 part two)** | 2026-11-20 | [text](decisions/D854.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
