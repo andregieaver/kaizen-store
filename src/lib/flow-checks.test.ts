@@ -59,3 +59,12 @@ describe("a broadcast's words (M3.6)", () => {
     expect(contentChecks(content, "nb-NO")).toEqual([{ kind: "picture_alt", locale: "nb-NO", blocking: false }]);
   });
 });
+
+describe("personal fields in a flow's email (M2.6)", () => {
+  it("block one without a fallback, and pass one with", () => {
+    const bad: FlowStep[] = [{ id: "a", kind: "email", content: { "nb-NO": words("Hei {first_name}", [p("Hei")]) } }];
+    expect(flowChecks(bad, "nb-NO").map((c) => [c.kind, c.blocking])).toEqual([["personal_field", true]]);
+    const good: FlowStep[] = [{ id: "a", kind: "email", content: { "nb-NO": words("Hei {first_name|du}", [p("Hei")]) } }];
+    expect(flowChecks(good, "nb-NO")).toEqual([]);
+  });
+});

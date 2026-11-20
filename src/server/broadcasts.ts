@@ -64,6 +64,7 @@ import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 import { SEGMENT_DESCRIBE } from "@/lib/segment-labels";
+import type { PersonalFacts } from "@/lib/personal-fields";
 import { isReservedAddress, RESERVED_NOTE } from "@/lib/reserved-address";
 
 type Row = Record<string, unknown>;
@@ -216,9 +217,12 @@ function emailFor(
   moved = false,
   /** The recipient's subscriber, whose own presses their links name (M1.3, D754); null for a test. */
   subscriberId: string | null = null,
+  /** Their name and company for personal fields (M2.6); null for a test, which shows every fallback. */
+  person: PersonalFacts | null = null,
 ): Rendered | null {
   return marketingEmail({
     moved,
+    person,
     store,
     content: broadcast.content,
     facts,
@@ -439,6 +443,9 @@ type Claimed = {
   marketCode: string | null;
   status: string;
   token: string;
+  /** The reader's name and company for personal fields (M2.6): theirs on the list, else their account's. */
+  name: string;
+  company: string;
 };
 
 /**
@@ -517,7 +524,9 @@ async function claim(only: string | null, limit: number): Promise<Claimed[]> {
     from picked, commerce.marketing_subscribers s
     where r.broadcast_id = picked.broadcast_id and r.subscriber_id = picked.subscriber_id
       and s.store_id = r.store_id and s.id = r.subscriber_id
-    returning r.store_id, r.broadcast_id, r.subscriber_id, r.email, r.locale, r.market_code, s.status, s.token
+    returning r.store_id, r.broadcast_id, r.subscriber_id, r.email, r.locale, r.market_code, s.status, s.token,
+      coalesce(nullif(s.name, ''), (select c.name from commerce.customers c where c.store_id = s.store_id and c.id = s.customer_id), '') as person_name,
+      coalesce((select c.company_name from commerce.customers c where c.store_id = s.store_id and c.id = s.customer_id), '') as company
   `);
   return rows.map((row) => ({
     storeId: String(row.store_id),
@@ -528,6 +537,8 @@ async function claim(only: string | null, limit: number): Promise<Claimed[]> {
     marketCode: row.market_code ? String(row.market_code) : null,
     status: String(row.status),
     token: String(row.token),
+    name: String(row.person_name ?? ""),
+    company: String(row.company ?? ""),
   }));
 }
 
@@ -595,7 +606,7 @@ async function sendBatch(
     if (!broadcasts.has(r.broadcastId)) broadcasts.set(r.broadcastId, await getBroadcast(r.storeId, r.broadcastId));
     const store = stores.get(r.storeId);
     const broadcast = broadcasts.get(r.broadcastId);
-    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId), r.subscriberId) : null;
+    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId), r.subscriberId, { name: r.name, company: r.company }) : null;
     if (!store || !email) {
       await markRecipient(r, "failed", null);
       result.failed += 1;

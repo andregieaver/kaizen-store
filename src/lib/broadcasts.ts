@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { contentTexts, tokenProblems } from "./personal-fields";
+
 import { findAvoided, type AvoidedFinding } from "./brand";
 import { findClaims, type ClaimFinding } from "./claims";
 import { BROADCAST_AUDIENCES } from "./broadcast-status";
@@ -101,6 +103,10 @@ export function languageFor(content: BroadcastContent, locale: string | null, ma
 }
 
 /** Why a broadcast cannot be sent as it is, in words; empty when it can. The audience is checked by the server. */
+/** The send checks' words for personal fields (M2.6), said as they are so the admin's catalogue words them (`marketingProblem()`). */
+export const PERSONAL_NO_FALLBACK = "Every personal field needs a fallback after a bar, such as {first_name|there}.";
+export const PERSONAL_UNKNOWN = "Use only {first_name|…} and {company|…} as personal fields.";
+
 export function sendProblems(content: BroadcastContent, main: string): string[] {
   const problems: string[] = [];
   const mainContent = content[main];
@@ -109,6 +115,13 @@ export function sendProblems(content: BroadcastContent, main: string): string[] 
   for (const [locale, c] of Object.entries(content)) {
     if (locale === main) continue;
     if ((c.subject && c.blocks.length === 0) || (!c.subject && c.blocks.length > 0)) problems.push(`Finish the ${locale} version or empty it: it needs both a subject and something to say.`);
+  }
+  // Personal fields (M2.6): each with a fallback, and only fields the store has, so no reader gets "Hi ,".
+  for (const c of Object.values(content)) {
+    for (const problem of contentTexts(c).flatMap(tokenProblems)) {
+      const said = problem.kind === "no_fallback" ? PERSONAL_NO_FALLBACK : PERSONAL_UNKNOWN;
+      if (!problems.includes(said)) problems.push(said);
+    }
   }
   return problems;
 }

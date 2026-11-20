@@ -395,7 +395,9 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
   return (
     <div className="flex flex-col gap-2" data-email-in-place>
       {tabs}
-      <p className="text-caption text-muted">{w.inPlace.hint}</p>
+      <p className="text-caption text-muted">
+        {w.inPlace.hint} {w.inPlace.personal}
+      </p>
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4">
         <div>
           <span className="text-caption text-muted">{w.subject}</span>

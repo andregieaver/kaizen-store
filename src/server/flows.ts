@@ -444,6 +444,8 @@ const dueRow = z.object({
   market_code: col.textOrNull,
   token: col.text,
   status: col.text,
+  person_name: col.text,
+  company: col.text,
 });
 
 export type FlowRunResult = { sent: number; suppressed: number; waiting: number; ended: number };
@@ -467,7 +469,9 @@ export async function runFlows(options: { now?: Date; only?: string } = {}): Pro
               order by wake_at limit ${RUN_BATCH} for update skip locked)
           returning r.id, r.store_id, r.flow_id, r.version, r.path, r.entered_at, r.subscriber_id
         )
-        select c.id, c.store_id, c.flow_id, c.subscriber_id, c.path, c.entered_at, v.steps, v.goals, s.email, s.locale, s.market_code, s.token, s.status
+        select c.id, c.store_id, c.flow_id, c.subscriber_id, c.path, c.entered_at, v.steps, v.goals, s.email, s.locale, s.market_code, s.token, s.status,
+          coalesce(nullif(s.name, ''), (select cu.name from commerce.customers cu where cu.store_id = s.store_id and cu.id = s.customer_id), '') as person_name,
+          coalesce((select cu.company_name from commerce.customers cu where cu.store_id = s.store_id and cu.id = s.customer_id), '') as company
           from claimed c
           join commerce.flow_versions v on v.flow_id = c.flow_id and v.version = c.version
           join commerce.marketing_subscribers s on s.store_id = c.store_id and s.id = c.subscriber_id`,
@@ -591,6 +595,8 @@ async function moveOn(
       locale: run.locale,
       marketCode: run.market_code,
       token: run.token,
+      // Personal fields (M2.6): the reader's name and company, theirs on the list, else their account's.
+      person: { name: run.person_name, company: run.company },
       facts,
       link: tracked ? (linkKey, _target, marketSlug) => flowClickUrl(run.flow_id, move.step.id, linkKey, marketSlug, run.subscriber_id) : undefined,
     });
