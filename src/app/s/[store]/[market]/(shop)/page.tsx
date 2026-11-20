@@ -4,7 +4,7 @@ import { AbMarker } from "@/components/lazy/blocks";
 import { PageGoal } from "@/components/ab/page-goal";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageEditLink } from "@/components/page-edit-link";
-import { ProductCard } from "@/components/product-card";
+import { ProductCard, SIGHT_TILES } from "@/components/product-card";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
@@ -123,11 +123,12 @@ export default async function MarketHome({ params, searchParams }: Props) {
         <p>{m.noProducts}</p>
       ) : (
         <ul className="grid grid-cols-2 gap-6 md:grid-cols-4">
-          {products.map((product) => (
+          {products.map((product, index) => (
             <ProductCard
               key={product.handle}
               product={product}
               href={productUrl(product.handle)}
+              policy={index < SIGHT_TILES ? "sight" : "intent"}
               market={market}
               m={m}
               store={store.slug}

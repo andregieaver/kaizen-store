@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page, type Request } from "@playwright/test";
 
-import { storePageRows } from "./db";
+import { fullCategory, storePageRows, testStore } from "./db";
 
 /**
  * What a page asks for ahead of a press (bloat review step 0.12, `docs/performance.md`), held in the real build: prefetching only runs in a production build.
@@ -28,6 +28,7 @@ const ROUTER_REQUESTS: Record<string, number> = {
   "/s/demo/no/cart": 6,
   "/s/demo": 0,
 };
+const FULL_LISTING_MOST = 20; // a 48-product category read to the end on a phone (bloat review step 2.8)
 const MEASURE = process.env.E2E_MEASURE === "1";
 const PAGES = ["/", "/s/demo", "/s/demo/no", "/s/demo/no/cart"];
 const PREFETCH_HEADERS = ["next-router-prefetch", "next-router-segment-prefetch"];
@@ -112,6 +113,50 @@ for (const [path, budget] of Object.entries(ROUTER_REQUESTS)) {
     }
   });
 }
+
+/**
+ * Bloat review step 2.8: a real listing (48 products, the page's most, in a store of the test's own) fetches its first screen of tiles on sight
+ * (`SIGHT_TILES` in src/components/product-card.tsx) and the rest when touched; before, every tile in view was fetched.
+ */
+test("a full listing read to the end fetches no more than 20 pages ahead", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const store = await testStore("prefetch-full");
+  const { slug } = await fullCategory(store.id);
+  const { context, page } = await phone(browser);
+  try {
+    const seen = watch(page);
+    await page.goto(`/s/${store.slug}/no/category/${slug}`);
+    const tiles = page.locator("main a[href*='/p/full-']");
+    await expect(tiles).toHaveCount(48);
+    await page.waitForTimeout(3000);
+    let scrolled = -1;
+    while (scrolled !== (scrolled = await page.evaluate(() => window.scrollY))) {
+      await page.mouse.wheel(0, 800);
+      await page.waitForTimeout(300);
+    }
+    await page.waitForTimeout(3000);
+    const prefetches = await seen.prefetches();
+    if (MEASURE) console.log(`[router] full listing ${prefetches.length}\n${prefetches.join("\n")}`);
+    expect(prefetches.length, `router requests of the full listing:\n${prefetches.join("\n")}`).toBeLessThanOrEqual(FULL_LISTING_MOST);
+    const handles = new Set(prefetches.map((path) => /\/p\/(full-\d+)/.exec(path)?.[1]).filter(Boolean));
+    expect(handles.size, `tiles fetched on sight (the first screen): ${[...handles].join(", ")}`).toBeLessThanOrEqual(6);
+    // A touched tile is fetched: PolicyLink asks on focus as on pointer enter and touch.
+    const before = prefetches.length;
+    const tile = tiles.nth(20);
+    const handle = /\/p\/(full-\d+)/.exec((await tile.getAttribute("href")) ?? "")?.[1];
+    expect(handle, "the 21st tile's handle").toBeTruthy();
+    const ofTile = new RegExp(`/p/${handle}(?![0-9])`);
+    await tile.focus();
+    await expect
+      .poll(async () => (await seen.prefetches()).slice(before).filter((path) => ofTile.test(path)).length, { timeout: 2000 })
+      .toBeGreaterThanOrEqual(1);
+    // Let the requests the focus started finish being read before the page closes.
+    await page.waitForTimeout(1500);
+    await seen.all();
+  } finally {
+    await context.close();
+  }
+});
 
 test("no other view is fetched ahead", async ({ browser }) => {
   test.setTimeout(120_000);

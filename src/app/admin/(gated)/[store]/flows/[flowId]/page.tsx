@@ -10,6 +10,7 @@ import { flowSuggestion } from "@/lib/flow-report";
 import { formatMoney } from "@/lib/money";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
+import { darkPreview } from "@/lib/email-dark";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
@@ -47,6 +48,10 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
   const see = query.see === "1";
   // The width the drawn emails are seen at (M3.4): a phone's or a desktop's.
   const phone = query.width === "phone";
+  // And as a mail app that turns it dark shows it (M3.4).
+  const dark = query.scheme === "dark";
+  const seeAt = (width: "phone" | null, scheme: "dark" | null) =>
+    `/admin/${slug}/flows/${flowId}?see=1${width ? "&width=phone" : ""}${scheme ? "&scheme=dark" : ""}`;
   const member = await requirePermission(slug, "marketing:read");
   const notInAccount = requireExtension(member, "email_automation");
   if (notInAccount) return notInAccount;
@@ -236,25 +241,41 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           <div className="flex flex-col gap-4" data-flow-drawn>
             <p className="text-body-strong text-ink">{drawn.person ? w.seeingEmails.replace("{person}", drawn.person) : w.noPerson}</p>
             {drawn.emails.length > 0 && (
-              <nav aria-label={w.widths.label} className="flex gap-2 text-sm">
-                {(["desktop", "phone"] as const).map((k) => (
-                  <ButtonLink
-                    key={k}
-                    href={`/admin/${store.slug}/flows/${flow.id}?see=1${k === "phone" ? "&width=phone" : ""}`}
-                    aria-current={(k === "phone") === phone ? "true" : undefined}
-                    kind={(k === "phone") === phone ? "secondary" : "quiet"}
-                    size="dense"
-                  >
-                    {w.widths[k]}
-                  </ButtonLink>
-                ))}
-              </nav>
+              <div className="flex flex-wrap gap-4">
+                <nav aria-label={w.widths.label} className="flex gap-2 text-sm">
+                  {(["desktop", "phone"] as const).map((k) => (
+                    <ButtonLink
+                      key={k}
+                      href={seeAt(k === "phone" ? "phone" : null, dark ? "dark" : null)}
+                      aria-current={(k === "phone") === phone ? "true" : undefined}
+                      kind={(k === "phone") === phone ? "secondary" : "quiet"}
+                      size="dense"
+                    >
+                      {w.widths[k]}
+                    </ButtonLink>
+                  ))}
+                </nav>
+                <nav aria-label={w.schemes.label} className="flex gap-2 text-sm">
+                  {(["light", "dark"] as const).map((k) => (
+                    <ButtonLink
+                      key={k}
+                      href={seeAt(phone ? "phone" : null, k === "dark" ? "dark" : null)}
+                      aria-current={(k === "dark") === dark ? "true" : undefined}
+                      kind={(k === "dark") === dark ? "secondary" : "quiet"}
+                      size="dense"
+                    >
+                      {w.schemes[k]}
+                    </ButtonLink>
+                  ))}
+                </nav>
+              </div>
             )}
+            {dark && drawn.emails.length > 0 && <p className="text-caption text-muted">{w.schemes.note}</p>}
             {drawn.emails.map((e) => (
               <iframe
                 key={e.stepId}
                 title={w.frame.replace("{subject}", e.subject)}
-                srcDoc={e.html}
+                srcDoc={dark ? darkPreview(e.html) : e.html}
                 sandbox=""
                 className={`h-[60vh] rounded-panel border border-line bg-white ${phone ? "w-[375px] max-w-full self-center" : "w-full"}`}
               />

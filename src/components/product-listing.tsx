@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { FilterFacets } from "@/components/filter-dialog";
 import { FilterDialog } from "@/components/filter-dialog";
-import { ProductCard } from "@/components/product-card";
+import { ProductCard, SIGHT_TILES } from "@/components/product-card";
 import type { CampaignNotices } from "@/lib/campaign-notices";
 import { rangeText } from "@/lib/field-filters";
 import { t, type Messages } from "@/lib/i18n";
@@ -258,6 +258,7 @@ export function ProductGrid({
           product={product}
           href={hrefFor ? hrefFor(product, index) : `${base}/p/${product.handle}`}
           tracked={tracked}
+          policy={!tracked && index < SIGHT_TILES ? "sight" : "intent"}
           market={market}
           m={m}
           store={store}

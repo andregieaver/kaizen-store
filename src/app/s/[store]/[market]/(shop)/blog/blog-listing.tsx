@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ContentGridView } from "@/components/content-grid";
 import { PartStyles } from "@/components/part-styles";
+import { PolicyLink } from "@/components/policy-link";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
 import { browserText } from "@/lib/browser-text";
@@ -55,12 +56,13 @@ function CategoryLinks({ label, terms, href }: { label: string; terms: Term[]; h
       <ul className="flex flex-wrap gap-2">
         {terms.map((term) => (
           <li key={term.id}>
-            <Link
+            <PolicyLink
+              policy="intent"
               href={href(term.slug)}
               className="inline-flex min-h-10 items-center rounded-button border border-border px-4 text-sm hover:bg-surface"
             >
               {term.name}
-            </Link>
+            </PolicyLink>
           </li>
         ))}
       </ul>

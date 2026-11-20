@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/components/wishlist-heart", () => ({ WishlistHeart: () => null }));
+vi.mock("@/components/policy-link", () => ({
+  PolicyLink: ({ policy, href, children, ...rest }: { policy: string; href: string; children?: unknown }) =>
+    createElement("a", { "data-policy": policy, href, ...rest }, children as never),
+}));
 
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -23,7 +27,7 @@ const text = (markup: string) =>
     .replace(/[  ]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-const card = (product: Partial<ProductSummary>) =>
+const card = (product: Partial<ProductSummary>, props: Partial<Parameters<typeof ProductCard>[0]> = {}) =>
   renderToString(
     createElement(ProductCard, {
       product: { id: "p1", title: "Kaffe", audience: "all", image: null, priceVaries: false, ...product } as ProductSummary,
@@ -33,6 +37,7 @@ const card = (product: Partial<ProductSummary>) =>
       store: "demo",
       storeId: "00000000-0000-4000-8000-000000000001",
       base: "/s/demo/no",
+      ...props,
     }),
   );
 
@@ -59,5 +64,38 @@ describe("a listing card's unit price", () => {
     const copy = text(card({ price: priceView(3990, "NOK", 4990, WITH_VAT, { amount: "250", unit: "g", base: "kg" }) }));
     expect(copy).toContain("159,60 kr/kg");
     expect(copy).not.toContain("199,60");
+  });
+});
+
+/** What a card lets the router fetch ahead (bloat review step 2.8): the title by the listing's policy, swatches on intent, a tracked result never. */
+describe("what a card lets the router fetch ahead", () => {
+  const price = priceView(4990, "NOK", null, WITH_VAT);
+  const policies = (html: string) => [...html.matchAll(/data-policy="([a-z]+)"/g)].map((match) => match[1]);
+
+  it("fetches the product on intent unless told otherwise", () => {
+    expect(policies(card({ price }))).toEqual(["intent"]);
+  });
+
+  it("fetches the product on sight on a listing's first screen", () => {
+    expect(policies(card({ price }, { policy: "sight" }))).toEqual(["sight"]);
+  });
+
+  it("lets swatches wait for intent, whatever the title's policy", () => {
+    const group: ProductSummary["group"] = {
+      option: "Farge",
+      items: [
+        { handle: "a", value: "Hvit", swatch: "#fff" },
+        { handle: "b", value: "Svart", swatch: "#000" },
+      ],
+    };
+    const found = policies(card({ price, group }, { policy: "sight" }));
+    expect(found.filter((policy) => policy === "sight")).toHaveLength(1);
+    expect(found.filter((policy) => policy === "intent")).toHaveLength(2);
+  });
+
+  it("keeps a tracked search result a plain link that is never fetched ahead (D77)", () => {
+    const html = card({ price }, { tracked: true });
+    expect(policies(html)).toEqual([]);
+    expect(html).toContain('rel="nofollow"');
   });
 });

@@ -91,6 +91,7 @@ export const flowsNb: FlowsMessages = {
       build_on_top: "Bygg videre på det som virker: e-posten som ga mest, kunne få en oppfølging en uke senere.",
     },
   },
+  schemes: { label: "Vist i", light: "Lys", dark: "Mørk modus", note: "Slik e-postapper som gjør e-post mørk viser den: farger snudd, bilder beholdt. Sjekk at teksten fortsatt kan leses." },
   widths: { label: "Vist som", desktop: "Datamaskin", phone: "Mobil" },
   inPlace: { fact: "Produkt eller tilbud", offer: "Tilbud", find: "Finn", findLabel: "Finn et produkt etter navn", noneFound: "Fant ingenting.", products: "Produkter", offers: "Tilbud som gjelder nå", addThis: "Legg til", languages: "Språk", notYet: "ikke skrevet", notWritten: "Denne e-posten er ikke skrevet på {language} ennå.", startFrom: "Start fra teksten på {language}", hint: "Klikk på en tekst for å endre den; den lagres når du klikker et annet sted.", heading: "Overskrift", button: "Knappetekst", product: "Vare", add: "Legg til her", remove: "Fjern denne", newHeading: "En overskrift", newButton: "Se mer", kinds: { heading: "Overskrift", paragraph: "Tekst", button: "Knapp", divider: "Strek" } },
   change: "Endre",

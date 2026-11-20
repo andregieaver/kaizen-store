@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { CampaignBadge } from "@/components/campaign-notice";
+import { PolicyLink } from "@/components/policy-link";
 import { Price } from "@/components/price";
 import { SizedPicture } from "@/components/sized-picture";
 import { WishlistHeart } from "@/components/wishlist-heart";
@@ -15,6 +14,12 @@ import type { ProductSummary } from "@/server/catalog";
 /** A card's width in the listing (`ProductListing`: two columns, four from Medium, 24 px apart, `gap-6`). */
 const CARD_SIZES = gridSizes({ xl: 4, md: 4, sm: 2 }, { gaps: { xl: 24 } });
 
+/**
+ * The tiles of a listing fetched ahead on sight: three rows of two on a phone, a row and a half of four on a computer; with the page's own links this
+ * keeps a 48-product listing at 20 router requests or fewer (bloat review step 2.8).
+ */
+export const SIGHT_TILES = 6;
+
 export function ProductCard({
   product,
   href,
@@ -25,6 +30,7 @@ export function ProductCard({
   base,
   tracked = false,
   notices,
+  policy = "intent",
 }: {
   product: ProductSummary;
   href: string;
@@ -42,6 +48,11 @@ export function ProductCard({
   base: string;
   /** The store's campaigns (D115): the offer on this product shows as a badge. */
   notices?: CampaignNotices;
+  /**
+   * Whether the router fetches this product ahead when the card is seen (the first screen of a listing) or only when it is pointed at or touched
+   * (bloat review step 2.8).
+   */
+  policy?: "sight" | "intent";
 }) {
   return (
     // The theme draws the card (D60): its picture's shape, and plain, bordered or raised, left or centred.
@@ -75,9 +86,9 @@ export function ProductCard({
             {product.title}
           </a>
         ) : (
-          <Link href={href} className="after:absolute after:inset-0 focus-visible:outline-2">
+          <PolicyLink policy={policy} href={href} className="after:absolute after:inset-0 focus-visible:outline-2">
             {product.title}
-          </Link>
+          </PolicyLink>
         )}
       </h2>
       {/* Price on request (D431): the words in place of a price no shopper sees. */}
@@ -104,7 +115,8 @@ export function GroupSwatches({ group, base, m }: { group: NonNullable<ProductSu
     <ul className="relative z-10 flex flex-wrap items-center gap-1.5" aria-label={m.group.choose(group.option)} data-group-swatches>
       {shown.map((item) => (
         <li key={item.handle}>
-          <Link
+          <PolicyLink
+            policy="intent"
             href={`${base}/p/${item.handle}`}
             aria-label={`${group.option}: ${item.value}`}
             title={item.value}
@@ -116,7 +128,7 @@ export function GroupSwatches({ group, base, m }: { group: NonNullable<ProductSu
             style={item.swatch ? { backgroundColor: item.swatch } : undefined}
           >
             {item.swatch ? null : item.value}
-          </Link>
+          </PolicyLink>
         </li>
       ))}
       {more > 0 && <li className="text-xs text-muted">+{more}</li>}

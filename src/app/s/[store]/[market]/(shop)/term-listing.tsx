@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { CustomFieldGroups } from "@/components/custom-fields-view";
+import { PolicyLink } from "@/components/policy-link";
 import { ProductGrid, ProductListingFor } from "@/components/product-listing";
 import { RolePage } from "@/components/role-page";
 import { groupsToShow } from "@/lib/field-parts";
@@ -171,12 +171,13 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
           <ul className="flex flex-wrap gap-2">
             {subcategories.map((sub) => (
               <li key={sub.id}>
-                <Link
+                <PolicyLink
+                  policy="intent"
                   href={`${base}/category/${sub.slug}`}
                   className="inline-flex min-h-10 items-center rounded-button border border-border px-4 text-sm hover:bg-surface"
                 >
                   {sub.name}
-                </Link>
+                </PolicyLink>
               </li>
             ))}
           </ul>

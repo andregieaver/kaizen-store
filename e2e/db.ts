@@ -73,6 +73,58 @@ export async function testStore(name: string, features: string[] = []): Promise<
 }
 
 /**
+ * A full category of `count` products in a store `testStore()` made (bloat review step 2.8): active copies of the demo tote bag (`full-1`, `full-2`, ...,
+ * titled `Full 01`, ...) with its translations, variants, prices (through `commerce.set_price`) and pictures, as `manyProducts()` in
+ * src/server/listing.int.test.ts makes them, all in a new category `full`. Returns the category's slug.
+ */
+export async function fullCategory(storeId: string, count = 48): Promise<{ slug: string }> {
+  const sql = testDb();
+  try {
+    const cols = async (table: string) => {
+      const [row] = await sql`
+        select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as cols from information_schema.columns
+        where table_schema = 'commerce' and table_name = ${table} and is_generated = 'NEVER' and identity_generation is null`;
+      return String(row.cols);
+    };
+    const [products, translations, variants, media] = await Promise.all(["products", "product_translations", "product_variants", "product_media"].map(cols));
+    await sql.begin(async (tx) => {
+      await tx`create temp table full_src on commit drop as select id from commerce.products where store_id = ${storeId}::uuid and handle = 'demo-handlenett'`;
+      await tx`create temp table full_copies on commit drop as select gen_random_uuid() as id, n from generate_series(1, ${count}::int) n`;
+      await tx.unsafe(`
+        insert into commerce.products (${products}) select ${products} from (
+          select (jsonb_populate_record(null::commerce.products, to_jsonb(p) || jsonb_build_object('id', c.id, 'handle', 'full-' || c.n, 'status', 'draft'))).*
+          from commerce.products p, full_src s, full_copies c where p.id = s.id) x`);
+      await tx.unsafe(`
+        insert into commerce.product_translations (${translations}) select ${translations} from (
+          select (jsonb_populate_record(null::commerce.product_translations, to_jsonb(t) || jsonb_build_object('product_id', c.id, 'title', 'Full ' || lpad(c.n::text, 2, '0')))).*
+          from commerce.product_translations t, full_src s, full_copies c where t.product_id = s.id) x`);
+      await tx`
+        create temp table full_v on commit drop as
+        select gen_random_uuid() as id, c.id as product_id, c.n, pv.id as old from commerce.product_variants pv, full_src s, full_copies c where pv.product_id = s.id`;
+      await tx.unsafe(`
+        insert into commerce.product_variants (${variants}) select ${variants} from (
+          select (jsonb_populate_record(null::commerce.product_variants, to_jsonb(pv) || jsonb_build_object('id', v.id, 'product_id', v.product_id, 'sku', 'FULL-' || v.n || '-' || left(v.id::text, 6)))).*
+          from commerce.product_variants pv join full_v v on v.old = pv.id) x`);
+      await tx`select commerce.set_price(v.id, cp.market_code, cp.amount_minor) from full_v v join commerce.current_prices cp on cp.variant_id = v.old`;
+      await tx.unsafe(`
+        insert into commerce.product_media (${media}) select ${media} from (
+          select (jsonb_populate_record(null::commerce.product_media, to_jsonb(i) || jsonb_build_object('id', gen_random_uuid(), 'product_id', c.id))).*
+          from commerce.product_media i, full_src s, full_copies c where i.product_id = s.id) x`);
+      await tx`update commerce.products set status = 'active' where store_id = ${storeId}::uuid and handle like 'full-%'`;
+      const [term] = await tx`
+        insert into commerce.terms (store_id, content_type, kind, name, slug)
+        values (${storeId}, 'product', 'category', 'Full kategori', 'full') returning id`;
+      await tx`
+        insert into commerce.product_terms (store_id, product_id, term_id)
+        select ${storeId}, c.id, ${term.id} from full_copies c`;
+    });
+    return { slug: "full" };
+  } finally {
+    await sql.end();
+  }
+}
+
+/**
  * A theme's own content (D275): a published store template of a content pack (D257), as the platform keeps one, a copy of the template
  * (its catalogue and markets), marked as a store template and published under the pack's key. The theme store shows a theme only on its
  * own content, so a test links it to its theme with `linkTo()`. A template of that key the test did not make is set aside first, its
