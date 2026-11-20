@@ -91,6 +91,7 @@ export const flowsEn = {
       build_on_top: "Build on what works: the email that brought the most could have a follow-up a week later.",
     },
   },
+  schemes: { label: "Seen in", light: "Light", dark: "Dark mode", note: "As mail apps that turn emails dark show it: colours reversed, pictures kept. Check the words still read." },
   widths: { label: "Seen at", desktop: "Desktop", phone: "Phone" },
   inPlace: { fact: "Product or offer", offer: "Offer", find: "Find", findLabel: "Find a product by its name", noneFound: "Nothing found.", products: "Products", offers: "Offers running now", addThis: "Add", languages: "Languages", notYet: "not written", notWritten: "This email is not written in {language} yet.", startFrom: "Start from the {language} words", hint: "Click any words to change them; they save when you click away.", heading: "Heading", button: "Button words", product: "Product", add: "Add here", remove: "Remove this", newHeading: "A heading", newButton: "See more", kinds: { heading: "Heading", paragraph: "Words", button: "Button", divider: "Line" } },
   change: "Change",

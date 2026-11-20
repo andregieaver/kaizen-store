@@ -59,6 +59,11 @@ test("a welcome series is started with one press, read as a story, tested and sw
   await expect(page).toHaveURL(/width=phone/);
   expect((await page.locator("[data-flow-drawn] iframe").first().boundingBox())?.width ?? 0).toBeLessThanOrEqual(380);
   await page.screenshot({ path: "test-results/flow-phone.png", fullPage: true });
+  // And as a mail app that turns it dark shows it (M3.4), still at a phone's width.
+  await page.getByRole("navigation", { name: "Seen in" }).getByRole("link", { name: "Dark mode" }).click();
+  await expect(page).toHaveURL(/width=phone&scheme=dark/);
+  await expect(page.locator("[data-flow-drawn] iframe").first()).toHaveAttribute("srcdoc", /data-dark-preview/);
+  await page.screenshot({ path: "test-results/flow-dark.png", fullPage: true });
   await page.getByRole("button", { name: "Test it" }).click();
   await expect(page.getByText(`Tested on ida-${RUN}@example.com: Welcome!, What others like best. Then it ends.`)).toBeVisible();
   await page.getByRole("button", { name: "Switch on" }).click();
