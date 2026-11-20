@@ -27,6 +27,7 @@ export const ENTRIES = {
   "docs-feedback": "src/app/api/docs/feedback/route.ts",
   "page-reads": "src/server/page-reads.ts",
   "page-article": "src/components/page-article.tsx",
+  stores: "src/server/stores.ts",
 };
 
 /** The five beacons: a visitor's cheapest calls, which carry no admin word and no chat. */
@@ -90,6 +91,14 @@ const STORE_LIST = [
   "sharp",
   "playwright-core",
 ];
+/**
+ * A store is read without the Stripe SDK and without the page model (bloat review step 2.22): which payment modes Kaizena Flow has
+ * comes from `src/server/stripe-keys.ts`, and a theme's part styles from `src/lib/part-styles.ts`, a leaf that imports no block
+ * schema; so `src/server/stores.ts` and the beacons, which read a store, never reach `src/server/stripe.ts` or the file of the
+ * block schemas (once code review step 3.2 makes `page-content.ts` a folder, every file of it but `part-styles`).
+ */
+const STORE_READ = ["src/server/stripe.ts", "src/lib/page-content.ts"];
+const STORE_READ_LIST = [...STORE_READ, "stripe"];
 const ADMIN_LIST = ["src/server/owner-assistant.ts", "src/server/owner-tools.ts", "src/lib/owner-tools.ts"];
 const SITE_LIST = ["src/server/owner-tools.ts", "src/server/owner-assistant.ts", "src/server/dream-factory.ts"];
 
@@ -101,7 +110,7 @@ export const FORBIDDEN = {
   proxy: PROXY_LEAF_LIST,
   "start-hook": PROXY_LIST,
   health: [...BEACON_LIST, "src/server/stores.ts"],
-  ...Object.fromEntries(BEACONS.map((name) => [name, BEACON_LIST])),
+  ...Object.fromEntries(BEACONS.map((name) => [name, [...BEACON_LIST, ...STORE_READ]])),
   "shop-tiles": BEACON_LIST,
   "store-layout": STORE_LIST,
   "store-home": STORE_LIST,
@@ -114,6 +123,7 @@ export const FORBIDDEN = {
   "docs-feedback": SITE_LIST,
   "page-reads": ["src/server/pages.ts", "src/server/auth.ts", "src/server/design-presets.ts", "src/server/page-ai.ts", "src/lib/signature/"],
   "page-article": ["src/server/pages.ts", "src/server/design-presets.ts", "src/server/page-ai.ts", "src/lib/signature/"],
+  stores: STORE_READ_LIST,
 };
 
 /** A route.ts whose function loads more files than this is named, with its reason, in the baseline. */

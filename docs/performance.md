@@ -498,6 +498,38 @@ and `page-article` with the four forbidden.
 | Reading a page | 183 through `pages.ts` (1,307 on 12 November) | 72 (`page-reads.ts`) |
 | The page renderer (`page-article.tsx`) | 467, `pages.ts` among them (1,396 on 12 November) | 430, none of the four |
 
+The cut moved the admin's client chunks, though it changed server imports only. The root admin layout had reached, through
+`getPlatformFavicon()` and `pages.ts`, server components that draw `AdminLink` and Lucide icons, so Turbopack put the link wrapper
+(with `PolicyLink` and next/link) and Lucide's icon base among the root layout's client references, in the chunk every admin route
+loads. Without that path each layout's and page's own first chunks took a copy: 459 of 482 admin routes grew by a median of 12.6 KB
+(CI run 1732). The root layout now imports `src/components/admin/shared-client-parts.ts`, which names them on purpose
+(`shared-client-parts.scan.test.ts`); on a local build the admin routes fell by a median of 10.5 KB, 481 of 482.
+
+### A store read without the Stripe SDK or the block schemas (bloat review step 2.22)
+
+Two rules hold what reading a store loads. A store is read without the Stripe SDK: which payment modes Kaizena Flow has comes from
+`src/server/stripe-keys.ts` (step 0.6), so `src/server/stores.ts` and the five beacons may not reach `src/server/stripe.ts` or the
+`stripe` package. `stores.ts` reaches no file that defines a block schema: a theme's part styles (spacing, border, corners, shadow,
+colour, the per-size overrides and `themeElementSchema`) live in `src/lib/part-styles.ts`, a leaf that imports zod, the
+typography schemas and `src/lib/content-width.ts` and never `page-content.ts`; the role names come from `src/lib/page-role-copy.ts`,
+the reserved addresses from `src/lib/reserved-slugs.ts`, and `mapChildBlocks()` from `src/lib/block-walk.ts` (type-only imports of
+the page model). `page-content.ts` re-exports every moved name. `route-load.graph.test.ts` holds the entry `stores` and the beacons
+to it; the speed beacon still reaches the page model through the heat tags' running tests (`signal-tags.ts` imports
+`runningExperiments` through `experiments.ts`), kept as its exception.
+
+| Measured on a local build (`next analyze --output`, `server-graph.mjs`) | Before (main, 19 November) | After |
+|---|---|---|
+| `/api/visit` and `/api/visit/touch`, server modules (KB) | 461 (891) | 431 (797) |
+| `/api/visit/speed` | 477 (919) | 477 (914) |
+| `/api/visit/speed/own` | 463 (896) | 433 (802) |
+| `/api/recommendations/events` | 457 (877) | 426 (784) |
+| `/s/[store]/[market]` | 1,534 (4,994) | 1,538 (4,995) |
+| `src/server/stores.ts`, files reached by static imports | 102 | 72 |
+
+No beacon loads a module of the `stripe` package. The store home is still over its bar of 1,500 modules and 4.0 MB: the admin's
+words (`src/lib/admin-map.ts`, `src/lib/admin-messages/`), the AI manager's tools (`owner-tools.ts`, `owner-assistant.ts`) and the
+Supabase client are loaded with it, which other steps of the plan own.
+
 ## Cold starts in production (bloat review step 1.16)
 
 Each server instance notes its first answer once, as the log line `instance.start` and a row in `commerce.instance_starts`: what the

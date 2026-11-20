@@ -165,7 +165,7 @@ commit as the fix.
 | 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | In progress | D805: store pages static, live 19 Nov, payloads complete; an add 1 request, 104 B. Commit 4 in its own deploy. |
 | 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | In progress | D825: Bingbot gets the cached page (HIT, title in head), link previews keep the render; live 19 Nov. Owner: Rich Results, Bing Webmaster; log sample. |
 | 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | In progress | D826: router requests front 19 to 3, product 18 to 3, cart 20 to 5, first add 32 to 7; admin at rest 0; next/link 396 to 384. Phone and 1280 px checks due. |
-| 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | In progress | Local 19 Nov: a tap on the phone home's first tile 1 document, 29 requests before; 0 and 7-8 after (6 runs). A block's cart link: 1 document. Grid anchors in content-grid-tiles.tsx. |
+| 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Done | D838, c351d3ab5, 20 Nov: a built page's tile tap 1 document, 29 requests to 0 and 3 on prod; a builder button on kaizenaflow.com 0 documents. Pay paths stay full loads. |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Open | |
 | 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Open | |
 | 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | Open | |
@@ -180,7 +180,7 @@ commit as the fix.
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
 | 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | In progress | D816: proxy files 321 to 57, chunk 2,253,770 to 585,983 B, trace 60.7 to 2.1 MB; live 19 Nov, smoke clean. Cold-start p50 reading due. |
 | 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | In progress | D824: page reader 72 files; article 467 to 431; live 19 Nov, pages read as before. Follow-up: admin chunks +12.6 KB median (issue 26). |
-| 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | Open | |
+| 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | In progress | Local: stores.ts 102 to 72 files; beacons 431-477 modules, 784-914 KB, no stripe; store home 1,538, 4,995 KB (over bar). |
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
 | 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Open | |
@@ -352,6 +352,8 @@ Change log:
   them, the docs): the proxy 321 to 57 source files and 2,200.9 to 572.2 KB of chunks; waiting for review, the D-row and the hosts job.
 - 19 Nov 2026: step 2.21 carried out locally in three commits (the reads to page-reads.ts, the importers split, the renderer held):
   reading a page 183 to 72 source files, the renderer 467 to 430 with no path to pages.ts; waiting for review and the D-row.
+- 20 Nov 2026: step 2.22 carried out locally in three commits (the graph test's stores entry, the role names and reserved slugs,
+  the part styles in a leaf): stores.ts 102 to 72 files with no path to stripe.ts or page-content.ts; waiting for review and the D-row.
 
 
 **Notes on the steps**

@@ -4,43 +4,36 @@
     "proxy": 57,
     "start-hook": 1,
     "health": 13,
-    "beacon-visit": 116,
-    "beacon-touch": 116,
+    "beacon-visit": 89,
+    "beacon-touch": 89,
     "beacon-speed": 130,
-    "beacon-own-speed": 118,
-    "beacon-recommendation-events": 113,
+    "beacon-own-speed": 91,
+    "beacon-recommendation-events": 88,
     "shop-tiles": 320,
     "store-layout": 596,
-    "store-home": 488,
+    "store-home": 505,
     "store-product": 886,
     "admin-store-layout": 1070,
-    "admin-orders": 1078,
+    "admin-orders": 1112,
     "platform-admin-layout": 1067,
-    "platform-admin-home": 1064,
-    "site-front-page": 488,
+    "platform-admin-home": 1098,
+    "site-front-page": 505,
     "docs-feedback": 282,
     "page-reads": 72,
-    "page-article": 430
+    "page-article": 430,
+    "stores": 72
   },
   "exceptions": {
     "proxy": [],
     "start-hook": [],
     "health": [],
-    "beacon-visit": [
-      "src/lib/admin-messages/"
-    ],
-    "beacon-touch": [
-      "src/lib/admin-messages/"
-    ],
+    "beacon-visit": [],
+    "beacon-touch": [],
     "beacon-speed": [
-      "src/lib/admin-messages/"
+      "src/lib/page-content.ts"
     ],
-    "beacon-own-speed": [
-      "src/lib/admin-messages/"
-    ],
-    "beacon-recommendation-events": [
-      "src/lib/admin-messages/"
-    ],
+    "beacon-own-speed": [],
+    "beacon-recommendation-events": [],
     "shop-tiles": [
       "@supabase/supabase-js",
       "src/lib/admin-messages/",
@@ -56,7 +49,8 @@
     "site-front-page": [],
     "docs-feedback": [],
     "page-reads": [],
-    "page-article": []
+    "page-article": [],
+    "stores": []
   },
   "heavyHandlers": {
     "src/app/api/cron/cart-reminders/route.ts": {
