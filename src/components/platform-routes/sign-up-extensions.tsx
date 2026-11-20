@@ -15,8 +15,7 @@ import { signUpWorkspaceText } from "@/lib/messages/sign-up-workspace";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { languageMeta } from "@/server/platform-lang-meta";
-import { extensionUpsellPercent } from "@/server/extensions";
-import { getPublicExtensions } from "@/server/public-extensions";
+import { getPublicExtensions, publicUpsellPercent } from "@/server/public-extensions";
 import { referralPublicSettings } from "@/server/referrals";
 import { listCountries } from "@/server/stores";
 
@@ -36,7 +35,7 @@ export async function ExtensionsSignUpRoute({ lang, ticked }: { lang: PlatformLa
   if (!STANDALONE_SIGNUP_OPEN) notFound();
   const s = platformText(lang).signUp;
   const w = s.extensions;
-  const [catalogue, countries, referrals, nearPercent] = await Promise.all([getPublicExtensions(), listCountries(), referralPublicSettings(), extensionUpsellPercent()]);
+  const [catalogue, countries, referrals, nearPercent] = await Promise.all([getPublicExtensions(), listCountries(), referralPublicSettings(), publicUpsellPercent()]);
   const words = extensionsIn(catalogue, lang);
   const founding = foundingShown(catalogue);
   // The picker (D859): the bundles over the extensions sold on their own, each priced a month in every currency the price list has.

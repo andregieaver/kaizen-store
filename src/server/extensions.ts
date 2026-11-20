@@ -358,6 +358,8 @@ export async function saveExtensionUpsell(actor: Account, percent: number): Prom
   if (!Number.isInteger(percent) || percent < 0 || percent > 100) return { ok: false, problems: ["From 0 to 100 %."] };
   await db().execute(sql`update commerce.platform_settings set extension_upsell_percent = ${percent}`);
   await audit(actor.id, null, "platform.extension_upsell_saved", { percent });
+  // The sign-up's cached read (`publicUpsellPercent()`).
+  refreshTag(EXTENSIONS_TAG);
   return { ok: true };
 }
 

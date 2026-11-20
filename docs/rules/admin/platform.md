@@ -618,7 +618,9 @@ under *What the router fetches ahead*.
   their own too. `bundleUpsell()` (pure) decides what is chosen, offered or proposed: a bundle holding everything chosen for no more is
   chosen and said, and only offered once taken off; one for at most `extension_upsell_percent` % more is proposed only for a part usable
   now (a part that needs a store counts only with *Also open an online store* ticked), and never once taken off. Its words are
-  `signUpWorkspaceText(lang).picker`, kept out of the storefront's messages.
+  `signUpWorkspaceText(lang).picker`, kept out of the storefront's messages. The page is prerendered: every read it makes is cached
+  (`getPublicExtensions()`, `publicUpsellPercent()`, under `EXTENSIONS_TAG`) or inside its `<Suspense>`; a plain read breaks the build,
+  so build it (`pnpm build`) after changing what it reads.
 
 ## Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`, `src/server/content-moderation.ts`)
 

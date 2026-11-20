@@ -114,3 +114,14 @@ export async function getPublicExtensions(): Promise<PublicExtensions> {
     founding: { until: offer?.until && endsIn !== null && endsIn > 0 ? offer.until : null, months: offer?.months ?? 12 },
   };
 }
+
+/**
+ * How much more a bundle may cost to be proposed at the sign-up for extensions (D859), for that prerendered page: cached under
+ * `EXTENSIONS_TAG`, which saving the setting refreshes.
+ */
+export async function publicUpsellPercent(): Promise<number> {
+  "use cache";
+  cacheTag(EXTENSIONS_TAG);
+  const [row] = await typedRows(z.object({ percent: col.int }), sql`select extension_upsell_percent as percent from commerce.platform_settings`, readDb());
+  return row?.percent ?? 20;
+}
