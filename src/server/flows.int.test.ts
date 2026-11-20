@@ -362,11 +362,19 @@ describe("flows (D767)", () => {
     const saved = await fl.saveFlow(storeId, owner, null, { name: `Report ${run}`, trigger: "subscriber.subscribed", steps, goals: [] });
     if (!saved.ok) throw new Error(saved.problem);
     await fl.testFlow(storeId, saved.id);
+    // Only this flow emails the new person: an earlier test's flow still on would send too, and an order goes to the latest message.
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid and id <> ${saved.id}::uuid`);
     await fl.switchFlow(storeId, owner, saved.id, true);
     const person = await subscriber(address);
     await joined(person);
     await fl.enterFlows();
-    await fl.runFlows({ only: storeId, now: new Date() });
+    // Earlier tests' sign-ups enter too, so one pass may not reach this person: run until their email is recorded (the real condition).
+    for (let pass = 0; pass < 10; pass += 1) {
+      await fl.runFlows({ only: storeId, now: new Date() });
+      const mine = await db().execute<Row>(sql`select 1 from commerce.flow_run_steps st join commerce.flow_runs r on r.id = st.run_id
+        where r.flow_id = ${saved.id}::uuid and r.subscriber_id = ${person}::uuid`);
+      if (mine.length > 0) break;
+    }
     await new Promise((r) => setTimeout(r, 50));
     await paidOrder(address, new Date());
     const report = await fl.flowReport(storeId, saved.id);
@@ -436,5 +444,17 @@ describe("flows (D767)", () => {
     await fl.switchFlow(storeId, owner, saved.id, true);
     expect((await fl.getFlow(storeId, saved.id))?.guard).toBeNull();
     await fl.switchFlow(storeId, owner, saved.id, false);
+  });
+
+  it("says what each goal would reach in the store's own data, before a flow is started (M3.9)", async () => {
+    const before = await fl.flowProposals(storeId);
+    const address = `propose-${run}@example.com`;
+    await subscriber(address);
+    await paidOrder(address, new Date());
+    const after = await fl.flowProposals(storeId);
+    expect(after.welcome).toBe((before.welcome ?? 0) + 1);
+    expect(after.after_purchase).toBe((before.after_purchase ?? 0) + 1);
+    expect(after.cross_sell).toBe(after.after_purchase);
+    expect(after.win_back).toBe(before.win_back);
   });
 });

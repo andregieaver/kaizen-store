@@ -17,6 +17,13 @@ export const flowsEn = {
   switchedOff: "Off. Nobody new goes into it; those already in it finish.",
   automationOff: "The automation that sent the same email is now off, so nobody gets both.",
   goals: {
+    reach: {
+      welcome: { one: "{n} person joined your list in the last 30 days.", many: "{n} people joined your list in the last 30 days." },
+      after_purchase: { one: "{n} customer on your list bought in the last 30 days.", many: "{n} customers on your list bought in the last 30 days." },
+      cross_sell: { one: "{n} customer on your list bought in the last 30 days.", many: "{n} customers on your list bought in the last 30 days." },
+      win_back: { one: "{n} customer on your list has not ordered for 90 days or more.", many: "{n} customers on your list have not ordered for 90 days or more." },
+      replenish: { one: "{n} customer on your list has bought twice or more.", many: "{n} customers on your list have bought twice or more." },
+    },
     title: "Start from a goal",
     fromOwn: "Starts from the email you already send for this, with its days and follow-ups.",
     start: "Start",

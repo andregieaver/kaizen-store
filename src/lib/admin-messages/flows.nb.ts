@@ -17,6 +17,13 @@ export const flowsNb: FlowsMessages = {
   switchedOff: "Av. Ingen nye går inn; de som er i det, fullfører.",
   automationOff: "Automatiseringen som sendte den samme e-posten er nå av, så ingen får begge.",
   goals: {
+    reach: {
+      welcome: { one: "{n} person ble med på listen de siste 30 dagene.", many: "{n} personer ble med på listen de siste 30 dagene." },
+      after_purchase: { one: "{n} kunde på listen har handlet de siste 30 dagene.", many: "{n} kunder på listen har handlet de siste 30 dagene." },
+      cross_sell: { one: "{n} kunde på listen har handlet de siste 30 dagene.", many: "{n} kunder på listen har handlet de siste 30 dagene." },
+      win_back: { one: "{n} kunde på listen har ikke bestilt på 90 dager eller mer.", many: "{n} kunder på listen har ikke bestilt på 90 dager eller mer." },
+      replenish: { one: "{n} kunde på listen har handlet to ganger eller mer.", many: "{n} kunder på listen har handlet to ganger eller mer." },
+    },
     title: "Start fra et mål",
     fromOwn: "Starter fra e-posten du allerede sender for dette, med dagene og oppfølgingene.",
     start: "Start",

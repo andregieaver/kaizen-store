@@ -9,6 +9,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
 import { EVENT_TRIGGERS } from "@/lib/flow-triggers";
+import type { RecipeKey } from "@/lib/flow-recipes";
 import { FLOW_GUARD, flowGuardPauses, guardCountsOf } from "@/lib/flow-guard";
 import {
   advance,
@@ -304,6 +305,32 @@ export async function guardFlows(options: { now?: Date; everyRun?: boolean } = {
     log("warn", "flows.guard_paused", { storeId: r.store_id, flowId: r.flow_id, ...counts });
   }
   return { judged: rows.length, paused };
+}
+
+/**
+ * What each goal would reach in the store's own data (email plan M3.9, the Flows page's proposals): people on the list who joined in the
+ * last 30 days (welcome), who bought in the last 30 days (after a purchase, cross-sell), whose latest paid order is 90 days old or more
+ * (bring back customers), and who bought twice or more (restock). Counts only; browse is left out (its views are kept only while it runs).
+ */
+export async function flowProposals(storeId: string): Promise<Partial<Record<RecipeKey, number>>> {
+  const row = await typedRow(
+    z.object({ joined: col.int, buyers: col.int, lapsed: col.int, repeat: col.int }),
+    sql`
+      with paid as (
+        select lower(o.email) as email, max(o.placed_at) as last_at, count(*) as n from commerce.orders o
+         where o.store_id = ${storeId}::uuid and o.restricted_at is null and ${PAID}
+         group by lower(o.email)
+      )
+      select count(*) filter (where s.created_at > now() - interval '30 days')::int as joined,
+             count(*) filter (where p.last_at > now() - interval '30 days')::int as buyers,
+             count(*) filter (where p.last_at <= now() - interval '90 days')::int as lapsed,
+             count(*) filter (where p.n >= 2)::int as repeat
+        from commerce.marketing_subscribers s left join paid p on p.email = lower(s.email)
+       where s.store_id = ${storeId}::uuid and s.status = 'subscribed'
+    `,
+  );
+  if (!row) return {};
+  return { welcome: row.joined, after_purchase: row.buyers, cross_sell: row.buyers, win_back: row.lapsed, replenish: row.repeat };
 }
 
 /** The switched-on flow of a store that does an automation's work, by name; null for none (an automation stays off while one is on). */
