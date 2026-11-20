@@ -7,7 +7,6 @@ import { AdminWaiting } from "@/components/admin/admin-waiting";
 import { AdminSchemeSync } from "@/components/admin/admin-scheme";
 import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { AdminServiceWorker } from "@/components/admin/admin-service-worker";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
@@ -15,6 +14,9 @@ import { log } from "@/server/log";
 import { renderCount, renderFields } from "@/server/render-count";
 import { shellEn } from "@/lib/admin-messages/shell.en";
 import { shellNb } from "@/lib/admin-messages/shell.nb";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 
 /**
  * Every signed-in admin page (D107). Each level draws its own header
@@ -48,7 +50,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
   // The account's language for the admin (D312 A0): its client parts read their areas' words from the provider.
   const lang = adminLangOf(account.adminLocale);
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "shell"])}>
+    <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, shell: SHELL_WORDS })}>
       <div className="flex min-h-screen flex-col">
         <SessionKeeper />
         <AdminColorSync saved={account.colorMode ?? "system"} />

@@ -6,8 +6,9 @@ import { PageDrawing } from "@/app/admin/(gated)/[store]/pages/drawing";
 import { InstallPreviewView } from "@/components/admin/install-preview-view";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { pageInput } from "@/lib/page-content";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 import { getPageForEdit } from "@/server/pages";
 import { previewLinkOf } from "@/server/preview-links";
 import { getStore } from "@/server/stores";
@@ -40,7 +41,7 @@ async function Shared({ params, searchParams }: Pick<PageProps<"/admin/account/s
   if (!store || store.id !== link.storeId) notFound();
   // The words around it are in the store's own language where the admin has it, else English.
   const lang = adminLangOf(store.localization.locales[0]);
-  const w = adminText(lang, "schedules").preview;
+  const w = SCHEDULES_WORDS[lang].preview;
   const until = fillWords(w.until, {
     when: new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "long", timeStyle: "short", timeZone: store.timeZone }).format(new Date(link.expiresAt)),
   });
@@ -49,7 +50,7 @@ async function Shared({ params, searchParams }: Pick<PageProps<"/admin/account/s
     const preview = await installPreview(store.id, link.installId);
     if (!preview || !store.markets[0]) notFound();
     const query = await searchParams;
-    const d = adminText(lang, "design").preview;
+    const d = DESIGN_WORDS[lang].preview;
     return (
       <div data-shared-preview="theme">
         <InstallPreviewView

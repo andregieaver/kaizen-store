@@ -4,7 +4,7 @@
 //   node docs/audits/bloat-review-2026-11/scripts/admin-words-codemod.mjs <folder|file> [--write] [--tests]
 //
 // For every .ts and .tsx file under the folder that is not a test (with --tests, test files only):
-//   adminText(lang, "orders")          -> ORDERS_WORDS[lang]
+//   adminText(lang, "orders")          -> ORDERS_WORDS[lang] (ORDERS_WORDS.en for the literal "en")
 //   adminTexts(lang, ["a", "b"])       -> areaTexts(lang, { a: A_WORDS, b: B_WORDS })
 //   <AdminAreas areas={["a"]}>         -> <AdminAreas areas={{ a: A_WORDS }}>
 // adds `import { areaTexts } from "@/lib/admin-area";` and one `import { <AREA>_WORDS } from "@/lib/admin-words/<stem>";` per area,
@@ -73,7 +73,8 @@ for (const file of walk(join(ROOT, target))) {
     const words = MODULES.get(area);
     if (!words) return whole;
     used.add(area);
-    return `${words.constant}[${lang.trim()}]`;
+    const literal = /^"(en|nb)"$/.exec(lang.trim());
+    return literal ? `${words.constant}.${literal[1]}` : `${words.constant}[${lang.trim()}]`;
   });
   text = text.replace(MANY, (whole, lang, list) => {
     const areas = [...list.matchAll(/"(\w+)"/g)].map((m) => m[1]);

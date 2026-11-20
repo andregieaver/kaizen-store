@@ -5,8 +5,8 @@ import { Suspense } from "react";
 
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { createClient } from "@/lib/supabase/server";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
 import { isOwner } from "@/server/kaizen-life";
@@ -42,7 +42,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   const { authorization_id: raw, error: failed } = await searchParams;
   const id = typeof raw === "string" && /^[A-Za-z0-9_-]{8,200}$/.test(raw) ? raw : null;
   const lang = await requestAdminLang();
-  const w = adminText(lang, "signIn").consent;
+  const w = SIGN_IN_WORDS[lang].consent;
   if (!id) {
     return (
       <FocusFrame lang={lang}>

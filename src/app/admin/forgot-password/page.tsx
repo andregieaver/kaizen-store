@@ -5,7 +5,9 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { FocusFrame } from "@/components/admin/ui";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 
 import { requestPasswordReset } from "../sign-in/actions";
@@ -24,9 +26,9 @@ export default function ForgotPasswordPage() {
 
 async function ForgotPassword() {
   const lang = await requestAdminLang();
-  const w = adminText(lang, "signIn").forgot;
+  const w = SIGN_IN_WORDS[lang].forgot;
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+    <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, signIn: SIGN_IN_WORDS })}>
       <FocusFrame lang={lang} back={{ href: "/admin/sign-in", label: w.back }} title={w.heading} description={w.description}>
         <ActionForm action={requestPasswordReset} replaceOnSuccess className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">

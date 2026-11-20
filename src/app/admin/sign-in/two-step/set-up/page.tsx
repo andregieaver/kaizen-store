@@ -7,10 +7,12 @@ import { EnrolPanel } from "@/components/admin/two-step-panel";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS, enrolReasonText } from "@/lib/two-step";
 import { todayIn } from "@/lib/work-dates";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAssurance } from "@/server/auth";
 import { getStore } from "@/server/stores";
@@ -53,7 +55,7 @@ async function SetUp({ searchParams }: { searchParams: PageProps<"/admin/sign-in
   const alreadyOn = session.level === "aal2";
 
   const lang = await requestAdminLang();
-  const w = adminText(lang, "signIn");
+  const w = SIGN_IN_WORDS[lang];
   let why: string | undefined;
   if (assurance.state === "enrol") {
     const slug = assurance.reason === "store" ? storeSlugOf(next) : null;
@@ -61,7 +63,7 @@ async function SetUp({ searchParams }: { searchParams: PageProps<"/admin/sign-in
     why = enrolReasonText(assurance.reason, store?.name, lang);
   }
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+    <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, signIn: SIGN_IN_WORDS })}>
       <FocusFrame width="wide" lang={lang}>
         <FocusHeading title={w.setUp.heading} description={fillWords(w.setUp.signedInAs, { email: account.email })} />
         <EnrolPanel

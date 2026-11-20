@@ -7,9 +7,11 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS } from "@/lib/two-step";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAssurance } from "@/server/auth";
 import { recoveryAvailable } from "@/server/recovery-codes";
@@ -40,9 +42,9 @@ async function Recovery({ searchParams }: { searchParams: PageProps<"/admin/sign
   if (held.assurance.state !== "challenge") redirect(`${TWO_STEP_PATHS.challenge}?next=${encodeURIComponent(next)}`);
   const available = recoveryAvailable();
   const lang = await requestAdminLang();
-  const w = adminText(lang, "signIn").recovery;
+  const w = SIGN_IN_WORDS[lang].recovery;
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+    <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, signIn: SIGN_IN_WORDS })}>
       <FocusFrame lang={lang}>
         <FocusHeading title={w.heading} description={w.description} />
         {available ? (

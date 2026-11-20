@@ -9,9 +9,11 @@ import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS, heldPath } from "@/lib/two-step";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAssurance } from "@/server/auth";
 
@@ -43,7 +45,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
   if (assurance.state === "enrol") redirect(heldPath(assurance, next) ?? TWO_STEP_PATHS.enrol);
   if (assurance.state === "ok" || assurance.state === "off") redirect(next);
   const lang = await requestAdminLang();
-  const w = adminText(lang, "signIn").twoStep;
+  const w = SIGN_IN_WORDS[lang].twoStep;
 
   if (assurance.state === "unknown") {
     return (
@@ -63,7 +65,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
   }
 
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+    <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, signIn: SIGN_IN_WORDS })}>
       <FocusFrame lang={lang}>
         <FocusHeading title={w.heading} description={w.description} />
         <ActionForm action={verifyTwoStepAction.bind(null, next)} className="flex flex-col gap-4">
@@ -98,7 +100,7 @@ function SignOut({ lang }: { lang: AdminLang }) {
   return (
     <QuietActionForm action={leaveTwoStepAction}>
       <button type="submit" className="text-sm underline">
-        {adminText(lang, "signIn").twoStep.signOut}
+        {SIGN_IN_WORDS[lang].twoStep.signOut}
       </button>
     </QuietActionForm>
   );

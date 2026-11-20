@@ -4,10 +4,11 @@ import { buttonClass, FocusFrame, FocusHeading } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { normaliseAppScopes, powersOf } from "@/lib/apps";
 import { clientHost, STORES_READ, type AuthorizeRequest } from "@/lib/oauth";
 import { scopeLabel } from "@/lib/oauth-words";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import type { Account } from "@/server/auth";
 import { appOfClient } from "@/server/developer-apps";
 import { installable, installStores } from "@/server/oauth-authorize";
@@ -36,8 +37,8 @@ export async function AppInstall({
   request: AuthorizeRequest;
   hidden: Record<string, string>;
 }) {
-  const w = adminText(lang, "oauth");
-  const scopeWords = adminText(lang, "notifications").apiTokens.scopeWords;
+  const w = OAUTH_WORDS[lang];
+  const scopeWords = NOTIFICATIONS_WORDS[lang].apiTokens.scopeWords;
   const app = await appOfClient(client.id);
   if (!app) {
     return (

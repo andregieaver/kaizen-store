@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ButtonLink, FocusFrame } from "@/components/admin/ui";
-import { adminText } from "@/lib/admin-text";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 
 export const metadata: Metadata = { title: "Offline" };
 
@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Offline" };
  * holds an account's data; in English and Norwegian, as no account is known offline.
  */
 export default function AdminOfflinePage() {
-  const en = adminText("en", "shell").push;
-  const nb = adminText("nb", "shell").push;
+  const en = SHELL_WORDS.en.push;
+  const nb = SHELL_WORDS.nb.push;
   return (
     <FocusFrame title={en.offlineTitle} description={en.offlineBody}>
       <div className="flex flex-col gap-4">

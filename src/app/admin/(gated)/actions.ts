@@ -27,8 +27,9 @@ import { MOLLIE_COOKIE, MOLLIE_COOKIE_PATH } from "@/lib/mollie";
 import { activateMollieMethod, chooseCheckoutProvider, disconnectMollie, mollieStart } from "@/server/mollie";
 import { saveShippingSettings, setStripeProvider, type SaveResult } from "@/server/settings";
 import { paymentsEn } from "@/lib/admin-messages/payments.en";
-import { adminText } from "@/lib/admin-text";
 import { knownText } from "@/lib/known-words";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { PAYMENTS_WORDS } from "@/lib/admin-words/payments";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 // Every action takes the store's slug as its first (bound) argument and
@@ -58,12 +59,12 @@ async function origin(): Promise<string> {
  * the catalogue (`knownText()`); anything it does not know stays as written.
  */
 async function inPayments(state: FormState): Promise<FormState> {
-  const w = adminText(await actionAdminLang(), "payments");
+  const w = PAYMENTS_WORDS[await actionAdminLang()];
   return { ...state, messages: state.messages?.map((m) => knownText(m, paymentsEn.problems, w.problems)) };
 }
 
 async function paymentsWord(pick: (w: typeof paymentsEn.actions) => string): Promise<string> {
-  return pick(adminText(await actionAdminLang(), "payments").actions);
+  return pick(PAYMENTS_WORDS[await actionAdminLang()].actions);
 }
 
 /** Creates the store's own Stripe account for a mode; onboarding then opens on the page. */
@@ -262,7 +263,7 @@ export async function signOut(): Promise<void> {
 }
 
 /** The billing page's answers in the owner's words (D312 A8). */
-const billingWords = (owner: Membership) => adminText(adminLangOf(owner.account.adminLocale), "billing").actions;
+const billingWords = (owner: Membership) => BILLING_WORDS[adminLangOf(owner.account.adminLocale)].actions;
 
 /** Sends an owner to Stripe's billing page for Kaizen's invoices to their store. */
 export async function openBillingPortalAction(storeSlug: string): Promise<FormState> {

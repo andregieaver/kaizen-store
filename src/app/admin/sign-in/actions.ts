@@ -7,9 +7,9 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { siteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
-import { adminText } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { afterFirstStep } from "@/lib/sign-in-redirect";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { canSignIn, signInAccount } from "@/server/auth";
 import { KAIZEN_LIFE_PROVIDER, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { requestAdminLang } from "@/server/admin-request-lang";
@@ -20,7 +20,7 @@ import { budgetVisitor } from "@/server/request-budget";
 
 /** The forms' answers in the request's language (D312 A1), never the typed email's account's: the same words whatever the email. */
 async function answers() {
-  return adminText(await requestAdminLang(), "signIn").answers;
+  return SIGN_IN_WORDS[await requestAdminLang()].answers;
 }
 
 const fail = (message: string): FormState => ({ status: "error", messages: [message] });
@@ -81,7 +81,7 @@ async function signInWithPassword(formData: FormData): Promise<FormState> {
   }
   await clearSignIns(email.data);
   if ((await admit(supabase, data.user)) !== "admitted") {
-    return fail(adminText(await requestAdminLang(), "signIn").signIn.noAccess);
+    return fail(SIGN_IN_WORDS[await requestAdminLang()].signIn.noAccess);
   }
   // A person with a second step goes to it first; the gate holds them there whichever way they arrive.
   redirect(afterFirstStep(data.user, String(formData.get("next") ?? "")));

@@ -4,9 +4,9 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getSessionAccount } from "@/server/auth";
 import { finishEnrolment, passSecondStep, startEnrolment, useRecoveryCode as spendRecoveryCode, type EnrolFinish, type EnrolStart } from "@/server/two-step";
@@ -19,7 +19,7 @@ import { finishEnrolment, passSecondStep, startEnrolment, useRecoveryCode as spe
 
 /** Said where the session has gone, in the request's language (D312 A1). */
 async function signInAgain(): Promise<string> {
-  return adminText(await requestAdminLang(), "signIn").problems.signInAgain;
+  return SIGN_IN_WORDS[await requestAdminLang()].problems.signInAgain;
 }
 
 /** The six digits from the authenticator app. A right code goes on to where the person was going. */

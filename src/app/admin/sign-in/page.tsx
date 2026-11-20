@@ -8,8 +8,10 @@ import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
 import { kaizenLifeSignInOn } from "@/server/kaizen-life";
@@ -32,9 +34,9 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
 
 async function SignIn({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
   const lang = await requestAdminLang();
-  const w = adminText(lang, "signIn").signIn;
+  const w = SIGN_IN_WORDS[lang].signIn;
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+    <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, signIn: SIGN_IN_WORDS })}>
       <FocusFrame
         lang={lang}
         title={w.heading}
@@ -93,7 +95,7 @@ async function SignIn({ searchParams }: { searchParams: PageProps<"/admin/sign-i
 
 async function Notice({ searchParams, lang }: { searchParams: PageProps<"/admin/sign-in">["searchParams"]; lang: AdminLang }) {
   const { error, notice } = await searchParams;
-  const w = adminText(lang, "signIn").signIn;
+  const w = SIGN_IN_WORDS[lang].signIn;
   const account = await getAccount();
   if (account) {
     return (
@@ -135,7 +137,7 @@ async function NextField({ searchParams }: { searchParams: PageProps<"/admin/sig
 async function KaizenLifeButton({ searchParams, lang }: { searchParams: PageProps<"/admin/sign-in">["searchParams"]; lang: AdminLang }) {
   const { next } = await searchParams;
   if (!kaizenLifeSignInOn()) return null;
-  const w = adminText(lang, "signIn").signIn;
+  const w = SIGN_IN_WORDS[lang].signIn;
   return (
     <QuietActionForm action={signInWithKaizenLife} className="flex flex-col gap-2">
       {typeof next === "string" && <input type="hidden" name="next" value={safeNext(next)} />}
