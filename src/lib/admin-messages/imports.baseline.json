@@ -15,7 +15,6 @@
     "notifications.en.ts -> lib/tripletex-settings.ts",
     "notifications.en.ts -> lib/tripletex-setup.ts",
     "notifications.nb.ts -> lib/tripletex-settings.ts",
-    "order.en.ts -> lib/vat-treatment.ts",
     "screens.en.ts -> lib/analytics-export.ts",
     "screens.en.ts -> lib/storefront-api.ts",
     "store-parts.en.ts -> lib/store-parts.ts"
