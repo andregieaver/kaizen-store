@@ -15,6 +15,7 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 
 
 export const metadata: Metadata = { title: "Wishlist" };
@@ -60,7 +61,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
       />
 
       {customer ? (
-        <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />
+        <CustomerBar customer={storeCustomerBar(store.slug, customer, locale, CUSTOMERS_WORDS[lang].bar)} words={CUSTOMERS_WORDS[lang]} />
       ) : (
         <section aria-label={w.shopper} className={`p-4 text-sm ${CARD_CLASS}`}>
           <p className="font-medium">{w.guest}</p>

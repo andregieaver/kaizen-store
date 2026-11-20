@@ -1,13 +1,12 @@
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
-import { orderEn } from "@/lib/admin-messages/order.en";
 import { formatMoney } from "@/lib/money";
 import { ratePercent } from "@/lib/vat";
 import { reasonStaffText, type OrderVatTreatment, type VatKind } from "@/lib/vat-treatment";
 import { Card } from "@/components/admin/ui";
 
-/** The panel's words (`order.vatTreatment`): English unless the page hands in the admin's. */
+/** The panel's words (`order.vatTreatment`), in the admin's language. */
 export type VatTreatmentWords = OrderMessages["vatTreatment"];
 
 
@@ -15,7 +14,7 @@ export type VatTreatmentWords = OrderMessages["vatTreatment"];
  * The row of an order's totals that gives back the VAT a reverse-charge order did not charge (D157). It is inside the order's discount,
  * so the lines above do not add up to the total without it, as with bonus credits. Nothing for any other order.
  */
-export function VatReliefRow({ kind, reliefMinor, money, words = orderEn.vatTreatment }: { kind: VatKind; reliefMinor: number; money: (minor: number) => string; words?: VatTreatmentWords }) {
+export function VatReliefRow({ kind, reliefMinor, money, words }: { kind: VatKind; reliefMinor: number; money: (minor: number) => string; words: VatTreatmentWords }) {
   if (kind !== "reverse_charge" || reliefMinor <= 0) return null;
   return (
     <div className="flex justify-between">
@@ -39,7 +38,7 @@ export function VatTreatmentPanel({
   currency,
   locale,
   typedCompany,
-  words = orderEn.vatTreatment,
+  words,
   timeZone,
 }: {
   treatment: OrderVatTreatment | null;
@@ -50,7 +49,7 @@ export function VatTreatmentPanel({
   locale: string;
   /** The company name the buyer typed at checkout, or null. */
   typedCompany: string | null;
-  words?: VatTreatmentWords;
+  words: VatTreatmentWords;
   /** The store's time zone: when VIES was asked, on the store's clock (D786). */
   timeZone: string;
 }) {

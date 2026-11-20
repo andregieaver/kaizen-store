@@ -1,6 +1,6 @@
 import { niceTicks, linearScale } from "@/components/admin/analytics/chart-math";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { experimentsEn, type ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
+import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import type { CardComparison, ExperimentCard } from "@/lib/experiment-card";
 import { guardrailWarning, type GuardrailCheck } from "@/lib/experiment-guardrails";
 import { GOAL_WORDS } from "@/lib/experiments";
@@ -411,7 +411,7 @@ export function ExperimentResultsView({
   differences = {},
   base,
   locale,
-  words = experimentsEn,
+  words,
   numberLocale = "en-GB",
   readyAround = null,
   behaviour = null,
@@ -425,7 +425,7 @@ export function ExperimentResultsView({
   base: string;
   locale: string;
   /** The words and how numbers are written, in the account's language (D312 A7). */
-  words?: ExperimentsMessages;
+  words: ExperimentsMessages;
   numberLocale?: string;
   /** `card.progress.readyAround` written as a date in the account's language. */
   readyAround?: string | null;

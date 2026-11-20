@@ -6,6 +6,7 @@ import type { DraftLike } from "@/lib/draft-editor";
 import { t } from "@/lib/i18n";
 import { draftMarketOptions } from "@/lib/draft-markets";
 import { toRates } from "@/lib/currency";
+import { draftsEn } from "@/lib/admin-messages/drafts.en";
 import type { DraftStatus } from "@/lib/draft-status";
 import type { DraftListRow, DraftSummary } from "@/server/draft-orders";
 
@@ -53,7 +54,7 @@ const row = (over: Partial<DraftListRow> = {}): DraftListRow => ({
 });
 
 const list = (over: Record<string, unknown> = {}) =>
-  renderToString(h(DraftsListView, { slug: "shop", rows: [row()], status: null, nextCursor: null, hasCursor: false, openCount: 3, canWrite: true, locale: "nb-NO", timeZone: "Europe/Oslo", ...over } as never));
+  renderToString(h(DraftsListView, { slug: "shop", rows: [row()], status: null, nextCursor: null, hasCursor: false, openCount: 3, canWrite: true, locale: "nb-NO", timeZone: "Europe/Oslo", words: draftsEn, ...over } as never));
 
 describe("the drafts list", () => {
   it("lists a draft with its number, customer, status, date and total in its own currency", () => {

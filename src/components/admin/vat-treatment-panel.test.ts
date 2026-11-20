@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { OrderVatTreatment } from "@/lib/vat-treatment";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 import { VatReliefRow, VatTreatmentPanel } from "./vat-treatment-panel";
 
@@ -39,6 +40,7 @@ const panel = (treatment: OrderVatTreatment | null, extra: Partial<Parameters<ty
       locale: "en",
       typedCompany: null,
       ...extra,
+      words: orderEn.vatTreatment,
     }),
   );
 
@@ -91,9 +93,9 @@ describe("VatTreatmentPanel", () => {
 
 describe("VatReliefRow", () => {
   it("gives back the VAT not charged on a reverse-charge order, and nothing on any other", () => {
-    expect(html(h(VatReliefRow, { kind: "reverse_charge", reliefMinor: 4200, money }))).toContain("VAT not charged (reverse charge)");
-    expect(html(h(VatReliefRow, { kind: "reverse_charge", reliefMinor: 4200, money }))).toContain("−42 EUR");
-    expect(html(h(VatReliefRow, { kind: "standard", reliefMinor: 0, money }))).toBe("");
-    expect(html(h(VatReliefRow, { kind: "ioss", reliefMinor: 0, money }))).toBe("");
+    expect(html(h(VatReliefRow, { kind: "reverse_charge", reliefMinor: 4200, money, words: orderEn.vatTreatment }))).toContain("VAT not charged (reverse charge)");
+    expect(html(h(VatReliefRow, { kind: "reverse_charge", reliefMinor: 4200, money, words: orderEn.vatTreatment }))).toContain("−42 EUR");
+    expect(html(h(VatReliefRow, { kind: "standard", reliefMinor: 0, money, words: orderEn.vatTreatment }))).toBe("");
+    expect(html(h(VatReliefRow, { kind: "ioss", reliefMinor: 0, money, words: orderEn.vatTreatment }))).toBe("");
   });
 });

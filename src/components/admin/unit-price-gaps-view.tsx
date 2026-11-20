@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { screensEn, type ScreensMessages } from "@/lib/admin-messages/screens.en";
+import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
 
 /**
  * The products page's part of the unit price (D160, `docs/wave-1d-unit-price.md` 2.2): a notice with the count of active products
@@ -20,15 +20,14 @@ export type NeedsContent = {
   skus: string[];
 };
 
-/** The words of these parts (`screens.unitGaps`, D312): English unless the page hands in the admin's. */
+/** The words of these parts (`screens.unitGaps`, D312), in the admin's language. */
 type GapWords = ScreensMessages["unitGaps"];
-const GAP_WORDS: GapWords = screensEn.unitGaps;
 
-export const needsReasonWords = (reason: NeedsContent["reason"], words: GapWords = GAP_WORDS): string =>
+export const needsReasonWords = (reason: NeedsContent["reason"], words: GapWords): string =>
   reason.kind === "flag" ? words.byMeasure : fillWords(words.category, { category: reason.category });
 
 /** The notice above the products, when any product needs a content. */
-export function NeedsContentNotice({ count, href, words = GAP_WORDS }: { count: number; href: string; words?: GapWords }) {
+export function NeedsContentNotice({ count, href, words }: { count: number; href: string; words: GapWords }) {
   if (count === 0) return null;
   return (
     <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-panel bg-sunken px-4 py-3 text-sm">
@@ -41,7 +40,7 @@ export function NeedsContentNotice({ count, href, words = GAP_WORDS }: { count: 
 }
 
 /** The products that need a content, each with why and which variants lack it, linking to its editor. */
-export function NeedsContentList({ products, base, words = GAP_WORDS }: { products: NeedsContent[]; base: string; words?: GapWords }) {
+export function NeedsContentList({ products, base, words }: { products: NeedsContent[]; base: string; words: GapWords }) {
   if (products.length === 0) {
     return (
       <EmptyState title={words.none} />

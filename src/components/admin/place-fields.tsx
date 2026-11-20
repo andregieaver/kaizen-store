@@ -1,4 +1,4 @@
-import { settingsEn, type SettingsMessages } from "@/lib/admin-messages/settings.en";
+import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 import { fillWords } from "@/lib/admin-fill";
 import type { StoreLocation } from "@/server/company";
 import type { Country } from "@/server/stores";
@@ -12,7 +12,7 @@ export function PlaceFields({
   countries,
   defaultCountry,
   what,
-  w = settingsEn,
+  w,
   part = "all",
 }: {
   place: StoreLocation | null;
@@ -21,7 +21,7 @@ export function PlaceFields({
   /** "the office", "the store", "the pickup point": for the hint under the notes. */
   what: string;
   /** The words in the account's language (`SETTINGS_WORDS[lang]`). */
-  w?: SettingsMessages;
+  w: SettingsMessages;
   /** Round 51 (D784): the address alone, or the optional phone and directions alone, so a page can put the second behind a phone row. */
   part?: "all" | "address" | "extras";
 }) {

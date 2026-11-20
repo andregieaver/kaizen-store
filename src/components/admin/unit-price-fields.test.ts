@@ -8,6 +8,7 @@ import type { VariantInput } from "@/lib/product-input";
 import type { Term } from "@/lib/taxonomy";
 import type { ContentState } from "@/lib/unit-price-editor";
 import { allowSmallBase } from "@/lib/unit-price-test-support";
+import { screensEn } from "@/lib/admin-messages/screens.en";
 
 import { NeedsContentList, NeedsContentNotice } from "./unit-price-gaps-view";
 import { TermsManager } from "./terms";
@@ -197,11 +198,11 @@ describe("the categories screen", () => {
 
 describe("the products page's unit price notice and list", () => {
   it("is silent when nothing needs content", () => {
-    expect(renderToString(createElement(NeedsContentNotice, { count: 0, href: "/x" }))).toBe("");
+    expect(renderToString(createElement(NeedsContentNotice, { count: 0, href: "/x", words: screensEn.unitGaps }))).toBe("");
   });
 
   it("counts the products and links to the filter", () => {
-    const html = renderToString(createElement(NeedsContentNotice, { count: 3, href: "/admin/s/products?needs=unit-price" }));
+    const html = renderToString(createElement(NeedsContentNotice, { count: 3, href: "/admin/s/products?needs=unit-price", words: screensEn.unitGaps }));
     expect(html).toContain("3 active products still need their content for the price per kg or litre.");
     expect(html).toContain('href="/admin/s/products?needs=unit-price"');
     expect(html).toContain('role="status"');
@@ -215,6 +216,7 @@ describe("the products page's unit price notice and list", () => {
           { productId: "p1", handle: "kaffe", title: "Kaffe", reason: { kind: "flag" }, skus: ["K-250", "K-500"] },
           { productId: "p2", handle: "te", title: "Te", reason: { kind: "category", category: "Food" }, skus: ["T-1"] },
         ],
+        words: screensEn.unitGaps,
       }),
     );
     expect(html).toContain('href="/admin/s/products/p1"');
@@ -225,6 +227,6 @@ describe("the products page's unit price notice and list", () => {
   });
 
   it("says so when the list is empty", () => {
-    expect(renderToString(createElement(NeedsContentList, { products: [], base: "/x" }))).toContain("No product needs content for the unit price.");
+    expect(renderToString(createElement(NeedsContentList, { products: [], base: "/x", words: screensEn.unitGaps }))).toContain("No product needs content for the unit price.");
   });
 });

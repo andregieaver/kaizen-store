@@ -9,6 +9,7 @@ vi.mock("@/app/admin/(gated)/[store]/orders/export/actions", () => ({ checkNumbe
 
 import { bookingsEn } from "@/lib/admin-messages/bookings.en";
 import { DEFAULT_IMPORT_OPTIONS } from "@/lib/product-import";
+import { productsEn } from "@/lib/admin-messages/products.en";
 
 import { CustomerExportForm, OrderExportForm, ProductExportForm } from "./export-forms";
 import { FindingsTable, outcomeWords, type FindingItem } from "./findings-table";
@@ -149,7 +150,7 @@ describe("the findings of an import", () => {
 
 describe("the import summaries", () => {
   it("shows what the check found, and that nothing changed", () => {
-    const out = html(createElement(DryRunSummary, { counts: { toCreate: 12, toUpdate: 3, unchanged: 5, withProblems: 2 } }));
+    const out = html(createElement(DryRunSummary, { counts: { toCreate: 12, toUpdate: 3, unchanged: 5, withProblems: 2 }, words: productsEn.summary }));
     expect(out).toContain("To create");
     expect(out).toContain(">12<");
     expect(out).toContain("Nothing has changed in your store");
@@ -157,12 +158,12 @@ describe("the import summaries", () => {
 
   it("shows what was imported, with the reference of the activity log", () => {
     const counts = { created: 10, updated: 2, unchanged: 1, skipped: 1, drafted: 3, failed: 0, warnings: 4, errors: 1, pricesChanged: 14, picturesFetched: 20, termsCreated: 2 };
-    const out = html(createElement(AppliedSummary, { counts, jobId: "abc", written: true }));
+    const out = html(createElement(AppliedSummary, { counts, jobId: "abc", written: true, words: productsEn.summary }));
     expect(out).toContain("What was imported");
     expect(out).toContain("Saved as drafts");
     expect(out).toContain("Prices changed: 14");
     expect(out).toContain("<code>abc</code>");
-    expect(html(createElement(AppliedSummary, { counts, jobId: "abc", written: false }))).toContain("before it stopped");
+    expect(html(createElement(AppliedSummary, { counts, jobId: "abc", written: false, words: productsEn.summary }))).toContain("before it stopped");
   });
 });
 

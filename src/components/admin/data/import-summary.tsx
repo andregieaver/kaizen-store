@@ -1,17 +1,17 @@
 import { type AppliedCounts, wholeNumber } from "@/lib/data-admin";
-import { productsEn, type ProductsMessages } from "@/lib/admin-messages/products.en";
+import type { ProductsMessages } from "@/lib/admin-messages/products.en";
 
 import { card, hint } from "./ui";
 
 /** The numbers of a dry run: what an import would do. */
 export function DryRunSummary({
   counts,
-  words = productsEn.summary,
+  words,
   locale = "en-GB",
 }: {
   counts: { toCreate: number; toUpdate: number; unchanged: number; withProblems: number };
-  /** In the admin's language (D312 A5), English unless given. */
-  words?: ProductsMessages["summary"];
+  /** In the admin's language (D312 A5), */
+  words: ProductsMessages["summary"];
   locale?: string;
 }) {
   const items: [string, number][] = [
@@ -41,14 +41,14 @@ export function AppliedSummary({
   counts,
   jobId,
   written,
-  words = productsEn.summary,
+  words,
   locale = "en-GB",
 }: {
   counts: AppliedCounts;
   jobId: string;
   written: boolean;
-  /** In the admin's language (D312 A5), English unless given. */
-  words?: ProductsMessages["summary"];
+  /** In the admin's language (D312 A5), */
+  words: ProductsMessages["summary"];
   locale?: string;
 }) {
   const items: [string, number][] = [

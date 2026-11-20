@@ -3,7 +3,7 @@ import Link from "next/link";
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { DRAFTS_OPEN_MAX } from "@/lib/order-limits";
 import { DRAFT_STATUSES, type DraftStatus } from "@/lib/draft-status";
-import { draftsEn, type DraftsMessages } from "@/lib/admin-messages/drafts.en";
+import type { DraftsMessages } from "@/lib/admin-messages/drafts.en";
 import { countWords, fillWords } from "@/lib/drafts-words";
 import { formatMoney } from "@/lib/money";
 import type { DraftListRow } from "@/server/draft-orders";
@@ -37,7 +37,7 @@ export function DraftsListView({
   canWrite,
   locale,
   timeZone,
-  words = draftsEn,
+  words,
   dateLocale = locale,
 }: {
   slug: string;
@@ -53,8 +53,8 @@ export function DraftsListView({
   canWrite: boolean;
   locale: string;
   timeZone: string;
-  /** The `drafts` catalogue in the account's language (English unless given). */
-  words?: DraftsMessages;
+  /** The `drafts` catalogue in the account's language. */
+  words: DraftsMessages;
   /** The locale dates are written in (the market's unless given). */
   dateLocale?: string;
 }) {

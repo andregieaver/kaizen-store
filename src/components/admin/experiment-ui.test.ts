@@ -254,7 +254,7 @@ describe("what a started test found (D659)", () => {
     const r = results(figures, days);
     const t = test({ status: "running", goal: "cart", startedAt: "2026-11-01T10:00:00.000Z" });
     const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: r, now: new Date("2026-11-16T12:00:00Z"), timeZone: "Europe/Oslo" });
-    return html(createElement(ExperimentResultsView, { test: t, results: r, card, base: "/admin/demo/experiments", locale: "nb-NO", differences: { b: ["Heading: “Welcome” became “New this week”"] }, readyAround: "27 Nov 2026", behaviour }));
+    return html(createElement(ExperimentResultsView, { test: t, results: r, card, base: "/admin/demo/experiments", locale: "nb-NO", differences: { b: ["Heading: “Welcome” became “New this week”"] }, readyAround: "27 Nov 2026", behaviour, words: experimentsEn }));
   };
 
   it("draws the answer: the range above no change, the progress reached and what B changed", () => {

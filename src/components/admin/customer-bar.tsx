@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Avatar } from "@/components/avatar";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
+import type { CustomersMessages } from "@/lib/admin-messages/customers.en";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { avatarFor } from "@/server/avatars";
 import { CARD_CLASS, Chip } from "@/components/admin/ui";
@@ -24,7 +24,7 @@ export type CustomerBarData = {
 };
 
 /** The account's standing, in a word or two. */
-export function accountLabel(account: CustomerBarData["account"], words: CustomersMessages["account"] = customersEn.account): string {
+export function accountLabel(account: CustomerBarData["account"], words: CustomersMessages["account"]): string {
   return account === "verified" ? words.verified : account === "unverified" ? words.unverified : words.guest;
 }
 
@@ -44,7 +44,7 @@ export function moneyByCurrency(minor: Record<string, number>, locale: string, o
  * its page: the same bar everywhere, one click from the customer's page,
  * which lists all of their orders and subscriptions in turn.
  */
-export function CustomerBar({ customer, words = customersEn }: { customer: CustomerBarData; words?: CustomersMessages }) {
+export function CustomerBar({ customer, words }: { customer: CustomerBarData; words: CustomersMessages }) {
   return (
     <section
       aria-label={words.bar.label}
@@ -95,7 +95,7 @@ export function storeCustomerBar(
     returns?: { orders: number; returned: number; often: boolean };
   },
   locale: string,
-  words: CustomersMessages["bar"] = customersEn.bar,
+  words: CustomersMessages["bar"],
 ): CustomerBarData {
   const spent = moneyByCurrency(customer.spentMinor, locale);
   return {

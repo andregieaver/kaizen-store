@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { experimentsEn } from "@/lib/admin-messages/experiments.en";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 import { writeCsv } from "@/lib/csv";
 import { experimentCsvRows } from "@/lib/experiment-csv";
 import { targetLabelText } from "@/lib/experiment-words";
@@ -17,14 +17,14 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   const member = await checkPermission(slug, "marketing:read", "ab_testing");
   if (!member) return new NextResponse("Not found", { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
-  const tests = await listedTests(member.store, { words: experimentsEn, numberLocale: "en-GB" });
+  const tests = await listedTests(member.store, { words: EXPERIMENTS_WORDS.en, numberLocale: "en-GB" });
   const csv = writeCsv(
     experimentCsvRows(
       tests.map((t) => ({
         name: t.name,
         status: t.status,
         goal: t.goal,
-        target: targetLabelText(t.page.kind, t.page.slug, t.page.title, t.page.role, experimentsEn) + (t.part ? ` (${t.part.label})` : ""),
+        target: targetLabelText(t.page.kind, t.page.slug, t.page.title, t.page.role, EXPERIMENTS_WORDS.en) + (t.part ? ` (${t.part.label})` : ""),
         startedAt: t.startedAt,
         stoppedAt: t.stoppedAt,
         appliedVariant: t.appliedVariant,

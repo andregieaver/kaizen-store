@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { taxEn, type TaxMessages } from "@/lib/admin-messages/tax.en";
+import type { TaxMessages } from "@/lib/admin-messages/tax.en";
 import { knownText } from "@/lib/known-words";
 import { OSS_SCHEMES, type OssScheme, type TaxProfileForm } from "@/lib/tax-profile";
 import { TAX_WORDS } from "@/lib/admin-words/tax";
@@ -15,7 +15,7 @@ import { checkOwnVatNumber, saveTaxProfile } from "@/server/tax-profile";
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
 
 /** The server's English refusals in the account's words (D312 A8). */
-const said = (messages: string[], w: TaxMessages) => messages.map((m) => knownText(m, taxEn.problems, w.problems));
+const said = (messages: string[], w: TaxMessages) => messages.map((m) => knownText(m, TAX_WORDS.en.problems, w.problems));
 
 /** A refusal before a member is known, in the request's language. */
 const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [TAX_WORDS[await actionAdminLang()].problems.noAccess] });

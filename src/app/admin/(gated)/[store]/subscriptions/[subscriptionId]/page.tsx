@@ -20,6 +20,7 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 
 import { changeContentsAction } from "../actions";
@@ -68,7 +69,7 @@ export default async function SubscriptionPage({
         description={<>{t.status[subscription.status] ?? SUBSCRIPTION_STATUS_LABELS[subscription.status]} ·{" "}{planSummary({ interval: subscription.interval, intervalCount: subscription.intervalCount, discountPercent: 0 })}{" "}· {fillWords(w.started, { date: date(subscription.createdAt) })} · {subscription.marketCode}</>}
       />
 
-      {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
+      {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale, CUSTOMERS_WORDS[lang].bar)} words={CUSTOMERS_WORDS[lang]} />}
 
       <div className="grid gap-6 md:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">

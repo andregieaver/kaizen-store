@@ -12,8 +12,6 @@ import { AdminServiceWorker } from "@/components/admin/admin-service-worker";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 import { log } from "@/server/log";
 import { renderCount, renderFields } from "@/server/render-count";
-import { shellEn } from "@/lib/admin-messages/shell.en";
-import { shellNb } from "@/lib/admin-messages/shell.nb";
 import { areaTexts } from "@/lib/admin-area";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { SHELL_WORDS } from "@/lib/admin-words/shell";
@@ -25,7 +23,7 @@ import { SHELL_WORDS } from "@/lib/admin-words/shell";
  */
 export default function GatedLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <Suspense fallback={<AdminWaiting words={{ en: shellEn.frame.loading, nb: shellNb.frame.loading }} />}>
+    <Suspense fallback={<AdminWaiting words={{ en: SHELL_WORDS.en.frame.loading, nb: SHELL_WORDS.nb.frame.loading }} />}>
       <Gate>{children}</Gate>
     </Suspense>
   );
@@ -42,7 +40,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
     const held = await getAssurance();
     const destination = held ? heldDestination(held.assurance) : null;
     if (destination) redirect(destination);
-    return <SessionRecovery waiting={{ en: shellEn.frame.checkingSession, nb: shellNb.frame.checkingSession }} />;
+    return <SessionRecovery waiting={{ en: SHELL_WORDS.en.frame.checkingSession, nb: SHELL_WORDS.nb.frame.checkingSession }} />;
   }
   // One line per render with two numbers and nothing else (step 1.9, D400): the statements it sent and how long it took.
   const counted = renderCount();
