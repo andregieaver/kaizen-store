@@ -837,6 +837,7 @@ export const supportNb: SupportMessages = {
     },
   },
   totals: {
+    phone: { intro: "{all} samtaler i {stores} butikker · {waiting} venter nå", conversations: { one: "1 samtale", many: "{n} samtaler" }, waiting: "{n} venter", open: "Åpne", close: "Lukk", store: "Butikkens side" },
     none: "Ingen butikk har kundeservice eller en samtale i denne perioden.",
     intro:
       "{all} samtaler startet i perioden ({period}) i {stores} butikker; {waiting} venter på en person nå. En strek betyr færre enn {min} tilfeller (antallet i parentes).",

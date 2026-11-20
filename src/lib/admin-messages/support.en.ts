@@ -805,6 +805,8 @@ export const supportEn = {
     },
   },
   totals: {
+    /** Round 71 (D853): the stores' support on a phone. `{all}`, `{stores}`, `{waiting}`, `{mode}`, `{n}`. */
+    phone: { intro: "{all} conversations in {stores} stores · {waiting} waiting now", conversations: { one: "1 conversation", many: "{n} conversations" }, waiting: "{n} waiting", open: "Open", close: "Close", store: "The store's page" },
     none: "No store has a support desk or a conversation in this period.",
     intro:
       "{all} conversations started in the period ({period}) across {stores} stores; {waiting} waiting for a person now. A dash means fewer than {min} cases (their count in brackets).",
