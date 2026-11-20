@@ -807,6 +807,8 @@ export const platformNb: PlatformMessages = {
   },
   requests: {
     title: "Forespørsler om tilgang",
+    /** Runde 66 (D835): forespørslene på en telefon. */
+    phone: { lead: "Å godkjenne lager butikken og sender eieren en innloggingslenke.", on: "På", off: "Av", open: "Åpne", close: "Lukk", approve: "Godkjenn" },
     selfServe: {
       title: "Registrering på egen hånd",
       on: "På: den som registrerer seg, bekrefter e-postadressen og får en butikk med en gang, privat til den åpnes og gratis å prøve i 14 dager. Forespørslene nedenfor er de som ble bekreftet uten at butikken kunne lages, eller som kom før.",

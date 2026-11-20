@@ -56,6 +56,10 @@ export const consoleEn = {
   },
   planAnalytics: {
     title: "Plan analytics",
+    /** Round 66 (D835): the reports on a phone. */
+    phoneLead: "What the stores' plans earn and how many who ask end up paying.",
+    phoneOpen: "Open",
+    phoneClose: "Close",
     description:
       "What the stores' plans earn every month, how that moved, and how many who ask for a store end up paying.",
     period: "Period",

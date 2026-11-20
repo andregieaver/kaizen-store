@@ -813,6 +813,8 @@ export const platformEn = {
   },
   requests: {
     title: "Access requests",
+    /** Round 66 (D835): the requests on a phone. */
+    phone: { lead: "Approving makes the store and emails the owner a sign-in link.", on: "On", off: "Off", open: "Open", close: "Close", approve: "Approve" },
     selfServe: {
       title: "Self-serve sign-up",
       on: "On: a person who signs up confirms their email and gets a store at once, private until they open it and free to try for 14 days. Requests below are those confirmed whose store could not be made, or made before.",

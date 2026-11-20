@@ -1,6 +1,8 @@
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { storeBase, storeHref } from "@/lib/paths";
 import type { Metadata } from "next";
+
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Fragment } from "react";
@@ -52,9 +54,17 @@ export default async function PlatformPage() {
     <>
       <PageHeader
         title={w.title}
-        description={w.description}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
       />
 
+      {/* Round 66 (D835): on a phone the two switches are rows saying on or off, and each waiting request a row whose Approve opens its form. */}
+      <PhoneRows>
+      <PhoneRow flat title={w.selfServe.title} sub={selfServe ? w.phone.on : w.phone.off} change={w.phone.open} done={w.phone.close}>
       <Card title={w.selfServe.title} description={selfServe ? w.selfServe.on : w.selfServe.off}>
         <div className="flex flex-wrap items-center gap-3">
           <ActionForm action={selfServeAction}>
@@ -64,7 +74,8 @@ export default async function PlatformPage() {
           {unconfirmed > 0 && <span className="text-sm text-muted">{fillWords(w.selfServe.unconfirmed, { n: unconfirmed })}</span>}
         </div>
       </Card>
-
+      </PhoneRow>
+      <PhoneRow flat last title={w.sandbox.title} sub={sandbox.on ? w.phone.on : w.phone.off} change={w.phone.open} done={w.phone.close}>
       <Card title={w.sandbox.title} description={fillWords(sandbox.on ? w.sandbox.on : w.sandbox.off, { address: SANDBOX_PATH })}>
         <div className="flex flex-wrap items-center gap-3">
           <ActionForm action={sandboxAction}>
@@ -74,6 +85,8 @@ export default async function PlatformPage() {
           <span className="text-sm text-muted">{fillWords(w.sandbox.counts, { today: sandboxes.today, cap: sandbox.dailyCap, open: sandboxes.open })}</span>
         </div>
       </Card>
+      </PhoneRow>
+      </PhoneRows>
 
       <section aria-labelledby="pending-heading" className="flex flex-col gap-4">
         <h2 id="pending-heading" className="text-title text-ink">
@@ -82,7 +95,11 @@ export default async function PlatformPage() {
         {pending.length === 0 ? (
           <p className="text-sm text-muted">{w.none}</p>
         ) : (
-          pending.map((request) => <PendingRequest key={request.id} request={request} designs={designs} w={w} lang={lang} />)
+          <div className="flex flex-col gap-4 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+            {pending.map((request, index) => (
+              <PendingRequest key={request.id} request={request} designs={designs} w={w} lang={lang} last={index === pending.length - 1} />
+            ))}
+          </div>
         )}
       </section>
 
@@ -117,7 +134,7 @@ export default async function PlatformPage() {
   );
 }
 
-async function PendingRequest({ request, designs, w, lang }: { request: AccessRequest; designs: DesignCard[]; w: W; lang: AdminLang }) {
+async function PendingRequest({ request, designs, w, lang, last }: { request: AccessRequest; designs: DesignCard[]; w: W; lang: AdminLang; last: boolean }) {
   // A theme the requester chose that is no longer offered (unpublished or archived, D177) gives way to the Standard store, and is said.
   const designGone = request.designPresetId && !designs.some((d) => d.id === request.designPresetId);
   // Suggest a free address; the admin can still change it.
@@ -128,6 +145,14 @@ async function PendingRequest({ request, designs, w, lang }: { request: AccessRe
   }
 
   return (
+    <PhoneRow
+      flat
+      last={last}
+      title={request.storeName}
+      sub={`${request.name} · ${adminDate(PLATFORM_TIME_ZONE, request.createdAt, "day", lang)}`}
+      change={w.phone.approve}
+      done={w.phone.close}
+    >
     <article
       aria-labelledby={`request-${request.id}`}
       className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
@@ -210,6 +235,7 @@ async function PendingRequest({ request, designs, w, lang }: { request: AccessRe
         </div>
       </ActionForm>
     </article>
+    </PhoneRow>
   );
 }
 
