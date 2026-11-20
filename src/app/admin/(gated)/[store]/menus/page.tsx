@@ -16,8 +16,11 @@ import { listTerms } from "@/server/taxonomy";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
+import { WEBSITE_MENUS_WORDS } from "@/lib/admin-words/website-menus";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 
 import { uploadImageAction } from "../products/actions";
 import { deleteMenuAction, saveMenuAction } from "./actions";
@@ -36,9 +39,9 @@ export const metadata: Metadata = { title: "Menus" };
 export default async function MenusPage({ params, searchParams }: PageProps<"/admin/[store]/menus">) {
   const { store, account } = await requirePermission((await params).store, "website:read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "website").menusPage;
+  const w = WEBSITE_WORDS[lang].menusPage;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["websitePick", "websiteMenus"])}>
+    <AdminTextScope texts={areaTexts(lang, { websitePick: WEBSITE_PICK_WORDS, websiteMenus: WEBSITE_MENUS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={<><span className="sm:hidden">{w.lead}</span><span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span></>} />
       {/* The menu chosen in the address is read per request. */}
@@ -53,7 +56,7 @@ export default async function MenusPage({ params, searchParams }: PageProps<"/ad
 async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchParams: PageProps<"/admin/[store]/menus">["searchParams"] }) {
   const { store, account } = await requirePermission(storeSlug, "website:read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "website").menusPage;
+  const w = WEBSITE_WORDS[lang].menusPage;
   const { menu: wanted, staged: stagedParam } = await searchParams;
   // A change staged for the open staging set (D358): kept in the set and saved when it goes live, never here.
   const staging = stagedParam === "1" ? await openStagingOf(store.id) : null;
@@ -98,7 +101,7 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
   ];
 
   const stagedMenu = staging && chosen ? staging.menus[chosen.id] : undefined;
-  const sw = adminText(lang, "website").staging;
+  const sw = WEBSITE_WORDS[lang].staging;
   return (
     <>
     {staging && chosen && (

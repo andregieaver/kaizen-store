@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { InstallPreviewView } from "@/components/admin/install-preview-view";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { requirePermission } from "@/server/permissions";
 import { installPreview } from "@/server/theme-preview";
 
@@ -22,7 +22,7 @@ export default async function ThemePreviewPage({ params, searchParams }: PagePro
   const { store: slug, install: installId } = await params;
   const query = await searchParams;
   const { store: base, account } = await requirePermission(slug, "website:read");
-  const { common: c, preview: w } = adminText(adminLangOf(account.adminLocale), "design");
+  const { common: c, preview: w } = DESIGN_WORDS[adminLangOf(account.adminLocale)];
   const preview = await installPreview(base.id, installId);
   if (!preview || !base.markets[0]) notFound();
   const here = `/admin/${base.slug}/settings/design/themes/${preview.install.id}/preview`;

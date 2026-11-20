@@ -8,7 +8,8 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { GeneratedCodes } from "@/components/admin/generated-codes";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { codeItemCounts, getDiscount } from "@/server/discounts";
 import { PageHeader } from "@/components/admin/ui";
@@ -26,13 +27,13 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
   if (shopOff) return shopOff;
   const { store, account } = gated;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "discounts");
+  const w = DISCOUNTS_WORDS[lang];
   if (!z.uuid().safeParse(discountId).success) notFound();
   const discount = await getDiscount(store.id, discountId);
   if (!discount) notFound();
   const items = discount.uniqueCodes ? await codeItemCounts(store.id, discount.id) : null;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
+    <AdminTextScope texts={areaTexts(lang, { discounts: DISCOUNTS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `/admin/${store.slug}/discounts`, label: w.codes.title }}

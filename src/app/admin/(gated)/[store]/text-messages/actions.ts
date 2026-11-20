@@ -3,7 +3,6 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole, checkPermission } from "@/server/permissions";
 import {
@@ -18,13 +17,14 @@ import {
   stopSmsCampaign,
   type SmsPreview,
 } from "@/server/sms";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * SMS marketing's steps (D565), the store's slug the bound first argument. The account (connecting it, its rules, disconnecting) is the
  * OWNER's: it spends money and holds a password. Writing, pricing, sending and stopping texts is `marketing:write`. The server checks again.
  */
 
-const noAccess = async () => ({ ok: false as const, problem: adminText(await actionAdminLang(), "inventory").noAccess });
+const noAccess = async () => ({ ok: false as const, problem: INVENTORY_WORDS[await actionAdminLang()].noAccess });
 
 export type SmsFormResult = { ok: true } | { ok: false; problem: string };
 

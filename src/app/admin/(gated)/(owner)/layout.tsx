@@ -6,8 +6,8 @@ import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
-import { adminText } from "@/lib/admin-text";
 import { ownerAreas, ownerTabs } from "@/lib/owner-nav";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 import { requireAccount } from "@/server/auth";
 import { ownerWho } from "@/server/owner-level";
 import { waitingCount } from "@/server/support";
@@ -37,7 +37,7 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   const tabs: NavItem[] = ownerTabs(who, { support: waiting });
   const areas: NavArea[] = ownerAreas(who);
   const lang = adminLangOf(account.adminLocale);
-  const shell = adminText(lang, "shell");
+  const shell = SHELL_WORDS[lang];
   const w = shell.levels;
   const title = who.owner ? w.controlCenter : w.yourStores;
   return (

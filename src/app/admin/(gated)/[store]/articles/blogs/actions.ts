@@ -4,10 +4,10 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { deleteAuthor, deleteBlog, saveAuthor, saveBlog } from "@/server/blogs";
 import { pagesTag } from "@/lib/cache-tags";
+import { BLOG_WORDS } from "@/lib/admin-words/blog";
 import { checkPageTypeAccess } from "@/server/permissions";
 
 /**
@@ -23,10 +23,10 @@ const text = (formData: FormData, name: string) => {
 
 async function member(storeSlug: string) {
   const found = await checkPageTypeAccess(storeSlug, "article", "write");
-  return found ? { member: found, w: adminText(adminLangOf(found.account.adminLocale), "blog") } : null;
+  return found ? { member: found, w: BLOG_WORDS[adminLangOf(found.account.adminLocale)] } : null;
 }
 
-const refused = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "blog").noChange] });
+const refused = async (): Promise<FormState> => ({ status: "error", messages: [BLOG_WORDS[await actionAdminLang()].noChange] });
 
 export async function saveBlogAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const found = await member(storeSlug);

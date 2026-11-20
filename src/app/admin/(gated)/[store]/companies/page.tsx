@@ -6,7 +6,9 @@ import { CompanyFields } from "@/components/admin/company-fields";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies, employeePercent } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
@@ -26,13 +28,13 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
   const off = requireFeature(current, "business");
   if (off) return off;
   const { store } = current;
-  const all = adminText(adminLangOf(current.account.adminLocale), "customers");
+  const all = CUSTOMERS_WORDS[adminLangOf(current.account.adminLocale)];
   const words = all.companies;
   const [companies, groups] = await Promise.all([listCompanies(store.id), listTiers(store.id)]);
   const base = `/admin/${store.slug}`;
 
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(current.account.adminLocale), ["bookings"])}>
+    <AdminTextScope texts={areaTexts(adminLangOf(current.account.adminLocale), { bookings: BOOKINGS_WORDS })}>
     <div className="flex flex-col gap-8">
       {/* Round 14 (D641): a sentence; a new company asked for by its number first, the register filling in the rest. */}
       <PageHeader

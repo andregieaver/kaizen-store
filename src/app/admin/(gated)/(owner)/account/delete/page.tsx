@@ -5,7 +5,7 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { erasePreview } from "@/server/account-erasure";
 import { requireAccount, signedInRecently } from "@/server/auth";
 
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Delete your account" };
  */
 export default async function DeleteAccountPage() {
   const account = await requireAccount();
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.erase;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].account.erase;
   const [plan, fresh] = await Promise.all([erasePreview(account), signedInRecently()]);
   const [before, after = ""] = w.confirm.split("{email}");
   return (

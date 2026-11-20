@@ -10,7 +10,7 @@ import { listStoreWishlists, mostWishedProducts, wishlistFigures } from "@/serve
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Wishlists" };
@@ -30,7 +30,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
   const customerId = typeof query.customer === "string" && z.uuid().safeParse(query.customer).success ? query.customer : null;
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "bookings").wishlists;
+  const w = BOOKINGS_WORDS[lang].wishlists;
   const [lists, figures, top] = await Promise.all([
     listStoreWishlists(store.id, { q, customerId }),
     wishlistFigures(store.id),

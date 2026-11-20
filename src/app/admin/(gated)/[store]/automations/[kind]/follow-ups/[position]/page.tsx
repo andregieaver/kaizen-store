@@ -6,8 +6,9 @@ import { AutomationEditor } from "@/components/admin/automation-editor";
 import { DeleteReminderButton } from "@/components/admin/delete-reminder-button";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { FOLLOW_UP_DAYS, FOLLOW_UP_POSITIONS, isLifecycle, isPickKind } from "@/lib/automations";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { getAutomation } from "@/server/automations";
 import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -37,7 +38,7 @@ export default async function FollowUpPage({ params }: PageProps<"/admin/[store]
   if (position !== "new" && !followUp) notFound();
   if (position === "new" && automation.followUps.length >= FOLLOW_UP_POSITIONS.length) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
+  const w = MARKETING_WORDS[lang];
   const wa = w.automations;
   const wf = wa.followUps;
   const base = `/admin/${store.slug}/automations/${kind}`;
@@ -47,7 +48,7 @@ export default async function FollowUpPage({ params }: PageProps<"/admin/[store]
   // A new one is the next: the second while there is none, else the third (ecosystem plan E3.7, D718: never a "follow-up").
   const title = (followUp ? followUp.position : FOLLOW_UP_POSITIONS[automation.followUps.length]) === 2 ? wf.second : wf.third;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+    <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: base, label: wa.kinds[kind].title }} title={title} description={`${wf.stops}${isPickKind(kind) ? ` ${wf.picks}` : ""}`} />
         <Card title={w.common.whatItSays} description={followUp ? undefined : wf.newWords} compact>

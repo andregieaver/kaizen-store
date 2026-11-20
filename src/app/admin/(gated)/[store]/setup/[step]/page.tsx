@@ -34,9 +34,15 @@ import { featureWarnings } from "@/lib/feature-words";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { priceText } from "@/lib/theme-prices";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { HOME_DRAFTS_WORDS } from "@/lib/admin-words/home-drafts";
+import { PAYMENTS_WORDS } from "@/lib/admin-words/payments";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETUP_WORDS } from "@/lib/admin-words/setup";
 import {
   chooseFeaturesAction,
   openStoreAction,
@@ -60,7 +66,7 @@ export default async function SetupStepPage({ params }: Props) {
   if (!memberCan(member, "owner")) {
     return (
       <p className="mx-auto max-w-2xl text-sm">
-        {fillWords(adminText(adminLangOf(member.account.adminLocale), "setup").ownerOnly, { name: member.store.name })}
+        {fillWords(SETUP_WORDS[adminLangOf(member.account.adminLocale)].ownerOnly, { name: member.store.name })}
       </p>
     );
   }
@@ -68,7 +74,7 @@ export default async function SetupStepPage({ params }: Props) {
   // The wizard follows the store's features (D178 step 6): a step the store does not have resumes the wizard where it is.
   if (!stepApplies(step, member.store)) redirect(`/admin/${member.store.slug}/setup`);
   const selling = featureOn(member.store, "shop");
-  const w = adminText(adminLangOf(member.account.adminLocale), "setup");
+  const w = SETUP_WORDS[adminLangOf(member.account.adminLocale)];
   // The steps named in the account's language: the countries step is "Your country" for a website, as `setupStepsFor()` names it.
   const steps = setupStepsFor(member.store).map((s) => ({ ...s, title: s.id === "countries" && !selling ? w.steps.countriesWebsite : w.steps[s.id] }));
   const frame = { storeSlug: member.store.slug, storeName: member.store.name, steps, step, progress, w: w.frame };
@@ -86,13 +92,13 @@ export default async function SetupStepPage({ params }: Props) {
           {memberCan(member, "owner") && (
             <p className="mt-8 text-body">
               <Link href={`/admin/${member.store.slug}/dream-factory`} className="underline">
-                {adminText(adminLangOf(member.account.adminLocale), "home").dream.offer}
+                {HOME_WORDS[adminLangOf(member.account.adminLocale)].dream.offer}
               </Link>
             </p>
           )}
           {/* Or let the AI draft the pages from a few sentences (D351): nothing is on the site until the owner publishes. */}
           <div className="mt-8">
-            <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["homeDrafts"])}>
+            <AdminTextScope texts={areaTexts(adminLangOf(member.account.adminLocale), { homeDrafts: HOME_DRAFTS_WORDS })}>
               <Suspense fallback={null}>
                 <StoreDraftsSection storeId={member.store.id} storeSlug={member.store.slug} offerStart />
               </Suspense>
@@ -171,7 +177,7 @@ async function FeaturesStep({ member, answered, w }: { member: Membership; answe
   // What switching off a feature that is on now would mean, for the form's tick (the Features page's confirmation, D178).
   const locale = store.markets[0]?.locale ?? "en";
   const lang = adminLangOf(member.account.adminLocale);
-  const featureWords = { s: adminText(lang, "settings").features, c: adminText(lang, "common").features };
+  const featureWords = { s: SETTINGS_WORDS[lang].features, c: COMMON_WORDS[lang].features };
   // The line that says which features stop with it is left out: the question asks about each of them on its own.
   const asleep = featureWords.s.warnings.asleep;
   const sleeping = (line: string) => [asleep.one, asleep.many].some((template) => line.endsWith(template.split("{labels}")[1] ?? template));
@@ -241,14 +247,14 @@ async function PaymentsStep({ member, w }: { member: Membership; w: SetupMessage
         </p>
       )}
       {settings.modes.includes("live") && (
-        <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["payments"])}>
+        <AdminTextScope texts={areaTexts(adminLangOf(member.account.adminLocale), { payments: PAYMENTS_WORDS })}>
           <StripeAccountPanel
             storeSlug={store.slug}
             mode="live"
             account={settings.accounts.live}
             isOwner={memberCan(member, "owner")}
             title={w.payments.realTitle}
-            words={adminText(adminLangOf(member.account.adminLocale), "payments").stripe}
+            words={PAYMENTS_WORDS[adminLangOf(member.account.adminLocale)].stripe}
           />
         </AdminTextScope>
       )}
@@ -334,7 +340,7 @@ async function ProductsStep({ member, progress, w }: { member: Membership; progr
                   ? w.products.draft
                   : kindOffered(store, product.kind)
                     ? w.products.published
-                    : fillWords(w.products.notShown, { feature: adminText(adminLangOf(member.account.adminLocale), "common").features.labels[kindFeature(product.kind)!] ?? FEATURES_BY_ID[kindFeature(product.kind)!].label })}
+                    : fillWords(w.products.notShown, { feature: COMMON_WORDS[adminLangOf(member.account.adminLocale)].features.labels[kindFeature(product.kind)!] ?? FEATURES_BY_ID[kindFeature(product.kind)!].label })}
               </span>
             </li>
           ))}

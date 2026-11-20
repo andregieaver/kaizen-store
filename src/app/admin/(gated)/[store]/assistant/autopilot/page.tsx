@@ -4,7 +4,8 @@ import { Suspense } from "react";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AUTOPILOT_TABS, AutopilotPage, type AutopilotTab } from "@/components/admin/autopilot/autopilot-page";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 import { autopilotOverview } from "@/server/autopilot-overview";
 import { holderOfPrincipal } from "@/server/owner-assistant";
 import { requireOwnerRole } from "@/server/permissions";
@@ -23,7 +24,7 @@ export default async function StoreAutopilotPage({ params, searchParams }: PageP
   const slug = member.store.slug;
   const base = `/admin/${slug}/assistant/autopilot`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+    <AdminTextScope texts={areaTexts(lang, { assistant: ASSISTANT_WORDS })}>
       <AutopilotPage
         timeZone={member.store.timeZone}
         overview={overview}

@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { isSaleKey } from "@/lib/campaign-offers";
 import { discountTabHref } from "@/lib/discount-tabs";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -22,7 +23,7 @@ export default async function NewCampaignPage({ params, searchParams }: PageProp
   if (shopOff) return shopOff;
   const { store, account } = gated;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "discounts").campaigns;
+  const w = DISCOUNTS_WORDS[lang].campaigns;
   const key = (await searchParams).sale;
   const amount = new Intl.NumberFormat(ADMIN_LANG_FACTS[lang].locale, {
     style: "currency",
@@ -32,9 +33,9 @@ export default async function NewCampaignPage({ params, searchParams }: PageProp
   }).format(key === "gift" ? 1000 : 800);
   // Shoppers read the name in the cart and on their order, so it is written in the shop's own language where the admin has it.
   const shopLang: AdminLang = /^(nb|nn|no)\b/.test(store.markets[0]?.locale ?? "") ? "nb" : "en";
-  const sale = isSaleKey(key) ? { key, name: fillWords(adminText(shopLang, "discounts").campaigns.sales[key].name, { amount }) } : null;
+  const sale = isSaleKey(key) ? { key, name: fillWords(DISCOUNTS_WORDS[shopLang].campaigns.sales[key].name, { amount }) } : null;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
+    <AdminTextScope texts={areaTexts(lang, { discounts: DISCOUNTS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: discountTabHref(store.slug, "automatic"), label: w.title }} title={w.newCampaign} />
         <CampaignForm store={store} campaign={null} sale={sale} />

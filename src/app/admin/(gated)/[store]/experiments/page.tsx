@@ -4,10 +4,10 @@ import Link from "next/link";
 import { adminDate } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { LIST_GROUPS, listLead, STATE_SIGNAL, type ListLead, type TestIdea } from "@/lib/experiment-list";
 import { partLabelText, targetLabelText } from "@/lib/experiment-words";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 import { requirePermission } from "@/server/permissions";
 import { experimentList, type ListedTest } from "@/server/experiment-list";
 import { Card, CARD_CLASS, Chip, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
@@ -69,7 +69,7 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
   if (notInAccount) return notInAccount;
   const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "experiments");
+  const w = EXPERIMENTS_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   // A test's days on the store's clock; a day already worked out (`readyAround`) is shown as it is (D786).
   const day = (iso: string) => adminDate(store, iso, "day", lang);

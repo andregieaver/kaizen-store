@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { PrivacyMessages } from "@/lib/admin-messages/privacy.en";
-import { adminText } from "@/lib/admin-text";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
@@ -21,11 +21,11 @@ import { cancelRequest, closeNoData, extendRequest, logRequest, markIdentityDoub
 
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
 /** The member's words for the privacy screens (D312 A6): what an action answers is in the language they read the admin in. */
-const wordsOf = (member: Membership): PrivacyMessages => adminText(adminLangOf(member.account.adminLocale), "privacy");
+const wordsOf = (member: Membership): PrivacyMessages => PRIVACY_WORDS[adminLangOf(member.account.adminLocale)];
 /** A server sentence (English) in the reader's language, where the catalogue has it. */
 const inWords = (w: PrivacyMessages, sentence: string): string => w.problems[sentence] ?? sentence;
 /** The plain refusal before a member is known, in the request's language. */
-const noAccess = async (): Promise<FormState> => failed(inWords(adminText(await actionAdminLang(), "privacy"), NO_ACCESS));
+const noAccess = async (): Promise<FormState> => failed(inWords(PRIVACY_WORDS[await actionAdminLang()], NO_ACCESS));
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
 
 /** The membership when the member may change customers and the id is one, else the plain sentence to show. */

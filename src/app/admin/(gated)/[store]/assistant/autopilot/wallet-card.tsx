@@ -2,9 +2,10 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, KpiTile, List, ListRow, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { amountText } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
+import type { AdminAreaMessages } from "@/lib/admin-text";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 import { listPurchases, monthTaken, type AgentPurchase } from "@/server/agent-purchases";
 import { airwallexCardsLink, getWallet, listCardholders, walletOffered } from "@/server/card-wallet";
 import type { Store } from "@/server/stores";
@@ -21,7 +22,7 @@ const OPEN = new Set(["issuing", "card_ready", "spent"]);
  * disconnecting are one step away. A purchase is made only by the AI manager on the owner's yes.
  */
 export async function WalletCard({ store, lang, outcome }: { store: Store; lang: AdminLang; outcome?: string }) {
-  const w = adminText(lang, "assistant").autopilot.wallet;
+  const w = ASSISTANT_WORDS[lang].autopilot.wallet;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const slug = store.slug;
   const [wallet, purchases] = await Promise.all([getWallet(store.id), listPurchases(store.id, 20)]);
@@ -157,7 +158,7 @@ export async function WalletCard({ store, lang, outcome }: { store: Store; lang:
   );
 }
 
-type Words = ReturnType<typeof adminText<"assistant">>["autopilot"]["wallet"];
+type Words = AdminAreaMessages["assistant"]["autopilot"]["wallet"];
 
 function PurchaseRow({ p, slug, words: w, money, when }: { p: AgentPurchase; slug: string; words: Words; money: (minor: number, currency: string) => string; when: (iso: string) => string }) {
   const open = OPEN.has(p.status);

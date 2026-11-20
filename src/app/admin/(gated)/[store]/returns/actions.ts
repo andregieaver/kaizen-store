@@ -7,10 +7,10 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
-import { adminText } from "@/lib/admin-text";
 import { previewData, type RefundPreviewData } from "@/lib/return-admin";
 import { parsePrice } from "@/lib/product-input";
 import type { ReturnAddress } from "@/lib/withdrawal";
+import { RETURNS_WORDS } from "@/lib/admin-words/returns";
 import { audit, type Membership } from "@/server/auth";
 import { storeAction } from "@/server/store-action";
 import { markDelivered } from "@/server/order-delivery";
@@ -62,7 +62,7 @@ function checked(found: Membership, returnId: string): { valid: boolean; words: 
 }
 
 /** The member's words for the returns screens (D312 A4): what an action answers is in the language they read the admin in. */
-const wordsOf = (found: Membership): ReturnsMessages => adminText(adminLangOf(found.account.adminLocale), "returns");
+const wordsOf = (found: Membership): ReturnsMessages => RETURNS_WORDS[adminLangOf(found.account.adminLocale)];
 
 const notAmount = (words: ReturnsMessages, typed: string, currency: string): string => fillWords(words.actions.notAmount, { typed, currency });
 

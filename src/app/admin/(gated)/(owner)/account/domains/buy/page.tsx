@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { DomainCheckout } from "@/components/admin/domain-checkout";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { requireAccount } from "@/server/auth";
 import { domainsPublic } from "@/server/domain-purchases";
 
@@ -17,7 +17,7 @@ export default async function BuyDomainPage({ searchParams }: PageProps<"/admin/
   await connection();
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "domains");
+  const words = DOMAINS_WORDS[lang];
   const raw = (await searchParams).domain;
   const initial = typeof raw === "string" && /^[a-z0-9.-]{1,253}$/i.test(raw) ? raw.toLowerCase() : "";
   const [first = "", ...rest] = (account.name ?? "").trim().split(/\s+/);

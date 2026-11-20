@@ -6,10 +6,24 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
 import { PageEditor } from "@/components/admin/page-editor";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { parseDualLayout, templateAsPage, type DualKind, type DualLayout, type DualWith } from "@/lib/dual-page";
 import { termContentOf } from "@/lib/page-content";
 import { SANDBOX_KINDS, type SandboxKind } from "@/lib/sandbox";
+import { areaTexts } from "@/lib/admin-area";
+import { ANIMATION_WORDS } from "@/lib/admin-words/animation";
+import { BACKDROPS_WORDS } from "@/lib/admin-words/backdrops";
+import { BLOCKS_WORDS } from "@/lib/admin-words/blocks";
+import { BLOG_EDITOR_WORDS } from "@/lib/admin-words/blog-editor";
+import { BUILDER_WORDS } from "@/lib/admin-words/builder";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { BUILDER_VERSIONS_WORDS } from "@/lib/admin-words/builder-versions";
+import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
+import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
+import { SCHEDULES_EDITOR_WORDS } from "@/lib/admin-words/schedules-editor";
+import { STORE_PARTS_WORDS } from "@/lib/admin-words/store-parts";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getFieldData } from "@/server/custom-fields";
 import { getPageForEdit } from "@/server/pages";
@@ -21,7 +35,7 @@ import { sandboxPageContext } from "./context";
 import { offers } from "./sandbox";
 
 /** The catalogue areas the page editor's parts read (D312 A7), as the store's own editor hands them down. */
-const EDITOR_AREAS = ["builder", "blocks", "fieldsEditor", "productsEditor", "designEditor", "blogEditor", "schedulesEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions"] as const;
+const EDITOR_AREA_WORDS = { builder: BUILDER_WORDS, blocks: BLOCKS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, designEditor: DESIGN_EDITOR_WORDS, blogEditor: BLOG_EDITOR_WORDS, schedulesEditor: SCHEDULES_EDITOR_WORDS, storeParts: STORE_PARTS_WORDS, backdrops: BACKDROPS_WORDS, animation: ANIMATION_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS, builderVersions: BUILDER_VERSIONS_WORDS };
 
 type Query = Record<string, string | string[] | undefined>;
 
@@ -65,7 +79,7 @@ async function sandboxSecondDoc(sandbox: Sandbox, doc: DualWith, lang: AdminLang
     ]);
     return {
       doc: { kind: "template", id: part.id },
-      kindName: adminText(lang, "builder").dual.kinds.template,
+      kindName: BUILDER_WORDS[lang].dual.kinds.template,
       props: { page, template: part, savedParts, terms, gridTerms, fieldRoles: [], context: { ...context, languages: context.languages.slice(0, 1) } },
     };
   }
@@ -82,7 +96,7 @@ async function sandboxSecondDoc(sandbox: Sandbox, doc: DualWith, lang: AdminLang
   ]);
   return {
     doc,
-    kindName: adminText(lang, "builder").dual.kinds[kind],
+    kindName: BUILDER_WORDS[lang].dual.kinds[kind],
     props: {
       page,
       savedParts,
@@ -111,8 +125,8 @@ export async function SandboxEditor({ sandbox, kind, pageId, query }: { sandbox:
     sandboxPageContext(sandbox, kind),
   ]);
   if (pageId && !found) notFound();
-  const ew = adminText(lang, "builder").editor;
-  const untitled = adminText(lang, "sandbox").home.untitled;
+  const ew = BUILDER_WORDS[lang].editor;
+  const untitled = SANDBOX_WORDS[lang].home.untitled;
   const saved = query.saved;
   const notice = saved === "draft" ? ew.draftSaved : saved === "published" ? ew.publishedShort : null;
   const fieldData = found && (kind === "page" || kind === "article") ? await getFieldData(store.id, kind, found.id) : undefined;
@@ -120,11 +134,11 @@ export async function SandboxEditor({ sandbox, kind, pageId, query }: { sandbox:
   const props = { page: found, savedParts, terms, gridTerms, fieldData, fieldRoles, context };
   const dual = context.dualPages ? await sandboxDual(sandbox, { kind, id: found?.id ?? null }, query, lang) : null;
   return (
-    <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
+    <AdminTextScope texts={areaTexts(lang, EDITOR_AREA_WORDS)}>
       <h1 className="sr-only">{found?.draft.title || untitled}</h1>
       {dual && dual !== "refused" && context.dualPages ? (
         <DualPageEditor
-          left={{ doc: { kind, id: found?.id ?? null }, kindName: adminText(lang, "builder").dual.kinds[kind], props }}
+          left={{ doc: { kind, id: found?.id ?? null }, kindName: BUILDER_WORDS[lang].dual.kinds[kind], props }}
           right={dual.right}
           layout={dual.layout}
           root={context.dualPages.root}
@@ -132,7 +146,7 @@ export async function SandboxEditor({ sandbox, kind, pageId, query }: { sandbox:
           site={{ css: context.siteCss, name: ew.yourStore, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
         />
       ) : (
-        <PageEditor key={found?.id ?? "new"} {...props} notice={dual === "refused" ? adminText(lang, "builder").dual.notOpened : notice} />
+        <PageEditor key={found?.id ?? "new"} {...props} notice={dual === "refused" ? BUILDER_WORDS[lang].dual.notOpened : notice} />
       )}
     </AdminTextScope>
   );

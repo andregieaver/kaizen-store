@@ -11,8 +11,8 @@ import { layoutUses } from "@/server/product-layouts";
 import { listTerms } from "@/server/taxonomy";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 
 import { assignLayoutAction } from "../../actions";
 
@@ -30,7 +30,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const w = adminText(adminLangOf(gated.account.adminLocale), "website").assignLayout;
+  const w = WEBSITE_WORDS[adminLangOf(gated.account.adminLocale)].assignLayout;
   const layout = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, "product_layout") : null;
   if (!layout) notFound();
   const [terms, uses] = await Promise.all([listTerms({ storeId: store.id, contentType: "product" }), layoutUses(store.id)]);

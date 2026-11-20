@@ -8,7 +8,7 @@ import { requireHost } from "@/server/hosts";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { hostSaveTaxDetailsAction } from "../actions";
 
@@ -25,7 +25,7 @@ const hint = "font-normal text-muted";
  */
 export default async function HostTaxPage({ params }: PageProps<"/admin/hosting/[store]/tax">) {
   const { store, host, account } = await requireHost((await params).store);
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").hostTax;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].hostTax;
   const details = await getHostTaxDetails(store.id, host.id);
   const countries = isoCountries();
   const home = store.details.country ?? "NO";

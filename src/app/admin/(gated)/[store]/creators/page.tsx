@@ -5,8 +5,9 @@ import { CreatorPayouts, CreatorSettingsForm, CreatorsList } from "@/components/
 import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { todayIn } from "@/lib/work-dates";
+import { areaTexts } from "@/lib/admin-area";
+import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
 import { getCreatorSettings, listCreatorPayouts, listCreators } from "@/server/creators";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
@@ -25,7 +26,7 @@ export default async function CreatorsPage({ params }: PageProps<"/admin/[store]
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "loyalty").creators;
+  const w = LOYALTY_WORDS[lang].creators;
   const [settings, creators, payouts, terms] = await Promise.all([
     getCreatorSettings(store.id),
     listCreators(store.id),
@@ -37,7 +38,7 @@ export default async function CreatorsPage({ params }: PageProps<"/admin/[store]
   const categories = terms.filter((term) => term.kind === "category").map((term) => ({ id: term.id, name: term.name }));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["loyalty"])}>
+    <AdminTextScope texts={areaTexts(lang, { loyalty: LOYALTY_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

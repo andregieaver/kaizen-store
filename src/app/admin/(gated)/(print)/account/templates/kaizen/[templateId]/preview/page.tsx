@@ -17,7 +17,8 @@ import { previewKaizenTemplate } from "@/server/templates";
 import { fillWords } from "@/lib/admin-fill";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BUILDER_WORDS } from "@/lib/admin-words/builder";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Template preview", robots: { index: false, follow: false } };
 
@@ -34,8 +35,8 @@ export default async function KaizenTemplatePreviewPage({
   if (!result.ok) notFound();
   const { preview } = result;
   const chrome = await getPlatformChrome();
-  const tw = adminText(adminLangOf(account.adminLocale), "builder").templates;
-  const pw = adminText(adminLangOf(account.adminLocale), "screens").templatePreview;
+  const tw = BUILDER_WORDS[adminLangOf(account.adminLocale)].templates;
+  const pw = SCREENS_WORDS[adminLangOf(account.adminLocale)].templatePreview;
   const what =
     preview.kind === "page" && preview.pageType
       ? fillWords(pw.kindFor, { kind: tw.kinds.page.one, types: tw.layoutTypes[preview.pageType].many })

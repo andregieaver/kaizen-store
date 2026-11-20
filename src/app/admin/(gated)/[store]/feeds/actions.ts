@@ -4,7 +4,7 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { switchAgentChannel, switchFeedsOff, switchFeedsOn } from "@/server/feed-settings";
 import { setShoppingAgents } from "@/server/shopping-agent-settings";
 import { storeTag } from "@/server/stores";
@@ -14,7 +14,7 @@ import { NO_ACCESS, checkPermission } from "@/server/permissions";
 async function act(storeSlug: string, kind: "on" | "off" | "renew"): Promise<FormState> {
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "marketing").feeds;
+  const w = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].feeds;
   if (kind === "off") {
     await switchFeedsOff(member.store.id, member.account.id);
     refresh();
@@ -42,7 +42,7 @@ export async function feedsRenewAction(storeSlug: string): Promise<FormState> {
 export async function shoppingAgentsAction(storeSlug: string, on: boolean): Promise<FormState> {
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "marketing").feeds.agents;
+  const w = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].feeds.agents;
   await setShoppingAgents(member.store.id, member.account.id, on === true);
   updateTag(storeTag(member.store.slug));
   return { status: "ok", messages: [on ? w.turnedOn : w.turnedOff] };
@@ -52,7 +52,7 @@ export async function shoppingAgentsAction(storeSlug: string, on: boolean): Prom
 export async function chatgptFeedAction(storeSlug: string, on: boolean): Promise<FormState> {
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const words = adminText(adminLangOf(member.account.adminLocale), "marketing").feeds;
+  const words = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].feeds;
   const result = await switchAgentChannel(member.store.id, member.account.id, "openai", on === true);
   if (!result.ok) return { status: "error", messages: [words.noKey] };
   refresh();

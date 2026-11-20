@@ -6,8 +6,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { forWhomLine, pricingLine } from "@/lib/price-lists";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { listCompanies } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
 import { listProductChoices } from "@/server/discounts";
@@ -33,7 +33,7 @@ export default async function PriceListPage({ params, searchParams }: PageProps<
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const words = adminText(adminLangOf(gated.account.adminLocale), "customers").priceLists;
+  const words = CUSTOMERS_WORDS[adminLangOf(gated.account.adminLocale)].priceLists;
   if (!z.uuid().safeParse(listId).success) notFound();
   const list = await getPriceList(store.id, listId);
   if (!list) notFound();

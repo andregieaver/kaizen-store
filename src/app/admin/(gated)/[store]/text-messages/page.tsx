@@ -7,8 +7,9 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { SmsConnectForm, SmsSettingsForm, StopNumberButton } from "@/components/admin/sms-views";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import type { SmsCampaignStatus } from "@/lib/sms";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getSmsSettings, listSmsCampaigns, listSmsSubscribers, smsSubscriberCounts } from "@/server/sms";
 
@@ -26,7 +27,7 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
   const member = await requirePermission((await params).store, "marketing:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing").sms;
+  const w = MARKETING_WORDS[lang].sms;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const owner = memberCan(member, "owner");
   const mayWrite = memberCan(member, "marketing:write");
@@ -35,7 +36,7 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
 
   if (!settings.connected) {
     return (
-      <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+      <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
       <div className="flex flex-col gap-6">
         {/* Round 13 (D639): what texts give and cost first; the three fields one press away, under Connect 46elks. */}
         <PageHeader
@@ -86,7 +87,7 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
   const listLine = [countWords(counts.subscribed, w.subscribed, n(counts.subscribed)), counts.pending ? countWords(counts.pending, w.waiting, n(counts.pending)) : null, counts.unsubscribed ? countWords(counts.unsubscribed, w.stoppedCount, n(counts.unsubscribed)) : null].filter(Boolean).join(" · ");
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+    <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}

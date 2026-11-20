@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { describeDiscount, discountStatus } from "@/lib/discounts";
 import { OFFER_KEYS, OFFERS } from "@/lib/discount-offers";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
 import { listDiscounts } from "@/server/discounts";
 import type { Store } from "@/server/stores";
 import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
@@ -21,7 +21,7 @@ const STATUS_SIGNAL = { active: "positive", off: "neutral", scheduled: "insight"
  * and the ready offers (round 9, D630). It was the Coupons page; only its home changed. The header's sentence and its action are the tab's.
  */
 export async function codesTab(store: Store, lang: AdminLang): Promise<{ lead: ReactNode; action: ReactNode; body: ReactNode }> {
-  const all = adminText(lang, "discounts");
+  const all = DISCOUNTS_WORDS[lang];
   const w = all.codes;
   const discounts = await listDiscounts(store.id);
   const locale = ADMIN_LANG_FACTS[lang].locale;

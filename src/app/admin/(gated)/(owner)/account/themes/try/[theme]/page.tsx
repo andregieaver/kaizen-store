@@ -6,7 +6,6 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { presetChoice } from "@/lib/design-variations";
 import { themeTryPath } from "@/lib/theme-store";
 import { getAccount, listStores } from "@/server/auth";
@@ -15,6 +14,7 @@ import { storesWithTheme } from "@/server/theme-installs";
 import { themeStorePage } from "@/server/theme-store";
 import { platformText } from "@/lib/platform-text";
 import { pricesText } from "@/lib/theme-prices";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 
 import { installThemeAction } from "../../../../../[store]/settings/design/actions";
 
@@ -35,7 +35,7 @@ export default async function TryThemePage({ params, searchParams }: PageProps<"
   const theme = await themeStorePage(slug);
   if (!theme) notFound();
   const lang = adminLangOf(account.adminLocale);
-  const { common: c, tryTheme: w } = adminText(lang, "design");
+  const { common: c, tryTheme: w } = DESIGN_WORDS[lang];
   // One of its presets (`docs/theme-showcase-phase-1.md`), chosen on the theme's page or here; one it does not have is its own look.
   const preset = theme.presets.find((p) => p.key === asked) ?? null;
   const name = preset ? fillWords(c.lookName, { theme: theme.title, preset: preset.name }) : theme.title;

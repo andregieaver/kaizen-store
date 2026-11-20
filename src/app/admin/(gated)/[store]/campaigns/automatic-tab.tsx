@@ -4,11 +4,11 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { SALE_KEYS } from "@/lib/campaign-offers";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
 import { listCampaigns } from "@/server/campaigns";
 import type { Store } from "@/server/stores";
 import { Button, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
@@ -24,7 +24,7 @@ const STATUS_SIGNAL = { active: "positive", off: "neutral", scheduled: "insight"
  * stay under that address. The header's sentence and its action are the tab's.
  */
 export async function automaticTab(store: Store, lang: AdminLang): Promise<{ lead: ReactNode; action: ReactNode; body: ReactNode }> {
-  const all = adminText(lang, "discounts");
+  const all = DISCOUNTS_WORDS[lang];
   const w = all.campaigns;
   const campaigns = await listCampaigns(store.id);
   const locale = ADMIN_LANG_FACTS[lang].locale;

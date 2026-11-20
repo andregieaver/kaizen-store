@@ -13,10 +13,10 @@ import {
 } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { adsManagerLink } from "@/lib/ad-budgets";
 import { amountText } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import {
   adAccountOf,
   adOverview,
@@ -50,7 +50,7 @@ export async function AdBudgetsCard({
   owner: boolean;
   lang: AdminLang;
 }) {
-  const w = adminText(lang, "marketing").ads.budgets;
+  const w = MARKETING_WORDS[lang].ads.budgets;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const account = await adAccountOf(storeId);
 
@@ -58,7 +58,7 @@ export async function AdBudgetsCard({
     return (
       <Card
         title={w.title}
-        aside={<Chip dot>{adminText(lang, "marketing").ads.notConnected}</Chip>}
+        aside={<Chip dot>{MARKETING_WORDS[lang].ads.notConnected}</Chip>}
       >
         <div className="flex max-w-2xl flex-col gap-4">
           <p className="text-sm text-ink-2">{w.intro}</p>

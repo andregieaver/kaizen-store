@@ -19,7 +19,8 @@ import { allowedChanges, getSubscription, swapChoices } from "@/server/subscript
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
 
 import { changeContentsAction } from "../actions";
 
@@ -40,9 +41,9 @@ export default async function SubscriptionPage({
   ]);
   if (!subscription) notFound();
   const lang = adminLangOf(current.account.adminLocale);
-  const t = adminText(lang, "bookings").subscriptions;
+  const t = BOOKINGS_WORDS[lang].subscriptions;
   const w = t.page;
-  const statuses = adminText(lang, "common").orderStatus;
+  const statuses = COMMON_WORDS[lang].orderStatus;
   const locale = store.markets[0]?.locale ?? subscription.locale;
   const money = (minor: number) => formatMoney(minor, subscription.currency, locale);
   const date = (iso: string) => adminDate(store, iso, "day", lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale);

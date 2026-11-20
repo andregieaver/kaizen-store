@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { groupFromPreset, type FieldGroupInput } from "@/lib/custom-fields";
+import { FIELDS_WORDS } from "@/lib/admin-words/fields";
 import { startFieldFileUpload, type FieldFileUpload } from "@/server/media";
 import { NO_ACCESS, checkAnyPermission, checkPermission, requirePermission } from "@/server/permissions";
 import {
@@ -28,7 +28,7 @@ import { storageRefusal } from "@/server/limits";
 
 const idSchema = z.uuid();
 /** An action's own refusals in the member's admin language (D312 A5). */
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "fields").actions;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => FIELDS_WORDS[adminLangOf(member.account.adminLocale)].actions;
 const unknownGroup = (member: { account: { adminLocale?: string | null } }): SaveResult => ({ ok: false, problems: [wordsOf(member).unknownGroup] });
 
 /** Creates a group (id null) or changes one (D118); the server checks all of it again. */

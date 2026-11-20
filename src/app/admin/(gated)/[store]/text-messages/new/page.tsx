@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { SmsCampaignEditor } from "@/components/admin/sms-views";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 import { smsOffered } from "@/server/sms";
@@ -21,10 +22,10 @@ export default async function NewTextMessagePage({ params }: PageProps<"/admin/[
   const { store } = member;
   if (!memberCan(member, "marketing:write") || !(await smsOffered(store.id))) redirect(`/admin/${store.slug}/text-messages`);
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing").sms;
+  const w = MARKETING_WORDS[lang].sms;
   const segments = await listSegments(store.id);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+    <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.newText} back={{ href: `/admin/${store.slug}/text-messages`, label: w.title }} />
       <Card>

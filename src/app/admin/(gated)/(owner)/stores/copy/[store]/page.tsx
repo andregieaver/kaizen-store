@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { StoreCopyWizard } from "@/components/admin/store-copy-wizard";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { listStores } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
@@ -13,6 +12,9 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { copyChoicesAction, startStoreCopyAction } from "../../copy-actions";
 import { fillWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { PLATFORM_COPY_WORDS } from "@/lib/admin-words/platform-copy";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Duplicate a store" };
 
@@ -35,7 +37,7 @@ export default async function DuplicateStorePage({
   const result = full ? null : await copyChoicesAction(slug);
   if (result && !result.ok) notFound();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "screens").copyPage;
+  const w = SCREENS_WORDS[lang].copyPage;
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,7 +54,7 @@ export default async function DuplicateStorePage({
       </div>
       {result?.ok ? (
         <AdminTextScope
-          texts={adminTexts(lang, ["platformCopy"])}
+          texts={areaTexts(lang, { platformCopy: PLATFORM_COPY_WORDS })}
         >
           <StoreCopyWizard
             choices={result.choices}

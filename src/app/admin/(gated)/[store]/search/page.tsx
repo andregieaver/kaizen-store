@@ -16,8 +16,8 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { RULES_MAX } from "@/lib/search-rules";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { languageNames } from "@/lib/legal-admin-words";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { deleteRuleAction, deleteSynonymAction, saveRuleAction, saveSynonymAction } from "./actions";
 import { RulesCard } from "./rules-card";
@@ -55,7 +55,7 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
   const canWrite = memberCan(gated, "settings:write");
   const meaningOn = Boolean(ai?.space);
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "bookings").search;
+  const w = BOOKINGS_WORDS[lang].search;
   const p = w.phone;
   const phoneCell = "max-sm:rounded-none max-sm:border-0 max-sm:p-3";
   const kept = store.localization.keptLocales;

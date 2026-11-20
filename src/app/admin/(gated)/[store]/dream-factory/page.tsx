@@ -7,9 +7,11 @@ import { RefreshWhile } from "@/components/admin/refresh-while";
 import { ButtonLink, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { DREAM_STEPS, LOOK_ROUNDS, PROMPT_MAX, PROMPT_MIN, briefQuestions, detailsQuestions, ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_VERSIONS_WORDS } from "@/lib/admin-words/builder-versions";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { dreamFingerprint, latestDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
 import { getPageForEdit } from "@/server/pages";
@@ -36,7 +38,7 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
   const member = await requirePermission((await params).store, "owner");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "home").dream;
+  const w = HOME_WORDS[lang].dream;
   const run = await latestDreamRun(store.id);
   const slug = store.slug;
   const base = `/admin/${slug}`;
@@ -48,7 +50,7 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
   // A rework (D527): changes to a store that exists, prepared as drafts and made live on the owner's press.
   if (run && run.kind === "rework" && run.status !== "stopped") {
     return (
-      <AdminTextScope texts={adminTexts(lang, ["builderVersions"])}>
+      <AdminTextScope texts={areaTexts(lang, { builderVersions: BUILDER_VERSIONS_WORDS })}>
         <ReworkRun store={store} run={run} words={w} />
       </AdminTextScope>
     );

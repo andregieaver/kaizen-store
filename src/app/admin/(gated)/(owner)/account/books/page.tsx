@@ -5,10 +5,10 @@ import { connection } from "next/server";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { clientNeeds, type ClientNeed } from "@/lib/books-clients";
 import { formatMoney } from "@/lib/money";
 import { storeHref } from "@/lib/paths";
+import { BOOKS_WORDS } from "@/lib/admin-words/books";
 import { requireAccount } from "@/server/auth";
 import { booksClients } from "@/server/books-clients";
 
@@ -24,7 +24,7 @@ export default async function AccountBooksPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "books").clients;
+  const w = BOOKS_WORDS[lang].clients;
   const all = await booksClients(account);
   // Stores whose books are not open ask nothing of an accountant yet: one line at the end, never a card each.
   const clients = all.filter((c) => c.book !== null);

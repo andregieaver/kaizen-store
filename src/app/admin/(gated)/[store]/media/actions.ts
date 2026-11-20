@@ -15,15 +15,15 @@ import { fieldsTag } from "@/server/custom-fields";
 import type { VideoUpload } from "@/server/media";
 import { replacePicture, replaceVideo, startVideoReplacement, type CompressOutcome } from "@/server/media-compress";
 import { pagesTag } from "@/lib/cache-tags";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { storeTag } from "@/server/stores";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { termsTag } from "@/server/taxonomy";
 
 const id = z.uuid();
 
 /** The library's refusals in the account's language (D312 A7). */
-const said = async () => adminText(await actionAdminLang(), "website").mediaProblems;
+const said = async () => WEBSITE_WORDS[await actionAdminLang()].mediaProblems;
 
 /** The store's pages and catalogue show library alt texts (D89): their caches go when one changes. */
 function altTextsChanged(storeId: string) {

@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { PageDrawing } from "@/app/admin/(gated)/[store]/pages/drawing";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { newPageContent } from "@/lib/page-content";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { sandboxFor } from "@/server/sandbox";
 import { listTemplates, previewTemplate } from "@/server/templates";
@@ -26,7 +26,7 @@ export default async function SandboxTemplatePreview({ params }: PageProps<"/adm
   const [lang, result] = await Promise.all([requestAdminLang(), previewTemplate(sandbox.store.id, sandbox.account, templateId)]);
   if (!result.ok) notFound();
   const { preview } = result;
-  const w = adminText(lang, "sandbox").templatePreview;
+  const w = SANDBOX_WORDS[lang].templatePreview;
   return (
     <div className="flex min-h-screen flex-col">
       <p role="status" className="sticky top-0 z-50 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 bg-foreground px-4 py-2 text-xs text-background">

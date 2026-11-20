@@ -10,7 +10,6 @@ import { StepPath, type PathStep } from "@/components/admin/home/home-parts";
 import { adminDate, adminDay } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { experimentCard, type ExperimentCard } from "@/lib/experiment-card";
 import { STATE_SIGNAL } from "@/lib/experiment-list";
 import { experimentProblems, experimentProblemText, partLabelText, targetLabelText, variantNameText } from "@/lib/experiment-words";
@@ -21,6 +20,9 @@ import { holderOf } from "@/server/auth";
 import { canOpenPath } from "@/lib/permissions";
 import { FLAG_VERSION_VIEWS } from "@/lib/page-heat";
 import { frustratedVersion } from "@/lib/heat-read";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_WORDS } from "@/lib/admin-words/builder";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 import { versionBehaviour } from "@/server/page-heat-read";
 import { getExperiment, startProblemsOf, versionDifferences, type ExperimentInfo } from "@/server/experiment-admin";
 import { experimentTraffic } from "@/server/experiment-traffic";
@@ -71,7 +73,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
   if (notInAccount) return notInAccount;
   const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "experiments");
+  const w = EXPERIMENTS_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const date = (iso: string) => adminDate(store, iso, "day", lang);
   const test = await getExperiment(store.id, id);
@@ -97,7 +99,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
       : null;
   const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now, timeZone: store.timeZone });
   const readyAround = card.progress.readyAround ? adminDay(card.progress.readyAround, "day", lang) : null;
-  const builder = adminText(lang, "builder");
+  const builder = BUILDER_WORDS[lang];
   const differenceWords = Object.fromEntries(Object.entries(differences).map(([key, list]) => [key, list.map((d) => differenceLine(d, builder))]));
   const part = test.part ? partLabelText(test.part.label, w) : null;
   // What the page's parts read: the test's own words in the language (its part's label, its versions' names and a stored schedule problem).
@@ -148,7 +150,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
       { label: w.card.path.answer, state: "todo" },
     ];
     return (
-      <AdminTextScope texts={adminTexts(lang, ["experiments"])}>
+      <AdminTextScope texts={areaTexts(lang, { experiments: EXPERIMENTS_WORDS })}>
         <div className="flex flex-col gap-6">
           <PageHeader
             back={{ href: base, label: w.page.back }}
@@ -172,7 +174,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
   }
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["experiments"])}>
+    <AdminTextScope texts={areaTexts(lang, { experiments: EXPERIMENTS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: w.page.back }}

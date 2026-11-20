@@ -3462,7 +3462,7 @@
         "signIn"
       ]
     },
-    "src/app/admin/try/[sandbox]/editor.tsx#EDITOR_AREAS": {
+    "src/app/admin/try/[sandbox]/editor.tsx#EDITOR_AREA_WORDS": {
       "areas": [
         "builder",
         "blocks",

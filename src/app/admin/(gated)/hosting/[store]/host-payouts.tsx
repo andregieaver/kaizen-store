@@ -9,7 +9,6 @@ import { hostAccountSessionAction, hostCreateStripeAccountAction, hostRefreshStr
 import { Card } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 
@@ -25,7 +24,7 @@ export function HostPayouts({
   commissionPercent,
   earnings,
   locale,
-  words: w = adminText("en", "bookings").payouts,
+  words: w,
   dateLocale = "en-GB",
   timeZone,
 }: {
@@ -35,8 +34,8 @@ export function HostPayouts({
   commissionPercent: number;
   earnings: HostEarning[];
   locale: string;
-  /** The panel's words and dates (D312 A11); English when none are given. */
-  words?: BookingsMessages["payouts"];
+  /** The panel's words and dates (D312 A11), in the account's language. */
+  words: BookingsMessages["payouts"];
   dateLocale?: string;
   /** The store's time zone: when each booking was paid, on the store's clock (D812). */
   timeZone: string;

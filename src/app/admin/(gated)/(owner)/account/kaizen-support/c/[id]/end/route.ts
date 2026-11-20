@@ -1,8 +1,8 @@
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { NextResponse } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { getAccount } from "@/server/auth";
 import { requesterEnd } from "@/server/support-kaizen";
 
@@ -13,7 +13,7 @@ export async function POST(
   request: Request,
   { params }: RouteContext<"/admin/account/kaizen-support/c/[id]/end">,
 ) {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   if (!sameSite(request))
     return NextResponse.json(
       { error: w.notThisSite },

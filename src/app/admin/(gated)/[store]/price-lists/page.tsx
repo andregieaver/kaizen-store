@@ -4,9 +4,9 @@ import Link from "next/link";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { forWhomLine, pricingLine } from "@/lib/price-lists";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { listPriceLists } from "@/server/price-lists";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
@@ -30,7 +30,7 @@ export default async function PriceListsPage({ params, searchParams }: PageProps
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const words = adminText(adminLangOf(gated.account.adminLocale), "customers").priceLists;
+  const words = CUSTOMERS_WORDS[adminLangOf(gated.account.adminLocale)].priceLists;
   const lists = await listPriceLists(store.id);
   const base = `/admin/${store.slug}`;
   const asked = (await searchParams).ready;

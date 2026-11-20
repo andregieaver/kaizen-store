@@ -6,8 +6,8 @@ import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "@/lib/wordpress-plugin";
 import { requireAccount } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { connectionsOf } from "@/server/wordpress";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
@@ -26,7 +26,7 @@ export default async function WordpressPage() {
   const account = await requireAccount();
   const sites = await connectionsOf(account.id);
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "bookings").wordpress;
+  const w = BOOKINGS_WORDS[lang].wordpress;
   return (
     <div className="flex flex-col gap-8">
       <PageHeader

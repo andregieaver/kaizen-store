@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { UsageLines } from "@/components/admin/usage-limits";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 import { requireAccount } from "@/server/auth";
 import { ownerUsage } from "@/server/usage";
 
@@ -17,7 +17,7 @@ export default async function OwnerLimitsPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "capacity");
+  const w = CAPACITY_WORDS[lang];
   const { stores } = await ownerUsage(account.id);
   return (
     <div className="flex flex-col gap-6">

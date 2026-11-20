@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
-import { adminText } from "@/lib/admin-text";
 import type { SandboxMessages } from "@/lib/admin-messages/sandbox.en";
 import { sandboxBase, sandboxHome, type SandboxKind } from "@/lib/sandbox";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { listPages, type PageSummary } from "@/server/pages";
 
@@ -30,7 +30,7 @@ export default async function SandboxHome({ params }: PageProps<"/admin/try/[san
     listPages(store.id, "article"),
     layouts ? listPages(store.id, "product_layout") : [],
   ]);
-  const w = adminText(lang, "sandbox").home;
+  const w = SANDBOX_WORDS[lang].home;
   const front = pages.find((page) => page.id === store.frontPageId) ?? null;
   const pagesBase = sandboxBase(sandbox.id, "page");
   return (

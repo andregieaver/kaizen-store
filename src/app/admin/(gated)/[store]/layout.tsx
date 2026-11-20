@@ -17,13 +17,15 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { extensionBanners, readExtensionFacts } from "@/lib/extensions";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
 import { storeNav } from "@/lib/store-nav";
 import { STARTING_CONTENT_HREF, demoStoreHref } from "@/lib/theme-admin-paths";
+import { areaTexts } from "@/lib/admin-area";
+import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 import { storeShellReads } from "@/server/admin-screens";
 import { holderOf } from "@/server/auth";
 import { noteFirstRequest } from "@/server/instance-start";
@@ -88,7 +90,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const lang = adminLangOf(account.adminLocale);
   // A paid extension in its grace period or read-only (D748 E5): the frame says so on its pages.
   const banners = extensionBanners(readExtensionFacts(store.extensionFacts), new Date());
-  const w = adminText(lang, "shell");
+  const w = SHELL_WORDS[lang];
   const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });
   // Basic or Advanced (D454): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
   return (
@@ -113,7 +115,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             </div>
             {/* The AI manager (D103), from every page of the store's admin, for owners. */}
             {isOwner && open && (
-              <AdminTextScope texts={adminTexts(lang, ["assistantBar"])}>
+              <AdminTextScope texts={areaTexts(lang, { assistantBar: ASSISTANT_BAR_WORDS })}>
                 <AiManagerLauncher
                   area="store"
                   noticePlace={store.id}

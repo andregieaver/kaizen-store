@@ -7,7 +7,8 @@ import { PageHeader } from "@/components/admin/ui";
 import { offeredSchemes } from "@/lib/admin-schemes";
 import { requireAccount } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 import { adminSchemeAction, colorModeAction } from "../actions";
 
@@ -20,9 +21,9 @@ export const metadata: Metadata = { title: "Appearance" };
  */
 export default async function AppearancePage() {
   const account = await requireAccount();
-  const words = adminText(adminLangOf(account.adminLocale), "bookings");
+  const words = BOOKINGS_WORDS[adminLangOf(account.adminLocale)];
   const previewWords = words.schemePreview;
-  const w = adminText(adminLangOf(account.adminLocale), "screens").appearance;
+  const w = SCREENS_WORDS[adminLangOf(account.adminLocale)].appearance;
   const schemes = offeredSchemes();
   return (
     <div className="flex flex-col gap-10">

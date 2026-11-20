@@ -7,8 +7,8 @@ import type { FormState } from "@/components/admin/action-form";
 import type { CheckoutBuyer, CheckoutQuote } from "@/components/admin/domain-types";
 import { db } from "@/db/client";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { currencyForCountry, vatFor, VAT_PROBLEM_TEXT, withVat } from "@/lib/domain-buyer";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { requireAccount } from "@/server/auth";
 import { accountHolder } from "@/server/domain-holder";
 import { domainPricingRows } from "@/server/domain-prices";
@@ -41,7 +41,7 @@ export async function checkoutQuoteAction(domain: string, buyer: CheckoutBuyer):
 export async function checkoutBuyAction(_state: FormState, form: FormData): Promise<FormState> {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "domains");
+  const words = DOMAINS_WORDS[lang];
   const value = (key: string) => String(form.get(key) ?? "");
   const kind = value("buyer") === "business" ? "business" : "consumer";
   const result = await startDomainPurchase(account, accountHolder(account.id), {

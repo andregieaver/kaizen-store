@@ -6,7 +6,11 @@ import { SiteStaging, type StagingActions, type StagingView } from "@/components
 import { PageHeader } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_VERSIONS_WORDS } from "@/lib/admin-words/builder-versions";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
+import { WEBSITE_STAGING_WORDS } from "@/lib/admin-words/website-staging";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { lastStaging, stagingOverview } from "@/server/site-staging";
 
@@ -27,7 +31,7 @@ export default async function StagingPage({ params }: PageProps<"/admin/[store]/
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "website").staging;
+  const w = WEBSITE_WORDS[lang].staging;
   const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const [overview, last] = await Promise.all([stagingOverview(store.id), lastStaging(store.id)]);
   const base = `/admin/${store.slug}`;
@@ -60,7 +64,7 @@ export default async function StagingPage({ params }: PageProps<"/admin/[store]/
     publish: publishStagingAction.bind(null, slug),
   };
   return (
-    <AdminTextScope texts={adminTexts(lang, ["schedules", "builderVersions", "websiteStaging"])}>
+    <AdminTextScope texts={areaTexts(lang, { schedules: SCHEDULES_WORDS, builderVersions: BUILDER_VERSIONS_WORDS, websiteStaging: WEBSITE_STAGING_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{w.description}</>} />
         <SiteStaging view={view} canWrite={memberCan(member, "website:write")} actions={actions} />

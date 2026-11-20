@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { EmailLog } from "@/components/admin/email-log";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { requirePermission } from "@/server/permissions";
 import { listEmails } from "@/server/email";
 import { Card, PageHeader } from "@/components/admin/ui";
@@ -14,7 +14,7 @@ export default async function StoreEmailsPage({ params }: PageProps<"/admin/[sto
   const member = await requirePermission((await params).store, "orders:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "notifications");
+  const words = NOTIFICATIONS_WORDS[lang];
   const emails = await listEmails({ storeId: store.id, limit: 200 });
   // By day, as the platform's (round 16, D650).
   const drawnAt = new Date();

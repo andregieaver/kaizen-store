@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import type { RevealShape, SwitchCheckShape } from "@/components/admin/domain-types";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { describeRecord } from "@/lib/dns-records";
 import { disconnectDomain, nameserverSwitchCheck, revealTransferCode, stayHere, switchBack, switchNameservers } from "@/server/domain-move";
@@ -14,6 +13,7 @@ import { getAccount, signedInRecently } from "@/server/auth";
 import { heldDomains } from "@/server/domain-account";
 import { accountHolder } from "@/server/domain-holder";
 import { createClient } from "@/lib/supabase/server";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 
 /** Moving a domain away (D315 8) from *Your domains* (D317): the holder's, as everything about the domain is. */
 const notOwner: FormState = { status: "error", messages: ["Sign in to move your domains."] };
@@ -23,7 +23,7 @@ const holderNow = async () => {
   return account ? { account, holder: accountHolder(account.id) } : null;
 };
 
-const wordsOf = (locale: string | null | undefined) => adminText(adminLangOf(locale), "domains").move;
+const wordsOf = (locale: string | null | undefined) => DOMAINS_WORDS[adminLangOf(locale)].move;
 
 /** Asks the new nameservers for every record; nothing changes. */
 export async function checkNameserversAction(apex: string, nameservers: string): Promise<SwitchCheckShape> {

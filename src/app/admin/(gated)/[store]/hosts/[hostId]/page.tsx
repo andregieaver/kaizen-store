@@ -15,7 +15,7 @@ import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { setHostDisabledAction, updateHostAction } from "../actions";
 import { HostForm } from "../host-form";
@@ -29,7 +29,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const t = adminText(lang, "bookings");
+  const t = BOOKINGS_WORDS[lang];
   const w = t.host;
   if (!z.uuid().safeParse(hostId).success) notFound();
   const host = await getHost(store.id, hostId);

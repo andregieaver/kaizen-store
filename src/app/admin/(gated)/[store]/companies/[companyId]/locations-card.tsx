@@ -2,9 +2,10 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { LOCATIONS_MAX } from "@/lib/company-locations";
 import { addressLine, type SavedAddressFields } from "@/lib/customer-addresses";
+import type { AdminAreaMessages } from "@/lib/admin-text";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import type { CompanyMember } from "@/server/companies";
 import type { CompanyLocation } from "@/server/company-locations";
 
@@ -12,7 +13,7 @@ import { deleteLocationAction, saveCompanyRulesAction, saveLocationAction, setBu
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
-function AddressFields({ prefix, legend, value, words }: { prefix: "billing" | "shipping"; legend: string; value: SavedAddressFields | null; words: ReturnType<typeof adminText<"customers">>["locations"] }) {
+function AddressFields({ prefix, legend, value, words }: { prefix: "billing" | "shipping"; legend: string; value: SavedAddressFields | null; words: AdminAreaMessages["customers"]["locations"] }) {
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="text-sm font-medium">{legend}</legend>
@@ -47,7 +48,7 @@ export function LocationsCard({
   members: CompanyMember[];
   rules: { poRequired: boolean; limit: string; currency: string };
 }) {
-  const words = adminText(lang, "customers").locations;
+  const words = CUSTOMERS_WORDS[lang].locations;
   const employees = members.filter((m) => m.role === "employee");
   return (
     <>

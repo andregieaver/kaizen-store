@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { StoreCopyProgress } from "@/components/admin/store-copy-progress";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PLATFORM_COPY_WORDS } from "@/lib/admin-words/platform-copy";
 import { requireAccount } from "@/server/auth";
 
 import { copyProgressAction } from "../../copy-actions";
@@ -21,7 +22,7 @@ export default async function StoreCopyProgressPage({
   if (!first.ok) notFound();
   return (
     <AdminTextScope
-      texts={adminTexts(adminLangOf(account.adminLocale), ["platformCopy"])}
+      texts={areaTexts(adminLangOf(account.adminLocale), { platformCopy: PLATFORM_COPY_WORDS })}
     >
       <StoreCopyProgress
         id={copyId}

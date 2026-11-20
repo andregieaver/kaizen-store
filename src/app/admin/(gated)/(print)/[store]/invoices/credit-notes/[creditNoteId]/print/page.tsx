@@ -6,8 +6,8 @@ import { DocumentPage, NoDocument } from "@/components/admin/work/document-page"
 import { OrderDocumentView } from "@/components/documents/order-document-view";
 import { getCreditNote } from "@/server/invoices";
 import { requirePermission } from "@/server/permissions";
-import { adminText } from "@/lib/admin-text";
 import { workWords } from "@/server/work-words";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Credit note", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
@@ -17,7 +17,7 @@ export default async function CreditNotePrintPage({ params, searchParams }: Page
   const { store } = await requirePermission(slug, "orders:read");
   // The print button's words are Work's (`DocumentPage`), in the account's language once `workWords()` has set it.
   const { lang } = await workWords();
-  const w = adminText(lang, "screens").invoicePrint;
+  const w = SCREENS_WORDS[lang].invoicePrint;
   if (!z.uuid().safeParse(creditNoteId).success) notFound();
   const doc = await getCreditNote(store.id, creditNoteId);
   if (!doc) notFound();

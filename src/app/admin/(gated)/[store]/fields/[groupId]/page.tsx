@@ -7,7 +7,6 @@ import { ContentTypeChoices } from "@/components/admin/content-type-choices";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { FieldGroupEditor } from "@/components/admin/field-group-editor";
 import { groupToInput } from "@/lib/custom-fields";
 import { moneyCurrencies } from "@/lib/field-money";
@@ -20,6 +19,9 @@ import { editorTerms, roleOptions, storeLanguages } from "../data";
 import { featureOn } from "@/lib/store-features";
 import { PageHeader } from "@/components/admin/ui";
 import { dealsOn } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { FIELDS_WORDS } from "@/lib/admin-words/fields";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
 
 export const metadata: Metadata = { title: "Group of custom fields" };
 
@@ -27,13 +29,13 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
   const { store: slug, groupId } = await params;
   const { store, account } = await requirePermission(slug, "products:read");
   const lang = adminLangOf(account.adminLocale);
-  const t = adminText(lang, "fields").list;
+  const t = FIELDS_WORDS[lang].list;
   if (!z.uuid().safeParse(groupId).success) notFound();
   const [group, terms] = await Promise.all([getFieldGroup(store.id, groupId), editorTerms(store.id)]);
   if (!group) notFound();
   const base = `/admin/${store.slug}/fields`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["fields", "fieldsEditor"])}>
+    <AdminTextScope texts={areaTexts(lang, { fields: FIELDS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: base, label: t.title }}

@@ -5,8 +5,9 @@ import { connection } from "next/server";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { LogRequestForm } from "@/components/admin/privacy/request-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { todayIn } from "@/lib/work-dates";
+import { areaTexts } from "@/lib/admin-area";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -22,9 +23,9 @@ export default async function NewPrivacyRequestPage({ params }: PageProps<"/admi
   if (!memberCan(member, "customers:write")) notFound();
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "privacy");
+  const w = PRIVACY_WORDS[lang];
   return (
-    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+    <AdminTextScope texts={areaTexts(lang, { privacy: PRIVACY_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: `/admin/${store.slug}/privacy`, label: w.common.privacyRequests }}

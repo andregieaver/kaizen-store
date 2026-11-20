@@ -1,11 +1,13 @@
 import { ReminderEditor } from "@/components/admin/reminder-editor";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import type { ReminderText } from "@/lib/cart-reminders";
 import { describeDiscount } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
+import { PLATFORM_REMINDERS_WORDS } from "@/lib/admin-words/platform-reminders";
 import { reminderLanguages } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
 import type { Store } from "@/server/stores";
@@ -38,7 +40,7 @@ export async function ReminderForm({
     formatMoney(minor, currencyOf(marketCode), locale);
   const lang = await requestAdminLang();
   return (
-    <AdminTextScope texts={adminTexts(lang, ["platformReminders"])}>
+    <AdminTextScope texts={areaTexts(lang, { platformReminders: PLATFORM_REMINDERS_WORDS })}>
       <ReminderEditor
         initial={step}
         storeName={store.name}
@@ -48,7 +50,7 @@ export async function ReminderForm({
           .map((d) => ({
             id: d.id,
             code: d.code,
-            gives: describeDiscount(d, money, adminText(lang, "discounts").describe),
+            gives: describeDiscount(d, money, DISCOUNTS_WORDS[lang].describe),
           }))}
         save={saveReminderStepAction.bind(null, store.slug, step.id)}
         sendTest={

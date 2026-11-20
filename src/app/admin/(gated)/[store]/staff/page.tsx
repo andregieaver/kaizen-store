@@ -9,8 +9,8 @@ import { twoStepRequired } from "@/server/team";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { zoneOf } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 
 import {
@@ -37,7 +37,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
   const withTwoStep = active.filter((m) => m.hasTwoStep).length;
   const slug = store.slug;
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "staff");
+  const words = STAFF_WORDS[lang];
   const w = words.team;
 
   return (

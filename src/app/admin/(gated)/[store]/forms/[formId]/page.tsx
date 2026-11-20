@@ -8,8 +8,11 @@ import { SaveAsTemplateCard } from "@/components/admin/forms/form-template-parts
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { Chip, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import type { PageType } from "@/lib/page-content";
+import { areaTexts } from "@/lib/admin-area";
+import { BLOCKS_FORM_WORDS } from "@/lib/admin-words/blocks-form";
+import { FORM_TEMPLATES_WORDS } from "@/lib/admin-words/form-templates";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { signupCodeChoices } from "@/server/discounts";
 import { formUses, getForm } from "@/server/forms-admin";
 import { formPaymentChosen } from "@/server/form-payments";
@@ -29,7 +32,7 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
   const form = await getForm(store.id, formId);
   if (!form) notFound();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "forms");
+  const w = FORMS_WORDS[lang];
   const [uses, codes, linked, owner, paying] = await Promise.all([
     formUses(store.id, form.id),
     form.kind === "signup" ? signupCodeChoices(store.id) : Promise.resolve([]),
@@ -43,7 +46,7 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
   const names = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
   const languages = langs.slice(1).map((code) => ({ code, name: names.of(code) ?? code }));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms", "blocksForm", "formTemplates"])}>
+    <AdminTextScope texts={areaTexts(lang, { forms: FORMS_WORDS, blocksForm: BLOCKS_FORM_WORDS, formTemplates: FORM_TEMPLATES_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: w.title }}

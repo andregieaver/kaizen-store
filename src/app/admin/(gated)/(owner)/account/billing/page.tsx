@@ -21,9 +21,10 @@ import { ownedAccount } from "@/server/privacy-officers";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 import { accountPortalAction, cancelAccountPlanAction, chooseAccountPlanAction } from "../actions";
 
@@ -47,8 +48,8 @@ export default async function OwnerBillingPage({ searchParams }: PageProps<"/adm
   if (own && typeof checkout === "string") await completeAccountCheckout(own.id, checkout);
   const billedByAccount = own ? await getAccountBilling(own.id) : null;
   const lang = adminLangOf(account.adminLocale);
-  const b = adminText(lang, "billing");
-  const w = adminText(lang, "screens").ownerBilling;
+  const b = BILLING_WORDS[lang];
+  const w = SCREENS_WORDS[lang].ownerBilling;
   const per = (price: NonNullable<StoreBilling["price"]>) =>
     fillWords(w.per, { price: money(price.amountMinor, price.currency), interval: b.intervals[price.interval as keyof typeof b.intervals] ?? price.interval });
   const owned = await ownedStores(account.id);

@@ -10,8 +10,9 @@ import { countryTextCounts, translationCoverage } from "@/server/store-translate
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 
 import { translateStorePageAction } from "../pages/actions";
 import { applyAction, worklistAction } from "./actions";
@@ -21,13 +22,13 @@ export const metadata: Metadata = { title: "Translate the store" };
 export default async function TranslatePage({ params }: PageProps<"/admin/[store]/translate">) {
   const { store, account } = await requirePermission((await params).store, "website:read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "website").translate;
+  const w = WEBSITE_WORDS[lang].translate;
   const languages = pageLanguages(store.localization.locales);
   const connection = languages.length > 1 ? await aiFor(store.id) : null;
   const countryTexts = await countryTextCounts({ store });
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["website"])}>
+    <AdminTextScope texts={areaTexts(lang, { website: WEBSITE_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.description} />
       {languages.length < 2 ? (

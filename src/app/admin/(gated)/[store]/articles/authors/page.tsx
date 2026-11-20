@@ -6,7 +6,9 @@ import { BlogAuthorForm } from "@/components/admin/blog-author-form";
 import { ButtonLink, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BLOG_WORDS } from "@/lib/admin-words/blog";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { authorsNow } from "@/server/blogs";
 import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePageTypeAccess } from "@/server/permissions";
@@ -22,14 +24,14 @@ export default async function AuthorsPage({ params, searchParams }: PageProps<"/
   const { store } = current;
   const editor = memberCan(current, "website:write");
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "blog");
+  const w = BLOG_WORDS[lang];
   const query = await searchParams;
   const authors = await authorsNow(store.id);
   const editing = authors.find((a) => a.id === query.author) ?? null;
   const base = `/admin/${store.slug}/articles`;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["blog", "websitePick"])}>
+    <AdminTextScope texts={areaTexts(lang, { blog: BLOG_WORDS, websitePick: WEBSITE_PICK_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: `${base}/blogs`, label: w.links.blogs }}

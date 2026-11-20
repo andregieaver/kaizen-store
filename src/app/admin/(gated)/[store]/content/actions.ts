@@ -4,10 +4,10 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { contentProblem } from "@/lib/content-admin";
 import { moneyCurrencies } from "@/lib/field-money";
 import { redirectsTag } from "@/lib/redirects";
+import { CONTENT_WORDS } from "@/lib/admin-words/content";
 import { deleteEntry, moveEntry, publishEntry, saveEntry, unpublishEntry, type EntryContext } from "@/server/content-entries";
 import { contentTag, deleteContentType, designEntryLayout, saveContentType } from "@/server/content-types";
 import type { Membership } from "@/server/auth";
@@ -17,7 +17,7 @@ import type { SaveResult } from "@/server/settings";
 /** A writer's answer with its refusals in the member's admin language (D312). */
 function inWords<T extends SaveResult>(member: Membership, result: T): T {
   if (result.ok) return result;
-  const words = adminText(adminLangOf(member.account.adminLocale), "content").problems;
+  const words = CONTENT_WORDS[adminLangOf(member.account.adminLocale)].problems;
   return { ...result, problems: result.problems.map((problem) => contentProblem(problem, words)) };
 }
 

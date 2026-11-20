@@ -4,8 +4,8 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { MODERATIONS, type Moderation } from "@/lib/blog-comments";
+import { BLOG_WORDS } from "@/lib/admin-words/blog";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { commentsTag, deleteComment, moderateComment } from "@/server/blog-comments";
 import { checkPageTypeAccess } from "@/server/permissions";
@@ -19,8 +19,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function moderateCommentAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPageTypeAccess(storeSlug, "article", "write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "blog").noChange] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "blog").moderation;
+  if (!member) return { status: "error", messages: [BLOG_WORDS[await actionAdminLang()].noChange] };
+  const w = BLOG_WORDS[adminLangOf(member.account.adminLocale)].moderation;
   const id = formData.get("id");
   const action = formData.get("action");
   if (typeof id !== "string" || !UUID.test(id)) return { status: "error", messages: [w.gone] };

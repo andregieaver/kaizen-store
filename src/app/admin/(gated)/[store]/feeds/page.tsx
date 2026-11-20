@@ -8,10 +8,11 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { FEED_CHANNELS, feedFileName, isAgentChannel } from "@/lib/feeds";
 import { agentEndpoint, agentProfileUrl } from "@/lib/shopping-agents";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { feedSettingsOf } from "@/server/feed-settings";
 import { storeFeed } from "@/server/feeds";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -31,7 +32,7 @@ export default async function FeedsPage({ params }: PageProps<"/admin/[store]/fe
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing").feeds;
+  const w = MARKETING_WORDS[lang].feeds;
   const canWrite = memberCan(member, "marketing:write");
   const settings = await feedSettingsOf(store.id);
   const on = Boolean(settings?.on && settings.token);
@@ -51,7 +52,7 @@ export default async function FeedsPage({ params }: PageProps<"/admin/[store]/fe
   );
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+    <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         {/* Round 55 (D806): on a phone each switch is a row saying whether it is on, with its one press beside it; the card opens under it. */}

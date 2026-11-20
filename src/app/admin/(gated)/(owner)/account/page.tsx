@@ -10,7 +10,6 @@ import { AdminLanguageField, AdminTextProvider } from "@/components/admin/admin-
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
@@ -29,6 +28,13 @@ import { twoStepStatus } from "@/server/two-step";
 import { buttonClass, ButtonLink, Field, PageHeader, TextInput } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { NAME_MAX } from "@/lib/email-change-limits";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
+import { PRIVACY_OFFICER_WORDS } from "@/lib/admin-words/privacy-officer";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { pendingEmailChange } from "@/server/email-change";
 
 import {
@@ -55,10 +61,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const account = await requireAccount();
   // The admin's language for this account (D312 A0): the Language section's words are already in it.
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "common").language;
-  const w = adminText(lang, "bookings").account;
-  const vw = adminText(lang, "shell").view;
-  const ow = adminText(lang, "oauth");
+  const words = COMMON_WORDS[lang].language;
+  const w = BOOKINGS_WORDS[lang].account;
+  const vw = SHELL_WORDS[lang].view;
+  const ow = OAUTH_WORDS[lang];
   const query = await searchParams;
   const status = query["kaizen-life"];
   const owner = await isOwner(account);
@@ -81,7 +87,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const officer = ownAccount
     ? await Promise.all([storedChoice(ownAccount.id, null), officerCandidates(ownAccount.id, null), accountOfficer(ownAccount.id)]).then(([choice, people, current]) => ({ choice, people, current }))
     : null;
-  const pw = adminText(lang, "privacyOfficer");
+  const pw = PRIVACY_OFFICER_WORDS[lang];
   // Name and email (D836): each with its Change; the email's waiting change is one line here, its details on the email page.
   const pending = await pendingEmailChange(account.id);
   const pf = w.profile;
@@ -169,7 +175,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           {w.mode}
         </h2>
         <p className="text-sm text-muted">{w.modeHint}</p>
-        <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} words={adminText(lang, "bookings").lookFields} />
+        <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} words={BOOKINGS_WORDS[lang].lookFields} />
       </section>
 
       <section aria-labelledby="scheme-heading" className="flex max-w-md flex-col gap-3">
@@ -177,7 +183,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           {w.scheme}
         </h2>
         <p className="text-sm text-muted">{w.schemeHint}</p>
-        <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} words={adminText(lang, "bookings").lookFields} />
+        <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} words={BOOKINGS_WORDS[lang].lookFields} />
         <Link href="/admin/account/appearance" className="w-fit text-sm underline underline-offset-2">
           {w.allSchemes}
         </Link>
@@ -251,7 +257,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
         </h2>
         {twoStep ? (
           // Its words are the sign-in area's (D312 A1), handed down here only.
-          <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+          <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, signIn: SIGN_IN_WORDS })}>
             <ManageTwoStep
               enrolled={twoStep.enrolled}
               codesLeft={twoStep.codesLeft}

@@ -5,8 +5,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { ReviewImportForm } from "@/components/admin/review-import-form";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
+import { areaTexts } from "@/lib/admin-area";
+import { REVIEWS_WORDS } from "@/lib/admin-words/reviews";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { importReviewsAction } from "./actions";
@@ -21,12 +22,12 @@ export default async function ReviewImportPage({ params }: PageProps<"/admin/[st
   const member = await requirePermission((await params).store, "products:read");
   if (!memberCan(member, "products:write") || !featureOn(member.store, "reviews")) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "reviews").import;
+  const w = REVIEWS_WORDS[lang].import;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${member.store.slug}/reviews`, label: w.back }} title={w.title} description={w.description} />
       <Card compact>
-        <AdminTextScope texts={adminTexts(lang, ["reviews"])}>
+        <AdminTextScope texts={areaTexts(lang, { reviews: REVIEWS_WORDS })}>
           <ReviewImportForm action={importReviewsAction.bind(null, member.store.slug)} />
         </AdminTextScope>
       </Card>

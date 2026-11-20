@@ -1,11 +1,11 @@
 "use server";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { requireAccount } from "@/server/auth";
 import { heartbeat, setAgentPartner, setPresence } from "@/server/support";
 import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
 import { checkStoreDesk, ownerDesks } from "@/server/support-desk";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 /**
  * The owner's combined inbox's presence (D216, 2.8): online or away on every store where the account may answer (`support:write`
@@ -59,7 +59,7 @@ export async function ownerSupportActAction(
   conversationId: string,
   raw: unknown,
 ): Promise<AgentActResult> {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   const staff =
     typeof store === "string" ? await checkStoreDesk(store, "write") : null;
   if (!staff) return { ok: false, problem: w.noAccess };

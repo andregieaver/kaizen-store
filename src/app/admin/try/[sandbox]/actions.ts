@@ -8,7 +8,6 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import type { PageSaveState } from "@/components/admin/page-context";
 import { db } from "@/db/client";
-import { adminText } from "@/lib/admin-text";
 import { formProblems } from "@/lib/form-problems";
 import type { CssVersionItem } from "@/lib/css-versions";
 import type { GridData } from "@/lib/content-grid";
@@ -41,6 +40,8 @@ import { translatePageTexts } from "@/server/page-translate";
 import { listVersions, readVersion } from "@/server/page-versions";
 import { deletePage, getPageForEdit, pageTitles, savePage, unpublishPage } from "@/server/pages";
 import { pagesTag } from "@/lib/cache-tags";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { budgetVisitor, takeBudget } from "@/server/request-budget";
 import { addressOf } from "@/server/analytics-visits";
@@ -70,8 +71,8 @@ import { ruleChoices } from "@/server/visibility";
 
 const isId = (id: unknown): id is string => z.uuid().safeParse(id).success;
 const isKind = (kind: unknown): kind is SandboxKind => (Object.values(SANDBOX_KINDS) as unknown[]).includes(kind);
-const words = async () => adminText(await actionAdminLang(), "sandbox").refused;
-const said = async () => adminText(await actionAdminLang(), "website").pageActions;
+const words = async () => SANDBOX_WORDS[await actionAdminLang()].refused;
+const said = async () => WEBSITE_WORDS[await actionAdminLang()].pageActions;
 const gone = async () => (await words()).gone;
 const notHere = async () => (await words()).notHere;
 
@@ -453,7 +454,7 @@ export async function keepSandboxAction(sandboxId: string, _state: FormState, fo
   const sandbox = await open(sandboxId);
   if (!sandbox) return { status: "error", messages: [await gone()] };
   const lang = await actionAdminLang();
-  const w = adminText(lang, "sandbox").keep;
+  const w = SANDBOX_WORDS[lang].keep;
   const selfServe = await selfServeOn();
   const sent = selfServe ? w.sent : w.sentWaiting;
   // A field people never see; bots fill it in.

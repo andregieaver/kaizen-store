@@ -5,8 +5,8 @@ import { ButtonLink, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { MOVE_KEEP_DAYS, type MoveGoal } from "@/lib/domain-move";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { movePlan } from "@/server/domain-move";
 import { requireAccount } from "@/server/auth";
 import { accountHolder } from "@/server/domain-holder";
@@ -24,7 +24,7 @@ export default async function MoveHeldDomainPage({ params, searchParams }: PageP
   const { domain } = await params;
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "domains").move;
+  const words = DOMAINS_WORDS[lang].move;
   const apex = decodeURIComponent(domain).toLowerCase();
   const goalParam = (await searchParams).goal;
   const goal = GOALS.find((g) => g === goalParam) ?? null;

@@ -10,8 +10,8 @@ import { ButtonLink, Card, List, ListRow, PageHeader, RowActions, RowLead } from
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { isProtected } from "@/lib/dns-plan";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { requireAccount, type Account } from "@/server/auth";
 import { heldDomains, linkableStores } from "@/server/domain-account";
 import { dnsAuto, dnsHistory, storeZones, zoneRecords } from "@/server/domain-dns";
@@ -45,7 +45,7 @@ export default async function YourDomainsPage() {
   await connection();
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "domains");
+  const words = DOMAINS_WORDS[lang];
   const [held, stores] = await Promise.all([heldDomains(account.id), linkableStores(account.id)]);
   return (
     <div className="flex flex-col gap-6">
@@ -153,7 +153,7 @@ export default async function YourDomainsPage() {
 /** What the account registered here, with renewal: billed to the store a domain is used by, or to the account (D317 decision 6). */
 async function Registrations({ account, lang }: { account: Account; lang: AdminLang }) {
   const holder = accountHolder(account.id);
-  const words = adminText(lang, "domains");
+  const words = DOMAINS_WORDS[lang];
   const [registrations, purchases] = await Promise.all([storeRegistrations(holder), storeDomainPurchases(holder)]);
   const renewals = await Promise.all(
     registrations.map((r) =>
@@ -185,7 +185,7 @@ async function KeptDns({ account, lang }: { account: Account; lang: AdminLang })
   const holder = accountHolder(account.id);
   const zones = await storeZones(holder);
   if (zones.length === 0) return null;
-  const words = adminText(lang, "domains").dns;
+  const words = DOMAINS_WORDS[lang].dns;
   const auto = await dnsAuto(holder);
   const cards = await Promise.all(
     zones.map(async (zone) => {

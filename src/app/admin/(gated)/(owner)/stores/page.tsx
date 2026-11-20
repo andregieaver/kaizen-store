@@ -9,8 +9,8 @@ import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { PROMPT_MAX, PROMPT_MIN } from "@/lib/dream-factory";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { copyProgressPath } from "@/lib/store-copy-paths";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
@@ -27,7 +27,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export default async function AllStoresPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const words = adminText(lang, "home");
+  const words = HOME_WORDS[lang];
   const { stores: w, common: c } = words;
   const [stores, hostings, copies, closed] = await Promise.all([listStores(account), listHostings(account), listStoreCopies(account), listClosedStores(account)]);
   const owned = stores.filter((store) => store.role === "owner").length;

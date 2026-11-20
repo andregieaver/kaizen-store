@@ -8,9 +8,10 @@ import { AppForm, RenewAppSecret } from "@/components/admin/developer-apps";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { OAUTH_PATHS, resourceUrl } from "@/lib/oauth";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import { requireAccount } from "@/server/auth";
 import { ownApp } from "@/server/developer-apps";
 
@@ -29,10 +30,10 @@ export default async function AppPage({ params }: PageProps<"/admin/account/deve
   const app = await ownApp(account.id, (await params).app);
   if (!app) notFound();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "oauth").developer;
+  const w = OAUTH_WORDS[lang].developer;
   const site = siteUrl();
   return (
-    <AdminTextScope texts={adminTexts(lang, ["oauth"])}>
+    <AdminTextScope texts={areaTexts(lang, { oauth: OAUTH_WORDS })}>
       <div className="flex flex-col gap-8">
         <PageHeader
           title={app.name}

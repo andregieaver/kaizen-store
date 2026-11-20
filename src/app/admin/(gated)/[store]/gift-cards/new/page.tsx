@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { languageName } from "@/lib/localization";
+import { GIFT_CARDS_WORDS } from "@/lib/admin-words/gift-cards";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { issueGiftCardAction } from "../actions";
@@ -16,7 +16,7 @@ export default async function IssueGiftCardPage({ params }: PageProps<"/admin/[s
   const member = await requirePermission((await params).store, "products:read");
   const { store } = member;
   const base = `/admin/${store.slug}/gift-cards`;
-  const w = adminText(adminLangOf(member.account.adminLocale), "giftCards").issue;
+  const w = GIFT_CARDS_WORDS[adminLangOf(member.account.adminLocale)].issue;
   const currencies = store.localization.currencies.map((c) => c.currency);
   const languages = [...new Set(store.localization.locales.map((l) => l.slice(0, 2)))].map((code) => ({ code, label: languageName(code) }));
   return (

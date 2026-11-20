@@ -10,7 +10,8 @@ import { getCartReminderStep } from "@/server/cart-reminders";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 
 import { deleteReminderStepAction } from "../actions";
 import { ReminderForm } from "../reminder-form";
@@ -27,7 +28,7 @@ export default async function ReminderPage({ params }: PageProps<"/admin/[store]
   if (!z.uuid().safeParse(stepId).success) notFound();
   const step = await getCartReminderStep(store.id, stepId);
   if (!step) notFound();
-  const w = adminText(adminLangOf(gated.account.adminLocale), "bookings").cartReminders;
+  const w = BOOKINGS_WORDS[adminLangOf(gated.account.adminLocale)].cartReminders;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -35,7 +36,7 @@ export default async function ReminderPage({ params }: PageProps<"/admin/[store]
         title={fillWords(w.reminderAfter, { delay: describeDelay(step.delayMinutes, w.delay) })}
       />
       <ReminderForm store={store} step={step} />
-      <DeleteReminderButton action={deleteReminderStepAction.bind(null, store.slug, step.id)} words={adminText(adminLangOf(gated.account.adminLocale), "platform").deleteReminder} />
+      <DeleteReminderButton action={deleteReminderStepAction.bind(null, store.slug, step.id)} words={PLATFORM_WORDS[adminLangOf(gated.account.adminLocale)].deleteReminder} />
     </div>
   );
 }

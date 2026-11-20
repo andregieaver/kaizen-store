@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/ui";
 import { UnansweredQuestionsView } from "@/components/admin/unanswered-questions-view";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { QUESTION_STATUSES, type QuestionStatus } from "@/lib/unanswered-questions";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listUnanswered, savedAnswers } from "@/server/unanswered-questions";
 
@@ -20,7 +20,7 @@ export default async function StoreQuestionsPage({ params, searchParams }: PageP
   const { store: slug } = await params;
   const member = await requirePermission(slug, "support:read");
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "support");
+  const words = SUPPORT_WORDS[lang];
   const asked = (await searchParams).show;
   const show: QuestionStatus = typeof asked === "string" && (QUESTION_STATUSES as readonly string[]).includes(asked) ? (asked as QuestionStatus) : "open";
   const rows = await listUnanswered(member.store.id, show);

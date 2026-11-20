@@ -1,7 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import type { Host } from "@/server/hosts";
 import { CARD_CLASS } from "@/components/admin/ui";
-import { adminText } from "@/lib/admin-text";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
@@ -11,12 +10,12 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export function HostForm({
   host,
   action,
-  words: w = adminText("en", "bookings").hostForm,
+  words: w,
 }: {
   host: Host | null;
   action: (state: FormState, formData: FormData) => Promise<FormState>;
-  /** The form's words (D312 A11); English when none are given. */
-  words?: BookingsMessages["hostForm"];
+  /** The form's words (D312 A11), in the account's language. */
+  words: BookingsMessages["hostForm"];
 }) {
   return (
     <ActionForm action={action} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>

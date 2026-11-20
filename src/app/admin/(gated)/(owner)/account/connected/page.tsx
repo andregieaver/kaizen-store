@@ -8,10 +8,10 @@ import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { HANDOFF_SIGNAL } from "@/lib/kaizen-life-handoffs";
 import { resourceUrl } from "@/lib/oauth";
 import { siteUrl } from "@/lib/site";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import { requireAccount } from "@/server/auth";
 import { kaizenLifeAppUrl, lifeLinkOf } from "@/server/kaizen-life-accounts";
 import { recentHandoffsOf } from "@/server/kaizen-life-handoffs";
@@ -33,7 +33,7 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
   const { assistants: switched } = await props.searchParams;
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "oauth");
+  const w = OAUTH_WORDS[lang];
   const [grants, life, lifeApp, tasks] = await Promise.all([
     grantsOfAccount(account.id),
     lifeLinkOf(account.id),

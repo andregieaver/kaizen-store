@@ -17,7 +17,7 @@ import {
 import { listDiscounts } from "@/server/discounts";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
@@ -49,7 +49,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
   ]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "bookings").cartReminders;
+  const w = BOOKINGS_WORDS[lang].cartReminders;
   const STATUS: Record<AbandonedCheckoutRow["status"], string> = w.status;
   const base = `/admin/${store.slug}/cart-reminders`;
   const firstLocale = store.markets[0]?.locale ?? "";

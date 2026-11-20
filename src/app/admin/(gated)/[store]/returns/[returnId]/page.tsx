@@ -9,9 +9,9 @@ import { ExchangeCard } from "@/components/admin/returns/exchange-card";
 import { LabelCard } from "@/components/admin/returns/label-card";
 import type { BuilderForm } from "@/lib/exchange-form";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { previewData, todayIn } from "@/lib/return-admin";
+import { RETURNS_WORDS } from "@/lib/admin-words/returns";
 import { orderDeliveryAddress } from "@/server/exchange-admin";
 import { exchangeBlockFor, exchangesOfReturn, previewExchange, type ExchangePreview } from "@/server/exchanges";
 import { mayRecordOutsidePayment } from "@/server/order-settings";
@@ -67,7 +67,7 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
   const canWrite = memberCan(gated, "orders:write");
   const today = todayIn(store.timeZone);
   const lang = adminLangOf(gated.account.adminLocale);
-  const words = adminText(lang, "returns");
+  const words = RETURNS_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
 
   // The exchange (D239): the return's live exchange, else its newest; why it cannot be exchanged; the builder's start (the order's address, a draft's lines).

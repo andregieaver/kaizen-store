@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { AUTOMATION_KINDS, FOLLOW_UP_POSITIONS, LIFECYCLE_KINDS, type FollowUpPosition } from "@/lib/automations";
 import { marketingProblem } from "@/lib/marketing-words";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { deleteFollowUp, saveAutomation, saveFollowUp, sendTestAutomation, sendTestFollowUp, switchAutomation } from "@/server/automations";
 import { checkPermission } from "@/server/permissions";
@@ -24,11 +24,11 @@ async function writer(storeSlug: string) {
   const member = await checkPermission(storeSlug, "marketing:write", "email_automation");
   if (!member) return null;
   const store = await storeById(member.store.id);
-  return store ? { member, store, w: adminText(adminLangOf(member.account.adminLocale), "marketing").problems } : null;
+  return store ? { member, store, w: MARKETING_WORDS[adminLangOf(member.account.adminLocale)].problems } : null;
 }
 
 /** A refusal before a member is known, in the request's language (D312 A6). */
-const noAccess = async (): Promise<Problem> => ({ ok: false, problem: adminText(await actionAdminLang(), "marketing").problems.noAccess });
+const noAccess = async (): Promise<Problem> => ({ ok: false, problem: MARKETING_WORDS[await actionAdminLang()].problems.noAccess });
 
 /** The server's English answer in the account's language. */
 const said = (result: Problem | { ok: true }, w: Parameters<typeof marketingProblem>[1]): Problem | { ok: true } =>

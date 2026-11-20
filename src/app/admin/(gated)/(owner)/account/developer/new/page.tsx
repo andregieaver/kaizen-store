@@ -6,7 +6,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { AppForm } from "@/components/admin/developer-apps";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import { requireAccount } from "@/server/auth";
 import { developerOf } from "@/server/developer-apps";
 
@@ -21,9 +22,9 @@ export default async function NewAppPage() {
   const account = await requireAccount();
   if (!(await developerOf(account.id))) redirect("/admin/account/developer");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "oauth").developer;
+  const w = OAUTH_WORDS[lang].developer;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["oauth"])}>
+    <AdminTextScope texts={areaTexts(lang, { oauth: OAUTH_WORDS })}>
       <div className="flex flex-col gap-8">
         <PageHeader title={w.newTitle} description={w.description} />
         <Card>

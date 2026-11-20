@@ -7,7 +7,7 @@ import { requirePermission } from "@/server/permissions";
 import { listCartAdds } from "@/server/wishlist-admin";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 export const metadata: Metadata = { title: "From wishlist to purchase" };
 
@@ -29,7 +29,7 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
   const rows = await listCartAdds(store.id, { outcome: show === "all" ? undefined : show });
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "bookings").wishlists;
+  const w = BOOKINGS_WORDS[lang].wishlists;
   const base = `/admin/${store.slug}/wishlists/activity`;
 
   return (

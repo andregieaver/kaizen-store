@@ -10,8 +10,8 @@ import { assignRole, createRole, deleteRole, extendCollaborator, inviteCollabora
 import { disableStaff, inviteStaff } from "@/server/settings";
 import { setTwoStepRequirement } from "@/server/two-step";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 import type { Membership } from "@/server/auth";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
@@ -24,11 +24,11 @@ import { actionAdminLang } from "@/server/admin-request-lang";
 /** The refusal for someone who is not an owner here, in the language the request asks for. */
 async function denied(): Promise<FormState> {
   const lang = await actionAdminLang();
-  return { status: "error", messages: [lang === "en" ? NO_ACCESS : adminText(lang, "staff").actions.noAccess] };
+  return { status: "error", messages: [lang === "en" ? NO_ACCESS : STAFF_WORDS[lang].actions.noAccess] };
 }
 
 /** The account's words for the team (D312 A8). */
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "staff").actions;
+const wordsOf = (member: Membership) => STAFF_WORDS[adminLangOf(member.account.adminLocale)].actions;
 const email = z.email();
 const id = z.uuid();
 

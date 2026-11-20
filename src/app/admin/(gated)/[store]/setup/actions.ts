@@ -7,12 +7,12 @@ import { after } from "next/server";
 import type { FormState } from "@/components/admin/action-form";
 import { formProblems } from "@/lib/form-problems";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { readAnswers } from "@/lib/onboarding";
 import { nextSetupStep } from "@/lib/setup-steps";
 import { storeDetailsInput } from "@/lib/store-details";
 import type { FeatureSource } from "@/lib/store-features";
+import { SETUP_WORDS } from "@/lib/admin-words/setup";
 import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
@@ -32,11 +32,11 @@ import { chargeDueThemePurchases } from "@/server/theme-prices";
 
 // Setup is the owner's job; every action re-checks that on the server.
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
-  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: [adminText(await actionAdminLang(), "setup").actions.ownerOnly] };
+  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: [SETUP_WORDS[await actionAdminLang()].actions.ownerOnly] };
 }
 
 /** The setup words in the owner's admin language. */
-const words = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "setup");
+const words = (member: Membership) => SETUP_WORDS[adminLangOf(member.account.adminLocale)];
 
 function refreshStore(member: Membership) {
   updateTag(storeTag(member.store.slug));

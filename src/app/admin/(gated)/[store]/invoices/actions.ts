@@ -6,8 +6,8 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { InvoicesMessages } from "@/lib/admin-messages/invoices.en";
-import { adminText } from "@/lib/admin-text";
 import { checkAgainSentence, sentAgainSentence } from "@/lib/invoice-admin";
+import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { issueMissingCreditNotes, issueWaitingInvoices, retryPdfLater } from "@/server/invoice-issue";
 import { sendDocumentAgain } from "@/server/invoice-notices";
@@ -26,7 +26,7 @@ const done = (message: string): FormState => ({ status: "ok", messages: [message
 const kind = z.enum(["invoice", "credit_note"]);
 
 /** The member's words for the invoices screens (D312 A4). */
-const wordsOf = (member: { account: { adminLocale?: string | null } }): InvoicesMessages => adminText(adminLangOf(member.account.adminLocale), "invoices");
+const wordsOf = (member: { account: { adminLocale?: string | null } }): InvoicesMessages => INVOICES_WORDS[adminLangOf(member.account.adminLocale)];
 
 /**
  * *Check again*: the same job the five-minute run does, for this store, now: the waiting invoices whose cause has been put right are

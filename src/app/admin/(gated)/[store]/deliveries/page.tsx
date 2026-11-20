@@ -10,8 +10,8 @@ import { deliveryRounds, listStandingOrders, type ScheduleView } from "@/server/
 import { PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { saveScheduleAction } from "./actions";
 
@@ -32,7 +32,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
   const { store } = current;
   const owner = memberCan(current, "owner");
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "bookings").boxes;
+  const w = BOOKINGS_WORDS[lang].boxes;
   const LIST_STATUS: Record<string, string> = w.listStatus;
   const ORDER_STATUS: Record<string, string> = w.orderStatus;
   const dayLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;

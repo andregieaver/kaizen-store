@@ -10,7 +10,7 @@ import { requirePermission } from "@/server/permissions";
 import { listSubscriptions } from "@/server/subscriptions";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Subscriptions" };
@@ -24,7 +24,7 @@ export default async function SubscriptionsPage({ params }: Props) {
   const off = requireFeature(current, "subscriptions");
   if (off) return off;
   const { store } = current;
-  const w = adminText(adminLangOf(current.account.adminLocale), "bookings").subscriptions;
+  const w = BOOKINGS_WORDS[adminLangOf(current.account.adminLocale)].subscriptions;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} />
@@ -39,7 +39,7 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "orders:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "bookings").subscriptions;
+  const w = BOOKINGS_WORDS[lang].subscriptions;
   const subscriptions = await listSubscriptions(store.id);
   const locale = store.markets[0]?.locale ?? "en";
   const base = `/admin/${store.slug}/subscriptions`;

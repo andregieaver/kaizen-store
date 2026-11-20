@@ -16,7 +16,7 @@ import { holderOf } from "@/server/auth";
 import { requireMemberAny } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 
 export const metadata: Metadata = { title: "Change log" };
 
@@ -32,7 +32,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
   const problem = typeof query.problem === "string" ? query.problem.slice(0, 300) : "";
   const zone = zoneOf(member.store);
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "staff");
+  const words = STAFF_WORDS[lang];
   const w = words.activity;
   const filters = {
     accountId: values.person || null,

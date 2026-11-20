@@ -28,7 +28,6 @@ import { PAYMENT_TERMS } from "@/lib/payment-terms";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { listTiers } from "@/server/customer-tiers";
 import { listLocations } from "@/server/company-locations";
@@ -48,6 +47,11 @@ import {
   setMainAccountAction,
 } from "../actions";
 import { dealsOn } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 
 export const metadata: Metadata = { title: "Company" };
 
@@ -62,7 +66,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const all = adminText(lang, "customers");
+  const all = CUSTOMERS_WORDS[lang];
   const words = all.company;
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
@@ -90,12 +94,12 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
   // Deals (S2, D464): the company's, while Deals is on.
   const salesOn = dealsOn(store);
   const deals = salesOn ? await listDeals(store, { companyId: company.id }) : [];
-  const dealWords = adminText(lang, "deals");
+  const dealWords = DEALS_WORDS[lang];
   const mayChange = memberCan(current, "customers:write");
   const [activities, team] = salesOn ? await Promise.all([activitiesOf(store.id, { companyId: company.id }), mayChange ? activityTeam(store.id) : Promise.resolve([])]) : [[], []];
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
+    <AdminTextScope texts={areaTexts(lang, { bookings: BOOKINGS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/companies`, label: words.back }}
@@ -114,7 +118,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
         full={full}
         path={`${base}/companies/${company.id}`}
         words={all.timeline}
-        orderStatuses={adminText(lang, "common").orderStatus}
+        orderStatuses={COMMON_WORDS[lang].orderStatus}
         locale={locale}
         timeZone={store.timeZone}
         people={people}

@@ -7,10 +7,10 @@ import { AdminLink, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
-import { adminText } from "@/lib/admin-text";
 import { storeBase, storeHref } from "@/lib/paths";
 import { canOpenPath } from "@/lib/permissions";
 import { STORE_SECTIONS, storeSections, type StoreItem } from "@/lib/store-nav";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { holderOf } from "@/server/auth";
 import { siteFacts } from "@/server/home";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -27,7 +27,7 @@ export default async function StoreWebsitePage({ params }: PageProps<"/admin/[st
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "home").website;
+  const w = HOME_WORDS[lang].website;
   const say = (text: string) => navWord(lang, text);
   // The pages of a member's own role only (wave 1, 1f): a card for a page they cannot open would be a link to a 404.
   const holder = holderOf(member);

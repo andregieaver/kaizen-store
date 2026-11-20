@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageDrawing } from "@/app/admin/(gated)/[store]/pages/drawing";
-import { adminText } from "@/lib/admin-text";
 import { sandboxBase } from "@/lib/sandbox";
+import { BUILDER_WORDS } from "@/lib/admin-words/builder";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getPageForEdit } from "@/server/pages";
 import { publishedPageById } from "@/server/page-reads";
@@ -24,8 +25,8 @@ export default async function SandboxPreviewPage({ params, searchParams }: PageP
   if (!isPageId(pageId)) notFound();
   const [lang, page] = await Promise.all([requestAdminLang(), getPageForEdit(sandbox.store.id, pageId, kind)]);
   if (!page) notFound();
-  const ew = adminText(lang, "builder").editor;
-  const w = adminText(lang, "sandbox").view;
+  const ew = BUILDER_WORDS[lang].editor;
+  const w = SANDBOX_WORDS[lang].view;
   const live = query.published === "1" && page.published ? ((await publishedPageById(sandbox.store.id, page.id, kind)) ?? undefined) : undefined;
   const note = query.published === "1" ? (live ? w.published : w.notPublished) : w.draft;
   return (

@@ -5,8 +5,8 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { splitWords } from "@/lib/search-synonyms";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { deleteRule, saveRule, type RuleResult } from "@/server/search-rules";
 import { deleteSynonym, saveSynonym, type SynonymResult } from "@/server/search-synonyms";
@@ -24,7 +24,7 @@ type RuleProblem = Extract<RuleResult, { ok: false }>["problems"][number];
 export async function saveSynonymAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "bookings").search.synonyms;
+  const w = BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].search.synonyms;
   const text = (name: string) => String(formData.get(name) ?? "");
   const result = await saveSynonym(member, {
     locale: text("locale"),
@@ -44,7 +44,7 @@ export async function saveSynonymAction(storeSlug: string, _state: FormState, fo
 export async function deleteSynonymAction(storeSlug: string, id: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "bookings").search.synonyms;
+  const w = BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].search.synonyms;
   if (!(await deleteSynonym(member, id))) return { status: "error", messages: [w.gone] };
   refresh();
   return { status: "ok", messages: [w.removed] };
@@ -54,7 +54,7 @@ export async function deleteSynonymAction(storeSlug: string, id: string): Promis
 export async function saveRuleAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "bookings").search.rules;
+  const w = BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].search.rules;
   const text = (name: string) => String(formData.get(name) ?? "").trim();
   const result = await saveRule(member, {
     action: text("action"),
@@ -77,7 +77,7 @@ export async function saveRuleAction(storeSlug: string, _state: FormState, formD
 export async function deleteRuleAction(storeSlug: string, id: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "bookings").search.rules;
+  const w = BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].search.rules;
   if (!(await deleteRule(member, id))) return { status: "error", messages: [w.problems.gone] };
   refresh();
   return { status: "ok", messages: [w.removed] };

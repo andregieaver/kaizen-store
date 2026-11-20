@@ -4,7 +4,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { NoticeList } from "@/components/admin/ai-notices";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
+import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
 import { requireAccount } from "@/server/auth";
 
 export const metadata: Metadata = { title: "AI manager notices" };
@@ -16,9 +18,9 @@ export const metadata: Metadata = { title: "AI manager notices" };
 export default async function NoticesPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "assistant").notices;
+  const w = ASSISTANT_WORDS[lang].notices;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["assistantBar"])}>
+    <AdminTextScope texts={areaTexts(lang, { assistantBar: ASSISTANT_BAR_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.pageTitle} description={w.pageDescription} />
         <Card>

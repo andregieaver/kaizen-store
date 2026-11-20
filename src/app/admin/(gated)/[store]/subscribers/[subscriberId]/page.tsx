@@ -5,8 +5,8 @@ import { Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from 
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
-import { adminText } from "@/lib/admin-text";
 import { SUBSCRIBE_SOURCES, type SubscribeSource, type UnsubscribeSource } from "@/lib/marketing-consent";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { subscriberDetail } from "@/server/marketing-subscribers";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -25,7 +25,7 @@ export default async function SubscriberPage({ params }: PageProps<"/admin/[stor
   const subscriber = await subscriberDetail(store.id, subscriberId);
   if (!subscriber) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const ws = adminText(lang, "marketing").subscribers;
+  const ws = MARKETING_WORDS[lang].subscribers;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
 
   return (

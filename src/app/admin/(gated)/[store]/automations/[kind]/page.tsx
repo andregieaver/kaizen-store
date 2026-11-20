@@ -6,9 +6,10 @@ import { AutomationEditor, AutomationSwitch } from "@/components/admin/automatio
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { DELAY_RANGES, FOLLOW_UP_POSITIONS, isLifecycle, isPickKind } from "@/lib/automations";
 import { automationDays } from "@/lib/marketing-words";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { getAutomation } from "@/server/automations";
 import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -30,7 +31,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
   const { store } = member;
   const automation = await getAutomation(store, kind);
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
+  const w = MARKETING_WORDS[lang];
   const wa = w.automations;
   const words = wa.kinds[kind];
   const wf = wa.followUps;
@@ -38,7 +39,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
   const mayWrite = memberCan(member, "marketing:write");
   const choices = mayWrite ? await broadcastChoices(store, lang) : null;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+    <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: base, label: wa.title }}

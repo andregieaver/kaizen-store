@@ -10,8 +10,9 @@ import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, 
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { attentionFor, changeText, money, totalSales } from "@/lib/control-center";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { requireAccount } from "@/server/auth";
 import { controlCenter } from "@/server/control-center";
 import { listHostings } from "@/server/hosts";
@@ -28,9 +29,9 @@ export default async function ControlCenterPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const words = adminText(lang, "home");
+  const words = HOME_WORDS[lang];
   const { common: c, center: w } = words;
-  const statuses = adminText(lang, "common").orderStatus;
+  const statuses = COMMON_WORDS[lang].orderStatus;
   const [stores, hostings] = await Promise.all([storesOf(account), listHostings(account)]);
   const owner = stores.some((store) => store.role === "owner");
   if (!owner) {

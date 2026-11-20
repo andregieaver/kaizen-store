@@ -6,7 +6,7 @@ import { buttonClass, Card, CARD_CLASS, List, ListRow, PageHeader, RowLead } fro
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import { requireAccount } from "@/server/auth";
 import { appsOf, developerOf } from "@/server/developer-apps";
 
@@ -22,7 +22,7 @@ export default async function DeveloperPage({ searchParams }: PageProps<"/admin/
   await connection();
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "oauth").developer;
+  const w = OAUTH_WORDS[lang].developer;
   const developer = await developerOf(account.id);
   const problem = (await searchParams).problem;
   if (!developer) {

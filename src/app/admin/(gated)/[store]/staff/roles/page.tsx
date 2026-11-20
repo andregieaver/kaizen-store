@@ -10,8 +10,8 @@ import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { roleDescriptionIn, roleNameIn } from "@/lib/staff-words";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 
 import { createRoleAction, deleteRoleAction, updateRoleAction } from "../actions";
 
@@ -27,7 +27,7 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
   const roles = await listStoreRoles(store.id);
   const holders = new Map(await Promise.all(roles.map(async (r) => [r.id, await roleHolders(store.id, r.id)] as const)));
   const slug = store.slug;
-  const words = adminText(adminLangOf(account.adminLocale), "staff");
+  const words = STAFF_WORDS[adminLangOf(account.adminLocale)];
   const w = words.rolesPage;
 
   return (

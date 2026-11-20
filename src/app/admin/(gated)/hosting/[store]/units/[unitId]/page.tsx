@@ -1,5 +1,5 @@
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -35,7 +35,7 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
   const unit = await getResource(store.id, unitId);
   if (!unit || unit.hostId !== host.id || unit.kind === "staff") notFound();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "bookings").hostUnit;
+  const w = BOOKINGS_WORDS[lang].hostUnit;
   const property = unit.kind === "unit" ? await getUnitProperty(store.id, unit.id) : null;
   const actions: CalendarActions = {
     addBlock: hostAddBlockAction.bind(null, store.slug, unit.id),

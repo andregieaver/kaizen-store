@@ -2,8 +2,8 @@
 
 import { refresh, updateTag } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import type { BonusResult } from "@/lib/bonus";
+import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { affiliateTag } from "@/server/affiliates";
 import { checkOwnerRole, checkPermission } from "@/server/permissions";
@@ -19,7 +19,7 @@ import { storeTag } from "@/server/stores";
  */
 export async function saveBonusAction(storeSlug: string, raw: unknown): Promise<BonusResult> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { ok: false, problems: [adminText(await actionAdminLang(), "loyalty").bonusPage.ownerOnly] };
+  if (!member) return { ok: false, problems: [LOYALTY_WORDS[await actionAdminLang()].bonusPage.ownerOnly] };
   const result = await saveBonusSettings(member.account, member.store.id, raw);
   if (result.ok) {
     // What the storefront shows about earning credits (cards, cart, account) follows the settings.
@@ -36,7 +36,7 @@ export async function saveBonusAction(storeSlug: string, raw: unknown): Promise<
 /** Makes or changes a loyalty reward (D401, `marketing:write`): its code follows it, so codes already handed out take off what it now says. */
 export async function saveRewardAction(storeSlug: string, id: string | null, raw: unknown): Promise<RewardSave> {
   const member = await checkPermission(storeSlug, "marketing:write");
-  if (!member) return { ok: false, problems: [adminText(await actionAdminLang(), "loyalty").rewards.notAllowed] };
+  if (!member) return { ok: false, problems: [LOYALTY_WORDS[await actionAdminLang()].rewards.notAllowed] };
   const result = await saveReward(member, id, raw);
   if (result.ok) refresh();
   return result;

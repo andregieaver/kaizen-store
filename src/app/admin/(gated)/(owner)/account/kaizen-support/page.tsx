@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 import { KaizenRequests } from "@/components/admin/support/kaizen-requests";
 import { requireAccount } from "@/server/auth";
@@ -19,7 +20,7 @@ export default async function KaizenSupportPage({
 }: PageProps<"/admin/account/kaizen-support">) {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const t = adminText(lang, "support");
+  const t = SUPPORT_WORDS[lang];
   const [rows, stores] = await Promise.all([
     requesterConversations(account),
     myStores(account.id),
@@ -28,7 +29,7 @@ export default async function KaizenSupportPage({
   const open =
     typeof c === "string" && rows.some((row) => row.id === c) ? c : null;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support"])}>
+    <AdminTextScope texts={areaTexts(lang, { support: SUPPORT_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.kaizen.title}

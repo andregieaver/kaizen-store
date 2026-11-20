@@ -4,11 +4,11 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { createClient } from "@/lib/supabase/server";
 import { eraseOwnAccount } from "@/server/account-erasure";
 import { requireAccount, signedInRecently } from "@/server/auth";
 import { sameEmail } from "@/lib/email-address";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 const HERE = "/admin/account/delete";
 
@@ -18,7 +18,7 @@ const HERE = "/admin/account/delete";
  */
 export async function eraseAccountAction(_state: FormState, form: FormData): Promise<FormState> {
   const account = await requireAccount();
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").account.erase;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].account.erase;
   if (!(await signedInRecently())) return { status: "error", messages: [w.signInAgainFirst] };
   if (!sameEmail(String(form.get("email") ?? ""), account.email)) return { status: "error", messages: [w.wrongEmail] };
   const done = await eraseOwnAccount(account);

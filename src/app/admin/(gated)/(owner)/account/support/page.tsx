@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { Inbox } from "@/components/admin/support/inbox";
 import type { SupportDeskContext } from "@/components/admin/support/desk-context";
 import { requireAccount } from "@/server/auth";
@@ -57,7 +58,7 @@ export default async function OwnerSupportPage() {
   };
   return (
     <AdminTextScope
-      texts={adminTexts(adminLangOf(account.adminLocale), ["support"])}
+      texts={areaTexts(adminLangOf(account.adminLocale), { support: SUPPORT_WORDS })}
     >
       <Inbox context={context} initial={initial} initialTab={initialTab} />
     </AdminTextScope>

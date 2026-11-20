@@ -8,11 +8,11 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { CustomersMessages } from "@/lib/admin-messages/customers.en";
-import { adminText } from "@/lib/admin-text";
 import { INVITES_PER_BATCH, parseInviteEmails } from "@/lib/customer-tiers";
 import { mainCurrency } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";
 import { featureOn } from "@/lib/store-features";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, requirePermission } from "@/server/permissions";
 import { lookupCompany, searchCompanies, type BrregLookup, type BrregSearch } from "@/server/brreg";
@@ -29,8 +29,8 @@ function toState(result: SaveResult, success: string): FormState {
 }
 
 type Words = CustomersMessages["saved"];
-const wordsOf = (member: { account: { adminLocale?: string | null } }): Words => adminText(adminLangOf(member.account.adminLocale), "customers").saved;
-const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "customers").saved.noAccess] });
+const wordsOf = (member: { account: { adminLocale?: string | null } }): Words => CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].saved;
+const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [CUSTOMERS_WORDS[await actionAdminLang()].saved.noAccess] });
 const fail = (message: string): FormState => ({ status: "error", messages: [message] });
 
 /** Company accounts are part of selling to businesses (D178): refused while it is switched off, whatever a stale page sends. */

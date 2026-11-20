@@ -6,15 +6,15 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { ReviewsMessages } from "@/lib/admin-messages/reviews.en";
-import { adminText } from "@/lib/admin-text";
 import { reviewsTag } from "@/lib/reviews";
+import { REVIEWS_WORDS } from "@/lib/admin-words/reviews";
 import { answerReview, hideReview, publishReview, savePublishMode, saveRequestSettings, setPictureHidden, type Decided } from "@/server/reviews-admin";
 import { requirePermission } from "@/server/permissions";
 
 type Words = ReviewsMessages["actions"];
 
 /** What the actions answer, in the account's language (D312 A5). */
-const wordsOf = (member: { account: { adminLocale?: string | null } }): Words => adminText(adminLangOf(member.account.adminLocale), "reviews").actions;
+const wordsOf = (member: { account: { adminLocale?: string | null } }): Words => REVIEWS_WORDS[adminLangOf(member.account.adminLocale)].actions;
 
 const problem = (w: Words): Record<Exclude<Decided, { ok: true }>["problem"], string> => ({
   unknown: w.unknown,

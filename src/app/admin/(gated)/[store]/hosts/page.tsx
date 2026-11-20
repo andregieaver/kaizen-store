@@ -8,7 +8,7 @@ import { listHosts } from "@/server/hosts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { inviteHostAction } from "./actions";
 import { HostForm } from "./host-form";
@@ -24,7 +24,7 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
   const off = requireFeature(current, "bookings");
   if (off) return off;
   const { store } = current;
-  const t = adminText(adminLangOf(current.account.adminLocale), "bookings");
+  const t = BOOKINGS_WORDS[adminLangOf(current.account.adminLocale)];
   const w = t.hosts;
   const [hosts, taxes] = await Promise.all([listHosts(store.id), hostTaxStatus(store.id)]);
   const base = `/admin/${store.slug}/hosts`;

@@ -7,8 +7,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
-import { adminText } from "@/lib/admin-text";
 import type { ExchangeProblem } from "@/lib/exchange";
+import { RETURNS_WORDS } from "@/lib/admin-words/returns";
 import { searchDraftVariants, type DraftVariantChoice } from "@/server/draft-orders";
 import {
   cancelExchange,
@@ -48,7 +48,7 @@ export type ExchangePreviewResponse = { ok: true; preview: ExchangePreview } | {
 
 const isId = (value: unknown): value is string => z.uuid().safeParse(value).success;
 /** The member's words for the returns screens (D312 A4). */
-const wordsFor = (member: { account: { adminLocale?: string | null } }): ReturnsMessages => adminText(adminLangOf(member.account.adminLocale), "returns");
+const wordsFor = (member: { account: { adminLocale?: string | null } }): ReturnsMessages => RETURNS_WORDS[adminLangOf(member.account.adminLocale)];
 
 const wordsOf = (problems: ExchangeProblem[] | undefined, w: ReturnsMessages): ExchangeProblemWords[] =>
   (problems ?? []).map((p) => ({ code: p.code, key: p.key ?? null, text: w.labels.exchangeProblems[p.code] }));

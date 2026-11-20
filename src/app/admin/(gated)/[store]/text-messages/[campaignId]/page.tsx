@@ -8,8 +8,9 @@ import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { formatMoney } from "@/lib/money";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { SMS_MESSAGE_STATUSES } from "@/lib/sms";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 import { sendCredit } from "@/server/order-credit";
@@ -30,7 +31,7 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
   const campaign = await getSmsCampaign(store.id, campaignId);
   if (!campaign) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing").sms;
+  const w = MARKETING_WORDS[lang].sms;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const mayWrite = memberCan(member, "marketing:write");
   const back = { href: `/admin/${store.slug}/text-messages`, label: w.title };
@@ -38,7 +39,7 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
   if (campaign.status === "draft") {
     const [segments, settings] = await Promise.all([listSegments(store.id), getSmsSettings(store.id)]);
     return (
-      <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+      <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={campaign.title} back={back} actions={<Chip>{w.statuses.draft}</Chip>} />
         <Card>
@@ -66,7 +67,7 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
     .map(([currency, minor]) => formatMoney(minor, currency, numbers))
     .join(" + ");
   return (
-    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+    <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={campaign.title} back={back} actions={<Chip signal={campaign.status === "sent" ? "positive" : campaign.status === "sending" ? "warning" : "neutral"}>{w.statuses[campaign.status]}</Chip>} />
       <Card>

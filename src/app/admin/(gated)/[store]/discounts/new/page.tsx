@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { isOfferKey } from "@/lib/discount-offers";
+import { areaTexts } from "@/lib/admin-area";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -19,10 +20,10 @@ export default async function NewDiscountPage({ params, searchParams }: PageProp
   if (shopOff) return shopOff;
   const { store, account } = gated;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "discounts").codes;
+  const w = DISCOUNTS_WORDS[lang].codes;
   const offer = (await searchParams).offer;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
+    <AdminTextScope texts={areaTexts(lang, { discounts: DISCOUNTS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `/admin/${store.slug}/discounts`, label: w.title }} title={w.newCode} />
         <DiscountForm store={store} discount={null} offer={isOfferKey(offer) ? offer : null} />

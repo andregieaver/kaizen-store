@@ -13,7 +13,9 @@ import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { PAYMENTS_WORDS } from "@/lib/admin-words/payments";
 
 import { HostPayouts } from "./host-payouts";
 
@@ -32,7 +34,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
   const { store, host, account } = await requireHost((await params).store);
   const lang = adminLangOf(account.adminLocale);
   const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
-  const t = adminText(lang, "bookings");
+  const t = BOOKINGS_WORDS[lang];
   const w = t.hosting;
   const tz = store.timeZone;
   const today = todayIn(tz);
@@ -55,7 +57,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
   const base = `/admin/hosting/${store.slug}`;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["payments"])}>
+    <AdminTextScope texts={areaTexts(lang, { payments: PAYMENTS_WORDS })}>
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <div>
         <p className="text-sm text-muted">{store.name}</p>

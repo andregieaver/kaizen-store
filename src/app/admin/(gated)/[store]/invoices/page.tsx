@@ -6,10 +6,11 @@ import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { InvoicesView } from "@/components/admin/invoices/invoices-view";
 import { InvoicesSkeleton } from "@/components/admin/invoices/skeletons";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { exportProblemOf, invoicesHref, parseInvoiceQuery } from "@/lib/invoice-admin";
 import { LIST_PAGE_SIZE, listOffset } from "@/lib/list-page";
 import { todayIn } from "@/lib/work-dates";
+import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { getInvoiceSettings } from "@/server/invoice-settings";
 import { failingPdfs, invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "@/server/invoices";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -32,7 +33,7 @@ export default async function InvoicesPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   return (
-    <Suspense fallback={<InvoicesSkeleton label={adminText(adminLangOf(gated.account.adminLocale), "invoices").view.loading} />}>
+    <Suspense fallback={<InvoicesSkeleton label={INVOICES_WORDS[adminLangOf(gated.account.adminLocale)].view.loading} />}>
       <Documents storeSlug={store.slug} searchParams={searchParams} />
     </Suspense>
   );
@@ -43,7 +44,7 @@ async function Documents({ storeSlug, searchParams }: { storeSlug: string; searc
   const member = await requirePermission(storeSlug, "orders:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "invoices");
+  const words = INVOICES_WORDS[lang];
   // English keeps the store's own way of writing money; another admin language writes it its own way.
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "en-GB") : ADMIN_LANG_FACTS[lang].locale;
   const today = todayIn(store.timeZone);
@@ -79,7 +80,7 @@ async function Documents({ storeSlug, searchParams }: { storeSlug: string; searc
       actions={{ checkAgain: checkAgainAction.bind(null, store.slug), retryPdf: retryPdfAction.bind(null, store.slug) }}
       locale={locale}
       words={words}
-      pagerWords={adminText(lang, "kit").pager}
+      pagerWords={KIT_WORDS[lang].pager}
     />
   );
 }

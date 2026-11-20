@@ -5,7 +5,7 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { connectAdAccount, disconnectAdAccount, setAdMonthlyLimit } from "@/server/ad-accounts";
 import { removeAdConnection, saveAdConnection } from "@/server/ad-connections";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -14,8 +14,8 @@ import { checkOwnerRole } from "@/server/permissions";
 /** Ad platforms' server connections (D303 I2): the store's owner's only, as they hold the platforms' tokens. The store and platform are bound. */
 export async function saveAdConnectionAction(storeSlug: string, platform: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "marketing").ads.ownerOnly] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "marketing").ads;
+  if (!member) return { status: "error", messages: [MARKETING_WORDS[await actionAdminLang()].ads.ownerOnly] };
+  const w = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].ads;
   const result = await saveAdConnection(member.store.id, member.account.id, {
     platform,
     accountId: String(form.get("accountId") ?? ""),
@@ -39,8 +39,8 @@ export async function removeAdConnectionAction(storeSlug: string, platform: stri
 /** The Meta ad account connected for its budgets (D585): the owner's only, as it holds the account's token and sets the AI's limit. */
 export async function connectAdAccountAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "marketing").ads.budgets.ownerOnly] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "marketing").ads.budgets;
+  if (!member) return { status: "error", messages: [MARKETING_WORDS[await actionAdminLang()].ads.budgets.ownerOnly] };
+  const w = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].ads.budgets;
   const result = await connectAdAccount(member.store.id, member.account.id, { account: String(form.get("account") ?? ""), token: String(form.get("token") ?? "") });
   if (!result.ok) return { status: "error", messages: [fillWords(w.problems[result.problem], { code: String(result.code ?? "?") })] };
   refresh();
@@ -49,8 +49,8 @@ export async function connectAdAccountAction(storeSlug: string, _state: FormStat
 
 export async function setAdLimitAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "marketing").ads.budgets.ownerOnly] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "marketing").ads.budgets;
+  if (!member) return { status: "error", messages: [MARKETING_WORDS[await actionAdminLang()].ads.budgets.ownerOnly] };
+  const w = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].ads.budgets;
   const result = await setAdMonthlyLimit(member.store.id, member.account.id, String(form.get("limit") ?? ""));
   if (!result.ok) return { status: "error", messages: [w.problems[result.problem]] };
   refresh();

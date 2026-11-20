@@ -5,7 +5,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { FormsList } from "@/components/admin/forms/forms-list";
 import { ButtonLink, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { formUses, listForms } from "@/server/forms-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -16,13 +17,13 @@ export default async function FormsPage({ params, searchParams }: PageProps<"/ad
   const member = await requirePermission((await params).store, "website:read");
   const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "forms");
+  const w = FORMS_WORDS[lang];
   const { problem } = await searchParams;
   const [forms, uses] = await Promise.all([listForms(store.id), formUses(store.id)]);
   const base = `/admin/${store.slug}/forms`;
   const canEdit = memberCan(member, "website:write");
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms"])}>
+    <AdminTextScope texts={areaTexts(lang, { forms: FORMS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

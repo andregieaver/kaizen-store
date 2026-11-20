@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import { ButtonLink, Card, CARD_CLASS, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { countSegment, describeRules, SEGMENT_STARTERS, type SegmentRules } from "@/lib/segments";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { listTiers } from "@/server/customer-tiers";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments, segmentNames, segmentPeople } from "@/server/segments";
@@ -34,7 +34,7 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
   const [people, names] = await Promise.all([segmentPeople(store, new Date(), { rules: known, rfm: true }), segmentNames(store, known)]);
   const now = new Date();
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
+  const w = MARKETING_WORDS[lang];
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "nb-NO") : numbers;
   const ctx = {

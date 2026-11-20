@@ -21,7 +21,6 @@ import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { endAccountGrants } from "@/server/oauth";
 import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepResult } from "@/server/two-step";
-import { adminText } from "@/lib/admin-text";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
 import { ownedAccount, setOfficer } from "@/server/privacy-officers";
 import { accountPortalUrl, cancelAccountPlan, chooseAccountPlan, setAccountExtension } from "@/server/account-billing";
@@ -29,6 +28,10 @@ import { startExtensionTrial } from "@/server/extensions";
 import { GRACE_DAYS } from "@/lib/account-billing";
 import { fillWords } from "@/lib/admin-fill";
 import { isExtensionId } from "@/lib/extensions";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { PRIVACY_OFFICER_WORDS } from "@/lib/admin-words/privacy-officer";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { NO_COUNTRY } from "@/server/billing";
 
 async function origin(): Promise<string> {
@@ -175,7 +178,7 @@ export async function removeTwoStepAction(): Promise<StepResult> {
 /** The data protection officer for all the account's stores (D763): its owner's alone. */
 export async function setAccountOfficerAction(_state: FormState, form: FormData): Promise<FormState> {
   const account = await requireAccount();
-  const w = adminText(adminLangOf(account.adminLocale), "privacyOfficer");
+  const w = PRIVACY_OFFICER_WORDS[adminLangOf(account.adminLocale)];
   const owned = await ownedAccount(account.id);
   if (!owned) return { status: "error", messages: [w.notOwner] };
   const read = readOfficerChoice(officerFields(form), { store: false });
@@ -190,7 +193,7 @@ export async function setAccountOfficerAction(_state: FormState, form: FormData)
 async function ownAccount() {
   const account = await requireAccount();
   const owned = await ownedAccount(account.id);
-  return { account, organisationId: owned?.id ?? null, words: adminText(adminLangOf(account.adminLocale), "billing").actions };
+  return { account, organisationId: owned?.id ?? null, words: BILLING_WORDS[adminLangOf(account.adminLocale)].actions };
 }
 
 /** The owner chooses the account's plan: the first time through Stripe Checkout, later at once; the extensions it pays for come along. */
@@ -233,7 +236,7 @@ async function extensionsAccount() {
   const account = await requireAccount();
   const owned = await ownedAccount(account.id);
   const lang = adminLangOf(account.adminLocale);
-  return { account, organisationId: owned?.id ?? null, w: adminText(lang, "screens").accountExtensions, common: adminText(lang, "common").extensions };
+  return { account, organisationId: owned?.id ?? null, w: SCREENS_WORDS[lang].accountExtensions, common: COMMON_WORDS[lang].extensions };
 }
 
 /** Starts an extension's 14-day trial for the owner's account. */

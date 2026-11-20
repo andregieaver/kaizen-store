@@ -5,11 +5,13 @@ import { AutomationSwitch } from "@/components/admin/automation-editor";
 import { AdminLink, ButtonLink, CARD_CLASS, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { LIFECYCLE_KINDS } from "@/lib/automations";
 import { automationDays } from "@/lib/marketing-words";
 import { formatMoney } from "@/lib/money";
 import { featureOn } from "@/lib/store-features";
+import { areaTexts } from "@/lib/admin-area";
+import { FLOWS_WORDS } from "@/lib/admin-words/flows";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { automationStats, getAutomations } from "@/server/automations";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { sendingHealth } from "@/server/sending-guard";
@@ -38,7 +40,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
   const startKind = LIFECYCLE_KINDS.find((kind) => !automations[kind].enabled) ?? null;
   const shop = featureOn(store, "shop");
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
+  const w = MARKETING_WORDS[lang];
   const wa = w.automations;
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
   const onNames = [
@@ -69,7 +71,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
         actions={
           // Flows (D767): sequences of the owner's own, one step away from the fixed automations.
           <AdminLink href={`/admin/${store.slug}/flows`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm">
-            {adminText(lang, "flows").title}
+            {FLOWS_WORDS[lang].title}
           </AdminLink>
         }
       />
@@ -80,7 +82,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
         timeZone={store.timeZone}
         resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
       />
-      <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+      <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
       {/* On a phone (round 40, D735) each automation is a row of one card: its name, on or off and when it goes, and its one press. */}
       <ul className={`flex flex-col divide-y divide-line px-4 sm:hidden ${CARD_CLASS}`}>
         {LIFECYCLE_KINDS.map((kind) => {

@@ -3,10 +3,10 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { adminText } from "@/lib/admin-text";
 import { saveContactPolicy } from "@/server/contact-policy";
 import { resumeSending } from "@/server/sending-guard";
 import { storeAction } from "@/server/store-action";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 
 /** Resumes the store's marketing email after the sending guard held it (D730): `marketing:write`, and the guard counts afresh from now. */
 export async function resumeSendingAction(storeSlug: string): Promise<FormState> {
@@ -15,7 +15,7 @@ export async function resumeSendingAction(storeSlug: string): Promise<FormState>
     async (member, lang) => {
       await resumeSending(member.account, member.store.id);
       refresh();
-      return { status: "ok", messages: [adminText(lang, "marketing").sendingGuard.resumed] };
+      return { status: "ok", messages: [MARKETING_WORDS[lang].sendingGuard.resumed] };
     },
   );
 }
@@ -32,7 +32,7 @@ export async function contactPolicyAction(storeSlug: string, _state: FormState, 
       });
       if (!saved.ok) return { status: "error", messages: [saved.problem] };
       refresh();
-      return { status: "ok", messages: [adminText(lang, "marketing").contactPolicy.saved] };
+      return { status: "ok", messages: [MARKETING_WORDS[lang].contactPolicy.saved] };
     },
   );
 }

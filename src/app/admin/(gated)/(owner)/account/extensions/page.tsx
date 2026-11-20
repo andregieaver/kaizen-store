@@ -6,9 +6,9 @@ import { Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { EXTENSION_TRIAL_DAYS, foundingOpen } from "@/lib/extensions";
 import { formatMoney } from "@/lib/money";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { accountCurrency, getAccountBilling } from "@/server/account-billing";
 import { bundleHints } from "@/server/account-cover";
 import { requireAccount } from "@/server/auth";
@@ -28,7 +28,7 @@ export default async function ExtensionsPage() {
   await connection();
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "screens").accountExtensions;
+  const w = SCREENS_WORDS[lang].accountExtensions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const own = await ownedAccount(account.id);
   if (!own) return <PageHeader title={w.title} description={w.ownerOnly} />;

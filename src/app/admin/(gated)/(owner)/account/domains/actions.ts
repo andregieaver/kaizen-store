@@ -5,10 +5,10 @@ import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { effectText } from "@/lib/dns-plan";
 import { describeRecord } from "@/lib/dns-records";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { requireAccount } from "@/server/auth";
 import { linkableStores, linkDomain, unlinkDomain } from "@/server/domain-account";
 import { setHolding } from "@/server/holding";
@@ -26,7 +26,7 @@ import { draftChanges, type DnsDraft } from "@/server/dns-draft";
  */
 const holderNow = async () => {
   const account = await requireAccount();
-  return { account, holder: accountHolder(account.id), words: adminText(adminLangOf(account.adminLocale), "domains") };
+  return { account, holder: accountHolder(account.id), words: DOMAINS_WORDS[adminLangOf(account.adminLocale)] };
 };
 
 const done = (messages: string[]): FormState => {

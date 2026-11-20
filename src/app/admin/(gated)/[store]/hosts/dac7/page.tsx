@@ -8,7 +8,7 @@ import { dac7Report } from "@/server/dac7";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 export const metadata: Metadata = { title: "Tax report (DAC7)" };
 
@@ -28,7 +28,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
   const off = requireFeature(staffer, "bookings");
   if (off) return off;
   const { store } = staffer;
-  const t = adminText(adminLangOf(staffer.account.adminLocale), "bookings");
+  const t = BOOKINGS_WORDS[adminLangOf(staffer.account.adminLocale)];
   const w = t.dac7;
   const current = thisYear();
   const asked = Number((await searchParams).year);

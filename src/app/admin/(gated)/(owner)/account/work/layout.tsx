@@ -3,7 +3,9 @@ import { WorkShell } from "@/components/admin/work/work-shell";
 import { storesOf } from "@/components/admin/admin-shell-parts";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { WORK_WORDS } from "@/lib/admin-words/work";
 import { requireAccount } from "@/server/auth";
 
 /**
@@ -19,7 +21,7 @@ export default async function WorkLayout({ children }: LayoutProps<"/admin/accou
   const account = await requireAccount();
   const stores = (await storesOf(account)).map(({ slug, name, workOn }) => ({ slug, name, workOn }));
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["work", "bookings"])}>
+    <AdminTextScope texts={areaTexts(adminLangOf(account.adminLocale), { work: WORK_WORDS, bookings: BOOKINGS_WORDS })}>
       <WorkShell account={account}>
         <WorkNav stores={stores} />
         {children}

@@ -1,10 +1,10 @@
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { sameSite } from "@/lib/same-site";
 import { MESSAGE_MAX } from "@/lib/support-rules";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { getAccount } from "@/server/auth";
 import { requesterTurn } from "@/server/support-kaizen";
 
@@ -23,7 +23,7 @@ const turnInput = z.object({
 
 /** The signed-in account's message to Kaizen's support (D216, 2.8, step 11): a new conversation, or the next message of their own. */
 export async function POST(request: Request) {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   if (!sameSite(request))
     return NextResponse.json(
       { error: w.notThisSite },

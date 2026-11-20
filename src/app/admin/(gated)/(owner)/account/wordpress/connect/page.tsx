@@ -6,8 +6,9 @@ import { primaryButton, secondaryButton } from "@/components/admin/work/work-par
 import { readApproval } from "@/lib/wordpress";
 import { getAccount } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { storesOf } from "@/server/wordpress";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
@@ -29,14 +30,14 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
     for (const [key, value] of Object.entries(query)) if (typeof value === "string") params.set(key, value);
     redirect(`/admin/sign-in?next=${encodeURIComponent(`/admin/account/wordpress/connect?${params}`)}`);
   }
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").wordpress;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].wordpress;
   const read = readApproval(query);
   if (!read.ok) {
     return (
       <div className="flex max-w-xl flex-col gap-3">
         <PageHeader title={w.connectTitle} />
         <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          {fillWords(w.unusable, { reason: adminText(adminLangOf(account.adminLocale), "screens").wordpressProblems[read.code] })}
+          {fillWords(w.unusable, { reason: SCREENS_WORDS[adminLangOf(account.adminLocale)].wordpressProblems[read.code] })}
         </p>
       </div>
     );

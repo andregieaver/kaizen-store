@@ -6,7 +6,8 @@ import { AffiliateOverviewCard } from "@/components/admin/affiliate-overview";
 import { AffiliateSettingsForm } from "@/components/admin/affiliate-settings-form";
 import { AttributionsTable, ReferrersTable } from "@/components/admin/affiliate-tables";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { affiliateOverview, getAffiliateSettings, listAffiliates, listAttributions } from "@/server/affiliates";
 import { getBonusSettings } from "@/server/bonus";
@@ -27,7 +28,7 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const words = adminText(lang, "loyalty");
+  const words = LOYALTY_WORDS[lang];
   const w = words.affiliatePage;
   const [settings, overview, referrers, attributions, bonus] = await Promise.all([
     getAffiliateSettings(store.id),
@@ -40,7 +41,7 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
   const working = settings.enabled && settings.bonusOn;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["loyalty"])}>
+    <AdminTextScope texts={areaTexts(lang, { loyalty: LOYALTY_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

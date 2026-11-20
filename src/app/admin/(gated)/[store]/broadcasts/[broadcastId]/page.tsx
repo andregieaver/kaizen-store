@@ -7,10 +7,12 @@ import { BroadcastSend } from "@/components/admin/broadcast-send";
 import { Button, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { checkWords, contentChecks } from "@/lib/flow-checks";
 import { marketingProblem } from "@/lib/marketing-words";
 import { formatMoney } from "@/lib/money";
+import { areaTexts } from "@/lib/admin-area";
+import { FLOWS_WORDS } from "@/lib/admin-words/flows";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { audienceCount, broadcastReport, getBroadcast } from "@/server/broadcasts";
 import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -52,14 +54,14 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
   const mayWrite = memberCan(member, "marketing:write");
   const editable = broadcast.status === "draft" || broadcast.status === "scheduled";
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
+  const w = MARKETING_WORDS[lang];
   const wb = w.broadcasts;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const date = (iso: string) => new Date(iso).toLocaleString(numbers, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
 
   if (editable) {
     // Server-only words (`flows`): the warnings are drawn here, nothing more is handed to the browser.
-    const wf = adminText(lang, "flows");
+    const wf = FLOWS_WORDS[lang];
     const warnings = contentChecks(broadcast.content, store.localization.locales[0] ?? "en-GB").filter((c) => !c.blocking);
     const [choices, emailStore] = await Promise.all([mayWrite ? broadcastChoices(store, lang) : Promise.resolve(null), storeById(store.id)]);
     const count = emailStore ? await audienceCount(emailStore, broadcast.audience, broadcast.segmentId) : null;
@@ -97,7 +99,7 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
         )}
         {choices ? (
           <>
-            <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+            <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
             {/* The checks before sending (email plan M3.6): the warnings, each a line with what to fix; what blocks a send is refused by it. */}
             {warnings.length > 0 && (
               <Card title={wf.checks.title} compact>

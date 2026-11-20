@@ -9,7 +9,6 @@ import { AdminLink, CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
-import { adminText } from "@/lib/admin-text";
 import { LIFECYCLE_KINDS } from "@/lib/automations";
 import { STATE_SIGNAL } from "@/lib/experiment-list";
 import { canOpenPath } from "@/lib/permissions";
@@ -31,6 +30,8 @@ import { getContactPolicy } from "@/server/contact-policy";
 
 import { contactPolicyAction, resumeSendingAction } from "./actions";
 import { storeExtensionOn } from "@/lib/extensions";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 
 export const metadata: Metadata = { title: "Marketing" };
 
@@ -44,13 +45,13 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   const member = await requirePermission((await params).store, "marketing:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing").home;
-  const kinds = adminText(lang, "marketing").automations.kinds;
+  const w = MARKETING_WORDS[lang].home;
+  const kinds = MARKETING_WORDS[lang].automations.kinds;
   const say = (text: string) => navWord(lang, text);
   const base = `/admin/${store.slug}`;
   const shop = featureOn(store, "shop");
   const currency = store.markets[0]?.currency ?? "EUR";
-  const ex = adminText(lang, "experiments");
+  const ex = EXPERIMENTS_WORDS[lang];
   // A/B tests and email automation are paid extensions (D748): their parts of the hub are there only while the account has them.
   const abOn = storeExtensionOn(store, "ab_testing");
   const emailOn = storeExtensionOn(store, "email_automation");
@@ -110,7 +111,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
       {emailOn && (
         <SendingGuardNotice
           state={noticeState(health)}
-          words={adminText(lang, "marketing").sendingGuard}
+          words={MARKETING_WORDS[lang].sendingGuard}
           locale={ADMIN_LANG_FACTS[lang].locale}
           timeZone={store.timeZone}
           resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
@@ -228,7 +229,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
       {/* One contact policy across email and texts (D764): the sentence, and its settings under Change. */}
       <ContactPolicyCard
         policy={policy}
-        words={adminText(lang, "marketing").contactPolicy}
+        words={MARKETING_WORDS[lang].contactPolicy}
         action={memberCan(member, "marketing:write") ? contactPolicyAction.bind(null, store.slug) : null}
       />
 

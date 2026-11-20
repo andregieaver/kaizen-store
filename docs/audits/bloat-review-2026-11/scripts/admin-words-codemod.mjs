@@ -53,7 +53,7 @@ function walk(path, found = []) {
 const LANG = String.raw`((?:[^(),]|\([^()]*\))+?)`;
 const ONE = new RegExp(String.raw`\badminText\(\s*${LANG}\s*,\s*"(\w+)"\s*\)`, "g");
 const MANY = new RegExp(String.raw`\badminTexts\(\s*${LANG}\s*,\s*\[\s*((?:"\w+"\s*,?\s*)*)\]\s*\)`, "g");
-const LEFT = /(?<![\w$])adminTexts?\(/g;
+const LEFT = /(?<![\w$])adminTexts?[(<]/g;
 
 /** The text with comments blanked out (strings are left: a `//` inside a string is rare in these files and only hides a use). */
 const code = (text) => text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " ")).replace(/(^|[^:"'`\\])\/\/[^\n]*/g, (m, lead) => lead + " ".repeat(m.length - lead.length));

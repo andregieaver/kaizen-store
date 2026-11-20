@@ -14,7 +14,7 @@ import { getStoreWishlist, listCartAdds } from "@/server/wishlist-admin";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 
 export const metadata: Metadata = { title: "Wishlist" };
@@ -43,7 +43,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
   ]);
   const locale = market?.locale ?? "nb-NO";
   const lang = adminLangOf(gated.account.adminLocale);
-  const t = adminText(lang, "bookings").wishlists;
+  const t = BOOKINGS_WORDS[lang].wishlists;
   const w = t.list;
   const dateLocale = lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${store.slug}`;

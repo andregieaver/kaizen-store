@@ -7,8 +7,9 @@ import { requireAccount } from "@/server/auth";
 import { ownedStores, usageByDay, usageRows } from "@/server/ai-usage";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "AI usage" };
 
@@ -20,8 +21,8 @@ export const metadata: Metadata = { title: "AI usage" };
 export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/admin/account/usage">) {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platformTools").usage;
-  const sw = adminText(lang, "screens").ownerUsage;
+  const w = PLATFORM_TOOLS_WORDS[lang].usage;
+  const sw = SCREENS_WORDS[lang].ownerUsage;
   const query = await searchParams;
   const chosen = usagePeriod(typeof query.period === "string" ? query.period : undefined);
   const owned = await ownedStores(account.id);

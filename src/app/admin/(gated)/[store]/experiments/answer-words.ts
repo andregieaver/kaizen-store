@@ -1,7 +1,7 @@
 import "server-only";
 
-import { adminText } from "@/lib/admin-text";
 import { experimentAnswer } from "@/lib/experiment-words";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
@@ -9,5 +9,5 @@ import { actionAdminLang } from "@/server/admin-request-lang";
  * the AI manager and the tests read them, and the screens draw what the action hands them.
  */
 export async function inAccountWords<T>(answer: T): Promise<T> {
-  return experimentAnswer(answer, adminText(await actionAdminLang(), "experiments"));
+  return experimentAnswer(answer, EXPERIMENTS_WORDS[await actionAdminLang()]);
 }

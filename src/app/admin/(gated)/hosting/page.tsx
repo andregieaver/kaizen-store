@@ -7,7 +7,7 @@ import { listHostings } from "@/server/hosts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 export const metadata: Metadata = { title: "Hosting" };
 
@@ -16,7 +16,7 @@ export default async function HostingPage() {
   const account = await requireAccount();
   const hostings = await listHostings(account);
   if (hostings.length === 1) redirect(`/admin/hosting/${hostings[0].slug}`);
-  const w = adminText(adminLangOf(account.adminLocale), "bookings").hosting;
+  const w = BOOKINGS_WORDS[adminLangOf(account.adminLocale)].hosting;
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={w.title} />

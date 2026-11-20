@@ -6,8 +6,8 @@ import { DocumentPage, NoDocument } from "@/components/admin/work/document-page"
 import { OrderDocumentView } from "@/components/documents/order-document-view";
 import { getInvoice } from "@/server/invoices";
 import { requirePermission } from "@/server/permissions";
-import { adminText } from "@/lib/admin-text";
 import { workWords } from "@/server/work-words";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Invoice", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
@@ -22,7 +22,7 @@ export default async function InvoicePrintPage({ params, searchParams }: PagePro
   const { store } = await requirePermission(slug, "orders:read");
   // The print button's words are Work's (`DocumentPage`), in the account's language once `workWords()` has set it.
   const { lang } = await workWords();
-  const w = adminText(lang, "screens").invoicePrint;
+  const w = SCREENS_WORDS[lang].invoicePrint;
   if (!z.uuid().safeParse(invoiceId).success) notFound();
   const doc = await getInvoice(store.id, invoiceId);
   if (!doc) notFound();

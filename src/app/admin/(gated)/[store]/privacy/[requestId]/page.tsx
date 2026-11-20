@@ -7,8 +7,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { RequestSkeleton } from "@/components/admin/privacy/skeletons";
 import { RequestDetail } from "@/components/admin/privacy/request-detail";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { exportProblemOf } from "@/lib/privacy-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { requestSubject } from "@/server/privacy-pages";
 import { getRequest } from "@/server/privacy-requests";
@@ -45,10 +46,10 @@ async function Request({
   const open = request.status === "open";
   const subject = open ? await requestSubject(member.store.id, request) : { key: null, holdsData: false };
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "privacy");
+  const words = PRIVACY_WORDS[lang];
   const problem = exportProblemOf(Array.isArray(exportParam) ? exportParam[0] : exportParam);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+    <AdminTextScope texts={areaTexts(lang, { privacy: PRIVACY_WORDS })}>
       <RequestDetail
         base={`/admin/${member.store.slug}`}
         request={request}

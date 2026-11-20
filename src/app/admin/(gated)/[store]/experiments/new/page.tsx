@@ -14,8 +14,9 @@ import { ButtonLink, Card, CARD_CLASS, PageHeader } from "@/components/admin/ui"
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { partLabelText, variantNameText } from "@/lib/experiment-words";
+import { areaTexts } from "@/lib/admin-area";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 
 import { createExperimentAction } from "../actions";
 import { requireExtension } from "@/components/admin/extension-off";
@@ -28,7 +29,7 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
   if (notInAccount) return notInAccount;
   const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "experiments");
+  const w = EXPERIMENTS_WORDS[lang];
   const base = `/admin/${store.slug}/experiments`;
   // A plan without A/B tests (D148 phase 21): what they give and the plans that have them, not the form.
   if ((await testRoom(store.id)).planAllows === 0) {
@@ -92,7 +93,7 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
   const seen = new Set<string>();
   const markets = store.markets.flatMap((m) => (seen.has(m.code) ? [] : (seen.add(m.code), [{ code: m.code.toLowerCase(), name: m.name }])));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["experiments"])}>
+    <AdminTextScope texts={areaTexts(lang, { experiments: EXPERIMENTS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: base, label: w.page.back }} title={w.newTest.title} />
       {asked("page") && pages.length === 0 ? (

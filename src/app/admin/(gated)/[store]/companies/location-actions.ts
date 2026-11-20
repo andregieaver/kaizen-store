@@ -5,11 +5,11 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { BUYER_ROLES } from "@/lib/company-locations";
 import { mainCurrency } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";
 import { featureOn } from "@/lib/store-features";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { deleteLocation, saveCompanyRules, saveLocation, setBuyer, type SaveResult } from "@/server/company-locations";
 import { checkPermission } from "@/server/permissions";
@@ -21,12 +21,12 @@ import { checkPermission } from "@/server/permissions";
 
 const id = z.uuid();
 
-const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "customers").saved.noAccess] });
+const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [CUSTOMERS_WORDS[await actionAdminLang()].saved.noAccess] });
 
 async function member(storeSlug: string) {
   const found = await checkPermission(storeSlug, "customers:write");
   if (!found) return null;
-  return { found, words: adminText(adminLangOf(found.account.adminLocale), "customers") };
+  return { found, words: CUSTOMERS_WORDS[adminLangOf(found.account.adminLocale)] };
 }
 
 function toState(result: SaveResult, success: string): FormState {

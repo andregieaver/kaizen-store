@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { addToTierByEmail, deleteTier, saveTier, setCustomerTier } from "@/server/customer-tiers";
@@ -14,8 +14,8 @@ import type { SaveResult } from "@/server/settings";
 
 const id = z.uuid();
 
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "customers").saved;
-const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "customers").saved.noAccess] });
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].saved;
+const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [CUSTOMERS_WORDS[await actionAdminLang()].saved.noAccess] });
 
 function toState(result: SaveResult, success: string): FormState {
   if (!result.ok) return { status: "error", messages: result.problems };

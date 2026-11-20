@@ -6,8 +6,9 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { FieldsToolbar } from "@/components/admin/fields-toolbar";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { describeLocation, entitiesText } from "@/lib/field-group-editor";
+import { areaTexts } from "@/lib/admin-area";
+import { FIELDS_WORDS } from "@/lib/admin-words/fields";
 import { requirePermission } from "@/server/permissions";
 import { listFieldGroups } from "@/server/custom-fields";
 import { Button, buttonClass, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
@@ -29,7 +30,7 @@ export const metadata: Metadata = { title: "Custom fields" };
 export default async function FieldsPage({ params }: PageProps<"/admin/[store]/fields">) {
   const { store, account } = await requirePermission((await params).store, "products:read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "fields");
+  const w = FIELDS_WORDS[lang];
   const t = w.list;
   const [groups, terms] = await Promise.all([listFieldGroups(store.id), editorTerms(store.id)]);
   const roles = roleOptions();
@@ -40,7 +41,7 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
   const base = `/admin/${store.slug}/fields`;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
+    <AdminTextScope texts={areaTexts(lang, { fields: FIELDS_WORDS })}>
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title={t.title} description={t.description} />

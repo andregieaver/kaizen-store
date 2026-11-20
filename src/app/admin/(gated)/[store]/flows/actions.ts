@@ -5,7 +5,6 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
-import { adminText } from "@/lib/admin-text";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
@@ -13,6 +12,7 @@ import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-trig
 import { PICK_KINDS } from "@/lib/automation-kinds";
 import { insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withCondition, withEmailWords, withStepPicks, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { broadcastBlockSchema } from "@/lib/broadcasts";
+import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -38,7 +38,7 @@ export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey | 
       }
       const own = key in RECIPES ? await getAutomation(member.store, key) : null;
       const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key]?.(locale);
-      if (!recipe) return refusal(adminText(lang, "flows").problems.missing);
+      if (!recipe) return refusal(FLOWS_WORDS[lang].problems.missing);
       const saved = await saveFlow(member.store.id, member.account.id, null, recipe);
       return saved.ok ? { status: "ok" as const, messages: [saved.id] } : refusal(saved.problem);
     },
@@ -50,7 +50,7 @@ export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey | 
 /** Walks the newest subscriber through the flow, sending nothing, and says which emails they would get. */
 export async function testFlowAction(storeSlug: string, flowId: string): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_tested", answer: refusal, extension: "email_automation" }, async (member, lang) => {
-    const w = adminText(lang, "flows");
+    const w = FLOWS_WORDS[lang];
     const result = await testFlow(member.store.id, flowId);
     if (!result.ok) return refusal(w.problems.missing);
     refresh();
@@ -63,7 +63,7 @@ export async function testFlowAction(storeSlug: string, flowId: string): Promise
 /** Switches the flow on (only once tested) or off. */
 export async function switchFlowAction(storeSlug: string, flowId: string, on: boolean): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: on ? "marketing.flow_on" : "marketing.flow_off", answer: refusal, extension: "email_automation" }, async (member, lang) => {
-    const w = adminText(lang, "flows");
+    const w = FLOWS_WORDS[lang];
     // The checks before switching on (M3.6): a blocking one keeps the flow off, said in the same words as on the page.
     if (on) {
       const flow = await getFlow(member.store.id, flowId);
@@ -84,7 +84,7 @@ export async function switchFlowAction(storeSlug: string, flowId: string, on: bo
  */
 export async function changeFlowEmailAction(storeSlug: string, flowId: string, stepId: string, locale: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
-    const w = adminText(lang, "flows");
+    const w = FLOWS_WORDS[lang];
     const flow = await getFlow(member.store.id, flowId);
     if (!flow) return refusal(w.problems.missing);
     const subject = String(form.get("subject") ?? "").trim();
@@ -101,7 +101,7 @@ export async function changeFlowEmailAction(storeSlug: string, flowId: string, s
 /** Saves a new number of days for one wait of a flow (D767 slice 2): a new version, switched off until tested again. */
 export async function changeFlowWaitAction(storeSlug: string, flowId: string, stepId: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
-    const w = adminText(lang, "flows");
+    const w = FLOWS_WORDS[lang];
     const flow = await getFlow(member.store.id, flowId);
     if (!flow) return refusal(w.problems.missing);
     const days = Number(form.get("days"));
@@ -123,7 +123,7 @@ async function saveTree(
   over: { trigger?: string; triggerDays?: number | null } = {},
 ): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
-    const w = adminText(lang, "flows");
+    const w = FLOWS_WORDS[lang];
     const flow = await getFlow(member.store.id, flowId);
     if (!flow) return refusal(w.problems.missing);
     const steps = await change(flow, member.store.id);

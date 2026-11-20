@@ -3,14 +3,14 @@ import { Suspense } from "react";
 import { AdminFrame } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 import { requireAccount } from "@/server/auth";
 
 /** An outside host's small area (D71) in the same shell as the rest of the admin (D107). */
 export default async function HostingLayout({ children }: LayoutProps<"/admin/hosting">) {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "shell").levels;
+  const w = SHELL_WORDS[lang].levels;
   return (
     <AdminFrame
       lang={lang}

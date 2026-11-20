@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { RequestsSkeleton } from "@/components/admin/privacy/skeletons";
 import { RequestsView, requestsFilter } from "@/components/admin/privacy/requests-view";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listRequests } from "@/server/privacy-requests";
 
@@ -39,7 +39,7 @@ async function List({ storeSlug, searchParams }: { storeSlug: string; searchPara
       filter={filter}
       canWrite={memberCan(member, "customers:write")}
       timeZone={member.store.timeZone}
-      words={adminText(lang, "privacy")}
+      words={PRIVACY_WORDS[lang]}
       locale={ADMIN_LANG_FACTS[lang].locale}
     />
   );

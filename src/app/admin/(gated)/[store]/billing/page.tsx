@@ -20,9 +20,10 @@ import { PURCHASE_STATUS_WORDS, priceText } from "@/lib/theme-prices";
 import { storeThemePurchases, type ThemePurchase } from "@/server/theme-prices";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { trialEndOf } from "@/server/store-trial";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 import { PeaksForm, UsageDays, UsageLines } from "@/components/admin/usage-limits";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { storePeaks } from "@/server/capacity-events";
@@ -49,7 +50,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const { store, account } = staffer;
   // Kaizena Flow's own store has no plan (D466): the platform is what bills. Said, not a 404, as a link here may still reach it.
   if (store.house) {
-    const w = adminText(adminLangOf(account.adminLocale), "billing").page;
+    const w = BILLING_WORDS[adminLangOf(account.adminLocale)].page;
     return (
       <div className="flex flex-col gap-8">
         <PageHeader title={w.title} description={fillWords(w.description, { store: store.name })} />
@@ -70,7 +71,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   // A store whose account is billed through its account (D748 E4) has the account's plan: changed on the account's Billing page.
   const own = await getStoreBilling(store.id);
   if (own?.byAccount) {
-    const w = adminText(adminLangOf(account.adminLocale), "billing").page;
+    const w = BILLING_WORDS[adminLangOf(account.adminLocale)].page;
     return (
       <div className="flex flex-col gap-8">
         <PageHeader title={w.title} description={fillWords(w.accountDescription, { store: store.name })} />
@@ -107,9 +108,9 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const noCountry = !store.details.country;
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const words = adminText(lang, "billing");
+  const words = BILLING_WORDS[lang];
   const w = words.page;
-  const cw = adminText(lang, "capacity");
+  const cw = CAPACITY_WORDS[lang];
   const moneyLocale = lang === "en" ? "nb-NO" : locale;
 
   // Prices in the store's own currency, else in the first one the plans have.

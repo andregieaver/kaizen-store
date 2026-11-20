@@ -5,11 +5,12 @@ import { SegmentPeople } from "@/components/admin/segment-people";
 import { ButtonLink, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { RFM_MIN_CUSTOMERS, RFM_SEGMENTS, type RfmSegment } from "@/lib/analytics-customers";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import type { SegmentRules } from "@/lib/segments";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { evaluateSegment } from "@/server/segments";
 import { requireExtension } from "@/components/admin/extension-off";
@@ -42,8 +43,8 @@ export default async function RfmGroupPage({ params, searchParams }: PageProps<"
   const page = Math.max(0, Math.floor(Number(typeof query.page === "string" ? query.page : 0)) || 0);
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
-  const kinds = adminText(lang, "reports").customers.segments;
+  const w = MARKETING_WORDS[lang];
+  const kinds = REPORTS_WORDS[lang].customers.segments;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const n = (v: number) => v.toLocaleString(numbers);
   const date = (iso: string) => new Date(iso).toLocaleDateString(numbers, { dateStyle: "medium", timeZone: store.timeZone });
@@ -55,7 +56,7 @@ export default async function RfmGroupPage({ params, searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `${base}/analytics/customers`, label: adminText(lang, "reports").pages.customers.title }}
+        back={{ href: `${base}/analytics/customers`, label: REPORTS_WORDS[lang].pages.customers.title }}
         title={kinds[group].name}
         description={w.segments.rfmDescription}
         actions={

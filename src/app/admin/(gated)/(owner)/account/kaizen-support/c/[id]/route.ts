@@ -1,9 +1,9 @@
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getAccount } from "@/server/auth";
 import { requesterFeed } from "@/server/support-kaizen";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 
@@ -12,7 +12,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext<"/admin/account/kaizen-support/c/[id]">,
 ) {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   const account = await getAccount();
   if (!account)
     return NextResponse.json(

@@ -6,8 +6,8 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { countFromForm, percentFromForm } from "@/lib/price-lists";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { catalogTag } from "@/server/catalog";
 import { checkPermission } from "@/server/permissions";
@@ -20,8 +20,8 @@ import { deletePriceList, savePriceList, setAssignments, setListBreaks, setListR
 
 const id = z.uuid();
 
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "customers").priceLists;
-const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "customers").saved.noAccess] });
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].priceLists;
+const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [CUSTOMERS_WORDS[await actionAdminLang()].saved.noAccess] });
 
 /** What a list offers to whom can hide products from everyone else (D321 C.3): the store's cached catalogue reads are refreshed after any change. */
 function toState(result: SaveResult, success: string, storeId?: string): FormState {

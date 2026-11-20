@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { InstallPreviewView } from "@/components/admin/install-preview-view";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { requirePermission } from "@/server/permissions";
 import { installPreview } from "@/server/theme-preview";
 import { col, typedRow } from "@/server/typed-rows";
@@ -25,7 +25,7 @@ export default async function FrontPagePicture({ params }: PageProps<"/admin/[st
   const live = await typedRow(LIVE_ROW, sql`select id from commerce.store_theme_installs where store_id = ${store.id}::uuid and live limit 1`);
   const preview = live ? await installPreview(store.id, live.id) : null;
   if (!preview || !store.frontPageId || !store.markets[0]) notFound();
-  const w = adminText(adminLangOf(account.adminLocale), "design").preview;
+  const w = DESIGN_WORDS[adminLangOf(account.adminLocale)].preview;
   return (
     <InstallPreviewView
       base={store}

@@ -3,9 +3,9 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, PageHeader } from "@/components/admin/ui";
-import { adminText } from "@/lib/admin-text";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 import { platformPath } from "@/lib/platform-lang";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { selfServeOn } from "@/server/self-signup";
 
@@ -26,7 +26,7 @@ export default async function KeepPage({ params }: PageProps<"/admin/try/[sandbo
   const sandbox = await sandboxOf(id);
   if (!sandbox) return null;
   const [lang, selfServe] = await Promise.all([requestAdminLang(), selfServeOn()]);
-  const w = adminText(lang, "sandbox").keep;
+  const w = SANDBOX_WORDS[lang].keep;
   const send = selfServe ? w.send : w.sendWaiting;
   const parts = w.acceptance
     .replace("{button}", send)

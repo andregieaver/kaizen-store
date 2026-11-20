@@ -11,13 +11,13 @@ import { catalogTag } from "@/server/catalog";
 import { fieldsTag } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { pagesTag } from "@/lib/cache-tags";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { STORES_TAG } from "@/server/seo";
 import { applyTranslations, translationWorklist, type ApplyResult } from "@/server/store-translate";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 /** The page's refusals in the account's language (D312 A7). */
-const said = async () => adminText(await actionAdminLang(), "website").translate.problems;
+const said = async () => WEBSITE_WORDS[await actionAdminLang()].translate.problems;
 import { storeTag } from "@/server/stores";
 
 // Anyone who works on a store's products and pages can translate them; what the

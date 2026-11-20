@@ -6,10 +6,11 @@ import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { ReturnsQueueView } from "@/components/admin/returns/queue-view";
 import { QueueSkeleton } from "@/components/admin/returns/skeletons";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { LIST_PAGE_SIZE, listPage } from "@/lib/list-page";
 import { exchangeFilterOf, queueHref } from "@/lib/return-admin";
 import { returnQueueFilter } from "@/lib/return-input";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
+import { RETURNS_WORDS } from "@/lib/admin-words/returns";
 import { requirePermission } from "@/server/permissions";
 import { listReturns, returnCounts } from "@/server/returns";
 
@@ -31,7 +32,7 @@ export default async function ReturnsPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   return (
-    <Suspense fallback={<QueueSkeleton label={adminText(adminLangOf(gated.account.adminLocale), "returns").queue.loading} />}>
+    <Suspense fallback={<QueueSkeleton label={RETURNS_WORDS[adminLangOf(gated.account.adminLocale)].queue.loading} />}>
       <Queue storeSlug={store.slug} searchParams={searchParams} />
     </Suspense>
   );
@@ -47,5 +48,5 @@ async function Queue({ storeSlug, searchParams }: { storeSlug: string; searchPar
   const page = listPage(query.page);
   const [queue, counts] = await Promise.all([listReturns(store.id, filter, { page, pageSize: LIST_PAGE_SIZE, exchange }), returnCounts(store.id)]);
   if (queue.rows.length === 0 && page > 1) redirect(queueHref(`/admin/${store.slug}/returns`, { ...filter, exchange }));
-  return <ReturnsQueueView base={`/admin/${store.slug}/returns`} filter={filter} exchange={exchange} queue={queue} counts={counts} timeZone={store.timeZone} locale={ADMIN_LANG_FACTS[lang].locale} words={adminText(lang, "returns")} pagerWords={adminText(lang, "kit").pager} />;
+  return <ReturnsQueueView base={`/admin/${store.slug}/returns`} filter={filter} exchange={exchange} queue={queue} counts={counts} timeZone={store.timeZone} locale={ADMIN_LANG_FACTS[lang].locale} words={RETURNS_WORDS[lang]} pagerWords={KIT_WORDS[lang].pager} />;
 }

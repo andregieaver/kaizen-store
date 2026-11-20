@@ -6,9 +6,9 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { GIFT_CARD_NOTE_MAX, STATE_SIGNAL } from "@/lib/gift-card-admin";
 import { formatMoney } from "@/lib/money";
+import { GIFT_CARDS_WORDS } from "@/lib/admin-words/gift-cards";
 import { giftCardDetail } from "@/server/gift-cards-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -29,7 +29,7 @@ export default async function GiftCardPage({ params }: PageProps<"/admin/[store]
   if (!card) notFound();
   const base = `/admin/${store.slug}/gift-cards`;
   const lang = adminLangOf(member.account.adminLocale);
-  const g = adminText(lang, "giftCards");
+  const g = GIFT_CARDS_WORDS[lang];
   const w = g.card;
   // English keeps the store's own number format and en-GB dates, as before; another language its own.
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "en") : ADMIN_LANG_FACTS[lang].locale;

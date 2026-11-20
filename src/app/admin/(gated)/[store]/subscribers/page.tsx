@@ -3,11 +3,11 @@ import Link from "next/link";
 
 import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "@/lib/marketing-consent";
 import { listSubscribers, newsletterFormPages, subscriberCounts } from "@/server/marketing-subscribers";
 import { countWords } from "@/lib/admin-fill";
 import { featureOn } from "@/lib/store-features";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Subscribers" };
@@ -35,7 +35,7 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   const [counts, page, formPages] = await Promise.all([subscriberCounts(store.id), listSubscribers(store.id, { query: q, status, before }), newsletterFormPages(store.id)]);
   const base = `/admin/${store.slug}/subscribers`;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
+  const w = MARKETING_WORDS[lang];
   const ws = w.subscribers;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const n = (v: number) => v.toLocaleString(numbers);

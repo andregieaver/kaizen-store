@@ -5,8 +5,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { BroadcastEditor } from "@/components/admin/broadcast-editor";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { BROADCAST_TEMPLATE_KEYS } from "@/lib/broadcast-templates";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { listOwnTemplates, startingBroadcast } from "@/server/broadcast-templates";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
@@ -26,7 +27,7 @@ export default async function NewBroadcastPage({ params, searchParams }: PagePro
   const { store } = member;
   const base = `/admin/${store.slug}/broadcasts`;
   const lang = adminLangOf(member.account.adminLocale);
-  const wb = adminText(lang, "marketing").broadcasts;
+  const wb = MARKETING_WORDS[lang].broadcasts;
   if (!memberCan(member, "marketing:write")) {
     return (
       <div className="flex flex-col gap-6">
@@ -80,7 +81,7 @@ export default async function NewBroadcastPage({ params, searchParams }: PagePro
         )}
       </Card>
       <Card compact>
-        <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+        <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
         <BroadcastEditor
           key={choice ?? "blank"}
           storeSlug={store.slug}

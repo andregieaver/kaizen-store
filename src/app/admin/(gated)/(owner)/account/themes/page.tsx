@@ -6,9 +6,9 @@ import { Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } f
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { themeStorePath } from "@/lib/theme-host";
 import { OPEN_STATUSES, SUBMISSION_SIGNAL } from "@/lib/theme-submissions";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { requireAccount } from "@/server/auth";
 import { authoredThemes, mySubmissions } from "@/server/theme-submissions";
 
@@ -24,7 +24,7 @@ export default async function YourThemesPage() {
   await connection();
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "design").yours;
+  const w = DESIGN_WORDS[lang].yours;
   const [submissions, themes] = await Promise.all([mySubmissions(account.id), authoredThemes(account.id)]);
   return (
     <div className="flex flex-col gap-6">
@@ -70,7 +70,7 @@ export default async function YourThemesPage() {
                   href={theme.published && !theme.archived && theme.slug ? themeStorePath(`/${theme.slug}`) : undefined}
                   sub={theme.published && !theme.archived ? countWords(theme.stores, w.stores, { n: theme.stores }) : w.unpublished}
                 />
-                {theme.version !== null && <RowFact>{fillWords(adminText(lang, "design").common.version, { n: theme.version })}</RowFact>}
+                {theme.version !== null && <RowFact>{fillWords(DESIGN_WORDS[lang].common.version, { n: theme.version })}</RowFact>}
               </ListRow>
             ))}
           </List>

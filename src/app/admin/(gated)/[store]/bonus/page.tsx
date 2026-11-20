@@ -6,8 +6,9 @@ import { BonusOverviewCard } from "@/components/admin/bonus-overview";
 import { BonusRewardsCard } from "@/components/admin/bonus-rewards-card";
 import { BonusSettingsForm } from "@/components/admin/bonus-settings-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { bonusOverview, getBonusSettings } from "@/server/bonus";
 import { listRewards } from "@/server/bonus-rewards";
@@ -28,7 +29,7 @@ export default async function BonusPage({ params }: PageProps<"/admin/[store]/bo
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const words = adminText(lang, "loyalty");
+  const words = LOYALTY_WORDS[lang];
   const w = words.bonusPage;
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const [settings, overview, rewards, products] = await Promise.all([
@@ -39,7 +40,7 @@ export default async function BonusPage({ params }: PageProps<"/admin/[store]/bo
   ]);
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["loyalty"])}>
+    <AdminTextScope texts={areaTexts(lang, { loyalty: LOYALTY_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{settings.enabled ? w.on : w.off} {w.description}</>} />
         <BonusOverviewCard overview={overview} locale={locale} words={words} />

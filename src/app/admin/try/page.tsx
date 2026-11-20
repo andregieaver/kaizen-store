@@ -5,10 +5,10 @@ import { SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, FocusFrame } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 import { platformPath } from "@/lib/platform-lang";
 import { sandboxHome } from "@/lib/sandbox";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { currentSandbox, sandboxDemo, sandboxSettings } from "@/server/sandbox";
 
@@ -28,7 +28,7 @@ const PROBLEMS = ["off", "busy", "full", "failed"] as const;
 export default async function TryPage({ searchParams }: PageProps<"/admin/try">) {
   const [lang, query] = await Promise.all([requestAdminLang(), searchParams]);
   const [settings, current, demo] = await Promise.all([sandboxSettings(), currentSandbox(), sandboxDemo(query.demo)]);
-  const w = adminText(lang, "sandbox").start;
+  const w = SANDBOX_WORDS[lang].start;
   const problem = PROBLEMS.find((p) => p === query.problem) ?? null;
   return (
     <FocusFrame title={w.title} description={w.lead} lang={lang}>

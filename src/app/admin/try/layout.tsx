@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text";
-import { adminTexts } from "@/lib/admin-text";
 import { requestAdminLang } from "@/server/admin-request-lang";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 
 export const metadata: Metadata = { robots: { index: false, follow: false }, referrer: "no-referrer" };
 
@@ -23,7 +25,7 @@ export default function TryLayout({ children }: LayoutProps<"/admin/try">) {
 async function Words({ children }: { children: React.ReactNode }) {
   const lang = await requestAdminLang();
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "shell"])}>
+    <AdminTextProvider lang={lang} texts={areaTexts(lang, { common: COMMON_WORDS, shell: SHELL_WORDS })}>
       <AdminLangSync lang={lang} />
       {children}
     </AdminTextProvider>

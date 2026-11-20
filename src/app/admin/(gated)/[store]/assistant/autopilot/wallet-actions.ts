@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { WALLET_STATE_COOKIE, WALLET_STATE_MINUTES, WALLET_STATE_PATH } from "@/lib/card-wallet";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 import { cancelPurchase, closeOpenCards } from "@/server/agent-purchases";
 import { chooseCardholder, forgetWallet, setWalletLimit, setWalletPaused, startWalletConnect } from "@/server/card-wallet";
 import { storeAction } from "@/server/store-action";
@@ -19,7 +19,7 @@ import { storeAction } from "@/server/store-action";
 
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
 const ok: FormState = { status: "ok", messages: [] };
-const words = (lang: AdminLang) => adminText(lang, "assistant").autopilot.wallet;
+const words = (lang: AdminLang) => ASSISTANT_WORDS[lang].autopilot.wallet;
 
 /** Connect Airwallex: the state cookie set here, then Airwallex's own consent page. */
 export async function connectWalletAction(storeSlug: string): Promise<FormState> {

@@ -5,9 +5,9 @@ import { isAuditArea } from "@/lib/audit";
 import { exportActivity } from "@/server/activity";
 import { checkOwnerRole } from "@/server/permissions";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import type { StaffMessages } from "@/lib/admin-messages/staff.en";
+import { STAFF_WORDS } from "@/lib/admin-words/staff";
 
 /** The server's English refusal in the owner's words (D312 A8), as written when it is none of the known ones. */
 function problemIn(problem: string, w: StaffMessages["activity"]["problems"], locale: string): string {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/admin
   if (!result.ok) {
     const back = new URL(`/admin/${slug}/activity${activityQuery({ person: text("person"), area, action: text("action"), from: text("from"), to: text("to") })}`, request.url);
     const lang = adminLangOf(member.account.adminLocale);
-    back.searchParams.set("problem", problemIn(result.problem, adminText(lang, "staff").activity.problems, ADMIN_LANG_FACTS[lang].locale));
+    back.searchParams.set("problem", problemIn(result.problem, STAFF_WORDS[lang].activity.problems, ADMIN_LANG_FACTS[lang].locale));
     return NextResponse.redirect(back, 303);
   }
   const name = `activity-${slug}-${text("from")}-${text("to")}.csv`.replace(/[^A-Za-z0-9._-]/g, "_");

@@ -2,8 +2,8 @@ import Link from "next/link";
 
 import { ButtonLink, Chip, FocusFrame } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { SANDBOX_PATH, daysLeft, sandboxHome } from "@/lib/sandbox";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { aiRoomLeft } from "@/server/ai";
 import { keptSandbox } from "@/server/sandbox";
@@ -20,7 +20,7 @@ import { StartOver } from "./start-over";
 export default async function SandboxLayout({ children, params }: LayoutProps<"/admin/try/[sandbox]">) {
   const { sandbox: id } = await params;
   const [lang, sandbox] = await Promise.all([requestAdminLang(), sandboxOf(id)]);
-  const w = adminText(lang, "sandbox");
+  const w = SANDBOX_WORDS[lang];
   if (!sandbox) {
     // A sandbox this browser kept (S2) is the person's store now: sign in to it, rather than read that it ended.
     if (await keptSandbox(id)) {

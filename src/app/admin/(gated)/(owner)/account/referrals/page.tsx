@@ -8,10 +8,11 @@ import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { money as moneyIn } from "@/lib/control-center";
 import { bpsText, referralUrl } from "@/lib/referrals";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
 import { requireAccount } from "@/server/auth";
 import { referrerOverview } from "@/server/referrals";
 import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
@@ -32,11 +33,11 @@ export default async function ReferralsPage() {
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
-  const w = adminText(lang, "loyalty").referrals;
+  const w = LOYALTY_WORDS[lang].referrals;
   const money = (minor: number, currency: string) => moneyIn(minor, currency, locale);
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["loyalty"])}>
+    <AdminTextScope texts={areaTexts(lang, { loyalty: LOYALTY_WORDS })}>
       <div className="flex flex-col gap-8">
         <PageHeader
           title={w.title}

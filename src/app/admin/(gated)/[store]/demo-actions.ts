@@ -4,12 +4,12 @@ import { updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { removalWords } from "@/lib/demo-content";
 import { redirectsTag } from "@/lib/redirects";
 import { catalogTag } from "@/server/catalog";
 import { removeDemoContent } from "@/server/demo-content";
 import { pagesTag } from "@/lib/cache-tags";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { checkOwnerRole } from "@/server/permissions";
 import { storeTag } from "@/server/stores";
 import { termsTag } from "@/server/taxonomy";
@@ -20,9 +20,9 @@ import { termsTag } from "@/server/taxonomy";
  */
 export async function removeDemoContentAction(storeSlug: string): Promise<FormState> {
   const owner = await checkOwnerRole(storeSlug);
-  if (!owner) return { status: "error", messages: [adminText("en", "home").demo.onlyOwner] };
+  if (!owner) return { status: "error", messages: [HOME_WORDS.en.demo.onlyOwner] };
   const { account, store } = owner;
-  const w = adminText(adminLangOf(account.adminLocale), "home").demo;
+  const w = HOME_WORDS[adminLangOf(account.adminLocale)].demo;
   let result;
   try {
     result = await removeDemoContent(account.id, store.id, store.localization.locales[0] ?? "en");

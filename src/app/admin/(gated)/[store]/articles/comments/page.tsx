@@ -5,8 +5,8 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, CountBadge, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { COMMENT_STATUSES, type CommentStatus } from "@/lib/blog-comments";
+import { BLOG_WORDS } from "@/lib/admin-words/blog";
 import { commentCounts, listComments } from "@/server/blog-comments";
 import { memberCan, requirePageTypeAccess } from "@/server/permissions";
 
@@ -26,7 +26,7 @@ export default async function CommentsPage({ params, searchParams }: PageProps<"
   const editor = memberCan(current, "website:write");
   const lang = adminLangOf(current.account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "blog");
+  const w = BLOG_WORDS[lang];
   const m = w.moderation;
   const query = await searchParams;
   const status: CommentStatus = (COMMENT_STATUSES as readonly unknown[]).includes(query.status) ? (query.status as CommentStatus) : "pending";

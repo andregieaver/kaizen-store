@@ -6,9 +6,9 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
-import { adminText } from "@/lib/admin-text";
 import { parseAmount } from "@/lib/field-money";
 import { GIFT_CARD_NOTE_MAX } from "@/lib/gift-card-admin";
+import { GIFT_CARDS_WORDS } from "@/lib/admin-words/gift-cards";
 import { deliverGiftCards } from "@/server/gift-card-delivery";
 import { adjustGiftCard, deactivateGiftCard, issueGiftCard, saveGiftCardSettings, sendNewGiftCardCode, type ChangeProblem } from "@/server/gift-cards-admin";
 import { requirePermission } from "@/server/permissions";
@@ -20,7 +20,7 @@ const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim()
 
 /** What the actions answer, in the account's language (D312 A5). */
 const wordsOf = (member: { account: { adminLocale?: string | null } }): GiftCardsMessages["actions"] =>
-  adminText(adminLangOf(member.account.adminLocale), "giftCards").actions;
+  GIFT_CARDS_WORDS[adminLangOf(member.account.adminLocale)].actions;
 
 const issueInput = z.object({
   currency: z.string().regex(/^[A-Z]{3}$/),

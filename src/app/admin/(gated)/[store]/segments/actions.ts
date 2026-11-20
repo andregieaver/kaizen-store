@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { marketingProblem } from "@/lib/marketing-words";
 import { SEGMENT_STARTERS, segmentRulesSchema, type SegmentCount } from "@/lib/segments";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, requirePermission } from "@/server/permissions";
 import { deleteSegment, evaluateSegment, saveSegment } from "@/server/segments";
@@ -15,8 +15,8 @@ import { deleteSegment, evaluateSegment, saveSegment } from "@/server/segments";
 export type PreviewResult = ({ ok: true } & SegmentCount & { capped: boolean; rfmReady: boolean }) | { ok: false; problem: string };
 
 /** The refusals in the account's language (D312 A6); before a member is known, the request's. */
-const wordsOf = (adminLocale: string | null | undefined) => adminText(adminLangOf(adminLocale), "marketing").problems;
-const noAccess = async () => adminText(await actionAdminLang(), "marketing").problems.noAccess;
+const wordsOf = (adminLocale: string | null | undefined) => MARKETING_WORDS[adminLangOf(adminLocale)].problems;
+const noAccess = async () => MARKETING_WORDS[await actionAdminLang()].problems.noAccess;
 
 /** Counts a rule set before it is saved (D296), for staff who may save one: the numbers only, never people. */
 export async function previewSegmentAction(storeSlug: string, rules: unknown): Promise<PreviewResult> {
@@ -55,7 +55,7 @@ export async function keepStarterAction(storeSlug: string, key: string): Promise
   const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   const starter = SEGMENT_STARTERS.find((s) => s.key === key);
   if (!starter) return;
-  const words = adminText(adminLangOf(member.account.adminLocale), "marketing").segments.starters[key];
+  const words = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].segments.starters[key];
   const result = await saveSegment(member.store.id, member.account.id, null, { name: words?.name ?? starter.name, rules: starter.rules });
   if (!result.ok) redirect(`/admin/${member.store.slug}/segments/new`);
   refresh();

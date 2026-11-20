@@ -7,9 +7,10 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { campaignStatus } from "@/lib/campaigns";
 import { discountTabHref } from "@/lib/discount-tabs";
+import { areaTexts } from "@/lib/admin-area";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
 import { requirePermission } from "@/server/permissions";
 import { getCampaign, listCampaigns } from "@/server/campaigns";
 import { PageHeader } from "@/components/admin/ui";
@@ -27,14 +28,14 @@ export default async function CampaignPage({ params }: PageProps<"/admin/[store]
   if (shopOff) return shopOff;
   const { store, account } = gated;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "discounts");
+  const w = DISCOUNTS_WORDS[lang];
   if (!z.uuid().safeParse(campaignId).success) notFound();
   const campaign = await getCampaign(store.id, campaignId);
   if (!campaign) notFound();
   const orders = (await listCampaigns(store.id)).find((c) => c.id === campaign.id)?.orders ?? 0;
   const status = campaignStatus(campaign);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
+    <AdminTextScope texts={areaTexts(lang, { discounts: DISCOUNTS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: discountTabHref(store.slug, "automatic"), label: w.campaigns.title }}

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { listTiers } from "@/server/customer-tiers";
 import { ButtonLink, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 
 import { saveGroupAction } from "./actions";
 
@@ -35,7 +35,7 @@ export default async function CustomerGroupsPage({ params, searchParams }: PageP
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const words = adminText(adminLangOf(gated.account.adminLocale), "customers").groups;
+  const words = CUSTOMERS_WORDS[adminLangOf(gated.account.adminLocale)].groups;
   const groups = await listTiers(store.id);
   const base = `/admin/${store.slug}`;
   const live = groups.filter((g) => g.active).length;

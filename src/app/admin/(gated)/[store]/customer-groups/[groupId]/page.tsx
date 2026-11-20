@@ -7,7 +7,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies } from "@/server/companies";
 import { getTier, tierMembers } from "@/server/customer-tiers";
@@ -27,7 +27,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const all = adminText(adminLangOf(gated.account.adminLocale), "customers");
+  const all = CUSTOMERS_WORDS[adminLangOf(gated.account.adminLocale)];
   const words = all.group;
   if (!z.uuid().safeParse(groupId).success) notFound();
   const group = await getTier(store.id, groupId);

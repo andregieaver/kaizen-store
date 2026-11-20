@@ -10,7 +10,7 @@ import { pagesTag } from "@/lib/cache-tags";
 import { assignLayout } from "@/server/product-layouts";
 import { termsTag } from "@/server/taxonomy";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 
 /**
  * Where a product layout is used (D79): as the store's standard, and for
@@ -19,7 +19,7 @@ import { adminText } from "@/lib/admin-text";
 export async function assignLayoutAction(storeSlug: string, layoutId: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "products:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "website").assignLayout;
+  const w = WEBSITE_WORDS[adminLangOf(member.account.adminLocale)].assignLayout;
   if (!z.uuid().safeParse(layoutId).success) return { status: "error", messages: [w.unknown] };
   const termIds = form.getAll("term").map(String).filter((id) => z.uuid().safeParse(id).success);
   const result = await assignLayout(member.account, member.store.id, layoutId, { standard: form.get("standard") === "on", termIds });

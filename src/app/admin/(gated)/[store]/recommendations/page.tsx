@@ -15,10 +15,11 @@ import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 
 import { addRuleAction, removeRuleAction, saveRecommendSettingsAction } from "./actions";
 import { verdictWords } from "@/lib/recommend-eval";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Recommendations" };
 
@@ -37,7 +38,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
   if (shopOff) return shopOff;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "bookings").recommendations;
+  const w = BOOKINGS_WORDS[lang].recommendations;
   const KIND_WORDS: Record<RuleKind, string> = w.kinds;
   const query = await searchParams;
   const days = reportDays((query.days as string | undefined) ?? undefined);
@@ -282,7 +283,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </div>
         <p className="rounded-panel border border-line bg-card p-4 text-sm" role="status">
           <strong className="font-medium">{w.against} </strong>
-          {verdictWords(report.comparison.clicked, report.comparison.added, adminText(lang, "screens").recommendVerdicts)}
+          {verdictWords(report.comparison.clicked, report.comparison.added, SCREENS_WORDS[lang].recommendVerdicts)}
           {report.comparison.clicked.p !== null && (
             <span className="block text-xs text-muted">
               {fillWords(w.tabsClicked, { a: report.comparison.clicked.a ?? "", b: report.comparison.clicked.b ?? "", p: report.comparison.clicked.p })}

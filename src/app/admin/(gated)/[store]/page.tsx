@@ -21,7 +21,6 @@ import { barHeights, firstName, homeSummary, milestoneTrack, partOfDay, weekChip
 import { formatMoney } from "@/lib/money";
 import { orderPreviews, ordersToSend, paidOrderCount, weekSales } from "@/server/home";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { attentionFor, hidden } from "@/lib/control-center";
 import { demoTotal, demoWords } from "@/lib/demo-content";
 import { featureOn } from "@/lib/store-features";
@@ -37,6 +36,11 @@ import { TodayCard } from "@/components/admin/activities/today-card";
 import { activityDoneAction } from "./deals/activity-actions";
 import { dismissBriefingAction, turnOnBriefingAction } from "./settings/notifications/staff/actions";
 import { dealsOn } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { HOME_DRAFTS_WORDS } from "@/lib/admin-words/home-drafts";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 
 type Props = PageProps<"/admin/[store]">;
 
@@ -54,9 +58,9 @@ export default async function AdminOverview({ params, searchParams }: Props) {
   const owner = memberCan(current, "owner");
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const words = adminText(lang, "home");
+  const words = HOME_WORDS[lang];
   const { store: h } = words;
-  const statuses = adminText(lang, "common").orderStatus;
+  const statuses = COMMON_WORDS[lang].orderStatus;
   const { progress, center, demo } = await storeHomeReads(current);
   const demoSummary =
     demo && demoTotal(demo.counts) > 0
@@ -486,7 +490,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
       )}
       {/* A store drafted from one description (D351): its drafts, or the form while it is being set up; read after the page is shown. */}
       {memberCan(current, "website:write") && (
-        <AdminTextScope texts={adminTexts(lang, ["homeDrafts"])}>
+        <AdminTextScope texts={areaTexts(lang, { homeDrafts: HOME_DRAFTS_WORDS })}>
           <Suspense fallback={null}>
             <StoreDraftsSection storeId={store.id} storeSlug={store.slug} offerStart={!store.setupCompletedAt} />
           </Suspense>
@@ -533,7 +537,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
             <HomeSlot at={3}>
             {store.setupCompletedAt && selling && memberCan(current, "owner") && (
               <Suspense fallback={null}>
-                <StaffAlertsFailed storeId={store.id} href={`${base}/settings/notifications/staff`} words={adminText(lang, "notifications")} />
+                <StaffAlertsFailed storeId={store.id} href={`${base}/settings/notifications/staff`} words={NOTIFICATIONS_WORDS[lang]} />
               </Suspense>
             )}
             </HomeSlot>

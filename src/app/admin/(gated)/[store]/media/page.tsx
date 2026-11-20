@@ -11,8 +11,11 @@ import { compressibleCount, listMedia } from "@/server/media-library";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
+import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
 import {
@@ -37,9 +40,9 @@ export const metadata: Metadata = { title: "Media library" };
 export default async function MediaPage({ params, searchParams }: PageProps<"/admin/[store]/media">) {
   const { store, account } = await requirePermission((await params).store, "website:read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "website").mediaPage;
+  const w = WEBSITE_WORDS[lang].mediaPage;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["websitePick", "websiteMedia"])}>
+    <AdminTextScope texts={areaTexts(lang, { websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={<><span className="sm:hidden">{fillWords(w.lead, { store: store.name })}</span><span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span></>} />
       {/* The search in the address is read per request. */}

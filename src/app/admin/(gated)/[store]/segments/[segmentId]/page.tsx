@@ -7,10 +7,11 @@ import { SegmentPeople } from "@/components/admin/segment-people";
 import { Button, Card, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { describeRules } from "@/lib/segments";
+import { areaTexts } from "@/lib/admin-area";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { listTiers } from "@/server/customer-tiers";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { evaluateSegment, getSegment, segmentNames, segmentUses } from "@/server/segments";
@@ -38,7 +39,7 @@ export default async function SegmentPage({ params, searchParams }: PageProps<"/
   if (!segment) notFound();
   const mayWrite = memberCan(member, "marketing:write");
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "marketing");
+  const w = MARKETING_WORDS[lang];
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const seesPeople = memberCan(member, "customers:read");
   const [result, tiers, choices, uses, names] = await Promise.all([
@@ -117,7 +118,7 @@ export default async function SegmentPage({ params, searchParams }: PageProps<"/
 
       {choices && (
         <Card title={w.segments.rules} compact>
-          <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+          <AdminTextScope texts={areaTexts(lang, { marketing: MARKETING_WORDS })}>
           <SegmentEditor
             storeSlug={store.slug}
             segmentId={segment.id}

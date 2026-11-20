@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { SandboxGuide } from "@/components/admin/sandbox-guide";
-import { adminText } from "@/lib/admin-text";
 import { sandboxHome } from "@/lib/sandbox";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 
 import { SandboxEditor, isPageId, sandboxAndKind } from "../../editor";
@@ -22,7 +22,7 @@ export default async function SandboxEditPage({ params, searchParams }: PageProp
     notFound();
   }
   const lang = await requestAdminLang();
-  const g = adminText(lang, "sandbox").guide;
+  const g = SANDBOX_WORDS[lang].guide;
   // The guided path (S4) beside the front page, where a new sandbox opens.
   const guide =
     kind === "page" && pageId === sandbox.store.frontPageId ? (

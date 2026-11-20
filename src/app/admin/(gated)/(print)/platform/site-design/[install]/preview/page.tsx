@@ -22,7 +22,7 @@ import { platformInstallPreview, platformPreviewPage } from "@/server/platform-t
 import { fillWords } from "@/lib/admin-fill";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Theme preview", robots: { index: false, follow: false } };
 
@@ -35,7 +35,7 @@ export const metadata: Metadata = { title: "Theme preview", robots: { index: fal
 export default async function PlatformThemePreviewPage({ params, searchParams }: PageProps<"/admin/platform/site-design/[install]/preview">) {
   await connection();
   const account = await requirePlatformReader();
-  const w = adminText(adminLangOf(account.adminLocale), "screens").themePreview;
+  const w = SCREENS_WORDS[adminLangOf(account.adminLocale)].themePreview;
   const { install: installId } = await params;
   const query = await searchParams;
   const [preview, base, roles] = await Promise.all([platformInstallPreview(installId), getPlatformChrome(), getPlatformPageRoles()]);

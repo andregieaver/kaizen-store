@@ -5,7 +5,7 @@ import { requirePermission } from "@/server/permissions";
 import { getCartReminderSettings, newStepContent } from "@/server/cart-reminders";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { ReminderForm } from "../reminder-form";
 
@@ -20,7 +20,7 @@ export default async function NewReminderPage({ params }: PageProps<"/admin/[sto
   const { steps } = await getCartReminderSettings(store.id);
   const last = steps.at(-1)?.delayMinutes ?? 0;
   const locales = store.localization.locales;
-  const w = adminText(adminLangOf(gated.account.adminLocale), "bookings").cartReminders;
+  const w = BOOKINGS_WORDS[adminLangOf(gated.account.adminLocale)].cartReminders;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/cart-reminders`, label: w.title }} title={w.newReminder} />
