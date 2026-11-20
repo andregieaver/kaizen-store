@@ -12,7 +12,7 @@ import {
   verdictOf,
 } from "@/lib/analytics-core";
 import { fillWords } from "@/lib/admin-fill";
-import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { formatAmount } from "@/lib/analytics-format";
 import { addDays, type CompareMode } from "@/lib/analytics-period";
 import type {
@@ -246,8 +246,8 @@ export function ProductsView({
   sort,
   showAll,
   keep = {},
-  words: w = reportsEn.products,
-}: ProductsViewProps & { words?: ProductsWords }) {
+  words: w,
+}: ProductsViewProps & { words: ProductsWords }) {
   const money = moneyOf(report.currency, locale);
   const path = `${base}/analytics/products`;
   const productHref = (id: string) => `${base}/products/${id}`;

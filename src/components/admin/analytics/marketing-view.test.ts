@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { channelTable, type ChannelInput } from "@/lib/analytics-traffic";
 import type { MarketingReport } from "@/server/analytics-traffic-data";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
 
 import {
   adUnit,
@@ -98,6 +99,8 @@ const props = (over: Partial<MarketingViewProps> = {}): MarketingViewProps => ({
   report: report(NORMAL_INPUTS, { unknownOrders: { orders: 5, revenueMinor: 500_000 } }),
   comparison: null,
   ltv: LTV,
+  words: reportsEn.marketing,
+  channelWords: reportsEn.channels,
   ...over,
 });
 
@@ -178,10 +181,10 @@ describe("headlineCards", () => {
   });
 
   it("names the currency's unit in the MER words", () => {
-    expect(merWords("NOK")).toBe("every sale divided by every ad krone");
-    expect(merWords("SEK")).toBe("every sale divided by every ad krona");
-    expect(merWords("EUR")).toBe("every sale divided by every ad euro");
-    expect(adUnit("XYZ")).toBe("XYZ");
+    expect(merWords("NOK", reportsEn.marketing)).toBe("every sale divided by every ad krone");
+    expect(merWords("SEK", reportsEn.marketing)).toBe("every sale divided by every ad krona");
+    expect(merWords("EUR", reportsEn.marketing)).toBe("every sale divided by every ad euro");
+    expect(adUnit("XYZ", reportsEn.marketing)).toBe("XYZ");
   });
 
   it("asks for the ad spend when none is entered, and never shows CAC or ROAS as zero", () => {
@@ -255,7 +258,7 @@ describe("headlineCards", () => {
 
 describe("channelColumns", () => {
   it("has the columns the page promises", () => {
-    expect(channelColumns(money).map((c) => c.label)).toEqual([
+    expect(channelColumns(money, reportsEn.marketing, reportsEn.channels).map((c) => c.label)).toEqual([
       "Channel", "Sessions", "Orders", "Revenue", "Conversion", "Avg order", "New customers", "Ad spend", "CAC", "ROAS", "Profit ROAS", "Contribution profit",
     ]);
   });
@@ -264,7 +267,7 @@ describe("channelColumns", () => {
 describe("marketingNotes", () => {
   it("words spend outside the covered days with its amount, and drops the report's generic line", () => {
     const r = report(NORMAL_INPUTS, { notes: [OUTSIDE_SPEND_NOTE, "Visits have been counted since 2026-09-03, so these figures cover only the days from then."], spend: { totalMinor: 590_000, byChannel: [], outsideCoverageMinor: 90_000 } });
-    const notes = marketingNotes(r, money);
+    const notes = marketingNotes(r, money, reportsEn.marketing);
     expect(notes.map((n) => n.text)).not.toContain(OUTSIDE_SPEND_NOTE);
     expect(notes.some((n) => n.tone === "warning" && n.text.includes(money(90_000)) && /not in the CAC and ROAS/.test(n.text))).toBe(true);
     expect(notes.some((n) => /counted since 2026-09-03/.test(n.text))).toBe(true);
@@ -272,11 +275,11 @@ describe("marketingNotes", () => {
 
   it("says spend cannot be matched when no visits are counted", () => {
     const r = report(null, { spend: { totalMinor: 90_000, byChannel: [], outsideCoverageMinor: 90_000 } });
-    expect(marketingNotes(r, money)[0].text).toMatch(/cannot be matched to sales/);
+    expect(marketingNotes(r, money, reportsEn.marketing)[0].text).toMatch(/cannot be matched to sales/);
   });
 
   it("has no notes when there is nothing to say", () => {
-    expect(marketingNotes(report(NORMAL_INPUTS), money)).toEqual([]);
+    expect(marketingNotes(report(NORMAL_INPUTS), money, reportsEn.marketing)).toEqual([]);
   });
 });
 

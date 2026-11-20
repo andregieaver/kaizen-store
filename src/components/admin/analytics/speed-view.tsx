@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Chip } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { analyticsEn, type AnalyticsMessages } from "@/lib/admin-messages/analytics.en";
+import type { AnalyticsMessages } from "@/lib/admin-messages/analytics.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { metricsToFix, MIN_SPEED_SAMPLES, SPEED_METRICS, speedValueText, type SpeedCell, type SpeedRating, type SpeedRow } from "@/lib/speed";
@@ -30,7 +30,7 @@ export function Figure({ cell, locale, w }: { cell: SpeedCell; locale: string; w
  * per kind of page and screen, at the 75th percentile, with Google's rating and what to fix first. Nothing is shown that was not measured: a
  * figure with fewer than 20 page loads says so, and the page says what it cannot measure.
  */
-export function SpeedView({ base, locale, report: r, words = analyticsEn }: { base: string; locale: string; report: SpeedReport; words?: AnalyticsMessages }) {
+export function SpeedView({ base, locale, report: r, words }: { base: string; locale: string; report: SpeedReport; words: AnalyticsMessages }) {
   const w = words.speed;
   const columns: Column<SpeedRow>[] = [
     { key: "page", label: w.page, cell: (row) => w.kinds[row.kind] },

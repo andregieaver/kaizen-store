@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { reportsEn } from "@/lib/admin-messages/reports.en";
 import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import type { ReactNode } from "react";
 
@@ -79,7 +78,7 @@ export function monthText(month: string): string {
 }
 
 /** A column of the cohort table: month 0 is the month of the first order itself. */
-export function cohortColumn(offset: number, w: CustomersWords = reportsEn.customers): string {
+export function cohortColumn(offset: number, w: CustomersWords): string {
   return offset === 0 ? w.sameMonth : fillWords(w.monthN, { n: String(offset) });
 }
 
@@ -95,7 +94,7 @@ export function lastOrderText(iso: string, timeZone: string): string {
 }
 
 /** The advice for a group: without the bonus program (D178) it never suggests bonus credit. */
-export function segmentAction(segment: RfmSegment, bonusOn: boolean, w: CustomersWords = reportsEn.customers): string {
+export function segmentAction(segment: RfmSegment, bonusOn: boolean, w: CustomersWords): string {
   if (segment === "Loyal" && !bonusOn) return w.loyalWithoutBonus;
   return w.segments[segment].action;
 }
@@ -206,9 +205,9 @@ export function CustomersView({
   report,
   bonusOn = true,
   seesPeople = false,
-  words: w = reportsEn.customers,
+  words: w,
   say = asWritten,
-}: CustomersViewProps & { words?: CustomersWords; /** Whether the member may read customers: each type then opens its people (D380). */ seesPeople?: boolean }) {
+}: CustomersViewProps & { words: CustomersWords; /** Whether the member may read customers: each type then opens its people (D380). */ seesPeople?: boolean }) {
   const money = moneyOf(report.currency, locale);
   const decimal = decimalOf();
   const settingsHref = `${base}/analytics/settings`;

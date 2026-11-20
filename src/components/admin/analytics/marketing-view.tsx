@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CHANNELS } from "@/lib/analytics-channels";
+import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 import { change, formatChange, formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
 import { formatTimes, formatUpTo } from "@/lib/analytics-format";
 import { EXCHANGE_CHANNEL, ltvToCac, STAFF_CHANNEL, UNKNOWN_CHANNEL, type ChannelRow } from "@/lib/analytics-traffic";
@@ -8,11 +9,10 @@ import { minorUnitDigits } from "@/lib/money";
 import type { CustomersReport } from "@/server/analytics-customers-data";
 import type { MarketingReport } from "@/server/analytics-traffic-data";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
-import { screensEn } from "@/lib/admin-messages/screens.en";
+import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
 
-/** The words of this view and a channel's name (D312 A9), English unless given. */
+/** The words of this view and a channel's name (D312 A9), */
 export type MarketingWords = ReportsMessages["marketing"];
 export type ChannelWords = ReportsMessages["channels"];
 
@@ -60,10 +60,10 @@ export type MarketingViewProps = {
   comparison: { mode: "previous" | "year"; report: MarketingReport } | null;
   /** Null when the customers report could not be read: the LTV:CAC card then says so. */
   ltv: MarketingLtv | null;
-  /** The words, in the account's language (D312 A9); English unless given. */
-  words?: MarketingWords;
-  /** A channel's name, in the account's language; English unless given. */
-  channelWords?: ChannelWords;
+  /** The words, in the account's language (D312 A9). */
+  words: MarketingWords;
+  /** A channel's name, in the account's language. */
+  channelWords: ChannelWords;
   /** The report's notes in the account's language (`sayIn()`); as written unless given. */
   say?: Say;
 };
@@ -97,7 +97,7 @@ export function formatLtvToCac(ratio: number | null | undefined): string {
 }
 
 /** The generic note the report adds for spend outside the covered days; the view words it with the amount instead. */
-export const OUTSIDE_SPEND_NOTE = screensEn.analyticsNotes.traffic.spendOutside;
+export const OUTSIDE_SPEND_NOTE = ANALYTICS_NOTES_EN.traffic.spendOutside;
 
 /** Which colour a channel keeps wherever it is drawn: its place in the list of channels, and the muted colour for what is not in it. */
 export function channelColorIndex(key: string): number {
@@ -112,14 +112,14 @@ export function contributionProfit(row: Pick<ChannelRow, "contributionBeforeMark
 
 /** Why a figure that needs visit counting is missing, in a sentence. */
 /** The currency's own word for one unit, for "every ad krone"; the code where the word is not known. */
-export function adUnit(currency: string, w: MarketingWords = reportsEn.marketing): string {
+export function adUnit(currency: string, w: MarketingWords): string {
   return w.adUnits[currency.toUpperCase()] ?? currency.toUpperCase();
 }
 
 /** The words that say what MER is, in the store's currency: "every sale divided by every ad krone". */
-export const merWords = (currency: string, w: MarketingWords = reportsEn.marketing): string => fillWords(w.merWords, { unit: adUnit(currency, w) });
+export const merWords = (currency: string, w: MarketingWords): string => fillWords(w.merWords, { unit: adUnit(currency, w) });
 
-function countingReason(report: MarketingReport, w: MarketingWords = reportsEn.marketing): string {
+function countingReason(report: MarketingReport, w: MarketingWords): string {
   if (!report.coverage.counting) return w.countingOff;
   if (report.coverage.firstDay === null) return w.countingNone;
   return w.countingNoDay;
@@ -136,7 +136,7 @@ const dash = (why: string): ReactNode => <span title={why}>{NO_FIGURE}</span>;
  * The four cards that answer "what does a customer cost, and does the marketing pay back?": blended CAC, ROAS, profit ROAS and LTV:CAC,
  * each with a reason and a next step when it cannot be known (no visit counting, no spend entered, no costs, no new customers).
  */
-export function headlineCards({ base, currency, locale, report, comparison, ltv, words: w = reportsEn.marketing }: MarketingViewProps): KpiCardProps[] {
+export function headlineCards({ base, currency, locale, report, comparison, ltv, words: w }: MarketingViewProps): KpiCardProps[] {
   const money = moneyWriter(currency, locale);
   const HELP = w.help;
   const table = report.table;
@@ -292,8 +292,8 @@ export function headlineCards({ base, currency, locale, report, comparison, ltv,
 /** The columns of the channel table, written for a row; the blended row's foot uses the same cells. */
 export function channelColumns(
   money: (minor: number) => string,
-  w: MarketingWords = reportsEn.marketing,
-  names: ChannelWords = reportsEn.channels,
+  w: MarketingWords,
+  names: ChannelWords,
 ): Column<ChannelRow>[] {
   const l = w.columns;
   const why = w.why;
@@ -357,8 +357,8 @@ function ChannelsSection({
   currency,
   locale,
   report,
-  words: w = reportsEn.marketing,
-  channelWords: names = reportsEn.channels,
+  words: w,
+  channelWords: names,
 }: Pick<MarketingViewProps, "base" | "currency" | "locale" | "report" | "words" | "channelWords">) {
   const money = moneyWriter(currency, locale);
   const table = report.table;
@@ -466,7 +466,7 @@ function ChannelsSection({
 export function marketingNotes(
   report: MarketingReport,
   money: (minor: number) => string,
-  w: MarketingWords = reportsEn.marketing,
+  w: MarketingWords,
   say: Say = asWritten,
 ): { tone: "info" | "warning"; text: string }[] {
   const notes: { tone: "info" | "warning"; text: string }[] = report.notes.filter((n) => n !== OUTSIDE_SPEND_NOTE).map((text) => ({ tone: "info", text: say(text) }));
@@ -485,7 +485,7 @@ export function marketingNotes(
 
 export function MarketingView(props: MarketingViewProps) {
   const { base, currency, locale, report } = props;
-  const w = props.words ?? reportsEn.marketing;
+  const w = props.words;
   const money = moneyWriter(currency, locale);
   const cards = headlineCards(props);
   const notes = marketingNotes(report, money, w, props.say);

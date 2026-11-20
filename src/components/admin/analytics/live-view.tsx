@@ -4,7 +4,7 @@ import { formatCount } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { analyticsEn, type AnalyticsMessages } from "@/lib/admin-messages/analytics.en";
+import type { AnalyticsMessages } from "@/lib/admin-messages/analytics.en";
 import type { LiveFigures } from "@/server/analytics-live";
 
 import { DataTable, type Column } from "./data-table";
@@ -26,7 +26,7 @@ function countryName(code: string, locale: string, unknown: string): string {
  * what is missing and link to switching it on, never a zero. Presentational: the page reads `liveFigures()` and hands them in.
  */
 /** `timeZone`: the store's, so the last update reads on the store's clock (D812). */
-export function LiveView({ base, locale, timeZone, live, words = analyticsEn }: { base: string; locale: string; timeZone: string; live: LiveFigures; words?: AnalyticsMessages }) {
+export function LiveView({ base, locale, timeZone, live, words }: { base: string; locale: string; timeZone: string; live: LiveFigures; words: AnalyticsMessages }) {
   const w = words.live;
   const off = { text: w.countingOff, action: { label: w.countingLink, href: `${base}/analytics/settings#visits` } };
   const visitorCard = (label: string, value: number | null, help: string, emphasis = false): KpiCardProps =>

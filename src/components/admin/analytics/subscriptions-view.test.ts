@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { arr, mrrMovements } from "@/lib/analytics-subscriptions";
 import type { SubscriptionsReport } from "@/server/analytics-subscriptions-data";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
 
 import { dayText, moneyWriter } from "./overview-view";
 import {
@@ -108,6 +109,7 @@ const props = (report: SubscriptionsReport, over: Partial<SubscriptionsViewProps
   currency: "NOK",
   locale: "nb-NO",
   report,
+  words: reportsEn.subscriptions,
   ...over,
 });
 
@@ -115,14 +117,14 @@ const props = (report: SubscriptionsReport, over: Partial<SubscriptionsViewProps
 
 describe("helpers", () => {
   it("writes a length of time the way a person says it", () => {
-    expect(durationText(0.4)).toBe("less than a day");
-    expect(durationText(1)).toBe("1 day");
-    expect(durationText(12.4)).toBe("12 days");
-    expect(durationText(142.4)).toBe("about 5 months");
-    expect(durationText(900)).toBe("about 2.5 years");
-    expect(durationText(null)).toBe("–");
-    expect(durationText(Number.NaN)).toBe("–");
-    expect(durationText(-3)).toBe("–");
+    expect(durationText(0.4, reportsEn.subscriptions)).toBe("less than a day");
+    expect(durationText(1, reportsEn.subscriptions)).toBe("1 day");
+    expect(durationText(12.4, reportsEn.subscriptions)).toBe("12 days");
+    expect(durationText(142.4, reportsEn.subscriptions)).toBe("about 5 months");
+    expect(durationText(900, reportsEn.subscriptions)).toBe("about 2.5 years");
+    expect(durationText(null, reportsEn.subscriptions)).toBe("–");
+    expect(durationText(Number.NaN, reportsEn.subscriptions)).toBe("–");
+    expect(durationText(-3, reportsEn.subscriptions)).toBe("–");
   });
 
   it("writes amounts safely, with a dash for what cannot be written", () => {
@@ -144,8 +146,8 @@ describe("helpers", () => {
 
   it("writes the period as dates, the day after the last one left out", () => {
     // The month's short name is the shared one ("Sep", never the runtime's "Sept").
-    expect(periodText({ from: "2026-09-01", to: "2026-10-01" })).toBe("1 Sep 2026 to 30 Sep 2026");
-    expect(periodText({ from: "2026-10-02", to: "2026-10-03" })).toBe(dayText("2026-10-02"));
+    expect(periodText({ from: "2026-09-01", to: "2026-10-01" }, reportsEn.subscriptions)).toBe("1 Sep 2026 to 30 Sep 2026");
+    expect(periodText({ from: "2026-10-02", to: "2026-10-03" }, reportsEn.subscriptions)).toBe(dayText("2026-10-02"));
   });
 
   it("knows a store that has never had a subscription, and one that merely has none today", () => {
@@ -161,20 +163,20 @@ describe("helpers", () => {
 
 describe("the bridge", () => {
   it("lays out start, new, the three untracked movements, churned, other and end, in that order", () => {
-    const rows = bridgeRows(normalReport());
+    const rows = bridgeRows(normalReport(), reportsEn.subscriptions);
     expect(rows.map((r) => r.key)).toEqual(["start", "new", "expansion", "contraction", "reactivation", "churned", "other", "end"]);
   });
 
   it("adds up: start + new - churned + other = end", () => {
     const r = normalReport();
-    const rows = bridgeRows(r);
+    const rows = bridgeRows(r, reportsEn.subscriptions);
     const get = (k: string) => rows.find((x) => x.key === k)!.amountMinor!;
     expect(get("start") + get("new") + get("churned") + get("other")).toBe(get("end"));
     expect(get("churned")).toBeLessThan(0);
   });
 
   it("never turns an untracked movement into a number", () => {
-    const rows = bridgeRows(normalReport());
+    const rows = bridgeRows(normalReport(), reportsEn.subscriptions);
     for (const key of ["expansion", "contraction", "reactivation"]) {
       const row = rows.find((x) => x.key === key)!;
       expect(row.amountMinor).toBeNull();
@@ -183,20 +185,20 @@ describe("the bridge", () => {
   });
 
   it("names the end 'today' when the period reaches today, else the end of the period", () => {
-    expect(bridgeRows(normalReport()).find((r) => r.key === "end")!.label).toBe("MRR today");
-    expect(bridgeRows(normalReport({ activeAtEnd: { count: 100, mrrMinor: 1, basis: "periodEnd" } })).find((r) => r.key === "end")!.label).toBe("MRR at the end");
+    expect(bridgeRows(normalReport(), reportsEn.subscriptions).find((r) => r.key === "end")!.label).toBe("MRR today");
+    expect(bridgeRows(normalReport({ activeAtEnd: { count: 100, mrrMinor: 1, basis: "periodEnd" } }), reportsEn.subscriptions).find((r) => r.key === "end")!.label).toBe("MRR at the end");
   });
 
   it("words the growth, and says when there is no rate to give", () => {
     const write = safeMoney("NOK", "nb-NO");
-    expect(growthLine(normalReport(), write)).toMatch(/grew by .* \(\+/);
+    expect(growthLine(normalReport(), write, reportsEn.subscriptions)).toMatch(/grew by .* \(\+/);
     const shrunk = normalReport({ movements: mrrMovements({ startMrr: 100_000, newMrr: 0, churnedMrr: 20_000, endMrr: 80_000 }, 0) });
-    expect(growthLine(shrunk, write)).toMatch(/fell by .* \(−20\.0 %\)/);
+    expect(growthLine(shrunk, write, reportsEn.subscriptions)).toMatch(/fell by .* \(−20\.0 %\)/);
     const fromNothing = normalReport({ movements: mrrMovements({ startMrr: 0, newMrr: 50_000, churnedMrr: 0, endMrr: 50_000 }, 0) });
-    expect(growthLine(fromNothing, write)).toMatch(/no recurring revenue when this period began, so there is no growth rate/);
-    expect(growthLine(emptyReport(), write)).toMatch(/no recurring revenue at the start or the end/);
+    expect(growthLine(fromNothing, write, reportsEn.subscriptions)).toMatch(/no recurring revenue when this period began, so there is no growth rate/);
+    expect(growthLine(emptyReport(), write, reportsEn.subscriptions)).toMatch(/no recurring revenue at the start or the end/);
     const flat = normalReport({ movements: mrrMovements({ startMrr: 100_000, newMrr: 0, churnedMrr: 0, endMrr: 100_000 }, 0) });
-    expect(growthLine(flat, write)).toMatch(/did not change/);
+    expect(growthLine(flat, write, reportsEn.subscriptions)).toMatch(/did not change/);
   });
 });
 

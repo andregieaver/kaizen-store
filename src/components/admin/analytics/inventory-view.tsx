@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { fillWords } from "@/lib/admin-fill";
-import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import type { ReactNode } from "react";
 
 import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
@@ -225,7 +225,7 @@ export function perDayOf(): (n: number | null | undefined) => string {
 }
 
 /** How long stock lasts, in words: "6 days", "under a day"; the dash when it cannot be known. */
-export function daysText(days: number | null | undefined, w: InventoryWords = reportsEn.inventory): string {
+export function daysText(days: number | null | undefined, w: InventoryWords): string {
   if (typeof days !== "number" || !Number.isFinite(days)) return NO_FIGURE;
   if (days < 1) return w.underADay;
   const whole = Math.round(days);
@@ -233,7 +233,7 @@ export function daysText(days: number | null | undefined, w: InventoryWords = re
 }
 
 /** One alert in a sentence: "Ethiopian Coffee 1kg: estimated stockout in 6 days". */
-export function alertText(alert: InventoryReport["alerts"][number], w: InventoryWords = reportsEn.inventory): string {
+export function alertText(alert: InventoryReport["alerts"][number], w: InventoryWords): string {
   const name = alert.row.name;
   if (alert.kind === "out") return onBackorder(alert.row) ? `${fillWords(w.alertBackorder, { name })}${alert.row.owed > 0 ? fillWords(w.alertOwed, { n: String(alert.row.owed) }) : ""}` : fillWords(w.alertOut, { name });
   return fillWords(w.alertSoon, { name, days: alert.days < 1 ? w.lessThanADay : daysText(alert.days, w) });
@@ -293,8 +293,8 @@ export function InventoryView({
   status,
   sort,
   showAll,
-  words: w = reportsEn.inventory,
-}: InventoryViewProps & { words?: InventoryWords }) {
+  words: w,
+}: InventoryViewProps & { words: InventoryWords }) {
   const pill = (s: StockStatus) => ({ tone: PILL[s].tone, label: w.pill[s].label, help: fillWords(w.pill[s].help, { days: String(s === "low" ? LOW_STOCK_DAYS : DEAD_STOCK_DAYS) }) });
   const money = moneyOf(report.currency, locale);
   const perDay = perDayOf();

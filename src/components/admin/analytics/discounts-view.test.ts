@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { detectCreeping, discountSummary, type DiscountMonth } from "@/lib/analytics-discounts";
 import type { CouponReportRow, DiscountKindRow, DiscountsReport, TrendMonth } from "@/server/analytics-discounts-data";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
 
 import { basketWords, codeKindText, couponColumns, DiscountsView, discountCards, monthText, trendSeries, type DiscountsViewProps } from "./discounts-view";
 import { moneyWriter } from "./overview-view";
@@ -76,9 +77,10 @@ const normal = (over: Partial<DiscountsReport> = {}, trend: TrendMonth[] = FLAT)
   currency: "NOK",
   locale: "nb-NO",
   report: report({ breakdown: { kinds: KINDS, totalMinor: 1_000_000, roundingMinor: 0 }, coupons: COUPONS, couponCount: 3, ...over }, trend, ROWS),
+  words: reportsEn.discounts,
 });
 
-const empty = (over: Partial<DiscountsReport> = {}): DiscountsViewProps => ({ currency: "NOK", locale: "nb-NO", report: report(over) });
+const empty = (over: Partial<DiscountsReport> = {}): DiscountsViewProps => ({ currency: "NOK", locale: "nb-NO", report: report(over), words: reportsEn.discounts });
 
 // ---------- the pieces ----------
 
@@ -90,28 +92,28 @@ describe("helpers", () => {
   });
 
   it("lays the trend out month after month, with a gap for a month with too few orders and none for a missing one", () => {
-    const series = trendSeries({ trendWindow: { from: "2026-07-01", to: "2026-10-03" }, trend: [month("2026-07", 50, 10), month("2026-09", 4, 2), month("2026-10", 20, 8, true)] });
+    const series = trendSeries({ trendWindow: { from: "2026-07-01", to: "2026-10-03" }, trend: [month("2026-07", 50, 10), month("2026-09", 4, 2), month("2026-10", 20, 8, true)] }, reportsEn.discounts);
     expect(series.labels).toEqual(["Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026 (so far)"]);
     expect(series.values).toEqual([0.2, null, null, 0.4]);
     expect(series.partial).toBe(true);
   });
 
   it("says how much smaller or larger discounted baskets are", () => {
-    expect(basketWords(0.8)).toBe("20 % smaller than a basket at full price.");
-    expect(basketWords(1.25)).toBe("25 % larger than a basket at full price.");
-    expect(basketWords(1.001)).toBe("About the same size as at full price.");
-    expect(basketWords(null)).toBeNull();
-    expect(basketWords(Number.NaN)).toBeNull();
+    expect(basketWords(0.8, reportsEn.discounts)).toBe("20 % smaller than a basket at full price.");
+    expect(basketWords(1.25, reportsEn.discounts)).toBe("25 % larger than a basket at full price.");
+    expect(basketWords(1.001, reportsEn.discounts)).toBe("About the same size as at full price.");
+    expect(basketWords(null, reportsEn.discounts)).toBeNull();
+    expect(basketWords(Number.NaN, reportsEn.discounts)).toBeNull();
   });
 
   it("words a code's type, and a deleted code", () => {
-    expect(codeKindText("percent")).toBe("Percent off");
-    expect(codeKindText("free_shipping")).toBe("Free shipping");
-    expect(codeKindText(null)).toBe("Deleted code");
+    expect(codeKindText("percent", reportsEn.discounts)).toBe("Percent off");
+    expect(codeKindText("free_shipping", reportsEn.discounts)).toBe("Free shipping");
+    expect(codeKindText(null, reportsEn.discounts)).toBe("Deleted code");
   });
 
   it("has the coupon columns, and no discount figure for a free-shipping code", () => {
-    const cols = couponColumns(money);
+    const cols = couponColumns(money, reportsEn.discounts);
     expect(cols.map((c) => c.label)).toEqual(["Code", "Type", "Status", "Orders", "Revenue", "Taken off", "Discount", "Per order", "Avg order", "Share of code revenue"]);
     const shipping = COUPONS[1];
     const taken = cols.find((c) => c.key === "discount")!.cell(shipping);
@@ -121,7 +123,7 @@ describe("helpers", () => {
 
 describe("discountCards", () => {
   it("gives the dependency with its counts, the average discount and both baskets", () => {
-    const cards = discountCards(normal().report, money);
+    const cards = discountCards(normal().report, money, reportsEn.discounts);
     expect(cards.map((c) => c.label)).toEqual(["Orders with a discount", "Average discount", "Basket with a discount", "Basket at full price"]);
     expect(cards[0].value?.replace(/[  ]/g, " ")).toBe("40.0 %");
     expect(cards[0].hint).toContain("40 of 100 paid orders");
@@ -132,7 +134,7 @@ describe("discountCards", () => {
   });
 
   it("has no figure, and a calm reason, for a store with no orders", () => {
-    const cards = discountCards(empty().report, money);
+    const cards = discountCards(empty().report, money, reportsEn.discounts);
     for (const c of cards) {
       expect(c.state).toBe("missing");
       expect(c.value).toBeNull();
@@ -141,11 +143,11 @@ describe("discountCards", () => {
   });
 
   it("says when no order, or every order, had a discount", () => {
-    const none = discountCards(report({}, [], [{ month: "2026-09", discounted: false, orders: 20, revenueMinor: 100, grossGoodsMinor: 100, discountMinor: 0 }]), money);
+    const none = discountCards(report({}, [], [{ month: "2026-09", discounted: false, orders: 20, revenueMinor: 100, grossGoodsMinor: 100, discountMinor: 0 }]), money, reportsEn.discounts);
     expect(none[0].value?.replace(/[  ]/g, " ")).toBe("0.0 %");
     expect(none[1].missing?.text).toBe("No order used a discount in this period.");
     expect(none[2].missing?.text).toBe("No order had a discount in this period.");
-    const all = discountCards(report({}, [], [{ month: "2026-09", discounted: true, orders: 20, revenueMinor: 100, grossGoodsMinor: 120, discountMinor: 20 }]), money);
+    const all = discountCards(report({}, [], [{ month: "2026-09", discounted: true, orders: 20, revenueMinor: 100, grossGoodsMinor: 120, discountMinor: 20 }]), money, reportsEn.discounts);
     expect(all[3].missing?.text).toBe("Every order in this period had a discount.");
   });
 });

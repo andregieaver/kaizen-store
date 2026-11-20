@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { safeRatio, NO_FIGURE } from "@/lib/analytics-core";
 import { analyseVariant, inventoryValue, sellThrough, stockoutAlerts, stockWatch, turnover, type InventoryRow, type StockStatus } from "@/lib/analytics-inventory";
 import type { InventoryReport, InventoryReportRow } from "@/server/analytics-inventory-data";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
 
 import {
   alertText,
@@ -137,7 +138,7 @@ function normal(): InventoryReport {
 }
 
 const props = (r: InventoryReport, extra: Partial<InventoryViewProps> = {}): InventoryViewProps => ({ base: BASE, locale: "nb-NO", report: r, status: null, sort: null, showAll: false, ...extra });
-const view = (r: InventoryReport, extra: Partial<InventoryViewProps> = {}) => html(h(InventoryView, props(r, extra)));
+const view = (r: InventoryReport, extra: Partial<InventoryViewProps> = {}) => html(h(InventoryView, { ...props(r, extra), words: reportsEn.inventory }));
 
 /** No broken figures anywhere in what the page says or carries in its attributes. */
 function expectClean(markup: string) {
@@ -371,9 +372,9 @@ describe("the alert list", () => {
 
   it("words one alert the way the owner would say it", () => {
     const [a] = stockoutAlerts([{ ...variant({ i: 1, title: "Ethiopian Coffee 1kg", onHand: 6, sold7: 7, sold30: 30 }) }]);
-    expect(alertText(a)).toMatch(/^Ethiopian Coffee 1kg: estimated stockout in \d+ days?$/);
-    expect(alertText({ ...a, kind: "out", days: 0 })).toBe("Ethiopian Coffee 1kg: out of stock");
-    expect(alertText({ ...a, kind: "soon", days: 0.4 })).toBe("Ethiopian Coffee 1kg: estimated stockout in less than a day");
+    expect(alertText(a, reportsEn.inventory)).toMatch(/^Ethiopian Coffee 1kg: estimated stockout in \d+ days?$/);
+    expect(alertText({ ...a, kind: "out", days: 0 }, reportsEn.inventory)).toBe("Ethiopian Coffee 1kg: out of stock");
+    expect(alertText({ ...a, kind: "soon", days: 0.4 }, reportsEn.inventory)).toBe("Ethiopian Coffee 1kg: estimated stockout in less than a day");
   });
 });
 
@@ -403,8 +404,8 @@ describe("InventoryView with backorders and the owner's own levels", () => {
 
   it("names the alert for a backorder as on backorder, with the owed units, and keeps plain out of stock apart", () => {
     const alerts = stockoutAlerts([variant({ i: 1, title: "Thermos", onHand: -4, stockPolicy: "continue", owed: 4, sold7: 3, sold30: 9 })]);
-    expect(alertText(alerts[0])).toBe("Thermos: on backorder, 4 owed");
-    expect(alertText({ ...alerts[0], row: { ...alerts[0].row, stockPolicy: "deny" } })).toBe("Thermos: out of stock");
+    expect(alertText(alerts[0], reportsEn.inventory)).toBe("Thermos: on backorder, 4 owed");
+    expect(alertText({ ...alerts[0], row: { ...alerts[0].row, stockPolicy: "deny" } }, reportsEn.inventory)).toBe("Thermos: out of stock");
     expect(out).toContain("Thermos: on backorder, 4 owed");
     expect(out).toContain("Plain Mug: out of stock");
   });
@@ -568,10 +569,10 @@ describe("helpers", () => {
   });
 
   it("writes how long stock lasts in whole days, or says it cannot be known", () => {
-    expect(daysText(6.2)).toBe("6 days");
-    expect(daysText(1)).toBe("1 day");
-    expect(daysText(0.3)).toBe("under a day");
-    for (const bad of [null, undefined, NaN, Infinity]) expect(daysText(bad)).toBe(NO_FIGURE);
+    expect(daysText(6.2, reportsEn.inventory)).toBe("6 days");
+    expect(daysText(1, reportsEn.inventory)).toBe("1 day");
+    expect(daysText(0.3, reportsEn.inventory)).toBe("under a day");
+    for (const bad of [null, undefined, NaN, Infinity]) expect(daysText(bad, reportsEn.inventory)).toBe(NO_FIGURE);
   });
 
   it("writes units per day with at most two decimals", () => {

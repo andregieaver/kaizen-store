@@ -12,10 +12,10 @@ import { dayText, moneyWriter } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
 import { ButtonLink, CARD_CLASS, EmptyState } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
 
-/** The words of this view (D312 A9), English unless given. */
+/** The words of this view (D312 A9), */
 export type SubscriptionsWords = ReportsMessages["subscriptions"];
 
 /**
@@ -33,8 +33,8 @@ export type SubscriptionsViewProps = {
   /** The first market's locale, for writing amounts. */
   locale: string;
   report: SubscriptionsReport;
-  /** The words, in the account's language (D312 A9); English unless given. */
-  words?: SubscriptionsWords;
+  /** The words, in the account's language (D312 A9). */
+  words: SubscriptionsWords;
   /** The report's notes in the account's language (`sayIn()`); as written unless given. */
   say?: Say;
 };
@@ -58,7 +58,7 @@ export function signedMoney(money: (minor: number | null | undefined) => string,
 }
 
 /** A length of time in days as a person says it: "12 days", "1 day", "about 3 months". */
-export function durationText(days: number | null | undefined, w: SubscriptionsWords = reportsEn.subscriptions): string {
+export function durationText(days: number | null | undefined, w: SubscriptionsWords): string {
   if (!finite(days) || days < 0) return NO_FIGURE;
   if (days < 1) return w.lessThanDay;
   const whole = Math.round(days);
@@ -90,7 +90,7 @@ export function hasNoSubscriptions(r: SubscriptionsReport): boolean {
 }
 
 /** The period as dates: "1 Sep 2026 to 30 Sep 2026" (the report's `to` is the day after the last one). */
-export function periodText(period: { from: string; to: string }, w: SubscriptionsWords = reportsEn.subscriptions): string {
+export function periodText(period: { from: string; to: string }, w: SubscriptionsWords): string {
   const last = addDays(period.to, -1);
   return last <= period.from ? dayText(period.from) : fillWords(w.periodRange, { from: dayText(period.from), to: dayText(last) });
 }
@@ -101,7 +101,7 @@ export function periodText(period: { from: string; to: string }, w: Subscription
 // ---------------------------------------------------------------------------
 
 /** MRR, ARR, subscribers and the MRR at risk: "how much recurring revenue do we have right now?". */
-export function headlineCards({ base, currency, locale, report: r, words: w = reportsEn.subscriptions }: SubscriptionsViewProps): KpiCardProps[] {
+export function headlineCards({ base, currency, locale, report: r, words: w }: SubscriptionsViewProps): KpiCardProps[] {
   const money = safeMoney(currency, locale);
   const HELP = w.help;
   const none = r.active.count === 0;
@@ -147,7 +147,7 @@ export function headlineCards({ base, currency, locale, report: r, words: w = re
 }
 
 /** Churn, revenue churn, how long subscriptions last and what is already set to end. */
-export function churnCards({ base, currency, locale, report: r, words: w = reportsEn.subscriptions }: SubscriptionsViewProps): KpiCardProps[] {
+export function churnCards({ base, currency, locale, report: r, words: w }: SubscriptionsViewProps): KpiCardProps[] {
   const money = safeMoney(currency, locale);
   const HELP = w.help;
   const noBase = { text: w.noBase };
@@ -203,7 +203,7 @@ export function churnCards({ base, currency, locale, report: r, words: w = repor
 }
 
 /** Renewal revenue, subscription order value, first orders: "what did subscriptions earn in this period?". */
-export function renewalCards({ currency, locale, report: r, words: w = reportsEn.subscriptions }: SubscriptionsViewProps): KpiCardProps[] {
+export function renewalCards({ currency, locale, report: r, words: w }: SubscriptionsViewProps): KpiCardProps[] {
   const money = safeMoney(currency, locale);
   const HELP = w.help;
   const orders = r.renewals.orders + r.firstOrders.orders;
@@ -250,7 +250,7 @@ export type BridgeRow = {
 };
 
 /** The bridge from MRR at the start of the period to MRR at its end, one row for each step, the untracked ones included. */
-export function bridgeRows(report: SubscriptionsReport, w: SubscriptionsWords = reportsEn.subscriptions): BridgeRow[] {
+export function bridgeRows(report: SubscriptionsReport, w: SubscriptionsWords): BridgeRow[] {
   const m = report.movements;
   const b = w.bridge;
   const why = (key: "expansion" | "contraction" | "reactivation") =>
@@ -276,7 +276,7 @@ export function bridgeRows(report: SubscriptionsReport, w: SubscriptionsWords = 
 }
 
 /** The growth of MRR over the period in a sentence. */
-export function growthLine(report: SubscriptionsReport, money: (minor: number | null | undefined) => string, w: SubscriptionsWords = reportsEn.subscriptions): string {
+export function growthLine(report: SubscriptionsReport, money: (minor: number | null | undefined) => string, w: SubscriptionsWords): string {
   const m = report.movements;
   if (m.start <= 0 && m.end <= 0) return w.growthNone;
   if (m.growth === null) return fillWords(w.growthNoStart, { amount: money(m.end) });
@@ -334,7 +334,7 @@ function BridgeTable({ report, money, w }: { report: SubscriptionsReport; money:
 }
 
 /** The bridge as bars: the start, what was won, what was lost and the end. */
-export function bridgeBars(report: SubscriptionsReport, money: (minor: number | null | undefined) => string, w: SubscriptionsWords = reportsEn.subscriptions): BarRow[] {
+export function bridgeBars(report: SubscriptionsReport, money: (minor: number | null | undefined) => string, w: SubscriptionsWords): BarRow[] {
   const m = report.movements;
   const b = w.bridge;
   const rows: BarRow[] = [
@@ -369,7 +369,7 @@ function EmptyStore({ base, w }: { base: string; w: SubscriptionsWords }) {
 
 export function SubscriptionsView(props: SubscriptionsViewProps) {
   const { base, currency, locale, report } = props;
-  const w = props.words ?? reportsEn.subscriptions;
+  const w = props.words;
   if (hasNoSubscriptions(report)) return <EmptyStore base={base} w={w} />;
 
   const money = safeMoney(currency, locale);

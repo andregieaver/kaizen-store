@@ -7,6 +7,7 @@ import { COHORT_OFFSETS } from "@/lib/analytics-customers";
 import { financeStatement } from "@/lib/analytics-finance";
 import { FINANCE_STATEMENT_EN } from "@/lib/finance-statement-labels";
 import { FINANCE_WORDS } from "@/lib/admin-words/finance";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { log } from "./log";
 import { payoutsReport } from "./payouts-report";
 import { speedReport } from "./analytics-speed";
@@ -379,7 +380,7 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
         const noGoods = c.codeKind === "free_shipping";
         return {
           code: c.code,
-          kind: codeKindText(c.codeKind),
+          kind: codeKindText(c.codeKind, REPORTS_WORDS.en.discounts),
           status: c.active === null ? "Deleted" : c.active ? "On" : "Off",
           orders: c.orders,
           revenue: c.revenueMinor,
@@ -396,7 +397,7 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
   "marketing.discount_share": async (x) => {
     const d = await x.once("discounts", () => discountsReport(x.ctx.store, x.period));
     // The chart's own x axis: the last twelve months up to the one the period ends in, whatever the period is.
-    return { rows: trendMonths(d).map((m) => ({ bucket: m.start, share: m.share })), leftOut: left(d) };
+    return { rows: trendMonths(d, REPORTS_WORDS.en.discounts).map((m) => ({ bucket: m.start, share: m.share })), leftOut: left(d) };
   },
   "marketing.discount_by_kind": async (x) => {
     const d = await x.once("discounts", () => discountsReport(x.ctx.store, x.period));
@@ -406,11 +407,11 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
   // ---- Subscriptions ----
   "subscriptions.bridge": async (x) => {
     const r = await x.once("subscriptions", () => subscriptionsReport(x.ctx.store, x.period, x.ctx.now));
-    return { rows: bridgeRows(r).map((b) => ({ step: b.label, amount: b.amountMinor })) };
+    return { rows: bridgeRows(r, REPORTS_WORDS.en.subscriptions).map((b) => ({ step: b.label, amount: b.amountMinor })) };
   },
   "subscriptions.mrr_bridge": async (x) => {
     const r = await x.once("subscriptions", () => subscriptionsReport(x.ctx.store, x.period, x.ctx.now));
-    return { rows: bars(bridgeBars(r, () => "").map((b) => ({ label: b.label, value: b.value }))) };
+    return { rows: bars(bridgeBars(r, () => "", REPORTS_WORDS.en.subscriptions).map((b) => ({ label: b.label, value: b.value }))) };
   },
 
   // ---- Traffic, refunds and returns ----
@@ -432,7 +433,7 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
   "traffic.countries": async (x) => {
     const [g, t] = await Promise.all([geo(x), traffic(x)]);
     return {
-      rows: countryRows(g, t).map((r) => ({ country: r.name, orders: r.orders, revenue: r.revenueMinor, share: r.shareOfRevenue, aov: r.aovMinor, new: r.newCustomers, sessions: r.sessions, conversion: r.conversion })),
+      rows: countryRows(g, t, REPORTS_WORDS.en.traffic).map((r) => ({ country: r.name, orders: r.orders, revenue: r.revenueMinor, share: r.shareOfRevenue, aov: r.aovMinor, new: r.newCustomers, sessions: r.sessions, conversion: r.conversion })),
       leftOut: left(g),
     };
   },

@@ -20,12 +20,12 @@ import { AnalyticsSection, Note } from "./section";
 import { safeMoney } from "./subscriptions-view";
 import { ButtonLink, CARD_CLASS, EmptyState } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
 import { submitClass } from "@/lib/submit-class";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
-/** The words of this view (D312 A9), English unless given. */
+/** The words of this view (D312 A9), */
 export type TrafficWords = ReportsMessages["traffic"];
 type Money = (minor: number | null | undefined) => string;
 
@@ -55,8 +55,8 @@ export type TrafficViewProps = {
   geo: GeoReport;
   search: SearchReport;
   time: TimeReport;
-  /** The words, in the account's language (D312 A9); English unless given. */
-  words?: TrafficWords;
+  /** The words, in the account's language (D312 A9). */
+  words: TrafficWords;
   /** The report's notes in the account's language (`sayIn()`); as written unless given. */
   say?: Say;
   /** Round 26 (D699): the button that switches visit counting on (an owner's form), for the one card shown while it is off; a link to the settings without it. */
@@ -83,7 +83,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export const hourText = (hour: number): string => `${pad(hour)}:00–${pad((hour + 1) % 24)}:00`;
 
 /** What a counted visit is, for a figure that needs visit counting and cannot have one: the reason in a sentence. */
-export function countingReason(traffic: Pick<TrafficReport, "counting" | "coverage">, w: TrafficWords = reportsEn.traffic): string {
+export function countingReason(traffic: Pick<TrafficReport, "counting" | "coverage">, w: TrafficWords): string {
   if (!traffic.counting) return w.countingOff;
   if (traffic.coverage.firstDay === null) return w.countingNone;
   return w.countingNoDay;
@@ -118,7 +118,7 @@ export function deviceShare(rows: readonly SegmentRow[], key: string): number | 
  * A plain-words warning when most visitors come on a phone but buy far less than on a computer. Only with enough visits and orders on
  * both sides to mean something; otherwise nothing is said (no verdict from small numbers).
  */
-export function mobileCallout(rows: readonly SegmentRow[], w: TrafficWords = reportsEn.traffic): string | null {
+export function mobileCallout(rows: readonly SegmentRow[], w: TrafficWords): string | null {
   const mobile = rows.find((r) => r.key === "mobile");
   const desktop = rows.find((r) => r.key === "desktop");
   if (!mobile || !desktop || mobile.sessions === null || desktop.sessions === null) return null;
@@ -155,7 +155,7 @@ const same = (a: string, b: string) => a.trim().toUpperCase() === b.trim().toUpp
  * The countries' table: what was sold in each from the orders (always known), with the visits and the conversion of the days with counted
  * visits where there are any. A market with visits and no sale is a row of its own, and so is the country chooser, with visits only.
  */
-export function countryRows(geo: GeoReport, traffic: TrafficReport, w: TrafficWords = reportsEn.traffic): CountryRow[] {
+export function countryRows(geo: GeoReport, traffic: TrafficReport, w: TrafficWords): CountryRow[] {
   const visits = traffic.byMarket;
   const seen = new Set<string>();
   const rows: CountryRow[] = geo.countries.map((c) => {
@@ -206,7 +206,7 @@ export function landingLabel(row: { kind: LandingKind; handle: string | null; pa
 export const MIN_PATTERN_ORDERS = 20;
 
 /** The sentences under the weekday and hour pattern: the best day and hour, in words, and nothing when the orders are too few. */
-export function timeWords(time: TimeReport, money: (minor: number | null | undefined) => string, w: TrafficWords = reportsEn.traffic): string[] {
+export function timeWords(time: TimeReport, money: (minor: number | null | undefined) => string, w: TrafficWords): string[] {
   const ordersOf = (n: number) => countWords(n, w.orders, { n: formatCount(n) });
   const orders = time.totals.orders;
   if (orders === 0) return [];
@@ -296,7 +296,7 @@ function NeedsCounting({ traffic, base, what, w }: { traffic: TrafficReport; bas
 // ---------------------------------------------------------------------------
 
 
-export function funnelCards({ base, traffic, words: w = reportsEn.traffic }: Pick<TrafficViewProps, "base" | "traffic" | "words">): KpiCardProps[] {
+export function funnelCards({ base, traffic, words: w }: Pick<TrafficViewProps, "base" | "traffic" | "words">): KpiCardProps[] {
   const f = traffic.funnel;
   const HELP = w.help;
   const why = { text: fillWords(w.needsVisits, { reason: countingReason(traffic, w) }), action: { label: w.openSettings, href: `${base}/analytics/settings#visits` } };
@@ -762,7 +762,7 @@ const QUESTION_IDS = ["funnel", "search", "when"] as const;
 
 export function TrafficView(props: TrafficViewProps) {
   const { base, currency, locale, timeZone, traffic, geo, search, time, say = asWritten } = props;
-  const w = props.words ?? reportsEn.traffic;
+  const w = props.words;
   const money = safeMoney(currency, locale);
   const notes = traffic.notes.filter((n) => n.length > 0 && !CUT_STEP_NOTE.test(n) && !(traffic.sessions === null && COUNTING_NOTE.test(n)));
   const unknown = traffic.byDevice.find((r) => r.key === "unknown");

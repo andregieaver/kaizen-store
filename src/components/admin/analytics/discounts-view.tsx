@@ -3,10 +3,10 @@ import { formatCount, formatMonth, formatPercent, formatPoints, NO_FIGURE } from
 import { addDays, addMonths, startOfMonth } from "@/lib/analytics-period";
 import type { CouponReportRow, DiscountsReport } from "@/server/analytics-discounts-data";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
 
-/** The words of this view (D312 A9), English unless given. */
+/** The words of this view (D312 A9), */
 export type DiscountsWords = ReportsMessages["discounts"];
 
 import { HorizontalBars, LineChart, type BarRow } from "./charts";
@@ -28,8 +28,8 @@ export type DiscountsViewProps = {
   /** The first market's locale, for writing amounts. */
   locale: string;
   report: DiscountsReport;
-  /** The words, in the account's language (D312 A9); English unless given. */
-  words?: DiscountsWords;
+  /** The words, in the account's language (D312 A9). */
+  words: DiscountsWords;
   /** The report's notes in the account's language (`sayIn()`); as written unless given. */
   say?: Say;
 };
@@ -47,13 +47,13 @@ export function monthText(month: string): string {
  * The trend's months one after the other, from the first of the window to the month the period ends in, so a month with no orders is a gap on
  * the axis and not a missing tick. The share is null for a month with too few orders (or none): a gap, never a zero.
  */
-export function trendSeries(report: Pick<DiscountsReport, "trend" | "trendWindow">, w: DiscountsWords = reportsEn.discounts): { labels: string[]; values: (number | null)[]; partial: boolean } {
+export function trendSeries(report: Pick<DiscountsReport, "trend" | "trendWindow">, w: DiscountsWords): { labels: string[]; values: (number | null)[]; partial: boolean } {
   const months = trendMonths(report, w);
   return { labels: months.map((m) => m.label), values: months.map((m) => m.share), partial: months.some((m) => m.partial) };
 }
 
 /** The same months with their first day (`2026-10-01`), for the CSV: the chart's x axis, one entry for every month of the window. */
-export function trendMonths(report: Pick<DiscountsReport, "trend" | "trendWindow">, w: DiscountsWords = reportsEn.discounts): { start: string; label: string; share: number | null; partial: boolean }[] {
+export function trendMonths(report: Pick<DiscountsReport, "trend" | "trendWindow">, w: DiscountsWords): { start: string; label: string; share: number | null; partial: boolean }[] {
   const byMonth = new Map(report.trend.map((m) => [m.month, m]));
   const last = startOfMonth(addDays(report.trendWindow.to, -1));
   const out: { start: string; label: string; share: number | null; partial: boolean }[] = [];
@@ -65,7 +65,7 @@ export function trendMonths(report: Pick<DiscountsReport, "trend" | "trendWindow
 }
 
 /** The sentence for a basket: how much smaller or larger the discounted baskets are than the full-price ones. */
-export function basketWords(ratio: number | null, w: DiscountsWords = reportsEn.discounts): string | null {
+export function basketWords(ratio: number | null, w: DiscountsWords): string | null {
   if (ratio === null || !Number.isFinite(ratio) || ratio <= 0) return null;
   const gap = Math.abs(1 - ratio);
   if (gap < 0.005) return w.basketSame;
@@ -73,7 +73,7 @@ export function basketWords(ratio: number | null, w: DiscountsWords = reportsEn.
 }
 
 /** What kind of code it is, in words; a code that has since been deleted says so. */
-export function codeKindText(kind: string | null, w: DiscountsWords = reportsEn.discounts): string {
+export function codeKindText(kind: string | null, w: DiscountsWords): string {
   return kind === null ? w.deletedCode : (w.codeKinds[kind] ?? kind);
 }
 
@@ -82,7 +82,7 @@ export function codeKindText(kind: string | null, w: DiscountsWords = reportsEn.
 // ---------------------------------------------------------------------------
 
 /** The four cards: how much is sold at a discount, how deep, and how big the baskets are with and without one. */
-export function discountCards(report: DiscountsReport, money: (minor: number) => string, w: DiscountsWords = reportsEn.discounts): KpiCardProps[] {
+export function discountCards(report: DiscountsReport, money: (minor: number) => string, w: DiscountsWords): KpiCardProps[] {
   const s = report.summary;
   const noOrders = { text: w.noOrders };
   const dependencyHelp = w.dependencyHelp;
@@ -130,7 +130,7 @@ export function discountCards(report: DiscountsReport, money: (minor: number) =>
 // ---------------------------------------------------------------------------
 
 /** The coupon table's columns. A free-shipping code takes nothing off goods, so its discount cells have no figure. */
-export function couponColumns(money: (minor: number) => string, w: DiscountsWords = reportsEn.discounts): Column<CouponReportRow>[] {
+export function couponColumns(money: (minor: number) => string, w: DiscountsWords): Column<CouponReportRow>[] {
   const l = w.columns;
   const noGoods = (c: CouponReportRow) => c.codeKind === "free_shipping";
   const none = <span title={w.freeShippingNone}>{NO_FIGURE}</span>;
@@ -156,7 +156,7 @@ export function couponColumns(money: (minor: number) => string, w: DiscountsWord
 // The view
 // ---------------------------------------------------------------------------
 
-export function DiscountsView({ currency, locale, report, words: w = reportsEn.discounts, say = asWritten }: DiscountsViewProps) {
+export function DiscountsView({ currency, locale, report, words: w, say = asWritten }: DiscountsViewProps) {
   const money = moneyWriter(currency, locale);
   const s = report.summary;
   const cards = discountCards(report, money, w);

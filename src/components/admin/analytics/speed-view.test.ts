@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { analyticsNb } from "@/lib/admin-messages/analytics.nb";
 import { speedRow, type SpeedFigures } from "@/lib/speed";
 import type { SpeedReport } from "@/server/analytics-speed";
+import { analyticsEn } from "@/lib/admin-messages/analytics.en";
 
 import { SpeedView } from "./speed-view";
 
@@ -24,7 +25,7 @@ const report = (over: Partial<SpeedReport> = {}): SpeedReport => ({
 /** The speed report (D336): figures only where measured, the too-few count instead of a guess, what to fix, and the switch when off. */
 describe("the speed report", () => {
   it("says it collects nothing while visit counting is off, with the way to switch it on", () => {
-    const out = html(h(SpeedView, { base: "/admin/shop", locale: "en", report: report({ collecting: false, lastSample: null }) }));
+    const out = html(h(SpeedView, { base: "/admin/shop", locale: "en", report: report({ collecting: false, lastSample: null }), words: analyticsEn }));
     expect(out).toContain("only while the store counts visits");
     expect(out).toContain('href="/admin/shop/analytics/settings"');
     expect(out).toContain("No page loads were measured");
@@ -33,7 +34,7 @@ describe("the speed report", () => {
 
   it("shows a figure with its rating, the count where too few, and what to look at first", () => {
     const rows = [speedRow("home", "phone", loads(25, { lcp: 4200, inp: 120, cls: 30 })), speedRow("product", "computer", loads(5, { lcp: 1200 }))];
-    const out = html(h(SpeedView, { base: "/admin/shop", locale: "en", report: report({ loads: 30, rows }) }));
+    const out = html(h(SpeedView, { base: "/admin/shop", locale: "en", report: report({ loads: 30, rows }), words: analyticsEn }));
     expect(out).toContain("Front page");
     expect(out).toContain("4.20 s · Poor");
     expect(out).toContain("120 ms · Good");
@@ -46,7 +47,7 @@ describe("the speed report", () => {
   });
 
   it("says every figure is good when none needs work", () => {
-    const out = html(h(SpeedView, { base: "/admin/shop", locale: "en", report: report({ loads: 20, rows: [speedRow("home", "phone", loads(20, { lcp: 1000 }))] }) }));
+    const out = html(h(SpeedView, { base: "/admin/shop", locale: "en", report: report({ loads: 20, rows: [speedRow("home", "phone", loads(20, { lcp: 1000 }))] }), words: analyticsEn }));
     expect(out).toContain("Every figure with enough page loads is good.");
   });
 

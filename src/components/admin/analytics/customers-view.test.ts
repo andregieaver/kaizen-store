@@ -20,6 +20,7 @@ import {
 } from "@/lib/analytics-customers";
 import { NO_FIGURE } from "@/lib/analytics-core";
 import type { CustomersReport, TopCustomer } from "@/server/analytics-customers-data";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
 
 import { cohortColumn, countOf, CustomersView, decimalOf, lastOrderText, monthText, moneyOf, SEGMENT_COPY, SMALL_BASE, type CustomersViewProps } from "./customers-view";
 
@@ -120,7 +121,7 @@ function report({ n = 260, costs = "all", periodCustomers = true, top = TOP, ove
 }
 
 function view(r: CustomersReport, over: Partial<CustomersViewProps> = {}): string {
-  return html(h(CustomersView, { base: BASE, locale: "nb-NO", timeZone: "Europe/Oslo", isOwner: true, report: r, ...over }));
+  return html(h(CustomersView, { base: BASE, locale: "nb-NO", timeZone: "Europe/Oslo", isOwner: true, report: r, words: reportsEn.customers, ...over }));
 }
 
 /** Nothing that looks like a broken number or a leaked value. */
@@ -169,8 +170,8 @@ describe("the writers", () => {
     expect(plain(countOf(1200, "customer"))).toBe("1 200 customers");
     expect(monthText("2026-03")).toBe("Mar 2026");
     expect(monthText("soon")).toBe("soon");
-    expect(cohortColumn(0)).toBe("Same month");
-    expect(cohortColumn(6)).toBe("Month 6");
+    expect(cohortColumn(0, reportsEn.customers)).toBe("Same month");
+    expect(cohortColumn(6, reportsEn.customers)).toBe("Month 6");
     expect(lastOrderText("2026-10-03T22:30:00Z", "Europe/Oslo")).toBe("4 Oct 2026");
     expect(lastOrderText("not a date", "Europe/Oslo")).toBe(NO_FIGURE);
     expect(lastOrderText("2026-10-03T10:00:00Z", "Not/AZone")).toBe(NO_FIGURE);
@@ -580,9 +581,9 @@ describe("the page at phone width", () => {
 describe("the customer groups' advice without the bonus program (D178)", () => {
   it("names bonus credit only while the bonus program's feature is on", async () => {
     const { segmentAction, SEGMENT_COPY } = await import("./customers-view");
-    expect(segmentAction("Loyal", true)).toBe(SEGMENT_COPY.Loyal.action);
-    expect(segmentAction("Loyal", true)).toContain("bonus credit");
-    expect(segmentAction("Loyal", false)).not.toMatch(/bonus/i);
-    for (const segment of RFM_SEGMENTS) expect(segmentAction(segment, false)).not.toMatch(/bonus/i);
+    expect(segmentAction("Loyal", true, reportsEn.customers)).toBe(SEGMENT_COPY.Loyal.action);
+    expect(segmentAction("Loyal", true, reportsEn.customers)).toContain("bonus credit");
+    expect(segmentAction("Loyal", false, reportsEn.customers)).not.toMatch(/bonus/i);
+    for (const segment of RFM_SEGMENTS) expect(segmentAction(segment, false, reportsEn.customers)).not.toMatch(/bonus/i);
   });
 });

@@ -8,6 +8,7 @@ import type { GeoReport } from "@/server/analytics-geo-data";
 import type { SearchReport } from "@/server/analytics-search-data";
 import type { TimeReport } from "@/server/analytics-time-data";
 import type { SegmentRow, TrafficReport } from "@/server/analytics-traffic-data";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
 
 import { safeMoney } from "./subscriptions-view";
 import {
@@ -229,6 +230,7 @@ const props = (over: Partial<TrafficViewProps> = {}): TrafficViewProps => ({
   geo: normalGeo(),
   search: normalSearch(),
   time: timeOf(NORMAL_ROWS),
+  words: reportsEn.traffic,
   ...over,
 });
 
@@ -239,9 +241,9 @@ const emptyProps = (): TrafficViewProps => props({ traffic: noVisits(), geo: emp
 
 describe("helpers", () => {
   it("says why a figure that needs visits is missing", () => {
-    expect(countingReason(noVisits())).toBe("Visit counting is off.");
-    expect(countingReason(noVisits({ counting: true, coverage: coverage({ firstDay: null, from: null, to: null, days: 0 }) }))).toBe("No visit has been counted yet.");
-    expect(countingReason(noVisits({ counting: true, coverage: coverage({ from: null, to: null, days: 0 }) }))).toBe("No day of this period has counted visits.");
+    expect(countingReason(noVisits(), reportsEn.traffic)).toBe("Visit counting is off.");
+    expect(countingReason(noVisits({ counting: true, coverage: coverage({ firstDay: null, from: null, to: null, days: 0 }) }), reportsEn.traffic)).toBe("No visit has been counted yet.");
+    expect(countingReason(noVisits({ counting: true, coverage: coverage({ from: null, to: null, days: 0 }) }), reportsEn.traffic)).toBe("No day of this period has counted visits.");
   });
 
   it("writes an hour as a one-hour window and wraps midnight", () => {
@@ -269,7 +271,7 @@ describe("mobileCallout", () => {
   const rows = (mobile: SegmentRow, desktop: SegmentRow, tablet = seg("tablet", "Tablet", 100, 2, 200_000)) => [mobile, tablet, desktop, seg("unknown", "Unknown", null, 3, 300_000)];
 
   it("speaks up when most visitors use a phone and buy far less than on a computer", () => {
-    const words = mobileCallout(normalTraffic().byDevice);
+    const words = mobileCallout(normalTraffic().byDevice, reportsEn.traffic);
     expect(words).toContain("60 % of your visitors use a phone");
     expect(words).toContain("1.0 %");
     expect(words).toContain("6.0 %");
@@ -278,27 +280,27 @@ describe("mobileCallout", () => {
   });
 
   it("says none bought when phones sold nothing", () => {
-    const words = mobileCallout(rows(seg("mobile", "Mobile", 1500, 0, 0), seg("desktop", "Desktop", 1000, 40, 4_000_000)));
+    const words = mobileCallout(rows(seg("mobile", "Mobile", 1500, 0, 0), seg("desktop", "Desktop", 1000, 40, 4_000_000)), reportsEn.traffic);
     expect(words).toContain("none of them bought");
     expect(words).not.toMatch(BAD);
   });
 
   it("stays quiet when phones are a small share of the visitors", () => {
-    expect(mobileCallout(rows(seg("mobile", "Mobile", 400, 2, 200_000), seg("desktop", "Desktop", 1000, 40, 4_000_000)))).toBeNull();
+    expect(mobileCallout(rows(seg("mobile", "Mobile", 400, 2, 200_000), seg("desktop", "Desktop", 1000, 40, 4_000_000)), reportsEn.traffic)).toBeNull();
   });
 
   it("stays quiet when phones convert about as well as computers", () => {
-    expect(mobileCallout(rows(seg("mobile", "Mobile", 1800, 40, 4_000_000), seg("desktop", "Desktop", 1000, 30, 3_000_000)))).toBeNull();
+    expect(mobileCallout(rows(seg("mobile", "Mobile", 1800, 40, 4_000_000), seg("desktop", "Desktop", 1000, 30, 3_000_000)), reportsEn.traffic)).toBeNull();
   });
 
   it("stays quiet when the numbers are small", () => {
-    expect(mobileCallout(rows(seg("mobile", "Mobile", 90, 0, 0), seg("desktop", "Desktop", 50, 4, 400_000)))).toBeNull();
-    expect(mobileCallout(rows(seg("mobile", "Mobile", 1800, 1, 100_000), seg("desktop", "Desktop", 1000, 4, 400_000)))).toBeNull();
+    expect(mobileCallout(rows(seg("mobile", "Mobile", 90, 0, 0), seg("desktop", "Desktop", 50, 4, 400_000)), reportsEn.traffic)).toBeNull();
+    expect(mobileCallout(rows(seg("mobile", "Mobile", 1800, 1, 100_000), seg("desktop", "Desktop", 1000, 4, 400_000)), reportsEn.traffic)).toBeNull();
   });
 
   it("stays quiet when visits are not known", () => {
-    expect(mobileCallout([])).toBeNull();
-    expect(mobileCallout(rows(seg("mobile", "Mobile", null, 5, 500_000), seg("desktop", "Desktop", 1000, 40, 4_000_000)))).toBeNull();
+    expect(mobileCallout([], reportsEn.traffic)).toBeNull();
+    expect(mobileCallout(rows(seg("mobile", "Mobile", null, 5, 500_000), seg("desktop", "Desktop", 1000, 40, 4_000_000)), reportsEn.traffic)).toBeNull();
   });
 
   it("works out a device's share from the devices it can compare, not from unknown orders", () => {
@@ -309,7 +311,7 @@ describe("mobileCallout", () => {
 });
 
 describe("countryRows", () => {
-  const rows = countryRows(normalGeo(), normalTraffic());
+  const rows = countryRows(normalGeo(), normalTraffic(), reportsEn.traffic);
 
   it("puts what sold first, with the visits of the same country beside it", () => {
     expect(rows.map((r) => r.name).slice(0, 2)).toEqual(["Norway", "Sweden"]);
@@ -330,7 +332,7 @@ describe("countryRows", () => {
   });
 
   it("has no visits for a country when visits are not counted, and never a zero", () => {
-    const without = countryRows(normalGeo(), noVisits());
+    const without = countryRows(normalGeo(), noVisits(), reportsEn.traffic);
     expect(without).toHaveLength(2);
     for (const r of without) {
       expect(r.sessions).toBeNull();
@@ -340,25 +342,25 @@ describe("countryRows", () => {
 
   it("matches a country code whatever its case", () => {
     const lower = normalTraffic({ byMarket: [seg("no", "Norway", 1000, 20, 2_000_000)] });
-    expect(countryRows(normalGeo(), lower)[0].sessions).toBe(1000);
+    expect(countryRows(normalGeo(), lower, reportsEn.traffic)[0].sessions).toBe(1000);
   });
 });
 
 describe("timeWords", () => {
   it("says nothing when there are no orders (the chart says that)", () => {
-    expect(timeWords(timeOf([]), write)).toEqual([]);
+    expect(timeWords(timeOf([]), write, reportsEn.traffic)).toEqual([]);
   });
 
   it("claims no best day or hour from too few orders", () => {
     const few = timeOf([{ weekday: 2, hour: 10, orders: MIN_PATTERN_ORDERS - 1, revenueMinor: 100_000 }]);
-    const words = timeWords(few, write);
+    const words = timeWords(few, write, reportsEn.traffic);
     expect(words).toHaveLength(1);
     expect(words[0]).toContain("too few to say");
     expect(words[0]).toContain(`${MIN_PATTERN_ORDERS - 1} paid orders`);
   });
 
   it("names the best weekday, hour, slot and day with their figures", () => {
-    const words = timeWords(timeOf(NORMAL_ROWS), write);
+    const words = timeWords(timeOf(NORMAL_ROWS), write, reportsEn.traffic);
     expect(words).toHaveLength(4);
     expect(words[0]).toMatch(/^Friday is your best day of the week: 36 orders/);
     expect(words[0]).toContain("about 7.2 orders each Friday");
@@ -369,7 +371,7 @@ describe("timeWords", () => {
   });
 
   it("does not divide by a weekday the period does not hold", () => {
-    const words = timeWords(timeOf(NORMAL_ROWS, { weekdayDays: [0, 0, 0, 0, 0, 0, 0] }), write);
+    const words = timeWords(timeOf(NORMAL_ROWS, { weekdayDays: [0, 0, 0, 0, 0, 0, 0] }), write, reportsEn.traffic);
     expect(words[0]).not.toContain("each Friday");
     expect(words.join(" ")).not.toMatch(BAD);
   });
@@ -377,7 +379,7 @@ describe("timeWords", () => {
 
 describe("funnelCards", () => {
   it("has every rate when visits are counted", () => {
-    const cards = funnelCards({ base: "/admin/shop", traffic: normalTraffic() });
+    const cards = funnelCards({ base: "/admin/shop", traffic: normalTraffic(), words: reportsEn.traffic });
     expect(cards.map((c) => c.label)).toEqual(["Visits", "Conversion rate", "Looked at a product", "Added to cart", "Left with a full cart", "Left at checkout"]);
     expect(cards[1].value).toBe("3.0 %");
     expect(cards[2].value).toBe("60.0 %");
@@ -388,7 +390,7 @@ describe("funnelCards", () => {
   });
 
   it("is all 'missing' with a link to settings when visits are not counted, never 0 %", () => {
-    const cards = funnelCards({ base: "/admin/shop", traffic: noVisits() });
+    const cards = funnelCards({ base: "/admin/shop", traffic: noVisits(), words: reportsEn.traffic });
     for (const c of cards) {
       expect(c.state).toBe("missing");
       expect(c.value).toBeNull();

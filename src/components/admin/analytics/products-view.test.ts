@@ -6,6 +6,7 @@ import { change, NO_FIGURE, safeRatio } from "@/lib/analytics-core";
 import type { CompareMode } from "@/lib/analytics-period";
 import { paretoSummary, productTable, type ProductRow } from "@/lib/analytics-products";
 import type { ProductReportRow, ProductsReport } from "@/server/analytics-products-data";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
 
 import { dayText, deltaView, moneyOf, parseProductsSort, PRODUCT_LIMIT, PRODUCT_SORT_KEYS, ProductsView, productsHref, sortProducts, TOP_CHART, type ProductsViewProps } from "./products-view";
 
@@ -94,7 +95,7 @@ function report({ n = 12, costs = "all", compare = "previous", views = true, oth
 }
 
 function view(r: ProductsReport, extra: Partial<ProductsViewProps> = {}) {
-  return html(h(ProductsView, { base: BASE, locale: "nb-NO", report: r, compareMode: (r.compare ? "previous" : "none") as CompareMode, sort: { key: "revenue", dir: "desc" }, showAll: false, keep: {}, ...extra }));
+  return html(h(ProductsView, { base: BASE, locale: "nb-NO", report: r, compareMode: (r.compare ? "previous" : "none") as CompareMode, sort: { key: "revenue", dir: "desc" }, showAll: false, keep: {}, ...extra, words: reportsEn.products }));
 }
 
 /** No broken figures anywhere in what the page says or carries in its attributes. */
