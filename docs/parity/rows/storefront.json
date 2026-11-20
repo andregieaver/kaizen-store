@@ -174,7 +174,7 @@
         "src/server/role-pages.ts",
         "src/lib/store-parts.ts",
         "src/components/role-page.tsx",
-        "src/components/store-part-section.tsx",
+        "src/components/store-part-frame.tsx",
         "src/lib/product-layout.ts",
         "src/server/product-layouts.ts"
       ],

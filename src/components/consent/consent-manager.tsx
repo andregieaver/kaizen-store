@@ -21,6 +21,7 @@ import {
 } from "@/lib/cookie-consent";
 import { cookieCategory } from "@/lib/cookie-patterns";
 import { readAdSignals } from "@/lib/ad-signals";
+import { OPEN_CONSENT_EVENT, PENDING_OPEN, type PendingWindow } from "@/lib/consent-open";
 import { addCustomCode, type CustomCode } from "@/lib/custom-code";
 import { MODAL_STORAGE_PREFIX } from "@/lib/page-modal";
 import type { ShopTool } from "@/lib/shop-event-map";
@@ -41,15 +42,6 @@ export type ConsentTexts = {
   /** The short sentence about recordings on the banner's first screen, while the site asks about them (D656); null otherwise. */
   recordingNotice: string | null;
 };
-
-/** Opens the choices from anywhere on the page: the cookie page's and the footer's buttons. */
-export const OPEN_CONSENT_EVENT = "kaizen:cookie-settings";
-/**
- * A press of a cookie-settings button that no manager has answered yet: the manager is loaded on its own (`components/lazy/extras.tsx`), so a
- * button can be pressed before it listens. Kept in memory on the page only, never in storage; the manager opens the choices when it mounts.
- */
-const PENDING_OPEN = "__kaizenCookieSettingsPending";
-type PendingWindow = Window & { [PENDING_OPEN]?: boolean };
 
 type Props = {
   /** The store's id, or null on Kaizen's own site: each site asks for itself. */
@@ -469,21 +461,5 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, extra
         )}
       </dialog>
     </>
-  );
-}
-
-/** A button that opens the cookie choices (on the cookie page and in the footer). */
-export function CookieSettingsButton({ label, className }: { label: string; className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        (window as PendingWindow)[PENDING_OPEN] = true;
-        window.dispatchEvent(new Event(OPEN_CONSENT_EVENT));
-      }}
-      className={className}
-    >
-      {label}
-    </button>
   );
 }

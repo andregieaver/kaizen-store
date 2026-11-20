@@ -261,6 +261,20 @@ describe.skipIf(WRITE)("the visitor's scripts", () => {
     }
   });
 
+  it.each(["term-listing.tsx", "search/page.tsx"])("a listing and the search page reach no cart, checkout or account form and no consent manager: %s", (page) => {
+    // Each working route draws its own parts (bloat review step 2.9, `storePartDrawer()`): a category, a tag and the search carry none of another's.
+    const seen = reach(join(MARKET, page));
+    const forms = ["cart/cart-contents", "components/checkout-button", "checkout/checkout-section", "account/account-section", "components/consent/consent-manager"];
+    const found = [...seen.keys()]
+      .filter((target) => forms.some((form) => rel(target).endsWith(form)))
+      .map((target) => {
+        const chain = [rel(target)];
+        for (let at = seen.get(target); at; at = seen.get(at)) chain.unshift(rel(at));
+        return chain.join(" -> ");
+      });
+    expect(found).toEqual([]);
+  });
+
   it("would notice: the product editor (admin) reaches zod", () => {
     const form = join(SRC, "components/admin/product-editor.tsx");
     expect([...reach(form).keys()].map(rel)).toContain("zod");

@@ -11,6 +11,7 @@ import { countryOffered, marketMoved, resolveAfterSaleShop, resolveShop, selling
 import type { Store } from "@/server/stores";
 
 import { CartContents } from "./cart-contents";
+import { cartParts } from "./cart-parts";
 
 type Props = PageProps<"/s/[store]/[market]/cart">;
 
@@ -44,7 +45,7 @@ export default async function CartPage({ params, searchParams }: Props) {
     <>
       {/* Loads the page afresh if the document has been elsewhere: nothing another page added runs where a card is typed (wave 1, 1e). */}
       <PayRouteGuard store={store.slug} />
-      <RolePage store={store} market={market} ab={shop.ab} role="cart" route={{ part: "cart", query: searchParams }}>
+      <RolePage store={store} market={market} ab={shop.ab} role="cart" route={{ part: "cart", query: searchParams }} storePart={cartParts}>
         <h1 className="mb-6 text-3xl font-heading tracking-tight">{m.cart}</h1>
         {/* The placeholder holds a screen's height: React shows a streamed part at most every 300 ms, and a short placeholder put the
             footer on screen meanwhile, where its links were fetched ahead and then jumped away as the lines came (CI run 44529582895:

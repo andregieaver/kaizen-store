@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 import { AbMarker } from "@/components/lazy/blocks";
+import type { StorePartDrawer } from "@/components/page-article";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
-import { StorePartSection } from "@/components/store-part-section";
 import type { Market } from "@/lib/markets";
 import { pageBlocks } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
@@ -19,7 +19,7 @@ import type { Store } from "@/server/stores";
  * (D112, D113): the page chosen for the role, drawn with the route it stands
  * in for so its working components (the cart, the checkout, …) know where
  * they are; else `children`, the standard page. It alone hands the page what
- * draws those components (`StorePartSection`), so only the routes that draw a
+ * draws those components (the route's parts module, `storePartDrawer()`), so only the routes that draw a
  * working page carry their scripts.
  */
 export async function RolePage({
@@ -29,6 +29,7 @@ export async function RolePage({
   route,
   place,
   ab,
+  storePart,
   children,
 }: {
   store: Store;
@@ -39,6 +40,8 @@ export async function RolePage({
   place?: Partial<GridPlace>;
   /** The visitor's versions of tests of working pages, from `resolveShop()` (D148, phase 9). */
   ab?: Record<string, string>;
+  /** What draws this route's own working components: the route's parts module. */
+  storePart?: StorePartDrawer;
   children: ReactNode;
 }) {
   const { page, test, version } = await rolePageForVisitor(store, role, ab);
@@ -52,7 +55,7 @@ export async function RolePage({
         content={content}
         place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route: route && { ...route, holds } }}
         editable={!route && market.locale === store.localization.locales[0]}
-        storePart={route ? StorePartSection : undefined}
+        storePart={route ? storePart : undefined}
       />
       <PageEditLink
         pageId={page.id}

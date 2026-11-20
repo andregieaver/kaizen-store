@@ -7,6 +7,7 @@ import { resolveShop } from "@/server/shop";
 import { sellingPageOr404 } from "@/server/shop";
 import { pageShopOrMoved } from "@/server/shop-page";
 
+import { wishlistParts } from "./wishlist-parts";
 import { WishlistSection } from "./wishlist-section";
 
 type Props = PageProps<"/s/[store]/[market]/wishlist">;
@@ -34,7 +35,7 @@ async function WishlistRoute({ params, searchParams }: Pick<Props, "params" | "s
   if (!shop) notFound();
   const { store, market } = shop;
   return (
-    <RolePage store={store} market={market} ab={shop.ab} role="wishlist" route={{ part: "wishlist", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="wishlist" route={{ part: "wishlist", query: searchParams }} storePart={wishlistParts}>
       <WishlistSection store={store} market={market} query={searchParams} />
     </RolePage>
   );

@@ -28,7 +28,7 @@ import {
   skipDeliveryAction,
   startDeliveryAction,
 } from "./actions";
-import { ConfirmButton, DeliveryAddressForm, DeliverySetupForm } from "@/components/lazy/shop";
+import { ConfirmButton, DeliveryAddressForm, DeliverySetupForm } from "@/components/lazy/deliveries";
 
 import type { AddressValues } from "./delivery-forms";
 

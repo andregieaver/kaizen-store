@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { CartCountSeed } from "@/components/cart-count-seed";
-import { WishlistView } from "@/components/lazy/shop";
+import { WishlistView } from "@/components/lazy/wishlist";
 import type { WishlistItemView } from "@/components/wishlist-view";
 import { optionLabel, t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";

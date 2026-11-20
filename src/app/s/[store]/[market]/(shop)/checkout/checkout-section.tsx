@@ -6,7 +6,7 @@ import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { DeliveryChoice } from "@/components/delivery-choice";
-import { CheckoutForm } from "@/components/lazy/shop";
+import { CheckoutForm } from "@/components/lazy/checkout";
 import { CheckoutTerms as CheckoutTermsView } from "@/components/checkout-terms";
 import { GiftCardForm } from "@/components/gift-card-form";
 import { GiftNote } from "@/components/gift-note";

@@ -29,6 +29,8 @@ import { siteTerms } from "@/server/taxonomy";
 import { libraryAlts } from "@/server/media-alts";
 import type { LibraryAlt } from "@/lib/page-images";
 
+import { termParts } from "./term-parts";
+
 /**
  * A store's products in one category (with its subcategories) or with one
  * tag (D50): where the store's menu links to them lead. Shared by the
@@ -121,7 +123,7 @@ export async function TermProducts({ kind, params, searchParams }: { kind: TermK
   if (!loaded) return missed(kind, params);
   const { store, market, term } = loaded;
   return (
-    <RolePage store={store} market={market} role={kind} route={{ part: kind, param: term.slug, query: searchParams }} place={{ term: { id: term.id, kind } }}>
+    <RolePage store={store} market={market} role={kind} route={{ part: kind, param: term.slug, query: searchParams }} place={{ term: { id: term.id, kind } }} storePart={termParts}>
       <TermListing store={store} market={market} kind={kind} slug={term.slug} query={searchParams} />
     </RolePage>
   );

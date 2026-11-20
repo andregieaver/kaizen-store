@@ -64,17 +64,25 @@ test("the front page's first scripts carry no zod, no lightbox and no checkout f
  * (`/s/...`) are set to their figure plus 3 %, the six others to plus 4 %, each rounded up to the next 1,000. Measured on the build of
  * 17 November 2026: the front page 614,339, the product page 662,244, the other store routes 729,906 each, Kaizena Flow's front page
  * 608,377, sign-up 626,891, status 617,496, sign-in 487,166, forgot password 486,102, the docs page 498,519. A budget only falls: a change that lowers a figure by more than its room lowers the budget in the same change, and one
- * that needs a budget raised says why in docs/decisions.md.
+ * that needs a budget raised says why in docs/decisions.md. Since each working route loads its own parts (bloat review step 2.9), measured on
+ * the build of 20 November 2026: a category, a tag and the search 621,749 each (the front page's figure), the cart 683,531, the checkout
+ * 673,336, My account 636,534, the wishlist 626,775, an order 644,334, the cookie list 625,054 (729,906 each before); the step's ceiling
+ * of 650,000 caps My account and the order, and the cart and checkout are over the step's 670,000. With the shop's stand-ins split by
+ * group (step 2.9, commit 3): the cart 678,956 (still over), the checkout 668,938, My account 634,240, the wishlist 622,192.
  */
 const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
   "/s/demo/no": 633_000,
   "/s/demo/no/p/demo-keramikkopp": 683_000,
   "/s/demo/no/om-oss": 633_000,
-  "/s/demo/no/category/belysning": 752_000,
-  "/s/demo/no/search?q=lampe": 752_000,
-  "/s/demo/no/cart": 752_000,
-  "/s/demo/no/checkout": 752_000,
-  "/s/demo/no/account": 752_000,
+  "/s/demo/no/category/belysning": 641_000,
+  "/s/demo/no/tag/nyhet": 641_000,
+  "/s/demo/no/search?q=lampe": 641_000,
+  "/s/demo/no/cart": 705_000,
+  "/s/demo/no/checkout": 694_000,
+  "/s/demo/no/account": 650_000,
+  "/s/demo/no/wishlist": 646_000,
+  "/s/demo/no/order/6f1c0b9e-1111-2222-3333-444444444444": 650_000,
+  "/s/demo/no/cookies": 644_000,
   "/": 633_000,
   "/sign-up": 652_000,
   "/status": 643_000,

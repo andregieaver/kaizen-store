@@ -8,6 +8,7 @@ import { resolveShop } from "@/server/shop";
 import { pageShopOrMoved } from "@/server/shop-page";
 import { getCustomer } from "@/server/customers";
 
+import { accountParts } from "./account-parts";
 import { AccountSection } from "./account-section";
 
 type Props = PageProps<"/s/[store]/[market]/account">;
@@ -39,13 +40,13 @@ async function AccountRoute({ params, searchParams }: Pick<Props, "params" | "se
   if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const account = (
-    <RolePage store={store} market={market} ab={shop.ab} role="account" route={{ part: "account", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="account" route={{ part: "account", query: searchParams }} storePart={accountParts}>
       <AccountSection store={store} market={market} query={searchParams} />
     </RolePage>
   );
   if (await getCustomer(store.id)) return account;
   return (
-    <RolePage store={store} market={market} ab={shop.ab} role="sign_in" route={{ part: "sign_in", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="sign_in" route={{ part: "sign_in", query: searchParams }} storePart={accountParts}>
       {account}
     </RolePage>
   );

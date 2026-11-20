@@ -57,15 +57,15 @@ function forbiddenFrom(entry: string, stop?: (file: string) => boolean): string[
 }
 
 /**
- * A page the owner built holds the shop's own components through `StorePartSection`, which also knows every other working page (My
- * account, the cookie list, ...). Those draw only on their own routes, so the walk stops at that one door; the pieces the pay routes
- * draw (`cart-contents`, `checkout-section`, `order-section`) are walked on their own below.
+ * A page the owner built holds the shop's own components through the route's parts module (`cart-parts.tsx`, `checkout-parts.tsx`,
+ * `order-parts.tsx`, on `storePartDrawer()`, bloat review step 2.9), which imports only that route's own sections, so the walk goes
+ * through it: there is no door to stop at. The pieces the pay routes draw (`cart-contents`, `checkout-section`, `order-section`) are
+ * also walked on their own below.
  */
-const stop = (file: string) => rel(file) === "components/store-part-section.tsx";
 
 /** The one file that imports the extras; the layout reaches them only through it, inside `OffPayRoutes`, and is walked with this door shut. */
 const EXTRAS = "app/s/[store]/[market]/extras.tsx";
-const stopAtExtras = (file: string) => stop(file) || rel(file) === EXTRAS;
+const stopAtExtras = (file: string) => rel(file) === EXTRAS;
 
 describe("the import graph of the market layout", () => {
   it("does not reach the consent banner, the owner's code, the chat, referral capture or the business popup", () => {
@@ -84,7 +84,7 @@ describe("the import graph of the market layout", () => {
   });
 
   it("would notice one: the slot's own component reaches all of them", () => {
-    const found = forbiddenFrom(join(MARKET, "extras.tsx"), stop).join("\n");
+    const found = forbiddenFrom(join(MARKET, "extras.tsx")).join("\n");
     for (const name of ["StoreChat", "SiteConsent", "StoreAffiliate", "BuyerQuestion", "liveCustomCode"])
       expect(found, name).toContain(name);
   });
@@ -122,7 +122,7 @@ describe("the import graph of the pay routes", () => {
   ];
 
   it.each(pages)("%s reaches none of them", (page) => {
-    expect(forbiddenFrom(join(SHOP, page), stop)).toEqual([]);
+    expect(forbiddenFrom(join(SHOP, page))).toEqual([]);
   });
 });
 
@@ -191,7 +191,7 @@ describe("the gift box and the pay link", () => {
   });
 
   it.each(["account/pay/[token]/page.tsx", "account/pay/[token]/pay-view.tsx", "account/pay/[token]/pay-form.tsx"])("%s reaches none of the forbidden extras", (page) => {
-    expect(forbiddenFrom(join(SHOP, page), stop)).toEqual([]);
+    expect(forbiddenFrom(join(SHOP, page))).toEqual([]);
   });
 
   it("the pay link's page is guarded like a pay route, is not indexed and is not passed on as a referrer", () => {
@@ -221,7 +221,7 @@ describe("the change pay link and the order's parcels", () => {
   });
 
   it.each(["account/change/[token]/page.tsx", "account/change/[token]/change-view.tsx", "account/change/[token]/change-form.tsx"])("%s reaches none of the forbidden extras", (page) => {
-    expect(forbiddenFrom(join(SHOP, page), stop)).toEqual([]);
+    expect(forbiddenFrom(join(SHOP, page))).toEqual([]);
   });
 
   it("the change page is guarded like a pay route, is not indexed and is not passed on as a referrer", () => {
@@ -235,7 +235,7 @@ describe("the change pay link and the order's parcels", () => {
     const entry = join(SRC, "components/order-shipments.tsx");
     const values = importsOf(readFileSync(entry, "utf8"), { dynamic: true });
     expect(values.filter((s) => s === "zod" || s === "server-only" || s.startsWith("@/server/") || s.startsWith("@/db/"))).toEqual([]);
-    expect(forbiddenFrom(entry, stop)).toEqual([]);
+    expect(forbiddenFrom(entry)).toEqual([]);
     // And the order page draws it.
     expect(readFileSync(join(SHOP, "order/[orderId]/order-section.tsx"), "utf8")).toMatch(/<OrderShipments /);
   });
@@ -247,7 +247,7 @@ describe("the change pay link and the order's parcels", () => {
     expect(values.filter((s) => s === "zod" || s === "server-only" || s.startsWith("@/server/") || s.startsWith("@/db/"))).toEqual([]);
     expect(source).not.toMatch(/^["']use client["']/m);
     expect(source).not.toMatch(/<script|<img|<iframe/);
-    expect(forbiddenFrom(entry, stop)).toEqual([]);
+    expect(forbiddenFrom(entry)).toEqual([]);
     expect(readFileSync(join(SRC, "components/order-shipments.tsx"), "utf8")).toMatch(/<ParcelTracking /);
   });
 });
@@ -279,6 +279,6 @@ describe("the checkout form in the store's look", () => {
   });
 
   it("reaches none of the forbidden extras", () => {
-    expect(forbiddenFrom(entry, stop)).toEqual([]);
+    expect(forbiddenFrom(entry)).toEqual([]);
   });
 });

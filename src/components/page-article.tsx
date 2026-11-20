@@ -43,7 +43,7 @@ import { VisiblePart } from "./visible-part";
 
 /**
  * What draws a store's working components (D113: the cart, the checkout, My account, …) on the working page a block stands on:
- * `StorePartSection`, handed in by `RolePage`, the one place that draws a working page. Imported here, their client components were in
+ * the route's parts module (`storePartDrawer()`), handed in by `RolePage`, the one place that draws a working page. Imported here, their client components were in
  * the first scripts of every page built in the builder, Kaizena Flow's own included, where they never draw (`docs/performance.md`).
  */
 export type StorePartDrawer = (props: { block: StorePartBlock; place: GridPlace }) => ReactNode;

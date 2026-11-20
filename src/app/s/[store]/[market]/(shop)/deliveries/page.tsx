@@ -8,6 +8,7 @@ import { marketPath } from "@/lib/paths";
 import { resolveShop } from "@/server/shop";
 import { pageShopOrMoved } from "@/server/shop-page";
 
+import { deliveriesParts } from "./deliveries-parts";
 import { DeliveriesSection } from "./deliveries-section";
 
 type Props = PageProps<"/s/[store]/[market]/deliveries">;
@@ -36,7 +37,7 @@ async function DeliveriesRoute({ params, searchParams }: Pick<Props, "params" | 
   // Weekly deliveries are in the country's own currency (D109): shown in another, the page moves to its own.
   if (!isNative(market)) redirect(marketPath(store.slug, inView(market, { currency: market.nativeCurrency }).slug, "/deliveries"));
   return (
-    <RolePage store={store} market={market} ab={shop.ab} role="deliveries" route={{ part: "deliveries", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="deliveries" route={{ part: "deliveries", query: searchParams }} storePart={deliveriesParts}>
       <DeliveriesSection store={store} market={market} query={searchParams} />
     </RolePage>
   );

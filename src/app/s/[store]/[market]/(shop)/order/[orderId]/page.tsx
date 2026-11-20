@@ -6,6 +6,7 @@ import { PayRouteGuard } from "@/components/pay-route-guard";
 import { RolePage } from "@/components/role-page";
 import { resolveAfterSaleShop } from "@/server/shop";
 
+import { orderParts } from "./order-parts";
 import { OrderDetails } from "./order-section";
 
 type Props = PageProps<"/s/[store]/[market]/order/[orderId]">;
@@ -34,7 +35,7 @@ async function Order({ params, searchParams }: Pick<Props, "params" | "searchPar
     <>
       {/* Loads the page afresh if the document has been elsewhere: nothing another page added runs where a card is typed (wave 1, 1e). */}
       <PayRouteGuard store={store.slug} />
-      <RolePage store={store} market={market} ab={shop.ab} role="order" route={{ part: "order", param: orderId, query: searchParams }}>
+      <RolePage store={store} market={market} ab={shop.ab} role="order" route={{ part: "order", param: orderId, query: searchParams }} storePart={orderParts}>
         <OrderDetails store={store} market={market} orderId={orderId} query={searchParams} />
       </RolePage>
     </>
