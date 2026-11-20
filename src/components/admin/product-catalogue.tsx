@@ -10,8 +10,6 @@ import type { MatchFilter } from "@/server/bulk-edit";
 
 import { useAdminText } from "./admin-text";
 import { ProductsTable, type BulkTools, type ProductRowView } from "./products-bulk";
-import { ButtonLink } from "./ui/button";
-import { EmptyState } from "./ui/empty-state";
 import { AdminLink } from "./ui/link";
 
 const VIEW_KEY = "kz-products-view";
@@ -49,7 +47,7 @@ export function ProductCatalogue({
   bulk,
   toolbar,
   pager,
-  clearFilters,
+  empty,
 }: {
   slug: string;
   /** The page's products. */
@@ -65,8 +63,11 @@ export function ProductCatalogue({
   toolbar: ReactNode;
   /** Under the list: how many of all are shown, and the pages before and after. */
   pager: ReactNode;
-  /** The kit's *Clear filters* (`KIT_WORDS[lang].empty`), for a search or view that found nothing. */
-  clearFilters: string;
+  /**
+   * What a search or a view that found nothing shows: the kit's `EmptyState` with *Clear filters* (code review 2.9, D845), drawn by the page
+   * on the server so this part's scripts carry neither. A store with no product at all gets the page's own first-product state instead.
+   */
+  empty: ReactNode;
 }) {
   const w = useAdminText("products").catalogue;
   // The browser's remembered choice: pictures on the server and until the browser says otherwise.
@@ -95,11 +96,7 @@ export function ProductCatalogue({
       </div>
 
       {rows.length === 0 ? (
-        // A search or a view that found nothing goes back to every product (the store with none at all has the page's own first-product card).
-        <EmptyState
-          title={filter.q ? fillWords(w.noMatch, { q: filter.q }) : w.noneShown}
-          action={<ButtonLink href={`/admin/${slug}/products${archived ? "?show=archived" : ""}`}>{clearFilters}</ButtonLink>}
-        />
+        empty
       ) : view === "table" ? (
         <ProductsTable slug={slug} rows={rows} total={total} filter={filter} archived={archived} priceHeader={priceHeader} locale={locale} bulk={bulk} />
       ) : (

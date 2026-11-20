@@ -192,7 +192,12 @@ async function ProductList({
             bulk={bulk}
             total={total}
             filter={{ show, q }}
-            clearFilters={KIT_WORDS[lang].empty.clearFilters}
+            empty={
+              <EmptyState
+                title={q ? fillWords(c.noMatch, { q }) : c.noneShown}
+                action={<ButtonLink href={archived ? `${base}?show=archived` : base}>{KIT_WORDS[lang].empty.clearFilters}</ButtonLink>}
+              />
+            }
             priceHeader={market ? fillWords(store.audience === "businesses" ? w.priceInExclVat : w.priceIn, { market: market.name }) : w.price}
             rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
             toolbar={
