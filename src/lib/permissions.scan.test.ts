@@ -8,6 +8,7 @@ import { ADMIN_PAGES, matchPath } from "./admin-map";
 import baseline from "./permissions.baseline.json";
 import { DELEGATED_GUARDS, GUARDS } from "./permission-guards";
 import { BUILDER_AREAS, BUILDER_READ, BUILDER_WRITE, MEMBERSHIP_ONLY_PAGE_IDS, PAGE_TYPE_AREA, permissionOfPath } from "./permissions";
+import { STORE_NAV_AREAS, STORE_SECTIONS, areaIn, navAreas } from "./store-nav";
 
 /**
  * The sweep of wave 1, 1f (docs/wave-1-trust.md 2.7.2), held mechanically: every page, route handler, layout and server action of a store's
@@ -17,13 +18,15 @@ import { BUILDER_AREAS, BUILDER_READ, BUILDER_WRITE, MEMBERSHIP_ONLY_PAGE_IDS, P
  *
  * What is held:
  *  1. every entry point calls a guard, directly or through a wrapper in `DELEGATED_GUARDS` that itself calls one;
- *  2. the guard's key is the key of the page's place in the store navigation (`permissionOfPath()`): a page needs `read`, an action or a route that
- *     changes something `write`, a page marked `needs: "owner"` the owner key and nothing else; a read-only action is named in `READ_ONLY_ACTIONS`;
+ *  2. the guard's key is the key its address gives (`permissionOfPath()`: the area the page's store navigation item names, D851, never the
+ *     section it is listed in): a page needs `read`, an action or a route that changes something `write`, a page marked `needs: "owner"` the
+ *     owner key and nothing else; a read-only action is named in `READ_ONLY_ACTIONS`. A hand-named key is a copy this test holds to the path;
  *  3. the key is a literal (a guard with a variable key cannot be checked);
  *  4. the owner key appears only where the page was the owner's before roles (the baseline written before the sweep) or the map marks it so;
  *  5. a file that asked for the owner role before still does (the baseline is the oracle: no page gained or lost);
  *  6. no bare `requireMember(` or `getMembership(` outside `src/server/auth.ts` and `src/server/permissions.ts`, and no comparison of a
- *     membership's role with "owner" in the store admin or the server modules that act for a member.
+ *     membership's role with "owner" in the store admin or the server modules that act for a member;
+ *  7. moving any navigation item to another section changes no entry point's key (D851), so the menu can be regrouped without touching 2 to 5.
  */
 
 const root = process.cwd();
@@ -387,6 +390,38 @@ describe("every entry point of a store's admin asks a guard", () => {
       expect(source, `${name} is defined in ${file}`).toMatch(new RegExp(`(?:function|const)\\s+${name}\\b`));
       expect(GUARDS.some((guard) => new RegExp(`\\b${guard}\\(`).test(source)), `${name} calls a guard`).toBe(true);
     }
+  });
+});
+
+describe("a page's area is its own, not its place in the menu (D851)", () => {
+  /** Every address the scan and the baseline hold (each store entry point's, and each parent `keyFor()` may fall back to) and every page of the map. */
+  const addresses = [
+    ...new Set([
+      ...entries.filter((e) => e.surface === "store").flatMap((e) => e.path.split("/").map((_, i, parts) => parts.slice(0, i + 1).join("/"))),
+      ...ADMIN_PAGES.filter((p) => p.area === "store").map((p) => p.path),
+    ]),
+  ];
+
+  it("leaves every entry point's area, and so its key, as it is when any item moves to another section", () => {
+    const before = addresses.map((path) => areaIn(STORE_NAV_AREAS, path));
+    let moves = 0;
+    STORE_SECTIONS.forEach((section, s) =>
+      section.groups.forEach((group, g) =>
+        group.items.forEach((item, i) => {
+          const moved = structuredClone(STORE_SECTIONS);
+          const [taken] = moved[s].groups[g].items.splice(i, 1);
+          const to = moved[(s + 1) % moved.length];
+          to.groups[0].items.push(taken);
+          // The menu now lists it under a section named for another area, which is what decided its area before D851.
+          expect([item.path, to.key === item.area]).toEqual([item.path, false]);
+          const areas = navAreas(moved);
+          expect([item.path, addresses.map((path) => areaIn(areas, path))]).toEqual([item.path, before]);
+          moves += 1;
+        }),
+      ),
+    );
+    expect(moves).toBeGreaterThan(100);
+    expect(addresses.length).toBeGreaterThan(300);
   });
 });
 

@@ -25,7 +25,7 @@ import {
   storePageKeys,
   type PermissionHolder,
 } from "./permissions";
-import { STORE_SECTIONS, sectionPaths } from "./store-nav";
+import { STORE_SECTIONS, areaIn, navAreas, sectionPaths } from "./store-nav";
 
 const owner: PermissionHolder = { role: "owner" };
 const admin: PermissionHolder = { role: "admin" };
@@ -154,6 +154,11 @@ describe("the key a page needs", () => {
     expect(areaOfPath("/staff")).toBe("staff");
     expect(areaOfPath("/staff/roles")).toBe("staff");
     expect(areaOfPath("/billing")).toBe("billing");
+    // The books (D512) beside them, and a form's responses (D705) under the website's Forms, name their own areas too (D851).
+    expect(areaOfPath("/settings/books")).toBe("books");
+    expect(areaOfPath("/settings/books/vat/[term]")).toBe("books");
+    expect(areaOfPath("/forms")).toBe("website");
+    expect(areaOfPath("/forms/responses/[formId]")).toBe("customers");
     // Both pages are owner-only (`needs: "owner"` in the admin map), so the key they ask for is the owner's in this wave:
     // staff:write and billing:write are held by owners only, and the read keys serve the activity log's team entries.
     for (const access of ["read", "write"] as const) {
@@ -193,6 +198,26 @@ describe("the key a page needs", () => {
     const noArea = keys.filter((k) => k.key === null).map((k) => k.id).sort();
     expect(noArea).toEqual(["activity", "overview", "setup", "setup.step"]);
     expect(keys.length).toBe(ADMIN_PAGES.filter((p) => p.area === "store").length);
+  });
+
+  it("reads the area an item names (D851): an item given another area takes its own pages along, and no other page changes", () => {
+    const changed = structuredClone(STORE_SECTIONS);
+    const payouts = changed.flatMap((s) => s.groups.flatMap((g) => g.items)).find((i) => i.path === "/analytics/payouts")!;
+    payouts.area = "orders";
+    const areas = navAreas(changed);
+    expect(areaIn(areas, "/analytics/payouts")).toBe("orders");
+    expect(areaIn(areas, "/analytics/payouts/[payoutId]")).toBe("orders");
+    expect(areaIn(areas, "/analytics/finance")).toBe("analytics");
+    expect(areaIn(areas, "/analytics")).toBe("analytics");
+    // The data itself is untouched: the store's navigation still says analytics.
+    expect(areaOfPath("/analytics/payouts")).toBe("analytics");
+  });
+
+  it("puts a page of cards in its section's area, and an address under it with no item of its own there too", () => {
+    expect(areaOfPath("/marketing")).toBe("marketing");
+    expect(areaOfPath("/website")).toBe("website");
+    expect(areaOfPath("/settings")).toBe("settings");
+    expect(areaOfPath("/settings/somewhere-new")).toBe("settings");
   });
 
   it("puts every address in the navigation in an area the keys know", () => {

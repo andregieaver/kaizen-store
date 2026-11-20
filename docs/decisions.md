@@ -853,7 +853,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D848 | **Admin words load by area: each page imports the areas it names** | 2026-11-20 | [text](decisions/D848.md) |
 | D849 | **A recommending grid brings its own words and reaches no zod or page model** | 2026-11-20 | [text](decisions/D849.md) |
 | D850 | **Subscribers show and filter by the form and page they signed up on** |  | [text](decisions/D850.md) |
-| D851 | **A page's permission is its own, not its place in the menu: every nav item names its area, areaOfPath and platformAreaOfP** | 2026-11-20 | [text](decisions/D851.md) |
+| D851 | **A page's permission is its own, not its place in the menu: every nav item names its area, areaOfPath and platformAreaOfPath read it,…** | 2026-11-20 | [text](decisions/D851.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
