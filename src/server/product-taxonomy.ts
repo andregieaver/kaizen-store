@@ -26,7 +26,7 @@ import {
   type TaxonomyWords,
 } from "@/lib/product-taxonomy";
 
-import { log } from "./log";
+import { jobReport } from "./job-report";
 import { col, typedRows } from "./typed-rows";
 
 /**
@@ -148,6 +148,7 @@ export async function refreshStandardShown(limit = 200): Promise<{ written: numb
        limit ${limit * 5}`,
   );
   const stale = rows.filter((row) => row.shown_for !== shownKey(row.standard_category, row.standard_attributes)).slice(0, limit);
+  const report = jobReport();
   const storeIds = new Set<string>();
   let written = 0;
   for (const row of stale) {
@@ -161,8 +162,9 @@ export async function refreshStandardShown(limit = 200): Promise<{ written: numb
       written++;
       storeIds.add(row.store_id);
     } catch (error) {
-      // A row the products' own triggers refuse today (an active product that lost what it needs to be sold) waits; the others go on.
-      log("warn", "standard-shown.refused", { productId: row.id, storeId: row.store_id }, error);
+      // A row the products' own triggers refuse today (an active product that lost what it needs to be sold) waits; the others go on,
+      // and the run is counted as failed so the refusal is seen (bloat review step 1.26).
+      report(error, "standard-shown.refused");
     }
   }
   return { written, storeIds: [...storeIds] };
