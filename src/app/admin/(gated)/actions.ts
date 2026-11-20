@@ -10,7 +10,6 @@ import { storeBase, storeOrigin } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { seoFromForm } from "@/lib/seo";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
-import { createClient } from "@/lib/supabase/server";
 import type { Membership } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
 import { applyPlanDiscount, cancelPlan, choosePlan, NO_COUNTRY, portalUrl, removeWaitingDiscount } from "@/server/billing";
@@ -252,14 +251,6 @@ export async function saveStoreSeoAction(
     updateTag(STORES_TAG);
   }
   return toState(result);
-}
-
-export async function signOut(): Promise<void> {
-  try {
-    await (await createClient()).auth.signOut();
-  } finally {
-    redirect("/admin/sign-in");
-  }
 }
 
 /** The billing page's answers in the owner's words (D312 A8). */

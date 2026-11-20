@@ -39,11 +39,8 @@ import { pendingEmailChange } from "@/server/email-change";
 
 import {
   accountAvatarAction,
-  adminLangAction,
   adminSchemeAction,
-  adminViewAction,
   changeNameAction,
-  colorModeAction,
   connectKaizenLifeAction,
   disconnectKaizenLifeAction,
   regenerateRecoveryCodesAction,
@@ -52,6 +49,7 @@ import {
   setAccountOfficerAction,
   setPasswordAction,
 } from "./actions";
+import { adminLangAction, adminViewAction, colorModeAction } from "./shell-actions";
 
 export const metadata: Metadata = { title: "Your account" };
 

@@ -16,8 +16,8 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 
-import { adminLangAction, colorModeAction } from "@/app/admin/(gated)/(owner)/account/actions";
-import { signOut } from "@/app/admin/(gated)/actions";
+import { adminLangAction, colorModeAction } from "@/app/admin/(gated)/(owner)/account/shell-actions";
+import { signOut } from "@/app/admin/(gated)/shell-actions";
 
 /** The stores an account works in, once per request (the switcher and the pages both ask). */
 export const storesOf = cache((account: Account) => listStores(account));

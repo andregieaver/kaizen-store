@@ -2,7 +2,7 @@ import Link from "next/link";
 import { after } from "next/server";
 import { Suspense } from "react";
 
-import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/actions";
+import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/shell-actions";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { ExtensionBanner } from "@/components/admin/extension-banner";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";

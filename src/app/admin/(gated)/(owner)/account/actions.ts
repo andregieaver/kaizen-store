@@ -11,11 +11,9 @@ import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
-import { adminLangOf, isAdminLang } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { isOfferedScheme } from "@/lib/admin-schemes";
-import { isAdminView } from "@/lib/admin-view";
-import { isColorChoice } from "@/lib/color-mode";
-import { audit, requireAccount, saveAdminLang, saveAdminScheme, saveAdminView, saveColorMode } from "@/server/auth";
+import { audit, requireAccount, saveAdminScheme } from "@/server/auth";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
@@ -94,31 +92,10 @@ export async function accountAvatarAction(form: FormData): Promise<AvatarPickerS
   return { ok: true, message: "Picture saved." };
 }
 
-/** Keeps the account's light or dark for the admin (D99); the page has applied it already. */
-export async function colorModeAction(choice: unknown): Promise<void> {
-  const account = await requireAccount();
-  if (isColorChoice(choice) && choice !== account.colorMode) await saveColorMode(account.id, choice);
-}
-
 /** Keeps the account's colour scheme for the admin (D221); the page has applied it already. */
 export async function adminSchemeAction(scheme: unknown): Promise<void> {
   const account = await requireAccount();
   if (isOfferedScheme(scheme) && scheme !== account.adminScheme) await saveAdminScheme(account.id, scheme);
-}
-
-/**
- * Keeps how much of a store's admin the account is shown (D454); the page has switched already. A store's admin and Your account both
- * call it; nothing is drawn again, as the navigation follows the choice in the browser.
- */
-export async function adminViewAction(view: unknown): Promise<void> {
-  const account = await requireAccount();
-  if (isAdminView(view) && view !== account.adminView) await saveAdminView(account.id, view);
-}
-
-/** Keeps the account's language for the admin (D312 A0); the admin is drawn again in it. */
-export async function adminLangAction(lang: unknown): Promise<void> {
-  const account = await requireAccount();
-  if (isAdminLang(lang)) await saveAdminLang(account.id, lang);
 }
 
 /** Connects the account's Kaizen Life account (D95): off to Kaizen Life, back to Your account. Owners only. */

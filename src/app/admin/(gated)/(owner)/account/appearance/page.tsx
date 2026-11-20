@@ -10,7 +10,8 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
-import { adminSchemeAction, colorModeAction } from "../actions";
+import { adminSchemeAction } from "../actions";
+import { colorModeAction } from "../shell-actions";
 
 export const metadata: Metadata = { title: "Appearance" };
 
