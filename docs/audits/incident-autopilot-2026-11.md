@@ -6,7 +6,8 @@ pushes the fix through the normal CI and deploy, and marks the entry done once t
 needs them, what is being fixed and what was fixed.
 
 **The owner's decision (20 November 2026): enhancements wait for the owner's Approve.** The autopilot fixes errors and warnings by itself;
-it never builds an enhancement until the owner has approved it. Claim a decision number for this when step IA-1 starts.
+it never builds an enhancement until the owner has approved it. An idea the owner writes is approved when saved. Claim a decision number
+for this when step IA-1 starts. The owner's other answers of the same day are written into the sections below (section 10 lists them).
 
 Steps have ids (IA-n). In the change that does a step, set its row to Done with the date and the commit, as with the other plans in this
 folder.
@@ -90,7 +91,7 @@ stateDiagram-v2
 | CI red on main | the open `ci-red` issue, read by the autopilot (D803 already makes it task one) | error |
 | Supabase security and performance advisors | read by the autopilot after each run's deploys; replaces writing the line in `psi-followups.md` by hand | warning |
 | The platform's AI | a `propose_enhancement` tool for the platform's AI manager and autopilot: a title, the reason and the evidence it was given | enhancement (`proposed`) |
-| The owner | *Add an idea* on the incidents page | enhancement |
+| The owner | *Add an idea* on the incidents page | enhancement (`approved` when saved: the owner wrote it) |
 
 Errors written with `log()` at level `error` are not each logged as incidents: Vercel already keeps them, and the pull in each run groups
 them by fingerprint (route, error name, first frame).
@@ -105,17 +106,32 @@ them by fingerprint (route, error name, first frame).
 - **Fixed lately**: what was fixed or done in the last 14 days, each with one line on what changed.
 
 **For Lisa (one step away):** an entry's page with its facts, occurrences over time, history, the commit, the session's link, Reopen and
-Won't fix; filters by kind, source, status and store; and the autopilot's settings (on or off, limits per run, the schedule as set).
+Won't fix; filters by kind, source, status and store; and the autopilot's settings: on or off, **how often it runs** (every 1, 2, 4, 8,
+12 or 24 hours; 4 by default), limits per run, and *Run now*.
 
-The platform's morning briefing (`src/server/platform-briefing.ts`) gains one line ("3 fixed overnight, 1 needs you"), and an entry that
-becomes `needs_owner` sends the platform admins a push (D361). Words go in the platform catalogue in both platform languages.
+**Telling the owner** (the owner's answer, 20 November 2026):
+
+- **A push at once** (D361) to the platform admins when something needs them: an entry set to `needs_owner`, or a proposal from the
+  platform's AI waiting for Approve. Sent by `src/server/incidents.ts` when the status changes, never batched.
+- **A daily summary email at 07:00 Oslo time** (`PLATFORM_TIME_ZONE`, so summer and winter time both land at seven): what was fixed and
+  done in the last 24 hours (one line each, with what changed), what needs the owner, what is being fixed and what is new. A new
+  dispatcher job, `incidentDigest`, claims the day first (as `sendPlatformBriefing()` claims its period) so it goes once, to the platform's
+  owners, each in their language. It goes every day, whether or not the morning briefing is on; a quiet day is one line saying so.
+  The briefing gets no line of its own, so nothing is told twice.
+
+Words go in the platform catalogue in both platform languages.
 
 ## 5. The autopilot run
 
-A scheduled task starts a **fresh Claude Code cloud session every 4 hours** in this repository's environment, with push notifications on.
-Its prompt is short: read `CLAUDE.md` and follow `docs/runbooks/incident-autopilot.md`. The runbook holds the steps:
+The autopilot runs **every 4 hours by default, adjustable** on the incidents page (the owner's answer, 20 November 2026). The setting
+lives in the app, not in the scheduled task: the scheduled task starts a fresh Claude Code cloud session **every hour** in this
+repository's environment, and its first step asks the API whether a run is due. A run is due when the chosen interval has passed since the
+last run began, when the owner pressed *Run now*, or when `main` is red; otherwise the session ends at once (one API call, a few cents of
+tokens). Changing the rhythm is then one setting, with no change to the scheduled task. Its prompt is short: read `CLAUDE.md` and follow
+`docs/runbooks/incident-autopilot.md`. The runbook holds the steps:
 
-1. **Check it may run.** Read the autopilot switch through the API; if it is off, stop. If `main` is red, that is the first task (D803).
+1. **Check it may run.** Ask `GET /incidents/due` through the API: the switch, the interval and *Run now*. If no run is due, stop. If
+   `main` is red, that is the first task (D803).
 2. **Bring the log up to date.** Pull production runtime errors since the last run (Vercel), the advisors (Supabase) and the `ci-red`
    issue, and send each through the ingest endpoint. Fingerprints keep this idempotent.
 3. **Close what has stayed away.** Every `fixed` entry with no repeat for 24 hours after its deploy becomes `done`.
@@ -125,7 +141,8 @@ Its prompt is short: read `CLAUDE.md` and follow `docs/runbooks/incident-autopil
    commit with the entry's id in the message, push to `main`, and follow the run and the deploy to the end.
 6. **Record it.** Set the entry to `fixed` with the commit and a one-line note. When it cannot be done safely, set `needs_owner` with
    what it found and what it would do.
-7. **Report.** A push to the owner only when something needs them; a summary of the run is kept as an event in the log.
+7. **Report.** A summary of the run is kept as an event in the log, for the daily email. Pushes go from the app when a status changes
+   (section 4), not from the session.
 
 ## 6. Guardrails
 
@@ -137,7 +154,8 @@ Its prompt is short: read `CLAUDE.md` and follow `docs/runbooks/incident-autopil
   anything that deletes data, and any migration that drops or renames. The autopilot writes its proposed fix in the note and sets
   `needs_owner`.
 - **No new secrets, vendors or hosts.** An entry that needs one goes to `needs_owner`.
-- **Limits:** 3 entries per run, 1 enhancement per run, 6 runs a day. A run that finds nothing workable ends at once.
+- **Limits:** 3 entries per run, 1 enhancement per run, at most one run an hour (the scheduled task's own rhythm). A run that finds
+  nothing workable ends at once.
 - **One switch stops it:** the setting on the incidents page, checked at the start of every run, and the scheduled task can be paused.
 - **Everything is traceable:** each change is an ordinary commit naming the entry, so it can be read and reverted; each status change is in
   the entry's history with the session's link.
@@ -168,18 +186,22 @@ entries about their store and their status ("we found it and fixed it"), named h
 - [ ] **IA-3** `src/server/incidents.ts`: `logIncident()` (upsert, throttle, reopen), the status moves and the pruning; unit and
       integration tests.
 - [ ] **IA-4** Connect the sources inside the app: `cron-alerts.ts`, `watchdog.ts`, `status.ts`.
-- [ ] **IA-5** `/admin/platform/incidents`: Needs you, Being fixed, Fixed lately; the entry's page; the switch; the briefing line and the
-      push; words in both platform languages; signed-in e2e in `e2e/signed-in/`; screenshots to the owner.
-- [ ] **IA-6** Enhancements: *Add an idea* for the owner and the `propose_enhancement` tool for the platform's AI (grounded: it states
+- [ ] **IA-5** `/admin/platform/incidents`: Needs you, Being fixed, Fixed lately; the entry's page; the switch, the interval and
+      *Run now*; the instant push; words in both platform languages; signed-in e2e in `e2e/signed-in/`; screenshots to the owner.
+- [ ] **IA-5b** The daily summary email at 07:00 Oslo time: the `incidentDigest` dispatcher job, its day claimed once, both platform
+      languages, a test that it lands at seven in summer and in winter.
+- [ ] **IA-6** Enhancements: *Add an idea* for the owner (approved when saved) and the `propose_enhancement` tool for the platform's AI (grounded: it states
       only what its tools gave it, with `UNTRUSTED_TEXT` in the prompt).
 
 ### Phase 2: the autopilot
 
-- [ ] **IA-7** The `incidents` scope on the platform API, its endpoints and tests; a token made for the autopilot.
+- [ ] **IA-7** The `incidents` scope on the platform API, its endpoints (with `GET /incidents/due`) and tests; a token made for the
+      autopilot.
 - [ ] **IA-8** The ingest for Vercel runtime errors, the advisors and `ci-red`, with the fingerprint rules.
 - [ ] **IA-9** `docs/runbooks/incident-autopilot.md`: the run of section 5 and the guardrails of section 6.
 - [ ] **IA-10** A dry run: one session follows the runbook by hand while the owner watches; adjust the runbook.
-- [ ] **IA-11** Save the token on the environment and create the scheduled task (the owner approves both in the app).
+- [ ] **IA-11** Save the token on the environment and create the scheduled task, hourly, each firing a fresh session (the owner
+      approves both in the app).
 - [ ] **IA-12** Review after two weeks: entries fixed, reopened, reverted and sent to the owner; the cost of the runs; adjust the cadence
       and limits.
 
@@ -189,9 +211,10 @@ entries about their store and their status ("we found it and fixed it"), named h
 - [ ] **IA-14** A store owner's view of the entries about their store.
 - [ ] **IA-15** If the owner wants it after IA-12: small enhancements approved automatically, under rules the owner sets.
 
-## 10. Open questions for the owner
+## 10. The owner's answers (20 November 2026)
 
-1. Every 4 hours, or another rhythm (each run costs tokens; an idle run ends quickly)?
-2. Should an idea the owner writes on *Add an idea* count as approved when saved, or wait for Approve like the AI's?
-3. Is the list of areas that go to the owner in section 6 right, or should some of them be fixed automatically too?
-4. Push only, or also an email when something needs the owner?
+1. **Rhythm:** every 4 hours is right, but adjustable. Written into sections 4 and 5: the interval is a setting on the incidents page.
+2. **The owner's own ideas:** approved when saved. Written into the decision at the top, section 3 and IA-6.
+3. **Areas that go to the owner:** the list in section 6 is right as it stands.
+4. **Telling the owner:** a push at once when something needs them, and a summary email every day at 07:00 Oslo time. Written into
+   section 4 and IA-5b.
