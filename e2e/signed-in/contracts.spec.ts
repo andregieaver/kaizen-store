@@ -111,9 +111,21 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   await words.getByLabel("Clause", { exact: true }).nth(1).fill(`Paid within 10 days ${run}.`);
   // The words are rich text (D856): made a bulleted list, the contract draws them as one.
   await words.getByRole("toolbar", { name: "Formatting for Clause" }).nth(1).getByRole("button", { name: "Bulleted list" }).click();
+  // How it will look follows the words as they are typed (D857), and Send waits until they are saved.
+  await expect(preview.locator("li").getByText(`Paid within 10 days ${run}.`)).toBeVisible();
+  await expect(page.getByText("You have changes that are not saved.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send for signing" })).toHaveCount(0);
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status").getByText("Saved.")).toBeVisible({ timeout: 30_000 });
-  await expect(preview.locator("li").getByText(`Paid within 10 days ${run}.`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send for signing" })).toBeVisible();
+  await expect(page.getByText("Version 1").first()).toBeVisible();
+
+  // Contracts, under Deals in the menu, lists it with its deal (D857).
+  await page.goto(page.url().replace(/\/deals\/.*$/, "/deals/contracts"));
+  await expect(page.getByRole("heading", { name: "Contracts", level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(TITLE) }).filter({ hasText: "Draft" })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("contracts-list.png"), fullPage: true });
+  await page.goBack();
 
   // The deal lists it as a draft.
   await page.getByRole("link", { name: "Back to the deal" }).click();

@@ -324,6 +324,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:leads": { title: "Leads", keywords: ["leads", "potensielle kunder", "henvendelser", "forespørsler", "følge opp", "interessenter"] },
   "store:deal.new": { title: "Ny avtale", keywords: ["ny avtale", "legg til avtale", "salgsmulighet"] },
   "store:deal": { title: "Avtale", keywords: ["avtale", "koble bestilling", "tilbud", "oppdrag", "historikk"] },
+  "store:deals.contracts": { title: "Kontrakter", keywords: ["kontrakter", "signerte kontrakter", "avslått kontrakt", "versjoner"] },
   "store:deals.contract_templates": { title: "Kontraktmaler", keywords: ["kontraktmal", "mal", "avtaletekst", "vilkår"] },
   "store:deals.contract_template": { title: "Kontraktmal", keywords: ["kontraktmal", "mal", "påminnelser"] },
   "store:deal.contract": { title: "Kontrakt", keywords: ["kontrakt", "signering", "signere", "avtaletekst", "mal"] },

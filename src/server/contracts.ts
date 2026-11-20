@@ -86,6 +86,8 @@ export type ContractSigner = {
   viewedAt: string | null;
   signedAt: string | null;
   declinedAt: string | null;
+  /** Why they declined, in their own words: shown on the contract's page only, never to a model or in a webhook. */
+  declineReason: string | null;
 };
 
 export type Contract = {
@@ -280,6 +282,7 @@ const signerRow = z.object({
   viewed_at: col.timestampOrNull,
   signed_at: col.timestampOrNull,
   declined_at: col.timestampOrNull,
+  decline_reason: col.text.nullable(),
 });
 
 async function readContracts(storeId: string, where: ReturnType<typeof sql>): Promise<Contract[]> {
@@ -291,7 +294,7 @@ async function readContracts(storeId: string, where: ReturnType<typeof sql>): Pr
   if (rows.length === 0) return [];
   const signers = await typedRows(
     signerRow,
-    sql`select id, contract_id, role, position, name, email, account_id, viewed_at, signed_at, declined_at
+    sql`select id, contract_id, role, position, name, email, account_id, viewed_at, signed_at, declined_at, decline_reason
         from commerce.contract_signers where ${owned(storeId)} and contract_id = any(${uuidList(rows.map((r) => r.id))})
         order by position`,
   );
@@ -314,7 +317,7 @@ async function readContracts(storeId: string, where: ReturnType<typeof sql>): Pr
         .filter((g) => g.contract_id === r.id)
         .map((g) => ({
           id: g.id, role: g.role, position: g.position, name: g.name, email: g.email, accountId: g.account_id,
-          viewedAt: g.viewed_at, signedAt: g.signed_at, declinedAt: g.declined_at,
+          viewedAt: g.viewed_at, signedAt: g.signed_at, declinedAt: g.declined_at, declineReason: g.decline_reason,
         })),
     };
   });
@@ -324,6 +327,53 @@ async function readContracts(storeId: string, where: ReturnType<typeof sql>): Pr
 export async function contractsOfDeal(member: Membership, dealId: string): Promise<Contract[]> {
   if (!memberCan(member, READ)) return [];
   return readContracts(member.store.id, sql`deal_id = ${dealId}::uuid`);
+}
+
+/** A row of the store's list of contracts (D857): enough to find one, without its words. */
+export type ContractListRow = {
+  id: string;
+  dealId: string | null;
+  dealTitle: string | null;
+  title: string;
+  status: ContractStatus;
+  replacesId: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  completedAt: string | null;
+  /** The customer's side: the first signer for the customer. */
+  customer: string | null;
+};
+
+const listRow = z.object({
+  id: col.uuid,
+  deal_id: col.uuid.nullable(),
+  deal_title: col.text.nullable(),
+  title: col.text,
+  status: contractRow.shape.status,
+  replaces_id: col.uuid.nullable(),
+  created_at: col.timestamp,
+  sent_at: col.timestampOrNull,
+  completed_at: col.timestampOrNull,
+  customer: col.text.nullable(),
+});
+
+/** The store's contracts across its deals, newest first, at most 500 (`customers:read`, D857). */
+export async function listContracts(member: Membership): Promise<ContractListRow[]> {
+  if (!memberCan(member, READ)) return [];
+  const rows = await typedRows(
+    listRow,
+    sql`select k.id, k.deal_id, d.title as deal_title, k.title, k.status, k.replaces_id, k.created_at, k.sent_at, k.completed_at,
+          (select g.name from commerce.contract_signers g where g.store_id = k.store_id and g.contract_id = k.id and g.role = 'customer'
+            order by g.position limit 1) as customer
+        from commerce.contracts k
+        left join commerce.deals d on d.store_id = k.store_id and d.id = k.deal_id
+        where ${owned(member.store.id, sql`k.store_id`)}
+        order by k.created_at desc, k.id limit 500`,
+  );
+  return rows.map((r) => ({
+    id: r.id, dealId: r.deal_id, dealTitle: r.deal_title, title: r.title, status: r.status, replacesId: r.replaces_id,
+    createdAt: r.created_at, sentAt: r.sent_at, completedAt: r.completed_at, customer: r.customer,
+  }));
 }
 
 /** One contract of the store (`customers:read`), or null. */
@@ -596,12 +646,20 @@ export async function contractFacts(store: Store, contract: Pick<Contract, "id" 
 export type PdfRenderer = (html: string) => Promise<Uint8Array>;
 export type SendDeps = { render: PdfRenderer; now?: Date; storage?: DocumentStorage | null };
 
+/**
+ * What a draft is filled in from if it were sent now (D857): each field's value, the quote's lines and the parties, for the page's preview
+ * to fill the words as they are typed (`fillContract()` in the browser). Nothing is written; sending gathers them again.
+ */
+export async function draftFacts(member: Membership, contract: Contract, now: Date = new Date()) {
+  const expiresAt = new Date(now.getTime() + (await expiresDaysOf(member.store.id, contract.id)) * DAY_MS);
+  return contractFacts(member.store, contract, now, expiresAt);
+}
+
 /** The contract as it would be sent now, and what stops it (for the draft's preview, step 2). Nothing is written. */
 export async function previewContract(member: Membership, contractId: string, now: Date = new Date()) {
   const contract = await getContract(member, contractId);
   if (!contract) return null;
-  const expiresAt = new Date(now.getTime() + (await expiresDaysOf(member.store.id, contractId)) * DAY_MS);
-  const facts = await contractFacts(member.store, contract, now, expiresAt);
+  const facts = await draftFacts(member, contract, now);
   const signers: SnapshotSigner[] = contract.signers.map((g) => ({ role: g.role, name: g.name }));
   return fillContract({ title: contract.title, language: contract.language, blocks: contract.blocks, parties: facts.parties, signers }, facts);
 }

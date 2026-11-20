@@ -132,6 +132,9 @@ one template, and a contract takes its template's reminder days. `contracts.int.
 *Rich text (20 November 2026, D856):* a paragraph's and a clause's words are written in `ContractTextEditor` (lists, bold, italic,
 underline, *Insert a field*), kept as the block's `doc` beside its plain `text`, which `parseBlocks()` always works out from the `doc`
 (`src/lib/contract-rich.ts`); the view draws the `doc` as elements, never HTML, and no link, colour or heading inside a block.
+*Live preview, versions and the list (20 November 2026, D857):* a draft's words and its preview stacked at full width, the preview filled in
+the browser as the words are typed and Send offered once they are saved; each contract's version and its versions with a declined signer's
+reason; every contract of the store at `/deals/contracts`, under Deals in the menu.
 
 *Step 3, signing (17 November 2026), as built:* the owner chose Kaizena Flow's own self-made seal for now (a trusted provider's
 certificate with BankID, step 5). **The database** (`20261117003018_contract_signing`, `20261117003025_contract_signing_rules`,

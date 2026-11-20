@@ -92,95 +92,95 @@
       "totalChars": 171309
     },
     "all|none": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169142
+      "totalChars": 169171
     },
     "all|orders": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169142
+      "totalChars": 169171
     },
     "all|products": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169142
+      "totalChars": 169171
     },
     "all|customers": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 156685,
       "alwaysSentChars": 36572,
-      "totalChars": 173194
+      "totalChars": 173223
     },
     "all|marketing": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 158214,
       "alwaysSentChars": 36573,
-      "totalChars": 174723
+      "totalChars": 174752
     },
     "all|analytics": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 152109,
       "alwaysSentChars": 36541,
-      "totalChars": 168618
+      "totalChars": 168647
     },
     "all|website": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 161609,
       "alwaysSentChars": 36577,
-      "totalChars": 178118
+      "totalChars": 178147
     },
     "all|bookings": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 152252,
       "alwaysSentChars": 36544,
-      "totalChars": 168761
+      "totalChars": 168790
     },
     "all|support": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 150973,
       "alwaysSentChars": 36546,
-      "totalChars": 167482
+      "totalChars": 167511
     },
     "all|settings": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 132069,
       "alwaysSentChars": 36602,
-      "totalChars": 148578
+      "totalChars": 148607
     },
     "all|billing": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 151480,
       "alwaysSentChars": 36546,
-      "totalChars": 167989
+      "totalChars": 168018
     },
     "all|staff": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 152242,
       "alwaysSentChars": 36550,
-      "totalChars": 168751
+      "totalChars": 168780
     },
     "all|books": {
-      "promptChars": 16509,
+      "promptChars": 16538,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169142
+      "totalChars": 169171
     }
   },
   "fixed": {
@@ -220,11 +220,11 @@
       "totalChars": 2995
     },
     "autopilot_event": {
-      "promptChars": 17214,
+      "promptChars": 17243,
       "toolCount": 45,
       "toolChars": 31507,
       "alwaysSentChars": 0,
-      "totalChars": 48721,
+      "totalChars": 48750,
       "case": "review"
     },
     "platform": {

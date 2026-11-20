@@ -46,8 +46,13 @@ const inside = (pathname: string, prefix: string) => pathname === prefix || path
 export function useIsCurrent(areas: NavArea[] = []) {
   const pathname = usePathname();
   const alsoOf = (item: NavItem) => (item.section !== undefined && item.also === undefined ? (areas.find((a) => a.section === item.section)?.prefixes ?? []) : (item.also ?? []));
+  // A sidebar item below another's address (Contracts below Deals, D857) is the one marked there, not both; a section's tab keeps its mark.
+  const hrefs = areas.flatMap((a) => a.groups.flatMap((g) => g.items.filter((i) => !i.exact).map((i) => i.href)));
+  const deeper = (item: NavItem) => item.section === undefined && hrefs.some((href) => href.startsWith(`${item.href}/`) && inside(pathname, href));
   return (item: NavItem) =>
-    item.exact ? pathname === item.href || alsoOf(item).some((prefix) => inside(pathname, prefix)) : [item.href, ...alsoOf(item)].some((prefix) => inside(pathname, prefix));
+    deeper(item)
+      ? false
+      : item.exact ? pathname === item.href || alsoOf(item).some((prefix) => inside(pathname, prefix)) : [item.href, ...alsoOf(item)].some((prefix) => inside(pathname, prefix));
 }
 
 /**

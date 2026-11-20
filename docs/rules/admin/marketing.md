@@ -366,9 +366,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   parts get theirs as props.
 
 
-## Contracts' words (D695, D856, `src/lib/contract-fields.ts`, `src/lib/contract-rich.ts`, `ContractTextEditor`)
+## Contracts' words and drafts (D695, D856, D857, `src/lib/contract-fields.ts`, `src/lib/contract-rich.ts`, `ContractTextEditor`)
 
-- **Contracts' words (D695, D856, `src/lib/contract-fields.ts`, `src/lib/contract-rich.ts`, `ContractTextEditor`)**: a template's and a
+- **Contracts' words and drafts (D695, D856, D857, `src/lib/contract-fields.ts`, `src/lib/contract-rich.ts`, `ContractTextEditor`)**: a template's and a
   draft's paragraphs and clauses are written in `ContractTextEditor` (rich text), never a textarea, and kept as the block's `doc` beside its
   plain `text`. A contract takes paragraphs, bulleted and numbered lists, line breaks, bold, italic and underline only (`contractDoc()`):
   no link, colour, text style or heading inside a block. `text` is always the `doc`'s words (`contractDocText()`, set by `parseBlocks()`,
@@ -376,6 +376,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   plain text and stays valid. `fillContract()` fills `doc` and `text` with the same fields; `ContractDocumentView` draws `doc` as elements,
   never as HTML. A new mark or node is added to `contractDoc()`, the editor's extensions and the view together, with a test in
   `contract-rich.test.ts` and `static-markup.test.ts`.
+- **A draft's page (D857)**: *What it says* and *How it will look* stacked at full width; the preview is filled in the browser as the words are
+  typed (`fillContract()` from `draftFacts()`), and Send is offered only with nothing unsaved, since sending fills it again from what was
+  saved. Each contract says its version (`contractVersions()`, from `replaces_id`) and lists its versions with a declined signer's reason
+  (admin page only). The store's contracts are listed at `/deals/contracts` (`listContracts()`), the menu item right under Deals.
 
 ## Sales reports (S6, D520, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)
 
