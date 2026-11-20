@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 
 import { logTimeAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
-import { NO_PROBLEMS, timePayload, type FormProblems } from "@/lib/work-ui";
+import { NO_PROBLEMS, type FormProblems } from "@/lib/work-ui";
+import { timePayload } from "@/lib/work-ui-schema";
 import type { AssignmentChoice } from "@/server/work-choices";
 
 import { Problems, control, primaryButton, secondaryButton } from "./work-parts";

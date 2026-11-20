@@ -3,9 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   EMPTY_TIME_FILTERS,
   activeFilterCount,
-  assignmentPayload,
   clientFigures,
-  clientPayload,
   entryAccess,
   estimateField,
   moneyField,
@@ -19,12 +17,11 @@ import {
   readWhole,
   remainingLabel,
   stageOf,
-  taskPayload,
   timeFilterQuery,
-  timePayload,
   type AssignmentFormValues,
   type ClientFormValues,
 } from "./work-ui";
+import { assignmentPayload, clientPayload, taskPayload, timePayload } from "./work-ui-schema";
 import { workEn } from "@/lib/admin-messages/work.en";
 
 const ID = "3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b";

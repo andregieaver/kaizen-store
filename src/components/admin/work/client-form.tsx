@@ -12,7 +12,8 @@ import { BrregLookup, RegisterNote } from "@/components/admin/brreg-lookup";
 import { clientPrefill, formatOrganisationNumber, type BrregCompany } from "@/lib/brreg";
 import { documentLanguage, DOCUMENT_LANGUAGES } from "@/lib/work-invoice-text";
 import { VAT_TREATMENTS, VAT_TREATMENT_LABELS, suggestTreatment, type VatTreatment } from "@/lib/work-vat";
-import { NO_PROBLEMS, clientPayload, moneyField, type ClientFormValues, type FormProblems } from "@/lib/work-ui";
+import { NO_PROBLEMS, moneyField, type ClientFormValues, type FormProblems } from "@/lib/work-ui";
+import { clientPayload } from "@/lib/work-ui-schema";
 import type { WorkClient } from "@/server/work";
 
 import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";

@@ -28,17 +28,8 @@ import {
 } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import { formatDuration } from "@/lib/work-time";
 import { liveMinutes } from "@/lib/work-timer-ui";
-import {
-  NO_PROBLEMS,
-  STAGE_STYLES,
-  estimateField,
-  moveId,
-  readEstimate,
-  remainingLabel,
-  stageOf,
-  taskPayload,
-  type FormProblems,
-} from "@/lib/work-ui";
+import { NO_PROBLEMS, STAGE_STYLES, estimateField, moveId, readEstimate, remainingLabel, stageOf, type FormProblems } from "@/lib/work-ui";
+import { taskPayload } from "@/lib/work-ui-schema";
 import type { WorkTaskItem } from "@/server/work";
 import type { AssignmentChoice } from "@/server/work-choices";
 

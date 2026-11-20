@@ -82,11 +82,9 @@
     "components/admin/terms.tsx",
     "components/admin/theme-editor.tsx",
     "components/admin/typography-fields.tsx",
-    "components/admin/work/assignment-actions.tsx",
     "components/admin/work/assignment-form.tsx",
     "components/admin/work/client-actions.tsx",
     "components/admin/work/client-form.tsx",
-    "components/admin/work/estimate-progress.tsx",
     "components/admin/work/invoice-credit-dialog.tsx",
     "components/admin/work/invoice-draft-editor.tsx",
     "components/admin/work/invoice-issue-dialog.tsx",
@@ -97,10 +95,7 @@
     "components/admin/work/recurring-controls.tsx",
     "components/admin/work/recurring-form.tsx",
     "components/admin/work/tasks-panel.tsx",
-    "components/admin/work/time-entry-list.tsx",
     "components/admin/work/time-panel.tsx",
-    "components/admin/work/timer-bar.tsx",
-    "components/admin/work/timer-provider.tsx",
     "components/admin/workflows.tsx"
   ]
 }

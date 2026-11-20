@@ -9,12 +9,12 @@ import {
   ASSIGNMENT_STATUS_LABELS,
   BILLING_TYPE_LABELS,
   NO_PROBLEMS,
-  assignmentPayload,
   estimateField,
   moneyField,
   type AssignmentFormValues,
   type FormProblems,
 } from "@/lib/work-ui";
+import { assignmentPayload } from "@/lib/work-ui-schema";
 import type { WorkAssignment } from "@/server/work";
 
 import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
