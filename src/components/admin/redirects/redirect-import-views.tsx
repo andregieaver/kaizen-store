@@ -4,7 +4,7 @@ import type { FindingItem } from "@/components/admin/data/findings-table";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { SEVERITY_FILTERS, SEVERITY_WORDS, rowsPhrase, wholeNumber, type SeverityFilter } from "@/lib/data-admin";
 import { fillWords } from "@/lib/admin-fill";
-import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redirects.en";
+import type { RedirectsMessages } from "@/lib/admin-messages/redirects.en";
 import { lineResultWords } from "@/lib/redirect-admin";
 import { redirectFindingText } from "@/lib/redirect-words";
 import { EmptyState } from "@/components/admin/ui";
@@ -12,11 +12,11 @@ import { EmptyState } from "@/components/admin/ui";
 /** The numbers of a dry run: what an import would do (2.2.4 step 3). */
 export function RedirectDryRun({
   counts,
-  words = redirectsEn,
+  words,
   locale = "en-GB",
 }: {
   counts: { toCreate: number; toReplace: number; unchanged: number; skipped: number; withErrors: number };
-  words?: RedirectsMessages;
+  words: RedirectsMessages;
   locale?: string;
 }) {
   const d = words.import.dry;
@@ -49,13 +49,13 @@ export function RedirectApplied({
   counts,
   jobId,
   written,
-  words = redirectsEn,
+  words,
   locale = "en-GB",
 }: {
   counts: { created: number; updated: number; unchanged: number; skipped: number; failed: number };
   jobId: string;
   written: boolean;
-  words?: RedirectsMessages;
+  words: RedirectsMessages;
   locale?: string;
 }) {
   const a = words.import.applied;
@@ -99,10 +99,10 @@ export function RedirectFindings({
   pageSize,
   hrefFor,
   problemsHref,
-  words = redirectsEn,
+  words,
   locale = "en-GB",
 }: {
-  words?: RedirectsMessages;
+  words: RedirectsMessages;
   locale?: string;
   items: FindingItem[];
   total: number;

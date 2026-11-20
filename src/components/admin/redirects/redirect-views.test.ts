@@ -9,6 +9,7 @@ vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 import type { FindingItem } from "@/components/admin/data/findings-table";
 import { bookingsEn } from "@/lib/admin-messages/bookings.en";
 import { finding } from "@/lib/data-job";
+import { redirectsEn } from "@/lib/admin-messages/redirects.en";
 
 import { NotFoundTable, type MissingRow, type ReportActions } from "./not-found-table";
 import { RedirectExportForm } from "./redirect-export-form";
@@ -34,7 +35,7 @@ const tableActions: RedirectTableActions = { ...formActions, remove: async () =>
 
 describe("the head of a redirect page", () => {
   it("shows the title, the intro and the four tabs, marking the current one", () => {
-    const out = html(createElement(RedirectsHead, { slug: "demo", active: "report", title: "Pages not found", intro: "Intro text." }));
+    const out = html(createElement(RedirectsHead, { slug: "demo", active: "report", title: "Pages not found", intro: "Intro text.", words: redirectsEn }));
     expect(out).toContain("<h1");
     expect(out).toContain("Pages not found");
     expect(out).toContain("Intro text.");
@@ -52,7 +53,7 @@ describe("the head of a redirect page", () => {
   });
 
   it("draws a back link when it is given one", () => {
-    const out = html(createElement(RedirectsHead, { slug: "demo", active: "import", title: "T", intro: "I", back: { href: "/admin/demo/redirects/import", label: "Import redirects" } }));
+    const out = html(createElement(RedirectsHead, { slug: "demo", active: "import", title: "T", intro: "I", back: { href: "/admin/demo/redirects/import", label: "Import redirects" }, words: redirectsEn }));
     expect(out).toContain(">Import redirects<");
   });
 });
@@ -168,13 +169,13 @@ describe("the import's screens", () => {
   });
 
   it("shows what the check found, and what an import wrote", () => {
-    const dry = html(createElement(RedirectDryRun, { counts: { toCreate: 10, toReplace: 2, unchanged: 3, skipped: 1, withErrors: 4 } }));
+    const dry = html(createElement(RedirectDryRun, { counts: { toCreate: 10, toReplace: 2, unchanged: 3, skipped: 1, withErrors: 4 }, words: redirectsEn }));
     for (const word of ["To create", "To replace", "Unchanged", "Skipped", "With errors"]) expect(dry).toContain(word);
     expect(dry).toContain("Nothing has changed in your store");
-    const done = html(createElement(RedirectApplied, { counts: { created: 10, updated: 2, unchanged: 3, skipped: 1, failed: 4 }, jobId: "job-1", written: true }));
+    const done = html(createElement(RedirectApplied, { counts: { created: 10, updated: 2, unchanged: 3, skipped: 1, failed: 4 }, jobId: "job-1", written: true, words: redirectsEn }));
     expect(done).toContain("What was imported");
     expect(done).toContain("job-1");
-    expect(html(createElement(RedirectApplied, { counts: { created: 1, updated: 0, unchanged: 0, skipped: 0, failed: 0 }, jobId: "j", written: false }))).toContain("before it stopped");
+    expect(html(createElement(RedirectApplied, { counts: { created: 1, updated: 0, unchanged: 0, skipped: 0, failed: 0 }, jobId: "j", written: false, words: redirectsEn }))).toContain("before it stopped");
   });
 
   it("asks for confirmation before importing, and disables the button when nothing can be imported", () => {
@@ -195,7 +196,7 @@ describe("the import's screens", () => {
     { seq: 3, ref: "/<script>alert(1)</script>", rows: [4, 5, 6], outcome: "failed", will: null, messages: [] },
   ];
   const hrefFor = (q: { severity?: string; page?: number }) => `/p?severity=${q.severity ?? "all"}&page=${q.page ?? 1}`;
-  const props = { items, total: 4, severity: "all" as const, page: 1, pageSize: 50, hrefFor, problemsHref: "/admin/demo/redirects/import/j/problems" };
+  const props = { items, total: 4, severity: "all" as const, page: 1, pageSize: 50, hrefFor, problemsHref: "/admin/demo/redirects/import/j/problems", words: redirectsEn };
 
   it("lists every line with its rows, address, result, severity, code and sentence", () => {
     const out = html(createElement(RedirectFindings, props));
@@ -219,12 +220,12 @@ describe("the import's screens", () => {
   });
 
   it("filters through the address, downloads the problems by POST, and pages a long list", () => {
-    const out = html(createElement(RedirectFindings, { ...props, severity: "error" }));
+    const out = html(createElement(RedirectFindings, { ...props, severity: "error", words: redirectsEn }));
     expect(out).toContain('href="/p?severity=error&page=1"');
     expect(out).toMatch(/aria-current="page"[^>]*>Errors</);
     expect(out).toContain('action="/admin/demo/redirects/import/j/problems" method="post"');
-    expect(html(createElement(RedirectFindings, { ...props, items: [], total: 0, severity: "warning" }))).toContain("No line has a finding of this kind.");
-    const paged = html(createElement(RedirectFindings, { ...props, total: 130, page: 2 }));
+    expect(html(createElement(RedirectFindings, { ...props, items: [], total: 0, severity: "warning", words: redirectsEn }))).toContain("No line has a finding of this kind.");
+    const paged = html(createElement(RedirectFindings, { ...props, total: 130, page: 2, words: redirectsEn }));
     expect(paged).toContain("Page 2 of 3");
     expect(paged).toContain("Earlier lines");
     expect(paged).toContain("Later lines");
@@ -233,7 +234,7 @@ describe("the import's screens", () => {
 
 describe("the redirect file's form", () => {
   it("posts to the page's file route with the choice of redirects and the format", () => {
-    const out = html(createElement(RedirectExportForm, { slug: "demo", exportWords: bookingsEn.exports }));
+    const out = html(createElement(RedirectExportForm, { slug: "demo", exportWords: bookingsEn.exports, words: redirectsEn }));
     expect(out).toContain('method="post"');
     expect(out).toContain('action="/admin/demo/redirects/export/file"');
     expect(out).toMatch(/name="scope" checked="" value="manual"/);

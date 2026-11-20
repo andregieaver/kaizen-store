@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redirects.en";
+import type { RedirectsMessages } from "@/lib/admin-messages/redirects.en";
 import { redirectPaths, redirectTabs, type RedirectTab } from "@/lib/redirect-admin";
 import { PageHeader } from "@/components/admin/ui";
 import { SelectNav } from "@/components/admin/select-nav";
@@ -17,14 +17,14 @@ export function RedirectsHead({
   title,
   intro,
   back,
-  words = redirectsEn,
+  words,
 }: {
   slug: string;
   active: RedirectTab;
   title: string;
   intro: ReactNode;
   back?: { href: string; label: string };
-  words?: RedirectsMessages;
+  words: RedirectsMessages;
 }) {
   const paths = redirectPaths(slug);
   return (
