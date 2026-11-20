@@ -48,6 +48,7 @@ import { settleOrderSessions } from "./draft-sessions";
 import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
 import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;
@@ -1464,6 +1465,7 @@ export type ExpireRun = { expired: number; paid: number; waiting: number };
  * goes back, its number STAYS on it, so the sequence has no gap) and the draft becomes `expired` (the order's own trigger). Idempotent; one failing draft never stops the others.
  */
 export async function expireDrafts(now: Date = new Date(), options: { limit?: number } = {}): Promise<ExpireRun> {
+  const report = jobReport();
   const run: ExpireRun = { expired: 0, paid: 0, waiting: 0 };
   const due = await typedRows(DUE_DRAFT_ROW, sql`
     select d.store_id, d.id, d.order_id from commerce.draft_orders d
@@ -1493,6 +1495,7 @@ export async function expireDrafts(now: Date = new Date(), options: { limit?: nu
       }
       run.expired += 1;
     } catch (error) {
+      report(error, "expire");
       log("error", "drafts.expire_failed", { draftId: String(row.id) }, error);
     }
   }

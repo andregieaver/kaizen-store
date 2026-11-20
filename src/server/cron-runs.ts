@@ -11,6 +11,7 @@ import { pooled } from "@/lib/job-pool";
 import { flushCacheEvents, inJob } from "./cache-events";
 import { cronAuthorised } from "./cron-auth";
 import { noteFirstRequest } from "./instance-start";
+import { withReport, type JobReport } from "./job-report";
 import { log } from "./log";
 import { textList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
@@ -23,15 +24,6 @@ type Row = Record<string, unknown>;
  * five-minute dispatcher runs each of its jobs through `runJobs()`: a job that throws, or reports an error it caught (`report()`, bloat
  * review step 1.26), is logged and recorded as failed, and the others finish.
  */
-
-/**
- * How a job tells of an error it caught so its other parts can go on: logged, and the run counted as failed once the job ends. `part` is a
- * fixed word for what failed, never a person's data.
- */
-export type JobReport = (error: unknown, part?: string) => void;
-
-/** The report a job's entry function uses outside the dispatcher (a test, a person's action): logged only. */
-export const logOnly: JobReport = (error, part) => log("error", "cron.job_part_failed", { part: part ?? null }, error);
 
 /** Writes a finished run. Never throws: a ledger that cannot be written must not stop the job it records. */
 async function record(job: string, everySeconds: number, started: Date, error: unknown | null): Promise<void> {
@@ -82,7 +74,7 @@ export async function tracked<T>(job: string, everySeconds: number, run: (report
     log("error", "cron.job_part_failed", { job, part: part ?? null }, error);
   };
   try {
-    const result = await inJob(job, () => run(report));
+    const result = await inJob(job, () => withReport(report, () => run(report)));
     // A part that failed and was reported: the run is failed, and still answers what its other parts did.
     const failed =
       reported.length === 0

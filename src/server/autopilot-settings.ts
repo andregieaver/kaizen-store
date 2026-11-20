@@ -19,6 +19,7 @@ import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * The owner's autonomy levels and budgets for the autopilot (D309, `docs/ai-autopilot.md` 7.4), the only writer of
@@ -167,6 +168,7 @@ export async function aiBudgetProblem(storeId: string | null, settings: Autonomy
  * budget of their own and the autopilot not paused. Never throws. Returns the emails sent.
  */
 export async function sendAutopilotBudgetAlerts(now: Date = new Date()): Promise<number> {
+  const report = jobReport();
   let sent = 0;
   try {
     const stores = await typedRows(
@@ -206,6 +208,7 @@ export async function sendAutopilotBudgetAlerts(now: Date = new Date()): Promise
       }
     }
   } catch (error) {
+    report(error, "budget-alerts");
     log("error", "autopilot.budget_alerts_failed", {}, error);
   }
   return sent;

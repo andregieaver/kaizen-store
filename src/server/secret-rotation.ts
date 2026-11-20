@@ -8,6 +8,7 @@ import { decryptSecret, encryptSecret, keyId, parseKey, previousKeys } from "@/l
 
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Moving every kept secret to the current settings key (PSI SEC-06, `docs/runbooks/key-rotation.md`). While
@@ -74,6 +75,7 @@ export async function reencryptSecrets(
   older: Buffer[] = previousKeys(),
   batch = BATCH,
 ): Promise<{ moved: number; failed: number; left: number }> {
+  const report = jobReport();
   if (!key || older.length === 0) return { moved: 0, failed: 0, left: 0 };
   const columns = await secretColumns();
   let moved = 0;
@@ -91,7 +93,8 @@ export async function reencryptSecrets(
       let fresh: string;
       try {
         fresh = encryptSecret(decryptSecret(row.kept, key, older), key, "v2");
-      } catch {
+      } catch (error) {
+        report(error, "rotation-unreadable");
         failed += 1;
         log("warn", "secrets.rotation_unreadable", { table: column.table, column: column.column });
         continue;

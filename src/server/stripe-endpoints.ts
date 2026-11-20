@@ -10,6 +10,7 @@ import { siteUrl } from "@/lib/site";
 import { log } from "./log";
 import { connectWebhookUrl, platformStripe, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /** What moving one of Kaizena Flow's Stripe endpoints needs: the classic endpoints and the v2 event destination take their address apart. */
 export type EndpointMover = {
@@ -36,6 +37,7 @@ const ROW = z.object({ mode: col.text, kind: col.text, endpoint_id: col.text, ur
  * (a `vercel.app` or local address) moves nothing. Returns how many endpoints were moved.
  */
 export async function keepStripeWebhooksCurrent(movers: (mode: PaymentModeName) => EndpointMover | null = moverFor): Promise<number> {
+  const report = jobReport();
   const origin = siteUrl();
   if (!origin.startsWith("https://") || origin.endsWith(".vercel.app")) return 0;
   const rows = await typedRows(ROW, sql`select mode, kind, endpoint_id, url from commerce.platform_webhooks where provider = 'stripe' order by mode, kind`);
@@ -56,6 +58,7 @@ export async function keepStripeWebhooksCurrent(movers: (mode: PaymentModeName) 
       log("info", "stripe.webhook_moved", { mode, kind });
       moved++;
     } catch (error) {
+      report(error, "webhook-move");
       log("error", "stripe.webhook_move_failed", { mode, kind }, error);
     }
   }

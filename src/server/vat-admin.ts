@@ -17,6 +17,7 @@ import {
 import { audit, type Account } from "./auth";
 import { CATALOG_TAG } from "./catalog";
 import { listVatCategories, ratesNow } from "./vat-categories";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -359,6 +360,7 @@ export const VAT_MIDNIGHT_MINUTES = 10;
  * no state: within the window it may refresh twice. Never throws: whether it refreshed.
  */
 export async function refreshVatLabelsAtMidnight(): Promise<{ refreshed: boolean }> {
+  const report = jobReport();
   try {
     const [row] = await db().execute<Row>(sql`
       select exists (
@@ -371,7 +373,8 @@ export async function refreshVatLabelsAtMidnight(): Promise<{ refreshed: boolean
     if (!row?.due) return { refreshed: false };
     revalidateTag(CATALOG_TAG, "max");
     return { refreshed: true };
-  } catch {
+  } catch (error) {
+    report(error, "midnight-check");
     return { refreshed: false };
   }
 }

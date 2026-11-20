@@ -24,6 +24,7 @@ import { GIFT_CARD_LINE, PAID, dayOf, soldIn } from "./analytics-sql";
 import { log } from "./log";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`): the only writer of `commerce.autopilot_effects`. Once an hour the
@@ -38,6 +39,7 @@ export type EffectRun = { measured: number; waiting: number; skipped: number };
 
 /** The hourly part of the five-minute dispatcher (`runJobs()`): a few changes measured, each in its own try so one store cannot stop the rest. */
 export async function measureAutopilotEffects(options: { now?: Date; limit?: number; everyRun?: boolean } = {}): Promise<EffectRun> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const run: EffectRun = { measured: 0, waiting: 0, skipped: 0 };
   // Once an hour is enough: a change waits two weeks anyway.
@@ -68,6 +70,7 @@ export async function measureAutopilotEffects(options: { now?: Date; limit?: num
       const outcome = await measureOne(store, row.id, tool, row.args, row.created_at, now);
       run[outcome]++;
     } catch (error) {
+      report(error, "effect");
       run.skipped++;
       log("error", "autopilot.effect_failed", { store: row.store_id, audit: row.id }, error);
     }

@@ -50,6 +50,7 @@ import { connectWebhookUrl, platformStripe, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import { normaliseEmail } from "@/lib/email-address";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -233,6 +234,7 @@ async function unheardCheckouts(): Promise<number> {
 
 /** Runs every probe, keeps what was measured, emails platform admins when a component has just failed twice, and prunes. Never throws. */
 export async function runStatusChecks(probes: Probes = PROBES): Promise<{ measured: number; failed: number; alerts: number }> {
+  const report = jobReport();
   let measured = 0;
   let failedCount = 0;
   let alerts = 0;
@@ -256,6 +258,7 @@ export async function runStatusChecks(probes: Probes = PROBES): Promise<{ measur
         if (await alertAdmins(component)) alerts++;
       }
     } catch (error) {
+      report(error, "record");
       log("error", "status.record_failed", { component }, error);
     }
   }
@@ -265,6 +268,7 @@ export async function runStatusChecks(probes: Probes = PROBES): Promise<{ measur
       delete from commerce.status_subscribers where confirmed_at is null and created_at < now() - interval '7 days'
     `);
   } catch (error) {
+    report(error, "prune");
     log("error", "status.prune_failed", {}, error);
   }
   if (measured > 0) refreshStatus();

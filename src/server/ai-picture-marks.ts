@@ -11,6 +11,7 @@ import { log } from "./log";
 import { downloadStoredFile, overwriteStoredFile } from "./media";
 import { col, typedRows } from "./typed-rows";
 import { loadSharp } from "./sharp-load";
+import { jobReport } from "./job-report";
 
 /**
  * The AI pictures made before their files were marked (AI Act Art. 50(2), `docs/ai-act.md`): each is given IPTC's digital source type in
@@ -42,6 +43,7 @@ async function markFile(storage: Storage, bucket: string, path: string, source: 
 
 /** Marks up to `MARKS_PER_RUN` unmarked AI pictures. Returns how many were marked, found marked, and failed. */
 export async function markAiPictures(deps: { storage?: Storage; limit?: number } = {}): Promise<{ marked: number; found: number; failed: number }> {
+  const report = jobReport();
   const storage = deps.storage ?? STORAGE;
   const rows = await typedRows(
     z.object({ id: col.uuid, bucket: col.text, path: col.text, thumbnail_path: col.textOrNull, medium_path: col.textOrNull, made_by: col.text }),
@@ -68,6 +70,7 @@ export async function markAiPictures(deps: { storage?: Storage; limit?: number }
       if (outcomes.every((outcome) => outcome === "found")) counts.found += 1;
       else counts.marked += 1;
     } catch (error) {
+      report(error, "mark");
       counts.failed += 1;
       log("error", "ai_pictures.mark_failed", { mediaId: row.id }, error);
     }

@@ -16,6 +16,7 @@ import { sendEmail } from "./email";
 import { log } from "./log";
 import { sendPlatformPush } from "./push";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * The stall watch (`docs/100-day-challenge.md` A6): every challenge store's stalls (`STALL_KINDS`), found in SQL, and each told to the platform
@@ -81,6 +82,7 @@ export async function findChallengeStalls(now: Date = new Date()): Promise<Stall
 
 /** Tells the platform admins of each stall, in their language, once a day while it lasts. Returns the emails sent. */
 export async function sendChallengeStallAlerts(now: Date = new Date()): Promise<number> {
+  const report = jobReport();
   let sent = 0;
   try {
     const stalls = await findChallengeStalls(now);
@@ -136,6 +138,7 @@ export async function sendChallengeStallAlerts(now: Date = new Date()): Promise<
       }
     }
   } catch (error) {
+    report(error, "stall-alerts");
     log("error", "challenge.stall_alerts_failed", {}, error);
   }
   return sent;

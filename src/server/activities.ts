@@ -13,6 +13,7 @@ import { sendActivityPush } from "./push";
 import { uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Activities (S3 of `docs/own-books-and-sales.md`, D468): the one reader and writer of a store's calls, meetings and tasks. Read by
@@ -228,6 +229,7 @@ const PUSHES_PER_RUN = 200;
  * is told on their devices for the store, once. Never throws. Returns how many were told.
  */
 export async function runActivityPushes(now: Date = new Date(), send: Parameters<typeof sendActivityPush>[3] = undefined): Promise<number> {
+  const report = jobReport();
   try {
     const due = await typedRows(
       z.object({ id: col.uuid, store_id: col.uuid, assignee_id: col.uuid.nullable() }),
@@ -251,6 +253,7 @@ export async function runActivityPushes(now: Date = new Date(), send: Parameters
     }
     return told;
   } catch (error) {
+    report(error, "push");
     log("error", "activities.push_failed", {}, error);
     return 0;
   }

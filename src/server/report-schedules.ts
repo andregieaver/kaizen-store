@@ -36,6 +36,7 @@ import { getSavedReport } from "./saved-reports";
 import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
 import { getStore } from "./stores";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Saved reports emailed on a schedule (wave 12 unit A, D395). The only writer of `commerce.report_schedules`. A schedule names one of the
@@ -244,6 +245,7 @@ const dueRow = z.object({
  * member who may read analytics gets it in their own language, once (keyed by schedule, day and account). Never throws.
  */
 export async function sendScheduledReports(options: { now?: Date; send?: typeof sendEmail } = {}): Promise<{ schedules: number; emails: number }> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const send = options.send ?? sendEmail;
   const out = { schedules: 0, emails: 0 };
@@ -256,6 +258,7 @@ export async function sendScheduledReports(options: { now?: Date; send?: typeof 
       where s.enabled and commerce.store_is_active(s.store_id)
     `);
   } catch (error) {
+    report(error, "read");
     log("error", "report_schedules.read_failed", {}, error);
     return out;
   }
@@ -295,6 +298,7 @@ export async function sendScheduledReports(options: { now?: Date; send?: typeof 
       }
       out.schedules++;
     } catch (error) {
+      report(error, "send");
       log("error", "report_schedules.send_failed", { store: row.store_id, schedule: row.id }, error);
     }
   }

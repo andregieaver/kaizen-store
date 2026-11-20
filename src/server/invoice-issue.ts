@@ -11,6 +11,7 @@ import { log } from "./log";
 import { col, typedRow } from "./typed-rows";
 import { reconcilePendingRefunds } from "./stripe-refunds";
 import { ensureSubscriptionEvents } from "./subscriptions";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -143,9 +144,13 @@ export type InvoiceJobsResult = {
  * Never throws.
  */
 export async function invoiceJobs(): Promise<InvoiceJobsResult> {
+  const report = jobReport();
   const result: InvoiceJobsResult = { stores: 0, invoices: 0, refundsCompleted: 0, notices: 0 };
   try {
-    await Promise.all([ensureSubscriptionEvents("test"), ensureSubscriptionEvents("live")]).catch(() => undefined);
+    await Promise.all([ensureSubscriptionEvents("test"), ensureSubscriptionEvents("live")]).catch((error: unknown) => {
+      report(error, "subscription-events");
+      return undefined;
+    });
     result.refundsCompleted = (await reconcilePendingRefunds()).updated;
     const stores = await storesWithDocumentWork();
     result.stores = stores.length;
@@ -157,6 +162,7 @@ export async function invoiceJobs(): Promise<InvoiceJobsResult> {
     }
     result.notices = await sendPendingDocumentNotices();
   } catch (error) {
+    report(error, "job");
     log("error", "invoices.job_failed", {}, error);
   }
   return result;

@@ -41,6 +41,7 @@ import { cookieValue, verifiedTags } from "./signal-tags";
 import { textList } from "./sql-arrays";
 import { getOpenStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Recordings of visits on the server (D656, `docs/heatmaps-and-recordings.md` 8.2 and 8.3): a segment from the storefront's recorder is
@@ -316,6 +317,7 @@ async function segmentEvents(files: RecordingFiles, path: string): Promise<unkno
  * is one query.
  */
 export async function sealRecordings({ deadline }: { deadline: number }, deps: RecordingDeps = {}): Promise<{ sealed: number }> {
+  const report = jobReport();
   const files = filesOf(deps);
   if (!files) {
     log("warn", "recordings.no_storage", { action: "seal" });
@@ -362,6 +364,7 @@ export async function sealRecordings({ deadline }: { deadline: number }, deps: R
       await files.remove(seqs.map((seq) => segmentPath(row.store_id, row.id, seq)));
       sealed++;
     } catch (error) {
+      report(error, "seal");
       log("warn", "recordings.seal_failed", { storeId: row.store_id }, error);
     }
   }

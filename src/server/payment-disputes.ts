@@ -9,6 +9,7 @@ import { disputeRecord, reminderDue, type DisputeLike, type DisputeRecord, type 
 import { readMissingPaymentFacts } from "./payment-facts";
 import { paymentOfIntent } from "./stripe-refunds";
 import { sendDisputeAlert } from "./staff-alerts";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -154,18 +155,28 @@ export async function runPaymentJobs(): Promise<{
   payouts: { stores: number; payouts: number; lines: number; failed: number };
   terms: { reminded: number; overdue: number };
 }> {
+  const report = jobReport();
   const { runCaptureJobs } = await import("./payment-capture");
   const { runPayoutJobs } = await import("./payouts");
   const { runTermsJobs } = await import("./payment-terms");
   const [facts, reminders, holds, payouts, terms] = await Promise.all([
-    readMissingPaymentFacts().catch(() => ({ read: 0 })),
-    sendDueDisputeReminders().catch(() => ({ sent: 0 })),
+    readMissingPaymentFacts().catch((error: unknown) => {
+      report(error, "payment-facts");
+      return { read: 0 };
+    }),
+    sendDueDisputeReminders().catch((error: unknown) => {
+      report(error, "dispute-reminders");
+      return { sent: 0 };
+    }),
     // Held cards (D289): staff told a day before a hold ends, and a hold past its deadline settled from what Stripe says.
     runCaptureJobs(),
     // Payouts (D290): each store's read back once a day, a few stores a run, and paid payouts whose lines are unread.
     runPayoutJobs(),
     // Payment terms (D293): the reminder three days before an invoice is due and the notice the day after.
-    runTermsJobs().catch(() => ({ reminded: 0, overdue: 0 })),
+    runTermsJobs().catch((error: unknown) => {
+      report(error, "payment-terms");
+      return { reminded: 0, overdue: 0 };
+    }),
   ]);
   return { facts: facts.read, reminders: reminders.sent, holds, payouts, terms };
 }

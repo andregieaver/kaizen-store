@@ -20,6 +20,7 @@ import { openPaymentSession, paymentConnection } from "./payment-session";
 import { sendApprovalDecided, sendApprovalWaiting } from "./shopper-emails";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Company approvals (wave 6 unit C2, D321, `docs/wave-6-catalogue.md` C.2): an orderer's order over the company's limit is placed by `placeOrder()`
@@ -209,6 +210,7 @@ export async function startApprovedPayment(shop: { store: Store; market: Market 
 
 /** Cancels the orders that waited for approval, or for payment after it, longer than `APPROVAL_DAYS`: their stock and anything held go back. */
 export async function expireApprovals({ limit = 100 }: { limit?: number } = {}): Promise<number> {
+  const report = jobReport();
   const rows = await typedRows(z.object({ id: col.uuid, store_id: col.uuid }), sql`
     select id, store_id from commerce.orders
     where status = 'pending_payment' and approval in ('waiting', 'approved') and copied_from is null
@@ -221,6 +223,7 @@ export async function expireApprovals({ limit = 100 }: { limit?: number } = {}):
     try {
       if (await cancelUnpaidOrder(row.store_id, row.id, "the company's approval or payment took too long")) cancelled++;
     } catch (error) {
+      report(error, "expire");
       log("error", "approvals.expire_failed", { orderId: row.id }, error);
     }
   }

@@ -61,6 +61,7 @@ import { audit, holderOf, type Membership } from "./auth";
 import { log } from "./log";
 import { getTripletexConnection } from "./tripletex";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Our own ledger (B2 of `docs/own-books-and-sales.md`, D478), step 1: a store's books opened, entries posted, reversed and locked, and the
@@ -1059,6 +1060,7 @@ export async function ledgerBooksDue() {
 }
 
 export async function runLedgerPosting(options: { budgetMs?: number; limit?: number } = {}): Promise<{ books: number; posted: number; waiting: number; compared: number }> {
+  const report = jobReport();
   const deadline = Date.now() + (options.budgetMs ?? BUDGET_MS);
   const limit = options.limit ?? DOCS_A_ROUND;
   const books = await ledgerBooksDue();
@@ -1081,6 +1083,7 @@ export async function runLedgerPosting(options: { budgetMs?: number; limit?: num
       behind = r.posted + r.waiting >= limit || c >= COMPARE_A_ROUND || Date.now() > deadline;
       done += 1;
     } catch (error) {
+      report(error, "posting");
       log("error", "ledger.posting_failed", { storeId: book.store_id, bookId: book.id }, error);
     }
     marks.push({ id: book.id, storeId: book.store_id, behind, at: book.listed_at });
@@ -1100,6 +1103,7 @@ export async function runLedgerPosting(options: { budgetMs?: number; limit?: num
     try {
       await matchAllBankStatements(deadline);
     } catch (error) {
+      report(error, "matching");
       log("error", "bank.matching_failed", {}, error);
     }
   }

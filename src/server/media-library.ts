@@ -20,6 +20,7 @@ import { copyStoredFile, removeStoredFiles, storedVideo, uploadProductImage, typ
 import { storageRefusal } from "./limits";
 import { getStore } from "./stores";
 import { owned } from "./owned";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -892,6 +893,7 @@ export async function embedMedia(owner: MediaOwner, connection: AiConnection, li
  * a changed embedding model and a site that got its AI later (bloat review step 0.28).
  */
 export async function refreshMediaEmbeddings(options: { now?: Date; full?: boolean } = {}): Promise<{ sites: number; embedded: number }> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const full = options.full ?? now.getUTCMinutes() < 5;
   const owners = await db().execute<Row>(
@@ -916,6 +918,7 @@ export async function refreshMediaEmbeddings(options: { now?: Date; full?: boole
       const connection = await aiFor(owner.storeId, { feature: "media" });
       if (connection) embedded += (await embedMedia(owner, connection)).embedded;
     } catch (error) {
+      report(error, "store");
       console.warn(`[media] refresh failed for ${owner.storeSlug ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

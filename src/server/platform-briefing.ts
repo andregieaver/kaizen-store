@@ -44,6 +44,7 @@ import { currentFlags } from "./platform-flags";
 import { getStore } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { OPEN_QUESTION } from "./unanswered-questions";
+import { jobReport } from "./job-report";
 
 /**
  * The platform's own figures, targets, alerts and morning briefing (C2 of `docs/platform-parity-plan.md`, D513, `src/lib/platform-briefing.ts`):
@@ -275,6 +276,7 @@ export function alertText(alert: PlatformAlert, lang: AdminLang): string {
  * once; never throws.
  */
 export async function sendPlatformBriefing(options: { now?: Date } = {}): Promise<{ sent: number }> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   try {
     const setting = await typedRow(z.object({ briefing: col.text, last: col.textOrNull }), sql`select briefing, briefing_last_period as last from commerce.platform_settings limit 1`);
@@ -331,6 +333,7 @@ export async function sendPlatformBriefing(options: { now?: Date } = {}): Promis
     }
     return { sent };
   } catch (error) {
+    report(error, "failed");
     log("error", "platform_briefing.failed", {}, error);
     return { sent: 0 };
   }

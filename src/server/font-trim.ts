@@ -12,6 +12,7 @@ import { installedWeightRange } from "@/lib/fonts";
 import { findFont } from "./fonts";
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Self-hosted fonts cut to the weights a site uses (D59, `docs/performance.md`, Fonts found late). Google sends a variable family's
@@ -49,6 +50,7 @@ const fileRow = z.object({ name: col.text, data: z.custom<Uint8Array>((value) =>
  * one already within them, one no stylesheet names) is marked as it is; one HarfBuzz fails on is logged and marked, and stays whole.
  */
 export async function trimFontFiles(now = Date.now): Promise<{ trimmed: number; kept: number; saved: number }> {
+  const report = jobReport();
   const until = now() + RUN_MS;
   const rows = await typedRows(
     fileRow,
@@ -70,6 +72,7 @@ export async function trimFontFiles(now = Date.now): Promise<{ trimmed: number; 
     try {
       cut = font ? await trimFontFile(row.data, installedWeightRange(font)) : null;
     } catch (error) {
+      report(error, "trim");
       log("warn", "fonts.trim_failed", { file: row.name }, error);
     }
     if (cut) {

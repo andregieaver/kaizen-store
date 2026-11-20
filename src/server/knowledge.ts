@@ -19,6 +19,7 @@ import { blogsNow } from "./blogs";
 import { owned } from "./owned";
 import { uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -408,6 +409,7 @@ async function sitesWithWork(): Promise<(string | null)[]> {
  * and passages that waited more than an hour for a vector.
  */
 export async function refreshKnowledge(options: { now?: Date; full?: boolean } = {}): Promise<{ sites: number; cut: number; embedded: number }> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const full = options.full ?? now.getUTCMinutes() < 5;
   let sites: (string | null)[];
@@ -425,6 +427,7 @@ export async function refreshKnowledge(options: { now?: Date; full?: boolean } =
       const connection = await aiFor(storeId, { feature: "knowledge" });
       if (connection) embedded += (await embedKnowledge(storeId, connection)).embedded;
     } catch (error) {
+      report(error, "store");
       console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

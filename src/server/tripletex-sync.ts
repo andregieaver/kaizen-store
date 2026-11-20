@@ -23,6 +23,7 @@ import { getTripletexConnection, readChart, tripletexAttention, tripletexCredent
 import { listAll, openSession, type TripletexDeps, type TripletexSession } from "./tripletex-client";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { workEvent } from "./work";
+import { jobReport } from "./job-report";
 
 /**
  * Tripletex (D453): sending a store's documents, the only writer of `commerce.tripletex_sync`. Every five minutes, per store
@@ -644,6 +645,7 @@ async function noteConnection(storeId: string, problem: string | null): Promise<
  * Tripletex never holds the dispatcher up. Never throws.
  */
 export async function syncDueTripletex(options: SyncOptions = {}): Promise<TripletexRun> {
+  const report = jobReport();
   const run: TripletexRun = { stores: 0, sent: 0, adopted: 0, failed: 0, blocked: 0, waiting: 0, attached: 0, alerted: 0 };
   const deadline = Date.now() + (options.budgetMs ?? BUDGET_MS);
   let stores: { id: string; timeZone: string }[];
@@ -655,6 +657,7 @@ export async function syncDueTripletex(options: SyncOptions = {}): Promise<Tripl
     );
     stores = rows.map((r) => ({ id: r.store_id, timeZone: r.time_zone })).filter((store) => !options.storeIds || options.storeIds.includes(store.id));
   } catch (error) {
+    report(error, "run");
     log("error", "tripletex.run_failed", {}, error);
     return run;
   }
@@ -664,6 +667,7 @@ export async function syncDueTripletex(options: SyncOptions = {}): Promise<Tripl
     try {
       await syncStore(store.id, options, run, deadline);
     } catch (error) {
+      report(error, "store");
       log("error", "tripletex.store_failed", { storeId: store.id }, error);
     }
     // What needs a person, told once a day while it lasts (the alert's own recipients, owners by default).
@@ -674,6 +678,7 @@ export async function syncDueTripletex(options: SyncOptions = {}): Promise<Tripl
         if (sent && sent.sent > 0) run.alerted += 1;
       }
     } catch (error) {
+      report(error, "alert");
       log("error", "tripletex.alert_failed", { storeId: store.id }, error);
     }
   }

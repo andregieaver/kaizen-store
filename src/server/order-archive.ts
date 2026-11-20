@@ -11,6 +11,7 @@ import { audit } from "./auth";
 import { log } from "./log";
 import { SYSTEM_ACTOR, writeOrderEvent, type OrderActor } from "./order-actor";
 import { uuidList } from "./sql-arrays";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -114,6 +115,7 @@ export type AutoArchiveRun = { stores: number; archived: number };
  * and run that archived something (a count, never numbers). The candidate query excludes what `archiveBlock()` would refuse, so orders that need sending cannot crowd the batch out.
  */
 export async function archiveFinishedOrders(now: Date = new Date(), options: { storeId?: string } = {}): Promise<AutoArchiveRun> {
+  const report = jobReport();
   const stores = await db().execute<Row>(sql`
     select s.id, os.auto_archive_days
     from commerce.order_settings os
@@ -150,6 +152,7 @@ export async function archiveFinishedOrders(now: Date = new Date(), options: { s
         await audit(null, storeId, ORDER_AUDIT_ACTIONS.bulkArchived, { count: archived, automatic: true, days });
       }
     } catch (error) {
+      report(error, "auto-archive");
       log("error", "orders.auto_archive_failed", { storeId }, error);
     }
   }

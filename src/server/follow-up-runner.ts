@@ -20,6 +20,7 @@ import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
+import { jobReport } from "./job-report";
 
 /**
  * Gives the AI manager's follow-ups back to it when they are due (PSI AGT-04, AGT-11), from the five-minute dispatcher: a few at a time,
@@ -62,6 +63,7 @@ export type FollowUpDeps = {
 export type FollowUpRun = { answered: number; retried: number; failed: number; cancelled: number; waiting: number };
 
 export async function runFollowUps(deps: FollowUpDeps = {}): Promise<FollowUpRun> {
+  const report = jobReport();
   const now = deps.now ?? (() => new Date());
   const result: FollowUpRun = { answered: 0, retried: 0, failed: 0, cancelled: 0, waiting: 0 };
   // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
@@ -82,6 +84,7 @@ export async function runFollowUps(deps: FollowUpDeps = {}): Promise<FollowUpRun
     try {
       result[await runOne(item, deps, now)]++;
     } catch (error) {
+      report(error, "failed");
       log("error", "follow_up.failed", { followUp: item.id }, error);
       await db().execute(sql`update commerce.assistant_follow_ups set claimed_until = null where id = ${item.id}::uuid`);
       result.retried++;

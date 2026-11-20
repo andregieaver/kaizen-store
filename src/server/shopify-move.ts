@@ -38,6 +38,7 @@ import { issueLeftGiftCard, issueReadGiftCard, lowerSpentOnShopify, lowerSpentOn
 import { addressView, type AddressDeps } from "./shopify-address";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { db } from "@/db/client";
+import { jobReport } from "./job-report";
 
 /**
  * Move day, part 1 (D445 step 7a, `docs/moving-from-shopify.md` 4.6, the steps in `src/lib/shopify-move.ts`): *Ready to move?*, then
@@ -245,6 +246,7 @@ export async function advanceMove(member: Membership, deps: MoveDeps = {}): Prom
  * the owner who asked (an owner who is no longer one, or a disabled account, ends it untouched). One store never stops the others.
  */
 export async function runDueMoves(deps: MoveDeps = {}): Promise<{ started: number; moved: number }> {
+  const report = jobReport();
   const now = (deps.now ?? (() => new Date()))();
   const rows = await typedRows(
     z.object({ store_id: col.uuid, slug: col.text, move: z.unknown() }),
@@ -290,6 +292,7 @@ export async function runDueMoves(deps: MoveDeps = {}): Promise<{ started: numbe
       }
       if ((await rowOf(row.store_id))?.move.status === "moved") totals.moved += 1;
     } catch (error) {
+      report(error, "move-run");
       log("error", "shopify.move_run_failed", { storeId: row.store_id }, error);
     }
   }

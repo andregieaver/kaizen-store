@@ -23,6 +23,7 @@ import { heldBy, OwnerToolError, runOwnerTool } from "./owner-tools";
 import { refreshTag } from "./refresh";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * The store decides the autopilot's tests of its own changes (ecosystem plan E4.1, D729), by code from each test's verdict (`testAction()`),
@@ -181,6 +182,7 @@ async function decideOne(r: Open, run: DecideRun, now: Date, paused: boolean): P
 
 /** The hourly decisions (the dispatcher's job `autopilotTests`, in the first five minutes of each hour, after the tests' own checks). */
 export async function decideAutopilotTests(options: { now?: Date; everyRun?: boolean } = {}): Promise<DecideRun> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const run: DecideRun = { applied: 0, asked: 0, kept: 0, left: 0, waiting: 0 };
   if (!options.everyRun && now.getUTCMinutes() >= 5) return run;
@@ -204,10 +206,12 @@ export async function decideAutopilotTests(options: { now?: Date; everyRun?: boo
       try {
         await decideOne(r, run, now, paused);
       } catch (error) {
+        report(error, "test-decision");
         log("error", "autopilot.test_decision_failed", { storeId: r.store_id, experimentId: r.experiment_id }, error);
       }
     }
   } catch (error) {
+    report(error, "test-decisions");
     log("error", "autopilot.test_decisions_failed", {}, error);
   }
   return run;

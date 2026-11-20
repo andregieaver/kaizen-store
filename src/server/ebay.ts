@@ -29,6 +29,7 @@ import { log } from "./log";
 import { NO_ACCESS, checkPermission, memberCan } from "./permissions";
 import { setStockContext } from "./stock-context";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * eBay as a sales channel (D555, `src/lib/ebay.ts`): the owner connects the store's eBay seller account on eBay's consent page; Kaizena Flow keeps
@@ -475,6 +476,7 @@ export async function markEbayOrderSent(member: Membership, orderId: string, car
 
 /** The five-minute job: for each connected store, orders fetched and listings sent (a few stores a run, the oldest synced first). */
 export async function runEbayJobs(deps: EbayDeps = {}): Promise<{ stores: number; orders: number; listed: number }> {
+  const report = jobReport();
   if (!ebayOffered(deps)) return { stores: 0, orders: 0, listed: 0 };
   const stores = await typedRows(
     z.object({ store_id: col.uuid }),
@@ -487,6 +489,7 @@ export async function runEbayJobs(deps: EbayDeps = {}): Promise<{ stores: number
       orders += await importEbayOrders(storeId, deps);
       listed += (await syncEbayListings(storeId, deps)).listed;
     } catch (error) {
+      report(error, "job");
       log("error", "ebay.job_failed", { storeId }, error);
     }
   }

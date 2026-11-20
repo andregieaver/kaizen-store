@@ -16,6 +16,7 @@ import { log } from "./log";
 import { allowPrivate } from "./replicate-fetch";
 import { uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * The domain watch (ecosystem plan E4.2, D729): each active domain of an open store, the house store's too, and Kaizena Flow's own host
@@ -135,6 +136,7 @@ const DUE = z.object({ id: col.uuid.nullable(), store_id: col.uuid.nullable(), h
  * is not a store's. Never throws for one domain.
  */
 export async function watchDomains(deps: WatchDeps & { site?: string | null } = {}): Promise<{ checked: number; failing: number }> {
+  const report = jobReport();
   const now = deps.now ?? new Date();
   const probe = deps.probe ?? httpsProbe;
   const rdap = deps.rdap ?? publicRdap;
@@ -194,6 +196,7 @@ export async function watchDomains(deps: WatchDeps & { site?: string | null } = 
           out.checked++;
           if (serving === "certificate" || serving === "elsewhere") out.failing++;
         } catch (error) {
+          report(error, "failed");
           log("warn", "domain_watch.failed", d.site ? { site: true } : { domain: d.id, store: d.store_id }, error);
         }
       }),

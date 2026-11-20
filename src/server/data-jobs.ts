@@ -47,6 +47,7 @@ import { applyCustomerImport, checkCustomerImport, customerDryCountsOf, customer
 import { applyInventoryImport, checkInventoryImport, countInventoryExportRows, inventoryDryCountsOf, inventoryExportReader, inventoryProblemsCsv, parseInventoryExportOptions, registerInventoryImport, runInventoryApply, runInventoryCheck, startInventoryUpload, type InventoryExportOptions } from "./inventory-jobs";
 import { storeOf } from "./product-data";
 import type { Store } from "./stores";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -349,6 +350,7 @@ export async function tickJob(member: Membership, jobId: string, deps: DataDeps 
 
 /** The five-minute job's share: takes up jobs nobody holds, for as long as there is time. Never throws. */
 export async function runDataJobs(deps: DataDeps = {}): Promise<{ ran: number; done: number; failed: number }> {
+  const report = jobReport();
   const totals = { ran: 0, done: 0, failed: 0 };
   try {
     const until = Date.now() + (deps.budgetMs ?? DATA_JOB_BUDGET_MS) * 2;
@@ -366,6 +368,7 @@ export async function runDataJobs(deps: DataDeps = {}): Promise<{ ran: number; d
       if (outcome === "failed") totals.failed += 1;
     }
   } catch (error) {
+    report(error, "run");
     log("error", "data_jobs.run_failed", {}, error);
   }
   return totals;
