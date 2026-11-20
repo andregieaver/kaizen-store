@@ -11,14 +11,6 @@ export type GiftCardState = "waiting" | "active" | "spent" | "expired" | "deacti
 
 export const GIFT_CARD_STATES: readonly GiftCardState[] = ["active", "waiting", "spent", "expired", "deactivated"];
 
-export const STATE_WORDS: Record<GiftCardState, string> = {
-  waiting: "Not sent yet",
-  active: "Active",
-  spent: "Spent",
-  expired: "Expired",
-  deactivated: "Deactivated",
-};
-
 export const STATE_SIGNAL: Record<GiftCardState, "positive" | "warning" | "neutral" | "danger"> = {
   waiting: "warning",
   active: "positive",
@@ -37,18 +29,6 @@ export function cardState(card: CardFacts, now: Date = new Date()): GiftCardStat
   if (card.balanceMinor <= 0) return "spent";
   return "active";
 }
-
-/** A ledger entry's kind in the words a card's page uses. */
-export const ENTRY_WORDS: Record<string, string> = {
-  issue: "Issued",
-  hold: "Held for an order",
-  release: "Given back: the order was not paid",
-  spend: "Spent on an order",
-  refund: "Refunded back to the card",
-  adjust: "Changed by staff",
-  expire: "Expired",
-  void: "Deactivated",
-};
 
 /** The expiry choices the settings offer: 12 to 120 months (the database's range), or none. */
 export const EXPIRY_CHOICES: readonly (number | null)[] = [12, 24, 36, 48, 60, 120, null];
