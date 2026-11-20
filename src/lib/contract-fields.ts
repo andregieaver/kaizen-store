@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-import { CONTRACT_FIELDS, type ContractField } from "./contract-field-keys";
-import { contractDoc, contractDocText, fillContractDoc } from "./contract-rich";
+import { CONTRACT_FIELDS, contractDoc, contractDocText, fillContractDoc, type ContractField } from "./contract-rich";
 import type { RichTextDoc } from "./rich-text-doc";
 
 /**
@@ -17,7 +16,7 @@ export const CONTRACT_TEXT_MAX = 20_000;
 export const CONTRACT_HEADING_MAX = 200;
 export const CONTRACT_BLOCKS_MAX = 200;
 
-export { CONTRACT_FIELDS, type ContractField } from "./contract-field-keys";
+export { CONTRACT_FIELDS, type ContractField } from "./contract-rich";
 const isField = (key: string): key is ContractField => (CONTRACT_FIELDS as readonly string[]).includes(key);
 
 /** `{customer.name}`: a field's key in braces, letters, dots and underscores. */
