@@ -81,13 +81,12 @@ function marked(storeId: string, { show = "all", q = "" }: ProductListFilter): S
 const viewWhere = (show: ProductShow): SQL => (show === "stock" ? sql`needs_stock` : sql`true`);
 
 /**
- * The list's order over the rows aliased `a`: in All, what costs sales first (sold out, then drafts, round 8, D626), then the most recently
+ * The list's order over `marked`'s rows: in All, what costs sales first (sold out, then drafts, round 8, D626), then the most recently
  * changed; the handle and the id last, so a page's edge never loses or repeats a product.
  */
-function order(a: string, show: ProductShow, soldOutFirst: boolean): SQL {
-  const t = sql.raw(a);
-  const first = soldOutFirst && show === "all" ? sql`${t}.sold_out desc, (${t}.status = 'draft') desc, ` : sql``;
-  return sql`${first}${t}.updated_at desc, ${t}.handle, ${t}.id`;
+function order(show: ProductShow, soldOutFirst: boolean): SQL {
+  const first = soldOutFirst && show === "all" ? sql`sold_out desc, (status = 'draft') desc, ` : sql``;
+  return sql`${first}updated_at desc, handle, id`;
 }
 
 const IDS_ROW = z.object({ id: col.uuid, total: col.int });
@@ -96,8 +95,8 @@ const IDS_ROW = z.object({ id: col.uuid, total: col.int });
 export async function productIdsOf(storeId: string, filter: ProductListFilter, limit: number): Promise<{ ids: string[]; total: number }> {
   const rows = await typedRows(IDS_ROW, sql`
     with ${marked(storeId, filter)}
-    select m.id, count(*) over ()::int as total from marked m where ${viewWhere(filter.show ?? "all")}
-    order by ${order("m", filter.show ?? "all", true)}
+    select id, count(*) over ()::int as total from marked where ${viewWhere(filter.show ?? "all")}
+    order by ${order(filter.show ?? "all", true)}
     limit ${limit}
   `);
   return { ids: rows.map((r) => r.id), total: rows[0]?.total ?? 0 };
@@ -135,8 +134,9 @@ export async function adminProductPage(
   const rows = await typedRows(PRODUCT_ROW, sql`
     with ${marked(store.id, { show, q })},
     page as (
-      select m.*, count(*) over ()::int as total from marked m where ${viewWhere(show)}
-      order by ${order("m", show, soldOutFirst)}
+      select marked.*, count(*) over ()::int as total, row_number() over (order by ${order(show, soldOutFirst)}) as n
+      from marked where ${viewWhere(show)}
+      order by n
       ${limit === null ? sql`` : sql`limit ${limit} offset ${offset}`}
     )
     select pg.id, pg.handle, pg.status, pg.kind, pg.subscription_only, pg.variants, pg.digital_variants, pg.stock, pg.total,
@@ -155,7 +155,7 @@ export async function adminProductPage(
       join commerce.product_variants v on v.id = c.variant_id and v.active
       where v.product_id = pg.id and c.market_code = ${market?.code ?? ""}
     ) pr on true
-    order by ${order("pg", show, soldOutFirst)}
+    order by pg.n
   `);
   // A store selling only to businesses sees its prices as it types them: without VAT (B2B).
   const shown = (amount: number, rate: number | null) => (store.audience === "businesses" ? withoutVat(amount, rate ?? 0) : amount);
