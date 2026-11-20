@@ -30,7 +30,7 @@ test("the All products page's grid follows each filter while the dialog is open"
   await page.goto(`/s/${slug}/no/products`);
   await expect(page).toHaveTitle(/^Alle produkter/);
   await expect(page.getByRole("heading", { level: 1, name: "Alle produkter" })).toBeVisible();
-  const tiles = page.locator("main li").filter({ has: page.locator("a[href*='/p/']") });
+  const tiles = page.locator("main li:visible").filter({ has: page.locator("a[href*='/p/']") });
   const all = await tiles.count();
   expect(all).toBeGreaterThan(3);
   await expect(page.getByRole("status").filter({ hasText: `${all} produkter` }).first()).toBeVisible();

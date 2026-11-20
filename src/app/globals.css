@@ -1490,3 +1490,8 @@ html:has(dialog.kz-lightbox[open]) {
   outline: 1.5px dashed color-mix(in srgb, currentColor 60%, transparent);
   outline-offset: 2px;
 }
+
+/* A listing's chosen grid takes the built grid's place (bloat review step 2.12); with nothing chosen the built grid is the only one. */
+.listing > [data-grid-listed] ~ [data-grid-built] {
+  display: none;
+}

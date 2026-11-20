@@ -40,7 +40,7 @@ test("a shopper filters the store's products by kind, option and price, sorts th
   await dialog.getByRole("button", { name: "Vis produktene" }).click();
   await expect(page).toHaveURL(/kind=stay&kind=rental&sort=priceHigh/);
   // New stores' All products page (D83) is a content grid: one tile per product, with its picture and title linked.
-  const cards = page.locator("main li").filter({ has: page.locator("a[href*='/p/demo-']") });
+  const cards = page.locator("main li:visible").filter({ has: page.locator("a[href*='/p/demo-']") });
   await expect(cards).toHaveCount(2);
   await expect(cards.first().locator("a").first()).toHaveAttribute("href", /demo-hytte/);
 
@@ -77,10 +77,42 @@ test("a category's products and search results can be filtered too", async ({ pa
   await dialog.getByRole("checkbox", { name: /Belysning/ }).check();
   await dialog.getByRole("button", { name: "Vis produktene" }).click();
   await expect(page).toHaveURL(/category\/hjem\?category=belysning/);
-  await expect(page.locator("main li a[href*='/p/demo-']")).toHaveCount(1);
+  await expect(page.locator("main li:visible a[href*='/p/demo-']")).toHaveCount(1);
 
   // Search results keep their search and their recorded links.
   await page.goto(`/s/${slug}/search?q=demo&sort=priceLow`);
   const results = page.locator("main li a[href*='/search/go']");
   await expect(results.first()).toHaveAttribute("href", /p=demo-sykkelutleie/);
+});
+
+/** The distinct products a document's tiles carry, by their `data-item-id`. */
+const itemIds = (html: string) => [...new Set([...html.matchAll(/data-item-id="([^"]+)"/g)].map((match) => match[1]))];
+
+test("an unfiltered listing sends each product once", async ({ request }) => {
+  // Its grid as built is drawn once, in the prerendered page; only the controls stream in beside it (bloat review step 2.12).
+  const res = await request.get("/s/demo/no/products");
+  expect(res.status()).toBe(200);
+  const html = await res.text();
+  const ids = itemIds(html);
+  expect(ids.length).toBeGreaterThanOrEqual(1);
+  for (const id of ids) {
+    // Once in the markup, and once in the payload, where the props are JSON inside a JavaScript string.
+    expect(html.split(`data-item-id="${id}"`).length - 1, id).toBe(1);
+    expect(html.split('data-item-id\\":\\"' + id + '\\"').length - 1, id).toBe(1);
+  }
+  const bytes = Buffer.byteLength(html);
+  console.log(`/s/demo/no/products: ${bytes} bytes, ${ids.length} products`);
+  expect(bytes).toBeLessThanOrEqual(120000);
+});
+
+test("the built grid shows without scripts", async ({ browser, request }) => {
+  const ids = itemIds(await (await request.get("/s/demo/no/products")).text());
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto("/s/demo/no/products");
+    await expect(page.locator("main li[data-item-id]:visible")).toHaveCount(ids.length);
+  } finally {
+    await context.close();
+  }
 });

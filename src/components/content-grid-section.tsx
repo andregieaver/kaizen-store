@@ -14,6 +14,7 @@ import { campaignNoticesAt } from "@/server/campaign-notices";
 import { gridData, gridScope, ownerSells, productItem, storeAndMarket, withTileFields, type GridPlace, type ListingPlace } from "@/server/content-grid";
 import { recommendBlockOf, recommendingGrid, recommendPlaceOf, recommends } from "@/server/recommend-grid";
 import { productSettingsCached } from "@/server/product-settings";
+import { perRequest } from "@/server/request-memo";
 import { listingFacets, listingPage, listingPageOf, LISTING_PAGES_MAX } from "@/server/listing";
 import { siteTerms } from "@/server/taxonomy";
 
@@ -23,9 +24,10 @@ import { RecommendedGrid } from "./lazy/blocks";
 
 /**
  * A content grid on the site (D51): its items looked up (and cached) on the
- * server. A product grid on a store's page with Filter and sort (D83) shows
- * the listing's controls over it and follows the choices in the address,
- * per request; its grid as set is the prerendered stand-in meanwhile.
+ * server. A product grid on a store's page with Filter and sort (D83) draws
+ * its grid as set once, in the prerendered page; the listing's controls, a
+ * chosen grid when the address asks for one, and Show more stream in per
+ * request beside it (bloat review step 2.12).
  */
 export async function ContentGridSection({ block, place, eager = false }: { block: ContentGridBlock; place: GridPlace; /** It may be on the first screen. */ eager?: boolean }) {
   // A grid of products draws nothing in a website (D178 step 5: the online shop off); a grid of pages, articles or the owner's items stays.
@@ -40,29 +42,26 @@ export async function ContentGridSection({ block, place, eager = false }: { bloc
   const products = sourceTraits(block.source).products;
   const notices = products && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
   if (block.filters && products && place.owner && listing) {
+    const parts: ListingParts = { block, owner: place.owner, market: place.market, listing, data, notices, eager, tiles, redraw: place.redraw };
+    // Three siblings: the controls (and a chosen grid, which hides the built one by a rule in globals.css), the grid as built, and Show more.
     return (
-      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} redraw={place.redraw} />}>
-        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} eager={eager} tiles={tiles} redraw={place.redraw} />
-      </Suspense>
+      <div className="listing flex flex-col gap-4">
+        <Suspense fallback={null}>
+          <ListingTop {...parts} />
+        </Suspense>
+        <div data-grid-built>
+          <ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} redraw={place.redraw} />
+        </div>
+        <Suspense fallback={null}>
+          <ListingMore {...parts} />
+        </Suspense>
+      </div>
     );
   }
   return <ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} redraw={place.redraw} />;
 }
 
-/** The grid's products as the shopper filters and sorts them, with the controls to do so. */
-async function FilterableGrid({
-  block,
-  owner,
-  market: marketCode,
-  listing,
-  data,
-  notices,
-  eager,
-  tiles,
-  redraw,
-}: {
-  tiles: TileAsk | null;
-  redraw?: boolean;
+type ListingParts = {
   block: ContentGridBlock;
   owner: string;
   market: string | undefined;
@@ -70,41 +69,58 @@ async function FilterableGrid({
   data: GridData;
   notices?: CampaignNotices;
   eager: boolean;
-}) {
-  const [shop, query] = await Promise.all([storeAndMarket(owner, marketCode ?? null), listing.query]);
-  if (!shop) return <ContentGridView block={block} data={data} eager={eager} />;
-  const { store, market } = shop;
-  const m = t(market.lang);
-  const filters = parseListingParams(query);
-  const scope = await gridScope(store.id, block);
-  if (!scope) return <ContentGridView block={block} data={data} eager={eager} />;
-  const buyer = await getBuyer(store);
-  const viewer = { buyer, audienceBoth: store.audience === "both" };
-  // Without choices the grid keeps its own order; with them, the listing's (D78).
-  const unfiltered = chosenFilters(filters).length === 0 && filters.sort === "featured";
-  // How far *Show more* has been followed (code review FF1): the grid shows its first `page` times its own number.
-  const page = listingPageOf(query.page);
-  const [facets, listed, terms] = await Promise.all([
-    listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
-    // The first page without choices is the grid as built, in its own order; anything else is read as the listing reads it.
-    unfiltered && page === 1 ? null : listingPage(store.id, market, scope, filters, viewer, page, block.limit),
-    siteTerms(store.id, "product"),
-  ]);
-  const items = listed
-    ? await withTileFields(
-        store.id,
-        "product",
-        market,
-        tileFieldIds(block),
-        listed.products.map((product) => productItem(store.slug, market.slug, product)),
-      )
-    : data.items;
-  // How many there are in all: the listing's own count, or, for the grid as built, the page's products before filters.
-  const total = Math.max(listed ? listed.total : facets.total, items.length);
-  const more = total > items.length;
+  tiles: TileAsk | null;
+  redraw?: boolean;
+};
 
+/**
+ * The grid's products as the shopper filters and sorts them, read once per request for the controls, the chosen grid and Show
+ * more alike; null where the grid as built is all there is to show.
+ */
+function gridListing(block: ContentGridBlock, owner: string, marketCode: string | undefined, listing: ListingPlace, data: GridData) {
+  return perRequest(`grid-listing:${block.id}:${listing.path}`, async () => {
+    const [shop, query] = await Promise.all([storeAndMarket(owner, marketCode ?? null), listing.query]);
+    if (!shop) return null;
+    const { store, market } = shop;
+    const m = t(market.lang);
+    const filters = parseListingParams(query);
+    const scope = await gridScope(store.id, block);
+    if (!scope) return null;
+    const buyer = await getBuyer(store);
+    const viewer = { buyer, audienceBoth: store.audience === "both" };
+    // Without choices the grid keeps its own order; with them, the listing's (D78).
+    const unfiltered = chosenFilters(filters).length === 0 && filters.sort === "featured";
+    // How far *Show more* has been followed (code review FF1): the grid shows its first `page` times its own number.
+    const page = listingPageOf(query.page);
+    const [facets, listed, terms] = await Promise.all([
+      listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
+      // The first page without choices is the grid as built, in its own order; anything else is read as the listing reads it.
+      unfiltered && page === 1 ? null : listingPage(store.id, market, scope, filters, viewer, page, block.limit),
+      siteTerms(store.id, "product"),
+    ]);
+    const items = listed
+      ? await withTileFields(
+          store.id,
+          "product",
+          market,
+          tileFieldIds(block),
+          listed.products.map((product) => productItem(store.slug, market.slug, product)),
+        )
+      : data.items;
+    // How many there are in all: the listing's own count, or, for the grid as built, the page's products before filters.
+    const total = Math.max(listed ? listed.total : facets.total, items.length);
+    const more = total > items.length;
+    return { store, market, m, filters, facets, terms, unfiltered, page, listed: Boolean(listed), items, total, more };
+  });
+}
+
+/** The listing's controls over the grid, and the grid the address chose when it chose one (it hides the grid as built). */
+async function ListingTop({ block, owner, market: marketCode, listing, data, notices, eager, tiles, redraw }: ListingParts) {
+  const found = await gridListing(block, owner, marketCode, listing, data);
+  if (!found) return null;
+  const { market, m, filters, facets, terms, items, total, more, listed } = found;
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <ListingControls
         market={market}
         filters={filters}
@@ -114,19 +130,32 @@ async function FilterableGrid({
         count={more ? m.listing.countOf(items.length, total) : m.listing.count(items.length)}
         live
       />
-      {items.length === 0 && !unfiltered ? (
-        <p>{m.listing.none}</p>
-      ) : (
-        <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} tiles={tiles} redraw={redraw} />
-      )}
-      {more && page < LISTING_PAGES_MAX && (
-        <div className="flex flex-col items-center gap-2 pt-2">
-          <p className="text-sm text-muted">{m.listing.countOf(items.length, total)}</p>
-          <Link href={`${listing.path}${listingQuery(filters, { page: String(page + 1) })}`} scroll={false} className="rounded-button flex min-h-12 items-center justify-center border border-border px-6 font-medium">
-            {m.listing.showMore}
-          </Link>
-        </div>
-      )}
+      {listed &&
+        (items.length === 0 ? (
+          <div data-grid-listed>
+            <p>{m.listing.none}</p>
+          </div>
+        ) : (
+          <div data-grid-listed>
+            <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} tiles={tiles} redraw={redraw} />
+          </div>
+        ))}
+    </>
+  );
+}
+
+/** How many show of how many, and *Show more*, while there are more. */
+async function ListingMore({ block, owner, market: marketCode, listing, data }: ListingParts) {
+  const found = await gridListing(block, owner, marketCode, listing, data);
+  if (!found) return null;
+  const { m, filters, items, total, more, page } = found;
+  if (!(more && page < LISTING_PAGES_MAX)) return null;
+  return (
+    <div className="flex flex-col items-center gap-2 pt-2">
+      <p className="text-sm text-muted">{m.listing.countOf(items.length, total)}</p>
+      <Link href={`${listing.path}${listingQuery(filters, { page: String(page + 1) })}`} scroll={false} className="rounded-button flex min-h-12 items-center justify-center border border-border px-6 font-medium">
+        {m.listing.showMore}
+      </Link>
     </div>
   );
 }
