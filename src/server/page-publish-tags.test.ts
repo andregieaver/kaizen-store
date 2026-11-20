@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { blockWords, locateBlock } from "@/lib/inline-edit";
 import { newPageContent, type PageContent } from "@/lib/page-content";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 /**
  * The eight places that publish a page's body (bloat review step 2.14, `src/server/page-refresh.ts`): each refreshes the page's own tag,
