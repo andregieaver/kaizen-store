@@ -2,6 +2,7 @@
 //
 //   node scripts/route-budget.mjs                 print six parts as Markdown tables and hold them to scripts/route-budget.json
 //   node scripts/route-budget.mjs --write         lower the budgets to this build; it refuses to raise any figure unless --first is given
+//   node scripts/route-budget.mjs --references    print the manifest's references per source file and per route kind (step 2.24), then exit
 //
 // A: the bytes of the chunks a built entry lists at start (the strings of R.c("…")), the largest route of each kind held. B: the
 // server-reference manifest's bytes, entries, entries per route and the milliseconds to read it. C: bytes of server chunk files that
@@ -101,6 +102,61 @@ const manifestNow = {
   perAdminRoute: routeEntries(Object.keys(routes).filter((key) => key.startsWith("/admin/"))),
   perBeacon: routeEntries([...BEACONS]),
 };
+
+// --references (bloat review step 2.24): which source files' references the manifest lists, and for how many routes. A reference is
+// one cached read ("use cache", exportedName $$RSC_SERVER_CACHE…) or one export of a "use server" file; it is listed once per route
+// whose module graph reaches it, whether or not the route calls it. Prints and exits: no budget is read or held here.
+if (process.argv.includes("--references")) {
+  const refs = Object.values({ ...manifest.node, ...manifest.edge });
+  const isCached = (ref) => String(ref.exportedName ?? "").startsWith("$$RSC_SERVER_CACHE");
+  const fileOf = (ref) => ref.filename ?? "(no filename)";
+  const listed = (ref) => Object.keys(ref.workers ?? {}).length;
+  const byFile = new Map();
+  for (const ref of refs) {
+    const row = byFile.get(fileOf(ref)) ?? { refs: 0, cached: 0, actions: 0, routes: new Set(), entries: 0 };
+    row.refs += 1;
+    if (isCached(ref)) row.cached += 1;
+    else row.actions += 1;
+    for (const worker of Object.keys(ref.workers ?? {})) row.routes.add(worker);
+    row.entries += listed(ref);
+    byFile.set(fileOf(ref), row);
+  }
+  const cachedRefs = refs.filter(isCached);
+  const allEntries = refs.reduce((sum, ref) => sum + listed(ref), 0);
+  const cachedEntries = cachedRefs.reduce((sum, ref) => sum + listed(ref), 0);
+  const lines = ["### The server-reference manifest by reference", ""];
+  lines.push(
+    `${manifestNow.bytes.toLocaleString("en")} bytes; ${refs.length.toLocaleString("en")} references (${cachedRefs.length} cached reads, ${refs.length - cachedRefs.length} actions); ` +
+      `${allEntries.toLocaleString("en")} entries, route × reference (${cachedEntries.toLocaleString("en")} of cached reads, ${(allEntries - cachedEntries).toLocaleString("en")} of actions), over ${Object.keys(routes).length} routes.`,
+  );
+  lines.push("", "**1. Per source file, by entries (top 60)**", "", "| File | References | Cached reads | Actions | Routes listing one | Entries |", "|---|---|---|---|---|---|");
+  for (const [file, row] of [...byFile].sort((a, b) => b[1].entries - a[1].entries).slice(0, 60))
+    lines.push(`| ${file} | ${row.refs} | ${row.cached} | ${row.actions} | ${row.routes.size} | ${row.entries.toLocaleString("en")} |`);
+  const beaconName = (key) => key.replace(/\/route$/, "");
+  /** The kind of a route for this table: the five beacons each by name. */
+  const referenceKind = (key) => {
+    if (BEACONS.has(key)) return beaconName(key);
+    if (key.startsWith("/api/")) return "api";
+    if (key.startsWith("/s/")) return "storefront";
+    if (key.startsWith("/admin/")) return "admin";
+    return "platform site";
+  };
+  const kinds = new Map();
+  for (const key of Object.keys(routes)) kinds.set(referenceKind(key), [...(kinds.get(referenceKind(key)) ?? []), perRoute[`app${key}`] ?? 0]);
+  lines.push("", "**2. References per route, by kind**", "", "| Kind | Routes | Median | Maximum |", "|---|---|---|---|");
+  for (const kind of ["storefront", "admin", "platform site", "api", ...[...BEACONS].map(beaconName)]) {
+    const counts = kinds.get(kind) ?? [];
+    lines.push(`| ${kind} | ${counts.length} | ${counts.length ? median(counts) : 0} | ${counts.length ? Math.max(...counts) : 0} |`);
+  }
+  const wide = refs.filter((ref) => listed(ref) > 500);
+  const wideByFile = new Map();
+  for (const ref of wide) wideByFile.set(fileOf(ref), (wideByFile.get(fileOf(ref)) ?? 0) + 1);
+  lines.push("", `**3. References listed by more than 500 routes:** ${wide.length} (${wide.reduce((sum, ref) => sum + listed(ref), 0).toLocaleString("en")} entries)`, "");
+  for (const [file, count] of [...wideByFile].sort((a, b) => b[1] - a[1])) lines.push(`- ${file}: ${count}`);
+  console.log(lines.join("\n"));
+  process.exit(0);
+}
+
 const readMs = median(
   Array.from({ length: RUNS }, () => {
     const run = spawnSync(process.execPath, [
