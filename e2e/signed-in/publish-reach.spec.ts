@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { expect, test, type APIRequestContext } from "@playwright/test";
@@ -88,17 +88,24 @@ async function cached(request: APIRequestContext, path: string): Promise<string 
   return second.headers()["x-nextjs-cache"];
 }
 
-/** When the server last kept the product page's entry (`next start`'s route cache), or null while it keeps none. */
-function productEntryTime(): number | null {
-  const root = path.join(process.cwd(), ".next/server/route-cache");
-  const walk = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+/**
+ * What the server keeps of the product page: each of its entries (prerendered at build under `.next/server/app`, or kept later by `next
+ * start` under `.next/server/route-cache/<hash>/`, where one page can have more than one) with when it was written, as one string; null
+ * while it keeps none. A redraw writes an entry, so the string changes.
+ */
+function productEntryTime(): string | null {
+  const found: string[] = [];
+  const walk = (dir: string) => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) return entry.name.endsWith(".segments") ? [] : walk(full);
-      return full.includes(`/s/${E2E_STORE}/`) && full.endsWith(`/p/${productHandle}.meta`) ? [full] : [];
-    });
-  const found = walk(root);
-  return found.length === 1 ? statSync(found[0]).mtimeMs : null;
+      if (entry.isDirectory()) {
+        if (!entry.name.endsWith(".segments")) walk(full);
+      } else if (full.includes(`/s/${E2E_STORE}/`) && full.endsWith(`/p/${productHandle}.meta`)) found.push(full);
+    }
+  };
+  for (const root of [".next/server/app", ".next/server/route-cache"]) walk(path.join(process.cwd(), root));
+  return found.length === 0 ? null : found.sort().map((file) => `${file}@${statSync(file).mtimeMs}`).join("\n");
 }
 
 async function publishInBuilder(page: import("@playwright/test").Page) {
