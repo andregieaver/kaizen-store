@@ -239,6 +239,23 @@ export const domainsEn = {
     registrations: "Registrations",
     purchases: "Purchases that need a look",
     none: "Nothing here.",
+    /** Round 67 (D837): Domains on a phone. `{margin}`, `{lowest}`, `{came}`, `{opened}`, `{n}`. */
+    phone: {
+      lead: "Stores buy domains here at the registrar's price plus your margin.",
+      currencySub: "{margin} % margin · at least {lowest} a year",
+      change: "Change",
+      open: "Open",
+      close: "Close",
+      storesSub: { one: "Only stores you open it for · 1 open", many: "Only stores you open it for · {n} open" },
+      publicOn: "On: people without a store can buy",
+      publicOff: "Off: only stores buy domains",
+      leadsSub: "{came} came for a domain · {opened} opened a store",
+      waiting: { one: "1 waiting for your answer", many: "{n} waiting for your answer" },
+      needLook: { one: "1 needs a look", many: "{n} need a look" },
+      registered: { one: "1 domain", many: "{n} domains" },
+      none: "None",
+      noneYet: "None yet",
+    },
   },
   // D315 phase 3: the DNS Kaizena Flow keeps. `{domain}`, `{provider}`, `{host}`, `{target}`, `{value}`, `{count}`, `{who}`, `{date}`.
   dns: {

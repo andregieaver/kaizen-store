@@ -5,7 +5,7 @@ import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { providerInfo } from "@/lib/ai-provider";
-import { pictureLine } from "@/lib/ai-vision";
+import { pictureLine, visionModelOf } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { AGENT_EVAL_CASES, samePrompts, versionWords } from "@/lib/agent-eval";
 import { AgentEvalButton } from "@/components/admin/agent-eval-button";
@@ -18,6 +18,7 @@ import { requirePlatformReader } from "@/server/auth";
 import { searchSettings } from "@/server/web-search-settings";
 import { SEARCH_API_IDS, SEARCH_APIS } from "@/lib/web-search";
 import { ActionForm } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Button } from "@/components/admin/ui";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -51,36 +52,62 @@ export default async function PlatformAiPage() {
     ? `${settings.enabled ? w.on : w.off} · ${providerInfo(settings.provider).name}` +
       [settings.embeddingModel, settings.textModel].filter(Boolean).map((model) => ` · ${model}`).join("")
     : w.notSetUp;
+  const ph = w.phone;
+  const row = { change: ph.change, done: ph.close } as const;
+  const onOff = (on: boolean) => (on ? w.on : w.off);
+  const searchName = SEARCH_APIS[search?.provider ?? SEARCH_API_IDS[0]].name;
+  const seesPictures = Boolean(settings?.enabled && visionModelOf(settings));
+  const pauseForm = (
+    <ActionForm action={setAiPauseAction}>
+      <input type="hidden" name="paused" value={paused ? "off" : "on"} />
+      <Button type="submit" kind={paused ? "main" : "secondary"}>{paused ? w.pause.resumeButton : w.pause.pauseButton}</Button>
+    </ActionForm>
+  );
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["settingsAi"])}>
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title={w.title} description={<>{status}</>} />
-        <p className="text-sm text-muted">{pictureLine(settings, w.whose, undefined, shared.pictures)}</p>
+        <p className="text-sm text-muted max-sm:hidden">{pictureLine(settings, w.whose, undefined, shared.pictures)}</p>
         <p className="mt-1 text-sm">
           <Link href="/admin/platform/ai/usage" className="underline">
             {w.usageLink}
           </Link>
-          {w.usageEnd}
+          <span className="max-sm:hidden">{w.usageEnd}</span>
         </p>
       </div>
+      {/* Round 67 (D837): on a phone the pictures warning is a strip that opens the provider's row; from sm up the line above says it. */}
+      {!seesPictures && (
+        <p className="flex items-center justify-between gap-3 rounded-panel bg-warning-soft px-4 py-3 text-body text-ink sm:hidden">
+          {ph.noPictures}
+          <a href="#provider" className="inline-flex min-h-10 shrink-0 items-center underline underline-offset-2">
+            {ph.choose}
+          </a>
+        </p>
+      )}
 
+      {/* Round 67 (D837): on a phone what acts on its own is a row with its one press, and each setting below a row saying what is set. */}
+      <PhoneRows>
+      <PhoneRow flat last {...row} change={ph.more} title={w.pause.title} sub={paused ? ph.paused : ph.running} action={pauseForm}>
       <section aria-labelledby="ai-pause" className={card}>
         <h2 id="ai-pause" className="mb-1 text-title text-ink">{w.pause.title}</h2>
         <p className="mb-4 text-sm text-muted">{paused ? w.pause.paused : w.pause.running}</p>
-        <ActionForm action={setAiPauseAction}>
-          <input type="hidden" name="paused" value={paused ? "off" : "on"} />
-          <Button type="submit" kind={paused ? "main" : "secondary"}>{paused ? w.pause.resumeButton : w.pause.pauseButton}</Button>
-        </ActionForm>
+        {pauseForm}
       </section>
+      </PhoneRow>
+      </PhoneRows>
 
+      <PhoneRows>
+      <PhoneRow flat {...row} opens="provider" title={w.provider} sub={settings ? `${providerInfo(settings.provider).name} · ${onOff(settings.enabled)}` : ph.notSet}>
       <section aria-labelledby="provider" className={card}>
         <h2 id="provider" className="mb-1 text-title text-ink">{w.provider}</h2>
         <p className="mb-4 text-sm text-muted">{fillWords(w.providerText, { count: countWords(ownCount, { one: w.storeDoes, many: w.storesDo }) })}</p>
         <AiProviderForm action={savePlatformAiAction} settings={settings} checkVision={checkPlatformVisionAction} />
       </section>
+      </PhoneRow>
 
+      <PhoneRow flat {...row} title={w.webSearch} sub={search ? `${searchName} · ${onOff(search.enabled)}` : `${searchName} · ${ph.noKey}`}>
       <section aria-labelledby="web-search" className={card}>
         <h2 id="web-search" className="mb-1 text-title text-ink">{w.webSearch}</h2>
         <p className="mb-1 text-sm text-muted">{fillWords(w.webSearchText, { provider: search?.provider ?? SEARCH_API_IDS[0] })}</p>
@@ -124,8 +151,10 @@ export default async function PlatformAiPage() {
           </div>
         </ActionForm>
       </section>
+      </PhoneRow>
 
       {settings && (
+        <PhoneRow flat {...row} change={ph.more} title={w.test} sub={ph.testSub}>
         <section aria-labelledby="test" className={card}>
           <h2 id="test" className="mb-1 text-title text-ink">{w.test}</h2>
           <p className="mb-3 text-sm text-muted">{w.testText}</p>
@@ -195,8 +224,10 @@ export default async function PlatformAiPage() {
             />
           </div>
         </section>
+        </PhoneRow>
       )}
       {/* The Dream Factory's scorecard (D409): each run's measures, worked out by code. */}
+      <PhoneRow flat last {...row} change={ph.more} title={w.dreamTitle} sub={dreamRuns.length === 0 ? w.dreamNone : countWords(dreamRuns.length, ph.runs)}>
       <section className={card}>
         <h2 className="text-title text-ink">{w.dreamTitle}</h2>
         <p className="mt-1 text-sm text-muted">
@@ -231,6 +262,8 @@ export default async function PlatformAiPage() {
           </ul>
         )}
       </section>
+      </PhoneRow>
+      </PhoneRows>
     </div>
     </AdminTextScope>
   );

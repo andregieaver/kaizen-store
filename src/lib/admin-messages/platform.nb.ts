@@ -1060,6 +1060,7 @@ export const platformNb: PlatformMessages = {
     title: "Endringslogg",
     description:
       "Det plattformadministratorer og plattformen gjorde, som ikke hører til én butikk: hendelser i totrinnsinnloggingen, gjenopprettingskoder som er brukt, tilbakestillinger og godkjenninger. En butikks egne endringer står i loggen til den butikken. Oppføringene beholdes i 24 måneder og kan ikke endres.",
+    phone: { lead: "Det plattformadministratorer gjorde. Beholdes i 24 måneder, endres aldri.", filter: "Filter", anyTime: "når som helst", change: "Endre", close: "Lukk" },
   },
   newReminder: { back: "Abonnementspåminnelser", title: "Ny påminnelse" },
   emailDetail: { back: "E-poster" },

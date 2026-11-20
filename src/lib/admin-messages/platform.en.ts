@@ -1064,6 +1064,8 @@ export const platformEn = {
     title: "Change log",
     description:
       "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets and approvals. A store's own changes are in that store's log. Entries are kept for 24 months and cannot be changed.",
+    /** Round 67 (D837): the change log on a phone. */
+    phone: { lead: "What platform admins did. Kept 24 months, never changed.", filter: "Filter", anyTime: "any time", change: "Change", close: "Close" },
   },
   newReminder: { back: "Plan reminders", title: "New reminder" },
   emailDetail: { back: "Emails" },

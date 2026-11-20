@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { ActivityFilters, ActivityList, valuesFromQuery } from "@/components/admin/activity-view";
 import { activityQuery } from "@/lib/activity-text";
 import { isAuditArea } from "@/lib/audit";
@@ -34,13 +35,28 @@ export default async function PlatformActivityPage({ searchParams }: PageProps<"
   ]);
   const base = "/admin/platform/activity";
   const drawnAt = new Date();
+  const ph = w.phone;
+  const aw = staffWords.activity;
+  const person = choices.people.find((p) => p.accountId === values.person)?.label;
+  const area = isAuditArea(values.area) ? staffWords.areas[values.area] : null;
+  const period = values.from || values.to ? `${values.from || "…"} – ${values.to || "…"}` : ph.anyTime;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={w.description}
+        description={
+          <>
+            <span className="sm:hidden">{ph.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
       />
-      <ActivityFilters action={base} values={values} people={choices.people} areas={["platform", "account"]} actions={choices.actions} zoneName={PLATFORM_TIME_ZONE} words={staffWords} />
+      {/* Round 67 (D837): on a phone the five filters sit behind one row that says what is chosen, so the entries start on the first screen. */}
+      <PhoneRows>
+        <PhoneRow last title={ph.filter} sub={[person ?? aw.everyone, area ?? aw.allAreas, period].join(" · ")} change={ph.change} done={ph.close}>
+          <ActivityFilters action={base} values={values} people={choices.people} areas={["platform", "account"]} actions={choices.actions} zoneName={PLATFORM_TIME_ZONE} words={staffWords} />
+        </PhoneRow>
+      </PhoneRows>
       <ActivityList
         now={drawnAt.getTime()}
         entries={page.entries}
