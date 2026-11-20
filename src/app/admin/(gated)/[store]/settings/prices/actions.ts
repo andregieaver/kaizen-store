@@ -6,11 +6,11 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
-import { adminText } from "@/lib/admin-text";
 import { isPriceDecimals } from "@/lib/money";
 import { NO_WORDS, type WordsByLocale } from "@/lib/price-words";
 import { isQuantityPicker } from "@/lib/quantity-stepper";
 import { countryName } from "@/lib/vat-text";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { readPriceDisplay, savePriceDisplay, type PriceDisplayProblem } from "@/server/price-display";
@@ -26,9 +26,9 @@ const nameLocale = (lang: AdminLang) => (lang === "nb" ? "nb-NO" : "en-GB");
  */
 export async function savePriceDisplayAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "settings").common.noChange] };
+  if (!member) return { status: "error", messages: [SETTINGS_WORDS[await actionAdminLang()].common.noChange] };
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "settings").prices;
+  const w = SETTINGS_WORDS[lang].prices;
   const { localization } = member.store;
   const shown = localization.locales;
   const main = shown[0] ?? "";

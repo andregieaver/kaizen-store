@@ -8,12 +8,13 @@ import { MethodEditor } from "@/components/admin/shipping/method-editor";
 import { chosenMarket } from "@/components/admin/shipping/shipping-parts";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { METHODS_MAX } from "@/lib/shipping-limits";
 import { isWayKey, WAY_DAYS } from "@/lib/shipping-ways";
 import type { AdminLang } from "@/lib/admin-lang";
+import { areaTexts } from "@/lib/admin-area";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getShippingSetup } from "@/server/shipping-methods";
 
@@ -29,7 +30,7 @@ export default async function ShippingMethodPage({ params, searchParams }: PageP
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "shipping");
+  const all = SHIPPING_WORDS[lang];
   const isNew = methodId === "new";
   if (!isNew && !z.uuid().safeParse(methodId).success) notFound();
   const setup = await getShippingSetup(store.id);
@@ -43,10 +44,10 @@ export default async function ShippingMethodPage({ params, searchParams }: PageP
   // A ready way (round 11, D634): its name in the shop's language, since shoppers choose it at checkout, and its usual delivery time.
   const way = isNew ? (await searchParams).way : undefined;
   const shopLang: AdminLang = /^(nb|nn|no)\b/.test(store.markets[0]?.locale ?? "") ? "nb" : "en";
-  const start = isWayKey(way) ? { name: adminText(shopLang, "shipping").pages.ways[way].name, estimate: WAY_DAYS[way] } : null;
+  const start = isWayKey(way) ? { name: SHIPPING_WORDS[shopLang].pages.ways[way].name, estimate: WAY_DAYS[way] } : null;
   const full = isNew && setup.methods.filter((m) => m.marketCode === market.code).length >= METHODS_MAX;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
+    <AdminTextScope texts={areaTexts(lang, { shipping: SHIPPING_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/methods?market=${market.code}`, label: fillWords(all.pages.methodsIn, { market: market.name }) }}

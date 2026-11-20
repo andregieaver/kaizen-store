@@ -8,8 +8,10 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_HOURS_WORDS } from "@/lib/admin-words/settings-hours";
 import { requirePermission } from "@/server/permissions";
 import { getLocation } from "@/server/company";
 import { listCountries } from "@/server/stores";
@@ -28,7 +30,7 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
   const member = await requirePermission(slug, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "settings");
+  const all = SETTINGS_WORDS[lang];
   const w = all.company;
   if (!z.uuid().safeParse(placeId).success) notFound();
   const [place, countries] = await Promise.all([getLocation(store.id, placeId), listCountries()]);
@@ -36,7 +38,7 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
   const kind = place.kind;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsHours"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsHours: SETTINGS_HOURS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `/admin/${store.slug}/settings/company`, label: w.title }}

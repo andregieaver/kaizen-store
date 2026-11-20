@@ -5,8 +5,10 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PriceDisplayForm } from "@/components/admin/price-display-form";
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { countryName } from "@/lib/vat-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_PRICES_WORDS } from "@/lib/admin-words/settings-prices";
 import { readPriceDisplay } from "@/server/price-display";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -25,14 +27,14 @@ export default async function PriceDisplayPage({ params }: PageProps<"/admin/[st
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "settings").prices;
+  const w = SETTINGS_WORDS[lang].prices;
   const display = await readPriceDisplay(store.id);
   // Names in the admin's language; the examples in the main country's currency and language.
   const names = lang === "nb" ? "nb-NO" : "en-GB";
   const languageNames = new Intl.DisplayNames([names], { type: "language" });
   const home = store.markets[0];
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsPrices"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsPrices: SETTINGS_PRICES_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         <PriceDisplayForm

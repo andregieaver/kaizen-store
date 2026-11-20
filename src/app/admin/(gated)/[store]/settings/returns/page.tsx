@@ -4,11 +4,11 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ExchangeSettingsForm } from "@/components/admin/returns/exchange-settings-form";
 import { ReturnSettingsForm } from "@/components/admin/returns/settings-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { carrierInfo } from "@/lib/shipping-carriers";
 import { languageName } from "@/lib/localization";
 import { featureOn } from "@/lib/store-features";
+import { RETURNS_WORDS } from "@/lib/admin-words/returns";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getExchangeLabelSettings, getInstructionTranslations, getReturnSettings } from "@/server/return-settings";
 import { listCarriers } from "@/server/shipping-carriers";
@@ -40,7 +40,7 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
     return info?.available.includes("return_labels") ? [{ id: c.carrier, name: info.name, ready: c.complete && c.check?.ok === true }] : [];
   });
   const [main, ...others] = store.localization.locales;
-  const words = adminText(adminLangOf(current.account.adminLocale), "returns");
+  const words = RETURNS_WORDS[adminLangOf(current.account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <PageHeader

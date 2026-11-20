@@ -4,8 +4,8 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { ButtonLink, Card, Chip, PageHeader, buttonClass } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { PRIVATE_PASSWORD_MAX, PRIVATE_PASSWORD_MIN } from "@/lib/private-mode";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { setPrivateModeAction, setPrivatePasswordAction, signEveryoneOutAction } from "./actions";
@@ -20,7 +20,7 @@ export default async function PrivateModePage({ params }: PageProps<"/admin/[sto
   const current = await requirePermission((await params).store, "settings:read");
   const { store } = current;
   const editor = memberCan(current, "settings:write");
-  const w = adminText(adminLangOf(current.account.adminLocale), "settings").privateMode;
+  const w = SETTINGS_WORDS[adminLangOf(current.account.adminLocale)].privateMode;
   const never = store.isTemplate || store.starter;
   const field = "rounded-md border border-line bg-card px-3 py-2";
   // A phone's row that leads elsewhere (round 48): the card's place from 640 px.

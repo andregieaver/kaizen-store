@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole, checkPermission } from "@/server/permissions";
 import { requestScan } from "@/server/cookie-scans";
@@ -12,7 +12,7 @@ import { cookiesTag, saveCookieNote, saveCustomCode, saveTracking } from "@/serv
 import { storeTag } from "@/server/stores";
 
 /** The answers, in the account's language (D312 A8); before a member is known, the request's. */
-const words = async (adminLocale?: string | null) => adminText(adminLocale === undefined ? await actionAdminLang() : adminLangOf(adminLocale), "legal").actions;
+const words = async (adminLocale?: string | null) => LEGAL_WORDS[adminLocale === undefined ? await actionAdminLang() : adminLangOf(adminLocale)].actions;
 
 /** The store's analytics and marketing tools (D58): the owner's to change, as they decide what shoppers are asked. */
 export async function saveStoreTrackingAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {

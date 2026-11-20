@@ -5,8 +5,8 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { BusinessMessages } from "@/lib/admin-messages/business.en";
-import { adminText } from "@/lib/admin-text";
 import { BUSINESS_SERIES } from "@/lib/business-change";
+import { BUSINESS_WORDS } from "@/lib/admin-words/business";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { cancelBusinessChange, planBusinessChange, tickBusinessStep, type BusinessChangeResult } from "@/server/business-change";
@@ -21,8 +21,8 @@ type Words = BusinessMessages;
 
 async function owner(storeSlug: string): Promise<{ member: Membership; w: Words } | { refused: string }> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { refused: adminText(await actionAdminLang(), "business").problems.forbidden };
-  return { member, w: adminText(adminLangOf(member.account.adminLocale), "business") };
+  if (!member) return { refused: BUSINESS_WORDS[await actionAdminLang()].problems.forbidden };
+  return { member, w: BUSINESS_WORDS[adminLangOf(member.account.adminLocale)] };
 }
 
 /** Which field each problem is about, so the form marks it (`FormState.fields`). */

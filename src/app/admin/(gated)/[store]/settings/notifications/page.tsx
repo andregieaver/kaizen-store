@@ -8,7 +8,7 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { fillWords } from "@/lib/admin-fill";
 import { apexOf } from "@/lib/domain-health";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { PageHeader } from "@/components/admin/ui";
 import { listLocalAreas } from "@/server/local-delivery";
 import { listNotifications } from "@/server/notifications";
@@ -31,7 +31,7 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "notifications");
+  const words = NOTIFICATIONS_WORDS[lang];
   const w = words.emails;
   const [items, places, areas, sending, domains] = await Promise.all([
     listNotifications(store.id),

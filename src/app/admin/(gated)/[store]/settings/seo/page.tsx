@@ -8,10 +8,11 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { t } from "@/lib/i18n";
 import { marketUrl, storeBase, storeSiteUrl } from "@/lib/paths";
 import { AI_ASSISTANT_BOTS, AI_TRAINING_BOTS, LLMS_MAX, RULES_MAX } from "@/lib/seo";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 import { altTextGaps, storeSitemapPath } from "@/server/seo";
@@ -32,7 +33,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "settings").seo;
+  const w = SETTINGS_WORDS[lang].seo;
   const seo = store.seo;
   const gaps = await altTextGaps(store.id);
   const names = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
@@ -129,7 +130,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
                 initial={{ title: seo.title[market.locale] ?? "", description: seo.description[market.locale] ?? "" }}
                 fallback={{ title: store.name, description: t(market.lang).storeSummary(store.name, market.name) }}
                 url={marketUrl(store.slug, market.slug)}
-                words={adminText(lang, "common").snippet}
+                words={COMMON_WORDS[lang].snippet}
               />
             </fieldset>
           ))}

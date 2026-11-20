@@ -11,10 +11,11 @@ import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { paymentsEn } from "@/lib/admin-messages/payments.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { knownText } from "@/lib/known-words";
 import { mainCurrency } from "@/lib/markets";
 import { accountStage } from "@/lib/stripe-account";
+import { areaTexts } from "@/lib/admin-area";
+import { PAYMENTS_WORDS } from "@/lib/admin-words/payments";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { ensureTestAccount, requestIp } from "@/server/connect";
 import { kaizenInvoicingOn } from "@/server/invoice-settings";
@@ -47,7 +48,7 @@ export default async function PaymentSettingsPage({
   if (shopOff) return shopOff;
   const { account, store } = current;
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "payments");
+  const w = PAYMENTS_WORDS[lang];
   const [settings, audit, kaizenInvoices, choices, progress] = await Promise.all([
     getPaymentSettings(store),
     // Round 5 (D615): the payment changes only, never the whole store's log.
@@ -100,7 +101,7 @@ export default async function PaymentSettingsPage({
   const stepWord = (step: Step, i: number) => (step.status === "done" ? w.steps.done : step.status === "needs" ? w.steps.needsYou : step.status === "soon" ? w.steps.soon : i === steps.length - 1 ? w.steps.last : w.steps.then);
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["payments"])}>
+    <AdminTextScope texts={areaTexts(lang, { payments: PAYMENTS_WORDS })}>
     <div className="flex flex-col gap-8">
       <PageHeader
         title={w.page.title}

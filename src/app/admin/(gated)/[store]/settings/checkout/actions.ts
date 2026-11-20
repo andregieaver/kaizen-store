@@ -2,7 +2,6 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import type { FieldInputView, RuleInputView } from "@/components/admin/checkout-rules";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import {
@@ -19,10 +18,13 @@ import type { AccountsMode } from "@/lib/customer-accounts";
 import { saveAccountsMode } from "@/server/customer-accounts";
 import { saveCheckoutContact } from "@/server/checkout-contact";
 import type { CheckoutContactSettings } from "@/lib/checkout-contact";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { checkPermission } from "@/server/permissions";
 
 /** Checkout rules and questions change what shoppers are offered and asked, so they are `settings:write` (D357). */
-const noAccess = async () => adminText(await actionAdminLang(), "order").messages.noAccess;
+const noAccess = async () => ORDER_WORDS[await actionAdminLang()].messages.noAccess;
 
 export async function saveRuleAction(storeSlug: string, id: string | null, input: RuleInputView): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const member = await checkPermission(storeSlug, "settings:write");
@@ -87,8 +89,8 @@ export async function saveAccountsModeAction(storeSlug: string, mode: AccountsMo
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { ok: false, problems: [await noAccess()] };
   const lang = await actionAdminLang();
-  const words = adminText(lang, "shipping").customerAccounts;
-  const labels = adminText(lang, "common").features.labels as Record<string, string>;
+  const words = SHIPPING_WORDS[lang].customerAccounts;
+  const labels = COMMON_WORDS[lang].features.labels as Record<string, string>;
   const saved = await saveAccountsMode(member, mode, words, (id) => labels[id] ?? id);
   if (saved.ok) refresh();
   return saved;

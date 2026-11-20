@@ -1,10 +1,10 @@
 import "server-only";
 
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { DescribeContext } from "@/lib/order-rules";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import type { Store } from "@/server/stores";
 import { listProductChoices } from "@/server/discounts";
 
@@ -31,7 +31,7 @@ export async function ruleContext(store: Store, lang: AdminLang = "en"): Promise
     describe: {
       money: (minor) => formatMoney(minor, currency, ADMIN_LANG_FACTS[lang].locale),
       countryName,
-      productName: (id) => productNames.get(id) ?? adminText(lang, "notifications").rules.noLongerSold,
+      productName: (id) => productNames.get(id) ?? NOTIFICATIONS_WORDS[lang].rules.noLongerSold,
     },
   };
 }

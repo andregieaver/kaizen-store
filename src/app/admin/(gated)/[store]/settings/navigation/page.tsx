@@ -9,8 +9,9 @@ import { listStoreMenus } from "@/server/menus";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 
 import { uploadImageAction } from "../../products/actions";
 import { saveNavigationAction } from "./actions";
@@ -21,12 +22,12 @@ export const metadata: Metadata = { title: "Header and footer" };
 export default async function NavigationPage({ params }: PageProps<"/admin/[store]/settings/navigation">) {
   const { store, account } = await requirePermission((await params).store, "settings:read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "website").navigation;
+  const w = WEBSITE_WORDS[lang].navigation;
   const home = store.markets[0];
   const menus = await listStoreMenus(store.id);
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["website"])}>
+    <AdminTextScope texts={areaTexts(lang, { website: WEBSITE_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}

@@ -5,7 +5,7 @@ import { PhoneRows } from "@/components/admin/phone-row";
 import { requireFeature } from "@/components/admin/feature-off";
 import { InvoiceNotes, InvoiceReadinessList, InvoiceSettingsForm, SeriesForm } from "@/components/admin/invoices/invoice-settings-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "@/server/invoice-settings";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
@@ -26,7 +26,7 @@ export default async function InvoiceSettingsPage({ params }: PageProps<"/admin/
   if (shopOff) return shopOff;
   const { store } = gated;
   const base = `/admin/${store.slug}`;
-  const words = adminText(adminLangOf(gated.account.adminLocale), "invoices");
+  const words = INVOICES_WORDS[adminLangOf(gated.account.adminLocale)];
   const [settings, readiness, series] = await Promise.all([getInvoiceSettings(store.id), invoiceReadiness(store.id), seriesStates(store.id)]);
   return (
     <div className="flex flex-col gap-6">

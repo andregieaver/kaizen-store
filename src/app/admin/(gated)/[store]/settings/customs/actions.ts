@@ -4,8 +4,8 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { effectiveDispatch } from "@/lib/tax-profile";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { saveCustomsSetting } from "@/server/customs";
 import { checkPermission } from "@/server/permissions";
@@ -17,8 +17,8 @@ import { getTaxProfile, storeCountry } from "@/server/tax-profile";
  */
 export async function saveCustomsAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "settings").common.noChange] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "settings");
+  if (!member) return { status: "error", messages: [SETTINGS_WORDS[await actionAdminLang()].common.noChange] };
+  const w = SETTINGS_WORDS[adminLangOf(member.account.adminLocale)];
   const [profile, country] = await Promise.all([getTaxProfile(member.store.id), storeCountry(member.store.id)]);
   const result = await saveCustomsSetting(
     member.account.id,

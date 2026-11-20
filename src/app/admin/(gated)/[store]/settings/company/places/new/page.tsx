@@ -6,7 +6,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_HOURS_WORDS } from "@/lib/admin-words/settings-hours";
 import { requirePermission } from "@/server/permissions";
 import { listCountries } from "@/server/stores";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
@@ -23,13 +25,13 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "settings");
+  const all = SETTINGS_WORDS[lang];
   const w = all.company;
   const kind = (await searchParams).kind === "pickup" ? "pickup" : "shop";
   const countries = await listCountries();
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsHours"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsHours: SETTINGS_HOURS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/settings/company`, label: w.title }} title={<>{w.addTitle[kind]}</>} description={<>{w.addText[kind]}</>} />
       <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>

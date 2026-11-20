@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PAYMENTS_WORDS } from "@/lib/admin-words/payments";
 import { OrderSettingsForm } from "@/components/admin/orders/settings-form";
 import { getOrderSettings } from "@/server/order-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -23,10 +24,10 @@ export default async function OrderSettingsPage({ params }: PageProps<"/admin/[s
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "payments").orders;
+  const w = PAYMENTS_WORDS[lang].orders;
   const settings = await getOrderSettings(member.store.id);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["payments"])}>
+    <AdminTextScope texts={areaTexts(lang, { payments: PAYMENTS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.intro} />
       <OrderSettingsForm

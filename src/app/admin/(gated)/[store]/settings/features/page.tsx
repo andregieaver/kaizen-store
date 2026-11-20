@@ -7,10 +7,13 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { FeaturesView } from "@/components/admin/features-view";
 import { countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { FEATURE_GROUPS, featureCount, featureKept, featureOffered, featuresIn, type FeatureId } from "@/lib/store-features";
 import { featureRows } from "@/lib/feature-words";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_FEATURES_WORDS } from "@/lib/admin-words/settings-features";
 import { REMINDER_HOURS, storeTimeZones } from "@/server/bookings";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { featureFacts, featureOffer } from "@/server/store-features";
@@ -30,8 +33,8 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
   const { store } = current;
   const owner = memberCan(current, "owner");
   const lang = adminLangOf(current.account.adminLocale);
-  const all = adminText(lang, "settings");
-  const words = { s: all.features, c: adminText(lang, "common").features };
+  const all = SETTINGS_WORDS[lang];
+  const words = { s: all.features, c: COMMON_WORDS[lang].features };
   const w = all.features.times;
   const reminderText = (hours: number, option = false) =>
     hours === 0 ? (option ? w.sendNone : all.features.phone.noReminder) : hours < 48 ? countWords(hours, { one: w.hoursBefore, many: w.hoursBefore }) : countWords(hours / 24, { one: w.daysBefore, many: w.daysBefore });
@@ -42,7 +45,7 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
   const shown = (id: FeatureId) => featureOffered(id, offer) || featureKept(store, id);
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsFeatures"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsFeatures: SETTINGS_FEATURES_WORDS })}>
     <div className="flex flex-col gap-6">
       {/* With the online shop off, what was sold stays reachable while it can still be withdrawn from or returned (D178 step 5). */}
       <AfterSaleNote store={store} />

@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { saveInvoiceSettings, setSeries } from "@/server/invoice-settings";
 
@@ -28,7 +28,7 @@ export async function saveInvoiceSettingsAction(storeSlug: string, _previous: Fo
   });
   if (!saved.ok) return failed(saved.problems);
   refresh();
-  const w = adminText(adminLangOf(member.account.adminLocale), "invoices").actions;
+  const w = INVOICES_WORDS[adminLangOf(member.account.adminLocale)].actions;
   return { status: "ok", messages: [saved.settings.enabled ? w.savedOn : w.savedOff] };
 }
 
@@ -42,5 +42,5 @@ export async function setSeriesAction(storeSlug: string, _previous: FormState, f
   });
   if (!saved.ok) return failed(saved.problems);
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "invoices").actions.saved] };
+  return { status: "ok", messages: [INVOICES_WORDS[adminLangOf(member.account.adminLocale)].actions.saved] };
 }

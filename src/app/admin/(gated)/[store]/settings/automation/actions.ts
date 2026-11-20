@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { ruleAnswerText } from "@/lib/notification-words";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { can } from "@/lib/permissions";
+import { AUTOMATIC_WORDS } from "@/lib/admin-words/automatic";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { holderOf, type Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { deleteRule, listRules, orderRules, saveRule, setRuleEnabled } from "@/server/order-rules";
@@ -17,7 +18,7 @@ import { moveRulesToWorkflows } from "@/server/rules-to-workflows";
 import { storeAction } from "@/server/store-action";
 
 /** The words of a member's language, or of the request's before a member is known. */
-const wordsOf = async (member: Membership | null) => adminText(member ? adminLangOf(member.account.adminLocale) : await actionAdminLang(), "notifications");
+const wordsOf = async (member: Membership | null) => NOTIFICATIONS_WORDS[member ? adminLangOf(member.account.adminLocale) : await actionAdminLang()];
 
 /**
  * The automation rules' actions (wave 3, D238, `docs/wave-3-notifications.md` 2.5): every one `settings:write`, asked here; `saveRule()` checks the rule
@@ -82,7 +83,7 @@ export async function deleteRuleAction(storeSlug: string, ruleId: string, _previ
 export async function moveRulesAction(storeSlug: string): Promise<FormState> {
   const refuse = (message: string): FormState => ({ status: "error", messages: [message] });
   return storeAction({ store: storeSlug, key: "settings:write", action: "automation.rules_moved", answer: refuse }, async (member, lang) => {
-    const w = adminText(lang, "automatic").move;
+    const w = AUTOMATIC_WORDS[lang].move;
     const outcome = await moveRulesToWorkflows(member.store.id, member.account.id);
     if (outcome.moved.length === 0) return refuse(w.nothing);
     if (outcome.kept.length === 0) redirect(`/admin/${member.store.slug}/settings/workflows?moved=${outcome.moved.map((m) => m.id).join(",")}`);

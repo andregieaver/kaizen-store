@@ -6,9 +6,9 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { parsePatternList } from "@/lib/postal-patterns";
 import { parsePrice } from "@/lib/product-input";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { checkLocalCode, deleteLocalArea, listLocalAreas, saveLocalArea } from "@/server/local-delivery";
@@ -40,8 +40,8 @@ const isUuid = (value: unknown): value is string => z.uuid().safeParse(value).su
 const isMarket = (value: unknown): value is string => typeof value === "string" && /^[A-Z]{2}$/.test(value);
 const base = (slug: string) => `/admin/${slug}/settings/shipping`;
 /** What the actions answer, in the account's language (D312 A8); before a member is known, the request's (English outside one). */
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "shipping").actions;
-const noAccess = async () => adminText(await actionAdminLang(), "shipping").actions.noAccess;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => SHIPPING_WORDS[adminLangOf(member.account.adminLocale)].actions;
+const noAccess = async () => SHIPPING_WORDS[await actionAdminLang()].actions.noAccess;
 
 /** An amount typed in a currency: empty is null, anything else must read as one (`invalid`). */
 function amountOf(text: string, currency: string): number | null | "invalid" {

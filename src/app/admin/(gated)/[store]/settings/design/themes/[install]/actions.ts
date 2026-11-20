@@ -5,7 +5,6 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import type { StoreTheme } from "@/lib/theme";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { saveInstallLook } from "@/server/theme-installs";
@@ -13,6 +12,8 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { revertInstant, scheduleInstant } from "@/lib/page-schedules";
 import { previewDays, previewPath, type PreviewLinkAnswer, type PreviewLinkItem } from "@/lib/preview-links";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 import { listPreviewLinks, makePreviewLink, revokePreviewLink } from "@/server/preview-links";
 import { cancelThemeSchedule, scheduleTheme } from "@/server/theme-schedules";
 
@@ -24,7 +25,7 @@ export async function scheduleThemeAction(storeSlug: string, installId: string, 
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { status: "error", messages: [await noAccess()] };
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "schedules");
+  const all = SCHEDULES_WORDS[lang];
   const zone = member.store.timeZone;
   const at = scheduleInstant(String(formData.get("day") ?? "").slice(0, 10), String(formData.get("time") ?? "").slice(0, 5), zone, new Date());
   if (!at.ok) return { status: "error", messages: [all.dialog.problems[at.problem]] };
@@ -48,7 +49,7 @@ export async function cancelThemeScheduleAction(storeSlug: string): Promise<Form
   if (!member) return { status: "error", messages: [await noAccess()] };
   await cancelThemeSchedule(member.account, member.store.id);
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "schedules").theme.cancelled] };
+  return { status: "ok", messages: [SCHEDULES_WORDS[adminLangOf(member.account.adminLocale)].theme.cancelled] };
 }
 
 /** An installed theme's preview links (D340): listed, made and revoked by those who may change the look. */
@@ -60,7 +61,7 @@ export async function listInstallLinksAction(storeSlug: string, installId: strin
 export async function makeInstallLinkAction(storeSlug: string, installId: string, days: number): Promise<PreviewLinkAnswer> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problem: await noAccess() };
-  const all = adminText(adminLangOf(member.account.adminLocale), "schedules");
+  const all = SCHEDULES_WORDS[adminLangOf(member.account.adminLocale)];
   const made = await makePreviewLink(member.account, member.store.id, { install: String(installId) }, previewDays(days));
   if (!made.ok) return { ok: false, problem: fillWords(made.problem === "too_many" ? all.share.tooMany : all.theme.problems.missing, { noun: all.nouns.theme }) };
   return { ok: true, url: previewPath(made.token), links: await listPreviewLinks(member.store.id, { install: String(installId) }), message: all.share.made };
@@ -69,13 +70,13 @@ export async function makeInstallLinkAction(storeSlug: string, installId: string
 export async function revokeInstallLinkAction(storeSlug: string, installId: string, link: string): Promise<PreviewLinkAnswer> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problem: await noAccess() };
-  const all = adminText(adminLangOf(member.account.adminLocale), "schedules");
+  const all = SCHEDULES_WORDS[adminLangOf(member.account.adminLocale)];
   await revokePreviewLink(member.account, member.store.id, { install: String(installId) }, String(link));
   return { ok: true, url: null, links: await listPreviewLinks(member.store.id, { install: String(installId) }), message: all.share.revokedMessage };
 }
 
 /** The refusal for a person without access, in their language (D312 A7). */
-const noAccess = async () => adminText(await actionAdminLang(), "design").actions.noAccess;
+const noAccess = async () => DESIGN_WORDS[await actionAdminLang()].actions.noAccess;
 
 const read = (payload: string): unknown => {
   try {
@@ -105,5 +106,5 @@ export async function saveInstallCssAction(storeSlug: string, installId: string,
   const result = await saveInstallLook(member.store.id, String(installId), member.account.id, { css: String(formData.get("css") ?? "") });
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "design").install.cssSaved] };
+  return { status: "ok", messages: [DESIGN_WORDS[adminLangOf(member.account.adminLocale)].install.cssSaved] };
 }

@@ -8,10 +8,10 @@ import type { FormState } from "@/components/admin/action-form";
 import { formProblems } from "@/lib/form-problems";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { storeDetailsInput } from "@/lib/store-details";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
 import { audienceInput, saveStoreAudience } from "@/server/b2b";
 import { catalogTag } from "@/server/catalog";
@@ -23,8 +23,8 @@ import { storeTag } from "@/server/stores";
 const problems = (messages: string[]): FormState => ({ status: "error", messages });
 
 /** The company page's words in the member's language (D312 A8). */
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "settings");
-const before = async () => adminText(await actionAdminLang(), "settings");
+const wordsOf = (member: Membership) => SETTINGS_WORDS[adminLangOf(member.account.adminLocale)];
+const before = async () => SETTINGS_WORDS[await actionAdminLang()];
 
 /** The server's English answers, in the member's language where the catalogue knows them. */
 const said = (member: Membership, messages: string[]) => {

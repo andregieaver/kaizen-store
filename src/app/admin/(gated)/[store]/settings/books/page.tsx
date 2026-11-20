@@ -8,7 +8,6 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, resultGroupOf, standardAccount, vatTermOf, type ReportRow } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
@@ -28,6 +27,7 @@ import { TurnoverWatchCard } from "@/components/admin/turnover-watch-card";
 import { inboxMatches } from "@/lib/books-inbox";
 import { PURCHASE_KINDS } from "@/lib/purchases";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
+import { BOOKS_WORDS } from "@/lib/admin-words/books";
 import { invoiceOffers } from "@/server/bank-payments";
 import { vouchersOf } from "@/server/purchases";
 import { billOffers, unpaidBills } from "@/server/supplier-invoices";
@@ -61,7 +61,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   if (notInAccount) return notInAccount;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "books");
+  const w = BOOKS_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const owner = memberCan(member, "owner");
   // Keeping the books (D512): the owner, or a member whose role grants it, such as an accountant. Opening them stays the owner's.

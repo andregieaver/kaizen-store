@@ -6,7 +6,6 @@ import { after } from "next/server";
 import type { FormState } from "@/components/admin/action-form";
 import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { domainCountries, domainLanguages } from "@/lib/custom-domains";
 import { addStoreDomain, checkStoreDomain, listStoreDomains, removeStoreDomain, setDomainCountry, setDomainLanguage, setPrimaryDomain } from "@/server/domains";
 import { domainPricingRows, storeDomainCurrency } from "@/server/domain-prices";
@@ -17,6 +16,7 @@ import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange } from "@/s
 import { draftChanges, type DnsDraft } from "@/server/dns-draft";
 import { effectText } from "@/lib/dns-plan";
 import { describeRecord } from "@/lib/dns-records";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 
 /** A store's own domains (P8) are the owner's: they decide where the store lives. */
 const asOwner = (storeSlug: string) => checkOwnerRole(storeSlug);
@@ -102,7 +102,7 @@ export async function searchDomainsAction(storeSlug: string, query: string): Pro
 export async function buyDomainAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await asOwner(storeSlug);
   if (!member) return notOwner;
-  const words = adminText(adminLangOf(member.account.adminLocale), "domains");
+  const words = DOMAINS_WORDS[adminLangOf(member.account.adminLocale)];
   const value = (key: string) => String(form.get(key) ?? "");
   const result = await startDomainPurchase(member.account, member.store.id, {
     domain: value("domain"),
@@ -136,7 +136,7 @@ export async function domainRenewalAction(storeSlug: string, _state: FormState, 
   if (!member) return notOwner;
   const result = await setDomainRenewal(member.account, member.store.id, String(form.get("domain") ?? ""), form.get("renew") === "on");
   if (!result.ok) return { status: "error", messages: result.problems };
-  return done([adminText(adminLangOf(member.account.adminLocale), "domains").registrations.saved]);
+  return done([DOMAINS_WORDS[adminLangOf(member.account.adminLocale)].registrations.saved]);
 }
 
 /** Renews a registration a year now at the price the button named (D315 9.1): owners only. */
@@ -147,7 +147,7 @@ export async function renewDomainAction(storeSlug: string, _state: FormState, fo
   const result = await renewDomainNow(member.account, member.store.id, domain, 1, String(form.get("agreed") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   after(() => chargeDomainPurchases({ storeId: member.store.id }).then(() => undefined));
-  return done([adminText(adminLangOf(member.account.adminLocale), "domains").registrations.renewing.replaceAll("{domain}", domain)]);
+  return done([DOMAINS_WORDS[adminLangOf(member.account.adminLocale)].registrations.renewing.replaceAll("{domain}", domain)]);
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ export type DnsCheck = { ok: true; effects: string[]; lines: string[]; rev: stri
 export async function checkDnsAction(storeSlug: string, apex: string, draft: DnsDraft): Promise<DnsCheck> {
   const member = await asOwner(storeSlug);
   if (!member) return { ok: false, problems: notOwner.messages };
-  const words = adminText(adminLangOf(member.account.adminLocale), "domains").dns;
+  const words = DOMAINS_WORDS[adminLangOf(member.account.adminLocale)].dns;
   const made = await draftChanges(member.store.id, apex, draft);
   if (!made.ok) return made;
   const preview = await previewDnsChange(member.store.id, apex, made.changes);
@@ -182,7 +182,7 @@ export async function checkDnsAction(storeSlug: string, apex: string, draft: Dns
 export async function applyDnsAction(storeSlug: string, apex: string, draft: DnsDraft, rev: string): Promise<FormState> {
   const member = await asOwner(storeSlug);
   if (!member) return notOwner;
-  const words = adminText(adminLangOf(member.account.adminLocale), "domains").dns;
+  const words = DOMAINS_WORDS[adminLangOf(member.account.adminLocale)].dns;
   const made = await draftChanges(member.store.id, apex, draft);
   if (!made.ok) return { status: "error", messages: made.problems };
   const result = await applyDnsChange(member.account, member.store.id, apex, made.changes, { source: draft.kind === "recipe" ? "recipe" : "editor", rev });
@@ -196,7 +196,7 @@ export async function undoDnsAction(storeSlug: string, _state: FormState, form: 
   if (!member) return notOwner;
   const result = await undoDnsChange(member.account, member.store.id, String(form.get("change") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
-  return done([adminText(adminLangOf(member.account.adminLocale), "domains").dns.done]);
+  return done([DOMAINS_WORDS[adminLangOf(member.account.adminLocale)].dns.done]);
 }
 
 /** The owner's switch: the AI manager changes DNS records without asking (D315 decision 5). */
@@ -204,5 +204,5 @@ export async function dnsAutoAction(storeSlug: string, _state: FormState, form: 
   const member = await asOwner(storeSlug);
   if (!member) return notOwner;
   await setDnsAuto(member.account, member.store.id, form.get("on") === "on");
-  return done([adminText(adminLangOf(member.account.adminLocale), "domains").registrations.saved]);
+  return done([DOMAINS_WORDS[adminLangOf(member.account.adminLocale)].registrations.saved]);
 }

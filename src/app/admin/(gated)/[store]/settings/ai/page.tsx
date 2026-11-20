@@ -9,7 +9,6 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { providerInfo } from "@/lib/ai-provider";
 import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
@@ -19,6 +18,9 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ASSISTANT_KEEP, ASSISTANT_KEEP_MONTHS } from "@/lib/assistant-keep";
+import { areaTexts } from "@/lib/admin-area";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_AI_WORDS } from "@/lib/admin-words/settings-ai";
 import { assistantKeepOf } from "@/server/assistant-retention";
 
 import {
@@ -56,7 +58,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
   const [own, kaizen, keepMonths] = await Promise.all([getAiSettings(store.id), getAiSettings(null), assistantKeepOf(store.id)]);
   const owner = memberCan(staffer, "owner");
   const lang = adminLangOf(staffer.account.adminLocale);
-  const w = adminText(lang, "settings").ai;
+  const w = SETTINGS_WORDS[lang].ai;
   const usingOwn = own?.enabled === true;
   const p = w.phone;
   const current = usingOwn
@@ -66,7 +68,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
       : w.none;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsAi"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsAi: SETTINGS_AI_WORDS })}>
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title={w.title} description={<>{current}</>} />
@@ -99,7 +101,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
             <AiProviderForm
               action={saveStoreAiAction.bind(null, store.slug)}
               settings={own}
-              submitLabel={own ? adminText(lang, "settings").common.save : w.useOwn}
+              submitLabel={own ? SETTINGS_WORDS[lang].common.save : w.useOwn}
               checkVision={checkStoreVisionAction.bind(null, store.slug)}
             />
           </>

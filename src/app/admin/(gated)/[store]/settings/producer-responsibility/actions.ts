@@ -4,7 +4,7 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { catalogTag } from "@/server/catalog";
 import { checkPermission } from "@/server/permissions";
@@ -20,8 +20,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function saveRegistrationAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "settings").common.noChange] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "settings").producer;
+  if (!member) return { status: "error", messages: [SETTINGS_WORDS[await actionAdminLang()].common.noChange] };
+  const w = SETTINGS_WORDS[adminLangOf(member.account.adminLocale)].producer;
   const text = (name: string) => {
     const value = formData.get(name);
     return typeof value === "string" ? value : null;
@@ -54,8 +54,8 @@ export async function saveRegistrationAction(storeSlug: string, _state: FormStat
 
 export async function removeRegistrationAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "settings").common.noChange] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "settings").producer;
+  if (!member) return { status: "error", messages: [SETTINGS_WORDS[await actionAdminLang()].common.noChange] };
+  const w = SETTINGS_WORDS[adminLangOf(member.account.adminLocale)].producer;
   const id = formData.get("id");
   if (typeof id !== "string" || !UUID.test(id) || !(await removeRegistration(member.store.id, member.account.id, id))) {
     return { status: "error", messages: [w.problems.missing] };

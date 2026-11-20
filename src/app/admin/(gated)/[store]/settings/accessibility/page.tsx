@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { AccessibilityForm } from "@/components/admin/a11y-statement-form";
 import { enforcementBodyOf } from "@/lib/a11y-statement";
+import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { a11yFacts, getA11ySettings } from "@/server/accessibility";
 import { requireOwnerRole } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "Accessibility" };
  */
 export default async function AccessibilityPage({ params }: PageProps<"/admin/[store]/settings/accessibility">) {
   const { store, account } = await requireOwnerRole((await params).store);
-  const words = adminText(adminLangOf(account.adminLocale), "legal");
+  const words = LEGAL_WORDS[adminLangOf(account.adminLocale)];
   const [settings, facts] = await Promise.all([getA11ySettings(store.id), a11yFacts(store)]);
   const slug = store.slug;
   return (

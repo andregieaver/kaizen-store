@@ -6,13 +6,13 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { paymentsEn } from "@/lib/admin-messages/payments.en";
-import { adminText } from "@/lib/admin-text";
 import { knownText } from "@/lib/known-words";
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS } from "@/lib/order-limits";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { isCaptureSetting } from "@/lib/capture";
 import { isQuoteMode } from "@/lib/quotes";
+import { PAYMENTS_WORDS } from "@/lib/admin-words/payments";
 import { saveOrderSettings, SETTINGS_PROBLEMS, type OrderSettingsInput } from "@/server/order-settings";
 
 /**
@@ -22,8 +22,8 @@ import { saveOrderSettings, SETTINGS_PROBLEMS, type OrderSettingsInput } from "@
  */
 export async function saveOrderSettingsAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "payments").problems.noChange] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "payments");
+  if (!member) return { status: "error", messages: [PAYMENTS_WORDS[await actionAdminLang()].problems.noChange] };
+  const w = PAYMENTS_WORDS[adminLangOf(member.account.adminLocale)];
   const said = (text: string) => knownText(text, paymentsEn.problems, w.problems);
 
   const input: OrderSettingsInput = { giftMessages: form.get("giftMessages") === "on" };

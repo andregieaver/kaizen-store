@@ -7,7 +7,7 @@ import { ButtonLink, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { WAY_KEYS } from "@/lib/shipping-ways";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getShippingSetup } from "@/server/shipping-methods";
 
@@ -22,7 +22,7 @@ export default async function ShippingMethodsPage({ params, searchParams }: Page
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "shipping");
+  const all = SHIPPING_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const market = chosenMarket(store.markets, (await searchParams).market);
   const base = `/admin/${store.slug}/settings/shipping`;

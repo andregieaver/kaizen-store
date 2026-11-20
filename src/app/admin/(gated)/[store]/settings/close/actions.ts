@@ -4,9 +4,9 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { signedInRecently } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { NO_ACCESS, checkOwnerRole } from "@/server/permissions";
 import { closeStore, reopenStore } from "@/server/store-closure";
 
@@ -14,7 +14,7 @@ const here = (slug: string) => `/admin/${slug}/settings/close`;
 
 /** The server's English answers, in the owner's language where the catalogue knows them (D312 A8). */
 const said = (adminLocale: string | null | undefined, problems: string[]) => {
-  const map = adminText(adminLangOf(adminLocale), "settings").close.problems;
+  const map = SETTINGS_WORDS[adminLangOf(adminLocale)].close.problems;
   return problems.map((p) => map[p] ?? p);
 };
 
@@ -22,7 +22,7 @@ const said = (adminLocale: string | null | undefined, problems: string[]) => {
 export async function closeStoreAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  if (!(await signedInRecently())) return { status: "error", messages: [adminText(adminLangOf(member.account.adminLocale), "settings").close.signInAgainFirst] };
+  if (!(await signedInRecently())) return { status: "error", messages: [SETTINGS_WORDS[adminLangOf(member.account.adminLocale)].close.signInAgainFirst] };
   const result = await closeStore(member.account, member.store.id, { by: "owner", typed: String(form.get("address") ?? "") });
   if (!result.ok) return { status: "error", messages: said(member.account.adminLocale, result.problems) };
   redirect(here(storeSlug));

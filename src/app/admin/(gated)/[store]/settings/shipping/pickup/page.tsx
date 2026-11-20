@@ -4,7 +4,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PickupView } from "@/components/admin/shipping/pickup-view";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listPickupPlaces } from "@/server/pickup";
 
@@ -19,7 +19,7 @@ export default async function ShippingPickupPage({ params }: PageProps<"/admin/[
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "shipping");
+  const all = SHIPPING_WORDS[lang];
   const base = `/admin/${store.slug}/settings/shipping`;
   const places = await listPickupPlaces(store.id);
   return (

@@ -6,11 +6,11 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { toolCategories } from "@/lib/cookie-consent";
 
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, CustomCodeForm, TrackingForm } from "@/components/admin/cookie-settings";
 import { reviewFindings } from "@/lib/cookie-scan";
 import { marketPath, storeDomain, storeHref } from "@/lib/paths";
+import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listConsents } from "@/server/consents";
 import { latestFindings, listScans } from "@/server/cookie-scans";
@@ -27,7 +27,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
   const { store } = current;
   const market = store.markets[0];
   const lang = adminLangOf(current.account.adminLocale);
-  const words = adminText(lang, "legal");
+  const words = LEGAL_WORDS[lang];
   const w = words.cookies;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const [consents, scans, lastDone, notes] = await Promise.all([

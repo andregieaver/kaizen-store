@@ -7,8 +7,11 @@ import { MarketPriceRules } from "@/components/admin/market-price-rules";
 import { FeatureOffNote } from "@/components/admin/feature-off";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
+import { areaTexts } from "@/lib/admin-area";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_PRICE_RULES_WORDS } from "@/lib/admin-words/settings-price-rules";
+import { SETUP_WORDS } from "@/lib/admin-words/setup";
 import { marketPriceRules } from "@/server/market-prices";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listCountries } from "@/server/stores";
@@ -34,7 +37,7 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
   const nameOf = (code: string) => countries.find((c) => c.code === code)?.name ?? code;
   const [home, ...others] = store.keptMarkets;
   const lang = adminLangOf(current.account.adminLocale);
-  const all = adminText(lang, "settings");
+  const all = SETTINGS_WORDS[lang];
   const w = all.countries;
   // "{country}, in {currency}. … under {company} …": the parts around the two filled in by elements.
   const [beforeCompany, afterCompany = ""] = w.ownText.split("{company}");
@@ -84,7 +87,7 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
           several={several}
           submitLabel={w.save}
           disabled={!editor}
-          w={adminText(lang, "setup").countriesForm}
+          w={SETUP_WORDS[lang].countriesForm}
           note={<p className="text-sm text-muted">{several ? w.noteSeveral : w.noteOne}</p>}
         />
         </>
@@ -110,7 +113,7 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
                     several={several}
                     submitLabel={w.save}
                     disabled={!editor}
-                    w={adminText(lang, "setup").countriesForm}
+                    w={SETUP_WORDS[lang].countriesForm}
                     note={<p className="text-sm text-muted">{w.noteOne}</p>}
                   />
                 </div>
@@ -137,7 +140,7 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
       {!editor && <p className="text-sm">{all.common.readOnly}</p>}
 
       {ruled && (
-        <AdminTextScope texts={adminTexts(lang, ["settingsPriceRules"])}>
+        <AdminTextScope texts={areaTexts(lang, { settingsPriceRules: SETTINGS_PRICE_RULES_WORDS })}>
           <MarketPriceRules
             markets={store.keptMarkets.map((m) => ({ code: m.code, name: nameOf(m.code), currency: m.nativeCurrency }))}
             rules={ruled}

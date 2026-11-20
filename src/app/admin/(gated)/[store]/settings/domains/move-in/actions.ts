@@ -7,15 +7,15 @@ import type { FormState } from "@/components/admin/action-form";
 import type { MoveInLookShape, MoveInStartShape, TransferQuoteShape } from "@/components/admin/domain-types";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { describeRecord, recordKey } from "@/lib/dns-records";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { lookBeforeMoveIn, startMoveIn, stopMoveIn } from "@/server/domain-move-in";
 import { chargeDomainPurchases, quoteTransfer, startDomainTransfer } from "@/server/domain-purchases";
 import { checkOwnerRole } from "@/server/permissions";
 
 /** Bringing a domain here (D315 phase 6) is the owner's, as everything about the store's domains is. */
 const notOwner = ["Only an owner can bring domains to the store."];
-const wordsOf = (locale: string | null | undefined) => adminText(adminLangOf(locale), "domains").moveIn;
+const wordsOf = (locale: string | null | undefined) => DOMAINS_WORDS[adminLangOf(locale)].moveIn;
 
 /** The price of moving a registration here; nothing is started. */
 export async function quoteTransferAction(storeSlug: string, domain: string): Promise<TransferQuoteShape> {

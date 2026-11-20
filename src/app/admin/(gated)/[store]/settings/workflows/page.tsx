@@ -6,7 +6,6 @@ import { AdminLink, Card, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
 import { adminDate } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { EVENTS } from "@/lib/integrations";
 import { listValues, WORKFLOW_TRIGGERS } from "@/lib/workflows";
@@ -18,6 +17,10 @@ import { listWorkflows, workflowRuns } from "@/server/workflows";
 
 import { deleteWorkflowAction, saveWorkflowAction, switchWorkflowAction, testWorkflowAction } from "./actions";
 import { topicOffered } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { AUTOMATIC_WORDS } from "@/lib/admin-words/automatic";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_WORKFLOWS_WORDS } from "@/lib/admin-words/notifications-workflows";
 
 export const metadata: Metadata = { title: "Workflows" };
 
@@ -33,7 +36,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
   const movedIds = new Set((typeof movedParam === "string" ? movedParam.split(",") : []).filter((id) => UUID.test(id)).map((id) => id.toLowerCase()));
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "notifications");
+  const all = NOTIFICATIONS_WORDS[lang];
   const w = all.workflows;
   const canWrite = memberCan(member, "settings:write");
   const triggerLabels = Object.fromEntries(EVENTS.map((e) => [e.id, all.integrations.events[e.id]?.label ?? e.label]));
@@ -65,7 +68,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
   };
   const endpointChoices = endpoints.map((e) => ({ id: e.id, name: e.name }));
   const moved = flows.filter((f) => movedIds.has(f.id));
-  const movedWords = adminText(lang, "automatic").moved;
+  const movedWords = AUTOMATIC_WORDS[lang].moved;
   // A paid order's product conditions (E3.3) by the products' names.
   const productIds = new Set(flows.flatMap((f) => f.conditions.filter((c) => c.field === "order.products").flatMap((c) => listValues(c.value))));
   const valueLabels =
@@ -74,7 +77,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
       : Object.fromEntries((await listProductChoices(store.id, store.markets[0]?.ownLocale ?? "en-GB")).filter((p) => productIds.has(p.id)).map((p) => [p.id, p.title]));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsWorkflows"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsWorkflows: NOTIFICATIONS_WORKFLOWS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         {moved.length > 0 && (

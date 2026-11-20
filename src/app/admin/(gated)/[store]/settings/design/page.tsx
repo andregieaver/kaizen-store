@@ -12,8 +12,11 @@ import { countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { scheduleChip } from "@/lib/page-schedules";
 import { themeFactsFor, themeScheduleOf } from "@/server/theme-schedules";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { designPreviewPath } from "@/lib/design-presets";
+import { areaTexts } from "@/lib/admin-area";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
+import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 import { THEME_UPDATE_KEEP_DAYS, latestDesignUse, listOfferedDesigns, themeUpdates } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { themeLookThumbs } from "@/server/theme-store";
@@ -51,7 +54,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "design");
+  const all = DESIGN_WORDS[lang];
   const w = all.page;
   const [saved, designs, latest, installs, runs, thumbs] = await Promise.all([
     listSavedThemes(store.id),
@@ -64,7 +67,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   // What making each theme live costs this store (D286): free, already the store's, or its price, now or when the store opens.
   // What is planned for the store's themes and what did not happen (D340), on the store's clock.
   const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
-  const chips = adminText(lang, "schedules").chips;
+  const chips = SCHEDULES_WORDS[lang].chips;
   const planned = await themeScheduleOf(store.id);
   const schedules = Object.fromEntries(
     installs.flatMap((install) => {
@@ -89,7 +92,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const hasUpdates = updates.available.length > 0 || updates.made.length > 0 || updates.installs.length > 0;
   const canShare = canChange && !store.isTemplate && !store.starter;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["design", "designEditor", "schedules"])}>
+    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS, schedules: SCHEDULES_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}

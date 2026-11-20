@@ -8,7 +8,8 @@ import { RuleList } from "@/components/admin/automation/rule-list";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { AUTOMATIC_WORDS } from "@/lib/admin-words/automatic";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { listRules } from "@/server/order-rules";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { moveRulesToWorkflows, rulesMovePlan } from "@/server/rules-to-workflows";
@@ -32,7 +33,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "notifications");
+  const words = NOTIFICATIONS_WORDS[lang];
   const w = words.rules;
   const canWrite = memberCan(member, "settings:write");
   const plan = await rulesMovePlan(store.id);
@@ -42,7 +43,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
     if (outcome.kept.length === 0) redirect(`/admin/${store.slug}/settings/workflows?moved=${outcome.moved.map((m) => m.id).join(",")}`);
   }
   const [rules, context] = await Promise.all([listRules(store.id), ruleContext(store, lang)]);
-  const move = adminText(lang, "automatic").move;
+  const move = AUTOMATIC_WORDS[lang].move;
   const keptWhy = new Map(plan.kept.map((k) => [k.id, k.why]));
   const kept = rules.filter((r) => keptWhy.has(r.id));
   const movable = rules.length - kept.length;

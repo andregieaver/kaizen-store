@@ -6,18 +6,18 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import type { RevealShape, SwitchCheckShape } from "@/components/admin/domain-types";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { describeRecord } from "@/lib/dns-records";
 import { signedInRecently } from "@/server/auth";
 import { disconnectDomain, nameserverSwitchCheck, revealTransferCode, stayHere, switchBack, switchNameservers } from "@/server/domain-move";
 import { checkOwnerRole } from "@/server/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 
 /** Moving a domain away (D315 8) is the owner's, as everything about the store's domains is. */
 const notOwner: FormState = { status: "error", messages: ["Only an owner can move the store's domains."] };
 
-const wordsOf = (locale: string | null | undefined) => adminText(adminLangOf(locale), "domains").move;
+const wordsOf = (locale: string | null | undefined) => DOMAINS_WORDS[adminLangOf(locale)].move;
 
 /** Asks the new nameservers for every record; nothing changes. */
 export async function checkNameserversAction(storeSlug: string, apex: string, nameservers: string): Promise<SwitchCheckShape> {

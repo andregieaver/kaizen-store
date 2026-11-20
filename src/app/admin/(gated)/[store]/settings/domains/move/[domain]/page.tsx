@@ -7,8 +7,8 @@ import { ButtonLink, PageHeader } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { MOVE_KEEP_DAYS, type MoveGoal } from "@/lib/domain-move";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { movePlan } from "@/server/domain-move";
 import { requireOwnerRole } from "@/server/permissions";
 
@@ -26,7 +26,7 @@ export default async function MoveDomainPage({ params, searchParams }: PageProps
   const { store: slug, domain } = await params;
   const member = await requireOwnerRole(slug);
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "domains").move;
+  const words = DOMAINS_WORDS[lang].move;
   const apex = decodeURIComponent(domain).toLowerCase();
   const goalParam = (await searchParams).goal;
   const goal = GOALS.find((g) => g === goalParam) ?? null;

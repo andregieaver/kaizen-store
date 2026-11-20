@@ -8,7 +8,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { Chip, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { getRule } from "@/server/order-rules";
 import { getWorkflow } from "@/server/workflows";
 import { tagSuggestions } from "@/server/order-tags";
@@ -29,7 +30,7 @@ export default async function RulePage({ params }: PageProps<"/admin/[store]/set
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "notifications");
+  const words = NOTIFICATIONS_WORDS[lang];
   const w = words.rules;
   const rule = await getRule(store.id, ruleId);
   // A rule moved to a workflow (ecosystem plan E3.3, D718) is the workflow with its id now: its old address leads there.
@@ -39,7 +40,7 @@ export default async function RulePage({ params }: PageProps<"/admin/[store]/set
   const [context, tags] = await Promise.all([ruleContext(store, lang), tagSuggestions(store.id)]);
   const back = `/admin/${store.slug}/settings/automation`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={areaTexts(lang, { notifications: NOTIFICATIONS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: back, label: w.title }}

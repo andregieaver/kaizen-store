@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { setPrivateMode, setPrivatePassword, signEveryoneOut, type PrivateResult } from "@/server/private-mode";
@@ -17,7 +17,7 @@ import { setPrivateMode, setPrivatePassword, signEveryoneOut, type PrivateResult
 async function words(storeSlug: string) {
   const member = await checkPermission(storeSlug, "settings:write");
   const lang = member ? adminLangOf(member.account.adminLocale) : await actionAdminLang();
-  return { member, w: adminText(lang, "settings").privateMode };
+  return { member, w: SETTINGS_WORDS[lang].privateMode };
 }
 
 function answer(result: PrivateResult, w: Awaited<ReturnType<typeof words>>["w"], ok: string): FormState {

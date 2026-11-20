@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { FoldRow } from "@/components/admin/fold-row";
 import { ROUND_STEPS } from "@/lib/currency";
 import { currencyName, languageName, languageOptions } from "@/lib/localization";
@@ -18,6 +17,7 @@ import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 import type { Store } from "@/server/stores";
 
 import { LANGUAGE_RULES, OWN_CURRENCY, regionCurrency } from "@/lib/language-rule";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 
 import { switchOnFromPageAction } from "../features/actions";
 import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction, saveStoreLanguageAction, saveVisitorLanguageAction } from "./actions";
@@ -31,7 +31,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
   const { store } = current;
   const owner = memberCan(current, "owner");
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "settings").localization;
+  const w = SETTINGS_WORDS[lang].localization;
   const { localization, markets } = store;
   // Several languages and Several currencies (D178): each section is there while its feature is on; what was chosen is kept while off.
   const languagesOn = featureOn(store, "languages");

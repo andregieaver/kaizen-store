@@ -2,7 +2,7 @@
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { checkPermission } from "@/server/permissions";
 import { submitTheme, submitThemeUpdate } from "@/server/theme-submissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -18,8 +18,8 @@ const text = (formData: FormData, key: string): string => {
  */
 export async function submitThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "design").share.readOnly] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "design").share;
+  if (!member) return { status: "error", messages: [DESIGN_WORDS[await actionAdminLang()].share.readOnly] };
+  const w = DESIGN_WORDS[adminLangOf(member.account.adminLocale)].share;
   const as = text(formData, "as");
   // The store's published pages as the theme's demo content (D388), only when ticked.
   const options = { pages: formData.get("pages") === "on" };

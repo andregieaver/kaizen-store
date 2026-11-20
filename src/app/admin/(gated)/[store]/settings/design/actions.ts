@@ -7,7 +7,6 @@ import { after } from "next/server";
 import type { FormState } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { designChoice } from "@/lib/design-presets";
 import { BUILDER_WRITE } from "@/lib/permissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -26,6 +25,8 @@ import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeLibrary, sav
 import { listLookVersions, readLookVersion } from "@/server/look-versions";
 import type { LookVersionItem } from "@/lib/look-versions";
 import type { StoreTheme } from "@/lib/theme";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 
 /** The live look's earlier versions (D340), newest first, for the theme editor's *Versions*. */
 export async function lookVersionsAction(storeSlug: string): Promise<LookVersionItem[]> {
@@ -38,14 +39,14 @@ export async function lookVersionAction(storeSlug: string, versionId: string): P
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problem: await noAccess() };
   const theme = await readLookVersion(member.store.id, String(versionId));
-  return theme ? { ok: true, theme } : { ok: false, problem: adminText(adminLangOf(member.account.adminLocale), "schedules").versions.readFailed };
+  return theme ? { ok: true, theme } : { ok: false, problem: SCHEDULES_WORDS[adminLangOf(member.account.adminLocale)].versions.readFailed };
 }
 
 /** The refusal for a person without access, in their language (D312 A7). */
-const noAccess = async () => adminText(await actionAdminLang(), "design").actions.noAccess;
+const noAccess = async () => DESIGN_WORDS[await actionAdminLang()].actions.noAccess;
 
 /** The words of a member's answers (D312 A7). */
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "design");
+const wordsOf = (member: Membership) => DESIGN_WORDS[adminLangOf(member.account.adminLocale)];
 
 const read = (payload: string): unknown => {
   try {

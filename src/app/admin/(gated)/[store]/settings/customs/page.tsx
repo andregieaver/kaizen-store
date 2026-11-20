@@ -5,8 +5,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { effectiveDispatch } from "@/lib/tax-profile";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { customsMarkets, productsWithoutHsCode } from "@/server/customs";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listCountries } from "@/server/stores";
@@ -28,7 +28,7 @@ export default async function CustomsSettingsPage({ params }: PageProps<"/admin/
   const { store } = current;
   const editor = memberCan(current, "settings:write");
   const lang = adminLangOf(current.account.adminLocale);
-  const all = adminText(lang, "settings");
+  const all = SETTINGS_WORDS[lang];
   const w = all.customs;
   const [profile, country, countries, missing] = await Promise.all([
     getTaxProfile(store.id),

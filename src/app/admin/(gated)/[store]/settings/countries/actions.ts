@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { PRICE_BASES, ruleProblem } from "@/lib/market-prices";
 import { marketPriceRules, previewRule, rateProblem, removeMarketPriceRule, saveMarketPriceRule, type RulePreview } from "@/server/market-prices";
@@ -13,6 +12,7 @@ import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { pagesTag } from "@/lib/cache-tags";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { STORES_TAG } from "@/server/seo";
 import { setMarkets } from "@/server/setup";
 import { forgetStoreFacts } from "@/server/redirect-resolve";
@@ -24,13 +24,13 @@ import { storeTag } from "@/server/stores";
  */
 export async function saveCountriesSettingsAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await checkPermission(storeSlug, "settings:write");
-  if (!owner) return { status: "error", messages: [adminText(await actionAdminLang(), "settings").common.noChange] };
+  if (!owner) return { status: "error", messages: [SETTINGS_WORDS[await actionAdminLang()].common.noChange] };
   const codes = formData
     .getAll("country")
     .map(String)
     .filter((code) => /^[A-Z]{2}$/.test(code));
   const result = await setMarkets(owner, codes);
-  const w = adminText(adminLangOf(owner.account.adminLocale), "settings").countries;
+  const w = SETTINGS_WORDS[adminLangOf(owner.account.adminLocale)].countries;
   const said = (text: string) => w.problems[text] ?? text;
   if (!result.ok) return { status: "error", messages: result.problems.map(said) };
   updateTag(storeTag(owner.store.slug));
@@ -65,9 +65,9 @@ const refreshPrices = (storeId: string, slug: string) => {
 /** Five of the store's products' prices under the rule as typed, before it is saved. */
 export async function previewPriceRuleAction(storeSlug: string, given: unknown): Promise<RulePreview[] | { problem: string }> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member) return { problem: adminText(await actionAdminLang(), "settings").common.noChange };
+  if (!member) return { problem: SETTINGS_WORDS[await actionAdminLang()].common.noChange };
   const parsed = ruleInput.safeParse(given);
-  if (!parsed.success) return { problem: adminText(adminLangOf(member.account.adminLocale), "settings").priceRules.unreadable };
+  if (!parsed.success) return { problem: SETTINGS_WORDS[adminLangOf(member.account.adminLocale)].priceRules.unreadable };
   const problem = ruleProblem(parsed.data, member.store.keptMarkets.map((m) => m.code), await marketPriceRules(member.store.id)) ?? (await rateProblem(member.store.id, parsed.data));
   if (problem) return { problem: priceRuleProblem(member, problem) };
   return previewRule(member.store.id, parsed.data, member.store.localization.locales[0] ?? "en");
@@ -76,8 +76,8 @@ export async function previewPriceRuleAction(storeSlug: string, given: unknown):
 /** Saves the rule and works out its prices at once. */
 export async function savePriceRuleAction(storeSlug: string, given: unknown): Promise<{ ok: true; message: string } | { ok: false; problem: string }> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member) return { ok: false, problem: adminText(await actionAdminLang(), "settings").common.noChange };
-  const w = adminText(adminLangOf(member.account.adminLocale), "settings").priceRules;
+  if (!member) return { ok: false, problem: SETTINGS_WORDS[await actionAdminLang()].common.noChange };
+  const w = SETTINGS_WORDS[adminLangOf(member.account.adminLocale)].priceRules;
   const parsed = ruleInput.safeParse(given);
   if (!parsed.success) return { ok: false, problem: w.unreadable };
   const result = await saveMarketPriceRule(member.store, member.account.id, parsed.data);
@@ -89,15 +89,15 @@ export async function savePriceRuleAction(storeSlug: string, given: unknown): Pr
 /** Takes a country's rule away; its prices stay as they are, now set by hand. */
 export async function removePriceRuleAction(storeSlug: string, market: string): Promise<{ ok: true; message: string } | { ok: false; problem: string }> {
   const member = await checkPermission(storeSlug, "settings:write");
-  if (!member || !/^[A-Z]{2}$/.test(market)) return { ok: false, problem: adminText(await actionAdminLang(), "settings").common.noChange };
+  if (!member || !/^[A-Z]{2}$/.test(market)) return { ok: false, problem: SETTINGS_WORDS[await actionAdminLang()].common.noChange };
   await removeMarketPriceRule(member.store, member.account.id, market);
   refreshPrices(member.store.id, member.store.slug);
-  return { ok: true, message: adminText(adminLangOf(member.account.adminLocale), "settings").priceRules.removed };
+  return { ok: true, message: SETTINGS_WORDS[adminLangOf(member.account.adminLocale)].priceRules.removed };
 }
 
 /** A rule's problem in the account's language (the catalogue's words for the sentences `ruleProblem()` writes). */
 function priceRuleProblem(member: { account: { adminLocale?: string | null } }, problem: string): string {
-  const w = adminText(adminLangOf(member.account.adminLocale), "settings").priceRules;
+  const w = SETTINGS_WORDS[adminLangOf(member.account.adminLocale)].priceRules;
   const noRate = /^([A-Z]{3}) has no rate /.exec(problem);
   if (noRate) return fillWords(w.noRate, { currency: noRate[1] });
   return w.problems[problem] ?? problem;

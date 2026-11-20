@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { legalLead, LegalPagesPanel } from "@/components/admin/legal-pages-panel";
 import { legalOverview } from "@/server/legal-starters";
 import { legalAiSettings, legalWriterAvailability, legalWrites } from "@/server/legal-writer";
@@ -39,7 +39,7 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
     legalAiSettings(member.store.id),
   ]);
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "legal");
+  const words = LEGAL_WORDS[lang];
   const slug = member.store.slug;
   return (
     <div className="flex flex-col gap-6">

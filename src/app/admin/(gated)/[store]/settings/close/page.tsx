@@ -6,8 +6,8 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminDate } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { REOPEN_DAYS, closureBlockers, closureWarnings, ownerMayReopen, reopenDeadline } from "@/lib/store-closure";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { signedInRecently } from "@/server/auth";
 import { requireOwnerRole } from "@/server/permissions";
 import { storeObligations, storeState } from "@/server/store-closure";
@@ -28,7 +28,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
   // Kaizena Flow's own store is never closed (D466): the database refuses it too.
   if (store.house) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "settings").close;
+  const w = SETTINGS_WORDS[lang].close;
   const state = await storeState(store.id);
   if (!state) return null;
 

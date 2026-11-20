@@ -10,7 +10,6 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { API_POWERS, API_SCOPES, isApiPower } from "@/lib/admin-api";
 import { API_ROUTES } from "@/lib/admin-api-routes";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { scopeLabel } from "@/lib/oauth-words";
 import { siteUrl } from "@/lib/site";
 import { listApiTokens } from "@/server/api-tokens";
@@ -36,6 +35,11 @@ import { listCustomApps } from "@/server/custom-apps";
 import { MakeStorefrontToken, RevokeStorefrontToken } from "@/components/admin/storefront-tokens";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { STOREFRONT_ROUTES } from "@/lib/storefront-api";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_TOKENS_WORDS } from "@/lib/admin-words/notifications-tokens";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { listStorefrontTokens } from "@/server/storefront-api";
 
 export const metadata: Metadata = { title: "Apps and API" };
@@ -58,7 +62,7 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const member = await requireOwnerRole((await params).store);
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "notifications").apiTokens;
+  const w = NOTIFICATIONS_WORDS[lang].apiTokens;
   const [tokens, storefrontTokens, apps, reaching, cutoffs, asks] = await Promise.all([
     listApiTokens(store.id),
     listStorefrontTokens(store.id),
@@ -70,18 +74,18 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   // Apps for many stores installed here (D441) are listed apart from the AI assistants and apps connected over MCP (D439).
   const installed = reaching.filter((grant) => grant.resource === "admin");
   const grants = reaching.filter((grant) => grant.resource === "mcp");
-  const ow = adminText(lang, "oauth");
+  const ow = OAUTH_WORDS[lang];
   const powerWords = w.scopeWords;
-  const aw = adminText(lang, "notifications").customApps;
-  const sw = adminText(lang, "notifications").storefrontTokens;
-  const routeWords = adminText(lang, "screens").storefrontRoutes;
+  const aw = NOTIFICATIONS_WORDS[lang].customApps;
+  const sw = NOTIFICATIONS_WORDS[lang].storefrontTokens;
+  const routeWords = SCREENS_WORDS[lang].storefrontRoutes;
   const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const base = `${siteUrl()}/api/admin/v1`;
   // Round 27 (D700): on a phone what reaches the store is rows first, then making a token, then the rest as rows.
   const row = { change: w.phoneOpen, done: w.phoneClose, flat: true } as const;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsTokens"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsTokens: NOTIFICATIONS_TOKENS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

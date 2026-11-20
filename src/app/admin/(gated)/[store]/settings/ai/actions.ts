@@ -6,9 +6,9 @@ import type { FormState } from "@/components/admin/action-form";
 import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult } from "@/components/admin/ai-provider-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { aiFormValues } from "@/lib/ai-provider";
 import { ASSISTANT_KEEP, ASSISTANT_KEEP_MONTHS } from "@/lib/assistant-keep";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { testPicture } from "@/server/ai-pictures";
@@ -20,11 +20,11 @@ import { runUnderstandingEval } from "@/server/query-understanding";
 
 /** A store's own AI sends its products and shoppers' searches to another company, so only an owner chooses it (D73). */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  return (await checkOwnerRole(storeSlug)) ?? adminText(await actionAdminLang(), "settings").ai.actions.onlyOwner;
+  return (await checkOwnerRole(storeSlug)) ?? SETTINGS_WORDS[await actionAdminLang()].ai.actions.onlyOwner;
 }
 
 /** The page's answers in the owner's language (D312 A8). */
-const wordsOf = (owner: Membership) => adminText(adminLangOf(owner.account.adminLocale), "settings").ai.actions;
+const wordsOf = (owner: Membership) => SETTINGS_WORDS[adminLangOf(owner.account.adminLocale)].ai.actions;
 
 export async function saveStoreAiAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await asOwner(storeSlug);
@@ -78,7 +78,7 @@ export async function checkStoreVisionAction(storeSlug: string, model: string): 
 export async function saveAssistantKeepAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (typeof owner === "string") return { status: "error", messages: [owner] };
-  const w = adminText(adminLangOf(owner.account.adminLocale), "settings").ai.keep;
+  const w = SETTINGS_WORDS[adminLangOf(owner.account.adminLocale)].ai.keep;
   const result = await saveAssistantKeep(owner, formData.get("months"));
   if (!result.ok) return { status: "error", messages: [fillWords(w.invalid, ASSISTANT_KEEP)] };
   refresh();

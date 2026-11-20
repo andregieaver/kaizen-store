@@ -3,14 +3,15 @@
 import { refresh } from "next/cache";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { AnyWorkflowInput } from "@/lib/workflows";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { deleteWorkflow, getWorkflow, saveWorkflow, switchWorkflow, testWorkflow } from "@/server/workflows";
 
 /** Workflows change what happens in the store, so they are `settings:write` (D356); asking the AI manager is an owner's, checked by the save. */
-const noAccess = async () => adminText(await actionAdminLang(), "order").messages.noAccess;
+const noAccess = async () => ORDER_WORDS[await actionAdminLang()].messages.noAccess;
 
 export async function saveWorkflowAction(storeSlug: string, id: string | null, input: AnyWorkflowInput): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const member = await checkPermission(storeSlug, "settings:write");
@@ -23,7 +24,7 @@ export async function saveWorkflowAction(storeSlug: string, id: string | null, i
 export async function testWorkflowAction(storeSlug: string, id: string) {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { ok: false as const, message: await noAccess() };
-  const w = adminText(adminLangOf(member.account.adminLocale), "notifications").workflows;
+  const w = NOTIFICATIONS_WORDS[adminLangOf(member.account.adminLocale)].workflows;
   const tested = await testWorkflow(member, id);
   refresh();
   if (!tested.ok) return { ok: false as const, message: w.noRuns };
@@ -34,7 +35,7 @@ export async function testWorkflowAction(storeSlug: string, id: string) {
 export async function switchWorkflowAction(storeSlug: string, id: string, on: boolean): Promise<{ ok: true } | { ok: false; message: string }> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { ok: false, message: await noAccess() };
-  const w = adminText(adminLangOf(member.account.adminLocale), "notifications").workflows;
+  const w = NOTIFICATIONS_WORDS[adminLangOf(member.account.adminLocale)].workflows;
   const switched = await switchWorkflow(member, id, on);
   refresh();
   return switched === "ok" ? { ok: true } : { ok: false, message: switched === "untested" ? w.untested : w.noRuns };

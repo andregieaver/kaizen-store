@@ -6,9 +6,10 @@ import { FoldRow } from "@/components/admin/fold-row";
 import { OwnNumberCheckCard, TaxProfileForm, TaxWarnings, type OwnNumberCheck, type TaxPart } from "@/components/admin/tax-profile-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
 import { readiness } from "@/lib/tax-profile";
+import { areaTexts } from "@/lib/admin-area";
+import { TAX_WORDS } from "@/lib/admin-words/tax";
 import { requirePermission } from "@/server/permissions";
 import { taxProfileView } from "@/server/tax-profile";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
@@ -37,7 +38,7 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "tax");
+  const w = TAX_WORDS[lang];
   const view = await taxProfileView(store.id);
   const lines = readiness(view.profile, view.country, w.readiness);
   const canEdit = true;
@@ -78,7 +79,7 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
     />
   );
   return (
-    <AdminTextScope texts={adminTexts(lang, ["tax"])}>
+    <AdminTextScope texts={areaTexts(lang, { tax: TAX_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.page.title}

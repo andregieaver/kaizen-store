@@ -5,10 +5,10 @@ import { SettingsHub, type SettingCard, type SettingState } from "@/components/a
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
-import { adminText } from "@/lib/admin-text";
 import { canOpenPath } from "@/lib/permissions";
 import { featureOn } from "@/lib/store-features";
 import { STORE_SECTIONS, storeSections } from "@/lib/store-nav";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { holderOf } from "@/server/auth";
 import { teamSize } from "@/server/home";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -35,7 +35,7 @@ export default async function StoreSettingsPage({ params }: PageProps<"/admin/[s
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "home").settings;
+  const t = HOME_WORDS[lang].settings;
   // The cards of a member's own role only (wave 1, 1f): a card for a page they cannot open would be a link to a 404.
   const holder = holderOf(member);
   const section = storeSections(store, (path) => canOpenPath(holder, path)).find((s) => s.key === "settings") ?? STORE_SECTIONS.find((s) => s.key === "settings")!;

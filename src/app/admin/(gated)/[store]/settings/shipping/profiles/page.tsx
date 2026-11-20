@@ -4,7 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ProfilesView } from "@/components/admin/shipping/profiles-view";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listProfileProducts } from "@/server/shipping-admin";
@@ -21,11 +22,11 @@ export default async function ShippingProfilesPage({ params }: PageProps<"/admin
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "shipping");
+  const all = SHIPPING_WORDS[lang];
   const base = `/admin/${store.slug}/settings/shipping`;
   const [setup, products] = await Promise.all([getShippingSetup(store.id), listProfileProducts(store)]);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
+    <AdminTextScope texts={areaTexts(lang, { shipping: SHIPPING_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: base, label: all.pages.back }}

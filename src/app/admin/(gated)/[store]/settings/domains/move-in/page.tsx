@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { DomainMoveIn } from "@/components/admin/domain-move-in";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { apexOf } from "@/lib/domain-health";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 import { storeZones } from "@/server/domain-dns";
 import { arrivingZones, checkArrivals, VERCEL_NAMESERVERS } from "@/server/domain-move-in";
 import { buyingOpen } from "@/server/domain-purchases";
@@ -25,7 +25,7 @@ export default async function MoveInPage({ params }: PageProps<"/admin/[store]/s
   const { store: slug } = await params;
   const member = await requireOwnerRole(slug);
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "domains");
+  const all = DOMAINS_WORDS[lang];
   const words = all.moveIn;
   await checkArrivals({ storeId: member.store.id }).catch(() => []);
   const [domains, zones, registrations, arriving, open] = await Promise.all([

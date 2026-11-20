@@ -26,8 +26,8 @@ import { fillWords } from "@/lib/admin-fill";
 import { apexOf } from "@/lib/domain-health";
 
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { domainCountries, domainLanguages } from "@/lib/custom-domains";
+import { DOMAINS_WORDS } from "@/lib/admin-words/domains";
 
 import {
   addDomainAction,
@@ -56,7 +56,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
   const domain = storeDomain();
-  const page = adminText(lang, "domains").page;
+  const page = DOMAINS_WORDS[lang].page;
   if (!domain) {
     // Round 15 (D647): the address whole, to copy or open, and the own domain as a row that says it comes later.
     const path = storeHref(store.slug, storeBase(store.slug));
@@ -96,7 +96,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={page.title} description={page.description} />
-      {(await searchParams).dc === "back" && <p role="status" className="text-body text-ink-2">{adminText(lang, "domains").connectAuto.back}</p>}
+      {(await searchParams).dc === "back" && <p role="status" className="text-body text-ink-2">{DOMAINS_WORDS[lang].connectAuto.back}</p>}
       {memberCan(current, "owner") && (
         <Suspense fallback={null}>
           <ConnectAutomatically slug={store.slug} domains={domains.filter((d) => d.status === "pending")} lang={lang} />
@@ -122,7 +122,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
         configured={domainsConfigured()}
         languages={domainLanguages(store, ADMIN_LANG_FACTS[lang].locale)}
         countries={domainCountries(store, ADMIN_LANG_FACTS[lang].locale)}
-        words={adminText(lang, "domains")}
+        words={DOMAINS_WORDS[lang]}
         locale={ADMIN_LANG_FACTS[lang].locale}
         actions={{
           add: addDomainAction.bind(null, store.slug),
@@ -151,7 +151,7 @@ async function DomainHealth({ storeId, timeZone, lang }: { storeId: string; time
         dnsHost: r.facts.dnsHost,
         findings: r.findings,
       }))}
-      words={adminText(lang, "domains")}
+      words={DOMAINS_WORDS[lang]}
       locale={ADMIN_LANG_FACTS[lang].locale}
     />
   );
@@ -160,7 +160,7 @@ async function DomainHealth({ storeId, timeZone, lang }: { storeId: string; time
 /** Getting a domain here (D315 phase 2), and what the store registered and is buying. */
 async function GetADomain({ member, lang }: { member: Membership; lang: ReturnType<typeof adminLangOf> }) {
   const { store } = member;
-  const words = adminText(lang, "domains");
+  const words = DOMAINS_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const owner = memberCan(member, "owner");
   const [open, registrations, purchases] = await Promise.all([buyingOpen(store.id), storeRegistrations(store.id), storeDomainPurchases(store.id)]);
@@ -204,7 +204,7 @@ async function KeptDns({ member, lang }: { member: Membership; lang: ReturnType<
   const { store } = member;
   const zones = await storeZones(store.id);
   if (zones.length === 0) return null;
-  const words = adminText(lang, "domains").dns;
+  const words = DOMAINS_WORDS[lang].dns;
   const owner = memberCan(member, "owner");
   const auto = await dnsAuto(store.id);
   const cards = await Promise.all(
@@ -265,11 +265,11 @@ async function MoveLinks({ storeId, slug, hosts, lang }: { storeId: string; slug
   const apexes = [
     ...new Set([...registrations.filter((r) => r.status !== "transferred_out").map((r) => r.apex), ...zones.map((z) => z.apex), ...hosts.map(apexOf)]),
   ].sort();
-  const words = adminText(lang, "domains").move;
+  const words = DOMAINS_WORDS[lang].move;
   return (
     <nav className="flex flex-wrap gap-2" aria-label={words.open}>
       <ButtonLink kind="secondary" href={`/admin/${slug}/settings/domains/move-in`}>
-        {adminText(lang, "domains").moveIn.open}
+        {DOMAINS_WORDS[lang].moveIn.open}
       </ButtonLink>
       {apexes.map((apex) => (
         <ButtonLink key={apex} kind="quiet" href={`/admin/${slug}/settings/domains/move/${encodeURIComponent(apex)}`}>
@@ -290,7 +290,7 @@ async function ConnectAutomatically({ slug, domains, lang }: { slug: string; dom
   const found = await Promise.all(domains.map(async (d) => ({ d, connect: await domainConnectFor(d.hostname, { key }) })));
   const offers = found.filter((f) => f.connect !== null);
   if (offers.length === 0) return null;
-  const words = adminText(lang, "domains").connectAuto;
+  const words = DOMAINS_WORDS[lang].connectAuto;
   const back = `${siteUrl()}/admin/${slug}/settings/domains?dc=back`;
   return (
     <Card title={words.title} description={words.intro}>

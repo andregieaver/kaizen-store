@@ -11,7 +11,6 @@ import { FoldOpenOnce } from "@/components/admin/fold-open-once";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { weekSummary } from "@/lib/opening-hours";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -33,6 +32,13 @@ import { accountOfficer, officerCandidates, officerForStore, storedChoice } from
 import { setStoreOfficerAction } from "./officer-actions";
 import { businessChecklist } from "@/lib/business-change";
 import { zonedDate } from "@/lib/booking-slots";
+import { areaTexts } from "@/lib/admin-area";
+import { BUSINESS_WORDS } from "@/lib/admin-words/business";
+import { PRIVACY_OFFICER_WORDS } from "@/lib/admin-words/privacy-officer";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_COMPANY_WORDS } from "@/lib/admin-words/settings-company";
+import { SETTINGS_HOURS_WORDS } from "@/lib/admin-words/settings-hours";
+import { SETUP_WORDS } from "@/lib/admin-words/setup";
 import { businessChangesOf, businessChecklistFacts, businessSeriesNow } from "@/server/business-change";
 
 export const metadata: Metadata = { title: "Company" };
@@ -54,14 +60,14 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   const base = `/admin/${store.slug}/settings/company`;
   const homeCountry = store.details.country ?? "NO";
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "settings");
+  const all = SETTINGS_WORDS[lang];
   const w = all.company;
 
   // What the law needs shown (D40): the legal name, the registered address and the country; the rest is the owner's choice.
   const missing = (["legalName", "postalAddress", "country"] as const).filter((key) => !store.details[key]?.trim());
   const businessForm = owner ? (
     <ActionForm action={saveBusinessAction.bind(null, store.slug)} className="flex flex-col gap-4">
-      <BusinessDetailsFields name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} w={adminText(lang, "setup").businessFields} />
+      <BusinessDetailsFields name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} w={SETUP_WORDS[lang].businessFields} />
       <div>
         <SubmitButton>{w.saveBusiness}</SubmitButton>
       </div>
@@ -72,7 +78,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   // Round 23 (D688): the card of what is missing asks only for it; the store name and contact are a row with Change.
   const missingForm = owner ? (
     <ActionForm action={saveBusinessAction.bind(null, store.slug)} className="flex flex-col gap-4">
-      <BusinessDetailsFields only={missing} name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} w={adminText(lang, "setup").businessFields} />
+      <BusinessDetailsFields only={missing} name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} w={SETUP_WORDS[lang].businessFields} />
       <SubmitButton className={`${submitClass("primary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>{w.saveBusiness}</SubmitButton>
     </ActionForm>
   ) : (
@@ -83,7 +89,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
     .filter(Boolean)
     .join(" · ");
   // The data protection officer (D763): the store's own, or its account's.
-  const pw = adminText(lang, "privacyOfficer");
+  const pw = PRIVACY_OFFICER_WORDS[lang];
   const org = store.organisationId;
   const officer = org
     ? await Promise.all([officerForStore(store), storedChoice(org, store.id), officerCandidates(org, store.id), accountOfficer(org)]).then(([resolved, choice, people, ofAccount]) => ({ resolved, choice, people, ofAccount }))
@@ -99,7 +105,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
     : w.officeNone;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsCompany", "settingsHours"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsCompany: SETTINGS_COMPANY_WORDS, settingsHours: SETTINGS_HOURS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
@@ -189,7 +195,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         </summary>
         <div className="flex flex-col gap-6 px-6 pb-6">
           <BusinessChangeSection
-            words={adminText(lang, "business")}
+            words={BUSINESS_WORDS[lang]}
             planned={planned}
             applied={changes.filter((c) => c.status === "applied")}
             checklist={facts ? businessChecklist(facts) : null}

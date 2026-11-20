@@ -5,7 +5,7 @@ import { chosenMarket, MarketTabs } from "@/components/admin/shipping/shipping-p
 import { ZonesView } from "@/components/admin/shipping/zones-view";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getShippingSetup } from "@/server/shipping-methods";
 
@@ -20,7 +20,7 @@ export default async function ShippingZonesPage({ params, searchParams }: PagePr
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "shipping");
+  const all = SHIPPING_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const market = chosenMarket(store.markets, (await searchParams).market);
   const base = `/admin/${store.slug}/settings/shipping`;

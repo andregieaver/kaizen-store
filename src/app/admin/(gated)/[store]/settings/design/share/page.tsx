@@ -5,8 +5,8 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { SUBMISSION_LIMITS } from "@/lib/theme-submissions";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { authoredThemes } from "@/server/theme-submissions";
 
@@ -22,13 +22,13 @@ export const metadata: Metadata = { title: "Share this look as a theme" };
 export default async function ShareLookPage({ params }: PageProps<"/admin/[store]/settings/design/share">) {
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
-  const w = adminText(adminLangOf(member.account.adminLocale), "design").share;
+  const w = DESIGN_WORDS[adminLangOf(member.account.adminLocale)].share;
   const refusal = !memberCan(member, "website:write") ? w.readOnly : store.isTemplate || store.starter ? w.notHere : store.status !== "active" ? w.closed : null;
   const mine = refusal ? [] : (await authoredThemes(member.account.id)).filter((theme) => !theme.archived);
   const field = "rounded-md border border-line bg-card px-3 py-2";
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/settings/design`, label: adminText(adminLangOf(member.account.adminLocale), "design").page.title }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
+      <PageHeader back={{ href: `/admin/${store.slug}/settings/design`, label: DESIGN_WORDS[adminLangOf(member.account.adminLocale)].page.title }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       {refusal ? (
         <Card>
           <p className="text-sm text-ink-2">{refusal}</p>

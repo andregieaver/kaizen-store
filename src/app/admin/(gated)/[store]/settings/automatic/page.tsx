@@ -7,10 +7,12 @@ import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { activeLines, lineHref, whenPaidSteps, type ActiveLine, type AutomaticOverview, type PaidStep } from "@/lib/automatic";
 import type { AutomationKind } from "@/lib/automation-kinds";
 import { EVENTS } from "@/lib/integrations";
+import { AUTOMATIC_WORDS } from "@/lib/admin-words/automatic";
+import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { automaticOverview } from "@/server/automatic";
 import { requirePermission } from "@/server/permissions";
 
@@ -26,9 +28,9 @@ export default async function AutomaticPage({ params }: PageProps<"/admin/[store
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "notifications");
-  const w = adminText(lang, "automatic").overview;
-  const automations = adminText(lang, "marketing").automations;
+  const all = NOTIFICATIONS_WORDS[lang];
+  const w = AUTOMATIC_WORDS[lang].overview;
+  const automations = MARKETING_WORDS[lang].automations;
   const kinds = (kind: AutomationKind) => (kind === "back_in_stock" ? automations.backInStock : automations.kinds[kind]);
   const flowWords = all.workflows;
   const base = `/admin/${store.slug}`;

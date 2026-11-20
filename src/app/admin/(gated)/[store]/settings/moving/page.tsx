@@ -30,7 +30,6 @@ import type { DataJob } from "@/server/data-job-store";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { momentText } from "@/lib/data-admin";
 import { requireOwnerRole } from "@/server/permissions";
 import { shopifyConnection, shopifyOffered } from "@/server/shopify-connect";
@@ -71,6 +70,8 @@ import {
   startMoveAction,
 } from "./actions";
 import { dealsOn } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { MOVING_WORDS } from "@/lib/admin-words/moving";
 
 export const metadata: Metadata = { title: "Moving in" };
 
@@ -85,7 +86,7 @@ const OUTCOMES = ["connected", "declined", "failed", "off"] as const;
  */
 export default async function MovingPage({ params, searchParams }: Props) {
   const { store, account } = await requireOwnerRole((await params).store);
-  const w = adminText(adminLangOf(account.adminLocale), "moving");
+  const w = MOVING_WORDS[adminLangOf(account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.intro} />
@@ -100,7 +101,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const member = await requireOwnerRole(storeSlug);
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "moving");
+  const w = MOVING_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
   const asked = query.shopify;
@@ -131,7 +132,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   );
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["moving"])}>
+    <AdminTextScope texts={areaTexts(lang, { moving: MOVING_WORDS })}>
       {outcome && (
         <p role="status" className={`rounded-card p-3 text-sm ${outcome === "connected" ? "bg-positive-soft" : "bg-sunken"}`}>
           {w.outcome[outcome]}
@@ -216,7 +217,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
 async function PipedrivePanel({ storeSlug, locale }: { storeSlug: string; locale: string }) {
   const member = await requireOwnerRole(storeSlug);
   const { store } = member;
-  const w = adminText(adminLangOf(member.account.adminLocale), "moving").pipedrive;
+  const w = MOVING_WORDS[adminLangOf(member.account.adminLocale)].pipedrive;
   if (!pipedriveOffered()) return null;
   if (!dealsOn(store)) {
     if (!featureOffered("sales", await featureOffer(store.id))) return null;

@@ -4,7 +4,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { RuleLog } from "@/components/admin/automation/rule-log";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { listRules, ruleLog } from "@/server/order-rules";
 import { requirePermission } from "@/server/permissions";
 
@@ -23,7 +23,7 @@ export default async function AutomationLogPage({ params, searchParams }: PagePr
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "notifications");
+  const words = NOTIFICATIONS_WORDS[lang];
   const w = words.rules.logPage;
   const query = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);

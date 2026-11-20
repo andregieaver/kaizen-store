@@ -6,8 +6,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
-import { adminText } from "@/lib/admin-text";
 import { TEMPLATE_SLOTS, type EmailTemplate, type TemplateProblem, type TemplateSlot } from "@/lib/email-template";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
@@ -16,7 +16,7 @@ import { storeAction } from "@/server/store-action";
 import { previewNotification, resetTemplate, saveTemplate, sendTestNotification, setNotification } from "@/server/notifications";
 
 /** The words of a member's language, or of the request's before a member is known. */
-const wordsOf = async (member: Membership | null) => adminText(member ? adminLangOf(member.account.adminLocale) : await actionAdminLang(), "notifications");
+const wordsOf = async (member: Membership | null) => NOTIFICATIONS_WORDS[member ? adminLangOf(member.account.adminLocale) : await actionAdminLang()];
 
 /** A refusal of the notification server functions, by its kind, in the person's words; one not known stays as written. */
 function refusal(result: { problem: string; message: string }, w: NotificationsMessages["answers"]): string {
@@ -113,7 +113,7 @@ export async function sendingDomainAction(storeSlug: string, state: FormState, f
   return storeAction(
     { store: storeSlug, key: "settings:write", action: "store.sending_domain", answer: (message): FormState => ({ status: "error", messages: [message] }) },
     async (member, lang) => {
-      const answer = await sendingDomainForm(member.account, member.store.id, form, adminText(lang, "notifications").sendingDomain);
+      const answer = await sendingDomainForm(member.account, member.store.id, form, NOTIFICATIONS_WORDS[lang].sendingDomain);
       if (answer.status === "ok") refresh();
       return answer;
     },

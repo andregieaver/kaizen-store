@@ -3,8 +3,8 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { adminText } from "@/lib/admin-text";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
+import { PRIVACY_OFFICER_WORDS } from "@/lib/admin-words/privacy-officer";
 import { setOfficer } from "@/server/privacy-officers";
 import { storeAction } from "@/server/store-action";
 
@@ -13,7 +13,7 @@ import { storeAction } from "@/server/store-action";
 /** A store's own data protection officer, or its account's (D763). The store's owner's. */
 export async function setStoreOfficerAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "owner", action: "privacy.officer", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (member, lang) => {
-    const w = adminText(lang, "privacyOfficer");
+    const w = PRIVACY_OFFICER_WORDS[lang];
     const organisationId = member.store.organisationId;
     if (!organisationId) return { status: "error", messages: [w.notOwner] };
     const read = readOfficerChoice(officerFields(form), { store: true });

@@ -10,11 +10,12 @@ import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { formatMoney } from "@/lib/money";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { FIELDS_MAX, RULES_MAX, type Words } from "@/lib/checkout-rules";
 import { languageName } from "@/lib/localization";
 import { SWITCHABLE_METHODS } from "@/lib/payment-methods";
 import { countryName } from "@/lib/vat-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { db } from "@/db/client";
 import { listCheckoutFields, listCheckoutRules, ruleChoices } from "@/server/checkout-rules";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -30,7 +31,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
   if (off) return off;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "shipping").checkoutRules;
+  const w = SHIPPING_WORDS[lang].checkoutRules;
   const facts = ADMIN_LANG_FACTS[lang];
   const canWrite = memberCan(member, "settings:write");
   const [rules, fields, found] = await Promise.all([listCheckoutRules(store.id), listCheckoutFields(db(), store.id), ruleChoices(store.id, store.localization.locales[0] ?? "en")]);
@@ -91,7 +92,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
+    <AdminTextScope texts={areaTexts(lang, { shipping: SHIPPING_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

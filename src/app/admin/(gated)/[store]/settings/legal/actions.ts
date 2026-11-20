@@ -8,10 +8,10 @@ import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { LegalMessages } from "@/lib/admin-messages/legal.en";
-import { adminText } from "@/lib/admin-text";
 import { isLegalRole } from "@/lib/legal-roles";
 import { languageNames } from "@/lib/legal-admin-words";
 import { isStarterRole } from "@/lib/legal-starters";
+import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { createLegalStarter, legalOverview, setLegalRole, setTermsMode } from "@/server/legal-starters";
 import { askForLegalPage, handBackLegalPage, runLegalWrites, setLegalAiPublish, stopLegalPage, turnOffLegalAi, turnOnLegalAi } from "@/server/legal-writer";
@@ -24,7 +24,7 @@ import { checkOwnerRole } from "@/server/permissions";
  * the server functions refuse with stays as they write it.
  */
 
-const denied = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "legal").actions.noAccess] });
+const denied = async (): Promise<FormState> => ({ status: "error", messages: [LEGAL_WORDS[await actionAdminLang()].actions.noAccess] });
 const refused = (problems: readonly string[]): FormState => ({ status: "error", messages: [...problems] });
 
 /** Makes a draft starter of one kind from the store's own details, in its main language and the others among nb, sv, da and en. */
@@ -32,7 +32,7 @@ export async function createStarterAction(storeSlug: string, kind: string): Prom
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "legal").actions;
+  const w = LEGAL_WORDS[lang].actions;
   if (!isStarterRole(kind)) return refused([w.noStarter]);
   const result = await createLegalStarter(member, kind);
   if (!result.ok) return refused(result.problems);
@@ -51,7 +51,7 @@ export async function createStarterAction(storeSlug: string, kind: string): Prom
 export async function createAllStartersAction(storeSlug: string): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
-  const w = adminText(adminLangOf(member.account.adminLocale), "legal");
+  const w = LEGAL_WORDS[adminLangOf(member.account.adminLocale)];
   const overview = await legalOverview(member);
   const kinds = overview.roles.filter((r) => r.starter && r.needed && !r.page && !r.draft).map((r) => r.role).filter(isStarterRole);
   let made = 0;
@@ -74,7 +74,7 @@ export async function createAllStartersAction(storeSlug: string): Promise<FormSt
 export async function writeWithAiAction(storeSlug: string, kind: string): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
-  const w = adminText(adminLangOf(member.account.adminLocale), "legal").ai;
+  const w = LEGAL_WORDS[adminLangOf(member.account.adminLocale)].ai;
   const asked = await askForLegalPage(member, kind);
   if (!asked.ok) return aiRefused(asked.problems, w);
   if (!asked.already) after(() => runLegalWrites({}, 240_000));
@@ -90,7 +90,7 @@ const aiRefused = (problems: readonly string[], w: LegalMessages["ai"]) =>
 export async function turnOnLegalAiAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
-  const w = adminText(adminLangOf(member.account.adminLocale), "legal").ai;
+  const w = LEGAL_WORDS[adminLangOf(member.account.adminLocale)].ai;
   const result = await turnOnLegalAi(member, String(formData.get("publish") ?? ""));
   if (!result.ok) return aiRefused(result.problems, w);
   if (result.queued > 0) after(() => runLegalWrites({}, 240_000));
@@ -104,7 +104,7 @@ export async function turnOffLegalAiAction(storeSlug: string): Promise<FormState
   const result = await turnOffLegalAi(member);
   if (!result.ok) return refused(result.problems);
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "legal").ai.on.turnedOff] };
+  return { status: "ok", messages: [LEGAL_WORDS[adminLangOf(member.account.adminLocale)].ai.on.turnedOff] };
 }
 
 export async function setLegalAiPublishAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
@@ -113,7 +113,7 @@ export async function setLegalAiPublishAction(storeSlug: string, _state: FormSta
   const result = await setLegalAiPublish(member, String(formData.get("publish") ?? ""));
   if (!result.ok) return refused(result.problems);
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "legal").ai.on.saved] };
+  return { status: "ok", messages: [LEGAL_WORDS[adminLangOf(member.account.adminLocale)].ai.on.saved] };
 }
 
 /** Stops the AI writing one kind of page until it is handed back. */
@@ -123,14 +123,14 @@ export async function stopLegalPageAction(storeSlug: string, kind: string): Prom
   const result = await stopLegalPage(member, kind);
   if (!result.ok) return refused(result.problems);
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "legal").ai.stoppedDone] };
+  return { status: "ok", messages: [LEGAL_WORDS[adminLangOf(member.account.adminLocale)].ai.stoppedDone] };
 }
 
 /** Hands a kind of page back to the AI: written again, over the page chosen for it. */
 export async function handBackLegalPageAction(storeSlug: string, kind: string): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
-  const w = adminText(adminLangOf(member.account.adminLocale), "legal").ai;
+  const w = LEGAL_WORDS[adminLangOf(member.account.adminLocale)].ai;
   const result = await handBackLegalPage(member, kind);
   if (!result.ok) return aiRefused(result.problems, w);
   after(() => runLegalWrites({}, 240_000));
@@ -142,7 +142,7 @@ export async function handBackLegalPageAction(storeSlug: string, kind: string): 
 export async function setLegalRoleAction(storeSlug: string, role: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
-  const w = adminText(adminLangOf(member.account.adminLocale), "legal").actions;
+  const w = LEGAL_WORDS[adminLangOf(member.account.adminLocale)].actions;
   if (!isLegalRole(role)) return refused([w.notLegal]);
   const chosen = String(formData.get("page") ?? "");
   if (chosen !== "" && !z.uuid().safeParse(chosen).success) return refused([w.choosePublished]);
@@ -159,5 +159,5 @@ export async function setTermsModeAction(storeSlug: string, _state: FormState, f
   const result = await setTermsMode(member, String(formData.get("mode") ?? ""));
   if (!result.ok) return refused(result.problems);
   refresh();
-  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "legal").actions.saved] };
+  return { status: "ok", messages: [LEGAL_WORDS[adminLangOf(member.account.adminLocale)].actions.saved] };
 }

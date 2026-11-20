@@ -14,8 +14,8 @@ import { getShippingSetup, shippingWarningsFor } from "@/server/shipping-methods
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { formatMoney } from "@/lib/money";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { listCarriers } from "@/server/shipping-carriers";
-import { adminText } from "@/lib/admin-text";
 
 import { saveShippingAction } from "../../../actions";
 import { saveDefaultWeightAction } from "./actions";
@@ -35,7 +35,7 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "shipping");
+  const all = SHIPPING_WORDS[lang];
   const canWrite = memberCan(gated, "settings:write");
   const [settings, setup, warnings, places, areas, carriers] = await Promise.all([
     getShippingSettings(store),

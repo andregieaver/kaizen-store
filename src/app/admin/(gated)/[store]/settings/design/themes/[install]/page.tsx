@@ -12,8 +12,12 @@ import { listSavedThemes } from "@/server/themes";
 import { themeCharge } from "@/server/theme-prices";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { chargeButton, chargeLine, chargeToken } from "@/lib/theme-prices";
+import { areaTexts } from "@/lib/admin-area";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
+import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
+import { SCHEDULES_EDITOR_WORDS } from "@/lib/admin-words/schedules-editor";
 
 import { deleteSavedThemeAction, installStoreFontAction, saveSavedThemeAction, switchThemeAction } from "../../actions";
 import {
@@ -42,7 +46,7 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
   const member = await requirePermission(slug, "website:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "design");
+  const all = DESIGN_WORDS[lang];
   const w = all.install;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const preview = await installPreview(store.id, installId);
@@ -68,7 +72,7 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
   const switchName = fillWords(w.switchTo, { name: install.title });
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["design", "designEditor", "schedules", "schedulesEditor"])}>
+    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS, schedules: SCHEDULES_WORDS, schedulesEditor: SCHEDULES_EDITOR_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: design, label: w.back }}
@@ -109,7 +113,7 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
       )}
       {/* Links that show the store's pages in this theme without signing in (D340). */}
       {canChange && (
-        <Card title={adminText(lang, "schedules").share.title} compact>
+        <Card title={SCHEDULES_WORDS[lang].share.title} compact>
           <ShareLinks
             id={install.id}
             noun="theme"

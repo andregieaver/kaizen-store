@@ -4,7 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { LocalView } from "@/components/admin/shipping/local-view";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { getCompany } from "@/server/company";
 import { codesInRadius, hasPostalPoints, listLocalAreas } from "@/server/local-delivery";
@@ -21,7 +22,7 @@ export default async function ShippingLocalPage({ params }: PageProps<"/admin/[s
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "shipping");
+  const all = SHIPPING_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${store.slug}/settings/shipping`;
   const [areas, company, withPoints] = await Promise.all([
@@ -33,7 +34,7 @@ export default async function ShippingLocalPage({ params }: PageProps<"/admin/[s
   // How many of the country's postal codes each circle includes (the page says it, since centres are coarse).
   const included = await Promise.all(areas.map((a) => (a.kind === "radius" && a.origin && a.radiusKm ? codesInRadius(a.marketCode, a.origin, a.radiusKm) : Promise.resolve(null))));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
+    <AdminTextScope texts={areaTexts(lang, { shipping: SHIPPING_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: base, label: all.pages.back }}

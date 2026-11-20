@@ -8,8 +8,11 @@ import { ButtonLink, CARD_CLASS, Card, Chip, List, ListRow, PageHeader, RowActio
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { endingSoon, firstBlockedDay, isSchemeId, registrationState, SCHEME_IDS, type MissingGroup, type SchemeId } from "@/lib/producer-registrations";
+import { areaTexts } from "@/lib/admin-area";
+import { PRODUCT_WORDS } from "@/lib/admin-words/product";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
+import { SETTINGS_PRODUCER_WORDS } from "@/lib/admin-words/settings-producer";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listRegistrations, missingRegistrations, storeToday } from "@/server/producer-registrations";
 import { listCountries } from "@/server/stores";
@@ -36,9 +39,9 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
   const editor = memberCan(current, "settings:write");
   const lang = adminLangOf(current.account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const all = adminText(lang, "settings");
+  const all = SETTINGS_WORDS[lang];
   const w = all.producer;
-  const schemeNames = adminText(lang, "product").legal.schemeNames as Record<SchemeId, string>;
+  const schemeNames = PRODUCT_WORDS[lang].legal.schemeNames as Record<SchemeId, string>;
   const query = await searchParams;
   const one = (value: string | string[] | undefined) => (typeof value === "string" ? value : null);
 
@@ -93,7 +96,7 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
         </Card>
       )}
 
-      <AdminTextScope texts={adminTexts(lang, ["settingsProducer"])}>
+      <AdminTextScope texts={areaTexts(lang, { settingsProducer: SETTINGS_PRODUCER_WORDS })}>
         <div className={registrations.length === 0 ? "max-sm:hidden" : ""}>
         <Card title={w.listTitle}>
           {registrations.length === 0 ? (

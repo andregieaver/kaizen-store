@@ -5,7 +5,8 @@ import { StaffAlertsForm } from "@/components/admin/notifications/staff-alerts-f
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { requirePermission } from "@/server/permissions";
 import { staffAlertsView } from "@/server/staff-alerts";
 
@@ -23,10 +24,10 @@ export default async function StaffAlertsPage({ params }: PageProps<"/admin/[sto
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "notifications").staff;
+  const w = NOTIFICATIONS_WORDS[lang].staff;
   const view = await staffAlertsView(store.id);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
+    <AdminTextScope texts={areaTexts(lang, { notifications: NOTIFICATIONS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/settings/notifications`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       <StaffAlertsForm view={view} save={saveStaffAlertsAction.bind(null, store.slug)} test={sendStaffTestAction.bind(null, store.slug)} />

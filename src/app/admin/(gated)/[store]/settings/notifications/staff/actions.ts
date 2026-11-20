@@ -7,15 +7,16 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
-import { adminText } from "@/lib/admin-text";
 import { ALERT_LABELS, isStaffAlertEvent, STAFF_ALERT_EVENTS } from "@/lib/staff-alerts";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { dismissBriefingOffer, saveStaffAlerts, sendStaffTest, turnOnBriefing } from "@/server/staff-alerts";
 
 /** The words of a member's language, or of the request's before a member is known. */
-const wordsOf = async (member: Membership | null) => adminText(member ? adminLangOf(member.account.adminLocale) : await actionAdminLang(), "notifications").staff;
+const wordsOf = async (member: Membership | null) => NOTIFICATIONS_WORDS[member ? adminLangOf(member.account.adminLocale) : await actionAdminLang()].staff;
 
 /** A refusal of `saveStaffAlerts()` or `sendStaffTest()`, by its kind, in the person's words; one not known stays as written. */
 function refusal(result: { problem: string; message: string }, w: NotificationsMessages["staff"]): string {
@@ -42,7 +43,7 @@ export async function saveStaffAlertsAction(storeSlug: string, input: unknown): 
   const result = await saveStaffAlerts(member.store.id, input, member.account.id);
   if (!result.ok) return { ok: false, message: refusal(result, w) };
   refresh();
-  return { ok: true, message: adminText(adminLangOf(member.account.adminLocale), "notifications").common.saved };
+  return { ok: true, message: NOTIFICATIONS_WORDS[adminLangOf(member.account.adminLocale)].common.saved };
 }
 
 /** *Send a test* of one event's email to the owner's own address. */
@@ -64,7 +65,7 @@ export async function sendStaffTestAction(storeSlug: string, event: string): Pro
 export async function turnOnBriefingAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "owner");
   const lang = member ? adminLangOf(member.account.adminLocale) : await actionAdminLang();
-  const w = adminText(lang, "home").briefing;
+  const w = HOME_WORDS[lang].briefing;
   if (!member) return { status: "error", messages: [w.onlyOwner] };
   const result = await turnOnBriefing(member.store.id, member.account.id, form.get("kind") === "daily" ? "daily" : "weekly");
   if (!result.ok) return { status: "error", messages: [w.onlyOwner] };
@@ -75,7 +76,7 @@ export async function turnOnBriefingAction(storeSlug: string, _state: FormState,
 export async function dismissBriefingAction(storeSlug: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "owner");
   const lang = member ? adminLangOf(member.account.adminLocale) : await actionAdminLang();
-  const w = adminText(lang, "home").briefing;
+  const w = HOME_WORDS[lang].briefing;
   if (!member) return { status: "error", messages: [w.onlyOwner] };
   await dismissBriefingOffer(member.store.id, member.account.id);
   return { status: "ok", messages: [w.dismissed] };
