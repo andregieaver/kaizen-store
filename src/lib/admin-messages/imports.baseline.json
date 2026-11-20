@@ -1,15 +1,5 @@
 {
   "already": [
-    "notifications.en.ts -> components/admin/automation/rule-labels.ts",
-    "notifications.en.ts -> lib/email-template.ts",
-    "notifications.en.ts -> lib/integrations.ts",
-    "notifications.en.ts -> lib/notifications.ts",
-    "notifications.en.ts -> lib/order-rules.ts",
-    "notifications.en.ts -> lib/staff-alerts.ts",
-    "notifications.en.ts -> lib/tripletex-errors.ts",
-    "notifications.en.ts -> lib/tripletex-settings.ts",
-    "notifications.en.ts -> lib/tripletex-setup.ts",
-    "notifications.nb.ts -> lib/tripletex-settings.ts",
     "screens.en.ts -> lib/analytics-export.ts",
     "screens.en.ts -> lib/storefront-api.ts",
     "store-parts.en.ts -> lib/store-parts.ts"

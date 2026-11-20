@@ -25,7 +25,7 @@ const inFolder = (file: string) => file.startsWith(FOLDER + "/");
  */
 const ALLOWED_LEAVES: Record<string, string> = {
   "lib/order-limits.ts": "The order list's numbers that its sentences say out loud (BULK_MAX, VIEWS_MAX, TAGS_PER_ORDER); one reviewed module for a limit.",
-  "lib/order-archive-labels.ts": "Why an order cannot be archived, read by the archive action and its test as well.",
+  "lib/order-archive-labels.ts": "Why an order cannot be archived, read by its test as well.",
   "lib/order-bulk-labels.ts": "The bulk actions' labels and refusals, read by the AI manager's order tools as well.",
   "lib/order-list-labels.ts": "The order list's columns, filters and cells, read by the filter chips and the AI manager's order tools as well.",
   "lib/order-tags-labels.ts": "Why a tag is refused, read by the admin API as well.",
@@ -33,13 +33,21 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/animation-words.ts": "The builder's Animation words (D538): a label module already (no imports), which the fields read in English when no words are handed down.",
   "lib/backdrop-words.ts": "The builder's backdrop and layer words (D534), which the fields read in English when no words are handed down.",
   "lib/bulk-admin-labels.ts": "The bulk editor's words, read by bulk-admin.ts's functions as their English as well.",
-  "lib/data-admin-labels.ts": "What the import and export pages say, read by data-admin.ts, its test and the redirect import's pages as well.",
+  "lib/data-admin-labels.ts": "What the import and export pages say, read by the redirect import's pages and data-admin.ts's test as well.",
   "lib/data-job-labels.ts": "A data job's status in words, read by the job's email, the AI manager's job tool and the redirect import's pages as well.",
   "lib/inventory-admin-labels.ts": "The reasons a person gives for a stock change, read by the stock table as well.",
   "lib/inventory-labels.ts": "Stock movements' reasons and the stock policy in words, read by inventory.ts's functions (reasonWord, policyWords) as well.",
   "lib/vat-treatment-labels.ts": "Why an order has its VAT treatment, read by vat-treatment.ts's reasonStaffText() as well.",
   "lib/booking-bucket-labels.ts": "The booking buckets in English and Norwegian, read by the Fiken and Tripletex settings and the accountant's summary as well.",
-  "lib/fiken-labels.ts": "What the Fiken connection says to an owner, read by fiken-errors.ts's fikenFailureWords() and its tests as well.",
+  "lib/fiken-labels.ts": "What the Fiken connection says to an owner, read by fiken-errors.ts's fikenFailureWords() and the tests as well.",
+  "lib/claims.ts": "Imports nothing: the claim finder and the names of the kinds of claim (CLAIM_LABELS), which a template's problems say and the theme, product and price checks read.",
+  "lib/email-template-labels.ts": "The placeholders' names and a template's problems, read by email-template.ts's templateProblems() and the AI manager as well.",
+  "lib/integrations.ts": "Imports nothing: the integrations and webhook events are defined once with their English line, read by the integrations pages and the webhooks.",
+  "lib/notifications.ts": "Imports nothing: each notification is defined once with its name, when it is sent and why, read by the mailer and the settings.",
+  "lib/order-rule-limits.ts": "The automation rules' numbers, which a rule's log says out loud (asksPerDay).",
+  "lib/order-rules-labels.ts": "The automation conditions' names, a rule's sentence and its log's outcomes, read by order-rules.ts's describeRule() and the AI manager as well.",
+  "lib/staff-alerts-labels.ts": "The staff alerts' names, read by the alerts' emails and the settings' actions as well.",
+  "lib/tripletex-labels.ts": "What the Tripletex connection says to an owner, read by tripletex-errors.ts's failureWords() and its tests as well.",
   "lib/order-status.ts": "An order's status and its chip's signal: a label module already (no imports), read by the order table and a subscription's page as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
@@ -134,7 +142,8 @@ describe.skipIf(WRITE)("a catalogue file holds text only (bloat review step 1.4)
 
   it("would notice, by the walk: an import behind another catalogue file", () => {
     const analytics = join(FOLDER, "analytics.en.ts");
-    const behind = leaks(new Map([[analytics, ["./notifications.nb"]]]), analytics);
+    const nb = join(FOLDER, "notifications.nb.ts");
+    const behind = leaks(new Map([[analytics, ["./notifications.nb"]], [nb, ["../tripletex-settings"]]]), analytics);
     expect(behind).toContain("lib/admin-messages/analytics.en.ts -> lib/tripletex-settings.ts");
     expect(directImports(new Map([[analytics, ["../tripletex-settings"]]]))).toContain("analytics.en.ts -> lib/tripletex-settings.ts");
   });

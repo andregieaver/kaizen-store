@@ -7,6 +7,8 @@
  */
 import type { PermissionKey } from "./permission-keys";
 
+export { ALERT_LABELS } from "./staff-alerts-labels";
+
 export const STAFF_ALERT_EVENTS = ["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue", "analytics", "accounting"] as const;
 export type StaffAlertEvent = (typeof STAFF_ALERT_EVENTS)[number];
 export const isStaffAlertEvent = (value: unknown): value is StaffAlertEvent => (STAFF_ALERT_EVENTS as readonly unknown[]).includes(value);
@@ -24,34 +26,6 @@ export const ALERT_NEEDS: Record<StaffAlertEvent, PermissionKey> = {
   analytics: "analytics:read",
   // Tripletex (D453): counts and a link to the Tripletex page, which `settings:read` opens.
   accounting: "settings:read",
-};
-
-/** The columns of the staff alerts page. */
-export const ALERT_LABELS: Record<StaffAlertEvent, string> = {
-  new_order: "New order",
-  return_requested: "Return requested",
-  refund_overdue: "Refund overdue",
-  low_stock: "Low stock",
-  summary: "Briefing",
-  automation: "Automation",
-  dispute: "Dispute",
-  payment_overdue: "Payment overdue",
-  analytics: "Analytics alerts",
-  accounting: "Accounting",
-};
-
-/** The area named in *Needs {area} access* when a member's role does not hold the key. */
-export const ALERT_AREA_WORDS: Record<StaffAlertEvent, string> = {
-  new_order: "Orders",
-  return_requested: "Orders",
-  refund_overdue: "Orders",
-  low_stock: "Products",
-  summary: "Analytics",
-  automation: "Orders",
-  dispute: "Orders",
-  payment_overdue: "Orders",
-  analytics: "Analytics",
-  accounting: "Settings",
 };
 
 /** A member as the server read them: active, not expired, in an open store (anyone else is not passed in), with what their role holds. */
@@ -144,8 +118,6 @@ export const ALERT_KEYS = {
 
 export const SUMMARY_KINDS = ["off", "daily", "weekly"] as const;
 export type SummaryKind = (typeof SUMMARY_KINDS)[number];
-/** ISO weekdays, Monday 1. */
-export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
 /** A store-local date and time. */
 export type LocalNow = { date: string; weekday: number; hour: number };

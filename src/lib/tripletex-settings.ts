@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { BOOKING_KEYS, type BookingKey } from "./accounting-docs";
 
-export { BOOKING_KEYS, BOOKING_WORDS, isBookingKey, standardKeyOf, type BookingKey } from "./accounting-docs";
+export { BOOKING_KEYS, isBookingKey, standardKeyOf, type BookingKey } from "./accounting-docs";
 
 /**
  * Tripletex (D453): what a connection books where. Every amount Kaizena Flow sends falls in one bucket (`BookingKey`), and each
