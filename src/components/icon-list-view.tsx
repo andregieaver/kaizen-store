@@ -1,6 +1,7 @@
 import { iconItemShows, type IconListBlock } from "@/lib/page-content";
 import type { ButtonSize } from "@/lib/page-content";
 
+import { BlockLink } from "./block-link";
 import { ListIcon } from "./list-icon";
 import { Inline } from "@/components/inline-text";
 
@@ -45,9 +46,9 @@ export function IconListView({ block }: { block: IconListBlock }) {
         return (
           <li key={item.id} className={`flex ${align} gap-2.5`}>
             {item.href ? (
-              <a href={item.href} className={`flex ${align} gap-2.5 hover:underline`}>
+              <BlockLink href={item.href} className={`flex ${align} gap-2.5 hover:underline`}>
                 {line}
-              </a>
+              </BlockLink>
             ) : (
               line
             )}

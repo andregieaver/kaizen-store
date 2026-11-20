@@ -18,11 +18,13 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
 import { waitWords } from "@/lib/flow-story";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
+import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import type { FlowCondition, FlowPlace, FlowStep } from "@/lib/flows";
 
 import {
   changeFlowConditionAction,
   changeFlowBlockAction,
+  changeFlowBlocksAction,
   changeFlowLapseAction,
   changeFlowPicksAction,
   changeFlowTriggerAction,
@@ -236,7 +238,62 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
   const c = step.content[locale];
   const [busy, start] = useTransition();
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
+  const [adding, setAdding] = useState<number | null>(null);
   if (!c) return null;
+  const change = (body: { add: (typeof ADDED_BLOCKS)[number]; at: number; words: string } | { remove: number }) =>
+    start(async () => {
+      const result = await changeFlowBlocksAction(p.storeSlug, p.flowId, step.id, locale, body);
+      setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
+      setAdding(null);
+    });
+  const newWords = { heading: w.inPlace.newHeading, paragraph: w.canvas.newEmail.text, button: w.inPlace.newButton, divider: "" };
+  // A place between blocks: + opens the kinds; one press adds that block there.
+  const between = (at: number) => (
+    <div className="flex flex-wrap items-center justify-center gap-1" data-in-place-between={at}>
+      {adding === at ? (
+        <div role="group" aria-label={w.inPlace.add} className="flex flex-wrap items-center gap-1">
+          {ADDED_BLOCKS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              disabled={busy}
+              onClick={() => change({ add: k, at, words: newWords[k] })}
+              className="rounded-full border border-line bg-card px-2.5 py-0.5 text-xs text-ink hover:border-ink"
+            >
+              {w.inPlace.kinds[k]}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-label={w.inPlace.add}
+          disabled={busy}
+          onClick={() => setAdding(at)}
+          className="flex size-5 items-center justify-center rounded-full border border-line bg-card text-xs leading-none text-muted hover:border-ink hover:text-ink"
+        >
+          +
+        </button>
+      )}
+    </div>
+  );
+  // Each block's remove, shown beside it; the last block stays (an email says something).
+  const removable = (i: number, inner: ReactNode) => (
+    <div key={i} className="group relative">
+      {inner}
+      {c.blocks.length > 1 && (
+        <button
+          type="button"
+          aria-label={w.inPlace.remove}
+          disabled={busy}
+          onClick={() => change({ remove: i })}
+          className="absolute -right-2 -top-2 hidden size-5 items-center justify-center rounded-full border border-line bg-card text-xs text-muted group-focus-within:flex group-hover:flex hover:text-danger-text"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
   const editable = (index: number, before: string, label: string, className: string, multiline: boolean) => (
     <span
       role="textbox"
@@ -277,24 +334,31 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
           {editable(-1, c.subject, w.subject, "text-body-strong text-ink", false)}
         </div>
         <hr className="border-line" />
+        {between(0)}
         {c.blocks.map((block, i) => {
-          if (block.type === "heading") return <div key={i}>{editable(i, block.text, w.inPlace.heading, "text-title text-ink", false)}</div>;
-          if (block.type === "paragraph") return <div key={i}>{editable(i, block.text, w.words, "text-sm text-ink-2 whitespace-pre-wrap", true)}</div>;
-          if (block.type === "button")
-            return (
-              <div key={i} className="self-start rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-card">
-                {editable(i, block.text, w.inPlace.button, "", false)}
-              </div>
+          let inner: ReactNode;
+          if (block.type === "heading") inner = editable(i, block.text, w.inPlace.heading, "text-title text-ink", false);
+          else if (block.type === "paragraph") inner = editable(i, block.text, w.words, "text-sm text-ink-2 whitespace-pre-wrap", true);
+          else if (block.type === "button")
+            inner = (
+              <div className="inline-block rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-card">{editable(i, block.text, w.inPlace.button, "", false)}</div>
             );
-          if (block.type === "image")
+          else if (block.type === "image")
             // eslint-disable-next-line @next/next/no-img-element -- the email's own picture, as the reader's mail app shows it.
-            return <img key={i} src={block.url} alt={block.alt} className="max-h-40 w-auto self-start rounded" />;
-          if (block.type === "divider") return <hr key={i} className="border-line" />;
+            inner = <img src={block.url} alt={block.alt} className="max-h-40 w-auto rounded" />;
+          else if (block.type === "divider") inner = <hr className="border-line" />;
+          else
+            inner = (
+              <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">
+                {w.inPlace.product}
+                {"label" in block && block.label ? `: ${block.label}` : ""}
+              </p>
+            );
           return (
-            <p key={i} className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">
-              {w.inPlace.product}
-              {"label" in block && block.label ? `: ${block.label}` : ""}
-            </p>
+            <div key={i} className="flex flex-col gap-1">
+              {removable(i, inner)}
+              {between(i + 1)}
+            </div>
           );
         })}
         {step.picks && <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">{w.canvas.pickKinds[step.picks]}</p>}

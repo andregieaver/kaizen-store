@@ -76,7 +76,8 @@ an `if` opening into its Yes and No columns. A card is dragged onto a place betw
 (`moveStep()`, never into its own branch), a kind is dragged from the palette onto a place (or added by a place's + from the keyboard),
 and a card pressed opens its settings beside the chart (picks, days, condition, what starts it, Remove); an email's opens as it
 reads, its subject and each heading, paragraph and button changed where it is and saved on clicking away (`changeFlowBlockAction()`,
-`withBlockText()`, email plan M3.4). Each change is a new
+`withBlockText()`, email plan M3.4); a + between blocks adds a heading, words, a button or a line, and a block's ✕ removes it, never the last
+(`changeFlowBlocksAction()`, `withBlockAt()`). Each change is a new
 version, off until tested; the story above is drawn from the same tree.
 
 ## Presses in a flow's emails (19 November 2026)

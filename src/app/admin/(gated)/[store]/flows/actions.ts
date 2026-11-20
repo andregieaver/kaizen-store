@@ -8,9 +8,10 @@ import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
+import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { insertStep, moveStep, newStep, removeStep, withBlockText, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -213,4 +214,16 @@ export async function dropFlowStepAction(storeSlug: string, flowId: string, kind
 export async function changeFlowBlockAction(storeSlug: string, flowId: string, stepId: string, locale: string, index: number, text: string): Promise<FormState> {
   const words = text.replace(/\s+/g, " ").trim();
   return saveTree(storeSlug, flowId, (flow) => (words ? withBlockText(flow.steps, stepId, locale, index, words) : null));
+}
+
+/** A change to an email's blocks as the browser sends it (M3.4), checked before it is used. */
+const blockChangeSchema = z.union([
+  z.object({ add: z.enum(ADDED_BLOCKS), at: z.number().int().min(0).max(200), words: z.string().max(200) }),
+  z.object({ remove: z.number().int().min(0).max(200) }),
+]);
+
+/** Adds a block between an email's blocks, or removes one (email plan M3.4), in one language: a new version, off until tested. */
+export async function changeFlowBlocksAction(storeSlug: string, flowId: string, stepId: string, locale: string, change: unknown): Promise<FormState> {
+  const parsed = blockChangeSchema.safeParse(change);
+  return saveTree(storeSlug, flowId, (flow) => (parsed.success ? withBlockAt(flow.steps, stepId, locale, parsed.data) : null));
 }

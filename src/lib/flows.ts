@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AUTOMATION_KINDS, PICK_KINDS, type PickKind } from "./automation-kinds";
+import type { AddedBlock } from "./flow-blocks";
 import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "./flow-triggers";
 
@@ -209,6 +210,39 @@ export function withBlockText(steps: readonly FlowStep[], id: string, locale: st
     const block = current.blocks[index];
     if (!block || (block.type !== "heading" && block.type !== "paragraph" && block.type !== "button")) return step;
     const blocks = current.blocks.map((b, i) => (i === index ? { ...b, text } : b));
+    return { ...step, content: { ...step.content, [locale]: { ...current, blocks } } };
+  });
+}
+
+/**
+ * An email with a block added at a place (`at`, 0 for first) or one removed (`remove`), in one language (email plan M3.4). A new heading,
+ * paragraph or button starts with `words`; a button goes to the store's front page until it is changed. The same tree when there is no such
+ * place. Pure; the save checks the email (an email keeps at least one block).
+ */
+export function withBlockAt(
+  steps: readonly FlowStep[],
+  id: string,
+  locale: string,
+  change: { add: AddedBlock; at: number; words: string } | { remove: number },
+): FlowStep[] {
+  return replaceStep(steps, id, (step) => {
+    if (step.kind !== "email") return step;
+    const current = step.content[locale];
+    if (!current) return step;
+    let blocks = [...current.blocks];
+    if ("remove" in change) {
+      if (change.remove < 0 || change.remove >= blocks.length || blocks.length === 1) return step;
+      blocks.splice(change.remove, 1);
+    } else {
+      if (change.at < 0 || change.at > blocks.length) return step;
+      const block =
+        change.add === "divider"
+          ? ({ type: "divider" } as const)
+          : change.add === "button"
+            ? ({ type: "button", text: change.words, url: "/" } as const)
+            : ({ type: change.add, text: change.words } as const);
+      blocks = [...blocks.slice(0, change.at), block, ...blocks.slice(change.at)];
+    }
     return { ...step, content: { ...step.content, [locale]: { ...current, blocks } } };
   });
 }

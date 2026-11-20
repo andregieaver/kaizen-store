@@ -1,4 +1,6 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page, type Request } from "@playwright/test";
+
+import { storePageRows } from "./db";
 
 /**
  * What a page asks for ahead of a press (bloat review step 0.12, `docs/performance.md`), held in the real build: prefetching only runs in a production build.
@@ -281,4 +283,55 @@ test("the first add to cart asks for little again", async ({ browser }) => {
   } finally {
     await context.close();
   }
+});
+
+/**
+ * Bloat review step 2.7 (PF-4): a built page's links go through `BlockLink` (`src/components/block-link.tsx`), which stays in the app for an address of the
+ * app and fetches it on intent. A tap on the home page's first product tile was a whole document and 42 requests before (1 and 42); it is a navigation inside
+ * the app now. A link to a pay path stays a full page load (`docs/pci.md`).
+ */
+function collect(page: Page) {
+  const seen: Request[] = [];
+  const listen = (request: Request) => seen.push(request);
+  page.on("request", listen);
+  return {
+    stop: () => page.off("request", listen),
+    documents: () => seen.filter((request) => request.resourceType() === "document"),
+    all: () => seen,
+    list: () => seen.map((request) => `${request.resourceType()} ${request.url()}`).join("\n"),
+  };
+}
+
+test("a press on a built page's tile stays in the app", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({ viewport: { width: 390, height: 800 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await page.goto("/s/demo/no", { waitUntil: "networkidle" });
+    const tile = page.locator("main article a[href*='/p/']").first();
+    await expect(tile).toBeVisible();
+    const requests = collect(page);
+    await tile.tap();
+    await expect(page).toHaveURL(/\/p\//);
+    await page.waitForTimeout(3500);
+    requests.stop();
+    if (MEASURE) console.log(`[tile] documents ${requests.documents().length}, requests ${requests.all().length}\n${requests.list()}`);
+    expect(requests.documents().length, `document requests of the tap:\n${requests.list()}`).toBe(0);
+    expect(requests.all().length, `requests of the tap (42 before step 2.7):\n${requests.list()}`).toBeLessThanOrEqual(8);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a built page's link to the cart is a full page load", async ({ page }) => {
+  const url = await storePageRows("blokk-kurv", [
+    { id: "r0", type: "row", layout: "1", columns: [{ id: "c0", blocks: [{ id: "b0", type: "button", label: "Til kurven", href: "/s/demo/no/cart" }] }] },
+  ]);
+  await page.goto(url, { waitUntil: "networkidle" });
+  const requests = collect(page);
+  await page.getByRole("link", { name: "Til kurven" }).click();
+  await expect(page).toHaveURL(/\/s\/demo\/no\/cart/);
+  await page.waitForLoadState("load");
+  requests.stop();
+  expect(requests.documents().length, `document requests of the press:\n${requests.list()}`).toBe(1);
 });
