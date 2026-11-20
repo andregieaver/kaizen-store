@@ -499,7 +499,7 @@ export const da: Messages = {
    */
   // legal: needs review
   preorder: {
-    page: (date: string) => `Forudbestilling: forventes afsendt fra ${date}`,
+    ...daBrowser.preorder,
     line: (n: number, date: string) => `${n} forudbestilt: forventes afsendt fra ${date}`,
     order: (n: number, quantity: number, date: string) => `${n} af ${quantity} forudbestilt: forventes afsendt fra ${date}`,
   },
@@ -612,8 +612,7 @@ export const da: Messages = {
   /** Yes and no in a store's custom fields (D118). */
   customFields: { yes: "Ja", no: "Nej" },
   campaigns: {
-    percent: (percent: number) => `${percent} % rabat`,
-    multiBuy: (buy: number, pay: number) => `${buy} for ${pay}`,
+    ...daBrowser.campaigns,
     gift: (title: string, amount: string) => `Gratis ${title}, når du handler for ${amount}`,
     inCart: "Tilbuddet trækkes fra i indkøbskurven.",
     signIn: "Log ind på Min konto for at få det.",
@@ -622,22 +621,17 @@ export const da: Messages = {
     amountOver: (amount: string, over: string) => `${amount} rabat, når du handler for ${over}`,
     freeShipping: "Gratis fragt",
     freeShippingOver: (over: string) => `Gratis fragt, når du handler for ${over}`,
-    upTo: (percent: number) => `Op til ${percent} % rabat`,
     tierQuantity: (percent: number, items: number) => `${percent} % rabat, når du køber ${items}`,
     tierSpend: (percent: number, amount: string) => `${percent} % rabat, når du handler for ${amount}`,
     nextQuantity: (items: number, percent: number) => `Køb ${items} mere for at få ${percent} % rabat`,
     nextSpend: (amount: string, percent: number) => `Handl for ${amount} mere for at få ${percent} % rabat`,
-    upToAmount: (amount: string) => `Op til ${amount} rabat`,
     tierQuantityAmount: (amount: string, items: number) => `${amount} rabat, når du køber ${items}`,
     tierSpendAmount: (amount: string, spend: string) => `${amount} rabat, når du handler for ${spend}`,
     nextQuantityAmount: (items: number, amount: string) => `Køb ${items} mere for at få ${amount} rabat`,
     nextSpendAmount: (spend: string, amount: string) => `Handl for ${spend} mere for at få ${amount} rabat`,
     nextAmount: (amount: string, off: string) => `Handl for ${amount} mere for at få ${off} rabat`,
     nextFreeShipping: (amount: string) => `Handl for ${amount} mere for at få gratis fragt`,
-    bxgyBuy: (items: number) => `Køb ${items}`,
     bxgySpend: (amount: string) => `Handl for ${amount}`,
-    bxgyGetFree: (items: number) => `få ${items} gratis`,
-    bxgyGetPercent: (items: number, percent: number) => `få ${items} med ${percent} % rabat`,
     bxgyGetAmount: (items: number, amount: string) => `få ${items} med ${amount} rabat`,
   },
   total: "I alt",
@@ -676,18 +670,8 @@ export const da: Messages = {
   toHome: "Til forsiden",
   cart: "Kurv",
   cartCount: (n: number) => `Kurv (${n})`,
-  addToCart: "Læg i kurven",
-  adding: "Lægger i kurven …",
-  added: "Lagt i kurven.",
-  capped: "Du har nu alt, vi har på lager, i kurven.",
-  unavailable: "Denne vare er ikke tilgængelig.",
-  tryAgain: "Noget gik galt. Prøv igen.",
-  goToCart: "Gå til kurven",
   emptyCart: "Kurven er tom.",
-  quantity: "Antal",
   update: "Opdater",
-  quantityLess: "Reducer antal",
-  quantityMore: "Øg antal",
   quantitySaving: "Opdaterer kurven …",
   remove: "Fjern",
   subtotal: "Varer i alt",
@@ -696,17 +680,13 @@ export const da: Messages = {
   noLongerAvailable: "Ikke længere tilgængelig. Fjern varen for at fortsætte.",
   continueShopping: "Fortsæt med at handle",
   products: "Produkter",
-  vatIncluded: "inkl. moms",
-  vatExcluded: "ekskl. moms",
   /**
    * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
    * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
    */
   unitPrice: {
+    ...daBrowser.unitPrice,
     label: "Enhedspris",
-    /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
-    spoken: (amount: string, base: string) => `Enhedspris: ${amount} per ${base}`,
-    bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "stk." },
   },
   /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
   buyer: {
@@ -735,9 +715,6 @@ export const da: Messages = {
     savedProductNote: "I forhold til den laveste pris de seneste 30 dage.",
     goesWith: "Passer godt med din kurv",
   },
-  priorPrice: "Laveste pris de seneste 30 dage",
-  fromPrice: "Fra",
-  yourPrice: "Din pris",
   inStock: "På lager",
   productPassport: "Produktpas",
   fromSupplier: (days: number) => `På lager: sendes inden for ${days} ${days === 1 ? "hverdag" : "hverdage"}`,
@@ -793,12 +770,9 @@ export const da: Messages = {
   chooseLanguage: "Vælg sprog",
   chooseCurrency: "Vælg valuta",
   noProducts: "Ingen produkter endnu.",
-  /** Content grids (D51): a tile's button, and a grid with nothing to show. */
-  readMore: "Læs mere",
   googleRating: (rating: string, count: number) => `${rating} ud af 5 · ${count} anmeldelser på Google`,
   googleReviews: "Anmeldelser på Google",
   seeOnGoogle: "Se alle på Google",
-  viewProduct: "Se produktet",
   blog: "Blog",
   byAuthor: (name: string) => `Af ${name}`,
   noArticles: "Ingen artikler endnu.",
@@ -968,10 +942,6 @@ export const da: Messages = {
     stripeLine: (number) => `Faktura for ordre ${number}`,
     dueShort: (day) => `Forfalder ${day}`,
   },
-  /** Combined listings (D566): the shared option's chooser on a product's card and page. */
-  group: {
-    choose: (option: string) => `Vælg: ${option}`,
-  },
   /** Sms-markedsføring (D565): skrevet i hånden, kræver juridisk gennemlæsning. */
   // legal: needs review
   sms: {
@@ -1079,7 +1049,6 @@ export const da: Messages = {
     `Fornyes ${every.toLowerCase()} for ${amount}, indtil du opsiger det. Du kan opsige når som helst.`,
   subscriptionConsent: (every: string, amount: string) =>
     `Jeg accepterer et abonnement, der fornyes ${every.toLowerCase()} for ${amount}, indtil jeg opsiger det, og ved, at jeg kan opsige når som helst.`,
-  planConflict: "Kurven har allerede et abonnement med en anden frekvens. Køb det først, eller vælg samme frekvens.",
   problemPlans: "Abonnementerne i kurven fornyes forskelligt. Behold én frekvens, og prøv igen.",
   problemSubscriptionConsent: "Sæt kryds ved, at du accepterer abonnementet, for at gå videre.",
   serviceRequest:

@@ -52,10 +52,32 @@ export function noticesFor(notices: CampaignNotices | undefined, productId: stri
  * "Free shipping when you spend NOK 500", "10 % off when you buy 2 · 15 % off when you buy 4". A card (`card`) says a tiered campaign
  * as "Up to 15 % off".
  */
+/** The seven texts a product card's badge can say, held by the browser files too (`campaigns` there): a card in the browser reads only these. */
+export type CardWords = Pick<Messages["campaigns"], "percent" | "multiBuy" | "upTo" | "upToAmount" | "bxgyBuy" | "bxgyGetFree" | "bxgyGetPercent">;
+
+/**
+ * What a product card's badge says for an offer on the price (`cardNotices()`): a percentage, "3 for 2", a tiered campaign as "Up to 15 %
+ * off", "Buy 2, get 1 free". Null for an offer a card does not carry. `noticeText()` gives the same words for these kinds.
+ */
+export function cardText(notice: CampaignNotice, words: CardWords, money: (minor: number) => string): string | null {
+  if (notice.kind === "percent") return words.percent(notice.percent);
+  if (notice.kind === "multi_buy") return words.multiBuy(notice.buyQuantity, notice.payQuantity);
+  if (notice.kind === "tiered") {
+    const amounts = notice.tiers.some((tier) => tier.off !== null);
+    return amounts ? words.upToAmount(money(Math.max(0, ...notice.tiers.map((tier) => tier.off ?? 0)))) : words.upTo(Math.max(0, ...notice.tiers.map((tier) => tier.percent)));
+  }
+  const b = notice.kind === "bxgy" ? notice.bxgy : null;
+  if (b && b.buyQuantity !== null && b.getKind !== "amount") {
+    return `${words.bxgyBuy(b.buyQuantity)}, ${b.getKind === "free" ? words.bxgyGetFree(b.getQuantity) : words.bxgyGetPercent(b.getQuantity, b.getPercent ?? 0)}`;
+  }
+  return null;
+}
+
 export function noticeText(notice: CampaignNotice, m: Messages, money: (minor: number) => string, { card = false }: { card?: boolean } = {}): string {
+  // A percentage, "3 for 2" and buy X get Y by items are said as on a card; a tiered campaign off a card is told step by step.
+  const short = notice.kind === "tiered" && !card ? null : cardText(notice, m.campaigns, money);
+  if (short !== null) return short;
   const over = notice.thresholdMinor !== null && notice.thresholdMinor > 0 ? money(notice.thresholdMinor) : null;
-  if (notice.kind === "percent") return m.campaigns.percent(notice.percent);
-  if (notice.kind === "multi_buy") return m.campaigns.multiBuy(notice.buyQuantity, notice.payQuantity);
   if (notice.kind === "amount") return over ? m.campaigns.amountOver(money(notice.amountMinor ?? 0), over) : m.campaigns.amount(money(notice.amountMinor ?? 0));
   if (notice.kind === "free_shipping") return over ? m.campaigns.freeShippingOver(over) : m.campaigns.freeShipping;
   if (notice.kind === "bxgy" && notice.bxgy) {
@@ -71,8 +93,6 @@ export function noticeText(notice: CampaignNotice, m: Messages, money: (minor: n
   }
   if (notice.kind === "tiered") {
     // Amount steps (D392) say what they take off in the currency shown; percentage steps their percentage.
-    const amounts = notice.tiers.some((tier) => tier.off !== null);
-    if (card) return amounts ? m.campaigns.upToAmount(money(Math.max(0, ...notice.tiers.map((tier) => tier.off ?? 0)))) : m.campaigns.upTo(Math.max(0, ...notice.tiers.map((tier) => tier.percent)));
     return notice.tiers
       .map((tier) =>
         tier.off !== null

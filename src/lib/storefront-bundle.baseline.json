@@ -175,27 +175,12 @@
   },
   "laterChains": [
     "components/carousel => lib/background-layers",
-    "components/carousel => lib/i18n",
-    "components/carousel => lib/messages/da",
-    "components/carousel => lib/messages/en",
-    "components/carousel => lib/messages/nb",
-    "components/carousel => lib/messages/sv",
     "components/carousel => lib/page-content",
     "components/carousel => zod",
     "components/lazy/blocks => lib/background-layers",
-    "components/lazy/blocks => lib/i18n",
-    "components/lazy/blocks => lib/messages/da",
-    "components/lazy/blocks => lib/messages/en",
-    "components/lazy/blocks => lib/messages/nb",
-    "components/lazy/blocks => lib/messages/sv",
     "components/lazy/blocks => lib/page-content",
     "components/lazy/blocks => zod",
     "components/recommended-grid => lib/background-layers",
-    "components/recommended-grid => lib/i18n",
-    "components/recommended-grid => lib/messages/da",
-    "components/recommended-grid => lib/messages/en",
-    "components/recommended-grid => lib/messages/nb",
-    "components/recommended-grid => lib/messages/sv",
     "components/recommended-grid => lib/page-content",
     "components/recommended-grid => zod"
   ],
@@ -203,5 +188,5 @@
     "app/(platform)/sign-up/sign-up-wizard": "the sign-up wizard is an admin form on a public address"
   },
   "cookiePurposes": [],
-  "browserTextBytes": 32165
+  "browserTextBytes": 38512
 }
