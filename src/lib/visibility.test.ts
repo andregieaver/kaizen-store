@@ -17,7 +17,6 @@ import {
   publicRows,
   ruleIds,
   scheduleOf,
-  showSchema,
   showsFor,
   withoutRuleIds,
   withSchedule,
@@ -25,6 +24,7 @@ import {
   type Show,
   type VisitorFacts,
 } from "./visibility";
+import { showSchema } from "./visibility-schema";
 
 /**
  * Who sees a part (D179 phase 4, `docs/responsive-editing.md` 6): the rules' shapes, how each fact and operator holds,
