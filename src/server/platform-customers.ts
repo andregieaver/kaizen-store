@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { LIST_PAGE_SIZE } from "@/lib/list-page";
 import { ON_PLAN_STATUSES } from "@/lib/plans";
 
 import { col, typedRows } from "./typed-rows";
@@ -98,7 +97,7 @@ export async function listPlatformCustomers(options: { q?: string; limit?: numbe
  * A page of Kaizena Flow's customers (code review 1.13, D834): `limit` from `offset` (a hundred unless said), and how many the search finds
  * in all. The order ends on the account's id, so a page's edge never loses or repeats one.
  */
-export async function platformCustomerPage({ q = "", limit = LIST_PAGE_SIZE, offset = 0 }: { q?: string; limit?: number; offset?: number } = {}): Promise<{
+export async function platformCustomerPage({ q = "", limit = 100, offset = 0 }: { q?: string; limit?: number; offset?: number } = {}): Promise<{
   rows: PlatformCustomerRow[];
   total: number;
 }> {

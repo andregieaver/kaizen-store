@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { LIST_PAGE_SIZE } from "@/lib/list-page";
 import type { SubscriptionStatus } from "@/lib/subscriptions";
 
 import { customerReturns, type CustomerReturns } from "./dispute-evidence";
@@ -164,7 +163,7 @@ export async function listCustomers(storeId: string, options: CustomerFilter & {
  */
 export async function customerPage(
   storeId: string,
-  { q = "", tag = null, limit = LIST_PAGE_SIZE, offset = 0, show = null, sort = "recent" }: CustomerFilter & { limit?: number; offset?: number } = {},
+  { q = "", tag = null, limit = 100, offset = 0, show = null, sort = "recent" }: CustomerFilter & { limit?: number; offset?: number } = {},
 ): Promise<{ rows: CustomerListRow[]; total: number }> {
   const search = q.trim().toLowerCase().slice(0, 100);
   const like = `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;

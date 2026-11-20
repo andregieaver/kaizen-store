@@ -1,7 +1,6 @@
 import "server-only";
 
 import { storesOf } from "@/components/admin/admin-shell-parts";
-import { LIST_PAGE_SIZE, listOffset } from "@/lib/list-page";
 import type { OrderListInput } from "@/lib/order-list";
 import type { Membership } from "@/server/auth";
 import { controlCenter } from "@/server/control-center";
@@ -16,7 +15,7 @@ import { memberCan } from "@/server/permissions";
 import { countPendingRequests } from "@/server/platform";
 import { platformBriefingSetting, platformSnapshot } from "@/server/platform-briefing";
 import { platformOverview } from "@/server/platform-overview";
-import { adminProductCounts, adminProductPage, type ProductShow } from "@/server/product-list";
+import type { ProductShow } from "@/server/product-list";
 import { getSetupProgress } from "@/server/setup";
 import { starterOfStore } from "@/server/store-starters";
 import { pausedAfter } from "@/server/store-trial";
@@ -89,6 +88,8 @@ export async function productsListReads(
   const { store } = member;
   const { show, q, page, needsFilter, canWrite, locale } = o;
   const archived = show === "archived";
+  // Loaded where it is used: the orders list and the platform home read this file too, and need neither (route-load budget).
+  const [{ adminProductCounts, adminProductPage }, { LIST_PAGE_SIZE, listOffset }] = await Promise.all([import("@/server/product-list"), import("@/lib/list-page")]);
   // Unit price (D160): active products that need a content and have none, for the notice and its filter.
   // A hundred a page with the count of all the view and search find, and each view's figure (code review 1.13, D834).
   const [list, counts, needingCount, needing, terms, imports] = await Promise.all([
