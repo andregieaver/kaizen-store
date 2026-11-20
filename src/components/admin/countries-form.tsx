@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
+import type { SetupMessages } from "@/lib/admin-messages/setup.en";
 
 type CountryOption = { code: string; name: string; currency: string };
 
@@ -17,7 +17,7 @@ export function CountriesForm({
   submitLabel,
   disabled = false,
   note,
-  w = setupEn.countriesForm,
+  w,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   countries: readonly CountryOption[];
@@ -30,7 +30,7 @@ export function CountriesForm({
   disabled?: boolean;
   note?: ReactNode;
   /** The form's words in the account's language (`SETUP_WORDS[lang].countriesForm`). */
-  w?: SetupMessages["countriesForm"];
+  w: SetupMessages["countriesForm"];
 }) {
   const on = new Set(several ? chosen : chosen.slice(0, 1));
   return (

@@ -1,4 +1,4 @@
-import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
+import type { SetupMessages } from "@/lib/admin-messages/setup.en";
 import type { Country, StoreDetails } from "@/server/stores";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
@@ -16,7 +16,7 @@ export function BusinessDetailsFields({
   countries,
   fallbackEmail,
   only,
-  w = setupEn.businessFields,
+  w,
 }: {
   /**
    * Only these of the three the law needs are asked (round 23, D688: the Company page's card of what is missing); the rest is sent as it
@@ -28,7 +28,7 @@ export function BusinessDetailsFields({
   countries: Country[];
   fallbackEmail: string;
   /** The fields' words in the account's language (`SETUP_WORDS[lang].businessFields`). */
-  w?: SetupMessages["businessFields"];
+  w: SetupMessages["businessFields"];
 }) {
   const asks = (key: "legalName" | "postalAddress" | "country") => !only || only.includes(key);
   if (only) {

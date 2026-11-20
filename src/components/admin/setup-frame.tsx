@@ -6,7 +6,7 @@ import type { SetupStep, SetupStepId } from "@/lib/setup-steps";
 import type { SetupProgress } from "@/server/setup";
 import { ButtonLink, CARD_CLASS } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
+import type { SetupMessages } from "@/lib/admin-messages/setup.en";
 
 /**
  * The frame around every setup step: where you are, what is done, and a way
@@ -21,7 +21,7 @@ export function SetupFrame({
   title,
   intro,
   children,
-  w = setupEn.frame,
+  w,
 }: {
   storeSlug: string;
   /** Named in the top bar of the `focus` layout ("Setting up …"), so not repeated here. */
@@ -33,7 +33,7 @@ export function SetupFrame({
   intro: ReactNode;
   children: ReactNode;
   /** The frame's words in the account's language (`SETUP_WORDS[lang].frame`); the steps come named in it. */
-  w?: SetupMessages["frame"];
+  w: SetupMessages["frame"];
 }) {
   const index = steps.findIndex((s) => s.id === step);
   const previous = steps[index - 1];

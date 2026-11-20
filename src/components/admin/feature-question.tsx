@@ -1,5 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
+import type { SetupMessages } from "@/lib/admin-messages/setup.en";
 import { EXTRA_ANSWERS, SELL_ANSWERS, type OnboardingAnswers } from "@/lib/onboarding";
 
 /** What switching off one of the features on now would mean (`featureWarnings()`), shown over the form's confirmation tick. */
@@ -17,14 +17,14 @@ export function FeatureQuestion({
   answers,
   warnings,
   note,
-  w = setupEn,
+  w,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   answers: OnboardingAnswers;
   warnings: QuestionWarning[];
   note: string | null;
   /** The setup words in the account's language (`SETUP_WORDS[lang]`): the answers by id, the question's own words. */
-  w?: SetupMessages;
+  w: SetupMessages;
 }) {
   return (
     <ActionForm action={action} className="flex flex-col gap-5">

@@ -2,12 +2,14 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import type { FormState } from "./action-form";
+import { setupEn } from "@/lib/admin-messages/setup.en";
 import { FeatureQuestion, type QuestionWarning } from "./feature-question";
 
 const action = async (state: FormState) => state;
 const draw = (sells: string[], extras: string[], warnings: QuestionWarning[] = [], note: string | null = null) =>
-  renderToString(createElement(FeatureQuestion, { action, answers: { sells, extras } as never, warnings, note }));
+  renderToString(createElement(FeatureQuestion, { action, answers: { sells, extras } as never, warnings, note, w: setupEn }));
 
 /** Whether the checkbox sending `name=value` is ticked. */
 const ticked = (html: string, name: string, value: string) => {

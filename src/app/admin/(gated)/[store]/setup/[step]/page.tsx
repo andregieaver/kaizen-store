@@ -33,7 +33,7 @@ import { FEATURES_BY_ID, featureOn, kindFeature, kindOffered } from "@/lib/store
 import { featureWarnings } from "@/lib/feature-words";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
+import type { SetupMessages } from "@/lib/admin-messages/setup.en";
 import { formatMoney } from "@/lib/money";
 import { priceText } from "@/lib/theme-prices";
 import { areaTexts } from "@/lib/admin-area";
@@ -54,7 +54,7 @@ import {
 type Props = PageProps<"/admin/[store]/setup/[step]">;
 
 // A fixed tab title: one read from the account would stream the metadata into the body (see the sign-in pages, D312 A1).
-export const metadata: Metadata = { title: setupEn.title };
+export const metadata: Metadata = { title: SETUP_WORDS.en.title };
 
 
 export default async function SetupStepPage({ params }: Props) {
