@@ -30,7 +30,7 @@ describe("the marketing screens' words (D312 A6)", () => {
       "Har bestilt minst 2 ganger · og Siste bestilling for mer enn 1 dag siden",
     );
     expect(describeRules({ match: "all", conditions: [] }, ctx)).toBe("Alle");
-    expect(automationDays("welcome", 0)).toBe("Sent as soon as they join.");
+    expect(automationDays("welcome", 0, marketingEn.automations)).toBe("Sent as soon as they join.");
     expect(automationDays("after_purchase", 7, marketingNb.automations)).toBe("Sendes 7 dager etter at bestillingen er levert.");
   });
 });

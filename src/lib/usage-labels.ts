@@ -17,3 +17,19 @@ export const LIMIT_REFUSALS = {
   ab_tests_running: "Your plan runs up to {limit} A/B tests at a time. Stop one first, or choose a plan with more.",
   stores_owned: "Your plan allows {limit} stores. Choose a plan with more to add another.",
 };
+
+/** What each measured figure is called, in English: read by the usage email, the AI manager's usage tools and the `capacity` catalogue. */
+export const USAGE_METRICS = {
+  storage_bytes: "Storage",
+  products: "Products",
+  staff_seats: "Staff",
+  custom_domains: "Domains",
+  requests: "Visits",
+  egress_bytes: "Bandwidth",
+  server_errors: "Server errors",
+  emails: "Emails",
+  marketing_emails: "Marketing emails",
+  ai_cost_micros: "AI",
+  recordings: "Recordings of visits",
+  contracts_sent: "Contracts sent",
+};

@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
+import { USAGE_METRICS } from "@/lib/usage-labels";
 import { formatLimit, formatUsage } from "@/lib/usage-format";
 import { safeClientName } from "@/lib/oauth";
 import { ADMIN_PAGES, findPages, pageHref, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
@@ -494,7 +494,7 @@ async function storeUsageTool(_ctx: ManagerContext, { store, top, limit }: Platf
     return {
       store: found.name,
       lines: lines.map((l) => ({
-        what: CAPACITY_WORDS.en.metrics[l.metric],
+        what: USAGE_METRICS[l.metric],
         used: l.measured ? formatUsage(l.metric, l.used) : "not measured yet",
         limit: l.limit === null ? "no limit" : formatLimit(l.key, l.limit),
         state: !l.measured ? "not measured" : { ok: "fine", near: "close to the limit", reached: "used up", over: "over the limit" }[l.state],
@@ -506,7 +506,7 @@ async function storeUsageTool(_ctx: ManagerContext, { store, top, limit }: Platf
   const ranked = rows.sort((a, b) => (b.values[top] ?? 0) - (a.values[top] ?? 0)).slice(0, limit);
   return {
     month: "this calendar month (UTC)",
-    by: CAPACITY_WORDS.en.metrics[top],
+    by: USAGE_METRICS[top],
     stores: ranked.map((r) => ({ store: r.name, address: r.slug, plan: r.plan ?? "no plan", used: r.values[top] === undefined ? "not measured" : formatUsage(top, r.values[top] ?? 0) })),
     link: "/admin/platform/capacity",
   };

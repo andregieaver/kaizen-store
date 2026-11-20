@@ -1,4 +1,5 @@
 import type { Widen } from "./common.en";
+import { CAMPAIGN_DESCRIBE } from "../campaign-labels";
 
 /**
  * The words of discount codes and campaigns in the admin (D312 A6; D31, D114–D116, D299): the lists, the pages, the editors, single-use
@@ -335,28 +336,7 @@ export const discountsEn = {
     save: "Save campaign",
   },
   /** What a code or a campaign gives, as the lists show it. */
-  describe: {
-    freeShipping: "Free shipping",
-    percentOff: "{percent} % off",
-    everyRenewal: "{percent} % off, every renewal",
-    amountOff: "{amount} off",
-    amountOffOver: "{amount} off over {over}",
-    anAmount: "An amount",
-    freeShippingOver: "Free shipping over {over}",
-    multiBuy: "{buy} for {pay}",
-    bxgy: "{buy}, get {n} {get}",
-    buyItems: "Buy {n}",
-    spend: "Spend {amount}",
-    anAmountLower: "an amount",
-    getFree: "free",
-    getPercent: "at {percent} % off",
-    getAmount: "at {amount} off",
-    tierStep: "{percent} % from {from}",
-    tierStepAmount: "{amount} off from {from}",
-    tierItems: "{n} items",
-    tiers: "Tiers",
-    gift: "Free product over {over}",
-  },
+  describe: { ...CAMPAIGN_DESCRIBE },
   /** The refusals, in the English the server and the forms write them (`discountProblemText()`); a more particular one comes first. */
   problems: {
     noAccess: "You do not have access to this.",

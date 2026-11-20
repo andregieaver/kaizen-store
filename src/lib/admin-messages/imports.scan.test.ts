@@ -33,7 +33,7 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/data-job-labels.ts": "A data job's status in words, read by the job's email, the AI manager's job tool and the redirect import's pages as well.",
   "lib/inventory-admin-labels.ts": "The reasons a person gives for a stock change, read by the stock table as well.",
   "lib/inventory-labels.ts": "Stock movements' reasons and the stock policy in words, read by inventory.ts's functions (reasonWord, policyWords) as well.",
-  "lib/usage-labels.ts": "What a store is told at a hard limit of its plan, read by the server's refusals (limitRefusal() in English) as well.",
+  "lib/usage-labels.ts": "What a store is told at a hard limit of its plan and what each measured figure is called, read by the server's refusals (limitRefusal() in English), the usage email and the AI manager's usage tools as well.",
   "lib/vat-treatment-labels.ts": "Why an order has its VAT treatment, read by vat-treatment.ts's reasonStaffText() as well.",
   "lib/booking-bucket-labels.ts": "The booking buckets in English and Norwegian, read by the Fiken and Tripletex settings and the accountant's summary as well.",
   "lib/fiken-labels.ts": "What the Fiken connection says to an owner, read by fiken-errors.ts's fikenFailureWords() and the tests as well.",
@@ -48,6 +48,10 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/store-parts.ts": "Imports nothing but types: each component, piece and note of the store is defined once with its English name and hint, which the builder draws when no words are handed down.",
   "lib/tripletex-labels.ts": "What the Tripletex connection says to an owner, read by tripletex-errors.ts's failureWords() and its tests as well.",
   "lib/order-status.ts": "An order's status and its chip's signal: a label module already (no imports), read by the order table and a subscription's page as well.",
+  "lib/bonus-admin-english.ts": "The bonus program's rules, overview and adjustment words in English, read by the AI manager's bonus tools as well.",
+  "lib/affiliate-admin-english.ts": "The affiliate program's rules and overview in English, read by the AI manager's referral tools as well.",
+  "lib/segment-labels.ts": "How a segment's rules are said in English (describeRules()), read by the AI manager's marketing tools and a broadcast's audience line as well.",
+  "lib/campaign-labels.ts": "What a code or a campaign gives in English (describeCampaign()), read by the AI manager's campaign list as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
 

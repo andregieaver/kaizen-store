@@ -1,4 +1,6 @@
 import type { Widen } from "./common.en";
+import { AFFILIATE_EXPLANATION, AFFILIATE_NEEDS_BONUS, AFFILIATE_OVERVIEW, AFFILIATE_RULES } from "../affiliate-admin-english";
+import { BONUS_ACCOUNTING_NOTE, BONUS_ADJUST, BONUS_EXPLANATION, BONUS_OVERVIEW, BONUS_RULES } from "../bonus-admin-english";
 
 /**
  * The words of the bonus program and the referral programs in the admin (D312 A6; D130, D131): a store's Bonus credits and Referral
@@ -88,15 +90,14 @@ export const loyaltyEn = {
     ownerOnly: "Only an owner can change the bonus program.",
   },
   bonus: {
-    explanation:
-      "Customers who are signed in earn credits on what they buy and use them as a price reduction on a later order. Guests earn nothing. Credits wait for the return period before they can be used, and a refund takes back what the refunded part earned.",
+    explanation: BONUS_EXPLANATION,
     onNotes: [
       "Customers must be signed in to earn or use credits. Guests see nothing to use.",
       "Existing customers start at zero: only orders paid from now on earn credits.",
       "Orders copied from another store never earn or use credits.",
     ],
     offNote: "Turning it off stops customers earning and using credits. Their balances are kept and count again when you turn it on.",
-    accountingNote: "Credits are a price reduction when they are used. Talk to your accountant about how to book credits that are still unused.",
+    accountingNote: BONUS_ACCOUNTING_NOTE,
     heading: "Bonus program",
     switch: "The bonus program is on",
     whileOn: "While it is on",
@@ -159,24 +160,7 @@ export const loyaltyEn = {
     },
   },
   /** The rules as a shopper reads them: the English is the storefront's own (`bonus.howEarn` and co.), which a test holds it to. */
-  bonusRules: {
-    decimal: ".",
-    earn: "You earn {percent}% back in bonus credits on what you pay for goods, and the credits are usable {wait}.",
-    none: "Customers earn no bonus credits: credits back is 0%.",
-    use: "Credits come off the price of goods at checkout, up to the store's limit on each order. You pay shipping yourself.",
-    useExpires:
-      "Credits come off the price of goods at checkout, up to the store's limit on each order; you pay shipping yourself. Credits you do not use expire {months} after you earn them, the oldest first.",
-    limit: "The store's limit: credits can pay for up to {percent}% of an order's goods.{least} 1 credit is worth 1 {currency}.",
-    least: " At least {amount} is used at a time.",
-    reminder: "Customers are emailed a reminder before their credits expire.",
-    rightAfter: "right after you pay",
-    after: "{days} after you pay",
-    days: { one: "{n} day", many: "{n} days" },
-    months: { one: "{n} month", many: "{n} months" },
-    level: "{name}: from {from} paid for goods in the last 12 months, less refunds, customers earn {percent}% back.",
-    signup: "A customer who opens an account gets {amount} in bonus credits once, usable at once.",
-    birthday: "On their birthday, a customer who gave it on My account gets {amount} in bonus credits, usable at once.",
-  },
+  bonusRules: { ...BONUS_RULES },
   /** Loyalty rewards (D401) on the Bonus page. */
   rewards: {
     title: "Rewards",
@@ -205,17 +189,7 @@ export const loyaltyEn = {
     amountProblem: "Write an amount in {currency}, such as 50.",
     notAllowed: "You may not change rewards in this store.",
   },
-  bonusOverview: {
-    heading: "Credits at a glance",
-    outstanding: "Outstanding credits",
-    outstandingHint: "Usable now: what the store still owes in price reductions.",
-    pending: "Pending",
-    pendingHint: "Earned, but waiting for the return period.",
-    earned: "Earned, last 30 days",
-    used: "Used, last 30 days",
-    expired: "Expired, last 30 days",
-    customers: "Customers with credits",
-  },
+  bonusOverview: { ...BONUS_OVERVIEW },
   bonusKinds: {
     earn: "Earned",
     redeem: "Used",
@@ -228,27 +202,7 @@ export const loyaltyEn = {
     reward: "Spent on a reward",
     birthday: "For their birthday",
   },
-  adjust: {
-    amountProblem: "Write an amount such as 50 to add, or -20 to take away.",
-    zero: "The amount cannot be 0.",
-    noteShort: "Write a reason of at least {min} characters; the customer's history keeps it.",
-    noteLong: "Keep the reason to {max} characters or fewer.",
-    addQuestion: "Add {amount} in credits to {who}?",
-    takeQuestion: "Take {amount} in credits from {who}?",
-    added: "Added {amount} in credits. It is in their history with your reason.",
-    took: "Took {amount} in credits. It is in their history with your reason.",
-    reason: "Reason: ",
-    working: "Working …",
-    yesAdd: "Yes, add the credits",
-    yesTake: "Yes, take the credits",
-    back: "Back",
-    amount: "Amount",
-    amountHint:
-      "Write 50 to add credits, which can be used at once, or -20 to take some away, available credits first and then those still waiting. Available now: {available}. Credits cannot go below zero.",
-    reasonLabel: "Reason",
-    reasonHint: "Required. It stays in the customer's history, and staff see it.",
-    review: "Review",
-  },
+  adjust: { ...BONUS_ADJUST },
   customerBonus: {
     title: "Bonus credits",
     off: "The bonus program is off, so this customer earns and uses no credits now. Their balance is kept.",
@@ -285,10 +239,8 @@ export const loyaltyEn = {
     noAccess: "You do not have access to this.",
   },
   affiliate: {
-    explanation:
-      "Signed-in customers get their own link to share. When a friend orders for the first time through it, the friend gets a welcome discount and the customer who shared it earns bonus credits. Only new customers count, and credits are taken back if the order is refunded or cancelled.",
-    needsBonus:
-      "The reward is bonus credits, so the referral program works only while the bonus program is on. Turn the bonus program on under Bonus credits first.",
+    explanation: AFFILIATE_EXPLANATION,
+    needsBonus: AFFILIATE_NEEDS_BONUS,
     onNotes: [
       "Every signed-in customer gets a link the first time they open Refer a friend in My account. Nobody has to be approved; you can block a customer who abuses it.",
       "A friend must be signed in to get the welcome discount, and only on their first paid order. Guests are asked to sign in.",
@@ -343,35 +295,8 @@ export const loyaltyEn = {
       checkNumber: "Check this number.",
     },
   },
-  affiliateRules: {
-    decimal: ".",
-    friend: "A friend gets {percent}% off the goods in their first order{max}.",
-    friendMax: ", at most {amount}",
-    noFriend: "A friend gets no welcome discount.",
-    every: "every order",
-    first: "the friend's first order",
-    firstN: "the friend's first {n} orders",
-    reward: "The customer who shared the link earns {percent}% of what the friend pays online for goods, as bonus credits, for {who}. The credits can be used {wait}.",
-    rightAfter: "right after the friend pays",
-    after: "{days} after the friend pays",
-    noReward: "The customer who shared the link earns nothing: the reward is 0%.",
-    cap: "One customer can earn at most {amount} a month.",
-    cookie: "A visitor's link is remembered for {days}, if they allow marketing cookies.",
-    days: { one: "{n} day", many: "{n} days" },
-    example: "A first order of {goods} in goods: the friend saves {off} and pays {pays}; the customer who shared the link earns {reward} in credits.",
-  },
-  affiliateOverview: {
-    heading: "Referrals at a glance",
-    affiliates: "Customers with a link",
-    visits: "Visits to links, last 30 days",
-    orders: "Orders through links, last 30 days",
-    rewarded: "Credits earned by referrers, last 30 days",
-    outstanding: "Referral credits usable now",
-    outstandingHint: "What the store still owes in price reductions for referrals.",
-    pending: "Referral credits pending",
-    pendingHint: "Earned, but waiting for the return period.",
-    rejected: "Orders that earned nothing, last 30 days",
-  },
+  affiliateRules: { ...AFFILIATE_RULES },
+  affiliateOverview: { ...AFFILIATE_OVERVIEW },
   affiliateStatus: {
     pending: "Waiting for payment",
     unpaid: "Not paid",

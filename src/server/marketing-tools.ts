@@ -36,7 +36,7 @@ import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, s
 import type { Store } from "./stores";
 import { typedRow } from "./typed-rows";
 import type { Account, Membership } from "./auth";
-import { marketingEn } from "@/lib/admin-messages/marketing.en";
+import { SEGMENT_DESCRIBE } from "@/lib/segment-labels";
 
 /**
  * The AI manager's marketing tools (PSI AGT-01; D295-D298): broadcasts, segments, customer tags and automations, each through the
@@ -181,7 +181,7 @@ export async function segmentApprovalSummary(store: Store, args: Record<string, 
   try {
     const tiers = await listTiers(store.id);
     const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
-    const words = describeRules(rules.data, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: marketingEn.describe });
+    const words = describeRules(rules.data, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: SEGMENT_DESCRIBE });
     const name = plainText(String(args.name ?? ""), 80);
     const existing = typeof args.segment === "string" && args.segment.trim() ? await findSegment(store, args.segment).catch(() => null) : null;
     const was = existing ? plainText(existing.name, 80) : "";
@@ -205,7 +205,7 @@ export async function listSegmentsTool({ store }: Ctx) {
     rows.push({
       id: segment.id,
       name: segment.name,
-      rules: describeRules(segment.rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: marketingEn.describe }),
+      rules: describeRules(segment.rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: SEGMENT_DESCRIBE }),
       people: counted.people,
       want_emails: counted.subscribed,
       ...(counted.moneyUnknown > 0 && { not_judged_on_money: counted.moneyUnknown }),
@@ -220,7 +220,7 @@ export async function countSegmentTool({ store }: Ctx, { rules }: OwnerToolInput
   const [counted, tiers] = await Promise.all([evaluateSegment(store, rules), listTiers(store.id)]);
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
   return {
-    rules: describeRules(rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: marketingEn.describe }),
+    rules: describeRules(rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: SEGMENT_DESCRIBE }),
     people: counted.people,
     want_emails: counted.subscribed,
     ...(counted.moneyUnknown > 0 && { not_judged_on_money: counted.moneyUnknown }),

@@ -1,5 +1,5 @@
 import type { Widen } from "./common.en";
-import { LIMIT_REFUSALS } from "../usage-labels";
+import { LIMIT_REFUSALS, USAGE_METRICS } from "../usage-labels";
 
 /**
  * The words of usage and limits (D314, `docs/capacity.md`): what a store used this month against its limits, on its Billing page, the
@@ -7,20 +7,7 @@ import { LIMIT_REFUSALS } from "../usage-labels";
  * peak calendar. `{name}` placeholders are filled by `fillWords()`.
  */
 export const capacityEn = {
-  metrics: {
-    storage_bytes: "Storage",
-    products: "Products",
-    staff_seats: "Staff",
-    custom_domains: "Domains",
-    requests: "Visits",
-    egress_bytes: "Bandwidth",
-    server_errors: "Server errors",
-    emails: "Emails",
-    marketing_emails: "Marketing emails",
-    ai_cost_micros: "AI",
-    recordings: "Recordings of visits",
-    contracts_sent: "Contracts sent",
-  },
+  metrics: { ...USAGE_METRICS },
   limits: {
     storage_bytes: "Storage",
     products: "Products",

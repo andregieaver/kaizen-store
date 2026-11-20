@@ -5,7 +5,8 @@
  * country), except the amount `notAmount` names, said from `amounts`. Any other text is left as written. Pure.
  */
 import { fillWords } from "./admin-fill";
-import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
+import type { DiscountsMessages } from "./admin-messages/discounts.en";
+import { DISCOUNTS_WORDS } from "./admin-words/discounts";
 
 export type DiscountsWords = DiscountsMessages;
 
@@ -39,13 +40,13 @@ function fromTable(text: string, english: Record<string, string>, local: Record<
 
 /** A refusal in the person's language (`words` the `discounts` catalogue); the English when it is not one of the catalogue's. */
 export function discountProblemText(text: string, words: DiscountsWords): string {
-  if (words === discountsEn) return text;
-  for (const [key, template] of Object.entries(discountsEn.problems)) {
+  if (words === DISCOUNTS_WORDS.en) return text;
+  for (const [key, template] of Object.entries(DISCOUNTS_WORDS.en.problems)) {
     const values = matchTemplate(template, text);
     if (!values) continue;
     const local = (words.problems as Record<string, string>)[key];
     if (!local) return text;
-    if (key === "notAmount" && values.what) values.what = fromTable(values.what, discountsEn.amounts, words.amounts)?.text ?? values.what;
+    if (key === "notAmount" && values.what) values.what = fromTable(values.what, DISCOUNTS_WORDS.en.amounts, words.amounts)?.text ?? values.what;
     return fillWords(local, values);
   }
   return text;

@@ -63,7 +63,7 @@ import { senderFor } from "./sending-domains";
 import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
-import { marketingEn } from "@/lib/admin-messages/marketing.en";
+import { SEGMENT_DESCRIBE } from "@/lib/segment-labels";
 import { isReservedAddress, RESERVED_NOTE } from "@/lib/reserved-address";
 
 type Row = Record<string, unknown>;
@@ -280,7 +280,7 @@ async function audienceOf(store: EmailStore, broadcast: Broadcast): Promise<Audi
   const [tiers, names] = await Promise.all([listTiers(store.id), segmentNames(store, [rules])]);
   const emails = people.people.filter((p) => p.consent === "subscribed" && matches(rules, p, now)).map((p) => p.email);
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
-  return { emails, words: `${segment.name}: ${describeRules(rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, ...names, words: marketingEn.describe })}` };
+  return { emails, words: `${segment.name}: ${describeRules(rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, ...names, words: SEGMENT_DESCRIBE })}` };
 }
 
 /** How many addresses a send would go to now (the editor's count): the audience's people who are `subscribed`. */
@@ -1098,6 +1098,6 @@ async function audienceWords(store: EmailStore, segmentId: string | null): Promi
   if (!segment?.rules) return "It goes to everyone on the shop's list.";
   const tiers = await listTiers(store.id);
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
-  const rules = describeRules(segment.rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, words: marketingEn.describe });
+  const rules = describeRules(segment.rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, words: SEGMENT_DESCRIBE });
   return `It goes to the segment "${segment.name.replace(/[<>]/g, "")}": ${rules}. Write for them.`;
 }
