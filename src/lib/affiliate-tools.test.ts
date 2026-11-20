@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PAGES_WORDS } from "./admin-words/pages";
 
 import { ADMIN_PAGES, findPages, matchPath, pageHref } from "./admin-map";
 import { ASSISTANT_SKILLS } from "./assistant-skills";
@@ -103,7 +104,7 @@ describe("the referral program in the assistant's map and playbooks", () => {
     expect(pageHref(page!, {}, "kaffe")).toBe("/admin/kaffe/affiliates");
     expect(matchPath("/admin/kaffe/affiliates")?.page.id).toBe("affiliates");
     for (const ask of ["refer a friend", "affiliate program", "welcome discount for friends", "referral link"])
-      expect(findPages("store", ask, { features: ["shop", "bonus", "referrals"] })[0]?.id, ask).toBe("affiliates");
+      expect(findPages("store", ask, PAGES_WORDS.nb, { features: ["shop", "bonus", "referrals"] })[0]?.id, ask).toBe("affiliates");
   });
 
   it("has a playbook that names real tools and pages, and starts from the bonus program", () => {

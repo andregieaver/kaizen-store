@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { fillWords } from "@/lib/admin-fill";
-import { PAGES_NB } from "@/lib/admin-messages/pages.nb";
+import { PAGES_WORDS } from "@/lib/admin-words/pages";
 import { matchPath } from "@/lib/admin-map";
 import {
   DOC_TRACKS,
@@ -365,6 +365,6 @@ function MarkdownLink({ href, words }: { href: string; words: DocsWords }) {
 function adminTitle(path: string, lang: DocLang): string | null {
   const found = matchPath(path);
   if (!found) return null;
-  if (lang === "nb") return PAGES_NB[`${found.page.area}:${found.page.id}`]?.title ?? found.page.title;
+  if (lang === "nb") return PAGES_WORDS.nb[`${found.page.area}:${found.page.id}`]?.title ?? found.page.title;
   return found.page.title;
 }

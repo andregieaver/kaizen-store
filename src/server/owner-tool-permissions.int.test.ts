@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { PAGES_WORDS } from "@/lib/admin-words/pages";
 
 import { closeDb, db } from "@/db/client";
 import { ROLE_TEMPLATES, type PermissionHolder } from "@/lib/permissions";
@@ -126,7 +127,7 @@ describe("what the assistant offers a role", () => {
     for (const shown of ["orders", "pages", "analytics", "assistant", "staff"]) expect([shown, everything.includes(shown)]).toEqual([shown, true]);
 
     // A search for a page the role cannot open finds nothing of it.
-    const found = findPages("store", "campaigns discounts", assistant.siteFlags(principal(template("orders")))).map((page) => page.id);
+    const found = findPages("store", "campaigns discounts", PAGES_WORDS.nb, assistant.siteFlags(principal(template("orders")))).map((page) => page.id);
     expect(found).not.toContain("campaigns");
   });
 });

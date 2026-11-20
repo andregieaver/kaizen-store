@@ -7,6 +7,7 @@ import { USAGE_METRICS } from "@/lib/usage-labels";
 import { formatLimit, formatUsage } from "@/lib/usage-format";
 import { safeClientName } from "@/lib/oauth";
 import { ADMIN_PAGES, findPages, pageHref, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
+import { PAGES_WORDS } from "@/lib/admin-words/pages";
 import { groupUsage, summarizeUsage, withOwner } from "@/lib/ai-usage";
 import { ASSISTANT_SKILLS } from "@/lib/assistant-skills";
 import {
@@ -146,7 +147,7 @@ function describe(ctx: ManagerContext, page: (typeof ADMIN_PAGES)[number]) {
 }
 
 async function findAdminPage(ctx: ManagerContext, { question }: ManagerToolInput<"find_admin_page">) {
-  const pages = findPages(area(ctx), question, ctx.flags);
+  const pages = findPages(area(ctx), question, PAGES_WORDS.nb, ctx.flags);
   if (pages.length === 0) return { found: [], note: "No page matches. The map in your instructions lists every section." };
   return { found: pages.map((page) => describe(ctx, page)) };
 }

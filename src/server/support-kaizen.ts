@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { findPages, pageHref } from "@/lib/admin-map";
+import { PAGES_WORDS } from "@/lib/admin-words/pages";
 import { effectiveFeatures } from "@/lib/store-features";
 import { KAIZEN_SUPPORT_TOOLS } from "@/lib/support-tools";
 import { CONVERSATION_MESSAGES_MAX, MESSAGE_MAX, REOPEN_HOURS } from "@/lib/support-rules";
@@ -246,7 +247,7 @@ export async function storeStatus(accountId: string, slug: string) {
 
 /** The admin's pages for what the person wants (the AI manager's map), with addresses in the store they asked about. */
 export function adminPages(question: string, storeSlug: string | null) {
-  const store = findPages("store", question).map((page) => ({ page, href: storeSlug ? pageHref(page, {}, storeSlug) : null }));
+  const store = findPages("store", question, PAGES_WORDS.nb).map((page) => ({ page, href: storeSlug ? pageHref(page, {}, storeSlug) : null }));
   return store.map(({ page, href }) => ({ title: page.title, what: page.what, ...(page.tasks ? { canDo: page.tasks } : {}), href }));
 }
 

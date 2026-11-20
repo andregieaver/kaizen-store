@@ -9,7 +9,7 @@
 
 import type { AdminLang } from "./admin-lang";
 import { findPages, pageHref, pageParams, type SiteFlags } from "./admin-map";
-import { PAGES_NB } from "./admin-messages/pages.nb";
+import { PAGES_WORDS } from "./admin-words/pages";
 import type { FinderItem } from "./finder-groups";
 
 // The answer's shape and its pure helpers live in `finder-groups.ts`, which the browser imports without the admin map.
@@ -27,11 +27,11 @@ export function finderResults(
   const asked = query.slice(0, FINDER_QUERY_MAX);
   const items: FinderItem[] = [];
   // More than the limit are asked for, since pages that need a param are passed over.
-  for (const page of findPages(area, asked, flags, limit * 3)) {
+  for (const page of findPages(area, asked, PAGES_WORDS.nb, flags, limit * 3)) {
     if (pageParams(page).length > 0) continue;
     const href = pageHref(page, {}, storeSlug);
     if (!href) continue;
-    const nb = lang === "nb" ? PAGES_NB[`${page.area}:${page.id}`] : undefined;
+    const nb = lang === "nb" ? PAGES_WORDS.nb[`${page.area}:${page.id}`] : undefined;
     items.push({ title: nb?.title ?? page.title, group: page.group, what: page.what, href });
     if (items.length === limit) break;
   }

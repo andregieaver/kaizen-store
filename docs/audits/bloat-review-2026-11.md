@@ -208,7 +208,7 @@ commit as the fix.
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
 | 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Done | 19 Nov, 0e649cc0, D782: +2 statements a line, history-free, warm triggers under 2.9 ms; no gates. |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
-| 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | In progress | Local 20 Nov: commit 1 done (catalogue code imports 36 to 0); commit 2, 2 groups: importers outside admin 64 to 47; shop layout 7 catalogues. |
+| 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | In progress | Local 20 Nov: c1 done; c2 done: importers outside admin 64 to 0, store layout 7 to 4 files. c3 open. |
 
 **Phase 3: One of each**
 
