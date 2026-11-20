@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
+import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
@@ -10,9 +11,10 @@ import { audit, type Account } from "./auth";
 import { CATALOG_TAG, catalogTag } from "./catalog";
 import { siteTests, siteVersionContent, type SiteTest } from "./experiments-read";
 import { withPageAlts } from "./media-alts";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag, pagesTag } from "@/lib/cache-tags";
 import { refreshStoreById } from "./stores";
 import { termsTag } from "./taxonomy";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -22,44 +24,75 @@ type Row = Record<string, unknown>;
  * category's layout counts for those below it; at the same distance, by
  * name); else one of its tags' (by name); else the store's standard one.
  * Only published layouts count, as they were last published; null leaves
- * the built-in layout.
+ * the built-in layout. Two cached reads (bloat review step 2.14): which
+ * layout, per product, and the layout's document, once per store and layout.
  */
 export async function productLayoutFor(storeId: string, productId: string): Promise<{ id: string; content: PageContent } | null> {
+  const id = await productLayoutIdFor(storeId, productId);
+  return id ? productLayoutById(storeId, id) : null;
+}
+
+/** The id of the published layout a product uses (`productLayoutFor()`'s order), or null for the built-in one. */
+async function productLayoutIdFor(storeId: string, productId: string): Promise<string | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId), pagesTag(storeId), termsTag({ storeId, contentType: "product" }));
 
-  const [row] = await readDb().execute<Row>(sql`
-    with recursive up as (
-      select t.id, t.parent_id, t.product_layout_id, t.name, 0 as depth
-      from commerce.product_terms pt join commerce.terms t on t.id = pt.term_id
-      where pt.store_id = ${storeId}::uuid and pt.product_id = ${productId}::uuid and t.kind = 'category'
-      union all
-      select t.id, t.parent_id, t.product_layout_id, t.name, up.depth + 1
-      from commerce.terms t join up on t.id = up.parent_id
-      where up.depth < 20
-    ),
-    live as (
-      select id from commerce.pages
-      where store_id = ${storeId}::uuid and type = 'product_layout' and published_at is not null
-    )
-    select p.id, p.published
-    from commerce.pages p
-    where p.id = coalesce(
-      (select product_layout_id from commerce.products
-        where store_id = ${storeId}::uuid and id = ${productId}::uuid and product_layout_id in (select id from live)),
-      (select product_layout_id from up where product_layout_id in (select id from live) order by depth, lower(name) limit 1),
-      (select t.product_layout_id from commerce.product_terms pt join commerce.terms t on t.id = pt.term_id
-        where pt.store_id = ${storeId}::uuid and pt.product_id = ${productId}::uuid and t.kind = 'tag'
-          and t.product_layout_id in (select id from live)
-        order by lower(t.name) limit 1),
-      (select product_layout_id from commerce.stores where id = ${storeId}::uuid and product_layout_id in (select id from live))
-    )
-  `);
+  const row = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`
+      with recursive up as (
+        select t.id, t.parent_id, t.product_layout_id, t.name, 0 as depth
+        from commerce.product_terms pt join commerce.terms t on t.id = pt.term_id
+        where pt.store_id = ${storeId}::uuid and pt.product_id = ${productId}::uuid and t.kind = 'category'
+        union all
+        select t.id, t.parent_id, t.product_layout_id, t.name, up.depth + 1
+        from commerce.terms t join up on t.id = up.parent_id
+        where up.depth < 20
+      ),
+      live as (
+        select id from commerce.pages
+        where store_id = ${storeId}::uuid and type = 'product_layout' and published_at is not null
+      )
+      select p.id
+      from commerce.pages p
+      where p.id = coalesce(
+        (select product_layout_id from commerce.products
+          where store_id = ${storeId}::uuid and id = ${productId}::uuid and product_layout_id in (select id from live)),
+        (select product_layout_id from up where product_layout_id in (select id from live) order by depth, lower(name) limit 1),
+        (select t.product_layout_id from commerce.product_terms pt join commerce.terms t on t.id = pt.term_id
+          where pt.store_id = ${storeId}::uuid and pt.product_id = ${productId}::uuid and t.kind = 'tag'
+            and t.product_layout_id in (select id from live)
+          order by lower(t.name) limit 1),
+        (select product_layout_id from commerce.stores where id = ${storeId}::uuid and product_layout_id in (select id from live))
+      )
+    `,
+    readDb(),
+  );
+  return row?.id ?? null;
+}
+
+/**
+ * A store's published product layout by its id, as last published, or null: cached once per layout, never per product, and tagged
+ * with the layout's own page tag besides the store's pages.
+ */
+export async function productLayoutById(storeId: string, layoutId: string): Promise<{ id: string; content: PageContent } | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(storeId), pageTag(layoutId));
+  const row = await typedRow(
+    z.object({ id: col.uuid, published: z.unknown() }),
+    sql`
+      select id, published
+      from commerce.pages
+      where id = ${layoutId}::uuid and store_id = ${storeId}::uuid and type = 'product_layout' and published_at is not null
+    `,
+    readDb(),
+  );
   const content = row ? parsePageContent(row.published) : null;
-  if (!content) return null;
+  if (!row || !content) return null;
   const [layout] = await withPageAlts([{ content }]);
-  return { id: String(row.id), content: layout.content };
+  return { id: row.id, content: layout.content };
 }
 
 /**

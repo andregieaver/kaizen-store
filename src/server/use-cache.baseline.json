@@ -227,7 +227,8 @@
   "src/server/experiments-read.ts#siteVersionContent": {
     "life": "\"hours\"",
     "tags": [
-      "experimentsTag(storeId), `pages:${storeId}`"
+      "experimentsTag(storeId), `pages:${storeId}`",
+      "pageTag(String(row.page_id))"
     ]
   },
   "src/server/field-tiles.ts#shownFieldsForItems": {
@@ -305,7 +306,8 @@
   "src/server/page-reads.ts#publishedPageById": {
     "life": "\"hours\"",
     "tags": [
-      "pagesTag(owner)"
+      "pagesTag(owner)",
+      "pageTag(id)"
     ]
   },
   "src/server/page-reads.ts#publishedPageIndex": {
@@ -323,7 +325,8 @@
   "src/server/page-reads.ts#findPublishedPage": {
     "life": "\"hours\"",
     "tags": [
-      "pagesTag(owner)"
+      "pagesTag(owner)",
+      "pageTag(String(row.id))"
     ]
   },
   "src/server/page-reads.ts#publishedPageNames": {
@@ -344,10 +347,16 @@
       "pagesTag(null)"
     ]
   },
-  "src/server/product-layouts.ts#productLayoutFor": {
+  "src/server/product-layouts.ts#productLayoutIdFor": {
     "life": "\"hours\"",
     "tags": [
       "CATALOG_TAG, catalogTag(storeId), pagesTag(storeId), termsTag({ storeId, contentType: \"product\" })"
+    ]
+  },
+  "src/server/product-layouts.ts#productLayoutById": {
+    "life": "\"hours\"",
+    "tags": [
+      "pagesTag(storeId), pageTag(layoutId)"
     ]
   },
   "src/server/product-passports.ts#cachedPassport": {
@@ -361,6 +370,18 @@
     "life": "\"hours\"",
     "tags": [
       "productSettingsTag(storeId)"
+    ]
+  },
+  "src/server/public-extensions.ts#getPublicExtensions": {
+    "life": "{ revalidate: Math.max(60, Math.ceil(endsIn)) } | \"hours\"",
+    "tags": [
+      "EXTENSIONS_TAG, PLANS_TAG"
+    ]
+  },
+  "src/server/public-extensions.ts#publicUpsellPercent": {
+    "life": "\"hours\"",
+    "tags": [
+      "EXTENSIONS_TAG"
     ]
   },
   "src/server/public-plans.ts#getPublicPlans": {
@@ -463,7 +484,8 @@
   "src/server/site-layouts.ts#siteLayoutFor": {
     "life": "\"hours\"",
     "tags": [
-      "pagesTag(storeId)"
+      "pagesTag(storeId)",
+      "pageTag(String(row.id))"
     ]
   },
   "src/server/site-store.ts#siteStoreCached": {

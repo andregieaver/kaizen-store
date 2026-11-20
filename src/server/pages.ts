@@ -61,7 +61,7 @@ import { documentsById, iso, ownedBy, type PageOwner } from "./page-reads";
 
 type Row = Record<string, unknown>;
 
-export { PAGES_TAG, pagesTag } from "@/lib/cache-tags";
+export { PAGES_TAG, pageTag, pagesTag } from "@/lib/cache-tags";
 
 export {
   articleCards,

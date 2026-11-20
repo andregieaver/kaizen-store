@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import type { Blog } from "@/lib/blogs";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag, pagesTag } from "@/lib/cache-tags";
 import { pageExcerpt, parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import type { PageRole } from "@/lib/page-roles";
 import { localizePage } from "@/lib/page-translation";
@@ -112,6 +112,7 @@ export async function publishedPageById(owner: PageOwner, id: string, type: Page
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(owner));
+  cacheTag(pageTag(id));
   if (!UUID.safeParse(id).success) return null;
   const row = await typedRow(
     publishedRow,
@@ -339,6 +340,7 @@ export async function findPublishedPage(
     limit 1
   `);
   if (!row) return null;
+  cacheTag(pageTag(String(row.id)));
   if (row.moved) return { redirect: String(row.slug) };
   const content = parsePageContent(row.published);
   if (!content) return null;

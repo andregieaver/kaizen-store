@@ -21,6 +21,8 @@ export const catalogTag = (storeId: string) => `catalog:${storeId}`;
 export const PAGES_TAG = "platform-pages";
 /** The same for an owner: Kaizen's, or a store's. */
 export const pagesTag = (owner: string | null) => (owner === null ? PAGES_TAG : `pages:${owner}`);
+/** One page's own document: refreshed when its body is published (bloat review step 2.14). */
+export const pageTag = (id: string) => "page:" + id;
 
 /** The tag of every cached read of whether Kaizena Flow's site is served from its store (D484): the switch refreshes it. */
 export const SITE_STORE_TAG = "site-from-store";

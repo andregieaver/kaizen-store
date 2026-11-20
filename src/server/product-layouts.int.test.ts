@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { countStatements } from "@/db/statement-count";
 import { newPageContent, type PageContent } from "@/lib/page-content";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 
@@ -134,5 +135,32 @@ describe("product layouts (D79)", () => {
       problems: ["This layout no longer exists."],
     });
     expect((await layouts.listLayoutChoices(storeId)).map((choice) => choice.title)).toContain("Draft");
+  });
+
+  it("reads a layout's document once per layout, never per product (bloat review step 2.14)", async () => {
+    // Only the store's standard layout: no product, category or tag of the store has one of its own.
+    await db().execute(sql`update commerce.products set product_layout_id = null where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.terms set product_layout_id = null where store_id = ${storeId}::uuid`);
+    const standard = await save(layoutNamed("Shared"));
+    await layouts.assignLayout(owner, storeId, standard, { standard: true, termIds: [] });
+    const productA = await id("products", "demo-bordlampe");
+    const productB = await id("products", "demo-notatbok");
+
+    // A statement that reads a page's stored document: `published` itself, not only `published_at`.
+    const selectsDocument = (text: string) => /commerce\.pages/.test(text) && /\bpublished\b/.test(text.replace(/published_at/g, ""));
+    for (const product of [productA, productB]) {
+      const counted = await countStatements(() => layouts.productLayoutFor(storeId, product));
+      expect(counted.result?.id).toBe(standard);
+      const documents = counted.statements.filter((s) => /select id, published\s+from commerce\.pages/.test(s.text));
+      expect(documents).toHaveLength(1);
+      const values = documents[0].values.map(String);
+      expect(values).toContain(standard);
+      expect(values).toContain(storeId);
+      expect(values).not.toContain(productA);
+      expect(values).not.toContain(productB);
+      // The lookup of which layout returns only its id; the media library's alt texts may add their own statement.
+      const otherDocuments = counted.statements.filter((s) => s !== documents[0] && selectsDocument(s.text));
+      expect(otherDocuments).toEqual([]);
+    }
   });
 });

@@ -6,7 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { isTestedPlace, targetKindOf, testToken, TESTED_PLACES, type TargetKind, type TestedPlace } from "@/lib/ab-site";
-import { experimentsTag } from "@/lib/cache-tags";
+import { experimentsTag, pageTag } from "@/lib/cache-tags";
 import { isUuid, type Goal } from "@/lib/experiments";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 
@@ -185,6 +185,7 @@ export async function siteVersionContent(storeId: string, testId: string, key: s
     join commerce.pages tp on tp.id = e.target_page_id and tp.store_id = e.store_id
     where v.store_id = ${storeId}::uuid and v.experiment_id = ${testId}::uuid and v.key = ${key} and e.status = 'running'
   `);
+  if (row) cacheTag(pageTag(String(row.page_id)));
   const content = row ? parsePageContent(row.version) : null;
   if (!row || !content) return null;
   const original = parsePageContent(row.original);

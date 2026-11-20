@@ -9,7 +9,7 @@ import { parsePageContent, type PageContent } from "@/lib/page-content";
 import { audit, type Account } from "./auth";
 import { siteTests, siteVersionContent, type SiteTest } from "./experiments-read";
 import { withPageAlts } from "./media-alts";
-import { pagesTag } from "@/lib/cache-tags";
+import { pageTag, pagesTag } from "@/lib/cache-tags";
 import { refreshStoreById } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -39,6 +39,7 @@ export async function siteLayoutFor(storeId: string | null, type: SiteLayoutType
               join commerce.pages p on p.id = s.${column} and p.store_id = s.id
              where s.id = ${storeId}::uuid and p.published_at is not null`,
   );
+  if (row) cacheTag(pageTag(String(row.id)));
   const content = row ? parsePageContent(row.published) : null;
   if (!row || !content) return null;
   const [layout] = await withPageAlts([{ id: String(row.id), content }]);

@@ -172,7 +172,7 @@ commit as the fix.
 | 2.11 | Give the storefront a stylesheet of its own | SC-5, CS-1, BN-12, GAP-styles-s5 | M | review | 1.21, 1.23, 1.3, 0.35, 0.34, 0.12 | Open | |
 | 2.12 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | review | 2.10, 2.2 | Done | D861, live 20 Nov: /products 128,622 to 97,856 B, each tile once per copy; 0 list queries unfiltered. |
 | 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | Done | 19 Nov, 4cc84650, D779: product page 12 to 1 statements; buy facts one cached read. |
-| 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28, 1.9 | Open | |
+| 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28, 1.9 | In progress | Commit 1 local. Stopped: findEntryPage has no page tag; page grids sort by published_at; sitemap, feed dates; recommend reads 1,200 chars. |
 | 2.15 | Let tagged reads live until their tag is refreshed | SD-8, CA-10 | M | strong | 2.14, 1.11, 1.25 | Open | |
 | 2.16 | Keep a page's title and flags in columns | DS-4, PM-6 | M | review | 0.24, 0.23 | Done | 18 Nov, 64e5b620, D775: title, titles by language and remembered modal in generated columns. |
 | 2.17 | Let page lists, pickers and grids open no document | AD-14, PM-5, GAP-page-model-1, GAP-page-model-s1 | M | strong | 2.16, 0.24, 1.9, 0.19 | In progress | 18 Nov, 13522625, D778: lists 100 a page from columns, grids from SQL; a week's statistics to read. |
