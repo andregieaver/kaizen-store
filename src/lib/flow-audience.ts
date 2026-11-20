@@ -1,4 +1,5 @@
 import type { FlowCondition, FlowStep } from "./flows";
+import { LOSING, type FlowReport } from "./flow-report";
 import type { FLOW_TRIGGERS } from "./flow-triggers";
 
 type FlowTrigger = (typeof FLOW_TRIGGERS)[number];
@@ -86,4 +87,20 @@ function findEmail(steps: readonly FlowStep[], id: string): Extract<FlowStep, { 
     }
   }
   return null;
+}
+
+/**
+ * What the flow's emails earned in the last 30 days, for the writer before it suggests (email plan M3.7): the email whose orders were the
+ * most and its subject, or that none brought an order yet, and whether readers are leaving the list on the way. Counted in code
+ * (`flowReport()`); the writer is told to learn from it and never to put the numbers in the email. Empty before anyone started the flow.
+ */
+export function earnedWords(report: FlowReport, steps: readonly FlowStep[]): string {
+  if (report.entered === 0) return "";
+  const parts = [`In the last 30 days ${report.entered} ${report.entered === 1 ? "person" : "people"} started this flow and its emails brought ${report.orders} ${report.orders === 1 ? "order" : "orders"}.`];
+  const top = report.topStep ? findEmail(steps, report.topStep.id) : null;
+  const subject = top ? Object.values(top.content)[0]?.subject : null;
+  if (report.topStep && subject) parts.push(`The email that brought the most was "${subject.replace(/["<>]/g, "")}": learn from what works in it, without copying it.`);
+  if (report.entered >= LOSING.entered && report.left / report.entered > LOSING.share) parts.push("More than 1 in 20 left the list on the way: keep this email short and worth opening.");
+  parts.push("Never put these numbers in the email.");
+  return parts.join(" ");
 }

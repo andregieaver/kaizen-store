@@ -31,3 +31,17 @@ describe("who a flow's email reaches, for the writer (M3.7)", () => {
     expect(flowAudience(steps, "c", "customer.lapsed", 120)).toContain("sent 77 hours after the flow starts for them, only to those who have not ordered");
   });
 });
+
+describe("what the flow's emails earned, for the writer (M3.7)", () => {
+  it("names the email that brought the most and warns when readers leave, never to say the numbers", async () => {
+    const { earnedWords } = await import("./flow-audience");
+    const base = { entered: 40, sent: 60, orders: 5, minor: { NOK: 100000 }, topStep: { id: "a", orders: 4 }, left: 3 };
+    const said = earnedWords(base, steps);
+    expect(said).toContain('40 people started this flow and its emails brought 5 orders.');
+    expect(said).toContain('The email that brought the most was "a"');
+    expect(said).toContain("More than 1 in 20 left the list");
+    expect(said).toContain("Never put these numbers in the email.");
+    expect(earnedWords({ ...base, left: 0, topStep: null, orders: 0 }, steps)).not.toContain("brought the most");
+    expect(earnedWords({ ...base, entered: 0 }, steps)).toBe("");
+  });
+});

@@ -12,7 +12,7 @@ import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-trig
 import { PICK_KINDS } from "@/lib/automation-kinds";
 import { findStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withLanguageContent, withCondition, withEmailWords, withStepPicks, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { broadcastBlockSchema, REWRITE_TONES, suggestionBlocks, type RewriteTone } from "@/lib/broadcasts";
-import { flowAudience } from "@/lib/flow-audience";
+import { earnedWords, flowAudience } from "@/lib/flow-audience";
 import { marketingProblem } from "@/lib/marketing-words";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { rewriteEmail, suggestBroadcast, suggestSubjects, translateEmail } from "@/server/broadcasts";
@@ -20,7 +20,7 @@ import { checkPermission } from "@/server/permissions";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { adminLangOf } from "@/lib/admin-lang";
 import { getAutomation } from "@/server/automations";
-import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
+import { flowReport, getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
 import { storeAction } from "@/server/store-action";
 
@@ -258,7 +258,10 @@ export async function writeFlowEmailAction(storeSlug: string, flowId: string, st
     if (typeof brief !== "string" || typeof locale !== "string" || !member.store.localization.keptLocales.includes(locale)) return problems.storeLanguage;
     const step = findStep(flow.steps, stepId);
     if (!step || step.kind !== "email") return null;
-    const suggested = await suggestBroadcast(member.store, member.account.id, brief, locale, { audience: flowAudience(flow.steps, stepId, flow.trigger, flow.triggerDays) });
+    // What its emails earned (M3.7): read before the writer suggests, the numbers counted in code.
+    const earned = earnedWords(await flowReport(member.store.id, flow.id), flow.steps);
+    const audience = [flowAudience(flow.steps, stepId, flow.trigger, flow.triggerDays), earned].filter(Boolean).join(" ");
+    const suggested = await suggestBroadcast(member.store, member.account.id, brief, locale, { audience });
     if (!suggested.ok) return marketingProblem(suggested.problem, problems);
     const s = suggested.suggestion;
     const blocks = suggestionBlocks(step.picks ? { ...s, products: [] } : s);

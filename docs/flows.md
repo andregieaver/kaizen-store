@@ -88,7 +88,8 @@ picks takes no products the writer chose. Under the subject, three subject lines
 saved until one is pressed; a line making a claim AI may not make is left out), and Rewrite with AI: shorter, warmer or more direct
 (`rewriteEmail()`: one text back for each of the email's own, put back in its block by code, so pictures, products and addresses never
 move; refused on a claim). A language not written yet can also be translated with AI from the first (`translateEmail()`, the same
-text-by-text way, the preview line left empty), to read over in place before the flow is tested. Each change is a new
+text-by-text way, the preview line left empty), to read over in place before the flow is tested. Before it writes, the writer reads what the flow's emails earned in 30 days
+(`earnedWords()`: orders, the email that brought the most, readers leaving; counted in code, never put in the email). Each change is a new
 version, off until tested; the story above is drawn from the same tree.
 
 ## Presses in a flow's emails (19 November 2026)
