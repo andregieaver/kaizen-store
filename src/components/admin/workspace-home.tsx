@@ -1,9 +1,9 @@
 import { AdminLink, PageHeader } from "@/components/admin/ui";
 import { CARD_CLASS } from "@/components/admin/ui/card";
 import type { HomeMessages } from "@/lib/admin-messages/home.en";
-import { storeExtensionsOn } from "@/lib/extensions";
+import { storeExtensionsOn, WORKSPACE_EXTENSIONS } from "@/lib/extensions";
 import { workBase } from "@/lib/work-paths";
-import { WORKSPACE_EXTENSIONS, WORKSPACE_STARTS } from "@/lib/workspace-admin";
+import { WORKSPACE_STARTS } from "@/lib/workspace-admin";
 
 type Props = {
   store: { slug: string; name: string; extensionFacts?: unknown };

@@ -14,6 +14,7 @@ import { ADMIN_PAGES, matchPath } from "./admin-map";
 import type { PageType } from "./page-content";
 import {
   ADMIN_DEFAULT,
+  allowedInWorkspace,
   AREAS,
   GRANTABLE_PERMISSIONS,
   OWNER_HELD,
@@ -24,7 +25,6 @@ import {
   type PermissionKey,
 } from "./permission-keys";
 import { sectionOf } from "./store-nav";
-import { allowedInWorkspace } from "./workspace-admin";
 
 export * from "./permission-keys";
 

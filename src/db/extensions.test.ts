@@ -1,8 +1,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { EXTENSION_IDS, EXTENSION_SOURCES } from "@/lib/extensions";
-import { STORE_ONLY_EXTENSIONS } from "@/lib/workspace-admin";
+import { EXTENSION_IDS, EXTENSION_SOURCES, STORE_ONLY_EXTENSIONS } from "@/lib/extensions";
 
 import { createTestDatabase } from "./testing";
 

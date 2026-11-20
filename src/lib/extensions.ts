@@ -74,6 +74,15 @@ export const EXTENSION_NAMES: Record<ExtensionId, string> = {
 export const isExtensionId = (value: unknown): value is ExtensionId => (EXTENSION_IDS as readonly unknown[]).includes(value);
 
 /**
+ * The extensions that need a store's site (A/B testing tries two versions of its pages): never offered in a standalone account's workspace
+ * (D748 E7). The catalogue's `extensions.store_only` says the same and the platform admin cannot change it (`src/db/extensions.test.ts`).
+ */
+export const STORE_ONLY_EXTENSIONS: readonly ExtensionId[] = ["ab_testing"];
+
+/** The extensions a workspace can have, in the catalogue's order. */
+export const WORKSPACE_EXTENSIONS: readonly ExtensionId[] = EXTENSION_IDS.filter((id) => !STORE_ONLY_EXTENSIONS.includes(id));
+
+/**
  * What a size of an extension includes, counted per month where it is a flow: contacts on the list, emails per contact a month, AI-handled
  * conversations a month (resolved or handed over: each costs tokens), people who use it. A key a size leaves out is unlimited.
  */

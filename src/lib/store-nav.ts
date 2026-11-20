@@ -4,11 +4,10 @@
  * sidebar; Home has none. Website and Settings open on a page of cards (their hub), the others on their main page.
  */
 
-import { EXTENSION_IDS, storeExtensionsOn, type ExtensionId } from "./extensions";
+import { EXTENSION_IDS, STORE_ONLY_EXTENSIONS, storeExtensionsOn, type ExtensionId } from "./extensions";
 import type { NavIconName } from "@/components/admin/nav-icons";
 
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
-import { STORE_ONLY_EXTENSIONS } from "./workspace-admin";
 
 /**
  * What the navigation is filtered by: the store's features (D178), as kept (`store.features`); a page or section behind a feature is offered

@@ -47,3 +47,13 @@ export const ROLE_AREAS = [...WORKING_AREAS, "books"] as const satisfies readonl
 
 export const isPermissionKey = (value: unknown): value is PermissionKey => (PERMISSION_KEYS as readonly unknown[]).includes(value);
 export const isGrantable = (value: unknown): value is AreaPermission => (GRANTABLE_PERMISSIONS as readonly unknown[]).includes(value);
+
+/**
+ * The areas a standalone account's workspace (D748 E7) serves: the people (customers, deals and leads), email automation, the sales figures,
+ * support, a few settings, the team, the plan and the books. Orders, products, the website and bookings are not there: their pages and
+ * actions answer as for a key the member lacks (`memberCan()`, `canOpenPath()`), whatever the role holds.
+ */
+const WORKSPACE_AREAS: readonly string[] = ["customers", "marketing", "analytics", "support", "settings", "billing", "staff", "books"];
+
+/** Whether a key works in a workspace: the owner's, or one of `WORKSPACE_AREAS`. */
+export const allowedInWorkspace = (key: PermissionKey): boolean => key === "owner" || WORKSPACE_AREAS.includes(key.split(":")[0]);

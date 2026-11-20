@@ -6,9 +6,8 @@ import { AdminLink, Card, List, ListRow, PageHeader, RowActions, RowFact, RowLea
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { HOME_WORDS } from "@/lib/admin-words/home";
-import { EXTENSION_TRIAL_DAYS } from "@/lib/extensions";
+import { EXTENSION_TRIAL_DAYS, WORKSPACE_EXTENSIONS } from "@/lib/extensions";
 import { formatMoney } from "@/lib/money";
-import { WORKSPACE_EXTENSIONS } from "@/lib/workspace-admin";
 import { accountCurrency, getAccountBilling } from "@/server/account-billing";
 import { listStores, listWorkspaces, requireAccount } from "@/server/auth";
 import { accountExtensions } from "@/server/extensions";

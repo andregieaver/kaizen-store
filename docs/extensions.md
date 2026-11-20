@@ -448,7 +448,7 @@ into its account's workspace (`commerce.approve_workspace_request()`, `202611200
 the trials of what was ticked (`startChosenTrials()`, as the owner would: none before extensions are sold). Dark until part three, which opened it.
 
 **E7 as built, part three (20 November 2026).** The workspace's admin is the store frame at its own address with only its own: `memberCan()`
-refuses orders, products, the website and bookings in a workspace (`allowedInWorkspace()`, `src/lib/workspace-admin.ts`), the nav
+refuses orders, products, the website and bookings in a workspace (`allowedInWorkspace()`, `src/lib/permission-keys.ts`), the nav
 (`storeSections()` with `workspace`) offers each extension's pages and those marked `workspace` (customers, privacy requests, subscribers
 with email automation, the chat assistant with the support desk, company, workflows, integrations, AI, apps and API, the team, the change
 log), never A/B tests (`STORE_ONLY_EXTENSIONS`, the catalogue's `store_only`), and no View store. A workspace now starts with `sales` and

@@ -6,9 +6,8 @@ import { notFound } from "next/navigation";
 
 import { db } from "@/db/client";
 
-import { can, pageTypeKey, type Access, type PermissionKey } from "@/lib/permissions";
+import { allowedInWorkspace, can, pageTypeKey, type Access, type PermissionKey } from "@/lib/permissions";
 import { allowedWhenNotOpen } from "@/lib/store-closure";
-import { allowedInWorkspace } from "@/lib/workspace-admin";
 
 import { getMembership, holderOf, requireMember, type Membership } from "./auth";
 import { passMember } from "./edit-pass";
