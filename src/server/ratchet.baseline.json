@@ -2095,6 +2095,7 @@
         "blog_comments",
         "booking_resources",
         "draft_orders",
+        "flows",
         "inventory_levels",
         "inventory_locations",
         "ledger_books",
