@@ -669,6 +669,8 @@ export const platformEn = {
   /** Notices of illegal content on stores (DSA art. 16, D411). */
   /** What readers of the docs said (D442): Was this page helpful? */
   docsFeedback: {
+    /** Round 71 (D853): Docs feedback on a phone. `{yes}`, `{no}`, `{sentences}`, `{n}`. */
+    phone: { lead: "What readers said and searched for. Nothing tells who they are.", tally: "{yes} yes · {no} no · {sentences} sentences", times: { one: "1 time", many: "{n} times" }, filter: "Filter", change: "Change", close: "Close" },
     title: "Docs feedback",
     description: "What readers said under each docs page: whether it helped, and the sentence some add. Nothing tells who they are.",
     byPage: "By page",
@@ -1015,6 +1017,8 @@ export const platformEn = {
     allPlans: "Every plan when none is ticked.",
   },
   stripe: {
+    /** Round 71 (D853): Stripe on a phone. `{n}`. */
+    phone: { lead: "Stores sell through their own Stripe; Kaizena Flow bills plans from its own.", keys: "Keys set", noKeys: "No keys", connected: "webhooks connected", notConnected: "webhooks not connected", feeSub: "{n} % · for stores without a plan", change: "Change", close: "Close" },
     title: "Stripe",
     description:
       "Kaizena Flow is a Stripe Connect platform: each store sells through its own Stripe account, and Kaizena Flow bills stores for their plans from its own. Keys come from Vercel ({keys} and the {live} pair). Plans are billed in live mode once live keys are set.",

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { PhoneRow } from "@/components/admin/phone-row";
+
 import { formatCount, formatPercent } from "@/lib/analytics-core";
 import {
   durationWords,
@@ -8,7 +10,7 @@ import {
   type SupportReport,
 } from "@/lib/support-reports";
 import { MIN_SUPPORT_SAMPLE, type SupportMode } from "@/lib/support-rules";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import {
   supportEn,
   type SupportMessages,
@@ -57,7 +59,8 @@ export function StoreTotalsView({
   const waiting = stores.reduce((sum, s) => sum + s.waiting, 0);
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted sm:hidden">{fillWords(w.phone.intro, { all: formatCount(all), stores: formatCount(stores.length), waiting: formatCount(waiting) })}</p>
+      <p className="text-sm text-muted max-sm:hidden">
         {fillWords(w.intro, {
           all: formatCount(all),
           period: periodLabel,
@@ -67,7 +70,44 @@ export function StoreTotalsView({
         })}
       </p>
       {cut && <p className="text-sm">{t.reports.cut}</p>}
-      <div className="overflow-x-auto">
+      {/* Round 71 (D853): on a phone each store is a row, those with someone waiting first: its mode and conversations, the waiting
+          at the end, opening its rates. From sm up the table. */}
+      <div className="overflow-hidden rounded-panel bg-card px-4 sm:hidden">
+        {[...stores]
+          .sort((a, b) => b.waiting - a.waiting)
+          .map(({ store, mode, waiting: now, report }, i, all) => (
+            <PhoneRow
+              key={store.id}
+              inset
+              last={i === all.length - 1}
+              title={store.name}
+              sub={`${w.modes[mode]} · ${countWords(report.conversations, w.phone.conversations, { n: formatCount(report.conversations) })}`}
+              change={now > 0 ? fillWords(w.phone.waiting, { n: formatCount(now) }) : w.phone.open}
+              done={w.phone.close}
+            >
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                {(
+                  [
+                    [w.aiAlone, rateCell(report.aiAlone)],
+                    [w.handedOver, rateCell(report.handover)],
+                    [w.firstAnswer, durationCell(report.firstAnswer, t)],
+                    [w.missed, formatCount(report.missed.count)],
+                    [w.helped, rateCell(report.rating)],
+                  ] as const
+                ).map(([name, value]) => (
+                  <div key={name} className="flex flex-col">
+                    <dt className="text-caption text-muted">{name}</dt>
+                    <dd className="tabular-nums">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <Link href={`/admin/platform/stores/${store.slug}`} className="mt-3 inline-flex min-h-10 items-center text-sm underline">
+                {w.phone.store}
+              </Link>
+            </PhoneRow>
+          ))}
+      </div>
+      <div className="overflow-x-auto max-sm:hidden">
         <table className="w-full min-w-[56rem] text-sm">
           <caption className="sr-only">{w.caption}</caption>
           <thead>

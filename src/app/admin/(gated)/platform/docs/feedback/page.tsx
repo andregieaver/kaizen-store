@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { ButtonLink, Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { docsPageAt } from "@/lib/docs-content";
 import { docsUrl } from "@/lib/docs-host";
@@ -41,15 +43,57 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
   const index = docsIndex();
   const title = (p: string) => docsPageAt(index, p, "en")?.title ?? p;
   const total = tally.reduce((sum, t) => sum + t.yes + t.no, 0);
+  const ph = w.phone;
+  type Miss = (typeof misses)[number];
+  // What a reader typed: shown as text, never as HTML. One link and one Remove per search, for the phone's rows and the table alike.
+  const missLink = (miss: Miss) => (
+    <a
+      href={docsUrl(`${DOCS_SEARCH_SUB}${docsSearchQueryString({ q: miss.query, filters: { ...NO_FILTERS, lang: [miss.lang] }, sort: "relevance" })}`, miss.lang)}
+      className="underline-offset-2 hover:underline"
+      target="_blank"
+      rel="noopener noreferrer"
+      title={w.tryIt}
+    >
+      {miss.query}
+    </a>
+  );
+  const missRemove = (miss: Miss) => (
+    <ActionForm action={removeDocsMissAction.bind(null, miss.query, miss.lang)} className="flex items-center gap-2" successMessage={w.missRemoved}>
+      <SubmitButton variant="secondary">{w.removeMiss}</SubmitButton>
+    </ActionForm>
+  );
+  const pageLink = (p: string) => (
+    <a href={`?page=${encodeURIComponent(p)}`} className="underline-offset-2 hover:underline">
+      {title(p)}
+    </a>
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.description} meta={[`${total} · ${w.answers.toLowerCase()}`]} />
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{ph.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
+        meta={[`${total} · ${w.answers.toLowerCase()}`]} />
       <Card title={w.byPage}>
         {tally.length === 0 ? (
           <EmptyState compact title={w.none} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Round 71 (D853): on a phone each page is a row with its yes and no; from sm up the table. */}
+          <ul className="flex flex-col divide-y divide-line sm:hidden">
+            {tally.map((t) => (
+              <li key={t.path} className="flex min-h-12 flex-col justify-center py-2 text-sm">
+                {pageLink(t.path)}
+                <span className="text-caption text-muted">{fillWords(ph.tally, { yes: t.yes, no: t.no, sentences: t.comments })}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="overflow-x-auto max-sm:hidden">
             <table className="w-full text-left text-caption">
               <thead className="text-muted">
                 <tr>
@@ -64,9 +108,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
                 {tally.map((t) => (
                   <tr key={t.path} className="border-t border-line">
                     <td className="py-2 pr-4">
-                      <a href={`?page=${encodeURIComponent(t.path)}`} className="underline-offset-2 hover:underline">
-                        {title(t.path)}
-                      </a>
+                      {pageLink(t.path)}
                       <span className="block text-muted">{t.path}</span>
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums">{t.yes}</td>
@@ -78,13 +120,29 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
-      <Card title={w.misses} description={w.missesHint}>
+      <Card title={w.misses} description={w.missesHint} className="max-sm:[&>header>.basis-full]:hidden">
         {misses.length === 0 ? (
           <EmptyState compact title={w.missesNone} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Round 71 (D853): on a phone each search is a row (its language, how often, the latest) with Remove at its end. */}
+          <ul className="flex flex-col divide-y divide-line sm:hidden">
+            {misses.map((miss) => (
+              <li key={`${miss.lang}:${miss.query}`} className="flex min-h-14 items-center justify-between gap-3 py-2 text-sm">
+                <span className="flex min-w-0 flex-col">
+                  {missLink(miss)}
+                  <span className="text-caption text-muted">
+                    {[miss.lang === "nb" ? w.norwegian : w.english, countWords(miss.misses, ph.times), when(miss.lastAt)].join(" · ")}
+                  </span>
+                </span>
+                <span className="shrink-0">{missRemove(miss)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="overflow-x-auto max-sm:hidden">
             <table className="w-full text-left text-caption">
               <thead className="text-muted">
                 <tr>
@@ -103,36 +161,33 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
                 {misses.map((miss) => (
                   <tr key={`${miss.lang}:${miss.query}`} className="border-t border-line align-top">
                     <td className="py-2 pr-4">
-                      {/* What a reader typed: shown as text, never as HTML. */}
-                      <a
-                        href={docsUrl(`${DOCS_SEARCH_SUB}${docsSearchQueryString({ q: miss.query, filters: { ...NO_FILTERS, lang: [miss.lang] }, sort: "relevance" })}`, miss.lang)}
-                        className="underline-offset-2 hover:underline"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={w.tryIt}
-                      >
-                        {miss.query}
-                      </a>
+                      {missLink(miss)}
                     </td>
                     <td className="py-2 pr-4">{miss.lang === "nb" ? w.norwegian : w.english}</td>
                     <td className="py-2 pr-4 text-right tabular-nums">{miss.misses}</td>
                     <td className="py-2 pr-4 text-right tabular-nums">{miss.guideMisses}</td>
                     <td className="py-2 pr-4 tabular-nums">{when(miss.firstAt)}</td>
                     <td className="py-2 pr-4 tabular-nums">{when(miss.lastAt)}</td>
-                    <td className="py-2 pr-4">
-                      <ActionForm action={removeDocsMissAction.bind(null, miss.query, miss.lang)} className="flex items-center gap-2" successMessage={w.missRemoved}>
-                        <SubmitButton variant="secondary">{w.removeMiss}</SubmitButton>
-                      </ActionForm>
-                    </td>
+                    <td className="py-2 pr-4">{missRemove(miss)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-caption text-muted">{w.removeMissHint}</p>
           </div>
+          <p className="mt-2 text-caption text-muted">{w.removeMissHint}</p>
+          </>
         )}
       </Card>
       <Card title={w.answers}>
+        {/* Round 71 (D853): on a phone the filters are one row saying what is chosen. */}
+        <PhoneRow
+          inset
+          last
+          title={ph.filter}
+          sub={[path ? title(path) : w.allPages, helpful === null ? w.any : helpful ? w.onlyYes : w.onlyNo, ...(withComment ? [w.withSentence] : [])].join(" · ")}
+          change={ph.change}
+          done={ph.close}
+        >
         <form method="get" className="mb-4 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm">
             {w.page}
@@ -161,6 +216,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
             {w.apply}
           </button>
         </form>
+        </PhoneRow>
         {rows.length === 0 ? (
           <EmptyState
             compact

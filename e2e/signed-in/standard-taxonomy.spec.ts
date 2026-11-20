@@ -90,9 +90,10 @@ test("finds a category by what the product is, ticks a colour, and saves them wi
 
 test("the listing filters by the colour in its address, and the Google feed carries the category and the colour", async ({ page, request }) => {
   await page.goto(`${storefront}/products?t.color=black`);
-  await expect(page.getByText(product.title, { exact: true }).first()).toBeVisible();
+  // A filtered listing draws the chosen grid and keeps the built one hidden behind it (bloat review step 2.12): count what shows.
+  await expect(page.getByText(product.title, { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page.goto(`${storefront}/products?t.color=red`);
-  await expect(page.getByText(product.title, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(product.title, { exact: true }).filter({ visible: true })).toHaveCount(0);
 
   const feed = await request.get(`/api/feeds/${FEED_TOKEN}/${marketSlug}-google.xml`);
   expect(feed.status()).toBe(200);

@@ -663,6 +663,7 @@ export const platformNb: PlatformMessages = {
     failed: "{n} feilet",
   },
   docsFeedback: {
+    phone: { lead: "Det leserne sa og søkte etter. Ingenting viser hvem de er.", tally: "{yes} ja · {no} nei · {sentences} setninger", times: { one: "1 gang", many: "{n} ganger" }, filter: "Filter", change: "Endre", close: "Lukk" },
     title: "Tilbakemeldinger på dokumentasjonen",
     description: "Hva leserne sa under hver side i dokumentasjonen: om den hjalp, og setningen noen legger til. Ingenting forteller hvem de er.",
     byPage: "Per side",
@@ -1006,6 +1007,7 @@ export const platformNb: PlatformMessages = {
     allPlans: "Alle abonnementer når ingen er krysset av.",
   },
   stripe: {
+    phone: { lead: "Butikkene selger gjennom sin egen Stripe; Kaizena Flow fakturerer abonnementer fra sin.", keys: "Nøkler satt", noKeys: "Ingen nøkler", connected: "webhooks koblet til", notConnected: "webhooks ikke koblet til", feeSub: "{n} % · for butikker uten abonnement", change: "Endre", close: "Lukk" },
     title: "Stripe",
     description:
       "Kaizena Flow er en Stripe Connect-plattform: hver butikk selger gjennom sin egen Stripe-konto, og Kaizena Flow fakturerer butikkene for abonnementene fra sin egen. Nøklene kommer fra Vercel ({keys} og {live}-paret). Abonnementer faktureres i live-modus når live-nøklene er satt.",
