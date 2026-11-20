@@ -1,5 +1,7 @@
 import "server-only";
 
+import { DRILL_EMAIL_DOMAIN } from "@/lib/live-drills";
+
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
@@ -118,6 +120,12 @@ const personRow = z.object({
 });
 type Person = z.infer<typeof personRow>;
 
+/**
+ * The live drills' test addresses (D406, D409: the Dream Factory signs up at the test domain): never people, so never Kaizena Flow's customers
+ * or deals.
+ */
+const DRILL_ADDRESSES = `%${DRILL_EMAIL_DOMAIN}`;
+
 /** Everyone the platform knows as an owner or an applicant, one row per address, with what decides their tags and their deal. */
 function people(runner: Tx): Promise<Person[]> {
   return typedRows(
@@ -136,7 +144,7 @@ function people(runner: Tx): Promise<Person[]> {
         left join commerce.organisation_billing ob on ob.organisation_id = s.organisation_id
         left join commerce.store_billing sb on sb.store_id = s.id
         left join commerce.plans p on p.id = case when ob.organisation_id is not null then ob.plan_id else sb.plan_id end
-        where a.disabled_at is null and a.email not like '%.invalid'
+        where a.disabled_at is null and a.email not like '%.invalid' and lower(a.email) not like ${DRILL_ADDRESSES}
       ),
       owners as (
         select account_id, email, max(name) as name, max(lang) as lang,
@@ -161,7 +169,7 @@ function people(runner: Tx): Promise<Person[]> {
             left join commerce.store_billing sb on sb.store_id = s.id
            where s.id = r.store_id
         ) x on true
-        where r.email not like '%.invalid' and (not r.self_serve or r.confirmed_at is not null)
+        where r.email not like '%.invalid' and lower(r.email) not like ${DRILL_ADDRESSES} and (not r.self_serve or r.confirmed_at is not null)
         order by lower(r.email), r.created_at desc, r.id
       )
       select coalesce(o.email, q.email) as email, o.account_id, q.request_id,

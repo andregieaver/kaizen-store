@@ -8,6 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { customerFormFields, staffProblemText } from "@/lib/customer-staff";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { createCustomer } from "@/server/customer-staff";
+import { DELETE_CUSTOMERS_MAX, deleteCustomers } from "@/server/customer-delete";
 import { listCustomers } from "@/server/customer-admin";
 import { BULK_TAG_MAX, tagMany } from "@/server/segments";
 import { tagKey } from "@/lib/order-tags";
@@ -112,4 +113,20 @@ export async function tagTickedAction(storeSlug: string, _state: FormState, form
   refresh();
   const done = countWords(result.changed, w.bulk.done);
   return { status: "ok", messages: [result.full > 0 ? done + fillWords(w.bulk.full, { n: String(result.full) }) : done] };
+}
+
+/**
+ * Deletes the people ticked on the list (their emails, at most one page), `customers:write`: those with orders or subscriptions are kept and
+ * counted in the answer (`deleteCustomers()`).
+ */
+export async function deleteTickedAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [await noAccess()] };
+  const w = CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)];
+  const emails = form.getAll("email").flatMap((value) => (typeof value === "string" && value ? [value.slice(0, 320)] : [])).slice(0, DELETE_CUSTOMERS_MAX + 1);
+  const result = await deleteCustomers(member, emails);
+  if (!result.ok) return { status: "error", messages: [result.problem === "too_many" ? w.staff.bulk.tooMany : await noAccess()] };
+  refresh();
+  const done = countWords(result.deleted, w.list.deleted);
+  return { status: result.deleted > 0 ? "ok" : "error", messages: [result.kept.length > 0 ? done + countWords(result.kept.length, w.list.deletedKept) : done] };
 }

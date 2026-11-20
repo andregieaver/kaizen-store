@@ -18,6 +18,7 @@ import { db } from "@/db/client";
 import { customerIdByEmail, mergeCustomers, mergePreview } from "@/server/customer-merge";
 import { addGuestAsCustomer, addNote, deleteNote, updateCustomer } from "@/server/customer-staff";
 import { findCustomer } from "@/server/customer-admin";
+import { deleteCustomers } from "@/server/customer-delete";
 import { saveStaffFields } from "@/server/field-entities";
 import { addTag, removeTag } from "@/server/segments";
 import type { SaveResult } from "@/server/settings";
@@ -139,4 +140,20 @@ export async function mergeCustomersAction(storeSlug: string, keep: string, remo
   const plan = await mergeCustomers(member, keep, remove);
   if (!plan.ok) return { ok: false, problem: staffWords(member).merge.refusals[plan.refusal] };
   redirect(`/admin/${member.store.slug}/customers/${keep}?merged=1`);
+}
+
+/**
+ * Deletes this customer (`customers:write`) and goes back to the list; one with orders or subscriptions is kept, and the page says why
+ * (`deleteCustomers()`).
+ */
+export async function deleteCustomerAction(storeSlug: string, email: string, name: string): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [await noAccess()] };
+  const result = await deleteCustomers(member, [email]);
+  if (!result.ok) return { status: "error", messages: [wordsOf(member).noAccess] };
+  if (result.deleted === 0) {
+    const w = CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].customer;
+    return { status: "error", messages: [fillWords(w.deleteCustomerKept, { name: name || email })] };
+  }
+  redirect(`/admin/${member.store.slug}/customers`);
 }

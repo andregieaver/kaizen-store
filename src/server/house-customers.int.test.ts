@@ -105,6 +105,18 @@ describe("Kaizena Flow's own customers (D467)", () => {
     expect(await tags(email)).toEqual(["No plan", "Owner", "Store open", "VIP"]);
   });
 
+  it("never brings in the live drills' test addresses, as owner or applicant (D409)", async () => {
+    const shop = await store("drill-shop", true);
+    const drillOwner = `delivered+dream${run}@resend.dev`;
+    await owner(drillOwner, shop);
+    const drillApplicant = `delivered+dreamapp${run}@resend.dev`;
+    await request(drillApplicant, "Dream drill", { selfServe: true, confirmed: true });
+    await syncHouseCustomers();
+    expect(await customer(drillOwner)).toBeUndefined();
+    expect(await customer(drillApplicant)).toBeUndefined();
+    expect(await deal(drillApplicant)).toBeNull();
+  });
+
   it("keeps a name staff typed, and fills one only while it is empty", async () => {
     const email = mail("named");
     await owner(email, await store("named-shop"));
