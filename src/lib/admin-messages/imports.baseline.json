@@ -20,9 +20,6 @@
     "notifications.en.ts -> lib/tripletex-setup.ts",
     "notifications.nb.ts -> lib/tripletex-settings.ts",
     "order.en.ts -> lib/vat-treatment.ts",
-    "products.en.ts -> lib/bulk-admin.ts",
-    "products.en.ts -> lib/data-admin.ts",
-    "products.en.ts -> lib/data-job.ts",
     "screens.en.ts -> lib/analytics-export.ts",
     "screens.en.ts -> lib/storefront-api.ts",
     "store-parts.en.ts -> lib/store-parts.ts"

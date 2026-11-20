@@ -12,7 +12,7 @@ import { RedirectImportApply, RedirectImportOptions } from "@/components/admin/r
 import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { RedirectApplied, RedirectDryRun, RedirectFindings } from "@/components/admin/redirects/redirect-import-views";
 import { appliedCountsOfJob, importStage, isWorking, momentText, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
-import { STATUS_WORDS } from "@/lib/data-job";
+import { STATUS_WORDS } from "@/lib/data-job-labels";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { STATUS_WORDS } from "./data-job-labels";
 import { areaOfAction, explicitAreaOf } from "./audit";
 import { EMAIL_KINDS, emailClassOf } from "./personal-data";
 import * as limits from "./data-limits";
@@ -11,7 +12,6 @@ import {
   IMPORT_KINDS,
   JOB_KINDS,
   JOB_STATUSES,
-  STATUS_WORDS,
   canMove,
   finding,
   hasPersonalData,

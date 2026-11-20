@@ -1,6 +1,6 @@
-import { BULK_WORDS } from "../bulk-admin";
-import { COMPARE_AT_NOTE, IMPORT_CONFIRMATION, NOT_IN_PRODUCT_FILE } from "../data-admin";
-import { STATUS_WORDS } from "../data-job";
+import { BULK_WORDS } from "../bulk-admin-labels";
+import { COMPARE_AT_NOTE, IMPORT_CONFIRMATION } from "../data-admin-labels";
+import { STATUS_WORDS } from "../data-job-labels";
 
 import type { Widen } from "./common.en";
 
@@ -10,7 +10,7 @@ import type { Widen } from "./common.en";
  * `{n}` the number. The editor of one product is the `product` area's.
  */
 export const productsEn = {
-  /** What `src/lib/bulk-admin.ts` says (`BULK_WORDS`), passed to its functions. */
+  /** What `src/lib/bulk-admin.ts` says (`BULK_WORDS`, written in `bulk-admin-labels.ts`), passed to its functions. */
   bulkLib: BULK_WORDS,
   /** Settings, Products (D557): what a product's tile in a content grid shows. */
   settings: {
@@ -392,8 +392,13 @@ export const productsEn = {
     intro:
       "One row for each variant of a product, with its texts in every language, options, prices for each country, stock, cost, product safety details, categories, tags and pictures. A store with more than {rows} rows gets the file as a job.",
     notCarried: "What the file does not carry",
-    /** `NOT_IN_PRODUCT_FILE`. */
-    notInFile: NOT_IN_PRODUCT_FILE,
+    /** What a product file does not carry (section 2.1.4): said on the export page so a round trip holds no surprise. */
+    notInFile: [
+      "Purchase options (subscriptions)",
+      "Download files",
+      "Booking settings: staff, seasons, check-in times (appointments, stays and rentals)",
+      "Custom fields that are not plain values (pictures, files, links, repeaters and the like)",
+    ] as const,
     readsBack: "An import leaves these as they are. The file reads back into Kaizena Flow as it is: ",
     importLink: "import products",
   },
