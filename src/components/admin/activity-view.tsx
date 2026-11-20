@@ -10,7 +10,7 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { PhoneMore } from "@/components/admin/phone-more";
 import { PHONE_MORE_HIDDEN } from "@/components/admin/phone-more-class";
 import { fillWords } from "@/lib/admin-fill";
-import { staffEn, type StaffMessages } from "@/lib/admin-messages/staff.en";
+import type { StaffMessages } from "@/lib/admin-messages/staff.en";
 
 /** An area's name: the account's words when given (D312 A8), else the log's English. */
 const areaName = (area: AuditArea, words?: StaffMessages) => (words ? words.areas[area] : AUDIT_AREA_LABELS[area]);
@@ -61,10 +61,10 @@ export function ActivityFilters({
   exportAction?: string;
   /** The time zone the days are in, said under the period. */
   zoneName: string;
-  /** The account's words (D312 A8); English unless given. */
-  words?: StaffMessages;
+  /** The account's words (D312 A8). */
+  words: StaffMessages;
 }) {
-  const w = (words ?? staffEn).activity;
+  const w = words.activity;
   return (
     <div className="flex flex-col gap-4">
       <form method="get" action={action} className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-6">
@@ -179,8 +179,8 @@ const kindName = (action: string, words?: StaffMessages) => {
 };
 
 /** A run's line: its kinds of change in order, with how many where more than one, the first two named. */
-export function runTitle(run: readonly ActivityEntry[], words?: StaffMessages): string {
-  const w = (words ?? staffEn).activity;
+export function runTitle(run: readonly ActivityEntry[], words: StaffMessages): string {
+  const w = words.activity;
   const kinds: { action: string; n: number }[] = [];
   for (const entry of run) {
     const kind = kinds.find((k) => k.action === entry.action);
@@ -216,12 +216,12 @@ export function ActivityList({
   /** The address of the next, older page; none on the last. */
   older?: string | null;
   empty?: string;
-  /** The account's words (D312 A8); English unless given. */
-  words?: StaffMessages;
+  /** The account's words (D312 A8). */
+  words: StaffMessages;
   /** How dates are written in them. */
   locale?: string;
 }) {
-  const w = (words ?? staffEn).activity;
+  const w = words.activity;
   if (entries.length === 0) return <EmptyState title={empty ?? w.empty} />;
   const values = words ? { none: w.none, yes: w.yes, no: w.no } : undefined;
   // By day (round 14, D641): Today, Yesterday, then the date; each row says only its time.

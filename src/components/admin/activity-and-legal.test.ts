@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh:
 
 import { DEFAULT_A11Y_SETTINGS, ENFORCEMENT_BODIES, type A11yFacts } from "@/lib/a11y-statement";
 import { legalEn } from "@/lib/admin-messages/legal.en";
+import { staffEn } from "@/lib/admin-messages/staff.en";
 import type { ActivityEntry } from "@/server/activity";
 import type { LegalOverview } from "@/server/legal-starters";
 
@@ -55,31 +56,31 @@ describe("the change log", () => {
       entry({ id: 7, at: at(31), area: "products", accountId: "b", email: "bo@example.no" }),
     ]);
     expect(runs.map((run) => run.map((e) => e.id))).toEqual([[1, 2, 3], [4], [5], [6], [7]]);
-    expect(runTitle(runs[0])).toBe("Integration: token revoked (2), Integration: token made");
+    expect(runTitle(runs[0], staffEn)).toBe("Integration: token revoked (2), Integration: token made");
     const many = activityRuns(["a.one", "a.two", "a.three", "a.four"].map((action, i) => entry({ id: i, action })));
-    expect(runTitle(many[0])).toBe("A: one, A: two and 2 more");
+    expect(runTitle(many[0], staffEn)).toBe("A: one, A: two and 2 more");
   });
 
   it("draws a run as one row on a phone with each change inside, and keeps back all after the first 20 rows (round 32, D706)", () => {
     const run = [entry({ id: 1 }), entry({ id: 2 })];
-    const out = html(createElement(ActivityList, { entries: run, zone: "UTC" }));
+    const out = html(createElement(ActivityList, { entries: run, zone: "UTC", words: staffEn }));
     expect(out).toContain("2 changes");
     expect(out.match(/Changed the price of Demo: Lampe/g)).toHaveLength(2);
     const day = (n: number) => entry({ id: n, at: new Date(Date.parse("2026-10-03T08:30:00.000Z") - n * 3_600_000).toISOString(), accountId: String(n) });
-    const long = html(createElement(ActivityList, { entries: Array.from({ length: 25 }, (_, n) => day(n)), zone: "UTC", older: "/admin/kaffe/activity?before=7" }));
+    const long = html(createElement(ActivityList, { entries: Array.from({ length: 25 }, (_, n) => day(n)), zone: "UTC", older: "/admin/kaffe/activity?before=7", words: staffEn }));
     expect(long).toContain("Show 5 more");
     expect(long.match(/max-sm:group-data-\[more=some\]\/more:hidden/g)!.length).toBeGreaterThanOrEqual(6);
-    expect(html(createElement(ActivityList, { entries: [entry()], zone: "UTC" }))).not.toContain("Show ");
+    expect(html(createElement(ActivityList, { entries: [entry()], zone: "UTC", words: staffEn }))).not.toContain("Show ");
   });
 
   it("says when the AI manager or the autopilot made the change in the person's name (D309)", () => {
-    expect(html(createElement(ActivityList, { entries: [entry({ actedBy: "autopilot" })], zone: "Europe/Oslo" }))).toContain("Anna through the autopilot");
-    expect(html(createElement(ActivityList, { entries: [entry({ actedBy: "ai_manager" })], zone: "Europe/Oslo" }))).toContain("Anna through the AI manager");
-    expect(html(createElement(ActivityList, { entries: [entry()], zone: "Europe/Oslo" }))).not.toContain("through the");
+    expect(html(createElement(ActivityList, { entries: [entry({ actedBy: "autopilot" })], zone: "Europe/Oslo", words: staffEn }))).toContain("Anna through the autopilot");
+    expect(html(createElement(ActivityList, { entries: [entry({ actedBy: "ai_manager" })], zone: "Europe/Oslo", words: staffEn }))).toContain("Anna through the AI manager");
+    expect(html(createElement(ActivityList, { entries: [entry()], zone: "Europe/Oslo", words: staffEn }))).not.toContain("through the");
   });
 
   it("says what happened, who did it, where it belongs and when, with the changes as from and to", () => {
-    const out = html(createElement(ActivityList, { entries: [entry()], zone: "Europe/Oslo" }));
+    const out = html(createElement(ActivityList, { entries: [entry()], zone: "Europe/Oslo", words: staffEn }));
     expect(out).toContain("Changed the price of Demo: Lampe");
     expect(out).toContain("Anna");
     expect(out).toContain("Products");
@@ -92,14 +93,14 @@ describe("the change log", () => {
   });
 
   it("says when there is nothing, and links to older entries when there are more", () => {
-    expect(html(createElement(ActivityList, { entries: [], zone: "UTC" }))).toContain("Nothing has been logged");
-    const out = html(createElement(ActivityList, { entries: [entry()], zone: "UTC", older: "/admin/kaffe/activity?before=7" }));
+    expect(html(createElement(ActivityList, { entries: [], zone: "UTC", words: staffEn }))).toContain("Nothing has been logged");
+    const out = html(createElement(ActivityList, { entries: [entry()], zone: "UTC", older: "/admin/kaffe/activity?before=7", words: staffEn }));
     expect(out).toContain('href="/admin/kaffe/activity?before=7"');
     expect(out).toContain("Older entries");
   });
 
   it("names the platform when an entry has no person", () => {
-    const out = html(createElement(ActivityList, { entries: [entry({ email: null, name: null, accountId: null })], zone: "UTC" }));
+    const out = html(createElement(ActivityList, { entries: [entry({ email: null, name: null, accountId: null })], zone: "UTC", words: staffEn }));
     expect(out).toContain("The platform");
   });
 
@@ -112,6 +113,7 @@ describe("the change log", () => {
         areas: ["orders", "products"],
         actions: ["product.price_changed"],
         zoneName: "Europe/Oslo",
+        words: staffEn,
         ...extra,
       }),
     );
@@ -121,7 +123,7 @@ describe("the change log", () => {
     expect(out).toContain("Everyone");
     expect(out).toContain("Bo (past)");
     expect(out).toContain("All areas");
-    expect(out).toContain("Product: price changed");
+    expect(out).toContain("Changed the price of …");
     expect(out).toContain('name="from"');
     expect(out).toContain('name="to"');
     expect(out).toContain("Entries are kept for 24 months.");
