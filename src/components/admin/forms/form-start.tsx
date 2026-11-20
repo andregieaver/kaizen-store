@@ -51,24 +51,36 @@ function Cards({ title, cards, make }: { title?: string; cards: Card[]; make: (k
   return (
     <section className="flex flex-col gap-3">
       {title && <h2 className="text-title text-ink">{title}</h2>}
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-form-starters>
+      {/* Round 69 (D844): on a phone the templates are rows of one card (a small icon, the name, what it asks and its kind); from sm up the cards. */}
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-sm:gap-0 max-sm:divide-y max-sm:divide-line max-sm:overflow-hidden max-sm:rounded-card max-sm:bg-card" data-form-starters>
         {cards.map((c) => (
           <li key={c.key}>
             <QuietActionForm action={make.bind(null, c.key)} className="h-full">
               <button
                 type="submit"
-                className={`${CARD_CLASS} flex h-full w-full flex-col items-start gap-2 p-5 text-left transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2`}
+                className={`${CARD_CLASS} flex h-full w-full flex-col items-start gap-2 p-5 text-left transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 max-sm:min-h-14 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:rounded-none max-sm:bg-transparent max-sm:px-4 max-sm:py-2 max-sm:hover:shadow-none`}
                 data-starter={c.starter ?? (c.key === "blank" ? "blank" : undefined)}
                 data-template={c.key}
               >
-                <span className="flex size-10 items-center justify-center rounded-panel bg-sunken text-ink-2">
-                  <NavIcon name={c.icon} className="size-5" />
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-panel bg-sunken text-ink-2 max-sm:size-8">
+                  <NavIcon name={c.icon} className="size-5 max-sm:size-4" />
                 </span>
-                <span className="text-body-strong text-ink">{c.name}</span>
-                {c.text && <span className="text-body text-ink-2">{c.text}</span>}
-                <span className="mt-auto pt-2 text-caption text-muted">
-                  {c.kind}
-                  {c.note && ` · ${c.note}`}
+                <span className="flex w-full min-w-0 flex-1 flex-col gap-2 max-sm:gap-0.5">
+                  <span className="text-body-strong text-ink max-sm:text-body">{c.name}</span>
+                  {c.text && (
+                    <span className="text-body text-ink-2 max-sm:text-caption">
+                      {c.text}
+                      <span className="sm:hidden">
+                        {" · "}
+                        {c.kind}
+                        {c.note && ` · ${c.note}`}
+                      </span>
+                    </span>
+                  )}
+                  <span className={`mt-auto pt-2 text-caption text-muted ${c.text ? "max-sm:hidden" : "max-sm:pt-0"}`}>
+                    {c.kind}
+                    {c.note && ` · ${c.note}`}
+                  </span>
                 </span>
               </button>
             </QuietActionForm>

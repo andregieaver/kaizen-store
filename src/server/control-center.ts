@@ -284,7 +284,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
           `,
         ),
     queueCounts(
-      { disputes: orderIds, decisions: ownerIds, leads: salesCustomerIds, activities: salesCustomerIds, comments: idsWith(storeRows, "website:read"), questions: supportIds },
+      { disputes: orderIds, decisions: ownerIds, leads: salesCustomerIds, activities: salesCustomerIds, comments: idsWith(storeRows, "website:read"), questions: supportIds, flows: idsWith(storeRows, "marketing:read") },
       account.id,
     ),
   ]);

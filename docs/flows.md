@@ -107,12 +107,16 @@ for an event, the people on the list behind its events of the last 30 days (the 
 lapse falls in the next 30; for browsing, the signed-in subscribers with views kept now. Test walks the newest subscriber through it,
 sending nothing. See the emails (`?see=1`, `drawFlowEmails()`) draws each email the newest subscriber would get, in their language and
 market with their picks and plain links, only when asked, at a desktop's or a phone's width, light or as a mail app that turns it dark shows it (colours reversed, pictures kept:
-`darkPreview()`, M3.4); nothing is sent, entered or marked tested. Still to come: each step's reach.
+`darkPreview()`, M3.4); nothing is sent, entered or marked tested. Each email in the story says how many of those would get it
+(`stepReach()`, `flowStepPast()`): its share of the flow's own ended ways through once 20 have ended, before that everyone who starts
+before a branch, or up to that inside one.
 
-## The report in words (19 November 2026, email plan M3.8 in part)
+## The report in words (19 and 20 November 2026, email plan M3.8)
 
 A flow's page says its last 30 days (`flowReport()`): who started it, its emails sent, the paid orders after them and their money,
 the email that brought the most, who left the list on the way (runs ended as stopped), and one suggestion chosen in code
 (`flowSuggestion()`: space out when more than one in twenty leave, picks when emails bring nothing, build on the step that works).
 Orders are credited by D761's one rule, flows now a fourth sender (`flow:{flow}:{step}` in `orderCredit()`, Flows in Analytics →
-Marketing). Home and the morning briefing come with E2.1's one source.
+Marketing). Home and the morning briefing say when a flow switched on is losing readers (`space_out`'s numbers, `LOSING`), through
+E2.1's one source (`losingFlowCounts()` in `src/server/attention.ts`, the item `flows_losing`), for a member who may read marketing; it
+opens the flow, or Flows when there are several.

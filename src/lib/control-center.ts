@@ -126,6 +126,11 @@ export type StoreFigures = {
   activities?: ActivityFigures;
   /** Questions the chat assistant could not answer, still open (ecosystem plan E4.3, D729), for a member who may read support. A count only. */
   unansweredQuestions?: number;
+  /**
+   * Flows switched on that are losing readers (D767, email plan M3.8: `LOSING`, the flow report's `space_out`), for a member who may read
+   * marketing: how many, and the one's id when there is just one, so the item opens it.
+   */
+  flowsLosing?: { flows: number; only: string | null };
 };
 
 /**
@@ -187,6 +192,7 @@ export const ATTENTION_KINDS = [
   "activities_today",
   "blog_comments",
   "unanswered_questions",
+  "flows_losing",
   "books",
   "bills",
   "turnover",
@@ -410,7 +416,7 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
 }
 
 /** What `queueItems()` reads of a store: its name and the queues' figures (each left out where the member may not see it). */
-export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions">;
+export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing">;
 
 /**
  * The queues ecosystem plan E2.1 (D713) brought to Home, each with the page that acts on it: payment disputes waiting for the store's answer
@@ -453,6 +459,16 @@ export function queueItems(s: QueueFigures, now: number, w: AttentionWords): Kin
   // E4.3 (D729): what the chat assistant could not answer, for the owner to answer once in its knowledge.
   if (s.unansweredQuestions && s.unansweredQuestions > 0) {
     items.push({ kind: "unanswered_questions", text: count(s.unansweredQuestions, w.unansweredQuestions), href: `${base}/chat/questions`, action: a.answer });
+  }
+  // M3.8 (D767): a flow whose readers leave the list on the way; its page says what to change.
+  const losing = s.flowsLosing;
+  if (losing && losing.flows > 0) {
+    items.push({
+      kind: "flows_losing",
+      text: count(losing.flows, w.flowsLosing),
+      href: losing.only ? `${base}/flows/${losing.only}` : `${base}/flows`,
+      action: a.seeFlow,
+    });
   }
   return items;
 }

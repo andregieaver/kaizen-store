@@ -377,4 +377,33 @@ describe("flows (D767)", () => {
     expect(report.minor).toEqual({ NOK: 10000 });
     await fl.switchFlow(storeId, owner, saved.id, false);
   });
+
+  it("reads its own past for each step's reach: ended ways through and how many came to each step, leaving running ones out (M3.5)", async () => {
+    const steps: FlowStep[] = [email("a", "A"), { id: "q", kind: "if", condition: { kind: "ordered_since_entry" }, then: [email("b", "B")], else: [] }];
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Past ${run}`, trigger: "subscriber.subscribed", steps, goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    const way = async (address: string, status: string, reached: string[]) => {
+      const person = await subscriber(address);
+      const [r] = await db().execute<Row>(sql`
+        insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, status, ended_at)
+        values (${storeId}::uuid, ${saved.id}::uuid, 1, ${person}::uuid, ${address}, ${status}, ${status === "running" ? null : new Date().toISOString()}::timestamptz)
+        returning id`);
+      for (const step of reached)
+        await db().execute(sql`insert into commerce.flow_run_steps (store_id, run_id, step_id, outcome) values (${storeId}::uuid, ${String(r.id)}::uuid, ${step}, 'logged')`);
+    };
+    await way(`past1-${run}@example.com`, "done", ["a", "b"]);
+    await way(`past2-${run}@example.com`, "done", ["a"]);
+    await way(`past3-${run}@example.com`, "running", ["a"]);
+    // Home and the briefing (M3.8): a flow switched on with 20 started in 30 days and more than 1 in 20 of them gone from the list is losing readers.
+    const { losingFlowCounts } = await import("./attention");
+    await db().execute(sql`update commerce.flows set enabled = true where id = ${saved.id}::uuid`);
+    for (let i = 0; i < 18; i += 1) await way(`pastx${i}-${run}@example.com`, i < 2 ? "stopped" : "done", []);
+    expect(await losingFlowCounts([storeId])).toEqual(new Map([[storeId, { flows: 1, only: saved.id }]]));
+    await db().execute(sql`update commerce.flows set enabled = false where id = ${saved.id}::uuid`);
+    expect(await losingFlowCounts([storeId])).toEqual(new Map());
+    await db().execute(sql`delete from commerce.flow_runs where flow_id = ${saved.id}::uuid and entry_key like 'pastx%'`);
+    const past = await fl.flowStepPast(storeId, saved.id);
+    expect(past.ended).toBe(2);
+    expect(Object.fromEntries(past.reached)).toEqual({ a: 2, b: 1 });
+  });
 });

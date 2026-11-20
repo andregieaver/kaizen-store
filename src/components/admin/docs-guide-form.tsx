@@ -10,6 +10,7 @@ import type { GuideLang } from "@/lib/docs-guide-shape";
 import { useAdminText } from "./admin-text";
 import { ChatAvatarFields } from "./chat-avatar-fields";
 import { ImageUploadButton, type Upload } from "./image-upload";
+import { PhoneRow } from "./phone-row";
 
 export type SaveDocsGuide = (json: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
 
@@ -32,7 +33,9 @@ export function DocsGuideForm({
   upload: Upload | null;
   save: SaveDocsGuide;
 }) {
-  const w = useAdminText("platformDocsGuide").docsGuide.form;
+  const words = useAdminText("platformDocsGuide").docsGuide;
+  const w = words.form;
+  const ph = words.phone;
   const [value, setValue] = useState(guide);
   const [pending, start] = useTransition();
   const [outcome, setOutcome] = useState<{ ok: boolean; messages: string[] } | null>(null);
@@ -58,6 +61,16 @@ export function DocsGuideForm({
         <span className="font-medium">{w.on}</span>
       </label>
 
+      {/* Round 69 (D844): on a phone the guide's look and its daily limit are rows saying what is set; from sm up the fields as before. */}
+      <div className="flex flex-col gap-5 max-sm:gap-0 max-sm:border-t max-sm:border-line">
+      <PhoneRow
+        inset
+        title={ph.look}
+        sub={[value.name || w.namePlaceholder, value.avatar ? ph.picture : w.noPicture, ph.greeting].join(" · ")}
+        change={ph.change}
+        done={ph.close}
+      >
+      <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start gap-5">
         <div className="flex flex-col items-center gap-2">
           {value.avatar ? (
@@ -105,12 +118,17 @@ export function DocsGuideForm({
           </label>
         ))}
       </fieldset>
+      </div>
+      </PhoneRow>
 
+      <PhoneRow inset last title={w.perDay} sub={ph.perDay.replace("{n}", value.dailyLimit.toLocaleString())} change={ph.change} done={ph.close}>
       <label className="flex max-w-60 flex-col gap-1">
         <span className="text-sm font-medium">{w.perDay}</span>
         <span className="text-sm text-muted">{w.perDayText}</span>
         <input type="number" min={1} max={100_000} value={value.dailyLimit} onChange={(event) => set({ dailyLimit: Number(event.target.value) })} className={field} />
       </label>
+      </PhoneRow>
+      </div>
 
       <details data-advanced className="rounded-md border border-line p-4">
         <summary className="cursor-pointer font-medium">{w.customise}</summary>
