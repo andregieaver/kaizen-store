@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { menuInput } from "@/lib/navigation";
+import { menuInput } from "@/lib/navigation-schema";
 import { pageInput, parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { pageTypeKey } from "@/lib/permissions";
 import { parseStoreTheme } from "@/lib/theme-schema";

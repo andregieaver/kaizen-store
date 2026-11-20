@@ -8,7 +8,8 @@ import { planSection, type PagePlan, type PictureJob, type StudioMessage } from 
 import { PAGE_JOB_DAYS, PAGE_JOB_TRIES, type PageJobKind } from "@/lib/page-jobs";
 import type { PageContent, PageRow, PageType } from "@/lib/page-content";
 import { isLegalRole } from "@/lib/legal-roles";
-import { menuInput, parseBusinessDetails, parseNavigation, platformMenuInput, type AnyMenuEntry, type AnyMenuLink, type BusinessDetails, type StoreNavigation } from "@/lib/navigation";
+import type { AnyMenuEntry, AnyMenuLink, BusinessDetails, StoreNavigation } from "@/lib/navigation";
+import { menuInput, parseBusinessDetails, parseNavigation, platformMenuInput } from "@/lib/navigation-schema";
 import { isSpecialRole, type SpecialRole } from "@/lib/platform-roles";
 import { storeDomain } from "@/lib/paths";
 import { can, type PermissionHolder } from "@/lib/permissions";

@@ -5,7 +5,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { z } from "zod";
 
-import { navigationSchema, type StoreNavigation } from "@/lib/navigation";
+import type { StoreNavigation } from "@/lib/navigation";
+import { navigationSchema } from "@/lib/navigation-schema";
 
 import { audit, type Membership } from "./auth";
 import { refreshTag } from "./refresh";

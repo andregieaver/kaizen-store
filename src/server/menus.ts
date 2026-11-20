@@ -7,19 +7,16 @@ import { t } from "@/lib/i18n";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
 import {
   cleanLabels,
-  menuInput,
   menuLabel,
   platformMenuLink,
   termNames,
-  parseMenuItems,
-  parsePlatformMenuItems,
-  platformMenuInput,
   type AnyMenuEntry,
   type Menu,
   type MenuEntry,
   type PlatformMenu,
   type PlatformMenuEntry,
 } from "@/lib/navigation";
+import { menuInput, parseMenuItems, parsePlatformMenuItems, platformMenuInput } from "@/lib/navigation-schema";
 
 import { audit, type Account, type Membership } from "./auth";
 import { publishedPageNames } from "./page-reads";

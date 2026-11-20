@@ -42,7 +42,6 @@
     "components/admin/inventory/suppliers-view.tsx",
     "components/admin/look-versions-dialog.tsx",
     "components/admin/markup-input.tsx",
-    "components/admin/menu-editor.tsx",
     "components/admin/menu-hover-fields.tsx",
     "components/admin/modal-fields.tsx",
     "components/admin/modal-preview.tsx",

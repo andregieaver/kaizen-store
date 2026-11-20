@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { localizationOf } from "@/lib/localization";
 import { toMarket } from "@/lib/markets";
-import { EMPTY_NAVIGATION, parseMenuItems, parseNavigation } from "@/lib/navigation";
+import { EMPTY_NAVIGATION } from "@/lib/navigation";
+import { parseMenuItems, parseNavigation } from "@/lib/navigation-schema";
 import { parseStoreSeo } from "@/lib/seo-schema";
 
 import type { Membership } from "./auth";

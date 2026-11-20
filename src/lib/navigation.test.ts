@@ -1,19 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  EMPTY_NAVIGATION,
-  isMenuAddress,
-  linkExists,
-  menuHref,
-  menuLabel,
-  menuInput,
-  navigationSchema,
-  parseMenuItems,
-  parseNavigation,
-  platformMenuInput,
-  platformMenuLink,
-  termNames,
-} from "./navigation";
+import { EMPTY_NAVIGATION, isMenuAddress, linkExists, menuHref, menuLabel, platformMenuLink, termNames } from "./navigation";
+import { menuInput, navigationSchema, parseMenuItems, parseNavigation, platformMenuInput } from "./navigation-schema";
 
 const builtIn = { home: "Alle produkter", account: "Min konto", cart: "Handlekurv" };
 

@@ -10,7 +10,8 @@ import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang"
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import type { ChatProduct } from "@/lib/chat";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
-import { parseNavigation, type Logo } from "@/lib/navigation";
+import type { Logo } from "@/lib/navigation";
+import { parseNavigation } from "@/lib/navigation-schema";
 import { emailPictureUrl } from "@/lib/email-picture";
 import { parseKey } from "@/lib/secret-box";
 import { EMAIL_CHANNEL_MAX, EMAIL_SETTLE_SECONDS, answerSubject, inboundDomain, replyAddress } from "@/lib/inbound-email";

@@ -10,7 +10,8 @@ import { houseStoreId } from "@/server/house-customers";
 import { owned } from "@/server/owned";
 import { col, typedRow } from "@/server/typed-rows";
 import { accountOfficer, platformAccountId } from "@/server/privacy-officers";
-import { parseBusinessDetails, type BusinessDetails } from "@/lib/navigation";
+import type { BusinessDetails } from "@/lib/navigation";
+import { parseBusinessDetails } from "@/lib/navigation-schema";
 import { pageExcerpt, parsePageContent, type PageContent } from "@/lib/page-content";
 import {
   legalPageContent,

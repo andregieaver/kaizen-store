@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { findClaims } from "./claims";
 import { LEGAL_ROLES, LEGAL_ROLE_COPY, isLegalRole } from "./legal-roles";
-import { LABEL_MAX, MENU_MAX_DEPTH, MENU_MAX_ITEMS, MENU_NAME_MAX, menuLinkSchema, platformMenuLinkSchema, type AnyMenuLink, type MegaMenu, type MenuPicture } from "./navigation";
+import { LABEL_MAX, MENU_MAX_DEPTH, MENU_MAX_ITEMS, MENU_NAME_MAX, type AnyMenuLink, type MegaMenu, type MenuPicture } from "./navigation";
+import { menuLinkSchema, platformMenuLinkSchema } from "./navigation-schema";
 import { PLATFORM_ROLE_COPY, SPECIAL_ROLES, type SpecialRole } from "./platform-roles";
 import { PATTERNS, pageBrief, type PageBrief, type PatternKey } from "./page-ai";
 import { ROWS_MAX, pageBlocks, richTextPlain, type PageContent, type PageRow, type PageText } from "./page-content";

@@ -6,11 +6,6 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
 import {
-  businessDetailsSchema,
-  parseBusinessDetails,
-  parsePlatformMenuItems,
-  parsePlatformNavigation,
-  platformNavigationSchema,
   type BusinessDetails,
   type Favicon,
   type MenuPage,
@@ -19,6 +14,13 @@ import {
   termNames,
   type TermNames,
 } from "@/lib/navigation";
+import {
+  businessDetailsSchema,
+  parseBusinessDetails,
+  parsePlatformMenuItems,
+  parsePlatformNavigation,
+  platformNavigationSchema,
+} from "@/lib/navigation-schema";
 import { type TrackingSettings } from "@/lib/cookie-consent";
 import { parseTracking } from "@/lib/cookie-consent-schema";
 import { parseSiteFonts, type SiteFonts } from "@/lib/fonts-schema";

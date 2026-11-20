@@ -28,7 +28,7 @@ import {
 import { columnsPatch, columnsView, displayPatch } from "./responsive";
 import { presetTypography, type TypographyGroups } from "./typography";
 import { isSafeAddress } from "./field-parts";
-import { menuLinkSchema } from "./navigation";
+import { menuLinkSchema } from "./navigation-schema";
 import { pageCount, tilesPerScreen, type CarouselSettings } from "./carousel-settings";
 import { bottomOf, cssColour, hexOf, paints, px, rightOf, walk, type Box, type CaptureNode, type PageCapture, type SlideMark } from "./replicate-capture";
 import { isTextList, wordsOf } from "./replicate-richtext";
