@@ -201,7 +201,7 @@ export is in the audit log (an export with its count only, as D295's).
   cannot deliver), *New form* (the starters and a blank form), one form (questions, who it emails, the words after sending, the preview,
   where it shows; subject, consent, a sign-up's code and tags and the months kept under Settings; archive and delete), and its responses
   on a page of their own (`/forms/responses/{formId}`: open, read, archive, delete, reply by email, CSV). Changing a form needs
-  `website:write`; the responses page is in the customers area (an `AREA_OVERRIDES` entry in `src/lib/permissions.ts`, as the books are), so
+  `website:write`; the responses page is in the customers area (named on the Forms nav item, `within` in `src/lib/store-nav.ts`, D851), so
   reading them needs `customers:read` and changing them `customers:write`; the platform's all need its website area. The actions refresh
   the page themselves (`refresh()`).
 - **Personal data.** `form_responses` is in the register (found by `contact_email`, exported with its answers under `forms`, deleted on

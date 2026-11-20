@@ -412,10 +412,15 @@ under *What the router fetches ahead*.
   `requireOwnerRole`, `requireAnyPermission`/`checkAnyPermission` or `requirePageTypeAccess`/`checkPageTypeAccess`
   (`src/server/permissions.ts`, names in `src/lib/permission-guards.ts`); Work's screens ask `settings:*`; nothing else compares
   `role` with `"owner"` or calls `requireMember`/`getMembership` (`permissions.scan.test.ts`, against
-  `permissions.baseline.json`). A page's key is its navigation section (`sectionOf`), `/staff…` is `staff`, `/billing` is
-  `billing`; owner-only pages need `owner`; `staff:write` and `billing:write` are owner-held. Roles are `store_roles` made by
-  `ensureStoreRoles()`; a custom-role member has the enum `admin` and a `role_id`. A new page: one nav item, `ADMIN_PAGES`, a
-  guard with its area. A new owner tool: a row in `TOOL_PERMISSIONS`. Collaborators are members with `kind = 'collaborator'` and
+  `permissions.baseline.json`). A page's area is its own, written on its nav item (D851, code review 1.17): every `StoreItem`
+  names its `area` (Team `staff`, Billing `billing`, Books `books`; Forms names `/forms/responses` the customers' in `within`), a
+  page of cards is its section's, and `areaOfPath()` reads `STORE_NAV_AREAS` by the longest address, so a deep page or an action has
+  its item's area. The section an item is listed in decides nothing: moving it moves it in the menu only (the scan test moves each
+  item and finds every key unchanged); a page that changes area changes its item's `area` in the same change. A guard writes its key
+  by hand as a copy of its path's (`permissionOfPath()` of its folder), which the scan test holds it to. Owner-only pages need `owner`;
+  `staff:write` and `billing:write` are owner-held. Roles are `store_roles` made by
+  `ensureStoreRoles()`; a custom-role member has the enum `admin` and a `role_id`. A new page: one nav item with its `area`,
+  `ADMIN_PAGES`, a guard with that area's key. A new owner tool: a row in `TOOL_PERMISSIONS`. Collaborators are members with `kind = 'collaborator'` and
   `expires_at`: any reader of `commerce.store_members` ignores an expired one (`store-members-expiry.test.ts`), and Home and the
   control center show only the figures a member's role may read (`StoreFigures.hides`).
 
@@ -429,7 +434,10 @@ under *What the router fetches ahead*.
   limits, two-step resets) stay `requirePlatformAdmin()`. A platform action or route asks `requirePlatform(area)`, its area written in code
   for the folder it sits in, never read from the request's address (a server action can be posted to any page's); a server module asks
   `platformCan(account, area, access)`, never `account.platformAdmin` for something a role may do; `platform-access.scan.test.ts` holds the
-  areas to their folders and keeps `requirePlatformReader()` out of anything that changes something. Everyone on the team is held at
+  areas of `requirePlatform()` and `platformCan()` to their folders and keeps `requirePlatformReader()` out of anything that changes something.
+  A folder's area is its page's own (D851): `platformAreaOfPath()` reads the `area` each sidebar item names (`SectionItem`) and
+  `PLATFORM_PAGE_AREAS` for the pages outside a sidebar (the hubs, Themes, Stores, Customers, Access requests, the docs folder), by the
+  longest address, never the tab or list a page sits in; Home is `home`, an address in none the owners' (`settings`). Everyone on the team is held at
   two-step sign-in. Only an owner changes the team (`addPlatformAdmin()`, `setPlatformRole()`, `removePlatformAdmin()`), never their own
   place, and the platform keeps an owner; a member is an admin of Kaizena Flow's own store in the store role of their work
   (`HOUSE_ROLE_TEMPLATE`), set in the same transaction, never its owner (`store_members_house()`).

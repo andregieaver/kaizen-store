@@ -328,7 +328,7 @@ why ("{Store} requires two-step sign-in" or "Platform admins must use two-step s
   `bookings`, `settings`, `billing`, `staff`. `write` includes `read`. Pages need `read`; server actions and mutating routes need `write`.
   The area of a page is **derived from its place in the store navigation** (`sectionOf(path)`, the `group` of `ADMIN_PAGES`), with two
   overrides: `/staff…` is `staff` and `/billing` is `billing` (both live in the Settings sidebar). A test fails when a store page has no
-  area.
+  area. (Since D851 each nav item names its own area and the section decides nothing: `docs/rules/admin/platform.md`, Permissions.)
 - **System roles**: `owner` holds everything. `admin` (the enum value, unchanged) holds, with no role row, the **default admin set**: every
   `read` and `write` of orders, products, customers, marketing, analytics, website, bookings and settings, plus `staff:read` and
   `billing:read`, and **not** the keys marked owner-only below. This is exactly what an admin can do today (the sweep proves it, 2.7.2).
