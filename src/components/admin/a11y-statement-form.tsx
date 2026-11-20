@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
+import type { LegalMessages } from "@/lib/admin-messages/legal.en";
 import { A11Y_STATUSES, type A11yFacts, type A11ySettings, type EnforcementBody } from "@/lib/a11y-statement";
 import { Card, CARD_CLASS } from "@/components/admin/ui";
 import { PhoneRow } from "@/components/admin/phone-row";
@@ -12,7 +12,7 @@ type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
 /** What the site itself knows, in sentences: a count that cannot be known says so, never zero. */
-export function factLines(facts: A11yFacts, words: LegalMessages = legalEn): string[] {
+export function factLines(facts: A11yFacts, words: LegalMessages): string[] {
   const w = words.a11y.facts;
   const lines: string[] = [];
   lines.push(facts.themeWarnings === 0 ? w.contrastOk : fillWords(w.contrastLow, { n: facts.themeWarnings }));
@@ -45,7 +45,7 @@ export function AccessibilityForm({
   contactDefault,
   actions,
   legalHref,
-  words = legalEn,
+  words,
 }: {
   settings: A11ySettings;
   facts: A11yFacts;
@@ -54,8 +54,8 @@ export function AccessibilityForm({
   contactDefault: string | null;
   actions: { save: Action; createStatement: Action };
   legalHref: string;
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: LegalMessages;
+  /** The words, in the account's language (D312 A8). */
+  words: LegalMessages;
 }) {
   const w = words.a11y;
   const p = w.phone;

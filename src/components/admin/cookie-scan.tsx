@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
+import type { LegalMessages } from "@/lib/admin-messages/legal.en";
 import { CODE_CATEGORIES } from "@/lib/custom-code";
 import type { ReviewedItem } from "@/lib/cookie-scan";
 import type { CookieScan } from "@/server/cookie-scans";
@@ -100,7 +100,7 @@ export function CookieScanPanel({
   findings,
   scanAction,
   noteAction,
-  words = legalEn,
+  words,
   locale = "en-GB",
   purposeLang = "en",
   timeZone,
@@ -110,11 +110,11 @@ export function CookieScanPanel({
   findings: ReviewedItem[];
   scanAction: Action;
   noteAction: Action | null;
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: LegalMessages;
+  /** The words, in the account's language (D312 A8). */
+  words: LegalMessages;
   /** How dates are written; en-GB unless given. */
   locale?: string;
-  /** The language a known cookie's purpose is shown in; English unless given. */
+  /** The language a known cookie's purpose is shown in. */
   purposeLang?: PurposeLang;
   /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
   timeZone: string;

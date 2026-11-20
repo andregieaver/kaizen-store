@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { DEFAULT_A11Y_SETTINGS, ENFORCEMENT_BODIES, type A11yFacts } from "@/lib/a11y-statement";
+import { legalEn } from "@/lib/admin-messages/legal.en";
 import type { ActivityEntry } from "@/server/activity";
 import type { LegalOverview } from "@/server/legal-starters";
 
@@ -159,7 +160,7 @@ describe("the legal pages", () => {
     ...over,
   });
   const panel = (over: Partial<LegalOverview> = {}) =>
-    html(createElement(LegalPagesPanel, { timeZone: "Europe/Oslo", overview: overview(over), storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action } }));
+    html(createElement(LegalPagesPanel, { timeZone: "Europe/Oslo", overview: overview(over), storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action }, words: legalEn }));
 
   it("says which pages a website does not need, and has no checkout to set (D178 step 5)", () => {
     const out = panel({ shopOn: false, roles: overview().roles.map((r) => ({ ...r, needed: r.role !== "terms" })) });
@@ -216,13 +217,13 @@ describe("the legal pages as rows (round 15)", () => {
   const base: LegalOverview = { roles: [entry("terms", false), entry("privacy", false)], choosable: [], termsAtCheckout: "link", shopOn: true, missing: [] };
 
   it("says how many are chosen, and that checkout shows no terms while none is", () => {
-    expect(legalLead(base)).toMatch(/^None of your legal pages is chosen, so checkout shows no terms\. Start from drafts/);
-    expect(legalLead({ ...base, roles: [entry("terms", true), entry("privacy", false)] })).toMatch(/^1 of your 2 legal pages are chosen\./);
-    expect(legalLead({ ...base, roles: [entry("terms", true), entry("privacy", true)] })).toBe("All your legal pages are chosen.");
+    expect(legalLead(base, legalEn)).toMatch(/^None of your legal pages is chosen, so checkout shows no terms\. Start from drafts/);
+    expect(legalLead({ ...base, roles: [entry("terms", true), entry("privacy", false)] }, legalEn)).toMatch(/^1 of your 2 legal pages are chosen\./);
+    expect(legalLead({ ...base, roles: [entry("terms", true), entry("privacy", true)] }, legalEn)).toBe("All your legal pages are chosen.");
   });
 
   it("offers every missing draft in one press, naming them", () => {
-    const out = html(createElement(LegalPagesPanel, { timeZone: "Europe/Oslo", overview: base, storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action, createAll: action } }));
+    const out = html(createElement(LegalPagesPanel, { timeZone: "Europe/Oslo", overview: base, storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action, createAll: action }, words: legalEn }));
     expect(out).toContain("Make all 2 drafts");
     expect(out).toContain("Terms of sale, Privacy statement, as drafts.");
     expect(out).toContain("Make the drafts");
@@ -242,19 +243,19 @@ describe("the accessibility page", () => {
   });
 
   it("says what the site knows, and never zero for what it cannot know", () => {
-    expect(factLines(facts())).toEqual([
+    expect(factLines(facts(), legalEn)).toEqual([
       "2 of the theme's colour pairs are below the 4.5 to 1 contrast the standard asks for (see Design).",
       "3 of 10 pictures in the media library have no alt text.",
       "1 published page has a problem the page checker blocks on.",
     ]);
-    const unknown = factLines(facts({ themeWarnings: 0, mediaWithoutAlt: null, pagesWithBlockingIssues: null })).join(" ");
+    const unknown = factLines(facts({ themeWarnings: 0, mediaWithoutAlt: null, pagesWithBlockingIssues: null }), legalEn).join(" ");
     expect(unknown).toContain("all reach the 4.5 to 1 contrast");
     expect(unknown).toContain("is not known");
-    expect(factLines(facts({ mediaWithoutAlt: { missing: 0, total: 0 } }))[1]).toBe("The media library holds no pictures yet.");
+    expect(factLines(facts({ mediaWithoutAlt: { missing: 0, total: 0 } }), legalEn)[1]).toBe("The media library holds no pictures yet.");
   });
 
   const form = (settings = DEFAULT_A11Y_SETTINGS) =>
-    html(createElement(AccessibilityForm, { settings, facts: facts(), body: ENFORCEMENT_BODIES.NO, contactDefault: "post@kaffe.no", actions: { save: action, createStatement: action }, legalHref: "/admin/kaffe/settings/legal" }));
+    html(createElement(AccessibilityForm, { settings, facts: facts(), body: ENFORCEMENT_BODIES.NO, contactDefault: "post@kaffe.no", actions: { save: action, createStatement: action }, legalHref: "/admin/kaffe/settings/legal", words: legalEn }));
 
   it("starts at not assessed, and says an automated check is not an assessment", () => {
     const out = form();
@@ -268,7 +269,7 @@ describe("the accessibility page", () => {
     const out = form();
     expect(out).toContain("Digitaliseringsdirektoratet");
     expect(out).toContain("not verified");
-    expect(html(createElement(AccessibilityForm, { settings: DEFAULT_A11Y_SETTINGS, facts: facts(), body: null, contactDefault: null, actions: { save: action, createStatement: action }, legalHref: "/x" }))).not.toContain("the statement names");
+    expect(html(createElement(AccessibilityForm, { settings: DEFAULT_A11Y_SETTINGS, facts: facts(), body: null, contactDefault: null, actions: { save: action, createStatement: action }, legalHref: "/x", words: legalEn }))).not.toContain("the statement names");
   });
 
   it("has a microenterprise tick that is off by default, a draft button and a link to the legal pages", () => {

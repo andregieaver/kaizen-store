@@ -5,7 +5,7 @@ import { adminDate } from "@/lib/admin-date";
 import { toolCategories, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
 import { CODE_CATEGORIES, CODE_MAX_LENGTH, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
 import { fillWords } from "@/lib/admin-fill";
-import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
+import type { LegalMessages } from "@/lib/admin-messages/legal.en";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 font-mono text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -25,7 +25,7 @@ export function TrackingForm({
   tracking,
   action,
   cookiePage,
-  words = legalEn,
+  words,
   ads = false,
 }: {
   tracking: TrackingSettings;
@@ -33,8 +33,8 @@ export function TrackingForm({
   ads?: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
   cookiePage: string;
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: LegalMessages;
+  /** The words, in the account's language (D312 A8). */
+  words: LegalMessages;
 }) {
   const w = words.cookies.tools;
   const asked = toolCategories(tracking);
@@ -107,14 +107,14 @@ export function CustomCodeForm({
   code,
   live,
   action,
-  words = legalEn,
+  words,
 }: {
   code: CustomCode;
   /** Whether the store is on its own address, where the code is added (P7). */
   live: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: LegalMessages;
+  /** The words, in the account's language (D312 A8). */
+  words: LegalMessages;
 }) {
   const w = words.cookies.code;
   const asked = codeCategories(code);
@@ -177,13 +177,13 @@ export function CustomCodeForm({
 /** The latest proofs of consent (D58): when, what was asked and what was allowed. */
 export function ConsentLog({
   consents,
-  words = legalEn,
+  words,
   locale = "en-GB",
   timeZone,
 }: {
   consents: { id: string; visitor: string; choices: Record<string, boolean>; version: string; createdAt: string }[];
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: LegalMessages;
+  /** The words, in the account's language (D312 A8). */
+  words: LegalMessages;
   /** How dates are written; en-GB unless given. */
   locale?: string;
   /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */

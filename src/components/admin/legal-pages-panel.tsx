@@ -9,7 +9,8 @@ import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
 import { languageNames } from "@/lib/legal-admin-words";
-import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
+import type { LegalMessages } from "@/lib/admin-messages/legal.en";
+import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { TERMS_MODES, termsSettingNotice, type TermsMode } from "@/lib/checkout-terms";
 import { isLegalRole } from "@/lib/legal-roles";
 import type { LegalOverview } from "@/server/legal-starters";
@@ -32,15 +33,15 @@ const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-
 
 /** A detail `missingFacts()` names, in the admin's words: its English is matched to the catalogue's key, and one not known is shown as written. */
 function missingWord(text: string, words: LegalMessages): string {
-  const key = (Object.keys(legalEn.pages.missing) as (keyof LegalMessages["pages"]["missing"])[]).find((k) => legalEn.pages.missing[k] === text);
+  const key = (Object.keys(LEGAL_WORDS.en.pages.missing) as (keyof LegalMessages["pages"]["missing"])[]).find((k) => LEGAL_WORDS.en.pages.missing[k] === text);
   return key ? words.pages.missing[key] : text;
 }
 
 /** What `termsSettingNotice()` says, in the admin's words. */
 function noticeWord(text: string | null, words: LegalMessages): string | null {
   if (text === null) return null;
-  if (text === legalEn.terms.noTerms) return words.terms.noTerms;
-  if (text === legalEn.terms.noTickTerms) return words.terms.noTickTerms;
+  if (text === LEGAL_WORDS.en.terms.noTerms) return words.terms.noTerms;
+  if (text === LEGAL_WORDS.en.terms.noTickTerms) return words.terms.noTickTerms;
   return text;
 }
 
@@ -54,7 +55,7 @@ export function LegalPagesPanel({
   ai,
   storeSlug,
   actions,
-  words = legalEn,
+  words,
   lang = "en",
   timeZone,
 }: {
@@ -74,8 +75,8 @@ export function LegalPagesPanel({
     stop?: KindAction;
     handBack?: KindAction;
   };
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: LegalMessages;
+  /** The words, in the account's language (D312 A8). */
+  words: LegalMessages;
   lang?: AdminLang;
   /** The store's time zone: since when the AI writes them, on the store's clock (D812). */
   timeZone: string;
@@ -305,7 +306,7 @@ export function LegalPagesPanel({
  * The page's sentence (round 15, D647): how many of the legal pages the store needs are chosen, and, while the terms are missing from a shop,
  * that checkout shows none.
  */
-export function legalLead(overview: LegalOverview, words: LegalMessages = legalEn): string {
+export function legalLead(overview: LegalOverview, words: LegalMessages): string {
   const r = words.pages.round;
   const needed = overview.roles.filter((entry) => entry.needed);
   const chosen = needed.filter((entry) => entry.page).length;
