@@ -18,7 +18,14 @@ import { getDeal } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 
-import { cancelContractAction, deleteContractAction, newVersionAction, saveContractAction, signForStoreAction } from "../../../contract-actions";
+import {
+  cancelContractAction,
+  deleteContractAction,
+  newVersionAction,
+  saveAsTemplateAction,
+  saveContractAction,
+  signForStoreAction,
+} from "../../../contract-actions";
 import { sendContractAction } from "../../../contract-send-actions";
 import { requireExtension } from "@/components/admin/extension-off";
 
@@ -31,7 +38,7 @@ const signal = (status: ContractStatus) =>
   status === "signed" ? "positive" : status === "declined" || status === "expired" || status === "cancelled" ? "danger" : "neutral";
 
 /**
- * One contract on a deal (D695). A draft: its words and signers to change (`ContractEditor`), and under them, the page's full width, how it
+ * One contract on a deal (D695). A draft: its words and signers to change (`ContractEditor`), and beside them (or under them, D862), how it
  * will look, filled in as the words are typed (D857) with what still stops it from going out. A sent one: the document as it was sent,
  * each signer's step, its PDF, and a new version or a cancel. Every contract says its version, and with more than one its versions are
  * listed, each with how it ended and why a signer declined.
@@ -101,6 +108,7 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
           team={team}
           words={w}
           save={saveContractAction.bind(null, store.slug, contract.id)}
+          saveAsTemplate={saveAsTemplateAction.bind(null, store.slug, contract.id)}
           language={contract.language}
           facts={facts}
           previewCss={PREVIEW_CSS}

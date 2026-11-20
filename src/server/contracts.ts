@@ -253,6 +253,46 @@ export async function archiveTemplate(member: Membership, templateId: string): P
   return { ok: true, id: templateId };
 }
 
+/**
+ * A new template from a draft's words (`customers:write`, D862): the words as they are on the screen (checked as a template's,
+ * `parseBlocks()`), in the draft's language, with its reminder days and the days to sign of the template it was made from. Named as asked,
+ * or as the draft's title; a name another template in use has is refused (`taken`), so nothing is overwritten. The draft is not changed.
+ */
+export async function templateFromDraft(
+  member: Membership,
+  contractId: string,
+  raw: { name: unknown; blocks: unknown },
+): Promise<{ ok: true; id: string; name: string } | Extract<TemplateResult, { ok: false }>> {
+  if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
+  const draft = await typedRow(
+    z.object({ title: col.text, language: col.text, reminder_days: col.int.nullable(), expires_days: col.int.nullable() }),
+    sql`select c.title, c.language, c.reminder_days, t.expires_days
+        from commerce.contracts c
+        left join commerce.contract_templates t on t.store_id = c.store_id and t.id = c.template_id
+        where c.store_id = ${member.store.id}::uuid and c.id = ${contractId}::uuid and c.status = 'draft'`,
+  );
+  if (!draft) return { ok: false, problem: "not_found" };
+  const name = (typeof raw.name === "string" && raw.name.trim() ? raw.name : draft.title).trim().slice(0, 80).trim();
+  if (!name) return { ok: false, problem: "name" };
+  const blocks = parseBlocks(raw.blocks);
+  if (!blocks.ok) return { ok: false, problem: "blocks", blocks: blocks.problems };
+  let id: string;
+  try {
+    const made = await typedRows(
+      ID,
+      sql`insert into commerce.contract_templates (store_id, name, language, blocks, expires_days, reminder_days, created_by)
+          values (${member.store.id}::uuid, ${name}, ${draft.language}, ${JSON.stringify(blocks.blocks)}::jsonb,
+            ${draft.expires_days ?? 30}, ${draft.reminder_days}, ${member.account.id}::uuid) returning id`,
+    );
+    id = made[0].id;
+  } catch (error) {
+    if (nameTaken(error)) return { ok: false, problem: "taken" };
+    throw error;
+  }
+  await audit(member.account.id, member.store.id, "contract.template_created", { template: id, contract: contractId }, { area: "customers" });
+  return { ok: true, id, name };
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Reading
 // ---------------------------------------------------------------------------------------------------------------------------------

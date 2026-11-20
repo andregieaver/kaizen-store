@@ -376,7 +376,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   plain text and stays valid. `fillContract()` fills `doc` and `text` with the same fields; `ContractDocumentView` draws `doc` as elements,
   never as HTML. A new mark or node is added to `contractDoc()`, the editor's extensions and the view together, with a test in
   `contract-rich.test.ts` and `static-markup.test.ts`.
-- **A draft's page (D857)**: *What it says* and *How it will look* stacked at full width; the preview is filled in the browser as the words are
+- **A draft's page (D857, D862)**: *What it says* and *How it will look* side by side from `xl` (the preview kept in view), or stacked at
+  full width by the member's choice (kept per browser) and always below `xl`; *Save as template* makes a new template from the words on the
+  screen (`templateFromDraft()`, a name in use refused, the draft unchanged). The preview is filled in the browser as the words are
   typed (`fillContract()` from `draftFacts()`), and Send is offered only with nothing unsaved, since sending fills it again from what was
   saved. Each contract says its version (`contractVersions()`, from `replaces_id`) and lists its versions with a declined signer's reason
   (admin page only). The store's contracts are listed at `/deals/contracts` (`listContracts()`), the menu item right under Deals.

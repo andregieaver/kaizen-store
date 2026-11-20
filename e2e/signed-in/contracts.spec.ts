@@ -120,6 +120,36 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   await expect(page.getByRole("button", { name: "Send for signing" })).toBeVisible();
   await expect(page.getByText("Version 1").first()).toBeVisible();
 
+  // The words and how it will look sit side by side; one press stacks them, and the browser keeps the choice (D862).
+  const layout = page.locator("[data-layout]");
+  await expect(layout).toHaveAttribute("data-layout", "inline");
+  await page.screenshot({ path: test.info().outputPath("contract-side-by-side.png") });
+  await page.getByRole("group", { name: "Layout" }).getByRole("button", { name: "Stacked" }).click();
+  await expect(layout).toHaveAttribute("data-layout", "stacked");
+  await page.reload();
+  await expect(page.locator("[data-layout]")).toHaveAttribute("data-layout", "stacked");
+  await page.getByRole("group", { name: "Layout" }).getByRole("button", { name: "Side by side" }).click();
+  await expect(page.locator("[data-layout]")).toHaveAttribute("data-layout", "inline");
+
+  // The draft's words kept as a new template, named as the draft until changed; the draft stays as it is (D862).
+  await page.getByRole("button", { name: "Save as template" }).click();
+  await expect(page.getByLabel("Template name")).toHaveValue(TITLE);
+  await page.getByLabel("Template name").fill(`From a draft ${run}`);
+  await page.screenshot({ path: test.info().outputPath("contract-save-as-template.png") });
+  await page.getByRole("button", { name: "Save the template" }).click();
+  await expect(page.getByRole("status").getByText(`Saved as the template “From a draft ${run}”.`)).toBeVisible({ timeout: 30_000 });
+  const opened = page.getByRole("link", { name: "Open the template" });
+  const templateHref = await opened.getAttribute("href");
+  await page.goto(templateHref!);
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(`From a draft ${run}`);
+  await expect(page.locator("article.kc").getByText(`Paid within 10 days ${run}.`)).toBeVisible();
+  // Put away again, so the store's first template stays the one a new contract starts from.
+  await page.getByRole("button", { name: "Put the template away" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Put the template away" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Contract templates" })).toBeVisible({ timeout: 30_000 });
+  await page.goBack();
+  await page.goBack();
+
   // Contracts, under Deals in the menu, lists it with its deal (D857).
   await page.goto(page.url().replace(/\/deals\/.*$/, "/deals/contracts"));
   await expect(page.getByRole("heading", { name: "Contracts", level: 1 })).toBeVisible();

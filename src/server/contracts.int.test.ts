@@ -347,3 +347,40 @@ describe("templates (step 2)", () => {
     expect(await contracts.createTemplate(reader, "nb")).toEqual({ ok: false, problem: "forbidden" });
   });
 });
+
+describe("a draft saved as a template (D862)", () => {
+  it("makes a new template from the words as typed, in the draft's language, with its reminder days, and leaves the draft as it was", async () => {
+    const fresh = await newStore("contracts-as-template");
+    const [first] = await contracts.ensureTemplate(fresh.member.store, fresh.accountId);
+    await contracts.saveTemplate(fresh.member, first.id, { name: first.name, language: first.language, blocks: first.blocks, expiresDays: "21", reminderDays: "4" });
+    const [pipeline] = await deals.ensurePipeline(fresh.storeId, { name: "Sales", stages: [{ name: "New" }] });
+    const customer = await staff.createCustomer(fresh.member, { email: "draft-tpl@example.com", name: "Tor" });
+    if (!customer.ok) throw new Error("customer");
+    const deal = await deals.createDeal(fresh.member, { title: "Web shop", customerId: customer.id, pipelineId: pipeline.id, stageId: pipeline.stages[0].id });
+    if (!deal.ok) throw new Error("deal");
+    const made = await contracts.createContract(fresh.member, deal.id, first.id);
+    if (!made.ok) throw new Error(made.problem);
+    const draft = (await contracts.getContract(fresh.member, made.id))!;
+
+    // The words on the screen, not yet saved to the draft.
+    const typed = [...draft.blocks.filter((b) => b.type !== "signatures"), { type: "paragraph" as const, text: "Support for {deal.title}." }, { type: "signatures" as const }];
+    const saved = await contracts.templateFromDraft(fresh.member, made.id, { name: "  Web shop agreement ", blocks: typed });
+    if (!saved.ok) throw new Error(saved.problem);
+    expect(saved.name).toBe("Web shop agreement");
+    const t = (await contracts.getTemplate(fresh.member, saved.id))!;
+    expect(t).toMatchObject({ name: "Web shop agreement", language: draft.language, version: 1, expiresDays: 21, reminderDays: 4 });
+    expect(t.blocks.some((b) => b.type === "paragraph" && b.text === "Support for {deal.title}.")).toBe(true);
+    expect((await contracts.getContract(fresh.member, made.id))?.blocks).toEqual(draft.blocks);
+
+    // Named as the draft when no name is given; a name in use, words that cannot be kept, a reader and a draft that is gone make nothing.
+    const untitled = await contracts.templateFromDraft(fresh.member, made.id, { name: "", blocks: typed });
+    expect(untitled).toMatchObject({ ok: true, name: "Web shop" });
+    expect(await contracts.templateFromDraft(fresh.member, made.id, { name: "web shop AGREEMENT", blocks: typed })).toEqual({ ok: false, problem: "taken" });
+    expect(await contracts.templateFromDraft(fresh.member, made.id, { name: "Other", blocks: [{ type: "paragraph", text: "{deal.secret}" }] })).toMatchObject({ ok: false, problem: "blocks" });
+    const reader = { ...fresh.member, role: "admin" as const, permissions: ["customers:read"] as never };
+    expect(await contracts.templateFromDraft(reader, made.id, { name: "Other", blocks: typed })).toEqual({ ok: false, problem: "forbidden" });
+    expect(await contracts.deleteDraft(fresh.member, made.id)).toMatchObject({ ok: true });
+    expect(await contracts.templateFromDraft(fresh.member, made.id, { name: "Other", blocks: typed })).toEqual({ ok: false, problem: "not_found" });
+    expect(await contracts.listTemplates(fresh.storeId)).toHaveLength(3);
+  });
+});
