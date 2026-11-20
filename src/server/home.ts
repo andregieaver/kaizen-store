@@ -167,16 +167,6 @@ export async function toSendSummary(storeId: string): Promise<{ count: number; o
   return { count: row?.n ?? 0, oldest: row?.oldest ?? null, firstId: row?.first ?? null };
 }
 
-const SKU_ROW = z.object({ product_id: col.uuid, sku: col.text });
-
-/** Every product's SKUs, by product: the products list searches them in the browser (round 2, D597). */
-export async function productSkus(storeId: string): Promise<Record<string, string[]>> {
-  const rows = await typedRows(SKU_ROW, sql`select product_id, sku from commerce.product_variants where store_id = ${storeId}::uuid`);
-  const out: Record<string, string[]> = {};
-  for (const row of rows) (out[row.product_id] ??= []).push(row.sku);
-  return out;
-}
-
 const TEAM_ROW = z.object({ n: col.int });
 
 /** How many people work in the store (members not switched off and not expired): the Team card's line (round 2, D597). */

@@ -34,7 +34,7 @@ import type { Term } from "@/lib/taxonomy";
 import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/lib/unit-price";
 import { unitPriceProblems } from "@/lib/unit-price-rules";
 import { limitRefusal } from "@/lib/usage-format";
-import { FEATURES_BY_ID, featureOn, kindFeature } from "@/lib/store-features";
+import { featureOn, kindFeature } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
 import { MEDIA_KINDS, mediaFileOk, type MediaItemKind, type VideoSource } from "@/lib/product-media";
 import { INHERIT_WORDS, parseProductPriceWords, productWordsColumn, type WordsByLocale } from "@/lib/price-words";
@@ -285,95 +285,6 @@ export function emptyProduct(context: EditorContext): ProductInput {
     categories: [],
     tags: [],
   };
-}
-
-export type AdminProductRow = {
-  id: string;
-  handle: string;
-  title: string;
-  status: "draft" | "active" | "archived";
-  image: string | null;
-  variants: number;
-  /** Units on hand across shipped variants. */
-  stock: number;
-  /** Active variants that are downloaded, which have no stock (D24). */
-  digitalVariants: number;
-  price: { min: number; max: number; currency: string } | null;
-  /** The feature that is off and keeps the product from shoppers (D178: an appointment with Appointments off), or null. */
-  hiddenBy: string | null;
-};
-
-/** The store's products for the admin list, most recently changed first. */
-export async function listAdminProducts(
-  store: Store,
-  { archived = false }: { archived?: boolean } = {},
-): Promise<AdminProductRow[]> {
-  const market = store.markets[0];
-  const locale = market?.locale ?? "en";
-  const rows = await db().execute<Row>(sql`
-    select
-      p.id, p.handle, p.status, p.kind, p.subscription_only,
-      coalesce(tl.title, tf.title, p.handle) as title,
-      (select coalesce(m.thumbnail_url, m.url) from commerce.product_media m
-        where m.product_id = p.id order by m.position limit 1) as image,
-      (select count(*)::int from commerce.product_variants v
-        where v.product_id = p.id and v.active) as variants,
-      (select count(*)::int from commerce.product_variants v
-        where v.product_id = p.id and v.active and v.delivery = 'digital') as digital_variants,
-      -- A bundle's stock (D322) is what its components allow, worked out by the one reader of stock.
-      case when p.kind = 'bundle' then (
-        select coalesce(sum(va.in_stock), 0)::int from commerce.variant_availability va
-        join commerce.product_variants v on v.store_id = va.store_id and v.id = va.variant_id
-        where v.product_id = p.id and v.active
-      ) else (
-        select coalesce(sum(greatest(l.on_hand, 0)), 0)::int
-         from commerce.inventory_levels l
-         join commerce.product_variants v on v.id = l.variant_id
-        where v.product_id = p.id and v.active
-      ) end as stock,
-      pr.min_amount, pr.max_amount, pr.currency,
-      commerce.vat_rate(${market?.code ?? ""}, p.vat_category) as vat_rate
-    from commerce.products p
-    left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
-    left join lateral (
-      select title from commerce.product_translations where product_id = p.id order by locale limit 1
-    ) tf on true
-    left join lateral (
-      select min(c.amount_minor) as min_amount, max(c.amount_minor) as max_amount, min(c.currency) as currency
-      from commerce.kept_prices c
-      join commerce.product_variants v on v.id = c.variant_id and v.active
-      where v.product_id = p.id and c.market_code = ${market?.code ?? ""}
-    ) pr on true
-    where p.store_id = ${store.id}::uuid
-      and ${archived ? sql`p.status = 'archived'` : sql`p.status <> 'archived'`}
-    order by p.updated_at desc, p.handle
-  `);
-  // A store selling only to businesses sees its prices as it types them: without VAT (B2B).
-  const shown = (amount: unknown, rate: unknown) =>
-    store.audience === "businesses" ? withoutVat(Number(amount), Number(rate ?? 0)) : Number(amount);
-  return rows.map((row) => ({
-    id: String(row.id),
-    handle: String(row.handle),
-    title: String(row.title),
-    status: row.status as AdminProductRow["status"],
-    image: row.image ? String(row.image) : null,
-    variants: Number(row.variants),
-    stock: Number(row.stock),
-    digitalVariants: Number(row.digital_variants),
-    price:
-      row.min_amount === null
-        ? null
-        : { min: shown(row.min_amount, row.vat_rate), max: shown(row.max_amount, row.vat_rate), currency: String(row.currency) },
-    hiddenBy: hiddenBy(store, String(row.kind), Boolean(row.subscription_only)),
-  }));
-}
-
-/** The label of the feature that keeps a product of this kind from shoppers while it is off (D178), or null when it is offered. */
-function hiddenBy(store: Store, kind: string, subscriptionOnly: boolean): string | null {
-  const needed = kindFeature(kind);
-  if (needed && !featureOn(store, needed)) return FEATURES_BY_ID[needed].label;
-  if (subscriptionOnly && !featureOn(store, "subscriptions")) return FEATURES_BY_ID.subscriptions.label;
-  return null;
 }
 
 /**

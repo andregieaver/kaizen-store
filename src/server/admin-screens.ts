@@ -1,13 +1,14 @@
 import "server-only";
 
 import { storesOf } from "@/components/admin/admin-shell-parts";
+import { LIST_PAGE_SIZE, listOffset } from "@/lib/list-page";
 import type { OrderListInput } from "@/lib/order-list";
 import type { Membership } from "@/server/auth";
 import { controlCenter } from "@/server/control-center";
 import { cronJobRows } from "@/server/cron-runs";
 import { listJobs } from "@/server/data-jobs";
 import { demoContent } from "@/server/demo-content";
-import { orderPreviews, productSkus } from "@/server/home";
+import { orderPreviews } from "@/server/home";
 import { listOrdersPage, resolveOrderList } from "@/server/order-list";
 import { tagSuggestions } from "@/server/order-tags";
 import { listOrderViews } from "@/server/order-views";
@@ -15,7 +16,7 @@ import { memberCan } from "@/server/permissions";
 import { countPendingRequests } from "@/server/platform";
 import { platformBriefingSetting, platformSnapshot } from "@/server/platform-briefing";
 import { platformOverview } from "@/server/platform-overview";
-import { listAdminProducts } from "@/server/products";
+import { adminProductCounts, adminProductPage, type ProductShow } from "@/server/product-list";
 import { getSetupProgress } from "@/server/setup";
 import { starterOfStore } from "@/server/store-starters";
 import { pausedAfter } from "@/server/store-trial";
@@ -83,13 +84,16 @@ export async function ordersListReads(store: Store, input: OrderListInput) {
 /** The products list (`[store]/products/page.tsx`, its list). */
 export async function productsListReads(
   member: Membership,
-  o: { archived: boolean; needsFilter: boolean; canWrite: boolean; locale: string },
+  o: { show: ProductShow; q: string; page: number; needsFilter: boolean; canWrite: boolean; locale: string },
 ) {
   const { store } = member;
-  const { archived, needsFilter, canWrite, locale } = o;
+  const { show, q, page, needsFilter, canWrite, locale } = o;
+  const archived = show === "archived";
   // Unit price (D160): active products that need a content and have none, for the notice and its filter.
-  const [products, needingCount, needing, terms, imports] = await Promise.all([
-    needsFilter ? Promise.resolve([]) : listAdminProducts(store, { archived }),
+  // A hundred a page with the count of all the view and search find, and each view's figure (code review 1.13, D834).
+  const [list, counts, needingCount, needing, terms, imports] = await Promise.all([
+    needsFilter ? Promise.resolve({ rows: [], total: 0 }) : adminProductPage(store, { show, q, limit: LIST_PAGE_SIZE, offset: listOffset(page) }),
+    needsFilter || archived ? Promise.resolve(null) : adminProductCounts(store.id),
     // The notice needs the number; the list itself is read only on its own filter.
     archived || needsFilter ? Promise.resolve(0) : countProductsNeedingMeasure(store.id),
     needsFilter ? productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale) : Promise.resolve([]),
@@ -97,8 +101,7 @@ export async function productsListReads(
     canWrite && !needsFilter ? listTerms({ storeId: store.id, contentType: "product" }) : Promise.resolve(null),
     canWrite && !archived && !needsFilter ? listJobs(member, "product_import", 5) : Promise.resolve([]),
   ]);
-  const skus = needsFilter ? {} : await productSkus(store.id);
-  return { products, needingCount, needing, terms, imports, skus };
+  return { products: list.rows, total: list.total, counts, needingCount, needing, terms, imports };
 }
 
 /** The platform's shell (`platform/layout.tsx`): Kaizena Flow's desk, then the requests, the conversations and the requests passed on. */

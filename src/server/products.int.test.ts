@@ -14,11 +14,11 @@ import {
   emptyProduct,
   getEditorContext,
   getProductForEdit,
-  listAdminProducts,
   saveProduct,
   setArchived,
   type EditorContext,
 } from "./products";
+import { listAdminProducts } from "./product-list";
 import type { Store } from "./stores";
 import { createTerm } from "./taxonomy";
 
