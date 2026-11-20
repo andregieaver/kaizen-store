@@ -15,7 +15,7 @@ import { ReportTable } from "./report-table";
 import { ReportTotalsView } from "./report-totals";
 import { secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
 import { workText } from "@/lib/work-text";
 
 export type ReportViewProps = {
@@ -70,9 +70,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
       <ReportTotalsView report={report} locale={locale} />
 
       {empty ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          {tw.nothingToReportIn}
-        </p>
+        <EmptyState title={tw.nothingToReportIn} />
       ) : (
         <ReportTable report={report} locale={locale} />
       )}

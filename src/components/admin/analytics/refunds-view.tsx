@@ -10,6 +10,7 @@ import { DataTable, ShareBar, type Column } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { safeMoney } from "./subscriptions-view";
+import { EmptyState } from "@/components/admin/ui";
 
 /**
  * The refunds section of the Traffic page (D152, docs/analytics.md): how much was given back, why, for which products, to which kind of
@@ -152,9 +153,7 @@ export function RefundsView(props: RefundsViewProps) {
       ) : null}
 
       {none ? (
-        <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          {w.none}
-        </div>
+        <EmptyState title={w.none} />
       ) : (
         <>
           <div className="grid gap-4 2xl:grid-cols-2">

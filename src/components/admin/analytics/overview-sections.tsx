@@ -17,7 +17,7 @@ import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { dayText, factorRows, forecastLines, formatTimes, metricWriter, moneyLines, moneySignals, moneyWriter, noSales, ordersForecastLine, periodTargetLines, targetLines, type OverviewDiagnosis, type OverviewForecast, type OverviewTarget } from "./overview-text";
 import { isSumMetric } from "@/lib/analytics-targets";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState } from "@/components/admin/ui";
 
 /**
  * The Overview's sections (D152): each one is drawn from the plain props it is handed and nothing else (no data access), so it can be
@@ -131,17 +131,10 @@ export function SectionUnavailable({ id, title }: { id: string; title: string })
 function VisitCountingOff({ base, isOwner, gives }: { base: string; isOwner: boolean; gives: string }) {
   const w = analyticsWords().overview.visitsOff;
   return (
-    <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-5 text-sm">
-      <p className="font-medium">{w.title}</p>
-      <p className="text-muted">{fillWords(w.body, { gives })}</p>
-      {isOwner ? (
-        <Link href={`${base}/analytics/settings`} className={linkClass}>
-          {w.switchOn}
-        </Link>
-      ) : (
-        <p className="text-muted">{w.ownerCan}</p>
-      )}
-    </div>
+    <EmptyState title={w.title} action={isOwner && <ButtonLink href={`${base}/analytics/settings`}>{w.switchOn}</ButtonLink>}>
+      {fillWords(w.body, { gives })}
+      {!isOwner && <p className="mt-1">{w.ownerCan}</p>}
+    </EmptyState>
   );
 }
 
@@ -321,22 +314,15 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
               exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
             />
           ) : (
-            <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">{fillWords(w.netNone, { per })}</p>
+            <EmptyState title={fillWords(w.netNone, { per })} />
           )}
         </ChartCard>
         {costsMissing ? (
           <ChartCard title={w.profit} description={w.profitWhat}>
-            <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-6 text-sm">
-              <p className="font-medium">{w.profitAdd}</p>
-              <p className="text-muted">{w.profitWhy}</p>
-              {isOwner ? (
-                <Link href={settingsHref} className={linkClass}>
-                  {w.openSettings}
-                </Link>
-              ) : (
-                <p className="text-muted">{w.ownerCanAdd}</p>
-              )}
-            </div>
+            <EmptyState title={w.profitAdd} action={isOwner && <ButtonLink href={settingsHref}>{w.openSettings}</ButtonLink>}>
+              {w.profitWhy}
+              {!isOwner && <p className="mt-1">{w.ownerCanAdd}</p>}
+            </EmptyState>
           </ChartCard>
         ) : (
           <ChartCard
@@ -355,7 +341,7 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
                 exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
               />
             ) : (
-              <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">{w.profitNone}</p>
+              <EmptyState title={w.profitNone} />
             )}
           </ChartCard>
         )}
@@ -451,7 +437,7 @@ export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; d
       }
     >
       {diagnosis.explanation.direction === "unknown" ? (
-        <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{diagnosis.explanation.reason ?? diagnosis.explanation.sentences[0]}</p>
+        <EmptyState title={diagnosis.explanation.reason ?? diagnosis.explanation.sentences[0]} />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard title={w.moved} description={w.movedDescription}>
@@ -509,7 +495,7 @@ export function FunnelSection({ frame, traffic }: { frame: OverviewFrame; traffi
     >
       {traffic.sessions === null ? (
         countingOn ? (
-          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.noVisits}</p>
+          <EmptyState title={w.noVisits} />
         ) : (
           <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives={w.gives} />
         )
@@ -574,16 +560,9 @@ export function ProductsSection({ frame, top, phoneRow = false }: { frame: Overv
         </ChartCard>
         <ChartCard title={w.byProfit} description={w.byProfitDescription}>
           {revenueRows.length > 0 && profitRows.length === 0 ? (
-            <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-6 text-sm">
-              <p className="font-medium">{w.addCosts}</p>
-              {frame.isOwner ? (
-                <Link href={settingsHref} className={linkClass}>
-                  {ownerCan.openSettings}
-                </Link>
-              ) : (
-                <p className="text-muted">{ownerCan.ownerCanAdd}</p>
-              )}
-            </div>
+            <EmptyState title={w.addCosts} action={frame.isOwner && <ButtonLink href={settingsHref}>{ownerCan.openSettings}</ButtonLink>}>
+              {!frame.isOwner && ownerCan.ownerCanAdd}
+            </EmptyState>
           ) : (
             <HorizontalBars label={w.byProfitLabel} rows={profitRows} emptyText={w.none} exportId="overview.top_profit" />
           )}
@@ -634,7 +613,7 @@ export function ChannelsSection({ frame, marketing }: { frame: OverviewFrame; ma
     >
       {marketing.table === null ? (
         marketing.counting ? (
-          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.noVisits}</p>
+          <EmptyState title={w.noVisits} />
         ) : (
           <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives={w.gives} />
         )
@@ -666,17 +645,10 @@ export function TargetSection({ frame, target, quiet = false }: { frame: Overvie
   return (
     <AnalyticsSection id="overview-target" title={fillWords(w.title, { month: target.monthLabel })} description={w.description}>
       {p.status === "no_target" ? (
-        <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-5 text-sm">
-          <p className="font-medium">{fillWords(w.none, { month: target.monthLabel })}</p>
-          <p className="text-muted">{fillWords(w.noneBody, { amount: money(p.actualMinor) })}</p>
-          {frame.isOwner ? (
-            <Link href={`${frame.base}/analytics/settings`} className={linkClass}>
-              {w.set}
-            </Link>
-          ) : (
-            <p className="text-muted">{w.ownerCanSet}</p>
-          )}
-        </div>
+        <EmptyState title={fillWords(w.none, { month: target.monthLabel })} action={frame.isOwner && <ButtonLink href={`${frame.base}/analytics/settings`}>{w.set}</ButtonLink>}>
+          {fillWords(w.noneBody, { amount: money(p.actualMinor) })}
+          {!frame.isOwner && <p className="mt-1">{w.ownerCanSet}</p>}
+        </EmptyState>
       ) : (
         <div className={`space-y-3 p-4 ${CARD_CLASS}`}>
           <Meter label={fillWords(w.meter, { month: target.monthLabel })} value={p.actualMinor} target={p.targetMinor} expected={p.tooEarly ? null : p.expectedByTodayMinor} format={money} />

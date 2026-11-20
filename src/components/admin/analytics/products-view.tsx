@@ -31,7 +31,7 @@ import {
 } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState } from "@/components/admin/ui";
 
 /**
  * The Products page's body (D152): everything under the page's header, drawn from the one report object it is handed and nothing else
@@ -294,12 +294,7 @@ export function ProductsView({
           title={w.emptyTitle}
           description={w.emptyDescription}
         >
-          <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-            <p className="font-medium text-ink">{w.emptyLead}</p>
-            <p className="mx-auto mt-1 max-w-prose">
-              {w.emptyBody}
-            </p>
-          </div>
+          <EmptyState title={w.emptyLead}>{w.emptyBody}</EmptyState>
         </AnalyticsSection>
       </div>
     );

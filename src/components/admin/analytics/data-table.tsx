@@ -6,6 +6,7 @@ import { analyticsWords } from "@/lib/analytics-words";
 
 import { nextSort, sharePct } from "./chart-math";
 import { ExportButton, type LeftOut } from "./export-scope";
+import { EmptyState } from "@/components/admin/ui";
 
 /**
  * A compact table for the analytics pages (D152), sorted by links (`?sort=col&dir=`) so it works with no script, with numbers
@@ -165,10 +166,14 @@ export function DataTable<R>({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-        <span className="sr-only">{`${caption}: `}</span>
-        {empty}
-      </div>
+      <EmptyState
+        title={
+          <>
+            <span className="sr-only">{`${caption}: `}</span>
+            {empty}
+          </>
+        }
+      />
     );
   }
   const stickyHead = sticky ? "sticky top-0 z-10" : "";

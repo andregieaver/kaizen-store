@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import type { ContentSite } from "@/components/admin/content-site";
-import { Button, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, ButtonLink, Card, CARD_CLASS, Chip, EmptyState, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -13,6 +13,7 @@ import {
   type EntryStatus,
 } from "@/lib/content-types";
 import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { CONTENT_WORDS } from "@/lib/admin-words/content";
 import { listEntries } from "@/server/content-entries";
 import { getContentType, listContentTypes } from "@/server/content-types";
@@ -57,7 +58,8 @@ export async function ContentListView({ site }: { site: ContentSite }) {
         />
         {types.length === 0 ? (
           <div className="flex flex-col gap-3">
-            <p className="text-sm text-muted">{w.list.empty}</p>
+            {/* The ready-made types below and the header's New type are the next step. */}
+            <EmptyState title={w.list.empty} />
             {presets}
           </div>
         ) : (
@@ -135,7 +137,11 @@ export async function ContentEntriesView({ site, typeId, q }: { site: ContentSit
           </form>
         )}
         {shown.length === 0 ? (
-          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>{query ? w.entries.noMatch : w.entries.none}</p>
+          <EmptyState
+            title={query ? w.entries.noMatch : w.entries.none}
+            // The header's New entry is the next step for an empty type; a search that found nothing goes back to them all.
+            action={query && <ButtonLink href={`${base}/${type.id}`}>{COMMON_WORDS[site.lang].list.clearFilters}</ButtonLink>}
+          />
         ) : (
           <Card compact>
             <List label={w.entries.label}>

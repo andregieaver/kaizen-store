@@ -10,6 +10,7 @@ import { historyHref, type HistoryQuery } from "@/lib/inventory-admin";
 import { byIn, deltaIn, figureIn, momentIn, reasonIn } from "@/lib/inventory-words";
 import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import type { HistoryRow } from "@/server/inventory";
+import { EmptyState } from "@/components/admin/ui";
 
 /**
  * The stock history (wave 3, D172, `docs/wave-3-inventory.md` 2.2): every change of a level, newest first, with the location, the change and the new
@@ -113,7 +114,8 @@ export function HistoryView({
       {query.variant && <p className={hint}>{w.oneVariant}</p>}
 
       {rows.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{filtered ? w.noMatch : w.nothingYet}</p>
+        // A filter that matched nothing has its way back in the filter form (Clear the filter).
+        <EmptyState title={filtered ? w.noMatch : w.nothingYet} />
       ) : (
         <>
         <ul role="list" aria-label={w.caption} className="divide-y divide-line rounded-panel bg-card px-4 sm:hidden">

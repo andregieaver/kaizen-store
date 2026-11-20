@@ -10,6 +10,8 @@ import type { MatchFilter } from "@/server/bulk-edit";
 
 import { useAdminText } from "./admin-text";
 import { ProductsTable, type BulkTools, type ProductRowView } from "./products-bulk";
+import { ButtonLink } from "./ui/button";
+import { EmptyState } from "./ui/empty-state";
 import { AdminLink } from "./ui/link";
 
 const VIEW_KEY = "kz-products-view";
@@ -64,6 +66,7 @@ export function ProductCatalogue({
   pager: ReactNode;
 }) {
   const w = useAdminText("products").catalogue;
+  const { clearFilters } = useAdminText("common").list;
   // The browser's remembered choice: pictures on the server and until the browser says otherwise.
   const view = useSyncExternalStore(subscribeView, readView, () => "grid" as const);
   const setView = (next: "grid" | "table") => {
@@ -90,7 +93,11 @@ export function ProductCatalogue({
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-card bg-card p-8 text-center text-body text-muted">{filter.q ? fillWords(w.noMatch, { q: filter.q }) : w.noneShown}</p>
+        // A search or a view that found nothing goes back to every product (the store with none at all has the page's own first-product card).
+        <EmptyState
+          title={filter.q ? fillWords(w.noMatch, { q: filter.q }) : w.noneShown}
+          action={<ButtonLink href={`/admin/${slug}/products${archived ? "?show=archived" : ""}`}>{clearFilters}</ButtonLink>}
+        />
       ) : view === "table" ? (
         <ProductsTable slug={slug} rows={rows} total={total} filter={filter} archived={archived} priceHeader={priceHeader} locale={locale} bulk={bulk} />
       ) : (

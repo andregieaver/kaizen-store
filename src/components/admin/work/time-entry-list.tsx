@@ -14,6 +14,7 @@ import { workBase } from "@/lib/work-paths";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 function EntryRow({
   storeSlug,
@@ -161,7 +162,7 @@ export function TimeEntryList({
   const tw = useAdminText("work").timeEntryList;
   const base = workBase(storeSlug);
   if (entries.length === 0) {
-    return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{empty ?? tw.noTimeLogged}</p>;
+    return <EmptyState compact title={empty ?? tw.noTimeLogged} />;
   }
   return (
     <ul className={`divide-y divide-line ${CARD_CLASS}`}>

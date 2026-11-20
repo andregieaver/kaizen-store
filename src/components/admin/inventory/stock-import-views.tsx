@@ -8,6 +8,7 @@ import { SEVERITY_FILTERS, type SeverityFilter } from "@/lib/data-admin";
 import type { Finding, ItemOutcome } from "@/lib/data-job";
 import { deltaIn, figureIn, numberIn, rowsIn } from "@/lib/inventory-words";
 import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { EmptyState } from "@/components/admin/ui";
 
 const wholeIn = (n: number, lang: AdminLang) => numberIn(Math.round(n), ADMIN_LANG_FACTS[lang].locale);
 
@@ -153,7 +154,8 @@ export function StockFindings({
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? w.nothing : w.noneOfKind}</p>
+        // The kinds above are the way back to every line.
+        <EmptyState title={severity === "all" ? w.nothing : w.noneOfKind} />
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">

@@ -18,7 +18,7 @@ import { InvoiceExportSlot } from "./invoice-export-slot";
 import { InvoiceStatusChip } from "./invoice-status";
 import { control, secondaryButton, smallButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
-import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, EmptyState, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { workText } from "@/lib/work-text";
 
 
@@ -153,11 +153,7 @@ export function InvoicesListView({
       </form>
 
       {list.rows.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          {empty
-            ? tw.noInvoicesYetStart
-            : tw.noInvoiceMatchesTry}
-        </p>
+        <EmptyState title={empty ? tw.noInvoicesYetStart : tw.noInvoiceMatchesTry} />
       ) : (
         <Card compact>
           <List label={tw.invoices}>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CHANNELS } from "@/lib/analytics-channels";
@@ -23,6 +22,7 @@ import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { moneyWriter } from "./overview-view";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { PhoneRow } from "@/components/admin/phone-row";
+import { ButtonLink, EmptyState } from "@/components/admin/ui";
 
 /**
  * The Marketing page's body above the spend form (D152, docs/analytics.md): what it costs to win a customer and whether the channels pay
@@ -388,14 +388,10 @@ function ChannelsSection({
       description={w.channelsDescription}
     >
       {table === null ? (
-        <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          <p>{fillWords(w.noChannels, { reason: countingReason(report, w) })}</p>
-          <p className="mt-1">
-            <Link href={`${base}/analytics/settings`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
-              {w.openSettings}
-            </Link>
-          </p>
-        </div>
+        <EmptyState
+          title={fillWords(w.noChannels, { reason: countingReason(report, w) })}
+          action={<ButtonLink href={`${base}/analytics/settings`}>{w.openSettings}</ButtonLink>}
+        />
       ) : (
         <>
           <DataTable

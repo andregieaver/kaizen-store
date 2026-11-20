@@ -13,6 +13,7 @@ import { InvoiceStatusChip } from "./invoice-status";
 import { workBase } from "@/lib/work-paths";
 import { workText } from "@/lib/work-text";
 import { fillWords } from "@/lib/admin-fill";
+import { EmptyState } from "@/components/admin/ui";
 
 export { BillUnbilledButton };
 
@@ -193,7 +194,7 @@ async function InvoiceList({
   const list = await listWorkInvoices(store.id, { ...filter, pageSize: 50 });
   const base = `${workBase(storeSlug)}/invoices`;
   if (list.rows.length === 0)
-    return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{empty}</p>;
+    return <EmptyState compact title={empty} />;
   return (
     <ul
       className="flex flex-col divide-y divide-line rounded-panel border border-line bg-card px-4"

@@ -5,7 +5,7 @@ import { AUDIT_AREA_LABELS, actionLabel, activityQuery, changeLine } from "@/lib
 import type { AuditArea } from "@/lib/audit";
 import { avatarFor } from "@/server/avatars";
 import type { ActivityEntry } from "@/server/activity";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState } from "@/components/admin/ui";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { PhoneMore } from "@/components/admin/phone-more";
 import { PHONE_MORE_HIDDEN } from "@/components/admin/phone-more-class";
@@ -222,7 +222,7 @@ export function ActivityList({
   locale?: string;
 }) {
   const w = (words ?? staffEn).activity;
-  if (entries.length === 0) return <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>{empty ?? w.empty}</p>;
+  if (entries.length === 0) return <EmptyState title={empty ?? w.empty} />;
   const values = words ? { none: w.none, yes: w.yes, no: w.no } : undefined;
   // By day (round 14, D641): Today, Yesterday, then the date; each row says only its time.
   const today = now === undefined ? null : dayKey(new Date(now).toISOString(), zone);
