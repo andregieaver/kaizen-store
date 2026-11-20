@@ -167,7 +167,7 @@ commit as the fix.
 | 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | In progress | D826: router requests front 19 to 3, product 18 to 3, cart 20 to 5, first add 32 to 7; admin at rest 0; next/link 396 to 384. Phone and 1280 px checks due. |
 | 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Done | D838, c351d3ab5, 20 Nov: a built page's tile tap 1 document, 29 requests to 0 and 3 on prod; a builder button on kaizenaflow.com 0 documents. Pay paths stay full loads. |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Done | D842, 20 Nov: first 6 tiles on sight, rest on intent; 48 products 15 router requests (47), bound 20. Prod: none on scroll. Rule stands. |
-| 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | In progress | Local 20 Nov: first scripts listing, tag, search 621,749 (729,906 before), account 634,240; checkout 668,938; cart 678,956 misses 670,000 |
+| 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Done | D863, live 20 Nov: listings 729,906 to 621,749 B; account, wishlist, order, cookies, checkout under 670,000; cart 678,956 (its forms), held at 705,000. |
 | 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | Done | D849, live 20 Nov: scripts after recommendations answer 649,561 to 98,341 B (held 140,000), no zod or page model. Prod: no store has it on yet. |
 | 2.11 | Give the storefront a stylesheet of its own | SC-5, CS-1, BN-12, GAP-styles-s5 | M | review | 1.21, 1.23, 1.3, 0.35, 0.34, 0.12 | Open | |
 | 2.12 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | review | 2.10, 2.2 | Done | D861, live 20 Nov: /products 128,622 to 97,856 B, each tile once per copy; 0 list queries unfiltered. |
@@ -182,7 +182,7 @@ commit as the fix.
 | 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | Done | D824: page reader 72 files; article 467 to 431; live 19 Nov. Admin chunk follow-up 980e481ef, 20 Nov: 481 of 482 admin routes -10.5 KB median. |
 | 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | In progress | D840, 20 Nov: stores.ts 102 to 72 files; beacons 426-477 modules, no Stripe; store home over bar. Prod: beacon cold-start p50, test-store checkout. |
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | In progress | D839: taxonomy traced only where read, guard in trace-sizes; traces with it 883 to 747, health 15.4 to 2.2 MB. Prod: sizes, ENOENT, advisors. |
-| 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | In progress | Local: 11.95 to 9.88 MB, 92,655 to 76,313 entries, admin median 135 to 96, beacons 0. The brief's 40,000 and 60 need a new plan (writer-to-writer imports). |
+| 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | In progress | D864, live 20 Nov: manifest 11.95 to 9.88 MB, entries 92,655 to 76,313, admin median 135 to 96, beacons 0. 40,000 and 60 need a new plan. |
 | 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Done | D848, live 20 Nov: median admin entry 4 areas, 213 KB of words (77, 4.03 MB); orders server chunks 13.1 to 11.2 MB. Admin cold start to read. |
 | 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | Done | 19 Nov, D799: catalogue sites 35 to 0; 83 routes fell 4.86 MB; five screens 634-664 KB; admin median 643,240 B. aaa201926..589fb73de. |
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | In progress | D821: product editor 431,497 to 236,060 B, builder 606,658 to 460,097; words handed 13.2 to 6.1 MB; shared held. 3 sites left. |
@@ -755,15 +755,15 @@ Each area's measures, today's values, the targets, how each is measured and the 
 
 ### Where the grades stand now
 
-Updated as steps land; last on 20 November 2026. A grade rises only for fixes seen working in production. On 20 November 86 of
-the 156 steps are done, 25 in progress and 45 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
+Updated as steps land; last on 20 November 2026. A grade rises only for fixes seen working in production. On 20 November 87 of
+the 156 steps are done, 26 in progress and 43 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
 under way. No area is a D any more: 10 are a C and 3 a B.
 
 | Area | 12 Nov | Now | Steps done | What moved it, or what the next grade waits on |
 |---|---|---|---|---|
-| What a shopper's browser gets | C | C | 21 of 30 | Store pages static, layout sent once, links with a policy, a listing fetches ahead and draws its grid once; B after 2.9, 2.11 and 2.45. |
-| What an owner's browser gets | D | C | 18 of 29 | Supabase, zod and the builder's English off every screen; the builder 2.79 to 1.83 MB; an untouched tab asks 6 times an hour, not 60. B after 2.46 and 2.9. |
-| What the server loads and asks | D | C | 31 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons 426 to 477 modules, no Stripe. B after 2.23, 2.24, 2.47, 2.19, 2.14 and 2.15. |
+| What a shopper's browser gets | C | C | 22 of 30 | Store pages static, layout sent once, links with a policy, a listing fetches ahead and draws its grid once, each working page loads its own parts; B after 2.11 and 2.45. |
+| What an owner's browser gets | D | C | 19 of 29 | Supabase, zod and the builder's English off every screen; the builder 2.79 to 1.83 MB; an untouched tab asks 6 times an hour, not 60. B after 2.46. |
+| What the server loads and asks | D | C | 32 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons reach no cached read; the reference manifest 11.95 to 9.88 MB. B after 2.47, 2.19, 2.14 and 2.15. |
 | Scheduled work | D | C | 15 of 24 | The scheduler's log pruned, statements per run held, a watchdog every 15 minutes. Further with 1.26 and phase 3's one tick. |
 | The database | C | B | 23 of 34 | Its phase 0 and 1 steps are live: statements per page and run held, lists read 100 rows a page. A after 2.19 and phase 3. |
 | The page builder's model and a built page | C | C | 19 of 27 | Layout sent once, a listing drawn and read once, a recommending grid without the page model. B after 2.14 and 2.15. |
