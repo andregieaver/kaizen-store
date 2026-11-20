@@ -204,7 +204,7 @@ commit as the fix.
 | 2.43 | Add a related test run for the push | TC-6, GAP-build-s4 | S | review | 0.38, 0.39, 1.20, 2.42 | Open | |
 | 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | In progress | 19 Nov, 9e6e0502, D789: db tests share a worker (150 to 108 s); components stay isolated; CI's unit ceiling to set. |
 | 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
-| 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | In progress | Local 20 Nov: custom-fields-schema.ts; zod reach 143 to 134. |
+| 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | In progress | Local 20 Nov: 15 splits; zod in 101 routes (132, aim 60), 97 admin modules (143); product editor 1,121,189 B. Rest needs decision. |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
 | 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Done | 19 Nov, 0e649cc0, D782: +2 statements a line, history-free, warm triggers under 2.9 ms; no gates. |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
