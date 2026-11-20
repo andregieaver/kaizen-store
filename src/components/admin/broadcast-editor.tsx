@@ -228,6 +228,10 @@ export function EmailContentFields(props: {
             {we.subject}
           </label>
           <input id="broadcast-subject" value={current.subject} maxLength={150} onChange={(e) => setCurrent({ ...current, subject: e.target.value })} className={field} />
+          {/* Personal fields (M2.6): said once where Homer writes, with the fallback he must give. */}
+          <span className="text-caption text-muted" data-personal-hint>
+            {we.personalHint}
+          </span>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="broadcast-preview" className="text-body-strong text-ink">

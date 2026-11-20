@@ -380,3 +380,29 @@ describe("erasure", () => {
     expect((await recipients(id)).some((r) => r.email === email)).toBe(false);
   });
 });
+
+describe("personal fields (M2.6)", () => {
+  it("fill each reader's first name, and the fallback for one without a name", async () => {
+    // Kari has a name on the list; Ola has none.
+    await db().execute(sql`update commerce.marketing_subscribers set name = 'Kari Nordmann' where store_id = ${storeId}::uuid and email = ${people.kari}`);
+    await db().execute(sql`update commerce.marketing_subscribers set status = 'subscribed', unsubscribe_source = null where store_id = ${storeId}::uuid and email = ${people.ola}`);
+    const saved = await bc.saveBroadcast(await store(), owner, null, {
+      title: `Personal ${run}`,
+      audience: "everyone",
+      segmentId: null,
+      content: {
+        "nb-NO": { subject: "Hei {first_name|du}", preview: "", blocks: [{ type: "paragraph", text: "Kjære {first_name|kunde}" }] },
+        "en-GB": { subject: "Hi {first_name|there}", preview: "", blocks: [{ type: "paragraph", text: "Dear {first_name|customer}" }] },
+      },
+    });
+    if (!saved.ok) throw new Error(saved.problem);
+    await bc.startBroadcast(storeId, owner, saved.id);
+    await bc.runBroadcasts({ only: saved.id, pace: 0 });
+    const sent = await db().execute<Row>(sql`select to_address, subject, html from commerce.email_messages where idempotency_key like ${`broadcast:${saved.id}:%`} order by to_address`);
+    const of = (to: string) => sent.find((e) => e.to_address === to)!;
+    expect(of(people.kari).subject).toBe("Hei Kari");
+    expect(String(of(people.kari).html)).toContain("Kjære Kari");
+    expect(of(people.ola).subject).toBe("Hi there");
+    expect(String(of(people.ola).html)).not.toContain("{first_name");
+  });
+});

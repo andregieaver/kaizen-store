@@ -2,6 +2,7 @@ import type { FlowsMessages } from "./admin-messages/flows.en";
 import type { BroadcastContent } from "./broadcasts";
 import type { FlowStep } from "./flows";
 import { languageName } from "./localization";
+import { contentTexts, tokenProblems } from "./personal-fields";
 
 /**
  * Checks before a flow is switched on (D767, email plan M3.6), in code: each a line naming the email and what to do. A blocking one keeps the
@@ -13,7 +14,7 @@ import { languageName } from "./localization";
 export type FlowCheck = {
   stepId: string;
   subject: string;
-  kind: "main_missing" | "half_written" | "picture_alt" | "picture_format" | "too_big";
+  kind: "main_missing" | "half_written" | "picture_alt" | "picture_format" | "too_big" | "personal_field";
   /** The language it is about, where it is one. */
   locale: string | null;
   blocking: boolean;
@@ -49,6 +50,8 @@ export function contentChecks(content: BroadcastContent, main: string): Omit<Flo
       if (UNSHOWN.test(block.url)) out.push({ kind: "picture_format", locale, blocking: false });
     }
     if (new TextEncoder().encode(JSON.stringify(c)).length > WORDS_WARN_BYTES) out.push({ kind: "too_big", locale, blocking: false });
+    // Personal fields (M2.6): one without a fallback, or one the store does not have, keeps it from going.
+    if (contentTexts(c).some((text) => tokenProblems(text).length > 0)) out.push({ kind: "personal_field", locale, blocking: true });
   }
   return out;
 }

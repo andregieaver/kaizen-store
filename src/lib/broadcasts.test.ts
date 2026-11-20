@@ -225,3 +225,22 @@ describe("an email's words rewritten in place (M3.7)", () => {
     expect(rewrittenContent(content, "nope")).toBeNull();
   });
 });
+
+describe("a broadcast's personal fields (M2.6)", () => {
+  it("refuse a field without a fallback, or one the store does not have, before it is sent", async () => {
+    const { sendProblems } = await import("./broadcasts");
+    const words = (subject: string) => ({ "nb-NO": { subject, preview: "", blocks: [{ type: "paragraph" as const, text: "Hei" }] } });
+    expect(sendProblems(words("Hei {first_name}"), "nb-NO")).toEqual(["Every personal field needs a fallback after a bar, such as {first_name|there}."]);
+    expect(sendProblems(words("Hei {nickname|du}"), "nb-NO")).toEqual(["Use only {first_name|…} and {company|…} as personal fields."]);
+    expect(sendProblems(words("Hei {first_name|du}"), "nb-NO")).toEqual([]);
+  });
+});
+
+describe("the personal fields' send words in the admin's language (M2.6)", () => {
+  it("are said in Norwegian through the catalogue", async () => {
+    const { marketingProblem } = await import("./marketing-words");
+    const { marketingNb } = await import("./admin-messages/marketing.nb");
+    const { PERSONAL_NO_FALLBACK } = await import("./broadcasts");
+    expect(marketingProblem(PERSONAL_NO_FALLBACK, marketingNb.problems)).toBe("Hvert personlige felt trenger en reserve etter en strek, for eksempel {first_name|du}.");
+  });
+});

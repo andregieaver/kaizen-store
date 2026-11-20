@@ -1,5 +1,7 @@
 import "server-only";
 
+import { personalizeContent, type PersonalFacts } from "@/lib/personal-fields";
+
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -45,12 +47,15 @@ export function marketingEmail(input: {
   facts?: EmailFacts;
   /** The subscriber came from the store's Shopify shop and gets their first email here (D445 step 8): the reason says the shop moved. */
   moved?: boolean;
+  /** The reader's name and company for personal fields (M2.6); left out (a test, a preview), each field's fallback. */
+  person?: PersonalFacts | null;
 }): MarketingEmail | null {
   const { store, token } = input;
   const main = store.localization.locales[0];
   const language = languageFor(input.content, input.locale, main);
-  const content = input.content[language];
-  if (!content) return null;
+  const written = input.content[language];
+  if (!written) return null;
+  const content = personalizeContent(written, input.person ?? null);
   const lang = language.slice(0, 2);
   const m = t(lang);
   const marketSlug = marketSlugFor(store, input.marketCode);

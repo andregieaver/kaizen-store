@@ -128,6 +128,14 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   to join is a source in `SUBSCRIBE_SOURCES` with its check widened, a new way to leave one in `UNSUBSCRIBE_SOURCES`; never mark
   consent on a customer or an order. Shopper words are `m.news` (hand-written, `HAND_WRITTEN_ONLY`).
 
+## Personal fields in marketing emails (email plan M2.6, `src/lib/personal-fields.ts`)
+
+- **Personal fields (M2.6)**: `{first_name|there}` and `{company|your team}` in a marketing email's subject, preview and words are filled
+  per reader by `personalizeContent()` inside `marketingEmail()`, from the subscriber's name, else their account's, and the account's company;
+  a test or preview passes no person and shows every fallback, the worst case. A field without a fallback, or one not in `PERSONAL_FIELDS`,
+  is refused by `sendProblems()` (broadcasts) and `contentChecks()` (a flow's `personal_field`, blocking). Broadcasts and flows pass the reader;
+  the older automations show the fallback. A customer's staff-only fields (D120) are never personal fields.
+
 ## Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`, `src/server/segments.ts`)
 
 - **Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`,
