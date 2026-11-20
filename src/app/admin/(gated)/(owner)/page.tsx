@@ -6,11 +6,12 @@ import { holdsDomains } from "@/server/domain-account";
 import { storesOf } from "@/components/admin/admin-shell-parts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { StoreCard } from "@/components/admin/store-card";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { attentionFor, changeText, money, totalSales } from "@/lib/control-center";
+import { platformPath } from "@/lib/platform-lang";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { requireAccount } from "@/server/auth";
@@ -41,8 +42,21 @@ export default async function ControlCenterPage() {
     if (account.platformAdmin) redirect("/admin/platform");
     // Someone who holds domains and no store (D317) lands on their domains.
     if (await holdsDomains(account.id)) redirect("/admin/account/domains");
+    // Nothing to run yet (code review 2.9, D845): how to be let into a store, and one press to start one (the sign-up takes an account that exists).
     return (
-      <PageHeader title={w.title} meta={[w.noAccess]} />
+      <div className="flex flex-col gap-8">
+        <PageHeader title={w.title} />
+        <EmptyState
+          title={w.noAccess}
+          action={
+            <ButtonLink kind="main" href={platformPath(lang, "/sign-up")}>
+              {w.startStore}
+            </ButtonLink>
+          }
+        >
+          {fillWords(w.noAccessText, { email: account.email })}
+        </EmptyState>
+      </div>
     );
   }
 

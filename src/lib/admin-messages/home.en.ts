@@ -218,6 +218,9 @@ export const homeEn = {
   center: {
     title: "Control center",
     noAccess: "You do not have access to any store yet",
+    /** A person with no store, platform, hosting or domains (code review 2.9, D845): the two ways on. */
+    noAccessText: "If you work in a store, ask its owner to add you with {email}. Or start a store of your own.",
+    startStore: "Start a store",
     oneStore: "Your store at a glance",
     allStores: "All {count} stores you work in, at a glance",
     manage: "Manage stores",

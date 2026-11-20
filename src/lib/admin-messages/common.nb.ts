@@ -216,6 +216,9 @@ export const commonNb: CommonMessages = {
     noAccess: "Du har ikke tilgang til dette.",
     failed: "Det gikk ikke gjennom. Prøv igjen, og kontakt Kaizena Flow-støtten hvis det skjer igjen.",
   },
+  list: {
+    clearFilters: "Fjern filtrene",
+  },
   snippet: {
     count: "{length} av omtrent {advice} tegn",
     cut: ": søkemotorer kan kutte slutten",
