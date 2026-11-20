@@ -746,4 +746,5 @@ the path, component or table you change, or list the rules with a search for lin
 
 A storefront or site link is a `PolicyLink` with one of three policies (sight: fetched when in view; intent: when the pointer, a touch or focus
 reaches it; never), and a new file may not import `next/link` (the ratchet count `directLinks` only falls). The table of which link has which policy
-is in `docs/performance.md` under *What the router fetches ahead*.
+is in `docs/performance.md` under *What the router fetches ahead*. A listing draws its first six tiles with policy sight and the rest with intent
+(`SIGHT_TILES`, `ProductGrid`), swatches and chips with intent, and `e2e/prefetch.spec.ts` holds a 48-product category at 20 router requests.

@@ -775,9 +775,11 @@ three policies. `e2e/prefetch.spec.ts` holds the counts per page.
 
 | Policy | What it does | Links |
 | --- | --- | --- |
-| sight | Next's default: fetched when it scrolls into view | the cart link on phones, a header menu's top links, product tiles (bounded by step 2.8), the site's sign-up button |
+| sight | Next's default: fetched when it scrolls into view | the cart link on phones, a header menu's top links, the first six product tiles of a listing (step 2.8, below), the site's sign-up button |
 | intent | fetched when the pointer, a touch or the focus reaches it | the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, builder blocks (`BlockLink`, step 2.7: a built page's tiles, buttons, pictures, icon lists and column links to an address of the app; a pay path, a file, a handler, a new tab or another site stays a plain anchor), every admin link (`AdminLink`) |
 | never | not fetched ahead | countries, languages and currencies, links that leave their root layout, file links, the cart link from 768 px (a plain anchor) |
+| sight, then intent | product tiles: the first six of a listing on sight, the rest on intent | `ProductGrid` and the store's own product list (`SIGHT_TILES` in `src/components/product-card.tsx`, bloat review step 2.8) |
+| intent | swatches under a tile and category chips: intent | `GroupSwatches`, the category page's subcategory chips and the blog's term chips (step 2.8) |
 
 A link states its policy through `PolicyLink` or `AdminLink` and `next/link` is imported only by them (ratchet count `directLinks`, in
 `src/server/ratchet.baseline.json`: a new file may not import it, and the old ones move as they are touched). A server action that sets a
@@ -788,6 +790,30 @@ content page 3 router requests each (19, 18 and 20 before), the listing 4 (20), 
 before), the second 0; the home at 1280 px 6 and 7 (47 on the phone home before step 0.12). The money path of `e2e/performance.spec.ts`: the
 two-line cart 7 (15 before), the checkout 3 (18). Held at 6 on each phone page, 8 on the home at 1280 px and 10 after the first add (the
 step's figures), and 9 and 5 on the money path (the count plus 2).
+
+A 48-product category read to the end on a phone makes 15 router requests (the cart's 3 and 2 for each of the first six tiles; 47
+with every tile on sight), held at 20 (`FULL_LISTING_MOST` in `e2e/prefetch.spec.ts`); focusing a later tile fetches it.
+
+### The partial-prefetching trial (bloat review step 2.8)
+
+20 November 2026, Next 16.4.6, local production builds of one commit: for each destination, one build without and one with
+`export const prefetch = 'partial'` in its page file. Requests and decoded bytes are the router requests of the linking page
+read to the end on a phone, plus those of touching the link where the link waits for intent; the ms are the median of three
+presses, from the click to the destination's heading drawn. Every figure is copied from [the trial's raw
+output](audits/bloat-review-2026-11/evidence/partial-prefetching-trial.md).
+
+| Destination | Linking page | Requests before | Requests after | Bytes before | Bytes after | ms to heading before | ms to heading after |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Product page | the seeded category, read to the end | 15 | 10 | 70692 | 20481 | 43 (second tile 43) | 40 (second tile 118) |
+| Category listing | the store home, its footer link touched | 3 + 2 | 3 + 2 | 6471 + 8327 | 6471 + 8326 | 48 | 48 |
+| Store home | a product page, its logo touched | 5 + 2 | 5 + 2 | 83865 + 81893 | 83865 + 81893 | 71 | 71 |
+| Admin orders | the admin home at 1280 px, the rail's Orders pointed at | 0 + 2 | 0 + 2 | 0 + 9165 | 0 + 9164 | 332 | 333 |
+
+Decision: the first-screen rule stands, no page sets `prefetch = 'partial'` and `partialPrefetching` stays false. Only the
+product page changed: its six tiles share one shell (a third fewer requests, 71% fewer bytes), but the shell holds one tile's
+product, the first fetched (the page reads its params outside a Suspense boundary), so the other tiles' heading waits for a
+fetch (118 ms against 43; with the fetch held 1 s, 1098 against 52). Look again when the product page reads its params behind
+Suspense, or at Next's next major release, which turns partial prefetching on for everyone.
 
 ## What is static (bloat review step 1.11)
 
