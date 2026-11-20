@@ -129,3 +129,24 @@ describe("moving a step on the canvas (drag and drop)", () => {
     expect(moveStep(tree, "w1", { afterId: "nope" })).toEqual(tree);
   });
 });
+
+describe("words changed where they are (email plan M3.4)", () => {
+  it("changes the subject or one heading, paragraph or button, in one language, and nothing else", async () => {
+    const { withBlockText } = await import("./flows");
+    const steps: FlowStep[] = [
+      {
+        id: "e",
+        kind: "email",
+        content: { "nb-NO": { subject: "Hei", preview: "", blocks: [{ type: "heading", text: "Tittel" }, { type: "paragraph", text: "Tekst" }, { type: "button", text: "Se", url: "/p" }, { type: "divider" }] } },
+      },
+    ];
+    const subject = withBlockText(steps, "e", "nb-NO", -1, "Hallo");
+    expect(stepAt(subject, ["0"])).toMatchObject({ content: { "nb-NO": { subject: "Hallo" } } });
+    const button = withBlockText(steps, "e", "nb-NO", 2, "Kjøp");
+    expect(stepAt(button, ["0"])).toMatchObject({ content: { "nb-NO": { blocks: [{ text: "Tittel" }, { text: "Tekst" }, { text: "Kjøp", url: "/p" }, { type: "divider" }] } } });
+    // A divider has no words, a missing language or place changes nothing.
+    expect(withBlockText(steps, "e", "nb-NO", 3, "x")).toEqual(steps);
+    expect(withBlockText(steps, "e", "en-GB", 0, "x")).toEqual(steps);
+    expect(withBlockText(steps, "e", "nb-NO", 9, "x")).toEqual(steps);
+  });
+});

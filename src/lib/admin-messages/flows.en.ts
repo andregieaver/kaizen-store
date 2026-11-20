@@ -92,6 +92,7 @@ export const flowsEn = {
     },
   },
   widths: { label: "Seen at", desktop: "Desktop", phone: "Phone" },
+  inPlace: { hint: "Click any words to change them; they save when you click away.", heading: "Heading", button: "Button words", product: "Product" },
   change: "Change",
   subject: "Subject",
   words: "Words",
