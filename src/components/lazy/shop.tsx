@@ -9,7 +9,7 @@ import { lazyView } from "./lazy-view";
  * Parts of the shop's working pages (the payment form, My account's forms, subscriptions, wishlists, bonus credits, subscription
  * boxes) and the product page's own pickers (a stay's or rental's dates, an appointment's time, a gift card, a request for a quote),
  * each loaded only on a page that draws it (D211, `lazyView()`): imported as they are, they were in the first scripts of every page
- * a store builds, because the shop components can stand on any of them (`StorePartSection`), and a product page's pickers in those of
+ * a store builds, because the shop components can stand on any of them (the route's parts module (`storePartDrawer()`)), and a product page's pickers in those of
  * every product page. A picker's script is asked for with the page's own, and the end-to-end tests showed no press lost
  * (bloat review step 0.16, `docs/performance.md`). What a shopper came to a page to fill in or press at once is not here, as what is
  * typed before a part's own script runs is lost: the cart's checkout button with its company and VAT fields, the discount codes, the

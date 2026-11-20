@@ -31,7 +31,7 @@
         "src/lib/theme.ts",
         "src/lib/store-parts.ts",
         "src/components/role-page.tsx",
-        "src/components/store-part-section.tsx",
+        "src/components/store-part-frame.tsx",
         "src/app/s/[store]/[market]/(shop)/checkout/checkout-section.tsx",
         "src/lib/custom-css.ts",
         "src/lib/checkout-appearance.ts",
@@ -106,7 +106,7 @@
       "files": [
         "src/lib/store-parts.ts",
         "src/lib/ab-site.ts",
-        "src/components/store-part-section.tsx",
+        "src/components/store-part-frame.tsx",
         "src/app/s/[store]/[market]/(shop)/checkout/checkout-section.tsx",
         "src/lib/checkout-rules.ts",
         "src/server/checkout-rules.ts",

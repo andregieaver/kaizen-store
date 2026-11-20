@@ -131,7 +131,7 @@ export function PageBlockView({
       // The page's own repeater rows are looked up where it is shown (`FieldLoopSection`, D120); the editor shows a stand-in.
       return null;
     case "storePart":
-      // A working page's component draws where it is shown (`StorePartSection`, D113); the editor shows a stand-in.
+      // A working page's component draws where it is shown (the route's parts module (`storePartDrawer()`), D113); the editor shows a stand-in.
       return null;
     case "separator":
       return <Separator block={block} />;

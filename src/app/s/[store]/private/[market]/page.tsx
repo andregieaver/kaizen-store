@@ -5,6 +5,7 @@ import { RolePage } from "@/components/role-page";
 import { marketHome } from "@/lib/paths";
 import { resolveShop } from "@/server/shop";
 
+import { privateParts } from "./private-parts";
 import { PrivateSection } from "./private-section";
 
 type Props = PageProps<"/s/[store]/private/[market]">;
@@ -29,7 +30,7 @@ async function PrivateRoute({ params, searchParams }: Pick<Props, "params" | "se
   const { store, market } = shop;
   if (!store.privateMode) redirect(marketHome(store.slug, market.slug));
   return (
-    <RolePage store={store} market={market} role="private" route={{ part: "private", query: searchParams }}>
+    <RolePage store={store} market={market} role="private" route={{ part: "private", query: searchParams }} storePart={privateParts}>
       <PrivateSection store={store} market={market} query={searchParams} />
     </RolePage>
   );

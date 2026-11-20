@@ -204,8 +204,16 @@ document. Blocking each in turn: without the fonts 93 (largest paint 2.9 s), wit
   (`StorePartSection`) were imported by `PageArticle`, so every page built in the builder loaded their scripts, Kaizena Flow's own
   included, though they draw only on a store's working page. `RolePage`, the one place that draws one, now hands `PageArticle` what
   draws them (`StorePartDrawer`), so only its routes carry them. Measured on a build (the gzipped chunks each route's client manifest
-  names): Kaizena Flow's front page 96 to 71 KB, a store's front page 100 to 76, a product page 116 to 100, the cart unchanged. The
-  cookie banner still loads where it is drawn (`lazy/extras.tsx`); the cookie list's settings button had carried it into every page.
+  names): Kaizena Flow's front page 96 to 71 KB, a store's front page 100 to 76, a product page 116 to 100, the cart unchanged. Since
+  bloat review step 2.9 each working route has its own parts module on `storePartDrawer()` (`src/components/store-part-frame.tsx`:
+  `cart-parts.tsx`, `checkout-parts.tsx`, `order-parts.tsx`, ..., `term-parts.tsx` for a category and a tag), handed to `RolePage`
+  as `storePart`, so a listing no longer carries the cart's, checkout's and account's forms, and the search page, which draws no
+  part, carries none (`store-part-drawers.scan.test.ts`). First scripts (raw, `e2e/performance.spec.ts`), measured on the build
+  of 20 November 2026: 729,906 bytes on each of these routes before (778,166 when the step was planned); after, a category, a tag and
+  the search 621,749 (the store's front page's figure), the cart 683,531, the checkout 673,336, My account 636,534, the wishlist
+  626,775, an order 644,334 and the cookie list 625,054. The listing page's server code imports 20 client modules (41 before,
+  `storefront-bundle.baseline.json`). The cookie banner still loads where it is drawn (`lazy/extras.tsx`); the cookie list's
+  settings button is its own file (`consent/cookie-settings-button.tsx`) and no longer carries the banner.
 
 ## First scripts per route (PSI PERF-11, 30 October 2026)
 

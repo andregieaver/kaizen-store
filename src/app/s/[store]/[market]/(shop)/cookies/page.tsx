@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { marketMoved, resolveShop } from "@/server/shop";
 
+import { cookiesParts } from "./cookies-parts";
 import { CookiesSection } from "./cookies-section";
 
 type Props = PageProps<"/s/[store]/[market]/cookies">;
@@ -30,7 +31,7 @@ export default async function StoreCookiesPage({ params, searchParams }: Props) 
   if (!shop) return marketMoved(storeSlug, marketSlug, "/cookies");
   const { store, market } = shop;
   return (
-    <RolePage store={store} market={market} role="cookies" route={{ part: "cookies", query: searchParams }}>
+    <RolePage store={store} market={market} role="cookies" route={{ part: "cookies", query: searchParams }} storePart={cookiesParts}>
       <CookiesSection store={store} market={market} />
     </RolePage>
   );

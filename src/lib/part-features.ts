@@ -3,7 +3,7 @@
  * credits), a header's or footer's part (the business or private switch), a product layout's part (the business-only notice). The tags
  * live with each kind's list (`STORE_PARTS`/`STORE_PIECES` in `src/lib/store-parts.ts`, `SITE_PART_FEATURES` and
  * `PRODUCT_PART_FEATURES` in `src/lib/page-content.ts`); this module reads them for any block. While the feature is off the site draws
- * nothing for the part (`StorePartSection`, `sitePartShows()`, `productPartShows()`), the builder's palette leaves it out, and a page that
+ * nothing for the part (the route's parts module (`storePartDrawer()`), `sitePartShows()`, `productPartShows()`), the builder's palette leaves it out, and a page that
  * already holds it shows "Switched off – not shown" on the canvas. A later step tags its own parts the same way.
  */
 import { sourceTraits } from "./grid-source";

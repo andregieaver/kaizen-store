@@ -138,8 +138,10 @@ describe("where the sentence is drawn", () => {
     // The payment form draws it itself while `drawTerms` is true, and the piece draws it on its own.
     expect(section).toMatch(/termsSlot=\{drawTerms \? termsNode\(/);
     expect(section).toMatch(/export async function CheckoutTerms\(/);
-    const parts = readFileSync(join(process.cwd(), "src/components/store-part-section.tsx"), "utf8");
-    expect(parts).toMatch(/const holdsTerms = route\.holds\?\.includes\("checkout_terms"\)/);
+    // A built checkout page's parts (bloat review step 2.9): the frame works out what the page holds, the checkout's parts module draws.
+    const frame = readFileSync(join(process.cwd(), "src/components/store-part-frame.tsx"), "utf8");
+    expect(frame).toMatch(/const holdsTerms = route\.holds\?\.includes\("checkout_terms"\)/);
+    const parts = readFileSync(join(process.cwd(), "src/app/s/[store]/[market]/(shop)/checkout/checkout-parts.tsx"), "utf8");
     expect(parts.match(/drawTerms=\{!holdsTerms\}/g)).toHaveLength(2);
   });
 });
