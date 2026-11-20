@@ -69,6 +69,8 @@ export type Person = {
   sms?: SmsConsent;
   /** When they last pressed a link in the store's emails (a broadcast's or a flow's, M2.4), within the clicks kept (`CLICK_DAYS`); null for none. */
   lastClickAt?: string | null;
+  /** The values of the customer's fields marked for marketing (M2.4), by field id, each as words in lower case (a choice by its key). */
+  fields?: Record<string, string[]>;
 };
 
 /** How long presses are kept, as `CLICK_DAYS` in `email-clicks.ts` (which this browser-side module cannot import: it signs with node:crypto). */
@@ -115,6 +117,8 @@ const MORE_CONDITIONS = [
   z.object({ kind: z.literal("sms"), statuses: z.array(z.enum(SMS_CONSENTS)).min(1, CHOOSE_SOME).max(SMS_CONSENTS.length) }),
   // Email engagement (email plan M2.4): pressed a link in the store's emails in the last days, or none within the clicks kept.
   z.object({ kind: z.literal("clicked"), op: z.enum(["within", "never"]), days: days.optional() }),
+  // A customer's field marked for marketing (M2.4), by the field's id: what it says, or whether it is filled in.
+  z.object({ kind: z.literal("field"), field: z.string().min(1, CHOOSE_SOME).max(80), op: z.enum(["is", "isNot", "filled", "empty"]), value: z.string().trim().max(200).optional() }),
 ] as const;
 
 export const conditionSchema = z.discriminatedUnion("kind", [...FIRST_CONDITIONS, ...MORE_CONDITIONS]);
@@ -126,6 +130,7 @@ function checkRules<T extends { conditions: readonly Condition[] }>(rules: T, ct
   rules.conditions.forEach((c, i) => {
     const noDays = (c.kind === "lastOrder" && c.op !== "never") || (c.kind === "support" && c.op === "within") || (c.kind === "clicked" && c.op === "within");
     if (noDays && c.days === undefined) ctx.addIssue({ code: "custom", path: ["conditions", i, "days"], message: "Give a number of days." });
+    if (c.kind === "field" && (c.op === "is" || c.op === "isNot") && !c.value) ctx.addIssue({ code: "custom", path: ["conditions", i, "value"], message: "Say what it should say." });
     if (c.kind === "tag" && c.tags.some((t) => tagKey(t) === null)) ctx.addIssue({ code: "custom", path: ["conditions", i, "tags"], message: "A tag is not valid." });
   });
 }
@@ -214,6 +219,14 @@ export function holds(c: Condition, p: Person, today: Date): boolean {
     case "clicked":
       if (p.lastClickAt === undefined) return false;
       return c.op === "never" ? p.lastClickAt === null : inLast(p.lastClickAt, c.days ?? 0, today);
+    case "field": {
+      if (p.fields === undefined) return false;
+      const values = p.fields[c.field] ?? [];
+      if (c.op === "filled") return values.length > 0;
+      if (c.op === "empty") return values.length === 0;
+      const hit = values.includes((c.value ?? "").trim().toLowerCase());
+      return c.op === "is" ? hit : !hit;
+    }
   }
 }
 
@@ -238,6 +251,8 @@ export type SegmentNeeds = {
   subscriptions: boolean;
   sms: boolean;
   clicks: boolean;
+  /** The ids of the customer fields conditions name, each once. */
+  fields: string[];
 };
 
 export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
@@ -259,6 +274,7 @@ export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
     subscriptions: kinds.has("subscription"),
     sms: kinds.has("sms"),
     clicks: kinds.has("clicked"),
+    fields: [...new Set(conditions.flatMap((c) => (c.kind === "field" ? [c.field] : [])))],
   };
 }
 
@@ -292,6 +308,8 @@ export type DescribeContext = {
   /** A product's and a product category's name (ecosystem plan E3.6, D718); without them a condition says how many it names. */
   productName?: (id: string) => string | undefined;
   categoryName?: (id: string) => string | undefined;
+  /** A customer field's label (M2.4); without it the condition says "a customer field". */
+  fieldLabel?: (id: string) => string | undefined;
   words: DescribeWords;
 };
 
@@ -359,6 +377,11 @@ export function describeCondition(c: Condition, ctx: DescribeContext): string {
       return fillWords(w.sms, { list: or(c.statuses.map((s) => w.smsWords[s]), w) });
     case "clicked":
       return c.op === "never" ? fillWords(w.clickedNever, { days: days(SEGMENT_CLICK_DAYS) }) : fillWords(w.clickedWithin, { days: days(c.days ?? 0) });
+    case "field": {
+      const field = ctx.fieldLabel?.(c.field) ?? w.aField;
+      const template = { is: w.fieldIs, isNot: w.fieldIsNot, filled: w.fieldFilled, empty: w.fieldEmpty }[c.op];
+      return fillWords(template, { field, value: c.value ?? "" });
+    }
   }
 }
 
@@ -427,6 +450,8 @@ export function newCondition(kind: ConditionKind): Condition {
       return { kind, statuses: ["subscribed"] };
     case "clicked":
       return { kind, op: "within", days: 90 };
+    case "field":
+      return { kind, field: "", op: "filled" };
   }
 }
 
@@ -451,6 +476,7 @@ export const CONDITION_KIND_WORDS: Record<ConditionKind, string> = {
   subscription: "Subscription",
   sms: "Text consent",
   clicked: "Email engagement",
+  field: "Customer field",
 };
 
 /**
@@ -460,13 +486,16 @@ export const CONDITION_KIND_WORDS: Record<ConditionKind, string> = {
 export const CONDITION_GROUPS: readonly { id: "bought" | "orders" | "who" | "reach" | "talks"; kinds: readonly ConditionKind[] }[] = [
   { id: "bought", kinds: ["bought", "boughtCategory", "subscription"] },
   { id: "orders", kinds: ["orders", "spent", "lastOrder", "firstOrder", "rfm"] },
-  { id: "who", kinds: ["country", "language", "group", "company", "account", "tag"] },
+  { id: "who", kinds: ["country", "language", "group", "company", "account", "tag", "field"] },
   { id: "reach", kinds: ["consent", "clicked", "sms"] },
   { id: "talks", kinds: ["deal", "support", "review"] },
 ];
 
 /** What a store has switched on or set up, for which conditions the rule builder offers (a condition behind a feature only while it is on). */
-export type ConditionOffer = { rfmReady: boolean; deals: boolean; reviews: boolean; subscriptions: boolean; sms: boolean };
+/** A customer's field marked for marketing (M2.4), as the rule builder offers it: its id, label, type and choices. */
+export type SegmentField = { id: string; label: string; type: string; choices: { key: string; label: string }[] };
+
+export type ConditionOffer = { rfmReady: boolean; deals: boolean; reviews: boolean; subscriptions: boolean; sms: boolean; fields?: boolean };
 
 export function conditionOffered(kind: ConditionKind, offer: ConditionOffer): boolean {
   switch (kind) {
@@ -480,6 +509,8 @@ export function conditionOffered(kind: ConditionKind, offer: ConditionOffer): bo
       return offer.subscriptions;
     case "sms":
       return offer.sms;
+    case "field":
+      return offer.fields === true;
     default:
       return true;
   }

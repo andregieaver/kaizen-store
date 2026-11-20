@@ -257,6 +257,30 @@ describe("how people deal with the store (E3.6)", () => {
     expect(await who(store, { kind: "clicked", op: "within", days: 5 })).toEqual([]);
     expect(await who(store, { kind: "clicked", op: "never" })).toEqual(["anna", "ola"]);
   });
+
+  it("finds customers by a field the store marked for marketing, and reads no field it did not mark (M2.4)", async () => {
+    const tier = `tier${run}`;
+    const secret = `secret${run}`;
+    const fields = [
+      { id: tier, name: "tier", label: "Tier", type: "select", access: "private", marketing: true, choices: [{ key: "gold", label: "Gold" }, { key: "silver", label: "Silver" }] },
+      { id: secret, name: "secret", label: "Secret", type: "text", access: "private" },
+    ];
+    await db().execute(sql`
+      insert into commerce.field_groups (store_id, name, slug, entities, fields)
+      values (${store.storeId}::uuid, 'Loyalty', ${`loyalty-${run}`}, '["customer"]'::jsonb, ${JSON.stringify(fields)}::jsonb)`);
+    await db().execute(sql`
+      insert into commerce.field_values (store_id, entity, entity_id, locale, values)
+      values (${store.storeId}::uuid, 'customer', ${anna}::uuid, '', ${JSON.stringify({ [tier]: "gold", [secret]: "x" })}::jsonb)`);
+    const { marketingFields } = await import("./segment-facts");
+    expect((await marketingFields(store.storeId)).map((f) => [f.label, f.choices.map((c) => c.key)])).toEqual([["Tier", ["gold", "silver"]]]);
+    expect(await who(store, { kind: "field", field: tier, op: "is", value: "gold" })).toEqual(["anna"]);
+    expect(await who(store, { kind: "field", field: tier, op: "is", value: "silver" })).toEqual([]);
+    expect(await who(store, { kind: "field", field: tier, op: "empty" })).toEqual(["ola", "sub"]);
+    // A field not marked for marketing is never read, whatever a rule names: it holds as empty for everyone.
+    expect(await who(store, { kind: "field", field: secret, op: "filled" })).toEqual([]);
+    const names = await seg.segmentNames(store.member.store, [{ match: "all", conditions: [{ kind: "field", field: tier, op: "filled" }] }]);
+    expect(names.fieldLabel?.(tier)).toBe("Tier");
+  });
 });
 
 describe("saved segments on the newer conditions (E3.6)", () => {

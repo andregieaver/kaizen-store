@@ -4,7 +4,8 @@ import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { SMS_SUBSCRIBER_STATUSES } from "@/lib/sms";
-import type { Person, SegmentNeeds } from "@/lib/segments";
+import { MARKETING_FIELD_TYPES } from "@/lib/custom-fields";
+import type { Person, SegmentField, SegmentNeeds } from "@/lib/segments";
 
 import { PAID } from "./analytics-sql";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -18,7 +19,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * conditions hold for nobody then. People are keyed as the reader keys them: the account's address, else the row's own, in lower case.
  */
 
-export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms" | "lastClickAt">;
+export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms" | "lastClickAt" | "fields">;
 
 /** Which families were read (a person missing from one has none of it), and each person's facts by address. */
 export type ReadFacts = { read: Set<keyof SegmentFacts>; byEmail: Map<string, SegmentFacts> };
@@ -158,6 +159,59 @@ async function subscriptions(storeId: string, on: { subscriptions: boolean; boxe
  * Each person's consent to texts (D565): of the numbers kept with their address or their account, the best one (subscribed, then waiting for
  * its order, then the latest), as their customer page shows it.
  */
+export type MarketingField = SegmentField;
+
+/**
+ * The store's customer fields marked for marketing (M2.4, `marketing` on a field of an active group for customers): only these may be named
+ * by a segment, and only these are read for one. Top-level fields of `MARKETING_FIELD_TYPES`.
+ */
+export async function marketingFields(storeId: string): Promise<MarketingField[]> {
+  const rows = await typedRows(
+    z.object({ fields: z.unknown() }),
+    sql`select fields from commerce.field_groups where store_id = ${storeId}::uuid and active and entities ? 'customer'`,
+  );
+  const out: MarketingField[] = [];
+  for (const row of rows) {
+    if (!Array.isArray(row.fields)) continue;
+    for (const f of row.fields as Record<string, unknown>[]) {
+      if (f.marketing !== true || typeof f.id !== "string" || typeof f.type !== "string" || !(MARKETING_FIELD_TYPES as readonly string[]).includes(f.type)) continue;
+      const choices = Array.isArray(f.choices) ? (f.choices as { key?: unknown; label?: unknown }[]).flatMap((c) => (typeof c.key === "string" ? [{ key: c.key, label: typeof c.label === "string" ? c.label : c.key }] : [])) : [];
+      out.push({ id: f.id, label: typeof f.label === "string" ? f.label : f.id, type: f.type, choices });
+    }
+  }
+  return out;
+}
+
+/** A field's value as words in lower case, as `holds()` compares them: a choice's key (or each of several), yes or no, a number, a text. */
+export function fieldWords(value: unknown): string[] {
+  if (value === null || value === undefined || value === "") return [];
+  if (Array.isArray(value)) return value.flatMap(fieldWords);
+  if (typeof value === "boolean") return [value ? "yes" : "no"];
+  if (typeof value === "number") return [String(value)];
+  if (typeof value === "string") return [value.trim().toLowerCase()];
+  if (typeof value === "object" && "value" in (value as Record<string, unknown>)) return fieldWords((value as Record<string, unknown>).value);
+  return [];
+}
+
+/** The marked fields' values of each customer (M2.4), by the account's address; only fields the store marked, whatever a rule names. */
+async function fieldValues(storeId: string, ids: string[], only: string | null) {
+  const marked = new Set((await marketingFields(storeId)).map((f) => f.id));
+  const wanted = ids.filter((id) => marked.has(id));
+  if (wanted.length === 0) return [] as { email: string; values: Record<string, string[]> }[];
+  const rows = await typedRows(
+    z.object({ email: col.text, values: z.unknown() }),
+    sql`
+      select lower(c.email) as email, v.values from commerce.field_values v
+      join commerce.customers c on c.store_id = v.store_id and c.id = v.entity_id
+      where v.store_id = ${storeId}::uuid and v.entity = 'customer' and v.locale = '' and c.email <> '' and ${asked(sql`lower(c.email)`, only)}
+    `,
+  );
+  return rows.map((r) => {
+    const all = (r.values && typeof r.values === "object" ? r.values : {}) as Record<string, unknown>;
+    return { email: r.email, values: Object.fromEntries(wanted.map((id) => [id, fieldWords(all[id])])) };
+  });
+}
+
 /** When each person on the list last pressed a link in the store's emails (M2.4): a broadcast's or a flow's, within the clicks kept. */
 async function lastClicks(storeId: string, only: string | null) {
   return typedRows(
@@ -205,7 +259,7 @@ async function featuresOn(storeId: string) {
 
 /** Whether the rules ask for any of these facts at all (most segments do not, and read nothing more). */
 export const needsFacts = (needs: SegmentNeeds) =>
-  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms || needs.clicks;
+  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms || needs.clicks || needs.fields.length > 0;
 
 /** Reads the families `needs` asks for (`only`: the JSON list of addresses asked for, or null for everyone). */
 export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, only: string | null): Promise<ReadFacts> {
@@ -266,6 +320,11 @@ export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, onl
       of(r.email).sms = r.status;
     });
   }
+  if (needs.fields.length > 0) {
+    job("fields", fieldValues(storeId, needs.fields, only), (r) => {
+      of(r.email).fields = r.values;
+    });
+  }
   if (needs.clicks) {
     job("lastClickAt", lastClicks(storeId, only), (r) => {
       of(r.email).lastClickAt = r.at;
@@ -288,5 +347,6 @@ export function applySegmentFacts(people: Person[], { read, byEmail }: ReadFacts
     if (read.has("subscriptions")) p.subscriptions = facts.subscriptions ?? 0;
     if (read.has("sms")) p.sms = facts.sms ?? "none";
     if (read.has("lastClickAt")) p.lastClickAt = facts.lastClickAt ?? null;
+    if (read.has("fields")) p.fields = facts.fields ?? {};
   }
 }

@@ -350,6 +350,8 @@ export const fieldsEn = {
     instructionsHint: "Shown under the label when filling in the field. Shoppers never see it.",
     required: "Required",
     requiredHint: "Staff must fill it in before saving. A field hidden by its logic is never required.",
+    marketing: "Use it in segments",
+    marketingHint: "Choose customers by what is written here when you make a segment for emails, texts and offers.",
     width: "Width in the form",
     widthHint: "On wide screens; fields always fill the line on phones.",
     placeholder: "Placeholder (optional)",

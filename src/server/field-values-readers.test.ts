@@ -42,6 +42,13 @@ const READERS = [
  */
 const PRIVACY = ["src/server/privacy-erasure.ts", "src/server/retention.ts", "src/server/customer-merge.ts"];
 
+/**
+ * Segments (email plan M2.4): a customer's values of the fields the owner marked for marketing, read only to decide who is in a segment
+ * (`fieldValues()` in `segment-facts.ts`, checked against `marketingFields()`); a value is never shown to a shopper, put in an email or sent
+ * anywhere, and a field the owner did not mark is never read.
+ */
+const SEGMENTS = ["src/server/segment-facts.ts"];
+
 function sources(root: string): string[] {
   const found: string[] = [];
   for (const name of readdirSync(root)) {
@@ -59,13 +66,13 @@ const mentions = (file: string) => readFileSync(path.join(root, file), "utf8");
 describe("who reads custom field values", () => {
   it("is a short list of modules, none of which is a shopper's page, an email or an integration", () => {
     const reading = all.filter((file) => /commerce\.field_values/.test(mentions(file)) && !file.startsWith("src/db/"));
-    expect(reading.sort()).toEqual([...READERS, ...PRIVACY].sort());
+    expect(reading.sort()).toEqual([...READERS, ...PRIVACY, ...SEGMENTS].sort());
   });
 
   it("never reads customers' or orders' values by name, apart from the staff's own editors", () => {
     // The staff editors (`field-entities.ts`) reach them through `getFieldData()`, checked against the store's own thing.
     const naming = all.filter(
-      (file) => !file.startsWith("src/db/") && /field_values[\s\S]{0,300}'(customer|order)'/.test(mentions(file)) && !READERS.includes(file) && !PRIVACY.includes(file),
+      (file) => !file.startsWith("src/db/") && /field_values[\s\S]{0,300}'(customer|order)'/.test(mentions(file)) && !READERS.includes(file) && !PRIVACY.includes(file) && !SEGMENTS.includes(file),
     );
     expect(naming).toEqual([]);
     for (const file of READERS.filter((f) => f !== "src/server/custom-fields.ts")) {

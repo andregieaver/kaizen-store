@@ -477,6 +477,7 @@ export function FieldGroupEditor({
         freshIds={fresh}
         onFresh={markFresh}
         staffOnly={staffOnly}
+        marketable={draft.entities.includes("customer")}
         languages={languages}
         onApply={(next) => {
           setFields(

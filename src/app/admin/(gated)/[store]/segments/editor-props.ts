@@ -9,6 +9,7 @@ import { listTiers } from "@/server/customer-tiers";
 import { rfmGroups } from "@/server/analytics-customers-data";
 import { boughtChoices, storeTags } from "@/server/segments";
 import { smsOffered } from "@/server/sms";
+import { marketingFields } from "@/server/segment-facts";
 import type { Store } from "@/server/stores";
 import { dealsOn } from "@/lib/extensions";
 
@@ -18,7 +19,14 @@ import { dealsOn } from "@/lib/extensions";
  * while the store has them on (ecosystem plan E3.6, D718).
  */
 export async function editorChoices(store: Store, lang: AdminLang = "en") {
-  const [tiers, tags, rfm, bought, sms] = await Promise.all([listTiers(store.id), storeTags(store.id), rfmGroups(store, new Date()), boughtChoices(store), smsOffered(store.id)]);
+  const [tiers, tags, rfm, bought, sms, fields] = await Promise.all([
+    listTiers(store.id),
+    storeTags(store.id),
+    rfmGroups(store, new Date()),
+    boughtChoices(store),
+    smsOffered(store.id),
+    marketingFields(store.id),
+  ]);
   const regions = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "region" });
   const tongues = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
   const currency = mainCurrency(store);
@@ -29,6 +37,7 @@ export async function editorChoices(store: Store, lang: AdminLang = "en") {
     reviews: featureOn(store, "reviews"),
     subscriptions: featureOn(store, "subscriptions") || featureOn(store, "boxes"),
     sms,
+    fields: fields.length > 0,
   };
   return {
     currency,
@@ -40,6 +49,8 @@ export async function editorChoices(store: Store, lang: AdminLang = "en") {
     products: bought.products,
     categories: bought.categories,
     rfmReady: rfm.ready,
+    // The customer fields marked for marketing (M2.4), offered as conditions.
+    fields,
     offer,
   };
 }

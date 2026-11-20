@@ -12,6 +12,7 @@ import {
   FIELD_WIDTHS,
   MAX_CHOICES,
   MAX_GALLERY,
+  MARKETING_FIELD_TYPES,
   MAX_LAYOUTS,
   MAX_REPEATER_ROWS,
   MAX_SUB_FIELDS,
@@ -103,6 +104,7 @@ export function FieldEditorDialog({
   onFresh,
   sub = false,
   staffOnly = false,
+  marketable = false,
   languages,
   onApply,
   onClose,
@@ -122,6 +124,8 @@ export function FieldEditorDialog({
   sub?: boolean;
   /** A group for customers or orders (D120): staff only, so no Storefront tab (nothing is ever public). */
   staffOnly?: boolean;
+  /** A group for customers (M2.4): a field of a fitting type may be marked for use in segments. */
+  marketable?: boolean;
   /** The store's languages, the main one first. */
   languages: FieldLanguage[];
   onApply: (field: FieldDef) => void;
@@ -245,6 +249,7 @@ export function FieldEditorDialog({
                 otherNames={otherNames}
                 languages={languages}
                 attempted={attempted}
+                marketable={marketable}
               />
             )}
             {shownTab === "fields" && (
@@ -287,7 +292,8 @@ function General({
   otherNames,
   languages,
   attempted,
-}: PanelProps & { fresh: boolean; otherNames: string[]; languages: FieldLanguage[]; attempted: boolean }) {
+  marketable = false,
+}: PanelProps & { fresh: boolean; otherNames: string[]; languages: FieldLanguage[]; attempted: boolean; marketable?: boolean }) {
   const nameProblem =
     !NAME_PATTERN.test(draft.name) || draft.name.length > 40
       ? "invalid"
@@ -388,6 +394,21 @@ function General({
           <span className={`block ${hint}`}>{w.requiredHint}</span>
         </span>
       </label>
+      {/* M2.4: a customer's field the store may choose people by in its segments, only where the owner says so. */}
+      {marketable && MARKETING_FIELD_TYPES.includes(draft.type) && (
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={draft.marketing === true}
+            onChange={(event) => update({ marketing: event.target.checked || undefined })}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            <span className="font-medium">{w.marketing}</span>
+            <span className={`block ${hint}`}>{w.marketingHint}</span>
+          </span>
+        </label>
+      )}
     </>
   );
 }

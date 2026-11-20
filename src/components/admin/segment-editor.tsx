@@ -16,6 +16,7 @@ import {
   type Condition,
   type ConditionKind,
   type ConditionOffer,
+  type SegmentField,
   type Consent,
   type SegmentRules,
 } from "@/lib/segments";
@@ -39,6 +40,8 @@ type Props = {
   /** The store's products and product categories, by name, for the conditions on what people bought (ecosystem plan E3.6, D718). */
   products: { id: string; name: string }[];
   categories: { id: string; name: string }[];
+  /** The customer fields marked for marketing (M2.4). */
+  fields?: SegmentField[];
   rfmReady: boolean;
   /** Which conditions behind a feature or a setting are offered now. */
   offer: ConditionOffer;
@@ -266,6 +269,7 @@ function ConditionFields({
   languages,
   products,
   categories,
+  fields = [],
 }: { condition: Condition; onChange: (next: Condition) => void; words: MarketingMessages } & Props) {
   const ed = w.editor;
   const number = (value: number, set: (n: number) => void, label: string) => (
@@ -346,6 +350,47 @@ function ConditionFields({
           )}
         </>
       );
+    case "field": {
+      const chosen = fields.find((f) => f.id === c.field);
+      const askValue = c.op === "is" || c.op === "isNot";
+      const choices = chosen?.type === "boolean" ? [{ key: "yes", label: ed.yes }, { key: "no", label: ed.no }] : (chosen?.choices ?? []);
+      return (
+        <>
+          <select aria-label={ed.chooseField} value={c.field} onChange={(e) => onChange({ ...c, field: e.target.value, value: undefined })} className={field}>
+            <option value="">{ed.choose}</option>
+            {fields.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={w.kinds.field}
+            value={c.op}
+            onChange={(e) => onChange({ ...c, op: e.target.value as typeof c.op, value: e.target.value === "is" || e.target.value === "isNot" ? c.value : undefined })}
+            className={field}
+          >
+            <option value="is">{ed.fieldIs}</option>
+            <option value="isNot">{ed.fieldIsNot}</option>
+            <option value="filled">{ed.fieldFilled}</option>
+            <option value="empty">{ed.fieldEmpty}</option>
+          </select>
+          {askValue &&
+            (choices.length > 0 ? (
+              <select aria-label={ed.fieldValue} value={c.value ?? ""} onChange={(e) => onChange({ ...c, value: e.target.value || undefined })} className={field}>
+                <option value="">{ed.choose}</option>
+                {choices.map((choice) => (
+                  <option key={choice.key} value={choice.key}>
+                    {choice.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input aria-label={ed.fieldValue} value={c.value ?? ""} maxLength={200} onChange={(e) => onChange({ ...c, value: e.target.value || undefined })} className={field} />
+            ))}
+        </>
+      );
+    }
     case "clicked":
       return (
         <>

@@ -163,6 +163,9 @@ export const FIELD_TYPES = {
 
 export type FieldType = keyof typeof FIELD_TYPES;
 export const FIELD_TYPE_KEYS = Object.keys(FIELD_TYPES) as [FieldType, ...FieldType[]];
+/** The types a customer's field may be used in segments as (M2.4): a value that is a word, a number, a choice or a yes or no. */
+export const MARKETING_FIELD_TYPES: readonly FieldType[] = ["text", "number", "email", "select", "radio", "buttons", "checkbox", "boolean"];
+
 export const FIELD_CATEGORIES = ["Basic", "Choice", "Content", "Date and colour", "Relational", "Commerce", "Layout"] as const;
 
 /** Whether a type's value has one text per language; the rest are the same in every language. */
@@ -363,6 +366,8 @@ export type FieldDef = {
   filter?: boolean;
   search?: boolean;
   chat?: boolean;
+  /** A customer's field the store may choose people by in segments (email plan M2.4). */
+  marketing?: boolean;
   /** Product, page, category or tag and entry fields: whether one thing or several may be chosen. */
   multiple?: boolean;
   /** Entry fields (D326): the key of the content type whose entries it takes. */
@@ -1572,6 +1577,8 @@ const leafField = z.object({
   filter: z.boolean().optional(),
   search: z.boolean().optional(),
   chat: z.boolean().optional(),
+  // A customer's field the store may use in segments (email plan M2.4): only where the owner marks it, and only of `MARKETING_FIELD_TYPES`.
+  marketing: z.boolean().optional(),
   multiple: z.boolean().optional(),
   contentType: z.string().regex(CONTENT_TYPE_KEY).optional(),
   termKinds: z.array(z.enum(["category", "tag"])).min(1).max(2).optional(),

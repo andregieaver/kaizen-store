@@ -341,6 +341,8 @@ export const fieldsNb: FieldsMessages = {
     instructionsHint: "Vises under etiketten når feltet fylles ut. Kunder ser det aldri.",
     required: "Obligatorisk",
     requiredHint: "De ansatte må fylle det ut før de lagrer. Et felt som er skjult av logikken, er aldri obligatorisk.",
+    marketing: "Bruk det i segmenter",
+    marketingHint: "Velg kunder etter det som står her når du lager et segment for e-post, SMS og tilbud.",
     width: "Bredde i skjemaet",
     widthHint: "På brede skjermer; på telefoner fyller feltene alltid hele linjen.",
     placeholder: "Plassholder (valgfritt)",

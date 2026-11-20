@@ -28,7 +28,7 @@ import {
 import { audit } from "./auth";
 import { rfmGroups } from "./analytics-customers-data";
 import { NOT_EDIT_REFUND, PAID } from "./analytics-sql";
-import { applySegmentFacts, readSegmentFacts } from "./segment-facts";
+import { applySegmentFacts, marketingFields, readSegmentFacts } from "./segment-facts";
 import { uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
@@ -356,9 +356,9 @@ async function productCategories(storeId: string, ids: readonly string[] | null)
 }
 
 /** The names of the products and categories some rule sets name, for their words (`describeRules()`); a name not found is one gone. */
-export async function segmentNames(store: Pick<Store, "id" | "localization">, sets: readonly (SegmentRules | null)[]): Promise<Pick<DescribeContext, "productName" | "categoryName">> {
-  const { products, categories } = segmentNeeds(sets.filter((s): s is SegmentRules => s !== null));
-  const [titles, paths] = await Promise.all([
+export async function segmentNames(store: Pick<Store, "id" | "localization">, sets: readonly (SegmentRules | null)[]): Promise<Pick<DescribeContext, "productName" | "categoryName" | "fieldLabel">> {
+  const { products, categories, fields } = segmentNeeds(sets.filter((s): s is SegmentRules => s !== null));
+  const [titles, paths, marked] = await Promise.all([
     products.length === 0
       ? []
       : typedRows(
@@ -367,10 +367,12 @@ export async function segmentNames(store: Pick<Store, "id" | "localization">, se
             where p.store_id = ${store.id}::uuid and p.id = any(${uuidArray(products)})`,
         ),
     categories.length === 0 ? [] : productCategories(store.id, categories),
+    fields.length === 0 ? [] : marketingFields(store.id),
   ]);
   const product = new Map(titles.map((r) => [r.id, r.title]));
   const category = new Map(paths.map((r) => [r.id, r.name]));
-  return { productName: (id) => product.get(id), categoryName: (id) => category.get(id) };
+  const field = new Map(marked.map((f) => [f.id, f.label]));
+  return { productName: (id) => product.get(id), categoryName: (id) => category.get(id), fieldLabel: (id) => field.get(id) };
 }
 
 /** The most products the rule builder lists to choose from (a search narrows them in the browser). */

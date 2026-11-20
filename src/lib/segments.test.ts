@@ -261,7 +261,7 @@ describe("what the people reader reads for some rules (E3.6)", () => {
       { match: "all", conditions: [{ kind: "bought", has: true, products: [MUG, TEA] }, { kind: "deal", status: "open" }] },
       { match: "any", conditions: [{ kind: "bought", has: false, products: [MUG] }, { kind: "boughtCategory", has: true, categories: [SHOES] }, { kind: "rfm", groups: ["VIP"] }] },
     ]);
-    expect(needs).toEqual({ rfm: true, products: [MUG, TEA], categories: [SHOES], deals: true, support: false, reviews: false, subscriptions: false, sms: false, clicks: false });
+    expect(needs).toEqual({ rfm: true, products: [MUG, TEA], categories: [SHOES], deals: true, support: false, reviews: false, subscriptions: false, sms: false, clicks: false, fields: [] });
     expect(segmentNeeds([{ match: "all", conditions: [{ kind: "orders", op: "atLeast", value: 1 }] }])).toEqual({
       rfm: false,
       products: [],
@@ -272,6 +272,7 @@ describe("what the people reader reads for some rules (E3.6)", () => {
       subscriptions: false,
       sms: false,
       clicks: false,
+      fields: [],
     });
   });
 });
@@ -287,8 +288,9 @@ describe("the rule builder's list of conditions (E3.6)", () => {
 
   it("offers a condition behind a feature only while it is on", () => {
     const off = { rfmReady: false, deals: false, reviews: false, subscriptions: false, sms: false };
-    expect(CONDITION_GROUPS.flatMap((g) => g.kinds).filter((k) => !conditionOffered(k, off)).sort()).toEqual(["deal", "review", "rfm", "sms", "subscription"]);
+    expect(CONDITION_GROUPS.flatMap((g) => g.kinds).filter((k) => !conditionOffered(k, off)).sort()).toEqual(["deal", "field", "review", "rfm", "sms", "subscription"]);
     expect(conditionOffered("deal", { ...off, deals: true })).toBe(true);
+    expect(conditionOffered("field", { ...off, fields: true })).toBe(true);
     expect(conditionOffered("bought", off)).toBe(true);
     expect(conditionOffered("support", off)).toBe(true);
   });
@@ -323,5 +325,20 @@ describe("email engagement (M2.4)", () => {
     expect(segmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "clicked", op: "never" }] }).success).toBe(true);
     expect(segmentNeeds([{ match: "all", conditions: [{ kind: "clicked", op: "never" }] }]).clicks).toBe(true);
     expect(segmentNeeds([{ match: "all", conditions: [{ kind: "orders", op: "atLeast", value: 1 }] }]).clicks).toBe(false);
+  });
+});
+
+describe("customer fields marked for marketing (M2.4)", () => {
+  it("hold on what a field says, or whether it is filled in, and for nobody where fields were not read", async () => {
+    const { holds, segmentNeeds, segmentRulesSchema } = await import("./segments");
+    const p = person({ fields: { tier: ["gold"], note: [] } });
+    expect(holds({ kind: "field", field: "tier", op: "is", value: "Gold" }, p, today)).toBe(true);
+    expect(holds({ kind: "field", field: "tier", op: "isNot", value: "gold" }, p, today)).toBe(false);
+    expect(holds({ kind: "field", field: "tier", op: "filled" }, p, today)).toBe(true);
+    expect(holds({ kind: "field", field: "note", op: "empty" }, p, today)).toBe(true);
+    expect(holds({ kind: "field", field: "gone", op: "empty" }, p, today)).toBe(true);
+    expect(holds({ kind: "field", field: "tier", op: "filled" }, person(), today)).toBe(false);
+    expect(segmentNeeds([{ match: "all", conditions: [{ kind: "field", field: "tier", op: "filled" }, { kind: "field", field: "tier", op: "empty" }] }]).fields).toEqual(["tier"]);
+    expect(segmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "field", field: "tier", op: "is" }] }).success).toBe(false);
   });
 });
