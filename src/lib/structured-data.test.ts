@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { toMarket } from "./markets";
-import { parseStoreSeo } from "./seo";
+import { parseStoreSeo } from "./seo-schema";
 import {
   DEFAULT_RETURN_POLICY,
   postalAddress,

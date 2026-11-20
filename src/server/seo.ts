@@ -31,14 +31,13 @@ import {
   mergeGroups,
   ogLocale,
   parseRobotsRules,
-  parseStoreSeo,
   renderLlms,
   renderRobots,
   storeRobotsGroups,
-  storeSeoInput,
   summarize,
   type StoreSeo,
 } from "@/lib/seo";
+import { parseStoreSeo, storeSeoInput } from "@/lib/seo-schema";
 import { siteUrl } from "@/lib/site";
 import { docsHost, docsUrl } from "@/lib/docs-host";
 import { themeStoreAlternates, themeStoreUrl, themesHost, themesOrigin } from "@/lib/theme-host";

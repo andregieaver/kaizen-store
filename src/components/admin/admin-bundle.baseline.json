@@ -83,7 +83,6 @@
     "components/admin/save-template-dialog.tsx",
     "components/admin/saved-layout-dialog.tsx",
     "components/admin/segment-editor.tsx",
-    "components/admin/seo-fields.tsx",
     "components/admin/sms-views.tsx",
     "components/admin/store-copy-progress.tsx",
     "components/admin/store-copy-wizard.tsx",

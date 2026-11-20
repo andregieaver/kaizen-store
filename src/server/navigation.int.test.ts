@@ -5,7 +5,7 @@ import { closeDb, db } from "@/db/client";
 import { localizationOf } from "@/lib/localization";
 import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION, parseMenuItems, parseNavigation } from "@/lib/navigation";
-import { parseStoreSeo } from "@/lib/seo";
+import { parseStoreSeo } from "@/lib/seo-schema";
 
 import type { Membership } from "./auth";
 

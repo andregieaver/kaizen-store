@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { parseStoreSeo } from "@/lib/seo";
+import { parseStoreSeo } from "@/lib/seo-schema";
 
 import type { Membership } from "./auth";
 

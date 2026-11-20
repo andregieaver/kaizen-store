@@ -7,7 +7,7 @@ import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
 import { DEFAULT_STAY, type ProductInput } from "@/lib/product-input";
 import { productInput, seasonInput } from "@/lib/product-input-schema";
-import { parseStoreSeo } from "@/lib/seo";
+import { parseStoreSeo } from "@/lib/seo-schema";
 import { DEFAULT_RETURN_POLICY } from "@/lib/structured-data";
 import { templateSettings } from "@/lib/theme";
 

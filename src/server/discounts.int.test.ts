@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
-import { parseStoreSeo } from "@/lib/seo";
+import { parseStoreSeo } from "@/lib/seo-schema";
 
 import type { Membership } from "./auth";
 

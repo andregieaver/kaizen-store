@@ -1,15 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  parseRobotsRules,
-  parseStoreSeo,
-  renderLlms,
-  renderRobots,
-  seoFromForm,
-  storeRobotsGroups,
-  storeSeoInput,
-  summarize,
-} from "./seo";
+import { parseRobotsRules, renderLlms, renderRobots, seoFromForm, storeRobotsGroups, summarize } from "./seo";
+import { parseStoreSeo, storeSeoInput } from "./seo-schema";
 
 describe("parseStoreSeo", () => {
   it("fills in defaults, keeping what is valid", () => {
