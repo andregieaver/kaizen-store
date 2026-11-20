@@ -15,12 +15,12 @@ import {
   percentLabel,
   percentTextToBps,
   readAdjustment,
-  readBonusForm,
   refundNotes,
   rulesSummary,
   signedMoney,
   waitWords,
 } from "./bonus-admin";
+import { readBonusForm } from "./bonus-admin-schema";
 import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
 
 /** Intl puts a no-break space after the currency; tests compare plain spaces. */

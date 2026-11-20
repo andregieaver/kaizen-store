@@ -6,7 +6,8 @@ import { orderEn } from "@/lib/admin-messages/order.en";
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
-import { formFromSettings, readBonusForm } from "@/lib/bonus-admin";
+import { formFromSettings } from "@/lib/bonus-admin";
+import { readBonusForm } from "@/lib/bonus-admin-schema";
 import { BONUS_DEFAULTS, type BonusBalance, type BonusEntry, type BonusSettings } from "@/lib/bonus";
 
 import { BonusAdjustForm } from "./bonus-adjust-form";

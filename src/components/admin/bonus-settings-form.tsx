@@ -8,11 +8,11 @@ import {
   formFromSettings,
   moneyIn,
   orderedProblems,
-  readBonusForm,
   rulesSummary,
   type BonusField,
   type BonusFormValues,
 } from "@/lib/bonus-admin";
+import { readBonusForm } from "@/lib/bonus-admin-schema";
 import type { BonusResult, BonusSettings } from "@/lib/bonus";
 
 const control =
