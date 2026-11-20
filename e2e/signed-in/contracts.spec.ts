@@ -22,6 +22,8 @@ const TITLE = `Shop build ${run}`;
 let salesWasOn = false;
 let orgBefore: string | null = null;
 let dealId = "";
+/** Every deal this spec made, deleted after it however it ended, so no other spec in the store meets one. */
+const made: string[] = [];
 
 async function deals(page: Page, on: boolean) {
   await page.goto(`/admin/${E2E_STORE}/settings/features`);
@@ -78,7 +80,7 @@ test.afterAll(async ({ browser }) => {
   await page.close();
   const sql = testDb();
   try {
-    if (dealId) await sql`delete from commerce.deals where id = ${dealId}`;
+    for (const id of new Set([...made, dealId].filter(Boolean))) await sql`delete from commerce.deals where id = ${id}`;
     await sql`update commerce.stores set sales_pilot = false, organisation_number = ${orgBefore} where slug = ${E2E_STORE}`;
   } finally {
     await sql.end();
@@ -88,6 +90,7 @@ test.afterAll(async ({ browser }) => {
 test("an owner makes a contract on a deal from the template, sees it filled in, changes a word and deletes the draft", async ({ page }) => {
   await deals(page, true);
   dealId = await makeDeal(page);
+  made.push(dealId);
   await page.goto(`/admin/${E2E_STORE}/deals/${dealId}`);
   const card = page.getByRole("heading", { name: "Contracts" });
   await expect(card).toBeVisible();
@@ -97,6 +100,8 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   // The draft: its words and signers, and beside them the preview filled in from the deal.
   await expect(page.getByRole("heading", { level: 1, name: TITLE })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByLabel("Title")).toHaveValue(TITLE);
+  // The draft's address, gone back to by address: going back through the history depends on how each page was reached.
+  const draftUrl = page.url();
   const signers = page.getByRole("region", { name: "Who signs" });
   await expect(signers.getByLabel("Email")).toHaveValue(PERSON);
   const preview = page.locator("article.kc");
@@ -149,8 +154,8 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   await page.getByRole("button", { name: "Put the template away" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Put the template away" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Contract templates" })).toBeVisible({ timeout: 30_000 });
-  await page.goBack();
-  await page.goBack();
+  await page.goto(draftUrl);
+  await expect(page.getByRole("heading", { level: 1, name: TITLE })).toBeVisible({ timeout: 30_000 });
 
   // Contracts, under Deals in the menu, lists it with its deal (D857).
   await page.goto(page.url().replace(/\/deals\/.*$/, "/deals/contracts"));
@@ -160,7 +165,7 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   await expect(page.locator('a[aria-current="page"]', { hasText: /^Deals$/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: new RegExp(TITLE) }).filter({ hasText: "Draft" })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("contracts-list.png"), fullPage: true });
-  await page.goBack();
+  await page.goto(draftUrl);
 
   // The deal lists it as a draft.
   await page.getByRole("link", { name: "Back to the deal" }).click();
@@ -177,6 +182,7 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
 test("an owner sends a contract and signs for the store, and the customer signs it on the store's page with a code", async ({ page, browser }) => {
   await deals(page, true);
   dealId = dealId || (await makeDeal(page));
+  made.push(dealId);
   await page.goto(`/admin/${E2E_STORE}/deals/${dealId}`);
   await page.getByRole("button", { name: "New contract" }).click();
   await expect(page.getByRole("button", { name: "Send for signing" })).toBeEnabled({ timeout: 30_000 });
