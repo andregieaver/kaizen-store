@@ -861,6 +861,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D856 | **Contract words as rich text: a paragraph's and a clause's doc beside its plain text** | 2026-11-20 | [text](decisions/D856.md) |
 | D857 | **Contracts: live preview, full-width draft, versions shown, and a Contracts list under Deals** | 2026-11-20 | [text](decisions/D857.md) |
 | D858 | **Admin redesign round 72: Kaizena Flow's 100-day challenge, categories and tags and fonts on a phone** | 2026-11-20 | [text](decisions/D858.md) |
+| D859 | **The sign-up for extensions offers bundles and proposes the one that costs less or little more (D748 E7)** | 2026-11-20 | [text](decisions/D859.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
