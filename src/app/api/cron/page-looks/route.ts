@@ -1,7 +1,7 @@
 import { after, connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
-import { trackedRoute } from "@/server/cron-runs";
+import { trackedRoute, trackedWork } from "@/server/cron-runs";
 import { MAP_SHOT_MS, runMapShots } from "@/server/map-shots";
 import { browserLookPhotographer, browserMapPhotographer } from "@/server/page-look-runner";
 import { runLook, runPageLooks } from "@/server/page-looks";
@@ -30,10 +30,13 @@ async function run(request: Request) {
   const started = Date.now();
   const deadline = started + RUN_MS;
   after(async () => {
-    await runPageLooks(deadline, deps);
-    // Heatmaps' pictures (D656) after the looks: a look already running can end late, so never past 270 s of the 300.
-    const until = Math.min(started + 270_000, Math.max(Date.now() + 60_000, started + 120_000));
-    if (until - Date.now() >= MAP_SHOT_MS) await runMapShots(until, { photograph: browserMapPhotographer });
+    // The route's own record says only that it answered; the work is kept as `route.page-looks.work` (bloat review step 1.26).
+    await trackedWork("route.page-looks", 60, async () => {
+      await runPageLooks(deadline, deps);
+      // Heatmaps' pictures (D656) after the looks: a look already running can end late, so never past 270 s of the 300.
+      const until = Math.min(started + 270_000, Math.max(Date.now() + 60_000, started + 120_000));
+      if (until - Date.now() >= MAP_SHOT_MS) await runMapShots(until, { photograph: browserMapPhotographer });
+    });
   });
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }

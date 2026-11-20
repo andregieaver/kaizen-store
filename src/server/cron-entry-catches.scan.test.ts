@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -151,5 +151,22 @@ describe("scheduled jobs' entry functions", () => {
     expect(silent, 'report the error: catch (error) { report(error, "<part>"); … } — see src/server/cron-runs.ts').toEqual([]);
   });
 
-  it.todo("the seven routes that work after answering keep that work as a job of its own (trackedWork)");
+  it("the seven routes that work after answering keep that work as a job of its own (trackedWork)", () => {
+    for (const name of ["autopilot", "page-jobs", "broadcasts", "pack-pictures", "page-looks", "theme-shots", "cookie-scan"]) {
+      expect(read(`src/app/api/cron/${name}/route.ts`), name).toContain(`trackedWork("route.${name}"`);
+    }
+    // No route works after its answer outside a job of its own (the Dream Factory's is `tracked("dream-factory.advance", …)`).
+    const routes = readdirSync(join(ROOT, "src/app/api/cron"), { withFileTypes: true }).filter((d) => d.isDirectory());
+    const loose: string[] = [];
+    for (const dir of routes) {
+      const path = `src/app/api/cron/${dir.name}/route.ts`;
+      if (!existsSync(join(ROOT, path))) continue;
+      const text = read(path);
+      for (const m of text.matchAll(/\bafter\(/g)) {
+        const call = text.slice(m.index, closing(text, m.index + m[0].length - 1, "()") + 1);
+        if (!/trackedWork\(|tracked\(/.test(call)) loose.push(`${path}: ${call.replace(/\s+/g, " ").slice(0, 60)}`);
+      }
+    }
+    expect(loose, "work after a route's answer runs inside trackedWork(\"route.<name>\", …)").toEqual([]);
+  });
 });

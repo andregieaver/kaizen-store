@@ -27,6 +27,14 @@ describe("cron job health", () => {
     expect(cronHealth(row({ lastFinishedAt: null }), now)).toBe("late");
   });
 
+  it("never calls a route's after-answer work late, only failing or ok (bloat review step 1.26)", () => {
+    const twoDays = ago(2 * 86_400);
+    const work = row({ job: "route.cookie-scan.work", everySeconds: 60, lastFinishedAt: twoDays, lastOkAt: twoDays });
+    expect(cronHealth(work, now)).toBe("ok");
+    expect(cronHealth({ ...work, failures: 3, lastError: "boom" }, now)).toBe("failing");
+    expect(cronHealth({ ...work, job: "route.cookie-scan" }, now)).toBe("late");
+  });
+
   it("is failing after three failed runs in a row, however recent", () => {
     expect(cronHealth(row({ failures: 2, lastError: "boom" }), now)).toBe("ok");
     expect(cronHealth(row({ failures: 3, lastError: "boom" }), now)).toBe("failing");

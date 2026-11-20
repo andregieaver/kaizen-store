@@ -845,7 +845,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D840 | **A store is read without the Stripe SDK and without the page model** | 2026-11-20 | [text](decisions/D840.md) |
 | D841 | **Admin redesign round 68: Kaizena Flow's search, AI prices and A/B tests on a phone** | 2026-11-20 | [text](decisions/D841.md) |
 | D842 | **A listing fetches its first screen of tiles ahead and the rest on intent** | 2026-11-20 | [text](decisions/D842.md) |
-| D843 | **No scheduled job fails in silence: report() for caught errors, trackedWork() for work after a route's answer (bloat revi** | 2026-11-20 | [text](decisions/D843.md) |
+| D843 | **No scheduled job fails in silence: report() for caught errors, trackedWork() for work after a route's answer (bloat review step 1.26)** | 2026-11-20 | [text](decisions/D843.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

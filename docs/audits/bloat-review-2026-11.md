@@ -150,7 +150,7 @@ commit as the fix.
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | In progress | 18 Nov, 222eb50c, D770: 23,289 bytes no store page draws (held 25,000); first reading to take. |
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Done | 17 Nov (a0c1757f; D723): session-load.mjs measures what a session loads (1 of 20 samples); files over 100 KB (17) and 2,000 lines (12) only fall. |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Done | 17 Nov (e6dd7843; D745): refreshes counted per day, a job refreshing one subject 11+ times flagged. Store draws not counted: an `after()` in a render broke redirects (ede2cb39). |
-| 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
+| 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Done | 20 Nov (D843): 99 silent catches in 58 jobs report (jobReport()), 4 normal states named; 7 routes' work in trackedWork(). Jobs failing after the deploy: see D843. |
 | 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Done | 17 Nov (da36c66c; D716): first scripts held by name per page; browser words held at 34,360 B (owner's rule, 0.43). |
 | 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | Done | 17 Nov (9d9ad9b5; D717): 229 hand-down sites counted; 12.7 MB handed, 3.9 MB named; 63 hand an area nothing reads. |
 | 1.29 | Only if the free switches are not enough: build in CI and deploy the prebuilt output |  | M | strong | 1.21, 0.38, 1.20 | In progress | 18 Nov, efe24bc8, D773: manual prebuilt preview job; commit 2 waits for the trial, secrets and a deploy design. |
@@ -216,7 +216,7 @@ commit as the fix.
 |---|---|---|---|---|---|---|---|
 | 3.1 | Run one tick a minute, and call a route only when work waits | CR-1, CR-7, DQ-1, DP-7, SF-10, GAP-scheduled-s1 | L | review | 0.23, 1.10, 1.26, 1.22 | Open | |
 | 3.2 | Let the three feature routes follow what is due | CR-3, GAP-scheduled-1 | M | strong | 3.1, 1.10, 1.9 | Open | |
-| 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 | Open | |
+| 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 | Open | The registry keeps report() (jobReport(), D843). |
 | 3.4 | Give every daily function a ledger row of its own | CR-17, GAP-scheduled-s6 | M | review | 3.3, 3.1, 1.22, 1.26, 0.31 | Open | |
 | 3.5 | Give every table that grows by time a delete rule | DS-13, CR-10, GAP-database-s6 | M | strong | 0.2, 3.4 | Open | |
 | 3.6 | Indexes that fit the document jobs' windows |  | S | review |  | Done | 19 Nov, migration 20261119202909_document_job_indexes: the eight and step 3.7's two PDF-waiting indexes; EXPLAIN uses each for its job's statement. |

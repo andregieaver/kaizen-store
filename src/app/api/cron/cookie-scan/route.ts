@@ -4,7 +4,7 @@ import { after, connection } from "next/server";
 import { runScan } from "@/server/cookie-scan-runner";
 import { claimScan } from "@/server/cookie-scans";
 import { cronAuthorised } from "@/server/cron-auth";
-import { trackedRoute } from "@/server/cron-runs";
+import { trackedRoute, trackedWork } from "@/server/cron-runs";
 import { cookiesTag } from "@/server/site-cookies";
 
 /** A scan opens up to twelve pages in Chromium, which takes a while to start on a cold function. */
@@ -21,9 +21,12 @@ async function run(request: Request) {
   const scan = await claimScan();
   if (scan) {
     after(async () => {
-      await runScan(scan);
-      // The cookie page and banner follow what the scan found.
-      revalidateTag(cookiesTag(scan.storeId), "max");
+      // The route's own record says only that it answered; the work is kept as `route.cookie-scan.work` (bloat review step 1.26).
+      await trackedWork("route.cookie-scan", 60, async () => {
+        await runScan(scan);
+        // The cookie page and banner follow what the scan found.
+        revalidateTag(cookiesTag(scan.storeId), "max");
+      });
     });
   }
   return Response.json({ scan: scan?.id ?? null }, { headers: { "Cache-Control": "no-store" } });

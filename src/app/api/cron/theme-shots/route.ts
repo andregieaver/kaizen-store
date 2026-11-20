@@ -2,7 +2,7 @@ import { revalidateTag } from "next/cache";
 import { after, connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
-import { trackedRoute } from "@/server/cron-runs";
+import { trackedRoute, trackedWork } from "@/server/cron-runs";
 import { DESIGNS_TAG } from "@/server/design-presets";
 import { browserPhotographer } from "@/server/theme-shot-runner";
 import { runThemeShots } from "@/server/theme-shots";
@@ -24,9 +24,12 @@ async function run(request: Request) {
   const started = Date.now();
   const origin = new URL(request.url).origin;
   after(async () => {
-    const result = await runThemeShots(origin, started + RUN_MS, { photograph: browserPhotographer });
-    // The theme store's cards, pages and share images follow the pictures made.
-    if (result.done > 0) revalidateTag(DESIGNS_TAG, "max");
+    // The route's own record says only that it answered; the work is kept as `route.theme-shots.work` (bloat review step 1.26).
+    await trackedWork("route.theme-shots", 60, async () => {
+      const result = await runThemeShots(origin, started + RUN_MS, { photograph: browserPhotographer });
+      // The theme store's cards, pages and share images follow the pictures made.
+      if (result.done > 0) revalidateTag(DESIGNS_TAG, "max");
+    });
   });
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }

@@ -1,7 +1,7 @@
 import { after, connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
-import { trackedRoute } from "@/server/cron-runs";
+import { trackedRoute, trackedWork } from "@/server/cron-runs";
 import { runPageJobs } from "@/server/site-tools";
 
 /** A build plans and writes for a minute or two, a picture takes the model up to 150 seconds: a run starts none after `RUN_MS`. */
@@ -17,7 +17,10 @@ async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
   const until = Date.now() + RUN_MS;
-  after(() => runPageJobs(until));
+  // The route's own record says only that it answered; the work is kept as `route.page-jobs.work` (bloat review step 1.26).
+  after(async () => {
+    await trackedWork("route.page-jobs", 60, () => runPageJobs(until));
+  });
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }
 
