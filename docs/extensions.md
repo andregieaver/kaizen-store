@@ -539,6 +539,10 @@ through `commerce.set_price`. Allowances, trial and grace lengths and founding o
   the price tuning setting), applied by CI 20 November 2026 with run 1804 (commit 57736c0c; held back from run 1798, red over another
   session's test, ci-red #34). In production: no offer kept yet, price tuning off at 20 %. Advisors: INFO only (RLS on, no policy; the new
   indexes not yet used); no new warning.
+- E7 part five (the sign-up's bundles and upsells, D859): `20261120161643_lush_the_liberteens` (`platform_settings.extension_upsell_percent`),
+  applied by CI 20 November 2026 with the first green run after it (runs 1821 to 1823; held back from runs 1814 to 1820: the sign-up page's
+  plain read broke the prerender, fixed in 84851fe0 and 7a0f2371, then D862's contracts spec, ci-red #36). Production runs 275a6922 with
+  the sign-up's bundles live and E9's eval fix (e447911c). Advisors: INFO only, nothing new on the column; no new warning.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
