@@ -508,6 +508,9 @@ export const platformToolsEn = {
   },
   usage: {
     title: "AI usage",
+    /** Round 66 (D835): the breakdowns on a phone. */
+    phoneOpen: "Open",
+    phoneClose: "Close",
     platformIntro: "What every store and Kaizena Flow itself used, {period}.",
     aiSettings: "AI settings",
     requests: "Requests",

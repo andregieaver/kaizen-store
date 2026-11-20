@@ -502,6 +502,9 @@ export const platformToolsNb: PlatformToolsMessages = {
   },
   usage: {
     title: "KI-bruk",
+    /** Runde 66 (D835): oppdelingene på en telefon. */
+    phoneOpen: "Åpne",
+    phoneClose: "Lukk",
     platformIntro: "Hva hver butikk og Kaizena Flow selv har brukt, {period}.",
     aiSettings: "KI-innstillinger",
     requests: "Forespørsler",
