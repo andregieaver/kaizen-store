@@ -9,6 +9,10 @@ The comparison pages have their own generator (`docs/comparison-evidence/pages/`
 | Languages and Currencies | `/languages-and-currencies` | `languages-and-currencies.test.ts` | `664ec8d9-171e-4c8f-bfe7-b66151da30f3` |
 | Investors | `/investors` | `investors.test.ts` | `a4ec2279-6f0f-443c-a2fc-bb315ee76044` (Kaizena Flow's own store) |
 | Mission Statement | `/mission-statement` | `mission-statement.test.ts` | `f3a4b3cd-35bf-4ed0-bcd7-84e96178eb91` (Kaizena Flow's own store) |
+| Support Desk | `/support-desk` | `standalone-products.test.ts` | `194e74a0-39f9-428a-b57d-ac90f5ed464d` (Kaizena Flow's own store) |
+| Email Automation | `/email-automation` | `standalone-products.test.ts` | `abd30949-ef48-4b8d-9d39-78067241e3f3` (Kaizena Flow's own store) |
+| Work | `/work` | `standalone-products.test.ts` | `7232b055-590c-4997-93a0-e219f47088cb` (Kaizena Flow's own store) |
+| Deals and Contracts | `/deals` | `standalone-products.test.ts` | `c1ad81a3-1d53-4a1a-a8d1-b69d7a1f1f1b` (Kaizena Flow's own store) |
 
 `try-the-page-builder.test.ts` (*Try the page builder*, D457 S4) is here too, with its own parts and its notes in `docs/builder-sandbox.md`.
 
@@ -88,3 +92,18 @@ KaizenaLabs", and a Mission Statement "with mockup content based of what's writt
   the builder's translation.
 - **The footer:** both footers (the store's and the platform's own, which platform routes such as sign-up draw) were saved as drafts with the
   one link corrected to `/mission-statement`; the live footers keep the old link until the owner publishes them.
+
+## The four product pages, 20 November 2026
+
+D748 E7 part four (`docs/extensions.md` 7): a page for each extension sold on its own, made by one generator in the feature pages' shape
+(6.11): the hero, three cards, two or three feature rows, questions and the end, each main action *Start Your Free Trial* to
+`/sign-up/extensions?with={id}` and the end's link to `/pricing`. Every line is built; the sources and what is held back are beside each
+page in the generator (no WhatsApp or text messages on the desk, no open tracking and no own sending domain without a store, Norwegian books
+only, no card payment of an invoice, a simple electronic signature and not BankID). No issues and no claims found. Saved as new drafts of
+Kaizena Flow's own store (`published` null, a `saved` version, a `store.page_saved` entry), each guarded by the md5 of the checked JSON.
+
+**Before publishing:** the sign-up their buttons lead to answers only once `STANDALONE_SIGNUP_OPEN` is on (off until email automation has a
+way in for a workspace's contacts, `docs/extensions.md` 13, E7 part three b): publish them together with that. Look at each on a phone and in
+dark mode; screenshots of the inbox, a flow, a Work invoice and the deals board would make the feature rows better. They belong in the
+*Explore* menu's *Run your business* group (the owner's to approve).
+

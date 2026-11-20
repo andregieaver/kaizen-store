@@ -471,6 +471,10 @@ website chat (`widgetShop()`, in the workspace's one market); the storefront's f
 has no way in for contacts (they come from a site's forms, checkout, My account or a Shopify or WooCommerce import, `SUBSCRIBE_SOURCES`):
 either email automation is not offered on its own until a contacts import exists, or that import is built first (the owner's choice).
 
+**E7 as built, part four (20 November 2026).** The four product pages, `/support-desk`, `/email-automation`, `/work` and `/deals`, made by
+`docs/site-pages/standalone-products.test.ts` from `docs/site-design.md` (the feature pages' shape), each claim built and its source in the
+generator, are saved as drafts of Kaizena Flow's own store for the owner to publish together with the sign-up (`docs/site-pages/README.md`).
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
