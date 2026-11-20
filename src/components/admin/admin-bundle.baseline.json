@@ -93,7 +93,6 @@
     "components/admin/work/invoice-lines-editor.tsx",
     "components/admin/work/invoice-payments.tsx",
     "components/admin/work/log-time-form.tsx",
-    "components/admin/work/owner-parts.tsx",
     "components/admin/work/quick-timer.tsx",
     "components/admin/work/recurring-controls.tsx",
     "components/admin/work/recurring-form.tsx",

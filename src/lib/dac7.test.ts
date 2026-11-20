@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { decimalAmount, ibanValid, quarterOf, taxDetailsInput, toCsv } from "./dac7";
+import { decimalAmount, ibanValid, quarterOf, toCsv } from "./dac7";
+import { taxDetailsInput } from "./dac7-schema";
 
 const person = {
   kind: "individual",

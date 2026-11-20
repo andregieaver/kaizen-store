@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { zonedDate } from "./booking-slots";
 import { isCurrency, minorUnitDigits } from "./money";
 
@@ -26,13 +24,6 @@ export type TaxDetails = {
   iban: string;
 };
 
-const country = (message: string) =>
-  z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{2}$/, message);
-
 /** Whether an IBAN's check digits add up (ISO 13616, mod 97). */
 export function ibanValid(iban: string): boolean {
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban)) return false;
@@ -44,41 +35,6 @@ export function ibanValid(iban: string): boolean {
   }
   return rest === 1;
 }
-
-/** A host's details as they type them in their area. */
-export const taxDetailsInput = z
-  .object({
-    kind: z.enum(["individual", "entity"]),
-    legalName: z.string().trim().min(1, "Write your full name, or your business's legal name.").max(200),
-    dateOfBirth: z
-      .string()
-      .trim()
-      .transform((v) => v || null)
-      .pipe(z.iso.date("Give your date of birth.").nullable()),
-    address: z.string().trim().min(5, "Write your address: street, postcode and town.").max(400),
-    country: country("Choose the country you live in, or where your business is."),
-    tin: z
-      .string()
-      .trim()
-      .transform((v) => v.replace(/\s+/g, ""))
-      .pipe(z.string().min(3, "Write your tax identification number.").max(40)),
-    tinCountry: country("Choose the country that gave the tax identification number."),
-    vatNumber: z.string().trim().max(40).default(""),
-    businessNumber: z.string().trim().max(40).default(""),
-    iban: z
-      .string()
-      .trim()
-      .transform((v) => v.replace(/\s+/g, "").toUpperCase())
-      .refine((v) => v === "" || ibanValid(v), "The IBAN is not right. Check it against your bank's."),
-  })
-  .superRefine((value, ctx) => {
-    if (value.kind === "individual" && !value.dateOfBirth) {
-      ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "Give your date of birth." });
-    }
-    if (value.kind === "entity" && !value.businessNumber) {
-      ctx.addIssue({ code: "custom", path: ["businessNumber"], message: "Write your business's registration number." });
-    }
-  });
 
 /** The quarter (1 to 4) a moment falls in, where the store is. */
 export function quarterOf(at: string | number, timeZone: string): 1 | 2 | 3 | 4 {

@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { decimalAmount, quarterOf, taxDetailsInput, toCsv, type TaxDetails } from "@/lib/dac7";
+import { decimalAmount, quarterOf, toCsv, type TaxDetails } from "@/lib/dac7";
+import { taxDetailsInput } from "@/lib/dac7-schema";
 
 import { audit } from "./auth";
 import { hostOwnsResource, type Hosting } from "./hosts";
