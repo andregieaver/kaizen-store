@@ -1,6 +1,6 @@
 import "server-only";
 
-import { domainsEn } from "@/lib/admin-messages/domains.en";
+import { DNS_EFFECTS_EN, DOMAIN_HEALTH_EN, DOMAIN_MOVE_EN } from "@/lib/domain-labels";
 import { effectText, isProtected, type DnsChange, type DnsPlan } from "@/lib/dns-plan";
 import { describeRecord } from "@/lib/dns-records";
 import { recipeChanges } from "@/lib/dns-recipes";
@@ -35,7 +35,7 @@ type Ctx = { account: Account; store: Store };
 
 const page = (store: Store) => `/admin/${store.slug}/settings/domains`;
 
-const said = (f: Finding) => ({ finding: f.code, severity: f.severity, says: findingText(f, domainsEn.health), fix: f.fix });
+const said = (f: Finding) => ({ finding: f.code, severity: f.severity, says: findingText(f, DOMAIN_HEALTH_EN), fix: f.fix });
 
 const deps = (): HealthDeps => ({ registrations: registrationFacts });
 
@@ -253,7 +253,7 @@ export async function dnsApprovalDetails(ctx: Ctx, name: string, args: Record<st
   if ("problem" in made) return null;
   const preview = await previewDnsChange(ctx.store.id, made.apex, made.changes);
   if (!preview.ok || !preview.plan.ok) return null;
-  const words = preview.plan.effects.map((e) => effectText(e, domainsEn.dns.effects));
+  const words = preview.plan.effects.map((e) => effectText(e, DNS_EFFECTS_EN));
   const lines = [...preview.plan.removes.map((r) => `− ${describeRecord(r, made.apex)}`), ...preview.plan.adds.map((r) => `+ ${describeRecord(r, made.apex)}`)];
   return { summary: [`Change the DNS of ${made.apex}: ${words.join(" ")}`, ...lines].join("\n").slice(0, 1800), args: { ...args, rev: preview.plan.rev }, touchesEmail: preview.plan.touchesEmail };
 }
@@ -270,7 +270,7 @@ export async function dnsGateNeeded(ctx: Ctx, name: string, args: Record<string,
 }
 
 const applied = (apex: string, plan: DnsPlan, store: Store) => ({
-  done: `Changed the DNS of ${apex}. ${plan.effects.map((e) => effectText(e, domainsEn.dns.effects)).join(" ")} It's live at Kaizena Flow's nameservers now; some networks may show the old answer for up to an hour.`,
+  done: `Changed the DNS of ${apex}. ${plan.effects.map((e) => effectText(e, DNS_EFFECTS_EN)).join(" ")} It's live at Kaizena Flow's nameservers now; some networks may show the old answer for up to an hour.`,
   page: page(store),
 });
 
@@ -329,7 +329,7 @@ const movePage = (store: Store, domain: string, goal?: string) =>
 export async function planDomainMoveTool(ctx: Ctx, { domain, goal }: OwnerToolInput<"plan_domain_move">) {
   const plan = await movePlan(ctx.store.id, normal(domain), goal);
   if (!plan.ok) return fail(plan.problems.join(" "));
-  const w = domainsEn.move;
+  const w = DOMAIN_MOVE_EN;
   const fill = (text: string, values: Record<string, string>) => text.replace(/\{(\w+)\}/g, (all, key: string) => values[key] ?? all);
   return {
     domain: plan.facts.apex,

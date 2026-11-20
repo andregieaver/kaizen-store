@@ -1,4 +1,4 @@
-import { oauthEn } from "./admin-messages/oauth.en";
+import { OAUTH_WORDS } from "./admin-words/oauth";
 import { API_ERRORS, API_SCOPES, isApiPower, PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode, type ApiScope } from "./admin-api";
 import { ADMIN_API, errorsOf, type AdminOperation } from "./admin-api-routes";
 import { APP_SCOPES } from "./apps";
@@ -201,7 +201,7 @@ export function adminOpenApi(server: string, contractVersion?: string) {
               authorizationUrl: `${new URL(server).origin}${OAUTH_PATHS.authorize}`,
               tokenUrl: `${new URL(server).origin}${OAUTH_PATHS.token}`,
               refreshUrl: `${new URL(server).origin}${OAUTH_PATHS.token}`,
-              scopes: Object.fromEntries(APP_SCOPES.map((scope) => [scope, isApiPower(scope) ? SCOPE_TEXT[scope as ApiScope] : scopeLabel(oauthEn, scope)])),
+              scopes: Object.fromEntries(APP_SCOPES.map((scope) => [scope, isApiPower(scope) ? SCOPE_TEXT[scope as ApiScope] : scopeLabel(OAUTH_WORDS.en, scope)])),
             },
           },
         },

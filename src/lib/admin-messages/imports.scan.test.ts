@@ -65,6 +65,7 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/analytics-note-labels.ts": "The analytics reports' notes in English, which the report servers write, the AI manager and the CSV read and sayIn() matches, as well.",
   "lib/finance-statement-labels.ts": "The finance bridge's lines and notes in English, read by financeStatement() for the morning summary and the CSV export as well.",
   "lib/tax-report-labels.ts": "A tax report's refusals in English, which rateProblemText() matches in tax-report-words.ts (a module the tax views import in the browser) as well.",
+  "lib/domain-labels.ts": "A domain's findings, the DNS changes' effects and the move's checklist in English, read by the AI manager's domain tools and the holder's assistant as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { invoicesEn } from "./admin-messages/invoices.en";
 import {
   checkAgainSentence,
   countsSentence,
@@ -89,45 +90,45 @@ describe("the words", () => {
   });
 
   it("says what needs a person first, and says so when nothing does", () => {
-    expect(countsSentence({ waiting: 0, overdue: 0, pdfFailing: 0 })).toBe("Every paid order has its invoice.");
-    expect(countsSentence({ waiting: 1, overdue: 0, pdfFailing: 0 })).toBe("1 paid order is waiting for an invoice.");
-    expect(countsSentence({ waiting: 3, overdue: 2, pdfFailing: 1 })).toBe(
+    expect(countsSentence({ waiting: 0, overdue: 0, pdfFailing: 0 }, invoicesEn)).toBe("Every paid order has its invoice.");
+    expect(countsSentence({ waiting: 1, overdue: 0, pdfFailing: 0 }, invoicesEn)).toBe("1 paid order is waiting for an invoice.");
+    expect(countsSentence({ waiting: 3, overdue: 2, pdfFailing: 1 }, invoicesEn)).toBe(
       "2 past the deadline for a reverse-charge invoice, 3 paid orders are waiting for an invoice, 1 PDF was not made.",
     );
   });
 
   it("says what Check again did", () => {
-    expect(checkAgainSentence(0, 0)).toMatch(/Nothing new/);
-    expect(checkAgainSentence(1, 0)).toBe("1 invoice issued.");
-    expect(checkAgainSentence(2, 1)).toBe("2 invoices issued and 1 credit note issued.");
+    expect(checkAgainSentence(0, 0, invoicesEn)).toMatch(/Nothing new/);
+    expect(checkAgainSentence(1, 0, invoicesEn)).toBe("1 invoice issued.");
+    expect(checkAgainSentence(2, 1, invoicesEn)).toBe("2 invoices issued and 1 credit note issued.");
   });
 
   it("says what sending a document again did, and why not", () => {
-    expect(sentAgainSentence("invoice", "sent")).toEqual({ ok: true, message: "The invoice was sent to the order's email address." });
-    expect(sentAgainSentence("credit_note", "logged").ok).toBe(true);
-    expect(sentAgainSentence("credit_note", "duplicate").ok).toBe(false);
-    expect(sentAgainSentence("invoice", null).message).toMatch(/could not be sent/);
-    expect(sentAgainSentence("invoice", "failed").ok).toBe(false);
+    expect(sentAgainSentence("invoice", "sent", invoicesEn)).toEqual({ ok: true, message: "The invoice was sent to the order's email address." });
+    expect(sentAgainSentence("credit_note", "logged", invoicesEn).ok).toBe(true);
+    expect(sentAgainSentence("credit_note", "duplicate", invoicesEn).ok).toBe(false);
+    expect(sentAgainSentence("invoice", null, invoicesEn).message).toMatch(/could not be sent/);
+    expect(sentAgainSentence("invoice", "failed", invoicesEn).ok).toBe(false);
   });
 
   it("writes a store day as the admin does, and leaves what is not a day as it is", () => {
-    expect(dayLabel("2026-10-05")).toBe("5 Oct 2026");
-    expect(dayLabel("2026-10-05T22:00:00Z")).toBe("5 Oct 2026");
-    expect(dayLabel(null)).toBe("–");
-    expect(dayLabel("soon")).toBe("soon");
+    expect(dayLabel("2026-10-05", invoicesEn)).toBe("5 Oct 2026");
+    expect(dayLabel("2026-10-05T22:00:00Z", invoicesEn)).toBe("5 Oct 2026");
+    expect(dayLabel(null, invoicesEn)).toBe("–");
+    expect(dayLabel("soon", invoicesEn)).toBe("soon");
   });
 
   it("labels the treatments, and shows a dash for none", () => {
-    expect(vatKindLabel("reverse_charge")).toBe("Reverse charge");
-    expect(vatKindLabel("ioss")).toBe("IOSS");
-    expect(vatKindLabel(null)).toBe("–");
+    expect(vatKindLabel("reverse_charge", invoicesEn)).toBe("Reverse charge");
+    expect(vatKindLabel("ioss", invoicesEn)).toBe("IOSS");
+    expect(vatKindLabel(null, invoicesEn)).toBe("–");
   });
 
   it("turns the CSV route's code into a fixed sentence, and nothing else", () => {
-    expect(exportProblemOf("period")).toMatch(/Choose a period/);
-    expect(exportProblemOf("too_many")).toMatch(/20,000/);
-    expect(exportProblemOf("<script>")).toBeNull();
-    expect(exportProblemOf("toString")).toBeNull();
-    expect(exportProblemOf(undefined)).toBeNull();
+    expect(exportProblemOf("period", invoicesEn)).toMatch(/Choose a period/);
+    expect(exportProblemOf("too_many", invoicesEn)).toMatch(/20,000/);
+    expect(exportProblemOf("<script>", invoicesEn)).toBeNull();
+    expect(exportProblemOf("toString", invoicesEn)).toBeNull();
+    expect(exportProblemOf(undefined, invoicesEn)).toBeNull();
   });
 });

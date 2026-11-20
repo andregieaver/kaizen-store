@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { orderEn } from "@/lib/admin-messages/order.en";
 import { unitsToSend } from "@/lib/fulfilment";
 import { parseOrderListParams } from "@/lib/order-list";
 import { undoneMessage } from "@/lib/shipment-undo";
@@ -163,7 +164,7 @@ describe("a parcel booked with a carrier", () => {
     const undone = await undoShipment(store.storeId, order.orderId, sent.shipment.id, store.accountId, "Booked twice");
     expect(undone).toMatchObject({ ok: true, units: 2, left: 2, bookedWith: "Posten / Bring" });
     if (!undone.ok) throw new Error("not undone");
-    const message = undoneMessage(undone);
+    const message = undoneMessage(undone, orderEn.parcels);
     expect(message).toContain("The booking with Posten / Bring was not cancelled: cancel it with Posten / Bring yourself.");
     expect(message).toContain("The customer was not emailed");
     expect(await carrierLabel(store.storeId, order.orderId, sent.shipment.id)).toBeNull();

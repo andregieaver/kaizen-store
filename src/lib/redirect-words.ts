@@ -1,4 +1,5 @@
-import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
+import type { RedirectsMessages } from "./admin-messages/redirects.en";
+import { REDIRECTS_WORDS } from "./admin-words/redirects";
 import type { Finding } from "./data-job";
 
 /**
@@ -24,13 +25,16 @@ function pattern(english: string): { names: string[]; re: RegExp } {
   return { names, re: new RegExp(`^${source}$`, "s") };
 }
 
+/** The English the checks and the service write, which the patterns match. */
+const REDIRECTS_EN = REDIRECTS_WORDS.en;
+
 type FindingKey = keyof RedirectsMessages["findings"];
-const FINDING_PATTERNS = new Map(Object.entries(redirectsEn.findings).map(([code, english]) => [code, pattern(english)]));
-const PROBLEM_PATTERNS = Object.entries(redirectsEn.problems).map(([key, english]) => ({ key: key as keyof RedirectsMessages["problems"], ...pattern(english) }));
+const FINDING_PATTERNS = new Map(Object.entries(REDIRECTS_EN.findings).map(([code, english]) => [code, pattern(english)]));
+const PROBLEM_PATTERNS = Object.entries(REDIRECTS_EN.problems).map(([key, english]) => ({ key: key as keyof RedirectsMessages["problems"], ...pattern(english) }));
 
 /** A row of quoted addresses (`"/a", "/b" and "/c" and 2 more`) with its joining words in the language. */
 function addressRow(text: string, words: RedirectsMessages): string {
-  const en = redirectsEn.addressRow;
+  const en = REDIRECTS_EN.addressRow;
   const w = words.addressRow;
   if (text === en.none) return w.none;
   const more = new RegExp(` ${escape(en.more).replace("\\{n\\}", "(\\d+)")}$`);
@@ -38,7 +42,7 @@ function addressRow(text: string, words: RedirectsMessages): string {
 }
 
 /** A finding of a redirect's check in the language: the sentence of its code with the addresses carried over. */
-export function redirectFindingText(finding: Pick<Finding, "code" | "text">, words: RedirectsMessages = redirectsEn): string {
+export function redirectFindingText(finding: Pick<Finding, "code" | "text">, words: RedirectsMessages): string {
   const found = FINDING_PATTERNS.get(finding.code);
   if (!found) return finding.text;
   const match = found.re.exec(finding.text);
@@ -48,11 +52,11 @@ export function redirectFindingText(finding: Pick<Finding, "code" | "text">, wor
 }
 
 /** The findings of a check, each said in the language. */
-export const redirectFindings = <F extends Pick<Finding, "code" | "text">>(findings: readonly F[], words: RedirectsMessages = redirectsEn): F[] =>
+export const redirectFindings = <F extends Pick<Finding, "code" | "text">>(findings: readonly F[], words: RedirectsMessages): F[] =>
   findings.map((f) => ({ ...f, text: redirectFindingText(f, words) }));
 
 /** A refusal of the service in the language, with a number or an address carried over. */
-export function redirectProblemText(text: string, words: RedirectsMessages = redirectsEn): string {
+export function redirectProblemText(text: string, words: RedirectsMessages): string {
   for (const { key, names, re } of PROBLEM_PATTERNS) {
     const match = re.exec(text);
     if (!match) continue;
@@ -61,7 +65,7 @@ export function redirectProblemText(text: string, words: RedirectsMessages = red
   return text;
 }
 
-export const redirectProblems = (problems: readonly string[], words: RedirectsMessages = redirectsEn): string[] => problems.map((p) => redirectProblemText(p, words));
+export const redirectProblems = (problems: readonly string[], words: RedirectsMessages): string[] => problems.map((p) => redirectProblemText(p, words));
 
 /** An action's answer with its refusals (`problems`, `problem`) and its check's findings said in the language; the rest as it was. */
 export function redirectAnswer<T>(answer: T, words: RedirectsMessages): T {

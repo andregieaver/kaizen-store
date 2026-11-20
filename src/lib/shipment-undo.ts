@@ -1,5 +1,5 @@
 import { countWords, fillWords } from "./admin-fill";
-import { orderEn, type OrderMessages } from "./admin-messages/order.en";
+import type { OrderMessages } from "./admin-messages/order.en";
 
 /** The words the undo of a parcel is told in (D312 A4): the `order` catalogue's `parcels`, English unless given. */
 type UndoWords = OrderMessages["parcels"];
@@ -18,7 +18,7 @@ export const bookedCarrierName = (carrierId: string | null | undefined): string 
 export const cancelsOnUndo = (carrierId: string | null | undefined): boolean => Boolean(carrierId && carrierInfo(carrierId)?.available.includes("cancel"));
 
 /** What the confirmation says before a parcel is undone: what happens, and what Kaizen does NOT do. */
-export function undoWarnings(parcel: { bookedWith: string | null; units: number; receiptRecorded: boolean; cancels?: boolean }, w: UndoWords = orderEn.parcels): string[] {
+export function undoWarnings(parcel: { bookedWith: string | null; units: number; receiptRecorded: boolean; cancels?: boolean }, w: UndoWords): string[] {
   const units = parcel.units > 0 ? countWords(parcel.units, w.warnUnits) : w.warnItems;
   return [
     fillWords(w.warnStays, { units }),
@@ -34,7 +34,7 @@ export function undoWarnings(parcel: { bookedWith: string | null; units: number;
  */
 export function undoneMessage(
   done: { units: number; deliveredWas: string | null; bookedWith: string | null; cancelled?: { ok: true } | { ok: false; problem: string } | null },
-  w: UndoWords = orderEn.parcels,
+  w: UndoWords,
 ): string {
   const units = done.units > 0 ? countWords(done.units, w.undoneUnits) : "";
   const receipt = done.deliveredWas ? w.undoneReceipt : "";
@@ -49,6 +49,6 @@ export function undoneMessage(
 }
 
 /** How an undone parcel is described in the list: "Undone 7 Oct 2026, 10:12 by kari@example.com: Wrong parcel". */
-export function undoneLine(undone: { at: string; by: string | null; reason: string | null }, when: (iso: string) => string, w: UndoWords = orderEn.parcels): string {
+export function undoneLine(undone: { at: string; by: string | null; reason: string | null }, when: (iso: string) => string, w: UndoWords): string {
   return `${fillWords(w.undoneLine, { when: when(undone.at) })}${undone.by ? fillWords(w.undoneBy, { by: undone.by }) : ""}${undone.reason ? fillWords(w.undoneReason, { reason: undone.reason }) : ""}`;
 }
