@@ -498,6 +498,13 @@ and `page-article` with the four forbidden.
 | Reading a page | 183 through `pages.ts` (1,307 on 12 November) | 72 (`page-reads.ts`) |
 | The page renderer (`page-article.tsx`) | 467, `pages.ts` among them (1,396 on 12 November) | 430, none of the four |
 
+The cut moved the admin's client chunks, though it changed server imports only. The root admin layout had reached, through
+`getPlatformFavicon()` and `pages.ts`, server components that draw `AdminLink` and Lucide icons, so Turbopack put the link wrapper
+(with `PolicyLink` and next/link) and Lucide's icon base among the root layout's client references, in the chunk every admin route
+loads. Without that path each layout's and page's own first chunks took a copy: 459 of 482 admin routes grew by a median of 12.6 KB
+(CI run 1732). The root layout now imports `src/components/admin/shared-client-parts.ts`, which names them on purpose
+(`shared-client-parts.scan.test.ts`); on a local build the admin routes fell by a median of 10.5 KB, 481 of 482.
+
 ### A store read without the Stripe SDK or the block schemas (bloat review step 2.22)
 
 Two rules hold what reading a store loads. A store is read without the Stripe SDK: which payment modes Kaizena Flow has comes from
