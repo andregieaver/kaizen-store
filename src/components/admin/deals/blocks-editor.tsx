@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/admin/ui";
 import { TextInput } from "@/components/admin/ui/field";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
-import { CONTRACT_FIELDS } from "@/lib/contract-field-keys";
+import { CONTRACT_FIELDS } from "@/lib/contract-rich";
 import type { ContractBlock } from "@/lib/contract-fields";
 import { contractDocText, docFromText } from "@/lib/contract-rich";
 import type { RichTextDoc } from "@/lib/rich-text-doc";
