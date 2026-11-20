@@ -17,14 +17,33 @@ import {
 
 /**
  * The standard product taxonomy's data (wave 6 unit I, D327): read from `src/data/product-taxonomy/` once per server instance and kept.
- * The files are read from disk rather than imported, as the type checker would otherwise type every one of their 100,000 entries; the
- * build traces them into the server's functions (`outputFileTracingIncludes` in `next.config.ts`). The rules over them are in
- * `src/lib/product-taxonomy.ts`.
+ * The files are read from disk rather than imported, as the type checker would otherwise type every one of their 100,000 entries. The
+ * rules over them are in `src/lib/product-taxonomy.ts`.
+ *
+ * Each file is read by a literal path, `readFile(path.join(process.cwd(), "src/data/product-taxonomy", "<file>"))`: Turbopack's trace
+ * follows that form and puts exactly these files beside every function that reaches this module, and no other (bloat review step 2.23),
+ * so `next.config.ts` carries no include for them. `product-taxonomy.scan.test.ts` holds the form, and `scripts/trace-sizes.mjs`
+ * checks after a build that the routes which read the taxonomy carry every file.
  */
 
-const DIR = path.join(process.cwd(), "src/data/product-taxonomy");
+const parse = async <T,>(text: Promise<string>): Promise<T> => JSON.parse(await text) as T;
 
-const read = async <T,>(file: string): Promise<T> => JSON.parse(await readFile(path.join(DIR, file), "utf8")) as T;
+function structureText(): Promise<string> {
+  return readFile(path.join(process.cwd(), "src/data/product-taxonomy", "structure.json"), "utf8");
+}
+
+function namesText(lang: TaxonomyLang): Promise<string> {
+  switch (lang) {
+    case "nb":
+      return readFile(path.join(process.cwd(), "src/data/product-taxonomy", "names-nb.json"), "utf8");
+    case "sv":
+      return readFile(path.join(process.cwd(), "src/data/product-taxonomy", "names-sv.json"), "utf8");
+    case "da":
+      return readFile(path.join(process.cwd(), "src/data/product-taxonomy", "names-da.json"), "utf8");
+    case "en":
+      return readFile(path.join(process.cwd(), "src/data/product-taxonomy", "names-en.json"), "utf8");
+  }
+}
 
 let structure: Promise<TaxonomyStructure> | null = null;
 const names = new Map<TaxonomyLang, Promise<TaxonomyNames>>();
@@ -38,14 +57,14 @@ function remember<T>(promise: Promise<T>, forget: () => void): Promise<T> {
 }
 
 export function taxonomy(): Promise<TaxonomyStructure> {
-  structure ??= remember(read<TaxonomyStructure>("structure.json"), () => (structure = null));
+  structure ??= remember(parse<TaxonomyStructure>(structureText()), () => (structure = null));
   return structure;
 }
 
 function namesIn(lang: TaxonomyLang): Promise<TaxonomyNames> {
   let kept = names.get(lang);
   if (!kept) {
-    kept = remember(read<TaxonomyNames>(`names-${lang}.json`), () => names.delete(lang));
+    kept = remember(parse<TaxonomyNames>(namesText(lang)), () => names.delete(lang));
     names.set(lang, kept);
   }
   return kept;

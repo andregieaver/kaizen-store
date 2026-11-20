@@ -1,6 +1,9 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { budgetsFrom, checkBudgets, packageName, raised, summarise } from "../../scripts/trace-sizes.mjs";
+import { budgetsFrom, checkBudgets, missingTaxonomy, packageName, raised, summarise, TAXONOMY_FILES, TAXONOMY_ROUTES } from "../../scripts/trace-sizes.mjs";
 
 const MIB = 1048576;
 const file = (path: string, mb: number) => ({ file: path, size: mb * MIB });
@@ -14,7 +17,7 @@ const traces = [
     files: [SHARED, file("/repo/node_modules/.pnpm/sharp@0.35.5/node_modules/sharp/lib.node", 20), file("/repo/src/data/product-taxonomy/x.json", 5)],
   },
   {
-    name: "app/s/[store]/[market]/page.js.nft.json",
+    name: "app/s/[store]/[market]/(shop)/page.js.nft.json",
     files: [SHARED, file("/repo/node_modules/.pnpm/sharp@0.35.5/node_modules/sharp/lib.node", 20), file("/repo/.next/server/chunks/b.js.map", 2)],
   },
 ];
@@ -66,5 +69,16 @@ describe("trace sizes (bloat review 1.8)", () => {
     expect(checkBudgets(at(808, 14), budgets)).toEqual([]);
     expect(checkBudgets(at(809, 14), budgets).join()).toContain("with room 32");
     expect(checkBudgets(at(776, 15), budgets).join()).toContain("budget 14.");
+  });
+
+  it("fails a route that reads the taxonomy when its trace lacks a file the reader opens (bloat review 2.23)", () => {
+    expect([...TAXONOMY_FILES].sort()).toEqual(readdirSync(path.join(process.cwd(), "src/data/product-taxonomy")).filter((f) => f.endsWith(".json")).sort());
+    const all = TAXONOMY_FILES.map((f: string) => file(`/repo/src/data/product-taxonomy/${f}`, 1));
+    const routes = Object.keys(TAXONOMY_ROUTES);
+    const full = routes.map((name) => ({ name, files: [SHARED, ...all] }));
+    expect(missingTaxonomy(full)).toEqual([]);
+    const short = full.map((t, i) => (i === 0 ? { ...t, files: t.files.filter((f) => !f.file.endsWith("names-sv.json")) } : t));
+    expect(missingTaxonomy(short)).toEqual([expect.stringContaining("lacks names-sv.json")]);
+    expect(missingTaxonomy(full.slice(1)).join()).toContain("no trace at .next/server/app/s/[store]/[market]/(shop)/p/[handle]/page.js.nft.json");
   });
 });

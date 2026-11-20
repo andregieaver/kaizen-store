@@ -217,8 +217,11 @@ the path, component or table you change, or list the rules with a search for lin
 
 - **A standard product taxonomy (wave 6 unit I, D327, `docs/wave-6-catalogue.md` Unit I)**: Shopify's open Standard Product Taxonomy
   (release `v2026-10`, MIT, its notice kept) is files in `src/data/product-taxonomy/` (made by `scripts/product-taxonomy.mjs`), read on the
-  server only by `src/server/product-taxonomy.ts` (`taxonomy()`, `taxonomyWords()`, never an import: traced into every route by
-  `outputFileTracingIncludes`), the rules pure in `src/lib/product-taxonomy.ts`. A product's `standard_category` (an id) and
+  server only by `src/server/product-taxonomy.ts` (`taxonomy()`, `taxonomyWords()`, never an import; each file read by a literal
+  `path.join(process.cwd(), "src/data/product-taxonomy", "<file>")`, which Turbopack's trace follows, so the files sit only beside the
+  functions that reach the reader and `next.config.ts` carries no include for them: `product-taxonomy.scan.test.ts` holds the form,
+  `node scripts/trace-sizes.mjs --check` that the routes reading it carry every file, bloat review step 2.23), the rules pure in
+  `src/lib/product-taxonomy.ts`. A product's `standard_category` (an id) and
   `standard_attributes` (`{attributeId: [valueIds]}`) are apart from its own categories and the tax code, checked by `standardProblems()` in
   `saveProduct()` and kept by a save that leaves them out; copies carry them. Listings filter by `t.<attribute>=<value>` (handles,
   `attributeFilters()`), feeds take Google's category and colour, material and pattern from them, the structured data its path, the CSV

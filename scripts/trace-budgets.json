@@ -1,18 +1,18 @@
 {
   "comment": "Written by node scripts/trace-sizes.mjs --write after pnpm build; sizes are the build's megabytes times 1.04, rounded up to 0.1. Held by CI's e2e job (node scripts/trace-sizes.mjs --check).",
   "sizesMb": {
-    "median": 64.8,
+    "median": 55,
     "proxy": 2.2,
     "storeHome": 58.6,
     "storeCheckout": 59.1,
-    "health": 15.4,
-    "visit": 16
+    "health": 2.2,
+    "visit": 2.6
   },
   "counts": {
-    "sharp": 776,
-    "taxonomy": 883,
+    "sharp": 749,
+    "taxonomy": 757,
     "chromium": 14,
-    "reactDom": 6,
+    "reactDom": 0,
     "publicFiles": 4,
     "maps": 0
   }

@@ -2,7 +2,8 @@
 // Next writes after a build. Run from the repository root after `pnpm build`.
 //
 //   node scripts/trace-sizes.mjs                  print the tables
-//   node scripts/trace-sizes.mjs --check          also read scripts/trace-budgets.json; exit 1, naming the line, over a budget (CI's e2e job)
+//   node scripts/trace-sizes.mjs --check          also read scripts/trace-budgets.json; exit 1, naming the line, over a budget (CI's e2e job),
+//                                                 or when a route that reads the product taxonomy lacks one of its files (TAXONOMY_ROUTES)
 //   node scripts/trace-sizes.mjs --write          rewrite the budgets from this build: sizes as the measured megabytes times 1.04 rounded up to
 //                                                 0.1, counts as measured; it refuses to raise any figure unless --first is given
 //
@@ -36,8 +37,9 @@ export const COUNTS = {
 /** The one a trace is named by in the table: the trace of a page or route is `app/…/page.js.nft.json` (or `route.js`). */
 const NAMED = {
   proxy: /^(?:middleware|proxy)\.js\.nft\.json$/,
-  storeHome: /^app\/s\/\[store\]\/\[market\]\/page\.js\.nft\.json$/,
-  storeCheckout: /^app\/s\/\[store\]\/\[market\]\/checkout\/page\.js\.nft\.json$/,
+  // A trace keeps the route's groups in its path: the store's pages sit in `(shop)`.
+  storeHome: /^app\/s\/\[store\]\/\[market\]\/\(shop\)\/page\.js\.nft\.json$/,
+  storeCheckout: /^app\/s\/\[store\]\/\[market\]\/\(shop\)\/checkout\/page\.js\.nft\.json$/,
   health: /^app\/api\/health\/route\.js\.nft\.json$/,
   visit: /^app\/api\/visit\/route\.js\.nft\.json$/,
 };
@@ -51,6 +53,42 @@ const CARRIES = {
   publicFiles: (file) => /\/public\//.test(file) && !/node_modules\//.test(file),
   maps: (file) => file.endsWith(".map"),
 };
+
+/**
+ * The taxonomy's files reach a function only through Turbopack's own trace of `src/server/product-taxonomy.ts`, which names each file
+ * literally (bloat review step 2.23; next.config.ts has no include for them, since in Next 16.4 an exclude cannot take off what an include
+ * adds). These routes read the taxonomy on purpose, so each trace must carry every file the reader opens, or the route fails with ENOENT.
+ */
+export const TAXONOMY_FILES = ["structure.json", "names-en.json", "names-nb.json", "names-sv.json", "names-da.json"];
+export const TAXONOMY_ROUTES = {
+  "app/s/[store]/[market]/(shop)/p/[handle]/page.js.nft.json": "the product page (its standard category and structured data)",
+  "app/s/[store]/[market]/(shop)/page.js.nft.json": "the store home (a listing's attribute filters)",
+  "app/s/[store]/[market]/(shop)/category/[slug]/page.js.nft.json": "a category's listing (attribute filters)",
+  "app/s/[store]/[market]/(shop)/search/page.js.nft.json": "the store's search (attribute filters)",
+  "app/admin/(gated)/[store]/products/[productId]/page.js.nft.json": "the admin's product editor (the category picker)",
+  "app/admin/(gated)/[store]/products/new/page.js.nft.json": "the admin's new product (the category picker)",
+  "app/admin/(gated)/[store]/products/import/page.js.nft.json": "the product import (Shopify's category paths)",
+  "app/admin/(gated)/[store]/assistant/page.js.nft.json": "the AI manager (its product tools)",
+  "app/api/admin/v1/[...path]/route.js.nft.json": "the admin API (its product tools)",
+  "app/api/feeds/[token]/[file]/route.js.nft.json": "the product feeds (Google's category)",
+  "app/api/cron/cart-reminders/route.js.nft.json": "the dispatcher (imports and product upkeep)",
+};
+
+/** One line per route of TAXONOMY_ROUTES whose trace is missing, or lacks one of TAXONOMY_FILES. */
+export function missingTaxonomy(traces) {
+  const lines = [];
+  for (const [name, what] of Object.entries(TAXONOMY_ROUTES)) {
+    const trace = traces.find((t) => t.name === name);
+    if (!trace) {
+      lines.push(`${what}: no trace at .next/server/${name}. Name the route's trace again in TAXONOMY_ROUTES of scripts/trace-sizes.mjs.`);
+      continue;
+    }
+    const lacks = TAXONOMY_FILES.filter((file) => !trace.files.some((f) => f.file.endsWith(`/src/data/product-taxonomy/${file}`)));
+    if (lacks.length > 0)
+      lines.push(`${what} (${name}): its trace lacks ${lacks.join(", ")}, so the route fails with ENOENT. Keep each read in src/server/product-taxonomy.ts a literal path.join(process.cwd(), "src/data/product-taxonomy", "<file>") (product-taxonomy.scan.test.ts).`);
+  }
+  return lines;
+}
 
 /** The package a file belongs to: the name after the last node_modules/ segment (two segments for a scoped one); null for a file of the repo. */
 export function packageName(file) {
@@ -181,7 +219,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.error("No .next/server here: run pnpm build first, from the repository root.");
     process.exit(1);
   }
-  const summary = summarise(readTraces(root));
+  const traces = readTraces(root);
+  const summary = summarise(traces);
   print(summary);
   const stored = existsSync(budgetFile) ? JSON.parse(readFileSync(budgetFile, "utf8")) : null;
   if (process.argv.includes("--write")) {
@@ -198,12 +237,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       console.log("\nNo scripts/trace-budgets.json: write it with node scripts/trace-sizes.mjs --write --first after pnpm build.");
       process.exit(1);
     }
-    const breaches = checkBudgets(summary, stored);
+    const breaches = [...checkBudgets(summary, stored), ...missingTaxonomy(traces)];
     if (breaches.length > 0) {
       console.log(`\n**Over budget**\n\n${breaches.map((line) => `- ${line}`).join("\n")}`);
       console.error(breaches.join("\n"));
       process.exit(1);
     }
-    console.log("\nEvery figure is within its budget.");
+    console.log(`\nEvery figure is within its budget, and the ${Object.keys(TAXONOMY_ROUTES).length} routes that read the taxonomy carry its ${TAXONOMY_FILES.length} files.`);
   }
 }
