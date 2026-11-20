@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { storeAttentionItems, type ActivityFigures, type DisputeFigures, type QueueFigures, type StoreAttentionItem } from "@/lib/control-center";
+import { LOSING } from "@/lib/flow-report";
 import { DISPUTE_STATUSES, disputeNeedsResponse } from "@/lib/payment-facts";
 
 import { leadCounts } from "./leads";
@@ -130,6 +131,31 @@ export async function activityCounts(storeIds: readonly string[], assigneeId: st
   return new Map(rows.filter((r) => r.overdue > 0 || r.today > 0).map((r) => [r.store_id, { overdue: r.overdue, today: r.today, ...(assigneeId ? {} : { team: true }) }]));
 }
 
+/**
+ * Flows switched on that are losing readers (D767, email plan M3.8): at least `LOSING.entered` started one in the last 30 days and more than
+ * `LOSING.share` of them left the list on the way (their way through ended as stopped), the flow report's `space_out`. How many per store,
+ * and the one's id when there is just one.
+ */
+export async function losingFlowCounts(storeIds: readonly string[]): Promise<Map<string, { flows: number; only: string | null }>> {
+  if (storeIds.length === 0) return new Map();
+  const rows = await typedRows(
+    z.object({ store_id: col.uuid, flows: col.int, first: col.uuid }),
+    sql`
+      select f.store_id, count(*)::int as flows, (array_agg(f.id order by f.id))[1] as first
+      from commerce.flows f
+      cross join lateral (
+        select count(*) filter (where r.entered_at > now() - interval '30 days') as entered,
+               count(*) filter (where r.status = 'stopped' and r.ended_at > now() - interval '30 days') as left_list
+        from commerce.flow_runs r where r.store_id = f.store_id and r.flow_id = f.id
+      ) c
+      where f.store_id = any(${uuidList(storeIds)}) and f.enabled
+        and c.entered >= ${LOSING.entered} and c.left_list > c.entered * ${LOSING.share}::numeric
+      group by f.store_id
+    `,
+  );
+  return new Map(rows.map((r) => [r.store_id, { flows: r.flows, only: r.flows === 1 ? r.first : null }]));
+}
+
 /** The stores each queue is counted for: those where the reader may see it (`controlCenter()` gates them by the member's keys). */
 export type QueueGates = {
   disputes: readonly string[];
@@ -139,6 +165,8 @@ export type QueueGates = {
   comments: readonly string[];
   /** Where the questions the chat assistant could not answer are counted (ecosystem plan E4.3): those who may read support. */
   questions?: readonly string[];
+  /** Where flows losing readers are counted (M3.8): those who may read marketing. */
+  flows?: readonly string[];
 };
 
 export type QueueCounts = {
@@ -148,6 +176,7 @@ export type QueueCounts = {
   activities: Map<string, ActivityFigures>;
   comments: Map<string, number>;
   questions: Map<string, number>;
+  flows: Map<string, { flows: number; only: string | null }>;
 };
 
 /**
@@ -155,24 +184,26 @@ export type QueueCounts = {
  * calls kept for their yes; null for the team's (everyone's activities, the autopilot's calls).
  */
 export async function queueCounts(gates: QueueGates, accountId: string | null, now: Date = new Date()): Promise<QueueCounts> {
-  const [disputes, decisions, leads, activities, { comments, questions }] = await Promise.all([
+  const [disputes, decisions, leads, activities, { comments, questions }, flows] = await Promise.all([
     disputeCounts(gates.disputes, now),
     decisionCounts(gates.decisions, accountId),
     leadCounts(gates.leads),
     activityCounts(gates.activities, accountId, now),
     heldCounts(gates.comments, gates.questions ?? []),
+    losingFlowCounts(gates.flows ?? []),
   ]);
-  return { disputes, decisions, leads, activities, comments, questions };
+  return { disputes, decisions, leads, activities, comments, questions, flows };
 }
 
 /** A store's figures of the queues, only those that wait: what `queueItems()` reads, spread into its `StoreFigures`. */
-export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions"> {
+export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing"> {
   const disputes = counts.disputes.get(storeId);
   const leads = counts.leads.get(storeId) ?? 0;
   const decisions = counts.decisions.get(storeId) ?? 0;
   const comments = counts.comments.get(storeId) ?? 0;
   const activities = counts.activities.get(storeId);
   const questions = counts.questions.get(storeId) ?? 0;
+  const flows = counts.flows.get(storeId);
   return {
     ...(disputes && disputes.waiting > 0 ? { disputes } : {}),
     ...(decisions > 0 ? { aiDecisions: decisions } : {}),
@@ -180,6 +211,7 @@ export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<Queue
     ...(activities ? { activities } : {}),
     ...(comments > 0 ? { blogComments: comments } : {}),
     ...(questions > 0 ? { unansweredQuestions: questions } : {}),
+    ...(flows && flows.flows > 0 ? { flowsLosing: flows } : {}),
   };
 }
 
@@ -194,7 +226,7 @@ export type StoreAttention = Record<AdminLang, StoreAttentionItem[]>;
 export async function storeAttention(store: Store, now: Date = new Date()): Promise<StoreAttention> {
   const ids = [store.id];
   const sales = dealsOn(store) ? ids : [];
-  const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids }, null, now);
+  const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids, flows: ids }, null, now);
   const figures: QueueFigures = { slug: store.slug, name: store.name, role: "owner", ...queueFiguresOf(store.id, counts) };
   return Object.fromEntries(ADMIN_LANGS.map((lang) => [lang, storeAttentionItems(figures, now.getTime(), HOME_WORDS[lang].attention)])) as StoreAttention;
 }

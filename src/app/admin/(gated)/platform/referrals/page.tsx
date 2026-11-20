@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { randomUUID } from "node:crypto";
+import type { ReactNode } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { bpsToPercentText } from "@/lib/bonus-admin";
@@ -13,7 +15,7 @@ import { requirePlatformReader } from "@/server/auth";
 import { getReferralSettings, listReferrals, listReferrers, referralTotals } from "@/server/referrals";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
@@ -31,6 +33,8 @@ export const metadata: Metadata = { title: "Referrals" };
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
+/** Round 69 (D844): a Section inside a phone row keeps its heading for screen readers only; the row says it. */
+const inRow = "max-sm:[&>section>div:first-child]:sr-only";
 
 type W = PlatformMessages["referrals"];
 
@@ -98,16 +102,45 @@ export default async function PlatformReferralsPage() {
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const [settings, totals, referrers, referrals] = await Promise.all([getReferralSettings(), referralTotals(), listReferrers(), listReferrals()]);
+  const ph = w.phone;
+  const row = { flat: true, change: ph.open, done: ph.close } as const;
+  const strip: [string, ReactNode][] = [
+    [ph.referrers, totals.referrers],
+    [ph.stores, totals.referredStores],
+    [ph.earned, amounts(totals.earned, locale)],
+    [ph.used, amounts(totals.applied, locale)],
+    [ph.owed, amounts(totals.outstanding, locale)],
+  ];
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title={w.title}
-        description={w.description}
+        description={
+          <>
+            <span className="sm:hidden">{ph.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
       />
 
+      {/* Round 69 (D844): on a phone the program is a row saying whether it is on and its terms, opening the form. */}
+      <PhoneRows>
+      <PhoneRow
+        {...row}
+        last
+        change={ph.change}
+        title={w.program}
+        sub={fillWords(ph.programSub, {
+          state: settings.enabled ? ph.on : ph.off,
+          percent: bpsToPercentText(settings.commissionBps),
+          months: settings.months,
+          days: settings.pendingDays,
+        })}
+      >
+      <div className={inRow}>
       <Section id="settings-heading" title={w.program}>
-        <ActionForm action={saveReferralSettingsAction} className={`flex max-w-xl flex-col gap-4 p-5 ${CARD_CLASS}`} successMessage={w.saved}>
+        <ActionForm action={saveReferralSettingsAction} className={`flex max-w-xl flex-col gap-4 p-5 max-sm:p-0 ${CARD_CLASS}`} successMessage={w.saved}>
           <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="size-4" />
             {w.on}
@@ -137,7 +170,20 @@ export default async function PlatformReferralsPage() {
           </div>
         </ActionForm>
       </Section>
+      </div>
+      </PhoneRow>
+      </PhoneRows>
 
+      {/* Round 69 (D844): on a phone the five figures are one strip; from sm up the cards. */}
+      <dl className="grid grid-cols-3 gap-x-2 gap-y-3 rounded-card bg-card px-4 py-3 sm:hidden">
+        {strip.map(([name, value]) => (
+          <div key={name} className="flex min-w-0 flex-col">
+            <dd className="text-title text-ink tabular-nums [overflow-wrap:anywhere]">{value}</dd>
+            <dt className="order-last text-caption text-ink-2">{name}</dt>
+          </div>
+        ))}
+      </dl>
+      <div className="max-sm:hidden">
       <StatGrid>
         <Stat label={w.referrers} value={totals.referrers} sub={w.referrersSub} />
         <Stat label={w.referredStores} value={totals.referredStores} />
@@ -145,7 +191,12 @@ export default async function PlatformReferralsPage() {
         <Stat label={w.applied} value={amounts(totals.applied, locale)} />
         <Stat label={w.owed} value={amounts(totals.outstanding, locale)} sub={w.owedSub} />
       </StatGrid>
+      </div>
 
+      {/* Round 69 (D844): on a phone the referrers and the stores they brought are rows with their counts, opening their tables. */}
+      <PhoneRows>
+      <PhoneRow {...row} title={w.referrers} sub={referrers.length === 0 ? w.noReferrers : countWords(referrers.length, ph.referrerCount)}>
+      <div className={inRow}>
       <Section id="referrers-heading" title={w.referrers}>
         {referrers.length === 0 ? (
           <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
@@ -205,7 +256,11 @@ export default async function PlatformReferralsPage() {
           </div>
         )}
       </Section>
+      </div>
+      </PhoneRow>
 
+      <PhoneRow {...row} last title={w.referredStores} sub={referrals.length === 0 ? w.noReferred : countWords(referrals.length, ph.storeCount)}>
+      <div className={inRow}>
       <Section id="referred-heading" title={w.referredStores}>
         {referrals.length === 0 ? (
           <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
@@ -281,6 +336,9 @@ export default async function PlatformReferralsPage() {
           </div>
         )}
       </Section>
+      </div>
+      </PhoneRow>
+      </PhoneRows>
     </div>
   );
 }

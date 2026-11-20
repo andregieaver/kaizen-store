@@ -111,10 +111,12 @@ market with their picks and plain links, only when asked, at a desktop's or a ph
 (`stepReach()`, `flowStepPast()`): its share of the flow's own ended ways through once 20 have ended, before that everyone who starts
 before a branch, or up to that inside one.
 
-## The report in words (19 November 2026, email plan M3.8 in part)
+## The report in words (19 and 20 November 2026, email plan M3.8)
 
 A flow's page says its last 30 days (`flowReport()`): who started it, its emails sent, the paid orders after them and their money,
 the email that brought the most, who left the list on the way (runs ended as stopped), and one suggestion chosen in code
 (`flowSuggestion()`: space out when more than one in twenty leave, picks when emails bring nothing, build on the step that works).
 Orders are credited by D761's one rule, flows now a fourth sender (`flow:{flow}:{step}` in `orderCredit()`, Flows in Analytics →
-Marketing). Home and the morning briefing come with E2.1's one source.
+Marketing). Home and the morning briefing say when a flow switched on is losing readers (`space_out`'s numbers, `LOSING`), through
+E2.1's one source (`losingFlowCounts()` in `src/server/attention.ts`, the item `flows_losing`), for a member who may read marketing; it
+opens the flow, or Flows when there are several.

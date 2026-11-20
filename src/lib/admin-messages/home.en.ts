@@ -300,6 +300,10 @@ export const homeEn = {
       one: "{store}: your chat assistant could not answer {n} question. Write the answer once, and it can answer it next time.",
       many: "{store}: your chat assistant could not answer {n} questions. Write the answers once, and it can answer them next time.",
     },
+    flowsLosing: {
+      one: "{store}: {n} flow is losing readers: more than 1 in 20 who started it left your list. Its page says what to change.",
+      many: "{store}: {n} flows are losing readers: more than 1 in 20 who started them left your list. Their pages say what to change.",
+    },
     booksDiffer: { one: "{store}: {n} document in the books differs from Tripletex.", many: "{store}: {n} documents in the books differ from Tripletex." },
     booksWaiting: { one: "{store}: {n} document has waited more than a week to be posted to the books.", many: "{store}: {n} documents have waited more than a week to be posted to the books." },
     billsOverdue: { one: "{store}: {n} bill is past its due date.", many: "{store}: {n} bills are past their due date." },
@@ -383,6 +387,7 @@ export const homeEn = {
       decide: "Decide",
       openLeads: "Open leads",
       seeToday: "See today",
+      seeFlow: "See the flow",
     },
   },
   card: {
