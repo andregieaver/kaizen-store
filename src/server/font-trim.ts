@@ -12,7 +12,7 @@ import { installedWeightRange } from "@/lib/fonts";
 import { findFont } from "./fonts";
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Self-hosted fonts cut to the weights a site uses (D59, `docs/performance.md`, Fonts found late). Google sends a variable family's

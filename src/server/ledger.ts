@@ -61,7 +61,7 @@ import { audit, holderOf, type Membership } from "./auth";
 import { log } from "./log";
 import { getTripletexConnection } from "./tripletex";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Our own ledger (B2 of `docs/own-books-and-sales.md`, D478), step 1: a store's books opened, entries posted, reversed and locked, and the

@@ -45,6 +45,10 @@ with its processor slowed four times, and a computer.
   (`cookie-consent-schema.ts`, `carousel-settings-schema.ts`, …); the browser imports the plain module. The page model
   (`lib/page-content`) is not a visitor's script either: `button-look.ts` and `slide-step.ts` hold the little the browser needs of
   it. `storefront-bundle.scan.test.ts` walks every visitor-facing client component's imports and fails if one reaches either.
+  It holds for scripts loaded later too: the scan follows `import()`, so the tiles a recommending grid loads once the shopper's
+  picks arrive read the page model's helpers from `grid-view.ts` and `grid-list-style.ts`, and typography's and colours' schemas
+  are `typography-schema.ts` and `colour-schema.ts` (bloat review step 2.10); `e2e/recommendations.spec.ts` checks the scripts
+  that arrive after `/api/recommendations` answers.
 - **A client component that only some pages draw is loaded where it is drawn.** Turbopack puts every client component a route's
   server code imports into one group of scripts that every page of the route loads; a server-side `import()` does not split it
   (tried). So the shop's forms (`components/lazy/shop.tsx`), the page components' interactive parts (`lazy/blocks.tsx`) and the
@@ -80,7 +84,9 @@ with its processor slowed four times, and a computer.
   `*-browser.ts`; the scan test fails for a visitor's component that reaches `lib/i18n`, `lib/email-text` or a whole language. A
   language translated by AI sends the same few texts and no more: `uiTextsFor()` (`src/server/ui-text-read.ts`) hands `UiTexts` only
   the keys of `en-browser.ts` (114 keys, under 9 KB, where it sent all 1,673 texts, 93 KB), and the withdrawal page sends its own with
-  `returnsTextsFor()` and `part="returns"` (bloat review step 0.8).
+  `returnsTextsFor()` and `part="returns"` (bloat review step 0.8). It holds for a view loaded later with `import()` too: it takes
+  its words as a prop, as the recommending grid hands its tiles `browserText()` (bloat review step 2.10; the scan test and
+  `e2e/recommendations.spec.ts` hold it).
 - **A link whose press does not open its href** (a language or a currency: the handler goes to the same page in the other view), **or
   that few visitors press and that leads to another country's whole layout or to a legal page** (countries, cookies, withdrawal, the
   legal pages), **is not prefetched:** `prefetch={false}`.

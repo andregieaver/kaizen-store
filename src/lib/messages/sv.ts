@@ -499,7 +499,7 @@ export const sv: Messages = {
    */
   // legal: needs review
   preorder: {
-    page: (date: string) => `Förhandsbeställning: förväntas skickas från ${date}`,
+    ...svBrowser.preorder,
     line: (n: number, date: string) => `${n} förhandsbeställda: förväntas skickas från ${date}`,
     order: (n: number, quantity: number, date: string) => `${n} av ${quantity} förhandsbeställda: förväntas skickas från ${date}`,
   },
@@ -612,8 +612,7 @@ export const sv: Messages = {
   /** Yes and no in a store's custom fields (D118). */
   customFields: { yes: "Ja", no: "Nej" },
   campaigns: {
-    percent: (percent: number) => `${percent} % rabatt`,
-    multiBuy: (buy: number, pay: number) => `${buy} för ${pay}`,
+    ...svBrowser.campaigns,
     gift: (title: string, amount: string) => `Gratis ${title} när du handlar för ${amount}`,
     inCart: "Erbjudandet dras av i varukorgen.",
     signIn: "Logga in på Mitt konto för att få det.",
@@ -622,22 +621,17 @@ export const sv: Messages = {
     amountOver: (amount: string, over: string) => `${amount} rabatt när du handlar för ${over}`,
     freeShipping: "Fri frakt",
     freeShippingOver: (over: string) => `Fri frakt när du handlar för ${over}`,
-    upTo: (percent: number) => `Upp till ${percent} % rabatt`,
     tierQuantity: (percent: number, items: number) => `${percent} % rabatt när du köper ${items}`,
     tierSpend: (percent: number, amount: string) => `${percent} % rabatt när du handlar för ${amount}`,
     nextQuantity: (items: number, percent: number) => `Köp ${items} till för att få ${percent} % rabatt`,
     nextSpend: (amount: string, percent: number) => `Handla för ${amount} till för att få ${percent} % rabatt`,
-    upToAmount: (amount: string) => `Upp till ${amount} rabatt`,
     tierQuantityAmount: (amount: string, items: number) => `${amount} rabatt när du köper ${items}`,
     tierSpendAmount: (amount: string, spend: string) => `${amount} rabatt när du handlar för ${spend}`,
     nextQuantityAmount: (items: number, amount: string) => `Köp ${items} till för att få ${amount} rabatt`,
     nextSpendAmount: (spend: string, amount: string) => `Handla för ${spend} till för att få ${amount} rabatt`,
     nextAmount: (amount: string, off: string) => `Handla för ${amount} till för att få ${off} rabatt`,
     nextFreeShipping: (amount: string) => `Handla för ${amount} till för att få fri frakt`,
-    bxgyBuy: (items: number) => `Köp ${items}`,
     bxgySpend: (amount: string) => `Handla för ${amount}`,
-    bxgyGetFree: (items: number) => `få ${items} gratis`,
-    bxgyGetPercent: (items: number, percent: number) => `få ${items} med ${percent} % rabatt`,
     bxgyGetAmount: (items: number, amount: string) => `få ${items} med ${amount} rabatt`,
   },
   total: "Totalt",
@@ -676,18 +670,8 @@ export const sv: Messages = {
   toHome: "Till startsidan",
   cart: "Varukorg",
   cartCount: (n: number) => `Varukorg (${n})`,
-  addToCart: "Lägg i varukorgen",
-  adding: "Lägger till …",
-  added: "Tillagd i varukorgen.",
-  capped: "Du har nu allt vi har i lager i varukorgen.",
-  unavailable: "Den här varan är inte tillgänglig.",
-  tryAgain: "Något gick fel. Försök igen.",
-  goToCart: "Gå till varukorgen",
   emptyCart: "Varukorgen är tom.",
-  quantity: "Antal",
   update: "Uppdatera",
-  quantityLess: "Minska antal",
-  quantityMore: "Öka antal",
   quantitySaving: "Uppdaterar varukorgen …",
   remove: "Ta bort",
   subtotal: "Summa varor",
@@ -696,17 +680,13 @@ export const sv: Messages = {
   noLongerAvailable: "Inte längre tillgänglig. Ta bort varan för att fortsätta.",
   continueShopping: "Fortsätt handla",
   products: "Produkter",
-  vatIncluded: "inkl. moms",
-  vatExcluded: "exkl. moms",
   /**
    * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
    * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
    */
   unitPrice: {
+    ...svBrowser.unitPrice,
     label: "Jämförpris",
-    /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
-    spoken: (amount: string, base: string) => `Jämförpris: ${amount} per ${base}`,
-    bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "st" },
   },
   /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
   buyer: {
@@ -735,9 +715,6 @@ export const sv: Messages = {
     savedProductNote: "Mot lägsta pris de senaste 30 dagarna.",
     goesWith: "Passar bra med din varukorg",
   },
-  priorPrice: "Lägsta pris senaste 30 dagarna",
-  fromPrice: "Från",
-  yourPrice: "Ditt pris",
   inStock: "I lager",
   productPassport: "Produktpass",
   fromSupplier: (days: number) => `I lager: skickas inom ${days} ${days === 1 ? "arbetsdag" : "arbetsdagar"}`,
@@ -793,12 +770,9 @@ export const sv: Messages = {
   chooseLanguage: "Välj språk",
   chooseCurrency: "Välj valuta",
   noProducts: "Inga produkter ännu.",
-  /** Content grids (D51): a tile's button, and a grid with nothing to show. */
-  readMore: "Läs mer",
   googleRating: (rating: string, count: number) => `${rating} av 5 · ${count} recensioner på Google`,
   googleReviews: "Recensioner på Google",
   seeOnGoogle: "Se alla på Google",
-  viewProduct: "Visa produkten",
   blog: "Blogg",
   byAuthor: (name: string) => `Av ${name}`,
   noArticles: "Inga artiklar ännu.",
@@ -968,10 +942,6 @@ export const sv: Messages = {
     stripeLine: (number) => `Faktura för order ${number}`,
     dueShort: (day) => `Förfaller ${day}`,
   },
-  /** Combined listings (D566): the shared option's chooser on a product's card and page. */
-  group: {
-    choose: (option: string) => `Välj: ${option}`,
-  },
   /** Sms-marknadsföring (D565): skrivet för hand, behöver juridisk granskning. */
   // legal: needs review
   sms: {
@@ -1081,7 +1051,6 @@ export const sv: Messages = {
     `Förnyas ${every.toLowerCase()} för ${amount} tills du säger upp den. Du kan säga upp när som helst.`,
   subscriptionConsent: (every: string, amount: string) =>
     `Jag godkänner en prenumeration som förnyas ${every.toLowerCase()} för ${amount} tills jag säger upp den, och vet att jag kan säga upp när som helst.`,
-  planConflict: "Varukorgen har redan en prenumeration med en annan frekvens. Köp den först, eller välj samma frekvens.",
   problemPlans: "Prenumerationerna i varukorgen förnyas olika. Behåll en frekvens och försök igen.",
   problemSubscriptionConsent: "Kryssa i att du godkänner prenumerationen för att gå vidare.",
   serviceRequest:

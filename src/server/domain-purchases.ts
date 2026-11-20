@@ -40,7 +40,7 @@ import { registrarById, registrarFor } from "./registrars";
 import { RegistrarError, type DomainRegistrar } from "./registrars/types";
 import { platformStripe } from "./stripe";
 import { billedAccount, collectionFor, type ThemeBillingStripe } from "./theme-prices";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 type Result<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] };

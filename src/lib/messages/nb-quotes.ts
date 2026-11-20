@@ -1,8 +1,9 @@
+import { nbBrowser } from "./nb-browser";
 import type { QuotesMessages } from "./en-quotes";
 
 /** Be om tilbud og spørsmål om produktet (D431), skrevet for hånd (`en-quotes.ts`). */
 export const nbQuotes: QuotesMessages = {
-  priceOnRequest: "Pris på forespørsel",
+  priceOnRequest: nbBrowser.quotes.priceOnRequest,
   wishlist: "Be om tilbud på produktsiden.",
   request: "Be om tilbud",
   requestCart: "Be om tilbud på disse varene",

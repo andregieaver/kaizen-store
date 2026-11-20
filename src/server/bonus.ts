@@ -14,7 +14,7 @@ import { formatMoney } from "@/lib/money";
 import { audit, type Account } from "./auth";
 import type { Shop } from "./cart";
 import { log } from "./log";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 export type Runner = Pick<ReturnType<typeof db>, "execute">;

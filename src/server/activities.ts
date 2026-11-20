@@ -13,7 +13,7 @@ import { sendActivityPush } from "./push";
 import { uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Activities (S3 of `docs/own-books-and-sales.md`, D468): the one reader and writer of a store's calls, meetings and tasks. Read by

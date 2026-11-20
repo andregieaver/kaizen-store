@@ -29,7 +29,7 @@ import { log } from "./log";
 import { NO_ACCESS, checkPermission, memberCan } from "./permissions";
 import { setStockContext } from "./stock-context";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * eBay as a sales channel (D555, `src/lib/ebay.ts`): the owner connects the store's eBay seller account on eBay's consent page; Kaizena Flow keeps

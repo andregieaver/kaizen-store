@@ -29,12 +29,13 @@ export { RESERVED_STORE_PAGE_SLUGS, RESERVED_ARTICLE_SLUGS } from "./reserved-sl
 import { RESERVED_ARTICLE_SLUGS, RESERVED_STORE_PAGE_SLUGS } from "./reserved-slugs";
 export { CONTENT_MAX_MIN, CONTENT_MAX_MAX } from "./content-width";
 export { BACKDROP_BLUR_MAX, BORDER_MAX, BORDER_STYLES, COLUMN_SHARE_MAX, GRID_COLUMNS_MAX, GRID_GAP_MAX, IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, RADIUS_MAX, ROW_HEIGHT_VH, SHADOWS, SPACING_MAX, themeElementSchema, type Border, type BorderStyle, type Color, type ColorBackground, type PartSizeSettings, type Shadow, type Sides, type SizeOverrides, type Spacing, type SwitcherLayout, type SwitcherText, type TextAlign, type ThemeElement } from "./part-styles";
-import { BACKDROP_BLUR_MAX, backdropBlur, borderSchema, color, colorBackground, columnOrder, columnShare, contentMaxWidth, GRID_GAP_MAX, gridColumnCount, partGap, pictureWidth, radiusSchema, rowHeightVh, shadowOpacitySchema, SHADOWS, shadowSchema, side, sizeOverrides, spacing, SPACING_MAX, textAlign, type Border, type Color, type ColorBackground, type Shadow, type Sides, type SizeOverrides, type Spacing, type SwitcherLayout, type SwitcherText, type TextAlign, type ThemeElement } from "./part-styles";
+// What a content grid's tiles read, in a module with no schema (bloat review step 2.10).
+export { contentSides, gridImageShape, shadowCss, shadowOpacityOf } from "./grid-view";
+import { BACKDROP_BLUR_MAX, backdropBlur, borderSchema, color, colorBackground, columnOrder, columnShare, contentMaxWidth, GRID_GAP_MAX, gridColumnCount, partGap, pictureWidth, radiusSchema, rowHeightVh, shadowOpacitySchema, shadowSchema, side, sizeOverrides, spacing, SPACING_MAX, textAlign, type Border, type Color, type ColorBackground, type Shadow, type Sides, type SizeOverrides, type Spacing, type SwitcherLayout, type SwitcherText, type TextAlign, type ThemeElement } from "./part-styles";
 export { mapChildBlocks, mapInnerColumns } from "./block-walk";
 import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
 import { inlinePlain } from "./inline-text";
-import { sourceTraits } from "./grid-source";
 import { type MenuHover } from "./menu-hover";
 import { menuHoverSchema } from "./menu-hover-schema";
 import { menuLinkSchema, type MenuLink } from "./navigation";
@@ -44,7 +45,8 @@ import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
 import { QUANTITY_PICKERS, type QuantityPicker } from "./quantity-stepper";
 import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
 import { withoutIcons } from "./table-icons";
-import { foldTypography, textGradientSchema, typographyFamilies, typographyGroupsSchema, type TextGradient, type TypographyGroups } from "./typography";
+import { foldTypography, typographyFamilies, type TextGradient, type TypographyGroups } from "./typography";
+import { textGradientSchema, typographyGroupsSchema } from "./typography-schema";
 import { SIZES, type Size } from "./breakpoints";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
@@ -163,21 +165,6 @@ export const BACKGROUND_ALIGNS = ["top", "middle", "bottom"] as const;
 export type BackgroundAlign = (typeof BACKGROUND_ALIGNS)[number];
 /** A row's spacing as drawn: its own, with the default padding where it has none. */
 export const rowSpacing = (style: Spacing | undefined): Spacing => ({ ...style, padding: style?.padding ?? ROW_PADDING });
-
-/** A shadow's opacity as a slider shows it, in per cent: its darkest layer's (D262). */
-export const shadowOpacityOf = (shadow: Shadow): number => Math.round(Math.max(...shadowAlphas(SHADOWS[shadow].css)) * 100);
-const shadowAlphas = (css: string) => [...css.matchAll(/\/ ([\d.]+)\)/g)].map((match) => Number(match[1]));
-
-/**
- * A shadow's CSS (D49), at an opacity of its own where one is set (D262): its darkest layer at that opacity, the others in the same
- * proportion, so a shadow can be fainter or darker than it comes.
- */
-export function shadowCss(shadow: Shadow, opacity?: number | null): string {
-  const css = SHADOWS[shadow].css;
-  if (opacity === undefined || opacity === null) return css;
-  const darkest = Math.max(...shadowAlphas(css));
-  return css.replace(/\/ ([\d.]+)\)/g, (_, alpha: string) => `/ ${Math.round(((Number(alpha) / darkest) * opacity) / 100 * 1000) / 1000})`);
-}
 
 /**
  * What every row, column and block can have (D47–D49): margin and padding,
@@ -547,13 +534,6 @@ export type GridColumns = { mobile: number; tablet: number; desktop: number };
 export const GRID_ELEMENTS = { image: "Picture", heading: "Heading", excerpt: "Excerpt", price: "Price", button: "Button" } as const;
 export type GridElement = keyof typeof GRID_ELEMENTS;
 /** A tile's own box: background, padding, border, corners and shadow. */
-/** A card's content space as four sides, or none when it is zero everywhere. */
-export function contentSides(padding: number | Sides | undefined): Sides | null {
-  if (padding === undefined) return null;
-  const sides = typeof padding === "number" ? { top: padding, right: padding, bottom: padding, left: padding } : padding;
-  return sides.top + sides.right + sides.bottom + sides.left > 0 ? sides : null;
-}
-
 export type GridTile = {
   background?: Color;
   /** The card's text colour: its words, and (through the muted colour) its secondary words. */
@@ -2251,21 +2231,6 @@ export function blockText(block: PageBlock): string {
 /** Titled items' words: each title and its text. */
 const panelText = (items: PanelItem[]) => items.map((item) => `${inlinePlain(item.title)} ${richTextPlain(item.body)}`.trim()).join(" ");
 
-/** CSS for a part's border, rounded corners and shadow (D49); nothing for what it does not have. */
-export function frameStyle(part: Pick<PartBase, "border" | "radius" | "shadow" | "shadowOpacity">): Record<string, string> {
-  const css: Record<string, string> = {};
-  if (part.border) {
-    css.borderStyle = part.border.style;
-    css.borderColor = part.border.color;
-    for (const side of ["top", "right", "bottom", "left"] as const) {
-      css[`border${side[0].toUpperCase()}${side.slice(1)}Width`] = `${part.border.width[side]}px`;
-    }
-  }
-  if (part.radius) css.borderRadius = `${part.radius}px`;
-  if (part.shadow) css.boxShadow = shadowCss(part.shadow, part.shadowOpacity);
-  return css;
-}
-
 /** CSS for a spacing: only the sides that have some. */
 export function spacingStyle(style: Spacing | undefined): Record<string, string> {
   const css: Record<string, string> = {};
@@ -2380,10 +2345,6 @@ export function repeatedHtmlId(rows: PageRow[]): string | null {
   }
   return null;
 }
-
-/** How a grid's pictures are cropped: its own choice, else the theme's cards for products (D60) and landscape for the rest. */
-export const gridImageShape = (block: Pick<ContentGridBlock, "imageShape" | "source">) =>
-  block.imageShape ?? (sourceTraits(block.source).products ? "theme" : "landscape");
 
 /** The Google Fonts families a row, column or block uses (D59): its typography's, at every size and for every kind of text (D179). */
 export const partFonts = (part: PageRow | PageColumn | PageBlock): string[] => {

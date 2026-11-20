@@ -4,8 +4,10 @@
  * hands the form its words as props (D212: never the whole of `t()` in a visitor's browser). Written by hand in nb, sv, da and en; other
  * languages come from the AI catalogue.
  */
+import { enBrowser } from "./en-browser";
+
 export const enQuotes = {
-  priceOnRequest: "Price on request",
+  priceOnRequest: enBrowser.quotes.priceOnRequest,
   wishlist: "Request a quote on the product page.",
   request: "Request a quote",
   requestCart: "Request a quote for these items",

@@ -23,7 +23,7 @@ import { heldBy, OwnerToolError, runOwnerTool } from "./owner-tools";
 import { refreshTag } from "./refresh";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The store decides the autopilot's tests of its own changes (ecosystem plan E4.1, D729), by code from each test's verdict (`testAction()`),

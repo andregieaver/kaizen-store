@@ -17,7 +17,7 @@ import { refreshTag } from "./refresh";
 import { encryptionKey } from "./encryption-key";
 import { col, typedRows } from "./typed-rows";
 import { owned } from "./owned";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The Instagram feed's connection (D560, pure parts in `src/lib/instagram.ts`): Kaizena Flow's Instagram app (`INSTAGRAM_APP_ID`,

@@ -16,7 +16,7 @@ import { sendEmail } from "./email";
 import { log } from "./log";
 import { sendPlatformPush } from "./push";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The stall watch (`docs/100-day-challenge.md` A6): every challenge store's stalls (`STALL_KINDS`), found in SQL, and each told to the platform

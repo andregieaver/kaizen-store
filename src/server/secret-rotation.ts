@@ -8,7 +8,7 @@ import { decryptSecret, encryptSecret, keyId, parseKey, previousKeys } from "@/l
 
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Moving every kept secret to the current settings key (PSI SEC-06, `docs/runbooks/key-rotation.md`). While

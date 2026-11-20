@@ -36,7 +36,7 @@ import { getSavedReport } from "./saved-reports";
 import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
 import { getStore } from "./stores";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Saved reports emailed on a schedule (wave 12 unit A, D395). The only writer of `commerce.report_schedules`. A schedule names one of the

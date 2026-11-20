@@ -1,8 +1,9 @@
+import { svBrowser } from "./sv-browser";
 import type { QuotesMessages } from "./en-quotes";
 
 /** Begär offert och frågor om produkten (D431), skrivna för hand (`en-quotes.ts`). */
 export const svQuotes: QuotesMessages = {
-  priceOnRequest: "Pris på begäran",
+  priceOnRequest: svBrowser.quotes.priceOnRequest,
   wishlist: "Begär en offert på produktsidan.",
   request: "Begär offert",
   requestCart: "Begär offert på de här varorna",

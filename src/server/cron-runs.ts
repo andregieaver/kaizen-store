@@ -8,10 +8,9 @@ import { db } from "@/db/client";
 import { FAILING_AFTER, type CronJobRow } from "@/lib/cron-health";
 import { pooled } from "@/lib/job-pool";
 
-import { flushCacheEvents, inJob } from "./cache-events";
+import { flushCacheEvents, inJob, withReport, type JobReport } from "./cache-events";
 import { cronAuthorised } from "./cron-auth";
 import { noteFirstRequest } from "./instance-start";
-import { withReport, type JobReport } from "./job-report";
 import { log } from "./log";
 import { textList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";

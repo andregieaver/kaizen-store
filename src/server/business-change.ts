@@ -23,7 +23,7 @@ import { log } from "./log";
 import { memberCan } from "./permissions";
 import { refreshStoreById, type Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * Changing the business behind a store (B8 of `docs/own-books-and-sales.md` section 4.5, D473): the one reader and writer of

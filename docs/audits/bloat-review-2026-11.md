@@ -168,7 +168,7 @@ commit as the fix.
 | 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Done | D838, c351d3ab5, 20 Nov: a built page's tile tap 1 document, 29 requests to 0 and 3 on prod; a builder button on kaizenaflow.com 0 documents. Pay paths stay full loads. |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Done | D842, 20 Nov: first 6 tiles on sight, rest on intent; 48 products 15 router requests (47), bound 20. Prod: none on scroll. Rule stands. |
 | 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Open | |
-| 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | Open | |
+| 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | In progress | Local: scripts after /api/recommendations 649,561 to 368,114 (c1) to 98,341 B (52,913 of it the product page fetched ahead); later chains 24 to 0; browser words 32,165 to 38,512 B. |
 | 2.11 | Give the storefront a stylesheet of its own | SC-5, CS-1, BN-12, GAP-styles-s5 | M | review | 1.21, 1.23, 1.3, 0.35, 0.34, 0.12 | Open | |
 | 2.12 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | review | 2.10, 2.2 | Open | |
 | 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | Done | 19 Nov, 4cc84650, D779: product page 12 to 1 statements; buy facts one cached read. |

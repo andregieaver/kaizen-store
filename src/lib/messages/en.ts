@@ -514,7 +514,7 @@ export const en = {
    * told before ordering, Directive 2011/83/EU Art. 6(1)(g)). Hand-written in nb, sv, da and en; needs human legal review before real use.
    */
   preorder: {
-    page: (date: string) => `Pre-order: expected to ship from ${date}`,
+    ...enBrowser.preorder,
     line: (n: number, date: string) => `${n} on pre-order: expected to ship from ${date}`,
     order: (n: number, quantity: number, date: string) => `${n} of ${quantity} on pre-order: expected to ship from ${date}`,
   },
@@ -634,8 +634,7 @@ export const en = {
   /** Yes and no in a store's custom fields (D118). */
   customFields: { yes: "Yes", no: "No" },
   campaigns: {
-    percent: (percent: number) => `${percent} % off`,
-    multiBuy: (buy: number, pay: number) => `${buy} for ${pay}`,
+    ...enBrowser.campaigns,
     gift: (title: string, amount: string) => `Free ${title} when you spend ${amount}`,
     inCart: "The offer is taken off in the cart.",
     signIn: "Sign in to My account to get it.",
@@ -645,12 +644,10 @@ export const en = {
     amountOver: (amount: string, over: string) => `${amount} off when you spend ${over}`,
     freeShipping: "Free shipping",
     freeShippingOver: (over: string) => `Free shipping when you spend ${over}`,
-    upTo: (percent: number) => `Up to ${percent} % off`,
     tierQuantity: (percent: number, items: number) => `${percent} % off when you buy ${items}`,
     tierSpend: (percent: number, amount: string) => `${percent} % off when you spend ${amount}`,
     nextQuantity: (items: number, percent: number) => `Buy ${items} more to get ${percent} % off`,
     nextSpend: (amount: string, percent: number) => `Spend ${amount} more to get ${percent} % off`,
-    upToAmount: (amount: string) => `Up to ${amount} off`,
     tierQuantityAmount: (amount: string, items: number) => `${amount} off when you buy ${items}`,
     tierSpendAmount: (amount: string, spend: string) => `${amount} off when you spend ${spend}`,
     nextQuantityAmount: (items: number, amount: string) => `Buy ${items} more to get ${amount} off`,
@@ -658,10 +655,7 @@ export const en = {
     nextAmount: (amount: string, off: string) => `Spend ${amount} more to get ${off} off`,
     nextFreeShipping: (amount: string) => `Spend ${amount} more for free shipping`,
     /** D299 E4: buy X get Y, as "Buy 2" and "get 1 free" joined by a comma. */
-    bxgyBuy: (items: number) => `Buy ${items}`,
     bxgySpend: (amount: string) => `Spend ${amount}`,
-    bxgyGetFree: (items: number) => `get ${items} free`,
-    bxgyGetPercent: (items: number, percent: number) => `get ${items} at ${percent} % off`,
     bxgyGetAmount: (items: number, amount: string) => `get ${items} at ${amount} off`,
   },
   total: "Total",
@@ -701,19 +695,8 @@ export const en = {
   toHome: "Go to the home page",
   cart: "Cart",
   cartCount: (n: number) => `Cart (${n})`,
-  addToCart: "Add to cart",
-  adding: "Adding …",
-  added: "Added to cart.",
-  capped: "Your cart now holds all the stock we have.",
-  unavailable: "This item is not available.",
-  tryAgain: "Something went wrong. Try again.",
-  goToCart: "Go to cart",
   emptyCart: "Your cart is empty.",
-  quantity: "Quantity",
   update: "Update",
-  /** The quantity chooser's buttons (D430), said to a screen reader; on a cart line the product's name follows. */
-  quantityLess: "Decrease quantity",
-  quantityMore: "Increase quantity",
   /** Said while a cart line's new quantity is being saved (D430). */
   quantitySaving: "Updating the cart…",
   remove: "Remove",
@@ -723,17 +706,13 @@ export const en = {
   noLongerAvailable: "No longer available. Remove it to continue.",
   continueShopping: "Continue shopping",
   products: "Products",
-  vatIncluded: "incl. VAT",
-  vatExcluded: "excl. VAT",
   /**
    * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
    * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
    */
   unitPrice: {
+    ...enBrowser.unitPrice,
     label: "Unit price",
-    /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
-    spoken: (amount: string, base: string) => `Unit price: ${amount} per ${base}`,
-    bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "piece" },
   },
   /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
   buyer: {
@@ -764,10 +743,6 @@ export const en = {
     savedProductNote: "Against the lowest price in the last 30 days.",
     goesWith: "Goes well with your cart",
   },
-  priorPrice: "Lowest price in the last 30 days",
-  fromPrice: "From",
-  /** A buyer's own price from their price list (D321): never a reduction, so no prior price beside it. */
-  yourPrice: "Your price",
   inStock: "In stock",
   productPassport: "Product passport",
   fromSupplier: (days: number) => `In stock: sent within ${days} working ${days === 1 ? "day" : "days"}`,
@@ -825,12 +800,9 @@ export const en = {
   chooseLanguage: "Choose language",
   chooseCurrency: "Choose currency",
   noProducts: "No products yet.",
-  /** Content grids (D51): a tile's button, and a grid with nothing to show. */
-  readMore: "Read more",
   googleRating: (rating: string, count: number) => `${rating} out of 5 · ${count} reviews on Google`,
   googleReviews: "Reviews on Google",
   seeOnGoogle: "See all on Google",
-  viewProduct: "View product",
   blog: "Blog",
   byAuthor: (name: string) => `By ${name}`,
   noArticles: "No articles yet.",
@@ -1005,10 +977,6 @@ export const en = {
     stripeLine: (number: string) => `Invoice for order ${number}`,
     dueShort: (day: string) => `Due ${day}`,
   },
-  /** Combined listings (D566): the shared option's chooser on a product's card and page. */
-  group: {
-    choose: (option: string) => `Choose: ${option}`,
-  },
   /** SMS marketing (D565): hand-written, never machine-translated, needs legal review. */
   // legal: needs review
   sms: {
@@ -1116,7 +1084,6 @@ export const en = {
     `Renews ${every.toLowerCase()} at ${amount} until you cancel. You can cancel any time.`,
   subscriptionConsent: (every: string, amount: string) =>
     `I agree to a subscription that renews ${every.toLowerCase()} at ${amount} until I cancel it, and know I can cancel any time.`,
-  planConflict: "Your cart already has a subscription on a different schedule. Buy that first, or choose the same schedule.",
   problemPlans: "The subscriptions in your cart renew on different schedules. Keep one schedule and try again.",
   problemSubscriptionConsent: "Tick the box to agree to the subscription before you continue.",
   serviceRequest:

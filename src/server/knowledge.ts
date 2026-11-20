@@ -19,7 +19,7 @@ import { blogsNow } from "./blogs";
 import { owned } from "./owned";
 import { uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

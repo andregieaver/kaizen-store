@@ -19,7 +19,7 @@ import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /**
  * The owner's autonomy levels and budgets for the autopilot (D309, `docs/ai-autopilot.md` 7.4), the only writer of

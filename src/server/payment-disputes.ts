@@ -9,7 +9,7 @@ import { disputeRecord, reminderDue, type DisputeLike, type DisputeRecord, type 
 import { readMissingPaymentFacts } from "./payment-facts";
 import { paymentOfIntent } from "./stripe-refunds";
 import { sendDisputeAlert } from "./staff-alerts";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 type Row = Record<string, unknown>;
 

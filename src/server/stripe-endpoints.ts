@@ -10,7 +10,7 @@ import { siteUrl } from "@/lib/site";
 import { log } from "./log";
 import { connectWebhookUrl, platformStripe, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
-import { jobReport } from "./job-report";
+import { jobReport } from "./cache-events";
 
 /** What moving one of Kaizena Flow's Stripe endpoints needs: the classic endpoints and the v2 event destination take their address apart. */
 export type EndpointMover = {

@@ -4,6 +4,43 @@
  * A new text a visitor's client component reads goes here and in `nb-browser.ts`, `sv-browser.ts` and `da-browser.ts`.
  */
 export const enBrowser = {
+/** What a product grid's tiles say (D51, D557), read in the browser by a recommending grid (bloat review step 2.10). */
+readMore: "Read more",
+viewProduct: "View product",
+addToCart: "Add to cart",
+adding: "Adding …",
+added: "Added to cart.",
+capped: "Your cart now holds all the stock we have.",
+goToCart: "Go to cart",
+planConflict: "Your cart already has a subscription on a different schedule. Buy that first, or choose the same schedule.",
+tryAgain: "Something went wrong. Try again.",
+unavailable: "This item is not available.",
+quantity: "Quantity",
+quantityLess: "Decrease quantity",
+quantityMore: "Increase quantity",
+fromPrice: "From",
+yourPrice: "Your price",
+priorPrice: "Lowest price in the last 30 days",
+vatIncluded: "incl. VAT",
+vatExcluded: "excl. VAT",
+quotes: { priceOnRequest: "Price on request" },
+preorder: { page: (date: string) => `Pre-order: expected to ship from ${date}` },
+/** Combined listings (D566): the shared option's chooser on a product's card and page. */
+group: { choose: (option: string) => `Choose: ${option}` },
+unitPrice: {
+  spoken: (amount: string, base: string) => `Unit price: ${amount} per ${base}`,
+  bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "piece" },
+},
+/** The offers a product card's badge names (`cardText()`); the rest of `campaigns` is the server's. */
+campaigns: {
+  percent: (percent: number) => `${percent} % off`,
+  multiBuy: (buy: number, pay: number) => `${buy} for ${pay}`,
+  upTo: (percent: number) => `Up to ${percent} % off`,
+  upToAmount: (amount: string) => `Up to ${amount} off`,
+  bxgyBuy: (items: number) => `Buy ${items}`,
+  bxgyGetFree: (items: number) => `get ${items} free`,
+  bxgyGetPercent: (items: number, percent: number) => `get ${items} at ${percent} % off`,
+},
 /** The cart link in the header and the phone's bar (bloat review step 2.4: drawn in the browser with the count). */
 cart: "Cart",
 cartCount: (n: number) => `Cart (${n})`,

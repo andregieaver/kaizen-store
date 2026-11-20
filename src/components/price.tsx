@@ -4,7 +4,7 @@ import { formatMoney, type PriceDecimals } from "@/lib/money";
 import { afterAmount, beforeAmount, type PriceWords } from "@/lib/price-words";
 import type { PriceVat, PriceView } from "@/lib/pricing";
 import { unitPrice, unitPriceShown, type ShownMeasure, type UnitPriceResult } from "@/lib/unit-price";
-import { unitLabelsOf, unitPriceWords, type UnitLabels } from "@/lib/unit-price-text";
+import { unitLabelsOf, unitPriceWords, type UnitLabels, type UnitWords } from "@/lib/unit-price-text";
 
 export type VatLabels = { vatIncluded: string; vatExcluded: string };
 
@@ -190,7 +190,8 @@ export function Price({
 }: {
   price: PriceView;
   locale: string;
-  m: Messages;
+  /** The words it says: a product grid's tiles in the browser hand it only these (bloat review step 2.10). */
+  m: Pick<Messages, "fromPrice" | "yourPrice" | "priorPrice"> & VatLabels & UnitWords;
   from?: boolean;
   large?: boolean;
   /** The buyer's own price from their price list (D321): named so, never drawn as a reduction (its reference is null). */
