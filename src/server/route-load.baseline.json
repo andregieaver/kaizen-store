@@ -9,19 +9,19 @@
     "beacon-speed": 46,
     "beacon-own-speed": 41,
     "beacon-recommendation-events": 39,
-    "shop-tiles": 328,
-    "store-layout": 619,
-    "store-home": 513,
-    "store-product": 927,
-    "admin-store-layout": 975,
-    "admin-orders": 992,
-    "platform-admin-layout": 971,
-    "platform-admin-home": 970,
-    "site-front-page": 513,
-    "docs-feedback": 289,
+    "shop-tiles": 329,
+    "store-layout": 620,
+    "store-home": 514,
+    "store-product": 928,
+    "admin-store-layout": 976,
+    "admin-orders": 993,
+    "platform-admin-layout": 972,
+    "platform-admin-home": 971,
+    "site-front-page": 514,
+    "docs-feedback": 290,
     "page-reads": 85,
-    "page-article": 452,
-    "stores": 77
+    "page-article": 453,
+    "stores": 78
   },
   "exceptions": {
     "proxy": [],
@@ -56,8 +56,8 @@
       "reason": "A reminder job loads the cart, mail and money code it works on; the two files of the cold-start helper (step 1.16) took it from 1,500 to 1,502."
     },
     "src/app/api/cron/subscription-reminders/route.ts": {
-      "files": 1505,
-      "reason": "The subscription reminders job reaches the chat, the AI manager's tools and the forms, and with them both halves of the A/B tests: experiments.ts (the form sent) and experiments-read.ts, split from it by bloat review step 2.24, one file more than the 1,500 D857 brought it to; bloat review step 2.46's schema splits (a leaf -schema.ts file beside a helper) took it to 1,505."
+      "files": 1506,
+      "reason": "The subscription reminders job reaches the chat, the AI manager's tools and the forms, and with them both halves of the A/B tests: experiments.ts (the form sent) and experiments-read.ts, split from it by bloat review step 2.24, one file more than the 1,500 D857 brought it to; bloat review step 2.46's schema splits (a leaf -schema.ts file beside a helper) took it to 1,506."
     }
   },
   "adminStoreLayoutCachedFiles": 31

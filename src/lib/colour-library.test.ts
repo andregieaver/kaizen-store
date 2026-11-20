@@ -9,7 +9,6 @@ import { PartBackground } from "@/components/page-parts";
 import { DEFAULT_BREAKPOINTS } from "./breakpoints";
 import {
   SAVED_COLOURS_MAX,
-  colourLibrarySchema,
   libraryName,
   linearGradient,
   radialGradient,
@@ -19,6 +18,7 @@ import {
   withoutSaved,
   EMPTY_LIBRARY,
 } from "./colour-library";
+import { colourLibrarySchema } from "./colour-library-schema";
 import { pageInput, type PageBlock, type PageRow } from "./page-content";
 import { partCss } from "./part-css";
 import { WIDTHS, partStyleAt } from "./part-css.testing";

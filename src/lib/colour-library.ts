@@ -1,15 +1,4 @@
-import { z } from "zod";
-
-import {
-  GRADIENT_COLORS_MAX,
-  GRADIENT_COLORS_MIN,
-  GRADIENT_FLOWS,
-  GRADIENT_STYLES,
-  type GradientFlow,
-  type GradientFocus,
-  type GradientStyle,
-} from "./motion";
-import { gradientFocusSchema } from "./motion-schema";
+import type { GradientFlow, GradientFocus, GradientStyle } from "./motion";
 
 /**
  * A store's saved colours and gradients (D183): named, kept on its theme (`ThemeSettings.library`) and offered in every colour
@@ -37,28 +26,6 @@ export type SavedGradient = {
 export type ColourLibrary = { colours: SavedColour[]; gradients: SavedGradient[] };
 
 export const EMPTY_LIBRARY: ColourLibrary = { colours: [], gradients: [] };
-
-const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase());
-const itemId = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
-const name = z.string().trim().min(1, "Give it a name.").max(LIBRARY_NAME_MAX, `Keep the name under ${LIBRARY_NAME_MAX} characters.`);
-
-export const colourLibrarySchema = z.object({
-  colours: z.array(z.object({ id: itemId, name, color: hex })).max(SAVED_COLOURS_MAX, `Keep at most ${SAVED_COLOURS_MAX} saved colours.`),
-  gradients: z
-    .array(
-      z.object({
-        id: itemId,
-        name,
-        style: z.enum(Object.keys(GRADIENT_STYLES) as [GradientStyle, ...GradientStyle[]]),
-        colors: z.array(hex).min(GRADIENT_COLORS_MIN).max(GRADIENT_COLORS_MAX),
-        angle: z.number().int().min(0).max(360).optional(),
-        focus: gradientFocusSchema.optional(),
-        flow: z.enum(Object.keys(GRADIENT_FLOWS) as [GradientFlow, ...GradientFlow[]]).optional(),
-        grain: z.boolean().optional(),
-      }),
-    )
-    .max(SAVED_GRADIENTS_MAX, `Keep at most ${SAVED_GRADIENTS_MAX} saved gradients.`),
-});
 
 /** A name as it is kept: trimmed and cut, or the fallback when nothing is left. */
 export const libraryName = (text: string, fallback: string): string => text.trim().slice(0, LIBRARY_NAME_MAX) || fallback;

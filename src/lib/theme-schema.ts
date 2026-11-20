@@ -4,7 +4,7 @@ import { themeHoverSchema } from "./hover-timing-schema";
 import { breakpointsSchema } from "./breakpoints-schema";
 import { fontFamily } from "./fonts-schema";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./content-width";
-import { colourLibrarySchema } from "./colour-library";
+import { colourLibrarySchema } from "./colour-library-schema";
 import { sectionStylesSchema, themeElementsSchema } from "./theme-elements";
 import {
   BUTTON_CORNERS,

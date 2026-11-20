@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "@/lib/page-content";
 import { THEME_TEMPLATE_KEYS, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
 import { storeThemeInput, themeSettingsSchema } from "@/lib/theme-schema";
-import { colourLibrarySchema } from "@/lib/colour-library";
+import { colourLibrarySchema } from "@/lib/colour-library-schema";
 import { sectionStylesSchema, themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
 import { themeHoverSchema } from "@/lib/hover-timing-schema";
 
