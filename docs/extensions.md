@@ -502,6 +502,10 @@ generator, are saved as drafts of Kaizena Flow's own store for the owner to publ
 - E7 part one: `20261119235642_red_ezekiel_stane`, `20261119235653_workspace_rules`, applied by CI 20 November 2026 (held back from run 1747
   while main was red over a date fixed in another session's test, ci-red #27). In production: `stores.workspace` and
   `commerce.make_workspace()` in place, no workspace made yet. Advisors: INFO only, nothing on the new column, index, function or trigger.
+- E7 parts two and three: `20261120070223_past_namora`, `20261120070225_approve_workspace_request` and `20261120072737_workspace_features`,
+  applied by CI 20 November 2026 with run 1780 or 1781 (held back from runs 1762 to 1779: part two's sign-up page broke the build, fixed
+  in `676e5dae`, then other sessions' tests, ci-red #30). In production: `commerce.approve_workspace_request()` and a workspace made with
+  `sales` and Work on; email automation no longer sold on its own; the sign-up for extensions open. Advisors: INFO only, nothing new.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
