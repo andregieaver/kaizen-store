@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
+import type { LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
 import type { AffiliateResult, CustomerAffiliate } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
@@ -23,7 +23,7 @@ export function CustomerAffiliateSection({
   locale,
   who,
   block,
-  words = loyaltyEn,
+  words,
   timeZone,
 }: {
   data: CustomerAffiliate;
@@ -33,7 +33,7 @@ export function CustomerAffiliateSection({
   who: string;
   block: (blocked: boolean, note: string) => Promise<AffiliateResult>;
   /** The `loyalty` catalogue in the account's language; the block form reads its own through `useAdminText()`. */
-  words?: LoyaltyMessages;
+  words: LoyaltyMessages;
   /** The store's time zone (D786). */
   timeZone: string;
 }) {

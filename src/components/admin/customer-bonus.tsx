@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BonusAdjustForm } from "@/components/admin/bonus-adjust-form";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
+import type { LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { entryLabel, isUsableNow, moneyIn, signedMoney } from "@/lib/bonus-admin";
 import type { BonusBalance, BonusEntry, BonusResult } from "@/lib/bonus";
 import { Card, List, ListRow, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
@@ -26,7 +26,7 @@ export function CustomerBonus({
   who,
   adjust,
   now = new Date(),
-  words = loyaltyEn,
+  words,
   timeZone,
 }: {
   /** The program is on for the store. */
@@ -42,7 +42,7 @@ export function CustomerBonus({
   adjust: (amountMinor: number, note: string) => Promise<BonusResult>;
   now?: Date;
   /** The `loyalty` catalogue in the account's language; the adjust form reads its own through `useAdminText()`. */
-  words?: LoyaltyMessages;
+  words: LoyaltyMessages;
   /** The store's time zone (D786). */
   timeZone: string;
 }) {

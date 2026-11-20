@@ -116,7 +116,7 @@ const overview: AffiliateOverview = { currency: "NOK", affiliates: 3, visits30d:
 
 describe("the overview", () => {
   it("shows the figures of the program, and what the store still owes", () => {
-    const out = html(createElement(AffiliateOverviewCard, { overview, locale: "en-GB" }));
+    const out = html(createElement(AffiliateOverviewCard, { overview, locale: "en-GB", words: loyaltyEn }));
     expect(out).toContain("Referrals at a glance");
     expect(out).toContain("Customers with a link");
     expect(out).toContain("NOK 125.00");
@@ -133,7 +133,7 @@ const act = async () => ({ ok: true as const });
 
 describe("the referrers", () => {
   it("lists who they are (staff may see), their codes, friends and earnings, and whether they are blocked", () => {
-    const out = html(createElement(ReferrersTable, { rows, storeSlug: "kaffe", currency: "NOK", locale: "en-GB", canBlock: true, block: act }));
+    const out = html(createElement(ReferrersTable, { rows, storeSlug: "kaffe", currency: "NOK", locale: "en-GB", canBlock: true, block: act, words: loyaltyEn }));
     expect(out).toContain("Lisa Listed (lisa@example.com)");
     expect(out).toContain('href="/admin/kaffe/customers/c1"');
     expect(out).toContain("abcdef23");
@@ -143,11 +143,11 @@ describe("the referrers", () => {
   });
 
   it("shows only the status without the power to block, and explains an empty list", () => {
-    const read = html(createElement(ReferrersTable, { rows, storeSlug: "kaffe", currency: "NOK", locale: "en-GB", canBlock: false, block: act }));
+    const read = html(createElement(ReferrersTable, { rows, storeSlug: "kaffe", currency: "NOK", locale: "en-GB", canBlock: false, block: act, words: loyaltyEn }));
     expect(read).not.toContain("Block Lisa");
     expect(read).toContain("Earning");
     expect(read).toContain("Blocked");
-    expect(html(createElement(ReferrersTable, { rows: [], storeSlug: "kaffe", currency: "NOK", locale: "en-GB", canBlock: true, block: act }))).toContain("Nobody has a link yet.");
+    expect(html(createElement(ReferrersTable, { rows: [], storeSlug: "kaffe", currency: "NOK", locale: "en-GB", canBlock: true, block: act, words: loyaltyEn }))).toContain("Nobody has a link yet.");
   });
 });
 
@@ -173,7 +173,7 @@ const attribution = (over: Partial<AffiliateAttributionRow> = {}): AffiliateAttr
 
 describe("the orders that came through links", () => {
   it("lists the order, who shared the link, the friend, what each got and the status", () => {
-    const out = html(createElement(AttributionsTable, { timeZone: "Europe/Oslo", rows: [attribution(), attribution({ id: "a2", orderId: "o2", orderNumber: "1002", status: "rejected", reason: "self", rewardMinor: 0, discountMinor: 0, friendId: null })], storeSlug: "kaffe", locale: "en-GB" }));
+    const out = html(createElement(AttributionsTable, { timeZone: "Europe/Oslo", rows: [attribution(), attribution({ id: "a2", orderId: "o2", orderNumber: "1002", status: "rejected", reason: "self", rewardMinor: 0, discountMinor: 0, friendId: null })], storeSlug: "kaffe", locale: "en-GB", words: loyaltyEn }));
     expect(out).toContain("#1001");
     expect(out).toContain('href="/admin/kaffe/orders/o1"');
     expect(out).toContain("Bob Buyer (bob@example.com)");
@@ -182,7 +182,7 @@ describe("the orders that came through links", () => {
     expect(out).toContain("Rewarded");
     expect(out).toContain("No reward: The friend is the referrer");
     expect(out).toContain("Deleted customer");
-    expect(html(createElement(AttributionsTable, { timeZone: "Europe/Oslo", rows: [], storeSlug: "kaffe", locale: "en-GB" }))).toContain("No order has come through a link yet.");
+    expect(html(createElement(AttributionsTable, { timeZone: "Europe/Oslo", rows: [], storeSlug: "kaffe", locale: "en-GB", words: loyaltyEn }))).toContain("No order has come through a link yet.");
   });
 });
 
@@ -245,6 +245,7 @@ describe("a customer's page", () => {
         locale: "en-GB",
         who: "Lisa",
         block: act,
+        words: loyaltyEn,
       }),
     );
     expect(out).toContain("Came through the link of");
@@ -258,7 +259,7 @@ describe("a customer's page", () => {
   });
 
   it("says when they are blocked, and why", () => {
-    const out = html(createElement(CustomerAffiliateSection, { timeZone: "Europe/Oslo", data: data({ blocked: true, blockedReason: "Referred herself" }), storeSlug: "kaffe", locale: "en-GB", who: "Lisa", block: act }));
+    const out = html(createElement(CustomerAffiliateSection, { timeZone: "Europe/Oslo", data: data({ blocked: true, blockedReason: "Referred herself" }), storeSlug: "kaffe", locale: "en-GB", who: "Lisa", block: act, words: loyaltyEn }));
     expect(out).toContain("Blocked: they earn nothing new.");
     expect(out).toContain("Reason: Referred herself");
     expect(out).toContain(">Unblock Lisa<");

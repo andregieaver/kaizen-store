@@ -185,7 +185,7 @@ describe("the bonus overview", () => {
   };
 
   it("shows what the store owes and did lately, with the accounting note", () => {
-    const out = html(createElement(BonusOverviewCard, { overview, locale: "en-GB" }));
+    const out = html(createElement(BonusOverviewCard, { overview, locale: "en-GB", words: loyaltyEn }));
     expect(out).toContain("Outstanding credits");
     expect(out).toContain("NOK 1,500.00");
     expect(out).toContain("Earned, last 30 days");
@@ -264,6 +264,7 @@ describe("a customer's credits", () => {
         adjust,
         now,
         ...props,
+        words: loyaltyEn,
       }),
     );
 

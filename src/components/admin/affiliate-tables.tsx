@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords } from "@/lib/admin-fill";
-import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
+import type { LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
 import type { AffiliateAttributionRow, AffiliateResult, AffiliateRow } from "@/lib/affiliates";
 import { formatMoney } from "@/lib/money";
@@ -20,7 +20,7 @@ export function ReferrersTable({
   locale,
   canBlock,
   block,
-  words = loyaltyEn,
+  words,
 }: {
   rows: AffiliateRow[];
   storeSlug: string;
@@ -28,7 +28,7 @@ export function ReferrersTable({
   locale: string;
   canBlock: boolean;
   block: (customerId: string, blocked: boolean, note: string) => Promise<AffiliateResult>;
-  words?: LoyaltyMessages;
+  words: LoyaltyMessages;
 }) {
   const w = words.affiliateTables;
   if (rows.length === 0) {
@@ -66,13 +66,13 @@ export function AttributionsTable({
   rows,
   storeSlug,
   locale,
-  words = loyaltyEn,
+  words,
   timeZone,
 }: {
   rows: AffiliateAttributionRow[];
   storeSlug: string;
   locale: string;
-  words?: LoyaltyMessages;
+  words: LoyaltyMessages;
   /** The store's time zone: each order's day is the store's (D786). */
   timeZone: string;
 }) {

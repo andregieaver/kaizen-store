@@ -1,4 +1,4 @@
-import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
+import type { LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { overviewRows } from "@/lib/affiliate-admin";
 import type { AffiliateOverview } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
@@ -11,11 +11,11 @@ import { CARD_CLASS } from "@/components/admin/ui";
 export function AffiliateOverviewCard({
   overview,
   locale,
-  words = loyaltyEn,
+  words,
 }: {
   overview: AffiliateOverview;
   locale: string;
-  words?: LoyaltyMessages;
+  words: LoyaltyMessages;
 }) {
   const rows = overviewRows(overview, moneyIn(overview.currency, locale), words.affiliateOverview);
   return (
