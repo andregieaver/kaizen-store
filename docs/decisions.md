@@ -850,6 +850,8 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D845 | **Empty screens with a next step: every empty admin list says what it is for and offers one thing to do, a filtered one Clear filters** | 2026-11-20 | [text](decisions/D845.md) |
 | D846 | **Admin redesign round 70: Kaizena Flow's status page, API and limits on a phone** | 2026-11-20 | [text](decisions/D846.md) |
 | D847 | **The platform's Stores list is the store admin's list: search by name, owner or domain, plan and state filters, a pager that keeps the…** | 2026-11-20 | [text](decisions/D847.md) |
+| D848 | **Admin words load by area: each page imports the areas it names** | 2026-11-20 | [text](decisions/D848.md) |
+| D849 | **A recommending grid brings its own words and reaches no zod or page model** | 2026-11-20 | [text](decisions/D849.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

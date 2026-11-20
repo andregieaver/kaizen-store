@@ -168,7 +168,7 @@ commit as the fix.
 | 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Done | D838, c351d3ab5, 20 Nov: a built page's tile tap 1 document, 29 requests to 0 and 3 on prod; a builder button on kaizenaflow.com 0 documents. Pay paths stay full loads. |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Done | D842, 20 Nov: first 6 tiles on sight, rest on intent; 48 products 15 router requests (47), bound 20. Prod: none on scroll. Rule stands. |
 | 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Open | |
-| 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | In progress | Local: scripts after /api/recommendations 649,561 to 368,114 (c1) to 98,341 B (52,913 of it the product page fetched ahead); later chains 24 to 0; browser words 32,165 to 38,512 B. |
+| 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | Done | D849, live 20 Nov: scripts after recommendations answer 649,561 to 98,341 B (held 140,000), no zod or page model. Prod: no store has it on yet. |
 | 2.11 | Give the storefront a stylesheet of its own | SC-5, CS-1, BN-12, GAP-styles-s5 | M | review | 1.21, 1.23, 1.3, 0.35, 0.34, 0.12 | Open | |
 | 2.12 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | review | 2.10, 2.2 | Open | |
 | 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | Done | 19 Nov, 4cc84650, D779: product page 12 to 1 statements; buy facts one cached read. |
@@ -183,7 +183,7 @@ commit as the fix.
 | 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | In progress | D840, 20 Nov: stores.ts 102 to 72 files; beacons 426-477 modules, no Stripe; store home over bar. Prod: beacon cold-start p50, test-store checkout. |
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
-| 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | In progress | Local 20 Nov: 110 area modules, admin-text.ts types only; median admin entry 4 areas, 213 KB (77, 4.03 MB before); orders server chunks 13,077,616 to 11,223,862 B. |
+| 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Done | D848, live 20 Nov: median admin entry 4 areas, 213 KB of words (77, 4.03 MB); orders server chunks 13.1 to 11.2 MB. Admin cold start to read. |
 | 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | Done | 19 Nov, D799: catalogue sites 35 to 0; 83 routes fell 4.86 MB; five screens 634-664 KB; admin median 643,240 B. aaa201926..589fb73de. |
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | In progress | D821: product editor 431,497 to 236,060 B, builder 606,658 to 460,097; words handed 13.2 to 6.1 MB; shared held. 3 sites left. |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Done | 19 Nov, D831: menu 17,307 to 14,757 chars; saves and a shell redraw measured and held. Commit 3 dropped: a save without a redraw would serve stale pages. |
@@ -755,20 +755,20 @@ Each area's measures, today's values, the targets, how each is measured and the 
 
 ### Where the grades stand now
 
-Updated as steps land; last on 20 November 2026. A grade rises only for fixes seen working in production. On 20 November 81 of
-the 156 steps are done, 24 in progress and 51 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
-under way. No area is a D any more: 11 are a C and 2 a B.
+Updated as steps land; last on 20 November 2026. A grade rises only for fixes seen working in production. On 20 November 84 of
+the 156 steps are done, 23 in progress and 49 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
+under way. No area is a D any more: 10 are a C and 3 a B.
 
 | Area | 12 Nov | Now | Steps done | What moved it, or what the next grade waits on |
 |---|---|---|---|---|
-| What a shopper's browser gets | C | C | 19 of 30 | Store pages static, layout sent once, links with a policy, a listing fetches its first screen ahead; B after 2.9 to 2.12 and 2.45. |
-| What an owner's browser gets | D | C | 16 of 29 | Supabase, zod and the builder's English off every screen; the builder 2.79 to 2.01 MB; an untouched tab asks 6 times an hour, not 60. B after 2.30, 2.46 and 2.9. |
-| What the server loads and asks | D | C | 30 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons 426 to 477 modules, no Stripe. B after 2.23, 2.24, 2.47, 2.19, 2.14 and 2.15. |
-| Scheduled work | D | C | 14 of 24 | The scheduler's log pruned, statements per run held, a watchdog every 15 minutes. Further with 1.26 and phase 3's one tick. |
+| What a shopper's browser gets | C | C | 20 of 30 | Store pages static, layout sent once, links with a policy, a listing fetches its first screen ahead; B after 2.9 to 2.12 and 2.45. |
+| What an owner's browser gets | D | C | 17 of 29 | Supabase, zod and the builder's English off every screen; the builder 2.79 to 2.01 MB; an untouched tab asks 6 times an hour, not 60. B after 2.30, 2.46 and 2.9. |
+| What the server loads and asks | D | C | 31 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons 426 to 477 modules, no Stripe. B after 2.23, 2.24, 2.47, 2.19, 2.14 and 2.15. |
+| Scheduled work | D | C | 15 of 24 | The scheduler's log pruned, statements per run held, a watchdog every 15 minutes. Further with 1.26 and phase 3's one tick. |
 | The database | C | B | 23 of 34 | Its phase 0 and 1 steps are live: statements per page and run held, lists read 100 rows a page. A after 2.19 and phase 3. |
-| The page builder's model and a built page | C | C | 16 of 27 | Layout sent once, built pages' links stay in the app. B after 2.10, 2.12, 2.14, 2.15 and 2.30. |
+| The page builder's model and a built page | C | C | 17 of 27 | Layout sent once, built pages' links stay in the app. B after 2.10, 2.12, 2.14, 2.15 and 2.30. |
 | Styles | C | C | 6 of 12 | A after 1.23's reading, 2.11 and 2.49. |
-| Interface text | C | C | 17 of 24 | B once step 2.25 is live: each admin page reaches the words of about 4 areas (213 KB), not all 77 (4 MB). Then 2.50. |
+| Interface text | C | B | 18 of 24 | Step 2.25 live: each admin page reaches the words of about 4 areas (213 KB), not all 77 (4 MB). A after 2.50 and 2.27's last sites. |
 | AI calls | C | C | 9 of 16 | Waits on the owner's eval run (1.19), then 2.36 to 2.39. |
 | The product's surface | C | C | 14 of 25 | B after 2.32 and 2.36 to 2.38. |
 | The code itself | C | C | 22 of 37 | B once 1.20's ceilings are set; then phase 3. |
