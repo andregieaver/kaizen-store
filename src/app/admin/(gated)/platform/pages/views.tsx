@@ -6,6 +6,7 @@ import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { listOffset, listPage, LIST_PAGE_SIZE } from "@/lib/list-page";
 import { LAYOUT_TYPES, type PageType } from "@/lib/page-content";
 import { isThemeStoreRole, PLATFORM_ROLE_COPY, SPECIAL_ROLES, type PlatformRole } from "@/lib/platform-roles";
 import { requirePlatformReader } from "@/server/auth";
@@ -42,8 +43,6 @@ import { typeWords } from "./type-words";
 
 type Query = Promise<Record<string, string | string[] | undefined>>;
 
-/** How many pages a list shows at a time (bloat review step 2.17), with the count and a pager as a store's Pages list has. */
-const PAGE_SIZE = 100;
 
 
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {
@@ -55,10 +54,10 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   const copy = PAGE_TYPE_COPY[type];
   const base = `/admin/platform/${copy.segment}`;
   const query = await searchParams;
-  const page = Math.max(1, Math.floor(Number(typeof query.page === "string" ? query.page : "1")) || 1);
+  const page = listPage(query.page);
   // Every read of the list at once: the hundred shown and their count, every page by title for the places' choices, and what is beside.
   const [all, total, every, roles, legal, platform, jobs, layoutChoice] = await Promise.all([
-    listPages(null, type, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    listPages(null, type, { limit: LIST_PAGE_SIZE, offset: listOffset(page) }),
     countPages(null, type),
     type === "page" ? pageTitles(null, type) : Promise.resolve([]),
     type === "page" ? getPlatformPageRoles() : Promise.resolve([]),
@@ -170,7 +169,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           duplicate={duplicatePageAction.bind(null, type)}
         />
       )}
-      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={all.length} total={total} />
+      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={LIST_PAGE_SIZE} shown={all.length} total={total} />
       {legal && <PlatformLegalCard lang={adminLangOf(admin.adminLocale)} overview={legal} write={writeLegalPagesAction} />}
       {officer && (
         <section className="flex max-w-xl flex-col gap-3" aria-labelledby="platform-officer" id="privacy-officer">

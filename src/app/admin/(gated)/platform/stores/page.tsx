@@ -5,6 +5,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { adminDate } from "@/lib/admin-date";
+import { listOffset, listPage, LIST_PAGE_SIZE } from "@/lib/list-page";
 import { formatBps, priceLabel } from "@/lib/plans";
 import { countStoreBilling, listStoreBilling } from "@/server/billing";
 import { sandboxFunnel, sandboxSettings } from "@/server/sandbox";
@@ -16,8 +17,6 @@ import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Stores" };
 
-const PAGE_SIZE = 100;
-
 /** Every store with its plan, subscription and fee, a hundred a page with the count. */
 export default async function PlatformStoresPage({ searchParams }: PageProps<"/admin/platform/stores">) {
   // Per request: admin pages never read the database while the site is built.
@@ -28,9 +27,9 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
   const billingWords = adminText(lang, "billing");
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const raw = (await searchParams).page;
-  const page = Math.max(1, Math.floor(Number(typeof raw === "string" ? raw : "1")) || 1);
+  const page = listPage(raw);
   const [stores, total, funnel, sandbox] = await Promise.all([
-    listStoreBilling({ includeClosed: true, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    listStoreBilling({ includeClosed: true, limit: LIST_PAGE_SIZE, offset: listOffset(page) }),
     countStoreBilling({ includeClosed: true }),
     sandboxFunnel(),
     sandboxSettings(),
@@ -142,7 +141,7 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
           label={w.title}
           base="/admin/platform/stores"
           page={page}
-          size={PAGE_SIZE}
+          size={LIST_PAGE_SIZE}
           shown={stores.length}
           total={total}
         />
