@@ -633,6 +633,24 @@ export const AGENT_EVAL_CASES: AgentEvalCase[] = [
         ],
         counts: { open: 2, new: 2, last_7_days: 2 },
       },
+      // The store's forms, as a store with a contact form answers: naming it also loads the forms' tools, as the case above does.
+      list_forms: {
+        forms: [
+          {
+            id: "6b1f3c2a-0d4e-4f5a-9b8c-7d6e5f4a3b2c",
+            name: "Contact",
+            kind: "message form",
+            status: "active",
+            questions: 2,
+            responses: 2,
+            new_responses: 2,
+            last_response: "2026-11-18",
+            takes_answers: true,
+            shown_on: [{ page: "Kontakt", published: true }],
+            editor: "/admin/demo/forms/6b1f3c2a-0d4e-4f5a-9b8c-7d6e5f4a3b2c",
+          },
+        ],
+      },
       extension_offers: { offer: null, note: "Nothing to offer now." },
       start_extension_trial: { error: "This needs the person's approval first." },
     },
