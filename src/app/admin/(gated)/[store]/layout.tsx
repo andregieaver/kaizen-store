@@ -30,7 +30,7 @@ import { storeShellReads } from "@/server/admin-screens";
 import { holderOf } from "@/server/auth";
 import { noteFirstRequest } from "@/server/instance-start";
 import { memberCan, requireMemberAny } from "@/server/permissions";
-import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
+import { ensureStorePaymentMethods, ensureTestAccount, needsMethodsCheck, needsTestAccountCheck, requestIp } from "@/server/connect";
 
 import {
   assistantHearAction,
@@ -72,12 +72,16 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   // A store that is not open (D171) gets no Stripe set-up from a visit to its admin, nor does a store template (D175), which takes no orders.
   // A website (D178 step 5: the online shop off) takes no payments, so neither is set up.
   const selling = featureOn(store, "shop");
+  // Asked once per server instance while the account is active and the methods are settled (bloat review step 2.32): a settled store
+  // costs no statement after the response.
   if (store.status === "active" && !store.starter && store.paymentsTest && selling) {
-    const ip = await requestIp();
-    after(() => ensureTestAccount(store.id, account.id, ip));
+    if (needsTestAccountCheck(store.id)) {
+      const ip = await requestIp();
+      after(() => ensureTestAccount(store.id, account.id, ip));
+    }
   }
   // Payment methods added to Kaizen since the store's accounts were made (D23).
-  if (store.status === "active" && selling) after(() => ensureStorePaymentMethods(store.id));
+  if (store.status === "active" && selling && needsMethodsCheck(store.id)) after(() => ensureStorePaymentMethods(store.id));
   const { stores, waiting, starter, trialPaused } = await storeShellReads(member);
 
   const base = `/admin/${store.slug}`;

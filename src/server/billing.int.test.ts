@@ -399,6 +399,43 @@ describe("plans", () => {
     });
   });
 
+  it("asks no more about a settled store on the same instance: the admin's two checks send no statement (bloat review step 2.32)", async () => {
+    const { ensureStorePaymentMethods, ensureTestAccount, forgetPaymentChecks, needsMethodsCheck, needsTestAccountCheck } = await import("./connect");
+    const { countStatements } = await import("@/db/statement-count");
+    forgetPaymentChecks(storeId);
+    expect(needsTestAccountCheck(storeId)).toBe(true);
+    expect(needsMethodsCheck(storeId)).toBe(true);
+    // The test account is active and every method was asked for and shown (the cases above): one pass of each finds it settled.
+    expect(await ensureTestAccount(storeId)).toMatchObject({ ok: true, ready: true });
+    await ensureStorePaymentMethods(storeId);
+    expect(needsTestAccountCheck(storeId)).toBe(false);
+    expect(needsMethodsCheck(storeId)).toBe(false);
+    // The layout's two conditions, a second time: nothing is queued, so nothing is sent after the response.
+    const { count } = await countStatements(async () => {
+      if (needsTestAccountCheck(storeId)) await ensureTestAccount(storeId);
+      if (needsMethodsCheck(storeId)) await ensureStorePaymentMethods(storeId);
+    });
+    expect(count).toBe(0);
+  });
+
+  it("asks again after the checks are forgotten, as a fresh instance does, and keeps asking after a refusal", async () => {
+    const { ensureStorePaymentMethods, forgetPaymentChecks, needsMethodsCheck, needsTestAccountCheck } = await import("./connect");
+    forgetPaymentChecks();
+    expect(needsTestAccountCheck(storeId)).toBe(true);
+    expect(needsMethodsCheck(storeId)).toBe(true);
+    // What Stripe refuses is tried again: the store is not marked settled.
+    await db().execute(sql`
+      update commerce.stripe_accounts set payment_methods_requested = '{card_payments}' where store_id = ${storeId}::uuid and mode = 'test'
+    `);
+    fake.refuseUpdates.on = true;
+    await ensureStorePaymentMethods(storeId);
+    fake.refuseUpdates.on = false;
+    expect(needsMethodsCheck(storeId)).toBe(true);
+    // Put back as the cases after this one find it.
+    await ensureStorePaymentMethods(storeId);
+    expect(needsMethodsCheck(storeId)).toBe(false);
+  });
+
   it("lets a store's own fee win, and falls back to the default after cancelling", async () => {
     await billing.setStoreFee(admin, storeId, 50);
     expect(await billing.storeFeeBps(storeId)).toBe(50);

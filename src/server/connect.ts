@@ -256,6 +256,33 @@ export async function makeTestAccount(
 }
 
 /**
+ * What this server instance already found settled (bloat review step 2.32): stores whose test account is active, and stores whose
+ * payment methods were all asked for and shown. The store admin's layout asks `needsTestAccountCheck()` and `needsMethodsCheck()` before
+ * it queues the two set-ups after a render, so a settled store costs no statement after the response. A store is added only on those
+ * answers, so what Stripe refused is tried again; a new deploy starts with empty sets, so a payment method added to the platform is
+ * still asked for at the first admin visit after it (D23). Checkout's own calls of the two functions do not read the sets.
+ */
+const testAccountActive = new Set<string>();
+const methodsSettled = new Set<string>();
+
+/** Whether the admin should still queue `ensureTestAccount()` for the store on this instance. */
+export const needsTestAccountCheck = (storeId: string): boolean => !testAccountActive.has(storeId);
+
+/** Whether the admin should still queue `ensureStorePaymentMethods()` for the store on this instance. */
+export const needsMethodsCheck = (storeId: string): boolean => !methodsSettled.has(storeId);
+
+/** Look at one store again (an account webhook saved a status that is not active), or every store (tests). */
+export function forgetPaymentChecks(storeId?: string): void {
+  if (storeId) {
+    testAccountActive.delete(storeId);
+    methodsSettled.delete(storeId);
+  } else {
+    testAccountActive.clear();
+    methodsSettled.clear();
+  }
+}
+
+/**
  * The store's test Stripe account, set up by Kaizen with no questions to the
  * owner (decision D20): Kaizen fills in Stripe's test values and accepts the
  * service agreement, so test purchases land in the store's own test account
@@ -277,12 +304,16 @@ export async function ensureTestAccount(
     select account_id, card_payments, managed_by_kaizen from commerce.stripe_accounts
     where store_id = ${storeId}::uuid and mode = 'test'
   `);
-  if (saved?.card_payments === "active") return { ok: true, accountId: String(saved.account_id), ready: true };
+  if (saved?.card_payments === "active") {
+    testAccountActive.add(storeId);
+    return { ok: true, accountId: String(saved.account_id), ready: true };
+  }
   if (saved?.managed_by_kaizen) {
     // Ours: Stripe checks the test details within a minute or two.
     try {
       const existing = await stripe.v2.core.accounts.retrieve(String(saved.account_id), { include: INCLUDE });
       const status = await saveStatus(storeId, "test", existing);
+      if (status.cardPayments === "active") testAccountActive.add(storeId);
       return { ok: true, accountId: existing.id, ready: status.cardPayments === "active" };
     } catch (error) {
       return { ok: false, problem: stripeProblem(error) };
@@ -573,11 +604,16 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
       and (not payment_methods_requested @> ${CAPABILITY_LIST}::text[]
            or (managed_by_kaizen and not payment_methods_shown))
   `);
+  // Settled on this instance (`needsMethodsCheck()`) when nothing was left to ask, or every row was handled without Stripe refusing.
+  let refusedAny = false;
   for (const row of rows) {
     const mode = row.mode as PaymentModeName;
     const accountId = String(row.account_id);
     const stripe = platformStripe(mode);
-    if (!stripe) continue;
+    if (!stripe) {
+      refusedAny = true;
+      continue;
+    }
     const where = sql`store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${accountId}`;
 
     const asked = new Set(row.payment_methods_requested as string[]);
@@ -601,6 +637,7 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
           if (await ask([capability])) granted.push(capability);
           else refused.push(capability);
         }
+      if (refused.length > 0) refusedAny = true;
       // Stripe took some: the ones it refused are ones it does not offer this account, kept as asked so they are not asked again every time
       // (Stripe's answer, read back below, says they are not on). It took none: Stripe may be down, and all are asked again next time.
       if (granted.length > 0) {
@@ -616,20 +653,22 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
       // Test accounts made before MobilePay lack the org number it asks for.
       await stripe.v2.core.accounts
         .update(accountId, { identity: { business_details: testBusinessDetails } })
-        .catch((error: unknown) =>
-          audit(null, storeId, "payments.test_details_refused", { mode, problem: stripeProblem(error) }),
-        );
+        .catch((error: unknown) => {
+          refusedAny = true;
+          return audit(null, storeId, "payments.test_details_refused", { mode, problem: stripeProblem(error) });
+        });
       const shown = await showPaymentMethods(stripe, accountId);
       if (shown.methods.length > 0) {
         await db().execute(sql`update commerce.stripe_accounts set payment_methods_shown = true where ${where}`);
         await audit(null, storeId, "payments.methods_shown", { mode, methods: shown.methods, held: shown.held });
-      }
+      } else refusedAny = true;
     }
 
     // Read the account back, so what Stripe still wants for the new methods is on record.
     const account = await stripe.v2.core.accounts.retrieve(accountId, { include: INCLUDE }).catch(() => null);
     if (account) await saveStatus(storeId, mode, account);
   }
+  if (!refusedAny) methodsSettled.add(storeId);
 }
 
 /**

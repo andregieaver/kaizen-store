@@ -1,7 +1,7 @@
 import { revalidateTag } from "next/cache";
 
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
-import { getPlatformWebhookSecret, refreshStripeAccount, storeForAccount } from "@/server/connect";
+import { forgetPaymentChecks, getPlatformWebhookSecret, refreshStripeAccount, storeForAccount } from "@/server/connect";
 import { refreshHostStripeAccount } from "@/server/host-payments";
 import { platformStripe } from "@/server/stripe";
 import { storeTag } from "@/server/stores";
@@ -44,6 +44,8 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
     ? await refreshHostStripeAccount(store.storeId, store.hostId, mode as PaymentModeName)
     : await refreshStripeAccount(store.storeId, mode as PaymentModeName);
   if (!account) return new Response("Could not read the account", { status: 500 });
+  // A store's account that is not active (restricted, or waiting for details) is looked at again by its admin (bloat review step 2.32).
+  if (!store.hostId && account.cardPayments !== "active") forgetPaymentChecks(store.storeId);
   // Whether the storefront can take payments may have changed.
   revalidateTag(storeTag(store.slug), { expire: 0 });
   return Response.json({ received: true });
