@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import type { TargetKind } from "@/lib/ab-site";
 import { adminDate, adminDay, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { STATE_SIGNAL } from "@/lib/experiment-list";
@@ -37,25 +38,33 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   const everything = show === "all";
   const [{ tests, overview, truncated }, own, house] = await Promise.all([platformExperiments(everything), platformUnitTests(), siteStore()]);
   const now = new Date();
+  const ph = w.phone;
+  const row = { flat: true, change: ph.open, done: ph.close } as const;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={<>{w.intro}</>}
+        description={
+          <>
+            <span className="sm:hidden">{ph.lead}</span>
+            <span className="max-sm:hidden">{w.intro}</span>
+          </>
+        }
       />
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Round 68 (D841): on a phone the four counts are one strip of a card; their notes show from sm up. */}
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 max-sm:grid-cols-4 max-sm:gap-2 max-sm:rounded-card max-sm:bg-card max-sm:px-4 max-sm:py-3">
         {[
           [w.running, overview.running, countWords(overview.stores, w.inStores)],
           [w.scheduled, overview.scheduled, w.waitingStart],
           [w.stopped, overview.stopped, w.waitingDecision],
           [w.needLook, overview.needAttention, w.seeNotes],
         ].map(([label, value, note]) => (
-          <div key={label} className={`p-4 ${CARD_CLASS}`}>
-            <dt className="text-sm text-muted">{label}</dt>
-            <dd className="text-metric text-ink tabular-nums">{value}</dd>
-            <dd className="text-xs text-muted">{note}</dd>
+          <div key={label} className={`flex flex-col p-4 max-sm:bg-transparent max-sm:p-0 ${CARD_CLASS}`}>
+            <dt className="text-sm text-muted max-sm:order-last max-sm:text-xs">{label}</dt>
+            <dd className="text-metric text-ink tabular-nums max-sm:text-xl">{value}</dd>
+            <dd className="text-xs text-muted max-sm:hidden">{note}</dd>
           </div>
         ))}
       </dl>
@@ -74,7 +83,8 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           {everything ? w.noneEver : w.noneActive}
         </p>
       ) : (
-        <Card compact>
+        // Round 68 (D841): on a phone each test is one line, its state at the end; the verdict's sentence shows from sm up.
+        <Card compact className="max-sm:[&_li]:flex-nowrap">
           <List label={w.list}>
             {tests.map((t) => (
               <ListRow key={t.id}>
@@ -88,7 +98,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                       {" · "}
                       {/* Named as the store's own list names it: the address, the place (All products page), or the kind and its title. */}
                       {targetLabelText(t.target.type as TargetKind, t.target.slug, t.target.title, t.target.role, ex)} · {fillWords(w.versions, { n: t.versions })} · {ex.goals[t.goal]?.label ?? GOAL_WORDS[t.goal].label}
-                      {t.headline && <span className="block text-ink-2">{t.headline}</span>}
+                      {t.headline && <span className="block text-ink-2 max-sm:hidden">{t.headline}</span>}
                       {t.flags.map((f) => (
                         <span key={f.kind} className="block text-danger-text">
                           {f.words}
@@ -129,7 +139,10 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
       )}
       {truncated && <p className="text-sm text-muted">{w.newest}</p>}
 
+      {/* Round 68 (D841): on a phone Kaizena Flow's own site and the tests that run on their own are rows of one card. */}
+      <PhoneRows>
       {/* Kaizena Flow's own pages (the parity rule): served from its store, they are tested in that store's admin like any store's. */}
+      <PhoneRow {...row} title={w.house} sub={house ? ph.houseOn : ph.houseOff}>
       <section aria-labelledby="house" className={`flex flex-wrap items-center justify-between gap-3 p-5 ${CARD_CLASS}`}>
         <div className="flex min-w-0 flex-1 basis-80 flex-col gap-1">
           <h2 id="house" className="text-title text-ink">
@@ -143,7 +156,9 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           </Link>
         )}
       </section>
+      </PhoneRow>
 
+      <PhoneRow {...row} last title={w.own} sub={own.length === 0 ? ph.noneOwn : countWords(own.length, ph.ownCount)}>
       <section aria-labelledby="own" className="flex flex-col gap-3">
         <div>
           <h2 id="own" className="text-title text-ink">
@@ -189,6 +204,8 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           </ul>
         )}
       </section>
+      </PhoneRow>
+      </PhoneRows>
     </div>
   );
 }

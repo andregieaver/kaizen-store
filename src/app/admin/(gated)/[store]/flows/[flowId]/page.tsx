@@ -10,11 +10,12 @@ import { formatMoney } from "@/lib/money";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { darkPreview } from "@/lib/email-dark";
+import { stepReach } from "@/lib/flow-reach";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
-import { drawFlowEmails, flowReach, flowReport, getFlow } from "@/server/flows";
+import { drawFlowEmails, flowReach, flowStepPast, flowReport, getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
@@ -67,7 +68,13 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
   const mayWrite = memberCan(member, "marketing:write");
   const languages = store.localization.locales.length > 0 ? store.localization.locales : ["en-GB"];
   const checks = flowChecks(flow.steps, languages[0]);
-  const [reach, report] = await Promise.all([mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays) : Promise.resolve(0), flowReport(store.id, flow.id)]);
+  const [reach, report, past] = await Promise.all([
+    mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays) : Promise.resolve(0),
+    flowReport(store.id, flow.id),
+    mayWrite ? flowStepPast(store.id, flow.id) : Promise.resolve(null),
+  ]);
+  // Each email's reach (M3.5): from the flow's own past once it has one, else everyone who starts, or at most that inside a branch.
+  const reachOf = past ? stepReach(flow.steps, reach, past) : null;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const money = Object.entries(report.minor).map(([cur, minor]) => formatMoney(minor, cur, numbers)).join(" + ") || formatMoney(0, store.markets[0]?.currency ?? "EUR", numbers);
   const suggestion = w.report.suggestions[flowSuggestion(report)];
@@ -126,6 +133,11 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
                   <div className="min-w-0 flex-1 rounded-lg border border-line bg-card px-4 py-3 shadow-sm" aria-label={`${w.emailLabel}: ${line.subject}`}>
                     <p className="text-body-strong text-ink">{line.subject}</p>
                     {words?.text && <p className="mt-1 line-clamp-2 text-caption text-muted">{words.text}</p>}
+                    {reachOf?.get(line.stepId) && (
+                      <p className="mt-1 text-caption text-muted" data-step-reach>
+                        {w.stepReach[reachOf.get(line.stepId)?.how ?? "all"].replace("{n}", (reachOf.get(line.stepId)?.n ?? 0).toLocaleString(numbers))}
+                      </p>
+                    )}
                     {emails.get(line.stepId)?.picks && (
                       <p className="mt-1 text-caption text-muted">{w.picksNote[emails.get(line.stepId)?.picks ?? "cross_sell"]}</p>
                     )}

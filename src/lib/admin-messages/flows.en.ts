@@ -68,6 +68,7 @@ export const flowsEn = {
     picture_format: "A picture in “{subject}” ({language}) is in a format many mail apps do not show. Choose a JPEG or PNG.",
     too_big: "“{subject}” ({language}) is long: Gmail cuts an email off near 102 KB. Shorten it.",
   },
+  stepReach: { measured: "About {n} would get it in the next 30 days, judged from who got it before.", all: "About {n} would get it in the next 30 days.", up_to: "Up to {n} would get it in the next 30 days, by which way they go." },
   reach: {
     none: "Nobody would have started it in the last 30 days.",
     one: "About 1 person would start it in the next 30 days, judged from the last 30.",

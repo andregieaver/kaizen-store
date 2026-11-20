@@ -48,6 +48,9 @@ test("a welcome series is started with one press, read as a story, tested and sw
   await expect(story).toContainText("3 days later, if they have ordered");
   await expect(story).toContainText("3 days later, if they have not ordered");
   await expect(page.getByText("Test it before switching it on.")).toBeVisible();
+  // Each email's reach (M3.5): before the flow has a past, everyone who starts before a branch, at most that inside one.
+  await expect(page.locator("[data-flow-story] [data-step-reach]").first()).toHaveText(/^About \d+ would get it in the next 30 days\.$/);
+  await expect(page.locator("[data-flow-story] [data-step-reach]").last()).toHaveText(/^Up to \d+ would get it in the next 30 days, by which way they go\.$/);
   await page.screenshot({ path: "test-results/flow-story.png", fullPage: true });
 
   // The dry run (M3.5): each email drawn for the newest person, nothing sent.

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
-import { LLMS_MAX, RULES_MAX } from "@/lib/seo";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { SearchTextFields, ShareImageField, SnippetPreview } from "@/components/admin/seo-fields";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { DESCRIPTION_ADVICE, LLMS_MAX, RULES_MAX } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
@@ -31,30 +33,51 @@ export default async function PlatformSeoPage() {
   const t = w.seo;
   const seo = await getPlatformSeo();
   const origin = siteUrl();
+  const ph = t.phone;
+  const snippet = COMMON_WORDS[lang].snippet;
+  const title = seo.title.en || PLATFORM_DEFAULTS.title;
+  const description = seo.description.en || PLATFORM_DEFAULTS.description;
+  const over = description.length - DESCRIPTION_ADVICE;
+  const row = { flat: true, change: ph.change, done: ph.close } as const;
+  const files = (
+    <>
+      <a href="/robots.txt" className="underline">
+        {"robots.txt"}
+      </a>
+      ,{" "}
+      <a href="/sitemap.xml" className="underline">
+        {t.sitemap}
+      </a>{" "}
+      {t.descriptionAnd}{" "}
+      <a href="/llms.txt" className="underline">
+        {"llms.txt"}
+      </a>
+    </>
+  );
   return (
     <>
       <PageHeader
         title={t.title}
         description={
           <>
-            {t.descriptionBefore}{" "}
-            <a href="/robots.txt" className="underline">
-              {"robots.txt"}
-            </a>
-            ,{" "}
-            <a href="/sitemap.xml" className="underline">
-              {t.sitemap}
-            </a>{" "}
-            {t.descriptionAnd}{" "}
-            <a href="/llms.txt" className="underline">
-              {"llms.txt"}
-            </a>{" "}
-            {t.descriptionAfter}
+            <span className="sm:hidden">{ph.lead}</span>
+            <span className="max-sm:hidden">
+              {t.descriptionBefore} {files} {t.descriptionAfter}
+            </span>
           </>
         }
       />
 
+      {/* Round 68 (D841): on a phone the front page's search result shows first, and each part of the form below is a row saying what is set. */}
+      <SnippetPreview className="bg-card sm:hidden" title={title} description={description} url={`${origin}/`} lang="en" caption={snippet.preview} />
+
       <ActionForm action={savePlatformSeoAction} successMessage={t.saved} className="flex flex-col gap-6">
+        <PhoneRows>
+        <PhoneRow
+          {...row}
+          title={ph.front}
+          sub={over > 0 ? <span className="text-warning-text">{countWords(over, ph.tooLong)}</span> : title}
+        >
         <section aria-labelledby="home-heading" className={card}>
           <h2 id="home-heading" className="text-title text-ink">
             {t.front}
@@ -64,10 +87,12 @@ export default async function PlatformSeoPage() {
             initial={{ title: seo.title.en ?? "", description: seo.description.en ?? "" }}
             fallback={PLATFORM_DEFAULTS}
             url={`${origin}/`}
-            words={COMMON_WORDS[lang].snippet}
+            words={snippet}
           />
         </section>
+        </PhoneRow>
 
+        <PhoneRow {...row} title={t.share} sub={seo.image ? ph.shareYours : ph.shareDrawn}>
         <section aria-labelledby="share-heading" className={card}>
           <h2 id="share-heading" className="text-title text-ink">
             {t.share}
@@ -81,7 +106,18 @@ export default async function PlatformSeoPage() {
             words={SETTINGS_WORDS[lang].seo.shareField}
           />
         </section>
+        </PhoneRow>
 
+        <PhoneRow
+          {...row}
+          last
+          title={t.more}
+          sub={fillWords(ph.moreSub, {
+            profiles: countWords(seo.sameAs.length, ph.profiles),
+            ai: seo.llms ? ph.aiText : ph.noAiText,
+            codes: seo.verification.google || seo.verification.bing ? ph.codes : ph.noCodes,
+          })}
+        >
         <section aria-labelledby="more-heading" className={card}>
           <h2 id="more-heading" className="text-title text-ink">
             {t.more}
@@ -130,11 +166,16 @@ export default async function PlatformSeoPage() {
             </label>
           </div>
         </section>
+        </PhoneRow>
+        </PhoneRows>
 
         <div>
           <SubmitButton>{t.save}</SubmitButton>
         </div>
       </ActionForm>
+      <p className="mt-3 text-caption text-ink-2 sm:hidden">
+        {ph.files} {files}
+      </p>
     </>
   );
 }
