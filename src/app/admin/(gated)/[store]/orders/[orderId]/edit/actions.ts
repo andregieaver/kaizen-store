@@ -20,9 +20,9 @@ import { checkPermission } from "@/server/permissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { adminDate, type ZoneOf } from "@/lib/admin-date";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { fillWords, type DraftsWords } from "@/lib/drafts-words";
 import { editProblemText } from "@/lib/drafts-words-english";
+import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
 
 /**
  * The actions of changing an order after purchase (wave 3, run 3, D174, `docs/wave-3-fulfilment.md` 2.2 and 4.5). Each asks `orders:write` itself and takes the store slug
@@ -45,8 +45,8 @@ export type EditPreviewResponse = { ok: true; summary: EditSummaryView } | { ok:
 
 /** The account's language and the `drafts` catalogue's words for it. */
 const langOf = (member: { account: { adminLocale?: string | null } }): AdminLang => adminLangOf(member.account.adminLocale);
-const wordsOf = (member: { account: { adminLocale?: string | null } }): DraftsWords => adminText(langOf(member), "drafts");
-const noAccess = async () => adminText(await actionAdminLang(), "drafts").edit.actions.noAccess;
+const wordsOf = (member: { account: { adminLocale?: string | null } }): DraftsWords => DRAFTS_WORDS[langOf(member)];
+const noAccess = async () => DRAFTS_WORDS[await actionAdminLang()].edit.actions.noAccess;
 const words = (problems: { code: string; key?: string | null; text: string }[], w: DraftsWords) =>
   problems.map((p) => ({ code: p.code, key: p.key ?? null, text: editProblemText(p.code, p.text, w.edit) }));
 const refusedWith = (problems: EditProblem[], w: DraftsWords, message = w.edit.actions.nothingChanged): EditActionResponse => ({ ok: false, message, problems: words(problems, w) });

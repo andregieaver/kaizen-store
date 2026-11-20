@@ -8,7 +8,6 @@ import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } fr
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { EVENTS } from "@/lib/integrations";
 import { featureOn } from "@/lib/store-features";
 import { ID_HEADER, SIGNATURE_HEADER, TIMESTAMP_HEADER } from "@/lib/webhook-signature";
@@ -26,6 +25,9 @@ import {
   updateEndpointAction,
 } from "./actions";
 import { topicOffered } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_INTEGRATIONS_WORDS } from "@/lib/admin-words/notifications-integrations";
 
 export const metadata: Metadata = { title: "Your own endpoints" };
 
@@ -34,7 +36,7 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "notifications").integrations;
+  const all = NOTIFICATIONS_WORDS[lang].integrations;
   const w = all.endpoints;
   const owner = memberCan(member, "owner");
   const subscriptionsOn = featureOn(store, "subscriptions");
@@ -76,7 +78,7 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsIntegrations: NOTIFICATIONS_INTEGRATIONS_WORDS })}>
       <div className="flex flex-col gap-6">
         <div>
           <Link href={`/admin/${slug}/integrations`} className="text-sm underline">

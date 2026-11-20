@@ -3,7 +3,6 @@ import { HoursEditor } from "@/components/admin/hours-editor";
 import type { FormState } from "@/components/admin/action-form";
 import type { BookingResource } from "@/server/bookings";
 import { CARD_CLASS } from "@/components/admin/ui";
-import { adminText } from "@/lib/admin-text";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
@@ -13,12 +12,12 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export function StaffForm({
   staff,
   action,
-  words = adminText("en", "bookings").staffForm,
+  words,
 }: {
   staff: BookingResource | null;
   action: (state: FormState, formData: FormData) => Promise<FormState>;
-  /** The form's words (D312 A11); English when none are given. */
-  words?: BookingsMessages["staffForm"];
+  /** The form's words (D312 A11), in the account's language. */
+  words: BookingsMessages["staffForm"];
 }) {
   const w = words;
   return (

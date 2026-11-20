@@ -5,8 +5,8 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { rateProblemText } from "@/lib/tax-report-words";
+import { TAX_REPORTS_WORDS } from "@/lib/admin-words/tax-reports";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { fetchRateForOwner } from "@/server/ecb-rates";
 import { NO_ACCESS, checkOwnerRole } from "@/server/permissions";
@@ -25,14 +25,14 @@ const failed = (messages: string[]): FormState => ({ status: "error", messages }
 /** The refusal before a member is known, in the request's admin language (English outside a request). */
 async function noAccess(): Promise<FormState> {
   const lang = await actionAdminLang();
-  return failed([lang === "en" ? NO_ACCESS : adminText(lang, "taxReports").actions.noAccess]);
+  return failed([lang === "en" ? NO_ACCESS : TAX_REPORTS_WORDS[lang].actions.noAccess]);
 }
 
 /** Asks the ECB for the rate of one day (`currency`, `day`) and stores it; an answer of "not published yet" or "could not be reached" changes nothing. */
 export async function fetchEcbRateAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return noAccess();
-  const w = adminText(adminLangOf(member.account.adminLocale), "taxReports");
+  const w = TAX_REPORTS_WORDS[adminLangOf(member.account.adminLocale)];
   const result = await fetchRateForOwner(member, { currency: form.get("currency"), day: form.get("day") });
   if (!result.ok) return failed([rateProblemText(result.message, w)]);
   refresh();
@@ -43,7 +43,7 @@ export async function fetchEcbRateAction(storeSlug: string, _state: FormState, f
 export async function setRateOverrideAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return noAccess();
-  const w = adminText(adminLangOf(member.account.adminLocale), "taxReports");
+  const w = TAX_REPORTS_WORDS[adminLangOf(member.account.adminLocale)];
   const result = await setRateOverride(member, Object.fromEntries(form));
   if (!result.ok) return failed(result.problems.map((p) => rateProblemText(p, w)));
   refresh();

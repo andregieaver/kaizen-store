@@ -1,7 +1,7 @@
 import "server-only";
 
-import { adminText } from "@/lib/admin-text";
 import { redirectAnswer } from "@/lib/redirect-words";
+import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
@@ -9,5 +9,5 @@ import { actionAdminLang } from "@/server/admin-request-lang";
  * stored findings, the AI manager and the tests read it, and the screens draw what the action hands them.
  */
 export async function inAccountWords<T>(answer: T): Promise<T> {
-  return redirectAnswer(answer, adminText(await actionAdminLang(), "redirects"));
+  return redirectAnswer(answer, REDIRECTS_WORDS[await actionAdminLang()]);
 }

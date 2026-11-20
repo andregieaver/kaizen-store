@@ -9,7 +9,6 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { categoryAttributes, categoryName, categoryPath, isCategory, searchCategories, type CategoryDetails, type CategoryHit } from "@/lib/product-taxonomy";
 import { taxonomy, taxonomySearch, taxonomyWords } from "@/server/product-taxonomy";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { FieldData } from "@/lib/custom-fields";
 import { BUNDLE_COMPONENTS_MAX, productInput, type ProductInput } from "@/lib/product-input";
 import { editorOptions } from "@/lib/variant-grid";
@@ -26,6 +25,7 @@ import { fieldsTag, getFieldData, getVariantFieldData } from "@/server/custom-fi
 import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { suggestCategory } from "@/server/category-suggest";
 import type { CategorySuggestResult } from "@/lib/category-suggest";
+import { PRODUCT_WORDS } from "@/lib/admin-words/product";
 import { suggestProductText } from "@/server/product-writer";
 import { addressBefore, addressChangedAfter } from "@/server/redirect-notes";
 import {
@@ -67,8 +67,8 @@ export type SaveState =
   | { status: "error"; problems: string[] };
 
 /** The editor's answers in the account's language (D312 A5); a refusal before a member is known in the request's. */
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale ?? "en"), "product").actions;
-const noAccess = async () => adminText(await actionAdminLang(), "product").actions.noAccess;
+const wordsOf = (member: Membership) => PRODUCT_WORDS[adminLangOf(member.account.adminLocale ?? "en")].actions;
+const noAccess = async () => PRODUCT_WORDS[await actionAdminLang()].actions.noAccess;
 
 function refreshCatalogue(member: Membership) {
   updateTag(catalogTag(member.store.id));

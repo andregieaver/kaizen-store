@@ -5,8 +5,8 @@ import { z } from "zod";
 import { requireFeature } from "@/components/admin/feature-off";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { PageType } from "@/lib/page-content";
+import { BUILDER_WORDS } from "@/lib/admin-words/builder";
 import { requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
 import { getPageForEdit } from "@/server/pages";
@@ -40,7 +40,7 @@ export async function StorePreviewPageView({
   const notInAccount = type === "variant" ? requireExtension(gated, "ab_testing") : null;
   if (notInAccount) return notInAccount;
   const { store } = gated;
-  const ew = adminText(adminLangOf(gated.account.adminLocale), "builder").editor;
+  const ew = BUILDER_WORDS[adminLangOf(gated.account.adminLocale)].editor;
   const found = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;
   if (!found) notFound();
   // `?staging=1`: the staging set's copy (D385), drawn in place of the page's own draft.

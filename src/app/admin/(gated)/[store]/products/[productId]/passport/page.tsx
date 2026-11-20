@@ -8,11 +8,12 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PassportEditor } from "@/components/admin/passport-editor";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { supplierCountries } from "@/lib/drop-shipping";
 import { passportPath } from "@/lib/product-passport";
 import { qrSvg } from "@/lib/qr";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { passportForEdit } from "@/server/product-passports";
 
@@ -30,7 +31,7 @@ export default async function PassportAdminPage({ params }: PageProps<"/admin/[s
   const found = await passportForEdit(store.id, productId);
   if (!found) notFound();
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "products").passport;
+  const w = PRODUCTS_WORDS[lang].passport;
   const address = found.id ? `${siteUrl()}${passportPath(found.id)}` : null;
   const svg = address ? qrSvg(address) : null;
   const dataUrl = svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : null;
@@ -69,7 +70,7 @@ export default async function PassportAdminPage({ params }: PageProps<"/admin/[s
       )}
       <p className={`${hint} max-w-3xl`}>{w.sharedFacts}</p>
       {memberCan(gated, "products:write") && (
-        <AdminTextScope texts={adminTexts(lang, ["products"])}>
+        <AdminTextScope texts={areaTexts(lang, { products: PRODUCTS_WORDS })}>
           <PassportEditor initial={found.data} published={Boolean(found.publishedAt)} countries={supplierCountries()} save={savePassportAction.bind(null, store.slug, productId)} />
         </AdminTextScope>
       )}

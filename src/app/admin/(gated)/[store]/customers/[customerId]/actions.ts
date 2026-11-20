@@ -5,12 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import type { BonusResult } from "@/lib/bonus";
 import { CUSTOMER_NOTE_MAX, cleanEmail, customerFormFields, staffProblemText, type MergeCounts } from "@/lib/customer-staff";
 import { formatMoney } from "@/lib/money";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { adjustBonus, bonusProgram } from "@/server/bonus";
@@ -22,8 +22,8 @@ import { saveStaffFields } from "@/server/field-entities";
 import { addTag, removeTag } from "@/server/segments";
 import type { SaveResult } from "@/server/settings";
 
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "customers").saved;
-const noAccess = async () => adminText(await actionAdminLang(), "customers").saved.noAccess;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].saved;
+const noAccess = async () => CUSTOMERS_WORDS[await actionAdminLang()].saved.noAccess;
 
 /**
  * Saves staff's custom fields for a customer with an account (D120). They are
@@ -72,7 +72,7 @@ export async function removeCustomerTagAction(storeSlug: string, key: string, ta
   refresh();
 }
 
-const staffWords = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "customers").staff;
+const staffWords = (member: { account: { adminLocale?: string | null } }) => CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].staff;
 
 /** Staff change a customer's details (wave 10 unit C, D366): the form's whole state, checked and written by `updateCustomer()`. */
 export async function updateCustomerAction(storeSlug: string, customerId: string, _state: FormState, form: FormData): Promise<FormState> {

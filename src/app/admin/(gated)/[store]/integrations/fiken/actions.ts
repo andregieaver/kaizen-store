@@ -8,11 +8,11 @@ import type { FormState } from "@/components/admin/action-form";
 import { BOOKING_KEYS, isBookingKey } from "@/lib/accounting-docs";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { FIKEN_STATE_COOKIE, FIKEN_STATE_MINUTES, FIKEN_STATE_PATH } from "@/lib/fiken";
 import { fikenFailureWords } from "@/lib/fiken-errors";
 import { DEFAULT_FIKEN_BOOKING, isFikenVatType, readFikenSettings, type FikenSettings } from "@/lib/fiken-settings";
 import type { FikenSettingsProblem } from "@/lib/fiken-setup";
+import { FIKEN_WORDS } from "@/lib/admin-words/fiken";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { DOCUMENT_KINDS } from "@/server/accounting-documents";
@@ -36,10 +36,10 @@ import { checkOwnerRole } from "@/server/permissions";
  * pauses or disconnects it, as with every integration (D41).
  */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  return (await checkOwnerRole(storeSlug)) ?? adminText(await actionAdminLang(), "fiken").ownerOnly;
+  return (await checkOwnerRole(storeSlug)) ?? FIKEN_WORDS[await actionAdminLang()].ownerOnly;
 }
 
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "fiken");
+const wordsOf = (member: Membership) => FIKEN_WORDS[adminLangOf(member.account.adminLocale)];
 
 const refused = (message: string): FormState => ({ status: "error", messages: [message] });
 

@@ -10,8 +10,8 @@ import { draftProblemText, type DraftProblem } from "@/lib/draft-order";
 import { MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
 import { formatPriceInput } from "@/lib/product-input";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { countWords, fillWords } from "@/lib/drafts-words";
+import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, mayFindDraftCustomers } from "@/server/permissions";
 import { staffActor } from "@/server/order-actor";
@@ -36,8 +36,8 @@ import {
 } from "@/server/draft-orders";
 
 /** The `drafts` catalogue in the account's language; without a member, the request's language (`actionAdminLang()`), for the one refusal it answers. */
-const draftWords = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "drafts");
-const noAccess = async () => adminText(await actionAdminLang(), "drafts").actions.noAccess;
+const draftWords = (member: { account: { adminLocale?: string | null } }) => DRAFTS_WORDS[adminLangOf(member.account.adminLocale)];
+const noAccess = async () => DRAFTS_WORDS[await actionAdminLang()].actions.noAccess;
 
 /** A problem with its words, so the browser draws what the server decided and never invents a sentence. */
 export type DraftProblemWords = { code: string; key: string | null; blocking: boolean; text: string };

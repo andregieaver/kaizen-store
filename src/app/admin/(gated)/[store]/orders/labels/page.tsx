@@ -4,8 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { BULK_PRINT_MAX } from "@/lib/order-bulk";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { labelsToPrint } from "@/server/bulk-labels";
 import { requirePermission } from "@/server/permissions";
 
@@ -34,7 +34,7 @@ export default async function LabelsPage({ params, searchParams }: PageProps<"/a
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const words = adminText(adminLangOf(gated.account.adminLocale), "orders");
+  const words = ORDERS_WORDS[adminLangOf(gated.account.adminLocale)];
   const w = words.labels;
   const back = { href: `/admin/${store.slug}/orders`, label: words.pick.back };
   const ids = idsOf((await searchParams).ids);

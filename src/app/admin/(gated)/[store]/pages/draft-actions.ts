@@ -3,7 +3,7 @@
 import { updateTag } from "next/cache";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { getStore } from "@/server/stores";
 import { discardDraft, draftStore, openDraft, publishDraft, type DraftView } from "@/server/store-drafts";
@@ -24,7 +24,7 @@ async function member(storeSlug: string) {
 export async function startDraftAction(storeSlug: string, description: string, pages: string[]): Promise<Result> {
   const who = await member(storeSlug);
   if (!who) return { ok: false, problem: NO_ACCESS };
-  const w = adminText(adminLangOf(who.account.adminLocale), "home").drafts;
+  const w = HOME_WORDS[adminLangOf(who.account.adminLocale)].drafts;
   const titles = (Array.isArray(pages) ? pages : []).map((title) => String(title).trim()).filter(Boolean).slice(0, 3);
   const said = String(description ?? "").trim();
   const result = await draftStore(who, {

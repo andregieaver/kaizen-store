@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { RepliesManager } from "@/components/admin/support/replies-manager";
 import { languageName } from "@/lib/support-translate";
+import { areaTexts } from "@/lib/admin-area";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { requirePermission } from "@/server/permissions";
 import { memberDesk } from "@/server/support-desk";
 import { listReplies } from "@/server/support-replies";
@@ -25,14 +26,14 @@ export default async function SupportRepliesPage({
   if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "support");
+  const t = SUPPORT_WORDS[lang];
   const replies = await listReplies(staff);
   const languages = member.store.localization.locales.map((code) => ({
     code,
     name: languageName(code),
   }));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support"])}>
+    <AdminTextScope texts={areaTexts(lang, { support: SUPPORT_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.storeReplies.title}

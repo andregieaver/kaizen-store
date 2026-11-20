@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { Card, List, ListRow, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { ensureTemplate } from "@/server/contracts";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -26,8 +26,8 @@ export default async function ContractTemplatesPage({ params }: PageProps<"/admi
   const off = requireFeature(member, "sales");
   if (off) return off;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "deals").templates;
-  const back = adminText(lang, "deals").title;
+  const w = DEALS_WORDS[lang].templates;
+  const back = DEALS_WORDS[lang].title;
   const canChange = memberCan(member, "customers:write");
   const templates = await ensureTemplate(member.store, member.account.id);
   const base = `/admin/${member.store.slug}/deals`;

@@ -12,12 +12,14 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { StockUpload } from "@/components/admin/inventory/stock-import-flow";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { IMPORT_FILE_KEEP_DAYS } from "@/lib/data-limits";
 import { INVENTORY_FILE_ROWS_MAX, STOCK_MAX } from "@/lib/inventory";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { momentIn } from "@/lib/inventory-words";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -39,7 +41,7 @@ export default async function StockImportPage({ params }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "inventory");
+  const all = INVENTORY_WORDS[lang];
   const w = all.pages.import;
   return (
     <div className="flex flex-col gap-6">
@@ -66,7 +68,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const base = inventoryPaths(store.slug).import;
   const lang = adminLangOf(member.account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const t = adminText(lang, "inventory");
+  const t = INVENTORY_WORDS[lang];
   const w = t.import;
   const r = w.rules;
   const pw = t.phone;
@@ -83,7 +85,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </p>
         </Notice>
       ) : (
-        <AdminTextScope texts={adminTexts(lang, ["inventory", "inventoryImport"])}>
+        <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS, inventoryImport: INVENTORY_IMPORT_WORDS })}>
           <StockUpload slug={store.slug} start={startStockUploadAction.bind(null, store.slug)} register={registerStockUploadAction.bind(null, store.slug)} />
         </AdminTextScope>
       )}

@@ -7,7 +7,9 @@ import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_GOOGLE_WORDS } from "@/lib/admin-words/notifications-google";
 
 import { chooseStorePlaceAction, findStorePlacesAction, removeStoreGoogleAction, saveStoreGoogleKeyAction } from "./actions";
 
@@ -18,10 +20,10 @@ export default async function StoreGoogleReviewsPage({ params }: PageProps<"/adm
   const current = await requirePermission((await params).store, "settings:read");
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "notifications").google;
+  const w = NOTIFICATIONS_WORDS[lang].google;
   const settings = await getGoogleSettings(store.id);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsGoogle"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsGoogle: NOTIFICATIONS_GOOGLE_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/integrations`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       {memberCan(current, "owner") ? (

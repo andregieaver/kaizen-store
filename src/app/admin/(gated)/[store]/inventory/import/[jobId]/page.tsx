@@ -14,10 +14,12 @@ import { StockCheck, StockImportApply } from "@/components/admin/inventory/stock
 import { StockApplied, StockDryRun, StockFindings, type StockItem } from "@/components/admin/inventory/stock-import-views";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { appliedCountsOfJob, importStage, isWorking, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { momentIn } from "@/lib/inventory-words";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
 import { isJobId, listItems } from "@/server/data-job-store";
 import { inventoryDryCountsOf, jobFor } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -45,7 +47,7 @@ export default async function StockImportJobPage({ params, searchParams }: Props
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.job;
+  const w = INVENTORY_WORDS[lang].pages.job;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead slug={store.slug} active="import" title={w.title} intro={w.intro} back={{ href: inventoryPaths(store.slug).import, label: w.back }} lang={lang} />
@@ -61,7 +63,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   if (!memberCan(member, "products:write") || !isJobId(jobId)) notFound();
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "inventory").import;
+  const t = INVENTORY_WORDS[lang].import;
   const w = t.job;
   const job = await jobFor(member, jobId);
   if (!job || job.kind !== "inventory_import") notFound();
@@ -96,7 +98,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["inventory", "inventoryImport"])}>
+    <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS, inventoryImport: INVENTORY_IMPORT_WORDS })}>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={w.file}>
         <span className="font-medium break-all">{job.inputName ?? w.stockFile}</span>
         <span className="text-muted">{fillWords(w.uploaded, { when: momentIn(job.createdAt, store.timeZone, ADMIN_LANG_FACTS[lang].locale) })}</span>

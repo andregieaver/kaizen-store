@@ -2,10 +2,10 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { cancelJob, registerInventoryImport, startInventoryApply, startInventoryCheck, startInventoryUpload } from "@/server/data-jobs";
 import { checkPermission } from "@/server/permissions";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * The stock import's steps (wave 3, D172, `docs/wave-3-inventory.md` 2.4), each for a member with `products:write` and each with the store's slug as its
@@ -15,7 +15,7 @@ import { checkPermission } from "@/server/permissions";
  */
 
 /** The refusal before a member is known, in the admin's language (D312 A5). */
-const noAccess = async () => adminText(await actionAdminLang(), "inventory").noAccess;
+const noAccess = async () => INVENTORY_WORDS[await actionAdminLang()].noAccess;
 
 type Step = { ok: true } | { ok: false; problem: string };
 

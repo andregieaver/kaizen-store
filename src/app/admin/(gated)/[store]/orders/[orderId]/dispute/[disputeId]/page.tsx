@@ -8,9 +8,9 @@ import { CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { disputeDashboardUrl, disputeReasonWords, dueWords } from "@/lib/payment-facts";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { disputeEvidence } from "@/server/dispute-evidence";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -30,7 +30,7 @@ export default async function DisputeEvidencePage({ params }: PageProps<"/admin/
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "order").dispute;
+  const w = ORDER_WORDS[lang].dispute;
   const view = await disputeEvidence(store.id, orderId, disputeId);
   if (!view) notFound();
   const { dispute } = view;
@@ -69,7 +69,7 @@ export default async function DisputeEvidencePage({ params }: PageProps<"/admin/
         {dispute.provider === "stripe" && (
           <p>
             <Link href={disputeDashboardUrl(dispute.reference, dispute.testMode)} target="_blank" rel="noreferrer" className="underline">
-              {adminText(lang, "order").payment.openInStripe}
+              {ORDER_WORDS[lang].payment.openInStripe}
             </Link>
           </p>
         )}

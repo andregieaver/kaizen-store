@@ -9,11 +9,13 @@ import { ExportSection } from "@/components/admin/data/export-section";
 import { ProductExportForm } from "@/components/admin/data/export-forms";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
 import { exportProblemWords } from "@/lib/data-admin";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Export products" };
 
@@ -32,7 +34,7 @@ export default async function ProductExportPage({ params, searchParams }: Props)
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "products").exportPage;
+  const w = PRODUCTS_WORDS[lang].exportPage;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead
@@ -58,13 +60,13 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const query = await searchParams;
   const code = first(query.problem);
   const exportLang = adminLangOf(member.account.adminLocale);
-  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
+  const problem = code ? exportProblemWords(code, SCREENS_WORDS[exportLang].exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   const terms = await listTerms({ storeId: member.store.id, contentType: "product" });
-  const w = adminText(adminLangOf(member.account.adminLocale), "products").exportPage;
+  const w = PRODUCTS_WORDS[adminLangOf(member.account.adminLocale)].exportPage;
   return (
     <>
       <ProblemAlert text={problem} />
-      <ProductExportForm slug={member.store.slug} terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind }))} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
+      <ProductExportForm slug={member.store.slug} terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind }))} words={BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].exports} />
       {/* Round 51 (D784): on a phone what the file leaves out is a row under the button. */}
       <div className="max-sm:overflow-hidden max-sm:rounded-panel">
       <PhoneRow flat last title={w.notCarried} sub={w.phone.notCarriedSub} change={w.phone.open} done={w.phone.close}>

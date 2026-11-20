@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { SupportEmailCard } from "@/components/admin/support/email-card";
 import { SupportSettingsForm } from "@/components/admin/support/settings-form";
 import { can } from "@/lib/permissions";
+import { areaTexts } from "@/lib/admin-area";
+import { SETTINGS_HOURS_WORDS } from "@/lib/admin-words/settings-hours";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
+import { SUPPORT_SETTINGS_WORDS } from "@/lib/admin-words/support-settings";
 import { holderOf } from "@/server/auth";
 import { requirePermission } from "@/server/permissions";
 import { openConversationCount } from "@/server/support";
@@ -29,7 +32,7 @@ export default async function SupportSettingsPage({
   if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "support");
+  const t = SUPPORT_WORDS[lang];
   const [settings, open] = await Promise.all([
     settingsForEdit(staff),
     openConversationCount(staff.desk),
@@ -37,7 +40,7 @@ export default async function SupportSettingsPage({
   // Made after the desk's row (settingsForEdit() makes it on a desk's first look).
   const [emailAddress, keyRefused] = await Promise.all([deskEmailAddress(staff.desk), deskEmailsKeyRefused(staff.desk)]);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsHours", "supportSettings"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsHours: SETTINGS_HOURS_WORDS, supportSettings: SUPPORT_SETTINGS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.storeSettings.title}

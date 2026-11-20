@@ -2,18 +2,18 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole, checkPermission } from "@/server/permissions";
 import { answerSupplierOrder } from "@/server/supplier-orders";
 import { makeSupplierKey, revokeSupplierKey, saveDropShipSupplier, saveDropShipWait, setVariantsSupplier, stopDropShipping } from "@/server/suppliers";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * The Suppliers pages' steps (drop shipping, D550), each with the store's slug as its bound first argument. Adding, editing and marking products are for
  * a member with `products:write`; stopping a supplier takes its stock off sale, so it is the OWNER's (`checkOwnerRole`, checked again by the server).
  */
 
-const noAccess = async () => adminText(await actionAdminLang(), "inventory").noAccess;
+const noAccess = async () => INVENTORY_WORDS[await actionAdminLang()].noAccess;
 
 export type SupplierForm = {
   name: string;

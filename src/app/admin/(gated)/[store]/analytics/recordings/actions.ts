@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
-import { adminText } from "@/lib/admin-text";
 import { deleteRecording } from "@/server/recordings-admin";
 import { storeAction } from "@/server/store-action";
+import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
 
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
 
@@ -14,7 +14,7 @@ export async function deleteRecordingAction(storeSlug: string, id: string): Prom
   const answer = await storeAction({ store: storeSlug, key: "owner", action: "analytics.recording_deleted", answer: failed }, async (member, lang) => {
     const result = await deleteRecording(member, id);
     if (!result.ok) return failed(result.problem);
-    return { status: "ok" as const, messages: [adminText(lang, "recordings").player.deleted] };
+    return { status: "ok" as const, messages: [RECORDINGS_WORDS[lang].player.deleted] };
   });
   if (answer.status === "ok") redirect(`/admin/${storeSlug}/analytics/recordings`);
   return answer;

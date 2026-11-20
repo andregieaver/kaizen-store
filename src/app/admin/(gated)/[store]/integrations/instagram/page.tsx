@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { InstagramSettings, instagramReturned } from "@/components/admin/instagram-settings";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { instagramAppOn, instagramStatus } from "@/server/instagram";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -16,7 +16,7 @@ export default async function StoreInstagramPage({ params, searchParams }: PageP
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "notifications").instagram;
+  const w = NOTIFICATIONS_WORDS[lang].instagram;
   const status = await instagramStatus(store.id);
   return (
     <>

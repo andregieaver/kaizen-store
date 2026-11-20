@@ -8,7 +8,6 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
-import { adminText } from "@/lib/admin-text";
 import { DEAL_LINK_KINDS, type DealLinkKind } from "@/lib/deals";
 import { featureOffText } from "@/lib/feature-labels";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -38,6 +37,8 @@ import { saveStaffFields } from "@/server/field-entities";
 import { checkPermission } from "@/server/permissions";
 import type { SaveResult } from "@/server/settings";
 import { dealsOn } from "@/lib/extensions";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 
 /**
  * Deals' actions (S2, D464): each checks the member may change customers and that Deals is on, whatever a stale page sends, and answers in
@@ -47,14 +48,14 @@ import { dealsOn } from "@/lib/extensions";
 const uuid = z.uuid();
 
 type Words = DealsMessages;
-const wordsOf = (member: Membership): Words => adminText(adminLangOf(member.account.adminLocale), "deals");
+const wordsOf = (member: Membership): Words => DEALS_WORDS[adminLangOf(member.account.adminLocale)];
 
 /** The member, when they may change customers and Deals is on; else the reason, in their words. */
 async function writer(storeSlug: string): Promise<{ member: Membership; w: Words } | { refused: string }> {
   const member = await checkPermission(storeSlug, "customers:write", "deals");
-  if (!member) return { refused: adminText(await actionAdminLang(), "deals").problems.forbidden };
+  if (!member) return { refused: DEALS_WORDS[await actionAdminLang()].problems.forbidden };
   if (!dealsOn(member.store)) {
-    return { refused: featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features) };
+    return { refused: featureOffText("sales", COMMON_WORDS[adminLangOf(member.account.adminLocale)].features) };
   }
   return { member, w: wordsOf(member) };
 }

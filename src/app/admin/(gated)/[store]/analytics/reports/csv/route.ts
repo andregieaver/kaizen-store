@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { readSpec } from "@/lib/report-catalogue-schema";
 import { audit } from "@/server/auth";
 import { sameSite } from "@/lib/same-site";
+import { CUSTOM_REPORTS_WORDS } from "@/lib/admin-words/custom-reports";
 import { log } from "@/server/log";
 import { checkPermission } from "@/server/permissions";
 import { reportCsv } from "@/server/report-export";
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   if (!member) return new NextResponse("Not found", { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   const lang = adminLangOf(member.account.adminLocale);
-  const failed = () => new NextResponse(adminText(lang, "customReports").csv.failed, { status: 500, headers: { "Cache-Control": "no-store" } });
+  const failed = () => new NextResponse(CUSTOM_REPORTS_WORDS[lang].csv.failed, { status: 500, headers: { "Cache-Control": "no-store" } });
 
   const form = await request.formData().catch(() => null);
   let spec = null;

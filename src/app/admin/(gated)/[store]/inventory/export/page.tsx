@@ -10,11 +10,12 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { StockExportForm } from "@/components/admin/inventory/stock-export-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { requirePermission } from "@/server/permissions";
 import { exportProblemWords } from "@/lib/data-admin";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Export stock" };
 
@@ -33,7 +34,7 @@ export default async function StockExportPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.export;
+  const w = INVENTORY_WORDS[lang].pages.export;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead
@@ -42,7 +43,7 @@ export default async function StockExportPage({ params, searchParams }: Props) {
         title={w.title}
         intro={
           <>
-            <span className="sm:hidden">{adminText(lang, "inventory").phone.exportLead}</span>
+            <span className="sm:hidden">{INVENTORY_WORDS[lang].phone.exportLead}</span>
             <span className="max-sm:hidden">{fillWords(w.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}</span>
           </>
         }
@@ -60,11 +61,11 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const query = await searchParams;
   const code = first(query.problem);
   const exportLang = adminLangOf(member.account.adminLocale);
-  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
+  const problem = code ? exportProblemWords(code, SCREENS_WORDS[exportLang].exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   const base = inventoryPaths(member.store.slug);
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "inventory").export;
-  const pw = adminText(lang, "inventory").phone;
+  const w = INVENTORY_WORDS[lang].export;
+  const pw = INVENTORY_WORDS[lang].phone;
   const a = w.about;
   return (
     <>

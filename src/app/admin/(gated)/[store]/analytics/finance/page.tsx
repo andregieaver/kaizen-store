@@ -13,11 +13,13 @@ import { OrderProfitsView } from "@/components/admin/analytics/order-profits-vie
 import { PaymentsView } from "@/components/admin/analytics/payments-view";
 import { TermsOwedView } from "@/components/admin/analytics/terms-owed-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { financeStatement } from "@/lib/analytics-finance";
 import { bucketFor, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { FINANCE_WORDS } from "@/lib/admin-words/finance";
 import { analyticsContext, type AnalyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { paymentMethodsReport } from "@/server/analytics-payments-data";
@@ -33,7 +35,7 @@ export const metadata: Metadata = { title: "Finance" };
 /** One period's totals with its statement worked out, as the view takes them. */
 async function periodData(ctx: AnalyticsContext, period: AnalyticsPeriod): Promise<FinancePeriodData> {
   const { totals, unconverted, missingCurrencies } = await periodTotals(ctx.store, period, ctx.settings);
-  const words = adminText(ctx.lang, "finance").statement;
+  const words = FINANCE_WORDS[ctx.lang].statement;
   return { label: period.label, totals, statement: financeStatement(totals, ctx.settings, period.days, words), unconverted, missingCurrencies };
 }
 
@@ -48,7 +50,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
   const { store, settings, locale } = ctx;
-  const words = adminText(ctx.lang, "finance");
+  const words = FINANCE_WORDS[ctx.lang];
   const { period, compare } = ctx.params;
   const against = compare.previous ?? compare.lastYear;
   const bucket = bucketFor(period);
@@ -75,7 +77,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   const row = { change: words.phone.open, done: words.phone.close, flat: true } as const;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader ctx={ctx} path="/analytics/finance" title={words.pages.financeTitle} description={<span className="max-sm:hidden">{words.pages.financeDescription}</span>} />

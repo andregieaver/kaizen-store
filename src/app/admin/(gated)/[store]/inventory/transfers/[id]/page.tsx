@@ -6,8 +6,9 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { StockDocumentDetail } from "@/components/admin/inventory/stock-documents-view";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { inventoryPaths } from "@/lib/inventory-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTransfer } from "@/server/stock-transfers";
 
@@ -28,7 +29,7 @@ export default async function TransferPage({ params }: Props) {
   const transfer = await getTransfer(store.id, id);
   if (!transfer) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "inventory");
+  const t = INVENTORY_WORDS[lang];
   const w = t.pages.transfer;
   return (
     <div className="flex flex-col gap-6">
@@ -40,7 +41,7 @@ export default async function TransferPage({ params }: Props) {
         back={{ href: inventoryPaths(store.slug).transfers, label: w.back }}
         lang={lang}
       />
-      <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+      <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS })}>
         <StockDocumentDetail
           kind="transfer"
           status={transfer.status}

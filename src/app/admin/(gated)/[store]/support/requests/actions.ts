@@ -1,6 +1,5 @@
 "use server";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { after } from "next/server";
 
@@ -11,6 +10,7 @@ import { decideRequest } from "@/server/support-actions";
 import { carryOutRequest } from "@/server/support-carry-out";
 import { memberDesk } from "@/server/support-desk";
 import { sendRequestDecisionEmail } from "@/server/support-email";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 /**
  * Done or Decline on a staff request of the store's desk (D216, step 10): `support:write`. The customer's email, when they are away,
@@ -22,7 +22,7 @@ export async function decideRequestAction(
   _state: FormState,
   form: FormData,
 ): Promise<FormState> {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { status: "error", messages: [w.noAccess] };
   const decision = form.get("decision");

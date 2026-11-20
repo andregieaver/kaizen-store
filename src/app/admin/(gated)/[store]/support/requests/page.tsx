@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 import { RequestsView } from "@/components/admin/support/requests-view";
 import { requirePermission } from "@/server/permissions";
@@ -29,7 +30,7 @@ export default async function SupportRequestsPage({
   if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "support");
+  const t = SUPPORT_WORDS[lang];
   const which = (await searchParams).show === "decided" ? "decided" : "open";
   const rows = await listRequests(staff.desk, which);
   const reach = memberReach(member);
@@ -44,7 +45,7 @@ export default async function SupportRequestsPage({
         )
       : {};
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support"])}>
+    <AdminTextScope texts={areaTexts(lang, { support: SUPPORT_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.storeRequests.title}

@@ -7,8 +7,9 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { NewStockDocument, StockDocumentList } from "@/components/admin/inventory/stock-documents-view";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { inventoryPaths } from "@/lib/inventory-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { listLocations } from "@/server/inventory-locations";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listTransfers } from "@/server/stock-transfers";
@@ -26,7 +27,7 @@ export default async function TransfersPage({ params }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.transfers;
+  const w = INVENTORY_WORDS[lang].pages.transfers;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead slug={store.slug} active="transfers" title={w.title} intro={w.intro} lang={lang} />
@@ -44,7 +45,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const base = inventoryPaths(store.slug).transfers;
   const places = locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }));
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["inventory"])}>
+    <AdminTextScope texts={areaTexts(adminLangOf(member.account.adminLocale), { inventory: INVENTORY_WORDS })}>
       <div className="flex flex-col gap-6">
         <StockDocumentList
           kind="transfer"

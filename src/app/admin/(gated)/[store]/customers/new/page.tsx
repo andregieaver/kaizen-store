@@ -6,7 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { createCustomerAction } from "../actions";
@@ -25,7 +25,7 @@ export default async function NewCustomerPage({ params }: PageProps<"/admin/[sto
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "customers").staff;
+  const w = CUSTOMERS_WORDS[lang].staff;
   return (
     <>
       <div className="flex flex-col gap-6">

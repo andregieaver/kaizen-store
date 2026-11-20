@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { markOutForDelivery } from "@/server/local-delivery";
 import { checkPermission } from "@/server/permissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -22,9 +22,9 @@ import { markCollected, markReadyForPickup } from "@/server/pickup";
 const error = (message: string): FormState => ({ status: "error", messages: [message] });
 const ok = (message: string): FormState => ({ status: "ok", messages: [message] });
 
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "order").messages;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => ORDER_WORDS[adminLangOf(member.account.adminLocale)].messages;
 /** Refused before a member is known: the session's language (D312). */
-const noAccess = async () => error(adminText(await actionAdminLang(), "order").messages.noAccess);
+const noAccess = async () => error(ORDER_WORDS[await actionAdminLang()].messages.noAccess);
 
 async function member(storeSlug: string, orderId: string) {
   const found = await checkPermission(storeSlug, "orders:write");

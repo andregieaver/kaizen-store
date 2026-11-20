@@ -41,11 +41,11 @@ import { storeTag } from "@/server/stores";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { placeThemeSection, themeSectionsFor } from "@/server/theme-sections";
 import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
-import { adminText } from "@/lib/admin-text";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 /** The pages' refusals and answers in the account's language (D312 A7). */
-const said = async () => adminText(await actionAdminLang(), "website").pageActions;
+const said = async () => WEBSITE_WORDS[await actionAdminLang()].pageActions;
 
 /**
  * A store's pages (D53): the same editor as Kaizen's, through these
@@ -183,7 +183,7 @@ export async function setPageRoleAction(storeSlug: string, role: string, _state:
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(storeTag(member.store.slug));
   pagesChanged(member);
-  const words = adminText(await actionAdminLang(), "website");
+  const words = WEBSITE_WORDS[await actionAdminLang()];
   const name = words.list.roles[role].toLowerCase();
   return { status: "ok", messages: [(choice ? words.pageActions.rolePage : words.pageActions.roleStandard).replace("{name}", name)] };
 }
@@ -413,7 +413,7 @@ export async function storeDualChoicesAction(storeSlug: string, kind: unknown): 
 export async function stopPageJobAction(storeSlug: string, kind: string, id: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const answer = await stopPageJob(member.store.id, member.account.id, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
+  const answer = await stopPageJob(member.store.id, member.account.id, kind, id, WEBSITE_WORDS[await actionAdminLang()].pageJobs);
   refresh();
   return answer;
 }

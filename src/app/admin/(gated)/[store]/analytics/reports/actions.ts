@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { problemText } from "@/lib/report-words";
+import { CUSTOM_REPORTS_WORDS } from "@/lib/admin-words/custom-reports";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { deleteReportSchedule, saveReportSchedule } from "@/server/report-schedules";
@@ -31,8 +31,8 @@ function specOf(formData: FormData): unknown {
  */
 export async function saveReportAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "analytics:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "customReports").save.needWrite] };
-  const words = adminText(adminLangOf(member.account.adminLocale), "customReports");
+  if (!member) return { status: "error", messages: [CUSTOM_REPORTS_WORDS[await actionAdminLang()].save.needWrite] };
+  const words = CUSTOM_REPORTS_WORDS[adminLangOf(member.account.adminLocale)];
   const w = words.save;
   const id = text(formData, "id");
   const asNew = text(formData, "asNew") === "1" || id === "";
@@ -47,8 +47,8 @@ export async function saveReportAction(storeSlug: string, _state: FormState, for
 /** Deletes a saved report (D345) and goes back to the list. The figures it showed are not touched. */
 export async function deleteReportAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "analytics:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "customReports").save.needWrite] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "customReports").save;
+  if (!member) return { status: "error", messages: [CUSTOM_REPORTS_WORDS[await actionAdminLang()].save.needWrite] };
+  const w = CUSTOM_REPORTS_WORDS[adminLangOf(member.account.adminLocale)].save;
   if (!(await deleteReport(member.store.id, member.account.id, text(formData, "id")))) return { status: "error", messages: [w.gone] };
   redirect(`/admin/${member.store.slug}/analytics/reports`);
 }
@@ -59,8 +59,8 @@ export async function deleteReportAction(storeSlug: string, _state: FormState, f
  */
 export async function saveReportScheduleAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "analytics:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "customReports").save.needWrite] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "customReports").schedule;
+  if (!member) return { status: "error", messages: [CUSTOM_REPORTS_WORDS[await actionAdminLang()].save.needWrite] };
+  const w = CUSTOM_REPORTS_WORDS[adminLangOf(member.account.adminLocale)].schedule;
   const raw = {
     reportId: text(formData, "reportId"),
     frequency: text(formData, "frequency"),
@@ -80,8 +80,8 @@ export async function saveReportScheduleAction(storeSlug: string, _state: FormSt
 /** Stops emailing a saved report (D395). */
 export async function deleteReportScheduleAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "analytics:write");
-  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "customReports").save.needWrite] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "customReports").schedule;
+  if (!member) return { status: "error", messages: [CUSTOM_REPORTS_WORDS[await actionAdminLang()].save.needWrite] };
+  const w = CUSTOM_REPORTS_WORDS[adminLangOf(member.account.adminLocale)].schedule;
   if (!(await deleteReportSchedule(member.store.id, member.account.id, text(formData, "id")))) return { status: "error", messages: [w.problems.gone] };
   refresh();
   return { status: "ok", messages: [w.removed] };

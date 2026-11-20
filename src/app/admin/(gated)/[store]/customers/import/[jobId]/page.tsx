@@ -15,9 +15,13 @@ import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { appliedCountsOfJob, importStage, isWorking, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
 import { momentIn } from "@/lib/inventory-words";
+import { areaTexts } from "@/lib/admin-area";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { CUSTOMERS_STAFF_WORDS } from "@/lib/admin-words/customers-staff";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
 import { isJobId, listItems } from "@/server/data-job-store";
 import { customerDryCountsOf, jobFor } from "@/server/data-jobs";
 import { requireOwnerRole } from "@/server/permissions";
@@ -41,7 +45,7 @@ export default async function CustomerImportJobPage({ params, searchParams }: Pr
   const shopOff = requireFeature(member, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "customers").staff.import.job;
+  const w = CUSTOMERS_WORDS[lang].staff.import.job;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${member.store.slug}/customers/import`, label: w.back }} title={w.title} description={w.intro} />
@@ -57,7 +61,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   if (!isJobId(jobId)) notFound();
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const shared = adminText(lang, "inventory").import;
+  const shared = INVENTORY_WORDS[lang].import;
   const job = await jobFor(member, jobId);
   if (!job || job.kind !== "customer_import") notFound();
   const query = await searchParams;
@@ -87,9 +91,9 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["customersStaff", "inventoryImport"])}>
+    <AdminTextScope texts={areaTexts(lang, { customersStaff: CUSTOMERS_STAFF_WORDS, inventoryImport: INVENTORY_IMPORT_WORDS })}>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={shared.job.file}>
-        <span className="font-medium break-all">{job.inputName ?? adminText(lang, "customers").staff.import.job.title}</span>
+        <span className="font-medium break-all">{job.inputName ?? CUSTOMERS_WORDS[lang].staff.import.job.title}</span>
         <span className="text-muted">{fillWords(shared.job.uploaded, { when: momentIn(job.createdAt, store.timeZone, ADMIN_LANG_FACTS[lang].locale) })}</span>
         <span className="text-muted">{shared.jobStatus[job.status]}</span>
       </section>
@@ -118,7 +122,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
       {showItems && <CustomerFindings items={items} total={listed.total} severity={severity} page={page} pageSize={PAGE_SIZE} hrefFor={hrefFor} problemsHref={`${base}/problems`} lang={lang} />}
       <p className="text-sm">
         <Link href={`/admin/${store.slug}/customers`} className="underline underline-offset-2">
-          {adminText(lang, "customers").staff.newPage.back}
+          {CUSTOMERS_WORDS[lang].staff.newPage.back}
         </Link>
       </p>
     </AdminTextScope>

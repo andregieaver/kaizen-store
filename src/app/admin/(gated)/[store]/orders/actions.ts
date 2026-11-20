@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { orderEn } from "@/lib/admin-messages/order.en";
 import { putBackChoice } from "@/lib/inventory-admin";
 import { parseAmount } from "@/lib/field-money";
@@ -38,6 +37,7 @@ import { undoneMessage } from "@/lib/shipment-undo";
 import { cancelAtCarrier } from "@/server/carrier-cancel";
 import type { FormState } from "@/components/admin/action-form";
 import { parcelLinesFromForm } from "@/lib/parcel-form";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { chargeDelivery, deliveryOfOrder } from "@/server/standing-orders";
 
 export type OrderActionState = { ok: boolean; message: string | null };
@@ -56,7 +56,7 @@ async function orderOf(member: Membership, orderId: string) {
   return order ? { member, order, w: wordsOf(member) } : null;
 }
 
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "order").messages;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => ORDER_WORDS[adminLangOf(member.account.adminLocale)].messages;
 
 /**
  * Records a parcel (D174, `docs/wave-3-fulfilment.md` 2.1): the lines and units chosen in the *Send* card (`qty:{lineId}` fields, sent with `parcel=lines`), or, without a
@@ -162,7 +162,7 @@ export async function undoShipmentAction(
     // A booking with a carrier that can cancel is cancelled there too (D459); the parcel stays undone whatever it answers.
     const cancelled = undone.bookedWith ? await cancelAtCarrier(member.store.id, orderId, shipmentId, member.account.id) : null;
     refresh();
-    return { status: "ok", messages: [undoneMessage({ ...undone, cancelled }, adminText(adminLangOf(member.account.adminLocale), "order").parcels)] };
+    return { status: "ok", messages: [undoneMessage({ ...undone, cancelled }, ORDER_WORDS[adminLangOf(member.account.adminLocale)].parcels)] };
   });
 }
 

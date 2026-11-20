@@ -7,7 +7,6 @@ import { ReturnsView } from "@/components/admin/analytics/returns-view";
 import { TrafficView } from "@/components/admin/analytics/traffic-view";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
@@ -19,6 +18,12 @@ import { searchReport } from "@/server/analytics-search-data";
 import { timeReport } from "@/server/analytics-time-data";
 import { trafficReport } from "@/server/analytics-traffic-data";
 import { submitClass } from "@/lib/submit-class";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { FINANCE_WORDS } from "@/lib/admin-words/finance";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
+import { RETURNS_WORDS } from "@/lib/admin-words/returns";
 
 import { setVisitCountingAction } from "../settings/actions";
 
@@ -45,12 +50,12 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
   ]);
   const currency = mainCurrency(store);
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
-  const w = adminText(ctx.lang, "reports");
-  const finance = adminText(ctx.lang, "finance");
+  const w = REPORTS_WORDS[ctx.lang];
+  const finance = FINANCE_WORDS[ctx.lang];
   const say = analyticsSay(ctx.lang, ctx.locale);
   // Round 26 (D699): an owner switches counting on from the page itself; anyone else gets the link to the settings.
   const turnOn = ctx.owner && !traffic.counting ? (
-    <ActionForm action={setVisitCountingAction.bind(null, store.slug)} successMessage={adminText(ctx.lang, "analytics").settings.visits.nowOn}>
+    <ActionForm action={setVisitCountingAction.bind(null, store.slug)} successMessage={ANALYTICS_WORDS[ctx.lang].settings.visits.nowOn}>
       <SubmitButton name="enabled" value="on" className={`${submitClass()} h-11 w-full sm:w-auto`}>
         {w.traffic.turnOn}
       </SubmitButton>
@@ -58,7 +63,7 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
   ) : undefined;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
@@ -82,7 +87,7 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
           after={
             <>
               <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} words={finance} say={say} />
-              <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} say={say} reasonLabels={adminText(ctx.lang, "returns").labels.reason} />
+              <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} say={say} reasonLabels={RETURNS_WORDS[ctx.lang].labels.reason} />
             </>
           }
         />

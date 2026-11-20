@@ -8,7 +8,7 @@ import { listDrafts } from "@/server/draft-orders";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
 
 export const metadata: Metadata = { title: "Draft orders" };
 
@@ -24,7 +24,7 @@ export default async function DraftsPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
-  const w = adminText(adminLangOf(member.account.adminLocale), "drafts").pages;
+  const w = DRAFTS_WORDS[adminLangOf(member.account.adminLocale)].pages;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/orders`, label: w.orders }} title={w.listTitle}
@@ -67,7 +67,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       canWrite={memberCan(member, "orders:write")}
       locale={locale}
       timeZone={store.timeZone}
-      words={adminText(lang, "drafts")}
+      words={DRAFTS_WORDS[lang]}
       dateLocale={lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale}
     />
   );

@@ -11,9 +11,10 @@ import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page
 import { card, label, primary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { gridSelectionProblem } from "@/lib/bulk-admin";
 import { BULK_GRID_MARKETS_MAX } from "@/lib/data-limits";
+import { areaTexts } from "@/lib/admin-area";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 import { loadGrid } from "@/server/bulk-edit";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getEditorContext } from "@/server/products";
@@ -42,7 +43,7 @@ export default async function BulkGridPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const w = adminText(adminLangOf(gated.account.adminLocale), "products").gridPage;
+  const w = PRODUCTS_WORDS[adminLangOf(gated.account.adminLocale)].gridPage;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead backHref={`/admin/${store.slug}/products`} backLabel={w.back} title={w.title} intro={<><span className="sm:hidden">{w.phoneLead}</span><span className="max-sm:hidden">{w.intro}</span></>} />
@@ -63,7 +64,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const base = `/admin/${store.slug}/products`;
   const editor = await getEditorContext(store);
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "products");
+  const all = PRODUCTS_WORDS[lang];
   const w = all.gridPage;
   const recent = (
     <Suspense fallback={<DataSkeleton />}>
@@ -73,7 +74,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
 
   if (ids.length === 0) {
     return (
-      <AdminTextScope texts={adminTexts(lang, ["products"])}>
+      <AdminTextScope texts={areaTexts(lang, { products: PRODUCTS_WORDS })}>
         {/* Round 45 (D743): on a phone where to start is a strip with one press to the products. */}
         <p className="flex items-center justify-between gap-3 rounded-panel bg-card px-4 py-2.5 text-sm text-ink-2 sm:hidden">
           <span>{w.phoneChoose}</span>
@@ -117,7 +118,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const locale = store.markets[0]?.locale ?? "en";
   const rows = data.rows.map((r) => ({ productId: r.productId, variantId: r.variantId, title: r.title, handle: r.handle, options: r.options, active: r.active, cells: r.cells }));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["products"])}>
+    <AdminTextScope texts={areaTexts(lang, { products: PRODUCTS_WORDS })}>
       <form method="get" className={`${card} flex flex-wrap items-end gap-3`}>
         <input type="hidden" name="ids" value={ids.join(",")} />
         <fieldset className="flex flex-col gap-1">

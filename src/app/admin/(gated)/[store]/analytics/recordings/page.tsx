@@ -3,12 +3,13 @@ import type { Metadata } from "next";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { RecordingsList } from "@/components/admin/analytics/recordings-view";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { formatCount } from "@/lib/analytics-core";
 import { HEAT_DEVICES, type HeatDevice } from "@/lib/page-heat";
 import { analyticsContext } from "@/server/analytics-context";
 import { listRecordings, recordingCounts, recordingTests, type RecordingFilters } from "@/server/recordings-read";
 import { variantNameText } from "@/lib/experiment-words";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
+import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
 import { recordingsOpenNow } from "@/server/recordings-admin";
 
 export const metadata: Metadata = { title: "Recordings" };
@@ -24,7 +25,7 @@ export default async function RecordingsPage({ params, searchParams }: PageProps
   const query = await searchParams;
   const ctx = await analyticsContext((await params).store, query, "owner");
   const { store } = ctx;
-  const words = adminText(ctx.lang, "recordings");
+  const words = RECORDINGS_WORDS[ctx.lang];
   const device = one(query.device);
   const has = one(query.has);
   const page = one(query.page);
@@ -47,7 +48,7 @@ export default async function RecordingsPage({ params, searchParams }: PageProps
     recordingsOpenNow(),
     recordingTests(store.id),
   ]);
-  const experimentWords = adminText(ctx.lang, "experiments");
+  const experimentWords = EXPERIMENTS_WORDS[ctx.lang];
   const versions = tests.flatMap((t) => t.versions.map((v) => ({ tag: `${t.id}:${v.key}`, label: `${t.name}: ${variantNameText(v.name, experimentWords)}` })));
   return (
     <>

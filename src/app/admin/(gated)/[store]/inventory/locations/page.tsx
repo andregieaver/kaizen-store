@@ -8,7 +8,8 @@ import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { LocationsView } from "@/components/admin/inventory/locations-view";
 import { db } from "@/db/client";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { locationImpact } from "@/server/inventory";
 import { listLocations } from "@/server/inventory-locations";
 import { getOrderSettings } from "@/server/order-settings";
@@ -33,10 +34,10 @@ export default async function LocationsPage({ params }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.locations;
+  const w = INVENTORY_WORDS[lang].pages.locations;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead slug={store.slug} active="locations" title={w.title} intro={<><span className="sm:hidden">{adminText(lang, "inventory").phone.locationsLead}</span><span className="max-sm:hidden">{w.intro}</span></>} lang={lang} />
+      <InventoryHead slug={store.slug} active="locations" title={w.title} intro={<><span className="sm:hidden">{INVENTORY_WORDS[lang].phone.locationsLead}</span><span className="max-sm:hidden">{w.intro}</span></>} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -58,7 +59,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   // What each active location's deactivation would take off sale, read now for the owner's dialog (the server reads it again when confirmed).
   const impacts = isOwner ? await Promise.all(locations.map((l) => (l.active ? locationImpact(db(), store.id, l.id) : Promise.resolve(null)))) : locations.map(() => null);
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["inventory"])}>
+    <AdminTextScope texts={areaTexts(adminLangOf(member.account.adminLocale), { inventory: INVENTORY_WORDS })}>
     <LocationsView
       rows={locations.map((l, i) => ({ id: l.id, name: l.name, country: l.country, active: l.active, fulfilsOnline: l.fulfilsOnline, priority: l.priority, units: l.units, variants: l.variants, incoming: incomingAt.get(l.id) ?? 0, impact: impacts[i] }))}
       countries={countries.map((c) => ({ code: c.code, name: c.name }))}

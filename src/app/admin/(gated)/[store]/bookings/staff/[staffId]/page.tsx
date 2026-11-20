@@ -1,7 +1,9 @@
 import { adminLangOf } from "@/lib/admin-lang";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { SETTINGS_HOURS_WORDS } from "@/lib/admin-words/settings-hours";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -29,10 +31,10 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
   const staff = await getResource(store.id, staffId);
   if (!staff || staff.kind !== "staff") notFound();
   const lang = adminLangOf(current.account.adminLocale);
-  const t = adminText(lang, "bookings");
+  const t = BOOKINGS_WORDS[lang];
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["settingsHours"])}>
+    <AdminTextScope texts={areaTexts(lang, { settingsHours: SETTINGS_HOURS_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${store.slug}/bookings/staff`, label: t.staff.title }} title={<>{staff.name}</>} />
       <StaffForm staff={staff} words={t.staffForm} action={saveStaffAction.bind(null, store.slug, staff.id)} />

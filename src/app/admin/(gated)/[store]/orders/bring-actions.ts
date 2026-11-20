@@ -6,8 +6,8 @@ import { z } from "zod";
 import { parcelLinesInput } from "@/lib/parcel-input";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { orderEn } from "@/lib/admin-messages/order.en";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { requirePermission } from "@/server/permissions";
 import { bringBook, bringOptionsFor, type BringOptions } from "@/server/bring-shipping";
 import { COPIED_ORDER_MESSAGE } from "@/server/order-admin";
@@ -23,7 +23,7 @@ async function orderFor(storeSlug: string, orderId: string) {
   return order ? { member, order, w: wordsOf(member) } : null;
 }
 
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "order").messages;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => ORDER_WORDS[adminLangOf(member.account.adminLocale)].messages;
 
 
 /** The Bring services and pickup points for this parcel and this order's recipient (D134). */

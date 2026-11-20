@@ -7,13 +7,13 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ButtonLink, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { boardColumns, daysInStage, whoLine } from "@/lib/deals";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { whenText } from "@/components/admin/activities/activity-view";
 import { activityWhen } from "@/lib/activities";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { nextActivities } from "@/server/activities";
 import { ensurePipeline, listDeals } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -42,7 +42,7 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
   // The leads inbox was a tab here; it is a page of its own under Customers now (ecosystem plan E2.8, D713), and an old link finds it.
   if (query.view === "leads") redirect(`/admin/${store.slug}/leads`);
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "deals");
+  const w = DEALS_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const main = mainCurrency(store);
   const money = (minor: number) => formatMoney(minor, main, locale, { decimals: "hide_whole" });

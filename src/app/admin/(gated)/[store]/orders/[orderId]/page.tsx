@@ -114,10 +114,21 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { einvoiceLines } from "@/server/einvoice-sending";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { dealsOn } from "@/lib/extensions";
 import { returnsEn } from "@/lib/admin-messages/returns.en";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
+import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
+import { RETURNS_WORDS } from "@/lib/admin-words/returns";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -140,9 +151,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "order");
+  const words = ORDER_WORDS[lang];
   const w = words.page;
-  const statuses = adminText(lang, "common").orderStatus;
+  const statuses = COMMON_WORDS[lang].orderStatus;
   // The admin's own locale for the dates the page wrote in English (D312); money and times keep the store's.
   const adminLocale = ADMIN_LANG_FACTS[lang].locale;
   if (!z.uuid().safeParse(orderId).success) notFound();
@@ -252,7 +263,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     .filter((l) => l.variantId && l.delivery === "physical" && l.restockable > 0)
     .map((l) => {
       const history = stockByVariant.get(l.variantId!);
-      return { id: l.id, title: l.title, left: l.restockable, putBack: putBackWords(history?.taken ?? [], history?.returned ?? [], stockLocations, adminText(lang, "screens").putBack) };
+      return { id: l.id, title: l.title, left: l.restockable, putBack: putBackWords(history?.taken ?? [], history?.returned ?? [], stockLocations, SCREENS_WORDS[lang].putBack) };
     });
   // Units sold on backorder on a paid order that is not sent: the order waits for stock (wave 3, D172).
   const owedUnits = order.status === "paid" ? order.lines.reduce((sum, l) => sum + (l.backorder?.units ?? 0), 0) : 0;
@@ -314,14 +325,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   );
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["order", "drafts", "privacy", "builderText"])}>
+    <AdminTextScope texts={areaTexts(lang, { order: ORDER_WORDS, drafts: DRAFTS_WORDS, privacy: PRIVACY_WORDS, builderText: BUILDER_TEXT_WORDS })}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           back={{ href: `/admin/${store.slug}/orders`, label: w.back }}
           status={stateChips}
           title={<>{fillWords(w.title, { number: order.number })}</>}
-          description={<>{toPack ? (<><span className="text-ink">{fillWords(w.paidFor, { name: customer?.name || address.name || w.theCustomer, amount: formatMoney(order.totalMinor, order.currency, locale, { decimals: "hide_whole" }), when: whenWords(order.placedAt, new Date(), store.timeZone, adminText(lang, "home").today.when), items: countWords(order.lines.reduce((n, l) => n + l.quantity, 0), w.unitCount) })}</span>{w.packToday}</>) : (<>{cancelledAfterPayment ? w.cancelledRefunded : toCharge ? w.toCharge : order.awaitingBank ? w.awaitingBank : statuses[order.status]}{fulfilment.state === "partly_sent" && countWords(fulfilment.unitsToSend, w.partlySent)}{awaitingEdit && w.changeAwaiting}{order.edits.some((e) => e.status === "applied") && w.edited}{fillWords(w.placed, { when: when(order.placedAt), market: order.marketCode })}</>)}{order.archivedAt && w.archived}{order.copied && w.copied}{order.source === "draft" && (<>{" · "}{w.staffMade}{order.draft?.number && (<>{w.fromDraft}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && fillWords(w.by, { email: order.madeBy.email })}</>)}{order.exchange && (<>{" · "}{w.exchangeFor}{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{w.ofOrder}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.replaces && (<>{" · "}{w.replacementFor}<Link href={`/admin/${store.slug}/orders/${order.replaces.id}`} className="underline">#{order.replaces.number}</Link></>)}{order.replacedBy && (<>{" · "}{w.replacedBy}<Link href={`/admin/${store.slug}/orders/${order.replacedBy.id}`} className="underline">#{order.replacedBy.number}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">{w.partOfSubscription}</Link></>)}</>}
+          description={<>{toPack ? (<><span className="text-ink">{fillWords(w.paidFor, { name: customer?.name || address.name || w.theCustomer, amount: formatMoney(order.totalMinor, order.currency, locale, { decimals: "hide_whole" }), when: whenWords(order.placedAt, new Date(), store.timeZone, HOME_WORDS[lang].today.when), items: countWords(order.lines.reduce((n, l) => n + l.quantity, 0), w.unitCount) })}</span>{w.packToday}</>) : (<>{cancelledAfterPayment ? w.cancelledRefunded : toCharge ? w.toCharge : order.awaitingBank ? w.awaitingBank : statuses[order.status]}{fulfilment.state === "partly_sent" && countWords(fulfilment.unitsToSend, w.partlySent)}{awaitingEdit && w.changeAwaiting}{order.edits.some((e) => e.status === "applied") && w.edited}{fillWords(w.placed, { when: when(order.placedAt), market: order.marketCode })}</>)}{order.archivedAt && w.archived}{order.copied && w.copied}{order.source === "draft" && (<>{" · "}{w.staffMade}{order.draft?.number && (<>{w.fromDraft}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && fillWords(w.by, { email: order.madeBy.email })}</>)}{order.exchange && (<>{" · "}{w.exchangeFor}{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{w.ofOrder}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.replaces && (<>{" · "}{w.replacementFor}<Link href={`/admin/${store.slug}/orders/${order.replaces.id}`} className="underline">#{order.replaces.number}</Link></>)}{order.replacedBy && (<>{" · "}{w.replacedBy}<Link href={`/admin/${store.slug}/orders/${order.replacedBy.id}`} className="underline">#{order.replacedBy.number}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">{w.partOfSubscription}</Link></>)}</>}
         />
         {(paid || canWrite || memberCan(member, "owner")) && (
           <div className="flex flex-wrap items-start gap-2">
@@ -747,7 +758,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           {editability && !(editability.block && SELF_EVIDENT_BLOCKS.has(editability.block) && order.edits.length === 0) && (
             <OrderEditCard
               editHref={`/admin/${store.slug}/orders/${order.id}/edit`}
-              words={adminText(lang, "drafts")}
+              words={DRAFTS_WORDS[lang]}
               canWrite={canWrite}
               blockText={editability.text}
               edits={order.edits}
@@ -885,7 +896,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             <FoldRow title={w.returnsFold} sub={w.returnsSub} action={w.openRow}>
               <div>
             <OrderReturnsCard
-              words={adminText(lang, "returns")}
+              words={RETURNS_WORDS[lang]}
               base={`/admin/${store.slug}`}
               overview={returns}
               withdrawalPage={storeHref(store.slug, marketPath(store.slug, order.marketCode, "/withdraw"))}
@@ -926,8 +937,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </section>
 
           <DocumentsCard
-            words={adminText(lang, "invoices")}
-            reasons={adminText(lang, "screens").invoiceReasons}
+            words={INVOICES_WORDS[lang]}
+            reasons={SCREENS_WORDS[lang].invoiceReasons}
             einvoice={await einvoiceLines(
               store.id,
               [...(documents.invoice ? [{ type: "invoice" as const, id: documents.invoice.id }] : []), ...documents.creditNotes.map((n) => ({ type: "credit_note" as const, id: n.id }))],
@@ -960,7 +971,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
             </h2>
             {/* The customer's facts here once (round 6, D620): the bar at the top is gone. */}
-            {customer && <p className="mb-1 text-muted">{storeCustomerBar(store.slug, customer, locale, adminText(lang, "customers").bar).facts.join(" · ")}</p>}
+            {customer && <p className="mb-1 text-muted">{storeCustomerBar(store.slug, customer, locale, CUSTOMERS_WORDS[lang].bar).facts.join(" · ")}</p>}
             {order.email ? (
               <a href={`mailto:${order.email}`} className="break-all underline">{order.email}</a>
             ) : (
@@ -975,7 +986,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
             {deal && (
               <p className="mt-2" data-order-deal>
-                {fillWords(w.fromDeal, { status: adminText(lang, "deals").statuses[deal.status] })}{" "}
+                {fillWords(w.fromDeal, { status: DEALS_WORDS[lang].statuses[deal.status] })}{" "}
                 <Link href={`/admin/${store.slug}/deals/${deal.id}`} className="underline">
                   {deal.title}
                 </Link>

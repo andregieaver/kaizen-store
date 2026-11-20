@@ -12,7 +12,8 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { CancelBookingForm } from "../cancel-booking-form";
 
@@ -36,7 +37,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const t = adminText(lang, "bookings");
+  const t = BOOKINGS_WORDS[lang];
   const w = t.stays;
   const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
@@ -70,7 +71,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
   const chip = "rounded-full border border-line px-3 py-1 text-sm";
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
+    <AdminTextScope texts={areaTexts(lang, { bookings: BOOKINGS_WORDS })}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader

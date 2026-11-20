@@ -2,10 +2,10 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { adjustStock, setVariantPolicies, type AdjustResult, type PolicyResult } from "@/server/inventory";
 import { checkPermission } from "@/server/permissions";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * The Inventory page's saves (wave 3, D172, `docs/wave-3-inventory.md` 2.2), each for a member with `products:write` and each with the store's slug as its
@@ -14,7 +14,7 @@ import { checkPermission } from "@/server/permissions";
  */
 
 /** The refusal before a member is known, in the admin's language (D312 A5). */
-const noAccess = async () => adminText(await actionAdminLang(), "inventory").noAccess;
+const noAccess = async () => INVENTORY_WORDS[await actionAdminLang()].noAccess;
 
 export async function adjustStockAction(storeSlug: string, payload: unknown): Promise<AdjustResult> {
   const member = await checkPermission(storeSlug, "products:write");

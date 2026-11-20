@@ -11,10 +11,11 @@ import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { momentText } from "@/lib/data-admin";
 import { IMPORT_FILE_KEEP_DAYS, IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS } from "@/lib/data-limits";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
+import { areaTexts } from "@/lib/admin-area";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -34,7 +35,7 @@ export default async function ProductImportPage({ params }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const w = adminText(adminLangOf(gated.account.adminLocale), "products").importPage;
+  const w = PRODUCTS_WORDS[adminLangOf(gated.account.adminLocale)].importPage;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead backHref={`/admin/${store.slug}/products`} backLabel={w.back} title={w.title} intro={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.intro}</span></>} />
@@ -53,11 +54,11 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const open = jobs.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const base = `/admin/${store.slug}/products/import`;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "products");
+  const all = PRODUCTS_WORDS[lang];
   const w = all.importPage;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["products"])}>
+    <AdminTextScope texts={areaTexts(lang, { products: PRODUCTS_WORDS })}>
       {open ? (
         <Notice title={w.alreadyOpen}>
           <p>

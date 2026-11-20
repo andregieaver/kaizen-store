@@ -19,7 +19,6 @@ import { Avatar } from "@/components/avatar";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { DealsCard } from "@/components/admin/deals/deals-card";
@@ -59,6 +58,13 @@ import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
 import { addCustomerTagAction, addGuestAction, addNoteAction, adjustBonusAction, deleteNoteAction, removeCustomerTagAction, saveCustomerFieldsAction, updateCustomerAction } from "./actions";
 import { dealsOn } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
+import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 
 /** How many orders a customer's page shows on a phone before *All orders* (round 20). */
 const PHONE_ORDERS = 5;
@@ -81,9 +87,9 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "customers");
+  const all = CUSTOMERS_WORDS[lang];
   const words = all.customer;
-  const statuses = adminText(lang, "common").orderStatus;
+  const statuses = COMMON_WORDS[lang].orderStatus;
   const query = await searchParams;
   const exportParam = query.export;
   const merged = query.merged === "1";
@@ -132,7 +138,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   // Deals (S2, D464): the person's, while Deals is on.
   const salesOn = dealsOn(store) && customer.customerId !== null;
   const deals = salesOn && customer.customerId ? await listDeals(store, { customerId: customer.customerId }) : [];
-  const dealWords = adminText(lang, "deals");
+  const dealWords = DEALS_WORDS[lang];
   const [activities, team] =
     salesOn && customer.customerId
       ? await Promise.all([activitiesOf(store.id, { customerId: customer.customerId }), mayTag ? activityTeam(store.id) : Promise.resolve([])])
@@ -155,7 +161,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const menuItem = "flex min-h-10 w-full items-center rounded-panel px-3 text-left text-body text-ink hover:bg-sunken";
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["privacy", "loyalty", "builderText"])}>
+    <AdminTextScope texts={areaTexts(lang, { privacy: PRIVACY_WORDS, loyalty: LOYALTY_WORDS, builderText: BUILDER_TEXT_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/customers`, label: words.back }}
@@ -364,7 +370,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               orderIds={Object.fromEntries(customer.orderList.map((o) => [o.number, o.id]))}
               who={customer.name || customer.email}
               adjust={adjustBonusAction.bind(null, store.slug, customer.customerId)}
-              words={adminText(lang, "loyalty")}
+              words={LOYALTY_WORDS[lang]}
             />
           )}
 
@@ -376,7 +382,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               locale={locale}
               who={customer.name || customer.email}
               block={blockAffiliateAction.bind(null, store.slug, customer.customerId)}
-              words={adminText(lang, "loyalty")}
+              words={LOYALTY_WORDS[lang]}
             />
           )}
 

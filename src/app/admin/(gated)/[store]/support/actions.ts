@@ -1,11 +1,11 @@
 "use server";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { heartbeat, setAgentPartner, setPresence } from "@/server/support";
 import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
 import { memberDesk } from "@/server/support-desk";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 /**
  * The store inbox's presence (D216, 2.4): online or away (`support:write`: being online means taking conversations), and the open
@@ -52,7 +52,7 @@ export async function supportActAction(
   conversationId: string,
   raw: unknown,
 ): Promise<AgentActResult> {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { ok: false, problem: w.noAccess };
   const act = readAct(raw);

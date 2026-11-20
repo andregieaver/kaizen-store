@@ -8,7 +8,6 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { NewStockDocument, StockDocumentList } from "@/components/admin/inventory/stock-documents-view";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { mainCurrency } from "@/lib/markets";
 import { listLocations } from "@/server/inventory-locations";
@@ -16,6 +15,8 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { listPurchaseOrders, reorderDraft } from "@/server/purchase-orders";
 import { Card } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 import { createPurchaseOrderAction } from "./actions";
 
@@ -30,7 +31,7 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Props
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "inventory");
+  const all = INVENTORY_WORDS[lang];
   const w = all.pages.purchaseOrders;
   return (
     <div className="flex flex-col gap-6">
@@ -55,14 +56,14 @@ async function Body({ storeSlug, reorder }: { storeSlug: string; reorder: boolea
   // *Prepare reorder* from the briefing (D416): the form filled in from what is running out, saved only when the person presses Create.
   const [orders, locations, draft] = await Promise.all([listPurchaseOrders(store.id), listLocations(store.id), reorder && mayWrite ? reorderDraft(store) : Promise.resolve(null)]);
   const lang = adminLangOf(member.account.adminLocale);
-  const iw = adminText(lang, "inventory");
+  const iw = INVENTORY_WORDS[lang];
   const rw = iw.pages.purchaseOrders.reorder;
   const pw = iw.phone;
   const noCost = draft ? draft.lines.filter((l) => l.unitCost === "").length : 0;
   const base = inventoryPaths(store.slug).purchase_orders;
   const places = locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }));
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["inventory"])}>
+    <AdminTextScope texts={areaTexts(adminLangOf(member.account.adminLocale), { inventory: INVENTORY_WORDS })}>
       <div className="flex flex-col gap-6">
         {draft && (
           <Card title={rw.title} compact>

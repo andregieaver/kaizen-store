@@ -4,7 +4,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { WidgetsList } from "@/components/admin/support/widgets/widgets-list";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { chatWidgetFor } from "@/server/chat-agent";
 import { requirePermission } from "@/server/permissions";
 import { memberDesk } from "@/server/support-desk";
@@ -23,10 +24,10 @@ export default async function SupportWidgetsPage({ params }: PageProps<"/admin/[
   if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "support").widgets;
+  const w = SUPPORT_WORDS[lang].widgets;
   const [widgets, chat] = await Promise.all([listWidgets(staff.desk), chatWidgetFor(member.store.id)]);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support"])}>
+    <AdminTextScope texts={areaTexts(lang, { support: SUPPORT_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.title}

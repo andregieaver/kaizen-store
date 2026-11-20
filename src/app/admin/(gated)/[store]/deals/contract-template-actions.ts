@@ -6,12 +6,13 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { featureOffText } from "@/lib/feature-labels";
 import type { Membership } from "@/server/auth";
 import { archiveTemplate, createTemplate, saveTemplate } from "@/server/contracts";
 import { storeAction } from "@/server/store-action";
 import { dealsOn } from "@/lib/extensions";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 
 /**
  * Contract templates' actions (D695 step 2): each through `storeAction()` with `customers:write`, Deals on, answered in the member's
@@ -20,9 +21,9 @@ import { dealsOn } from "@/lib/extensions";
 
 const uuid = z.uuid();
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "deals").templates;
+const wordsOf = (member: Membership) => DEALS_WORDS[adminLangOf(member.account.adminLocale)].templates;
 const offFor = (member: Membership): string | null =>
-  dealsOn(member.store) ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
+  dealsOn(member.store) ? null : featureOffText("sales", COMMON_WORDS[adminLangOf(member.account.adminLocale)].features);
 
 export async function newTemplateAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.template_create", answer: failed }, async (member) => {

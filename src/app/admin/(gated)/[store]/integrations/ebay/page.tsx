@@ -12,8 +12,10 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { EBAY_MARKETPLACES } from "@/lib/ebay";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_INTEGRATIONS_WORDS } from "@/lib/admin-words/notifications-integrations";
 import { ebayOffered, getEbayConnection, listMarketplaceOrders } from "@/server/ebay";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { col, typedRows } from "@/server/typed-rows";
@@ -28,7 +30,7 @@ type Props = PageProps<"/admin/[store]/integrations/ebay">;
 export default async function EbayPage({ params, searchParams }: Props) {
   const gated = await requirePermission((await params).store, "settings:read");
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "notifications").integrations.ebay;
+  const w = NOTIFICATIONS_WORDS[lang].integrations.ebay;
   const outcome = (await searchParams).ebay;
   return (
     <div className="flex flex-col gap-6">
@@ -49,7 +51,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "notifications").integrations.ebay;
+  const w = NOTIFICATIONS_WORDS[lang].integrations.ebay;
   const isOwner = memberCan(member, "owner");
   const connection = await getEbayConnection(store.id);
   if (!ebayOffered() && !connection) return <p className={`${card} text-sm`}>{w.notOffered}</p>;
@@ -76,7 +78,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const setCount = ["fulfillmentPolicyId", "paymentPolicyId", "returnPolicyId", "merchantLocationKey", "categoryId"].filter((k) => (settings[k] ?? "").trim() !== "").length;
   const market = EBAY_MARKETPLACES[(settings.marketplace ?? "EBAY_DE") as keyof typeof EBAY_MARKETPLACES]?.name ?? settings.marketplace;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsIntegrations: NOTIFICATIONS_INTEGRATIONS_WORDS })}>
       <div className="flex flex-col gap-6">
         <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-sm font-medium">{connection.state === "connected" ? w.connected : w.refused}</span>

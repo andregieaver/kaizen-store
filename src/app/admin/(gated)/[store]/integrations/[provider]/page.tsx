@@ -10,7 +10,6 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { EVENTS, INTEGRATIONS, isProvider, SERVICE_EVENTS } from "@/lib/integrations";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -21,6 +20,9 @@ import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
 import { topicOffered } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { NOTIFICATIONS_INTEGRATIONS_WORDS } from "@/lib/admin-words/notifications-integrations";
 
 export const metadata: Metadata = { title: "Integration" };
 
@@ -37,7 +39,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
   const current = await requirePermission(slug, "settings:read");
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const all = adminText(lang, "notifications");
+  const all = NOTIFICATIONS_WORDS[lang];
   const w = all.integrations.provider;
   const returned = answer in SLACK_RETURN ? { ok: SLACK_RETURN[answer], text: w.slackReturn[answer as keyof typeof w.slackReturn] } : undefined;
   const subscriptionsOn = featureOn(store, "subscriptions");
@@ -54,7 +56,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
   const steps = all.integrations.infos[info.id]?.steps ?? info.steps ?? [];
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["notificationsIntegrations"])}>
+    <AdminTextScope texts={areaTexts(lang, { notificationsIntegrations: NOTIFICATIONS_INTEGRATIONS_WORDS })}>
     <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">

@@ -12,8 +12,9 @@ import { Field, Select, TextInput } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { emptyListWords, filterChoices, listHref, manualCountWords, pageOf, redirectPaths } from "@/lib/redirect-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { REDIRECT_FILTERS, listRedirects, type RedirectFilter } from "@/server/redirects";
 
@@ -32,7 +33,7 @@ const first = (value: string | string[] | undefined): string => (typeof value ==
  */
 export default async function RedirectsPage({ params, searchParams }: Props) {
   const { store, account } = await requirePermission((await params).store, "website:read");
-  const w = adminText(adminLangOf(account.adminLocale), "redirects");
+  const w = REDIRECTS_WORDS[adminLangOf(account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead slug={store.slug} active="list" title={w.list.title} intro={
@@ -52,7 +53,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const member = await requirePermission(storeSlug, "website:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "redirects");
+  const w = REDIRECTS_WORDS[lang];
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const l = w.list;
   const query = await searchParams;
@@ -68,7 +69,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     remove: deleteRedirectsAction.bind(null, store.slug),
   };
   return (
-    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+    <AdminTextScope texts={areaTexts(lang, { redirects: REDIRECTS_WORDS })}>
       {/* Round 47 (D755): on a phone the warning is the page's last line, adding a redirect a row, and the import a row beside it. */}
       <p className={`${card} !p-3 text-sm max-sm:hidden`}>{w.sentences.permanent}</p>
       {canWrite && (

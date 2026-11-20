@@ -15,8 +15,22 @@ import type { AdminLang } from "@/lib/admin-lang";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
+import { areaTexts } from "@/lib/admin-area";
+import { ANIMATION_WORDS } from "@/lib/admin-words/animation";
+import { BACKDROPS_WORDS } from "@/lib/admin-words/backdrops";
+import { BLOCKS_WORDS } from "@/lib/admin-words/blocks";
+import { BLOG_EDITOR_WORDS } from "@/lib/admin-words/blog-editor";
+import { BUILDER_WORDS } from "@/lib/admin-words/builder";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { BUILDER_VERSIONS_WORDS } from "@/lib/admin-words/builder-versions";
+import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
+import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
+import { SCHEDULES_EDITOR_WORDS } from "@/lib/admin-words/schedules-editor";
+import { STORE_PARTS_WORDS } from "@/lib/admin-words/store-parts";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { typeOfLayout } from "@/server/content-types";
 import { checkPageTypeAccess, memberCan, requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
@@ -31,7 +45,7 @@ import { saveStagedPageAction } from "./staging-actions";
 import { requireExtension } from "@/components/admin/extension-off";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
-const EDITOR_AREAS = ["builder", "blocks", "fieldsEditor", "productsEditor", "designEditor", "blogEditor", "schedulesEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions"] as const;
+const EDITOR_AREA_WORDS = { builder: BUILDER_WORDS, blocks: BLOCKS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, designEditor: DESIGN_EDITOR_WORDS, blogEditor: BLOG_EDITOR_WORDS, schedulesEditor: SCHEDULES_EDITOR_WORDS, storeParts: STORE_PARTS_WORDS, backdrops: BACKDROPS_WORDS, animation: ANIMATION_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS, builderVersions: BUILDER_VERSIONS_WORDS };
 
 /**
  * A store's page editor and preview (D53, D57), apart from its lists (`views.tsx`): a list's route loads every client component its
@@ -78,7 +92,7 @@ async function storeSecondDoc(storeSlug: string, doc: DualWith, lang: AdminLang)
   ]);
   return {
     doc,
-    kindName: adminText(lang, "builder").dual.kinds[doc.kind],
+    kindName: BUILDER_WORDS[lang].dual.kinds[doc.kind],
     props: {
       page,
       savedParts,
@@ -112,7 +126,7 @@ async function storeTemplateDoc(storeSlug: string, id: string, lang: AdminLang):
   ]);
   return {
     doc: { kind: "template", id: part.id },
-    kindName: adminText(lang, "builder").dual.kinds.template,
+    kindName: BUILDER_WORDS[lang].dual.kinds.template,
     props: {
       page,
       template: part,
@@ -146,20 +160,20 @@ export async function StoreNewPageView({ type, params, searchParams }: { type: P
   const dual = type === "variant" || !context.dualPages ? null : await storeDual(store.slug, { kind: type as DualKind, id: null }, query, lang);
   const props = { page: null, savedParts: saved, terms, gridTerms, fieldRoles: [], context };
   return (
-    <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
+    <AdminTextScope texts={areaTexts(lang, EDITOR_AREA_WORDS)}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">New {PAGE_TYPE_COPY[type].one}</h1>
       {dual && dual !== "refused" && context.dualPages ? (
         <DualPageEditor
-          left={{ doc: { kind: type as DualKind, id: null }, kindName: adminText(lang, "builder").dual.kinds[type as DualKind], props }}
+          left={{ doc: { kind: type as DualKind, id: null }, kindName: BUILDER_WORDS[lang].dual.kinds[type as DualKind], props }}
           right={dual.right}
           layout={dual.layout}
           root={context.dualPages.root}
           pick={{ ...context.dualPages, templates: saved }}
-          site={{ css: context.siteCss, name: adminText(lang, "builder").editor.yourStore, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
+          site={{ css: context.siteCss, name: BUILDER_WORDS[lang].editor.yourStore, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
         />
       ) : (
-        <PageEditor {...props} notice={dual === "refused" ? adminText(lang, "builder").dual.notOpened : null} />
+        <PageEditor {...props} notice={dual === "refused" ? BUILDER_WORDS[lang].dual.notOpened : null} />
       )}
     </AdminTextScope>
   );
@@ -194,7 +208,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   // An entry layout (D326) offers its type's fields to its blocks.
   const entryType = type === "entry_layout" ? await typeOfLayout(store.id, page.id) : null;
   const ownContext = await storePageContext(store, type, account.name ?? "", test?.targetType ?? null, entryType);
-  const sw = adminText(adminLangOf(account.adminLocale), "website").staging;
+  const sw = WEBSITE_WORDS[adminLangOf(account.adminLocale)].staging;
   // In staging mode every save is the set's copy's (D385): no Publish, schedule or share link, which would act on the page itself.
   const context = staged
     ? {
@@ -209,7 +223,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   // What is entered in the page's or article's custom fields (D118).
   const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
   const lang = adminLangOf(account.adminLocale);
-  const ew = adminText(lang, "builder").editor;
+  const ew = BUILDER_WORDS[lang].editor;
   const notice =
     justSaved === "draft"
       ? ew.draftSaved
@@ -253,12 +267,12 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   const dual = staged || type === "variant" || !context.dualPages ? null : await storeDual(store.slug, { kind: type as DualKind, id: page.id }, query, lang);
   if (dual && dual !== "refused" && context.dualPages) {
     return (
-      <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
+      <AdminTextScope texts={areaTexts(lang, EDITOR_AREA_WORDS)}>
         <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
         <DualPageEditor
           left={{
             doc: { kind: type as DualKind, id: page.id },
-            kindName: adminText(lang, "builder").dual.kinds[type as DualKind],
+            kindName: BUILDER_WORDS[lang].dual.kinds[type as DualKind],
             props: { page, notice, savedParts: saved, terms, gridTerms, fieldData, fieldRoles, context },
           }}
           right={dual.right}
@@ -271,7 +285,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
     );
   }
   return (
-    <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
+    <AdminTextScope texts={areaTexts(lang, EDITOR_AREA_WORDS)}>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
       {staged && (
         <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-insight-soft px-4 py-3 text-sm text-insight-text" data-staging-mode>
@@ -301,7 +315,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
       <PageEditor
         key={page.id}
         page={page}
-        notice={dual === "refused" ? adminText(lang, "builder").dual.notOpened : notice}
+        notice={dual === "refused" ? BUILDER_WORDS[lang].dual.notOpened : notice}
         savedParts={saved}
         terms={terms}
         gridTerms={gridTerms}

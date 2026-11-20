@@ -10,8 +10,8 @@ import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { CONTRACT_CSS, ContractDocumentView } from "@/components/documents/contract-document-view";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { FillProblem } from "@/lib/contract-fields";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { getContract, previewContract, type ContractStatus } from "@/server/contracts";
 import { getDeal } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -47,7 +47,7 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
   if (!deal || !contract || contract.dealId !== deal.id) notFound();
 
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "deals").contracts;
+  const w = DEALS_WORDS[lang].contracts;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const when = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: store.timeZone });
   const canChange = memberCan(member, "customers:write");

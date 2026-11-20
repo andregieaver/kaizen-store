@@ -8,7 +8,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { GroupEditor } from "@/components/admin/group-editor";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { groupCandidates, groupOfProduct, isStoreProduct } from "@/server/product-groups";
 
@@ -28,12 +29,12 @@ export default async function ProductListingPage({ params }: PageProps<"/admin/[
   const { store } = gated;
   if (!(await isStoreProduct(store.id, productId))) notFound();
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "products").listing;
+  const w = PRODUCTS_WORDS[lang].listing;
   const locale = store.localization.locales[0] ?? "en";
   const [group, candidates] = await Promise.all([groupOfProduct(store.id, productId, locale), groupCandidates(store.id, productId, locale)]);
   const mayWrite = memberCan(gated, "products:write");
   return (
-    <AdminTextScope texts={adminTexts(lang, ["products"])}>
+    <AdminTextScope texts={areaTexts(lang, { products: PRODUCTS_WORDS })}>
     <div className="flex flex-col gap-6">
       <Link href={`/admin/${store.slug}/products/${productId}`} className="text-sm text-muted underline underline-offset-2">
         {w.back}

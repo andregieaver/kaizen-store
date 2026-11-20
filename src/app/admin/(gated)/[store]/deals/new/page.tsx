@@ -6,8 +6,8 @@ import { DealFields } from "@/components/admin/deals/deal-fields";
 import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { ensurePipeline, whoOf } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
@@ -32,7 +32,7 @@ export default async function NewDealPage({ params, searchParams }: PageProps<"/
   if (!memberCan(member, "customers:write")) notFound();
   const { store } = member;
   const query = await searchParams;
-  const w = adminText(adminLangOf(member.account.adminLocale), "deals");
+  const w = DEALS_WORDS[adminLangOf(member.account.adminLocale)];
   const pipelines = await ensurePipeline(store.id, {
     name: w.firstPipeline,
     stages: [{ name: w.stageNames.new }, { name: w.stageNames.talking }, { name: w.stageNames.quote_sent, quoteStage: true }],

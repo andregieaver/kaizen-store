@@ -14,9 +14,13 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { appliedCountsOfJob, importStage, isWorking, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
 import { momentIn } from "@/lib/inventory-words";
+import { areaTexts } from "@/lib/admin-area";
+import { CUSTOMERS_STAFF_WORDS } from "@/lib/admin-words/customers-staff";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { isJobId, listItems } from "@/server/data-job-store";
 import { historyDryCountsOf, jobFor } from "@/server/data-jobs";
 import { requireOwnerRole } from "@/server/permissions";
@@ -40,7 +44,7 @@ export default async function OrderHistoryImportJobPage({ params, searchParams }
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "orders").historyImport.job;
+  const w = ORDERS_WORDS[lang].historyImport.job;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/admin/${member.store.slug}/orders/history-import`, label: w.back }} title={w.title} description={w.intro} />
@@ -56,10 +60,10 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   if (!isJobId(jobId)) notFound();
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const shared = adminText(lang, "inventory").import;
+  const shared = INVENTORY_WORDS[lang].import;
   const job = await jobFor(member, jobId);
   if (!job || job.kind !== "order_history_import") notFound();
-  const own = adminText(lang, "orders").historyImport;
+  const own = ORDERS_WORDS[lang].historyImport;
   const query = await searchParams;
   const severity: SeverityFilter = severityFilterOf(typeof query.severity === "string" ? query.severity : undefined);
   const page = Math.max(1, Number.parseInt(typeof query.page === "string" ? query.page : "1", 10) || 1);
@@ -87,7 +91,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["customersStaff", "inventoryImport"])}>
+    <AdminTextScope texts={areaTexts(lang, { customersStaff: CUSTOMERS_STAFF_WORDS, inventoryImport: INVENTORY_IMPORT_WORDS })}>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={shared.job.file}>
         <span className="font-medium break-all">{job.inputName ?? own.job.title}</span>
         <span className="text-muted">{fillWords(shared.job.uploaded, { when: momentIn(job.createdAt, store.timeZone, ADMIN_LANG_FACTS[lang].locale) })}</span>

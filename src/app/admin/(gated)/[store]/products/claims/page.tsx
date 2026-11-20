@@ -8,7 +8,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 import { greenClaimsReport } from "@/server/green-claims";
 import { requirePermission } from "@/server/permissions";
 
@@ -27,7 +27,7 @@ export default async function GreenClaimsPage({ params }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "products").greenClaims;
+  const w = PRODUCTS_WORDS[lang].greenClaims;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.intro} />
@@ -41,7 +41,7 @@ export default async function GreenClaimsPage({ params }: Props) {
 async function Body({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
-  const w = adminText(adminLangOf(member.account.adminLocale), "products").greenClaims;
+  const w = PRODUCTS_WORDS[adminLangOf(member.account.adminLocale)].greenClaims;
   const { places, claims } = await greenClaimsReport(store.id, LIMIT);
   const editPath = (kind: string, id: string) => (kind === "product" ? `/admin/${store.slug}/products/${id}` : `/admin/${store.slug}/pages/${id}`);
   if (places.length === 0) return <p className={`${card} text-sm`}>{w.none}</p>;

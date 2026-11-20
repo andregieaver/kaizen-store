@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { dismissLead, makeLeadDeal } from "@/server/leads";
 import { checkPermission } from "@/server/permissions";
 
@@ -16,7 +16,7 @@ import { checkPermission } from "@/server/permissions";
 export async function makeLeadDealAction(storeSlug: string, email: string): Promise<void> {
   const member = await checkPermission(storeSlug, "customers:write", "deals");
   if (!member) return;
-  const kinds = adminText(adminLangOf(member.account.adminLocale), "deals").leads.dealKinds;
+  const kinds = DEALS_WORDS[adminLangOf(member.account.adminLocale)].leads.dealKinds;
   const made = await makeLeadDeal(member, email, kinds);
   if (made.ok && made.dealId) redirect(`/admin/${storeSlug}/deals/${made.dealId}`);
   refresh();

@@ -5,9 +5,13 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { TermsManager } from "@/components/admin/terms";
 import type { TermSeoSetup } from "@/components/admin/term-seo-fields";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { marketPath, storeHref, storeOrigin } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
+import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
 import { requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
 import { categoryGaps } from "@/server/unit-price-gaps";
@@ -36,7 +40,7 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "products").categoriesPage;
+  const w = PRODUCTS_WORDS[lang].categoriesPage;
   const [terms, fields, gaps] = await Promise.all([
     listTerms({ storeId: store.id, contentType: "product" }),
     termFieldsSetup(store, ADMIN_LANG_FACTS[lang].locale),
@@ -52,7 +56,7 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
     base: `${storeOrigin(store.slug) ? "" : siteUrl()}${market ? storeHref(store.slug, marketPath(store.slug, market.slug)) : `/s/${store.slug}`}`.replace(/\/$/, ""),
   };
   return (
-    <AdminTextScope texts={adminTexts(lang, ["productsEditor", "fieldsEditor", "builderText"])}>
+    <AdminTextScope texts={areaTexts(lang, { productsEditor: PRODUCTS_EDITOR_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, builderText: BUILDER_TEXT_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `/admin/${store.slug}/products`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         <TermsManager

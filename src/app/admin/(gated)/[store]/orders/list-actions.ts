@@ -4,9 +4,9 @@ import { refresh } from "next/cache";
 
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { isBulkAction, type BulkAction, type BulkResult } from "@/lib/order-bulk";
 import { normaliseViewTitle } from "@/lib/order-list";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { runBulk } from "@/server/order-bulk";
@@ -19,8 +19,8 @@ export type BulkActionResponse = { ok: true; result: BulkResult } | { ok: false;
 export type ViewActionResponse = { ok: true; message: string } | { ok: false; message: string };
 
 /** The list's words in the account's language (D312 A4); without a member, the request's. */
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "orders");
-const noAccess = async () => adminText(await actionAdminLang(), "orders").saved.noAccess;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => ORDERS_WORDS[adminLangOf(member.account.adminLocale)];
+const noAccess = async () => ORDERS_WORDS[await actionAdminLang()].saved.noAccess;
 
 /**
  * A bulk action on ticked orders, or on every order the list's own query matches (wave 3, D173, `docs/wave-3-orders.md` 2.2.5). `orders:write`; printing is a link to the

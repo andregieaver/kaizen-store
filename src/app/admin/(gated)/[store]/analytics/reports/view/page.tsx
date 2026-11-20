@@ -8,11 +8,13 @@ import { ReportBuilder } from "@/components/admin/reports/report-builder";
 import { ReportView } from "@/components/admin/reports/report-view";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { analyticsWords } from "@/lib/analytics-words";
 import { blankSpec, describeSpec, READY_KEYS, READY_REPORTS, type ReadyKey, type ReportSpec } from "@/lib/report-catalogue";
 import { readSpec } from "@/lib/report-catalogue-schema";
 import { problemText } from "@/lib/report-words";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { CUSTOM_REPORTS_WORDS } from "@/lib/admin-words/custom-reports";
 import { analyticsContext } from "@/server/analytics-context";
 import { memberCan } from "@/server/permissions";
 import { labelOf, reportLabels } from "@/server/report-labels";
@@ -44,7 +46,7 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
   const ctx = await analyticsContext((await params).store, query);
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
-  const w = adminText(ctx.lang, "customReports");
+  const w = CUSTOM_REPORTS_WORDS[ctx.lang];
   const aw = analyticsWords();
 
   const id = one(query.id);
@@ -80,7 +82,7 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
   const sw = w.schedule;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
       <div className="flex flex-col gap-8">
         <PageHeader back={{ href: `${ctx.base}/analytics/reports`, label: w.page.title }} title={title} description={description} />
 

@@ -6,8 +6,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PayoutDetailView } from "@/components/admin/analytics/payouts-view";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { payoutReportOf } from "@/lib/payouts";
+import { FINANCE_WORDS } from "@/lib/admin-words/finance";
 import { analyticsContext } from "@/server/analytics-context";
 import { toMainOne } from "@/server/analytics-sql";
 import { payoutDetail } from "@/server/payouts-report";
@@ -24,7 +24,7 @@ export default async function PayoutPage({ params, searchParams }: PageProps<"/a
   const detail = await payoutDetail(ctx.store, payout);
   if (!detail) notFound();
   const [row] = payoutReportOf([detail.payout], (currency, minor) => toMainOne(ctx.store, currency, minor)).payouts;
-  const words = adminText(ctx.lang, "finance");
+  const words = FINANCE_WORDS[ctx.lang];
   return (
     <div className="flex flex-col gap-8">
       <PageHeader

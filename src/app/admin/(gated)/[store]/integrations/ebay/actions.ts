@@ -4,16 +4,16 @@ import { refresh } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { EBAY_STATE_COOKIE, EBAY_STATE_MINUTES, EBAY_STATE_PATH, chooseForEbay, disconnectEbay, markEbayOrderSent, saveEbaySettings, startEbayConnect } from "@/server/ebay";
 import { checkOwnerRole } from "@/server/permissions";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * eBay (D555): the owner's actions. A connection sells in the store's name and brings its buyers' addresses here, so only an owner connects,
  * sets it up, lists products, marks its orders sent or disconnects it, as with every integration (D41).
  */
-const refusal = async () => ({ ok: false as const, problem: adminText(await actionAdminLang(), "inventory").noAccess });
+const refusal = async () => ({ ok: false as const, problem: INVENTORY_WORDS[await actionAdminLang()].noAccess });
 
 export async function connectEbayAction(storeSlug: string) {
   const owner = await checkOwnerRole(storeSlug);

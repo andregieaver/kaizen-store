@@ -6,7 +6,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { requireFeature } from "@/components/admin/feature-off";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { ensurePipeline } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -29,7 +29,7 @@ export default async function PipelinesPage({ params }: PageProps<"/admin/[store
   const off = requireFeature(member, "sales");
   if (off) return off;
   const { store } = member;
-  const w = adminText(adminLangOf(member.account.adminLocale), "deals");
+  const w = DEALS_WORDS[adminLangOf(member.account.adminLocale)];
   const p = w.pipelinesPage;
   const pipelines = await ensurePipeline(store.id, {
     name: w.firstPipeline,

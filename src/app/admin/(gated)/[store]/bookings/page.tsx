@@ -15,7 +15,8 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { CancelBookingForm } from "./cancel-booking-form";
 
@@ -42,7 +43,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "bookings").week;
+  const w = BOOKINGS_WORDS[lang].week;
   const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   // The week calendar is the appointments'; with only stays and rentals on (D178), their own calendar is the place.
   if (!featureOn(store, "appointments")) redirect(`/admin/${store.slug}/bookings/stays`);
@@ -93,7 +94,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const chip = "rounded-full border border-line px-3 py-1 text-sm";
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
+    <AdminTextScope texts={areaTexts(lang, { bookings: BOOKINGS_WORDS })}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader title={w.title} description={fillWords(w.weekOf, { day: longDay.format(noon(monday)), zone: tz.replace("_", " ") })} />

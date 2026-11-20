@@ -16,9 +16,10 @@ import { STATUS_WORDS } from "@/lib/data-job";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { pageOf, redirectPaths } from "@/lib/redirect-admin";
 import { parseRedirectOptions } from "@/lib/redirect-plan";
+import { areaTexts } from "@/lib/admin-area";
+import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
 import { isJobId, listItems } from "@/server/data-job-store";
 import { jobFor, redirectDryCountsOf } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -39,7 +40,7 @@ const PAGE_SIZE = 50;
 export default async function RedirectImportJobPage({ params, searchParams }: Props) {
   const { store: slug, jobId } = await params;
   const { store, account } = await requirePermission(slug, "website:read");
-  const w = adminText(adminLangOf(account.adminLocale), "redirects");
+  const w = REDIRECTS_WORDS[adminLangOf(account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead
@@ -62,7 +63,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   if (!memberCan(member, "website:write") || !isJobId(jobId)) notFound();
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "redirects");
+  const w = REDIRECTS_WORDS[lang];
   const i = w.import;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const job = await jobFor(member, jobId);
@@ -95,7 +96,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+    <AdminTextScope texts={areaTexts(lang, { redirects: REDIRECTS_WORDS })}>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={i.theFile}>
         <span className="font-medium break-all">{job.inputName ?? i.redirectFile}</span>
         {job.rowsTotal !== null && stage !== "uploaded" && <span className="text-muted">{fillWords(i.lines, { n: job.rowsTotal.toLocaleString(locale) })}</span>}

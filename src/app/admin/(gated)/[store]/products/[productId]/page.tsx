@@ -10,9 +10,15 @@ import { PageSignalsStrip } from "@/components/admin/page-signals-strip";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { signalPlan } from "@/lib/page-signals";
 import { editorOptions } from "@/lib/variant-grid";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
+import { PRODUCT_WORDS } from "@/lib/admin-words/product";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
+import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { fieldsForEditor } from "@/server/custom-fields";
 import { getEditorContext, getProductForEdit } from "@/server/products";
@@ -37,7 +43,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
   const initial = { ...stored, options: editorOptions(stored.options, stored.variants) };
   const fields = await fieldsForEditor(store.id, "product", productId);
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "product").page;
+  const w = PRODUCT_WORDS[lang].page;
   // How it performs (ecosystem plan E2.3, D713), for those who may read the analytics: streamed after the editor, never in its way.
   const insight = memberCan(gated, "analytics:read") ? (
     <Suspense fallback={null}>
@@ -60,15 +66,15 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
           {w.archived}
         </p>
       )}
-      <AdminTextScope texts={adminTexts(lang, ["product", "productsEditor", "fieldsEditor", "builderText", "websitePick"])}>
+      <AdminTextScope texts={areaTexts(lang, { product: PRODUCT_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS })}>
         <ProductEditor {...(await editorProps(store, context, lang))} productId={productId} initial={initial} fields={fields} insight={insight} />
       </AdminTextScope>
       <p className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <Link href={`/admin/${store.slug}/products/${productId}/listing`} className="underline underline-offset-2">
-          {adminText(lang, "products").listing.link}
+          {PRODUCTS_WORDS[lang].listing.link}
         </Link>
         <Link href={`/admin/${store.slug}/products/${productId}/passport`} className="underline underline-offset-2">
-          {adminText(lang, "products").passport.link}
+          {PRODUCTS_WORDS[lang].passport.link}
         </Link>
       </p>
       <QuietActionForm

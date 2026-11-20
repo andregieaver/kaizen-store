@@ -12,8 +12,9 @@ import { NOT_FOUND_SCREEN_ROWS, NOT_FOUND_WINDOWS } from "@/lib/data-limits";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { WINDOW_ORDER, redirectPaths, reportHref, reportSummaryWords, uncountedWords, windowWords } from "@/lib/redirect-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
 import { CRAWLER_NOTE, notFoundReport } from "@/server/not-found";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -34,7 +35,7 @@ const first = (value: string | string[] | undefined): string => (typeof value ==
  */
 export default async function NotFoundReportPage({ params, searchParams }: Props) {
   const { store, account } = await requirePermission((await params).store, "website:read");
-  const w = adminText(adminLangOf(account.adminLocale), "redirects");
+  const w = REDIRECTS_WORDS[adminLangOf(account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead slug={store.slug} active="report" title={w.report.title} intro={<><span className="sm:hidden">{w.report.phone.lead}</span><span className="max-sm:hidden">{w.report.intro}</span></>} words={w} />
@@ -49,7 +50,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const member = await requirePermission(storeSlug, "website:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "redirects");
+  const w = REDIRECTS_WORDS[lang];
   const r = w.report;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
@@ -67,7 +68,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     restore: restoreMissingAction.bind(null, store.slug),
   };
   return (
-    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+    <AdminTextScope texts={areaTexts(lang, { redirects: REDIRECTS_WORDS })}>
       {/* On a phone (round 41, D737) the period is one choice. */}
       <SelectNav
         label={r.period}

@@ -5,12 +5,14 @@ import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { CustomersView } from "@/components/admin/analytics/customers-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions, analyticsSay } from "@/server/analytics-say";
 import { customersReport } from "@/server/analytics-customers-data";
 import { featureOn } from "@/lib/store-features";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { memberCan } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Customer analytics" };
@@ -30,11 +32,11 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
   const report = await customersReport(store, ctx.params.period, ctx.settings, now);
 
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
-  const w = adminText(ctx.lang, "reports");
+  const w = REPORTS_WORDS[ctx.lang];
   const say = analyticsSay(ctx.lang, ctx.locale);
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader

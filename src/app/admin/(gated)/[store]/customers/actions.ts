@@ -5,7 +5,6 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { customerFormFields, staffProblemText } from "@/lib/customer-staff";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { createCustomer } from "@/server/customer-staff";
@@ -13,6 +12,7 @@ import { listCustomers } from "@/server/customer-admin";
 import { BULK_TAG_MAX, tagMany } from "@/server/segments";
 import { tagKey } from "@/lib/order-tags";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { cancelJob, registerCustomerImport, startCustomerApply, startCustomerCheck, startCustomerUpload } from "@/server/data-jobs";
 import { checkPermission } from "@/server/permissions";
 
@@ -22,7 +22,7 @@ import { checkPermission } from "@/server/permissions";
  * after the response, in the open page's ticks and in the five-minute job.
  */
 
-const noAccess = async () => adminText(await actionAdminLang(), "customers").saved.noAccess;
+const noAccess = async () => CUSTOMERS_WORDS[await actionAdminLang()].saved.noAccess;
 
 type Step = { ok: true } | { ok: false; problem: string };
 
@@ -33,7 +33,7 @@ export async function createCustomerAction(storeSlug: string, _state: FormState,
   const member = await checkPermission(storeSlug, "customers:write");
   if (!member) return { status: "error", messages: [await noAccess()] };
   const result = await createCustomer(member, customerFormFields(form));
-  if (!result.ok) return { status: "error", messages: [staffProblemText(result.problem, adminText(adminLangOf(member.account.adminLocale), "customers").staff.problems)] };
+  if (!result.ok) return { status: "error", messages: [staffProblemText(result.problem, CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].staff.problems)] };
   redirect(`/admin/${member.store.slug}/customers/${result.id}`);
 }
 
@@ -82,7 +82,7 @@ export async function cancelCustomerImportAction(storeSlug: string, jobId: strin
 export async function bulkTagAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "customers:write");
   if (!member) return { status: "error", messages: [await noAccess()] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "customers").staff;
+  const w = CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].staff;
   const q = text(form.get("q"), 100);
   const tagText = text(form.get("filterTag"), 80);
   const filter = tagText ? tagKey(tagText) : null;
@@ -103,7 +103,7 @@ export async function bulkTagAction(storeSlug: string, _state: FormState, form: 
 export async function tagTickedAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "customers:write");
   if (!member) return { status: "error", messages: [await noAccess()] };
-  const w = adminText(adminLangOf(member.account.adminLocale), "customers").staff;
+  const w = CUSTOMERS_WORDS[adminLangOf(member.account.adminLocale)].staff;
   const emails = form.getAll("email").flatMap((value) => (typeof value === "string" && value ? [value.slice(0, 320)] : [])).slice(0, BULK_TAG_MAX + 1);
   if (emails.length > BULK_TAG_MAX) return { status: "error", messages: [w.bulk.tooMany] };
   const mode = form.get("mode") === "remove" ? "remove" : "add";

@@ -4,9 +4,9 @@ import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { PageType } from "@/lib/page-content";
 import { previewDays, previewPath, type PreviewLinkAnswer, type PreviewLinkItem } from "@/lib/preview-links";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPageTypeAccess } from "@/server/permissions";
 import { listPreviewLinks, makePreviewLink, revokePreviewLink } from "@/server/preview-links";
@@ -27,8 +27,8 @@ export async function listPageLinksAction(storeSlug: string, type: PageType, id:
 
 export async function makePageLinkAction(storeSlug: string, type: PageType, id: string, days: number): Promise<PreviewLinkAnswer> {
   const member = await checkPageTypeAccess(storeSlug, type, "write");
-  if (!member) return { ok: false, problem: adminText(await actionAdminLang(), "schedules").noChange };
-  const all = adminText(adminLangOf(member.account.adminLocale), "schedules");
+  if (!member) return { ok: false, problem: SCHEDULES_WORDS[await actionAdminLang()].noChange };
+  const all = SCHEDULES_WORDS[adminLangOf(member.account.adminLocale)];
   if (!shareable(type) || !isId(id)) return { ok: false, problem: fillWords(all.share.missing, { noun: all.nouns.page }) };
   const noun = all.nouns[type];
   const made = await makePreviewLink(member.account, member.store.id, { page: id, type }, previewDays(days));
@@ -38,8 +38,8 @@ export async function makePageLinkAction(storeSlug: string, type: PageType, id: 
 
 export async function revokePageLinkAction(storeSlug: string, type: PageType, id: string, link: string): Promise<PreviewLinkAnswer> {
   const member = await checkPageTypeAccess(storeSlug, type, "write");
-  if (!member) return { ok: false, problem: adminText(await actionAdminLang(), "schedules").noChange };
-  const all = adminText(adminLangOf(member.account.adminLocale), "schedules");
+  if (!member) return { ok: false, problem: SCHEDULES_WORDS[await actionAdminLang()].noChange };
+  const all = SCHEDULES_WORDS[adminLangOf(member.account.adminLocale)];
   if (!shareable(type) || !isId(id)) return { ok: false, problem: all.noChange };
   await revokePreviewLink(member.account, member.store.id, { page: id, type }, String(link));
   return { ok: true, url: null, links: await listPreviewLinks(member.store.id, { page: id, type }), message: all.share.revokedMessage };

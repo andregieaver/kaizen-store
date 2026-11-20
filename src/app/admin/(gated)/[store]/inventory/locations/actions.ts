@@ -2,12 +2,12 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { deactivateLocation, moveLocation, reactivateLocation, saveLocation, setFulfilsOnline, type DeactivateResult } from "@/server/inventory-locations";
 import type { LocationImpact } from "@/server/inventory";
 import { saveOrderSettings, type StockRouting } from "@/server/order-settings";
 import { checkOwnerRole, checkPermission } from "@/server/permissions";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * The locations page's steps (wave 3, D172, `docs/wave-3-inventory.md` 2.3), each with the store's slug as its bound first argument. Adding, renaming and
@@ -16,7 +16,7 @@ import { checkOwnerRole, checkPermission } from "@/server/permissions";
  */
 
 /** The refusal before a member is known, in the admin's language (D312 A5). */
-const noAccess = async () => adminText(await actionAdminLang(), "inventory").noAccess;
+const noAccess = async () => INVENTORY_WORDS[await actionAdminLang()].noAccess;
 
 type Step = { ok: true } | { ok: false; problem: string };
 

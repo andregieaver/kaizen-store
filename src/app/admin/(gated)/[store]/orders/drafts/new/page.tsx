@@ -11,10 +11,11 @@ import { fillWords } from "@/lib/drafts-words";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { createDraftAction } from "../actions";
 import { dealsOn } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
 
 export const metadata: Metadata = { title: "New draft order" };
 
@@ -27,7 +28,7 @@ export default async function NewDraftPage({ params, searchParams }: PageProps<"
   const { store } = member;
   const options = draftMarketOptions(store.markets, store.localization);
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "drafts").pages;
+  const w = DRAFTS_WORDS[lang].pages;
   // A quote for a customer or a deal (ecosystem plan E2.6, D713): who it is for, read from the store's own rows, never from the address.
   const search = await searchParams;
   const uuid = (value: unknown) => (typeof value === "string" && z.uuid().safeParse(value).success ? value : undefined);
@@ -48,7 +49,7 @@ export default async function NewDraftPage({ params, searchParams }: PageProps<"
       />
       {forWhom && <p className="text-sm" data-draft-for>{fillWords(w.forWhom, { who: forWhom })}</p>}
       {memberCan(member, "orders:write") ? (
-        <AdminTextScope texts={adminTexts(lang, ["drafts"])}>
+        <AdminTextScope texts={areaTexts(lang, { drafts: DRAFTS_WORDS })}>
           <NewDraftForm
             options={options}
             action={createDraftAction.bind(null, store.slug)}

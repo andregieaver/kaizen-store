@@ -1,6 +1,5 @@
 "use server";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { refresh } from "next/cache";
 
@@ -8,6 +7,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { checkPermission } from "@/server/permissions";
 import { memberDesk } from "@/server/support-desk";
 import { deleteReply, saveReply } from "@/server/support-replies";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 /** Adds or changes one of the store's desk's saved replies (D216, step 13): `support:write`. The store's slug is bound first. */
 export async function saveReplyAction(
@@ -15,7 +15,7 @@ export async function saveReplyAction(
   _state: FormState,
   form: FormData,
 ): Promise<FormState> {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { status: "error", messages: [w.noAccess] };
   const result = await saveReply(memberDesk(member), Object.fromEntries(form));
@@ -30,7 +30,7 @@ export async function deleteReplyAction(
   _state: FormState,
   form: FormData,
 ): Promise<FormState> {
-  const w = adminText(await actionAdminLang(), "support").problems;
+  const w = SUPPORT_WORDS[await actionAdminLang()].problems;
   const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { status: "error", messages: [w.noAccess] };
   if (!(await deleteReply(memberDesk(member), String(form.get("id") ?? ""))))

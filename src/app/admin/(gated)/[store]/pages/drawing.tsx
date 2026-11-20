@@ -9,8 +9,9 @@ import { siteFontFamilies } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
 import type { PageContent, PageType } from "@/lib/page-content";
 import { themeAttributes, themeCss } from "@/lib/theme";
-import { adminText } from "@/lib/admin-text";
 import { bindPage } from "@/lib/field-binding";
+import { CONTENT_WORDS } from "@/lib/admin-words/content";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { getProduct, listProducts } from "@/server/catalog";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { listEntries } from "@/server/content-entries";
@@ -116,7 +117,7 @@ async function LayoutPreview({
   const products = market ? await listProducts(store.id, market) : [];
   const chosen = products.find((p) => p.handle === asked) ?? products[0];
   const product = chosen && market ? await getProduct(store.id, market, chosen.handle) : null;
-  const w = adminText(await requestAdminLang(), "screens").layoutPreview;
+  const w = SCREENS_WORDS[await requestAdminLang()].layoutPreview;
   if (!market || !product) return <p className="text-sm text-muted">{w.noProduct}</p>;
   return (
     <>
@@ -155,7 +156,7 @@ async function EntryLayoutPreview({ store, id, layout }: { store: Store; id: str
   const type = await typeOfLayout(store.id, id);
   const [first] = type ? await listEntries(store.id, type.id) : [];
   const fields = market && first?.published ? await shownEntryFields(store.id, first.id, market.locale, market.lang, market.slug) : [];
-  const w = adminText(await requestAdminLang(), "content").layout;
+  const w = CONTENT_WORDS[await requestAdminLang()].layout;
   return (
     <>
       {!first?.published && <p className="text-sm text-muted">{w.previewNoEntry}</p>}

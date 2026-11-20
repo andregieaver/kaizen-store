@@ -6,8 +6,9 @@ import { AnalyticsSettingsView } from "@/components/admin/analytics/settings-for
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminTexts } from "@/lib/admin-text";
 import { analyticsWords } from "@/lib/analytics-words";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
@@ -41,7 +42,7 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
   const owner = ctx.owner;
   const w = analyticsWords().settings;
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <ExportScope base={ctx.base} query="" owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-6">
         <AnalyticsHeader

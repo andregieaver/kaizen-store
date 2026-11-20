@@ -7,8 +7,9 @@ import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { InventoryView } from "@/components/admin/inventory/inventory-view";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { listQuery } from "@/lib/inventory-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { variantPictures } from "@/server/home";
 import { inventoryPage } from "@/server/inventory";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -31,7 +32,7 @@ export default async function InventoryPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.list;
+  const w = INVENTORY_WORDS[lang].pages.list;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead slug={store.slug} active="list" title={w.title} lang={lang} />
@@ -51,7 +52,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   // Round 7 (D624): each variant's picture, so the mugs are told apart by sight.
   const pictures = await variantPictures(store.id, page.rows.map((r) => r.variantId));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+    <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS })}>
       <InventoryView
         slug={store.slug}
         page={page}

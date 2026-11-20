@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { parseTagList, tagKey, type Tag } from "@/lib/order-tags";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { staffActor } from "@/server/order-actor";
@@ -18,8 +18,8 @@ export type TagsActionState = { ok: boolean; message: string | null; tags: Tag[]
 export type ArchiveActionState = { ok: boolean; message: string | null; archived: boolean | null };
 
 /** The tags' and archive's words in the account's language (D312 A4); without a member, the request's. */
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "orders");
-const noAccess = async () => adminText(await actionAdminLang(), "orders").saved.noAccess;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => ORDERS_WORDS[adminLangOf(member.account.adminLocale)];
+const noAccess = async () => ORDERS_WORDS[await actionAdminLang()].saved.noAccess;
 
 /**
  * Adds tags to an order (typed, separated by commas) or removes one (wave 3, D173, `docs/wave-3-orders.md` 2.3). Copied history (D129) is taggable like any order: this is

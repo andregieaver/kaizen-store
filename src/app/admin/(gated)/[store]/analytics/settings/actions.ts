@@ -10,6 +10,8 @@ import { formatCount } from "@/lib/analytics-core";
 import { analyticsWordsIn, countText } from "@/lib/analytics-words";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
+import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
 import {
   backfillCosts,
   deletePeriodTarget,
@@ -22,7 +24,6 @@ import {
   setRecordings,
   setVisitCounting,
 } from "@/server/analytics-settings";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole } from "@/server/permissions";
 import { storeAction } from "@/server/store-action";
@@ -125,7 +126,7 @@ export async function setVisitCountingAction(storeSlug: string, _state: FormStat
 /** Switches heatmaps on or off (D656): the store's banner then asks visitors about statistics again. */
 export async function setHeatmapsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "owner", action: "analytics.heatmaps", answer: (message) => failed([message]) }, async (member, lang) => {
-    const h = adminText(lang, "heatmaps");
+    const h = HEATMAPS_WORDS[lang];
     const choice = form.get("enabled");
     if (choice !== "on" && choice !== "off") return failed([h.choose]);
     const result = await setHeatmaps(member, choice === "on");
@@ -141,7 +142,7 @@ export async function setHeatmapsAction(storeSlug: string, _state: FormState, fo
  */
 export async function setRecordingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "owner", action: "analytics.recordings", answer: (message) => failed([message]) }, async (member, lang) => {
-    const w = adminText(lang, "recordings");
+    const w = RECORDINGS_WORDS[lang];
     const enabled = form.get("enabled") === "on";
     const confirmed = member.store.recordings || ["children", "sensitive", "policy", "assessment"].every((k) => form.get(k) === "yes");
     if (enabled && !confirmed) return failed([w.settings.confirmAll]);

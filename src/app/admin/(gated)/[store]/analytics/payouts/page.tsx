@@ -5,9 +5,11 @@ import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { PayoutsView } from "@/components/admin/analytics/payouts-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { FINANCE_WORDS } from "@/lib/admin-words/finance";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { payoutsReport } from "@/server/payouts-report";
@@ -24,9 +26,9 @@ export default async function AnalyticsPayoutsPage({ params, searchParams }: Pag
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
   const report = await payoutsReport(ctx.store, ctx.params.period);
-  const words = adminText(ctx.lang, "finance");
+  const words = FINANCE_WORDS[ctx.lang];
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader

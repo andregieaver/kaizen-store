@@ -6,7 +6,7 @@ import { z } from "zod";
 import { parcelLinesInput } from "@/lib/parcel-input";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 
 import { checkPermission } from "@/server/permissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -16,8 +16,8 @@ import { getOrder } from "@/server/orders";
 import { sendShipped } from "@/server/shopper-emails";
 
 /** Refused before a member is known: the session's language (D312). */
-const noAccess = async () => adminText(await actionAdminLang(), "order").messages.noAccess;
-const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "order").messages;
+const noAccess = async () => ORDER_WORDS[await actionAdminLang()].messages.noAccess;
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => ORDER_WORDS[adminLangOf(member.account.adminLocale)].messages;
 
 const bookInput = z.object({
   notify: z.boolean(),

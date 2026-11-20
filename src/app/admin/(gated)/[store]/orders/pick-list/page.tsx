@@ -8,8 +8,8 @@ import { PrintButton } from "@/components/admin/print-button";
 import { PICK_LIST_MAX } from "@/lib/fulfilment-limits";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { parsePickParams, PICK_BY, PICK_SORTS, type PickBy, type PickSort } from "@/lib/pick-list";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { requirePermission } from "@/server/permissions";
 import { pickListData } from "@/server/pick-list";
 import { PageHeader } from "@/components/admin/ui";
@@ -30,7 +30,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const w = adminText(adminLangOf(gated.account.adminLocale), "orders").pick;
+  const w = ORDERS_WORDS[adminLangOf(gated.account.adminLocale)].pick;
   const query = await searchParams;
   const parsed = parsePickParams({ ids: one(query.ids), by: one(query.by), sort: one(query.sort) });
   const back = (

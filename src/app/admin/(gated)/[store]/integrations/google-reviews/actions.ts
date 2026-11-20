@@ -2,15 +2,15 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { choosePlace, findPlaces, removeGoogle, saveGoogleKey } from "@/server/google-reviews";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 
 /** The Google key is billed to the owner's own account, so only an owner sets it up (D91). */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  return (await checkOwnerRole(storeSlug)) ?? adminText(await actionAdminLang(), "notifications").google.ownerAnswer;
+  return (await checkOwnerRole(storeSlug)) ?? NOTIFICATIONS_WORDS[await actionAdminLang()].google.ownerAnswer;
 }
 
 export async function saveStoreGoogleKeyAction(storeSlug: string, key: string) {

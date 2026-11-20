@@ -5,10 +5,10 @@ import { z } from "zod";
 import type { ScheduleAnswer, ScheduleView } from "@/components/admin/page-context";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { blockingIssues, pageIssues, themeSetsOf } from "@/lib/page-a11y";
 import { isScheduledType, revertInstant, scheduleInstant, type ScheduledType } from "@/lib/page-schedules";
 import type { PageType } from "@/lib/page-content";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { cancelSchedule, scheduleOf, schedulePage } from "@/server/page-schedules";
 import { getPageForEdit } from "@/server/pages";
@@ -21,11 +21,11 @@ import type { Membership } from "@/server/auth";
  * clock. A draft with problems the checker blocks on is not scheduled: it is published from the editor, where the person decides on them.
  */
 
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "schedules");
+const wordsOf = (member: Membership) => SCHEDULES_WORDS[adminLangOf(member.account.adminLocale)];
 
 function viewOf(member: Membership, state: Awaited<ReturnType<typeof scheduleOf>>): ScheduleView {
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "schedules").dialog;
+  const w = SCHEDULES_WORDS[lang].dialog;
   const when = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "long", timeStyle: "short", timeZone: member.store.timeZone });
   const at = (iso: string) => when.format(new Date(iso));
   const failure = state.lastFailure
@@ -61,7 +61,7 @@ export async function scheduleAction(
   back: { day: string; time: string } | null = null,
 ): Promise<ScheduleAnswer> {
   const member = await checkPageTypeAccess(storeSlug, type, "write");
-  if (!member) return { ok: false, problem: adminText(await actionAdminLang(), "schedules").noChange };
+  if (!member) return { ok: false, problem: SCHEDULES_WORDS[await actionAdminLang()].noChange };
   const all = wordsOf(member);
   const w = all.dialog;
   if (!ok(type, id)) return { ok: false, problem: w.problems.type };
@@ -92,7 +92,7 @@ export async function scheduleAction(
 
 export async function cancelScheduleAction(storeSlug: string, type: PageType, id: string): Promise<ScheduleAnswer> {
   const member = await checkPageTypeAccess(storeSlug, type, "write");
-  if (!member) return { ok: false, problem: adminText(await actionAdminLang(), "schedules").noChange };
+  if (!member) return { ok: false, problem: SCHEDULES_WORDS[await actionAdminLang()].noChange };
   const w = wordsOf(member).dialog;
   if (!ok(type, id)) return { ok: false, problem: w.problems.type };
   await cancelSchedule(member.account, member.store.id, id, type);

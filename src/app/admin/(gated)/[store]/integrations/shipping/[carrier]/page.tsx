@@ -18,7 +18,8 @@ import { PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CARRIERS_WORDS } from "@/lib/admin-words/carriers";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 
 import { checkCarrierAction, removeCarrierAction, saveCarrierAction, saveCheckoutSettingsAction } from "../actions";
 
@@ -62,9 +63,9 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const currencyOf = currencyFor("NO");
   const majorUnits = (minor: number | null) => (minor === null ? "" : (minor / 100).toFixed(2).replace(/\.00$/, "").replace(".", ","));
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "shipping").carrier;
+  const w = SHIPPING_WORDS[lang].carrier;
   // The carrier's own words in the admin's language (its summary, steps and fields), else as `CARRIERS` writes them.
-  const own = adminText(lang, "carriers")[info.id];
+  const own = CARRIERS_WORDS[lang][info.id];
   const ownFields: Record<string, { label: string; help: string; placeholder: string }> = own.fields;
   const feature = (f: keyof typeof w.features) => w.features[f];
   const when = (iso: string) => adminDate(store, iso, "dayTime", lang);

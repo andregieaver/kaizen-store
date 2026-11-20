@@ -5,9 +5,9 @@ import { z } from "zod";
 
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { orderEn } from "@/lib/admin-messages/order.en";
 import { parsePrice } from "@/lib/product-input";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { capturePayment, voidAuthorization } from "@/server/payment-capture";
 import { getOrder } from "@/server/orders";
 import { requirePermission } from "@/server/permissions";
@@ -22,7 +22,7 @@ async function orderFor(storeSlug: string, orderId: string) {
   const member = await requirePermission(storeSlug, "orders:write");
   if (!z.uuid().safeParse(orderId).success) return null;
   const order = await getOrder(member.store.id, orderId);
-  return order ? { member, order, words: adminText(adminLangOf(member.account.adminLocale), "order") } : null;
+  return order ? { member, order, words: ORDER_WORDS[adminLangOf(member.account.adminLocale)] } : null;
 }
 
 /**

@@ -5,9 +5,11 @@ import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { SubscriptionsView } from "@/components/admin/analytics/subscriptions-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions, analyticsSay } from "@/server/analytics-say";
 import { subscriptionsReport } from "@/server/analytics-subscriptions-data";
@@ -28,10 +30,10 @@ export default async function AnalyticsSubscriptionsPage({ params, searchParams 
   const report = await subscriptionsReport(store, ctx.params.period, now);
 
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
-  const w = adminText(ctx.lang, "reports");
+  const w = REPORTS_WORDS[ctx.lang];
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader

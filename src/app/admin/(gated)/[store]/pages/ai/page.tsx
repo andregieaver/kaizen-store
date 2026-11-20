@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageStudioView } from "@/components/admin/page-studio-view";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { requirePermission } from "@/server/permissions";
 import { studioAbilities } from "@/server/page-ai";
 import { ownerLanguages } from "@/server/pages";
@@ -31,7 +32,7 @@ export default async function StorePageStudio({ params }: PageProps<"/admin/[sto
   const locale = languages[0]?.locale ?? "en";
   const bind = <A extends unknown[], R>(action: (slug: string, ...args: A) => R) => action.bind(null, store.slug) as (...args: A) => R;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["website"])}>
+    <AdminTextScope texts={areaTexts(lang, { website: WEBSITE_WORDS })}>
     <PageStudioView
       actions={{
         talk: bind(storeStudioTalkAction),

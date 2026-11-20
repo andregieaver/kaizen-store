@@ -8,7 +8,7 @@ import { entryName, lengthText } from "@/components/admin/analytics/recordings-v
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
 import { requirePermission } from "@/server/permissions";
 import { recordingOf } from "@/server/recordings-read";
 
@@ -26,7 +26,7 @@ export default async function RecordingPage({ params }: PageProps<"/admin/[store
   const member = await requirePermission(slug, "owner");
   const lang = adminLangOf(member.account.adminLocale);
   setAnalyticsLang(lang);
-  const words = adminText(lang, "recordings");
+  const words = RECORDINGS_WORDS[lang];
   const row = await recordingOf(member.store.id, id);
   if (!row) notFound();
   const locale = ADMIN_LANG_FACTS[lang].locale;

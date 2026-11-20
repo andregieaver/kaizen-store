@@ -6,9 +6,10 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { StockDocumentDetail } from "@/components/admin/inventory/stock-documents-view";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getPurchaseOrder } from "@/server/purchase-orders";
 
@@ -29,7 +30,7 @@ export default async function PurchaseOrderPage({ params }: Props) {
   const order = await getPurchaseOrder(store.id, id);
   if (!order) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "inventory");
+  const t = INVENTORY_WORDS[lang];
   const w = t.pages.purchaseOrder;
   const facts = [t.documents.orderStates[order.state], order.reference, order.expectedOn ? `${t.documents.expectedCol}: ${order.expectedOn}` : null, order.note].filter(Boolean);
   return (
@@ -42,7 +43,7 @@ export default async function PurchaseOrderPage({ params }: Props) {
         back={{ href: inventoryPaths(store.slug).purchase_orders, label: w.back }}
         lang={lang}
       />
-      <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+      <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS })}>
         <StockDocumentDetail
           kind="order"
           status={order.status}

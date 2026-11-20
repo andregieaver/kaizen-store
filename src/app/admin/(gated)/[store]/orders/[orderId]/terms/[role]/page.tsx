@@ -12,7 +12,7 @@ import { snapshotForOrder } from "@/server/checkout-terms";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 
 export const metadata: Metadata = { title: "Terms as shown" };
 
@@ -29,7 +29,7 @@ export default async function OrderTermsAsShownPage({ params }: PageProps<"/admi
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "order").views;
+  const w = ORDER_WORDS[lang].views;
   if (!z.uuid().safeParse(orderId).success || !isLegalRole(role)) notFound();
   const snapshot = await snapshotForOrder(store.id, orderId, role, null);
   if (!snapshot) notFound();

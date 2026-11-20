@@ -11,12 +11,13 @@ import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { AnswerSupplierOrder, StopSupplier, SupplierFormCard, SupplierKeyCard, SupplierProducts } from "@/components/admin/inventory/suppliers-view";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { countryName, supplierCountries } from "@/lib/drop-shipping";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { monthOf, todayIn } from "@/lib/work-dates";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSupplierOrders, owedToSupplier } from "@/server/supplier-orders";
 import { getDropShipSupplier, supplierVariants } from "@/server/suppliers";
@@ -35,7 +36,7 @@ export default async function SupplierPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory");
+  const w = INVENTORY_WORDS[lang];
   const query = await searchParams;
   return (
     <div className="flex flex-col gap-6">
@@ -57,7 +58,7 @@ async function Body({ storeSlug, id, search, added, month, back }: { storeSlug: 
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "inventory").suppliers;
+  const w = INVENTORY_WORDS[lang].suppliers;
   const supplier = await getDropShipSupplier(store.id, id);
   if (!supplier) notFound();
   const [variants, orders, owed] = await Promise.all([supplierVariants(store.id, supplier.id, search), listSupplierOrders(store.id, supplier.id), owedToSupplier(store.id, supplier.id, month, store.timeZone)]);
@@ -65,7 +66,7 @@ async function Body({ storeSlug, id, search, added, month, back }: { storeSlug: 
   const canWrite = memberCan(member, "products:write");
   const base = inventoryPaths(store.slug).suppliers;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+    <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS })}>
       <div className="flex flex-col gap-6">
         <InventoryHead slug={store.slug} active="suppliers" title={supplier.name} intro={`${fillWords(w.subtitle, { email: supplier.orderEmail, country: countryName(supplier.shipsFrom), days: countWords(supplier.dispatchDays, w.days) })}${supplier.outsideEu ? ` ${w.outsideEu}` : ""}`} lang={lang} back={{ href: base, label: back }} />
         {added && (

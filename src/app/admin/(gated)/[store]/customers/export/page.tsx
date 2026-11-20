@@ -10,10 +10,12 @@ import { CustomerExportForm } from "@/components/admin/data/export-forms";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { requireOwnerRole } from "@/server/permissions";
 import { exportProblemWords } from "@/lib/data-admin";
 import { EXPORT_KEEP_DAYS } from "@/lib/data-limits";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Export customers" };
 
@@ -32,8 +34,8 @@ export default async function CustomerExportPage({ params, searchParams }: Props
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const words = adminText(lang, "customers").export;
-  const notes = adminText(lang, "screens").exportNotes;
+  const words = CUSTOMERS_WORDS[lang].export;
+  const notes = SCREENS_WORDS[lang].exportNotes;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead
@@ -79,11 +81,11 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const query = await searchParams;
   const code = first(query.problem);
   const exportLang = adminLangOf(member.account.adminLocale);
-  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
+  const problem = code ? exportProblemWords(code, SCREENS_WORDS[exportLang].exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   return (
     <>
       <ProblemAlert text={problem} />
-      <CustomerExportForm slug={member.store.slug} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
+      <CustomerExportForm slug={member.store.slug} words={BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].exports} />
       <ExportSection member={member} kind="customer_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/customers/export`} now={new Date()} />
     </>
   );

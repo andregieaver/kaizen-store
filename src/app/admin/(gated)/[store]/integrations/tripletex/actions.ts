@@ -6,12 +6,12 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { failureWords } from "@/lib/tripletex-errors";
 import { invoicesFrom } from "@/lib/tripletex-invoices";
 import { BOOKING_KEYS, DEFAULT_BOOKING, isBookingKey, readSettings, type TripletexSettings } from "@/lib/tripletex-settings";
 import type { SettingsProblem } from "@/lib/tripletex-setup";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
@@ -34,10 +34,10 @@ import { checkTripletexDocument, postTripletexAgain, retryTripletex } from "@/se
  * disconnects it, as with every integration (D41).
  */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  return (await checkOwnerRole(storeSlug)) ?? adminText(await actionAdminLang(), "notifications").integrations.tripletex.ownerOnly;
+  return (await checkOwnerRole(storeSlug)) ?? NOTIFICATIONS_WORDS[await actionAdminLang()].integrations.tripletex.ownerOnly;
 }
 
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "notifications").integrations.tripletex;
+const wordsOf = (member: Membership) => NOTIFICATIONS_WORDS[adminLangOf(member.account.adminLocale)].integrations.tripletex;
 
 const refused = (message: string): FormState => ({ status: "error", messages: [message] });
 

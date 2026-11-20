@@ -8,8 +8,8 @@ import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { INVENTORY_RETENTION_MONTHS } from "@/lib/inventory";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { historyQuery } from "@/lib/inventory-admin";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { stockHistory } from "@/server/inventory";
 import { listLocations } from "@/server/inventory-locations";
 import { requirePermission } from "@/server/permissions";
@@ -29,7 +29,7 @@ export default async function StockHistoryPage({ params, searchParams }: Props) 
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "inventory");
+  const all = INVENTORY_WORDS[lang];
   const w = all.pages.history;
   return (
     <div className="flex flex-col gap-6">

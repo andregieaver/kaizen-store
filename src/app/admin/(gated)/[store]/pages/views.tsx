@@ -15,7 +15,6 @@ import { adminDate } from "@/lib/admin-date";
 import { fillWords, countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { listOffset, listPage, LIST_PAGE_SIZE } from "@/lib/list-page";
 import { LAYOUT_TYPES, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-roles";
@@ -28,6 +27,12 @@ import { countPages, listPages, pageTitles, type PageSummary } from "@/server/pa
 import { runningPageJobs } from "@/server/page-jobs";
 import { scheduleChips } from "@/server/page-schedules";
 import { isScheduledType } from "@/lib/page-schedules";
+import { areaTexts } from "@/lib/admin-area";
+import { BLOG_WORDS } from "@/lib/admin-words/blog";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
+import { WEBSITE_LIST_WORDS } from "@/lib/admin-words/website-list";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { listTerms } from "@/server/taxonomy";
@@ -79,7 +84,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
     type === "page" || type === "article" ? pageTitles(store.id, type) : Promise.resolve([]),
     storePageContext(store, type),
     type === "article" ? commentCounts(store.id) : Promise.resolve(null),
-    isScheduledType(type) ? scheduleChips(store.id, type, adminText(lang, "schedules").chips, (iso) => clock.format(new Date(iso))) : Promise.resolve({}),
+    isScheduledType(type) ? scheduleChips(store.id, type, SCHEDULES_WORDS[lang].chips, (iso) => clock.format(new Date(iso))) : Promise.resolve({}),
     type === "page" || type === "article" ? runningPageJobs(store.id) : Promise.resolve([]),
     type === "product_layout" ? layoutUses(store.id) : Promise.resolve(new Map<string, LayoutUse>()),
     type === "product_layout" ? listTerms({ storeId: store.id, contentType: "product" }) : Promise.resolve([]),
@@ -90,8 +95,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const base = storePagesBase(store, type);
   // Pages that have a place of their own (D112) are not offered for another.
   const roleIds = new Set(Object.values(store.pageRoles));
-  const blogWords = adminText(lang, "blog");
-  const site = adminText(lang, "website");
+  const blogWords = BLOG_WORDS[lang];
+  const site = WEBSITE_WORDS[lang];
   const w = site.storePages;
   const tw = w.types[type];
   const waitingComments = comments?.pending ?? 0;
@@ -109,7 +114,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const frontPage = type === "page" ? every.find((p) => p.id === store.frontPageId && p.live) : undefined;
   const current = layoutChoice && (type === "header" || type === "footer") ? layoutChoice[type] : null;
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website", "websiteList"])}>
+    <AdminTextScope texts={areaTexts(adminLangOf(gated.account.adminLocale), { website: WEBSITE_WORDS, websiteList: WEBSITE_LIST_WORDS })}>
     <div className="flex flex-col gap-6">
       {type === "page" ? (
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -270,7 +275,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           duplicate={context.actions.duplicate}
         />
       )}
-      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={LIST_PAGE_SIZE} shown={pages.length} total={total} />
+      <Pager words={KIT_WORDS[lang].pager} label={tw.list} base={base} query={query} page={page} size={LIST_PAGE_SIZE} shown={pages.length} total={total} />
       {(type === "header" || type === "footer") && (
         <SiteLayoutChoice
           type={type}

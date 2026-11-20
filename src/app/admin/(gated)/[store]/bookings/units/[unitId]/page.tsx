@@ -1,6 +1,6 @@
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -30,7 +30,7 @@ export default async function UnitPage({ params }: PageProps<"/admin/[store]/boo
   if (!unit || unit.kind === "staff") notFound();
   const kind = unit.kind;
   const lang = adminLangOf(current.account.adminLocale);
-  const t = adminText(lang, "bookings");
+  const t = BOOKINGS_WORDS[lang];
 
   return (
     <div className="flex flex-col gap-6">

@@ -15,7 +15,6 @@ import { SpendSection } from "@/components/admin/analytics/spend-form";
 import { CampaignsView } from "@/components/admin/analytics/campaigns-view";
 import { CampaignLinkBuilder, SpendImportForm } from "@/components/admin/analytics/campaign-link-builder";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
@@ -25,6 +24,12 @@ import { dayStart } from "@/server/analytics-sql";
 import { creditBySource, SOURCES } from "@/server/order-credit";
 import { storeHref, storeHome, storeOrigins } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { FLOWS_WORDS } from "@/lib/admin-words/flows";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
+import { REPORTS_CAMPAIGNS_WORDS } from "@/lib/admin-words/reports-campaigns";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions, analyticsSay } from "@/server/analytics-say";
 import { customersReport } from "@/server/analytics-customers-data";
@@ -78,14 +83,14 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
   };
   const currency = mainCurrency(store);
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
-  const w = adminText(ctx.lang, "reports");
+  const w = REPORTS_WORDS[ctx.lang];
   const say = analyticsSay(ctx.lang, ctx.locale);
   const hasSpend = report.spend.totalMinor > 0;
   const pw = w.marketing.phone;
   const row = { change: pw.open, done: pw.close, flat: true } as const;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport", "reportsCampaigns"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS, reportsCampaigns: REPORTS_CAMPAIGNS_WORDS })}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
@@ -110,7 +115,7 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
               {report.counting ? pw.countingOn : pw.countingOff}
               {!report.counting &&
                 (ctx.owner ? (
-                  <ActionForm action={setVisitCountingAction.bind(null, store.slug)} successMessage={adminText(ctx.lang, "analytics").settings.visits.nowOn}>
+                  <ActionForm action={setVisitCountingAction.bind(null, store.slug)} successMessage={ANALYTICS_WORDS[ctx.lang].settings.visits.nowOn}>
                     <SubmitButton name="enabled" value="on" className={`${submitClass()} min-h-9`}>
                       {pw.turnOn}
                     </SubmitButton>
@@ -167,7 +172,7 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
               {SOURCES.map((src) => (
                 <div key={src} className="flex justify-between gap-4 border-b border-line py-2 last:border-b-0">
                   {/* Flows' name from the server-only flows area (D767): nothing more handed to the browser. */}
-                  <dt className="text-body text-ink-2">{src === "flow" ? adminText(ctx.lang, "flows").title : w.marketing.messages.sources[src]}</dt>
+                  <dt className="text-body text-ink-2">{src === "flow" ? FLOWS_WORDS[ctx.lang].title : w.marketing.messages.sources[src]}</dt>
                   <dd className="text-right text-body-strong tabular-nums text-ink">
                     {messages[src].orders === 0
                       ? w.marketing.messages.none

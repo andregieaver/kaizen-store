@@ -4,9 +4,11 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { SalesView } from "@/components/admin/analytics/sales-view";
 import { requireFeature } from "@/components/admin/feature-off";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { analyticsContext } from "@/server/analytics-context";
 import { salesReport } from "@/server/sales-reports";
 import { requireExtension } from "@/components/admin/extension-off";
@@ -34,11 +36,11 @@ export default async function AnalyticsSalesPage({ params, searchParams }: PageP
     to: ctx.params.period.to,
     today: todayIn(now, store.timeZone),
   });
-  const w = adminText(ctx.lang, "reports");
+  const w = REPORTS_WORDS[ctx.lang];
   const kept = Object.fromEntries(Object.entries(query).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader ctx={ctx} path="/analytics/sales" title={w.pages.sales.title} description={w.pages.sales.description} />
         <SalesView report={report} base={ctx.base} query={kept} locale={ctx.locale} words={w.sales} />

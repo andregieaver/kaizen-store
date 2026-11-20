@@ -5,13 +5,13 @@ import { updateTag } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { takePackHome, undoHomeTake } from "@/server/home-takes";
 import { pagesTag } from "@/lib/cache-tags";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { storeTag } from "@/server/stores";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 /** The pages' refusals and answers in the account's language (D312 A7). */
-const said = async () => adminText(await actionAdminLang(), "website").pageActions;
+const said = async () => WEBSITE_WORDS[await actionAdminLang()].pageActions;
 
 /**
  * A demo store's home page as the front page, and putting the store's own back (`docs/theme-showcase-phase-1.md` step 4c): for those who

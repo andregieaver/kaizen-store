@@ -2,18 +2,18 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { cancelPurchaseOrder, createPurchaseOrder, placePurchaseOrder, receivePurchaseOrder } from "@/server/purchase-orders";
 import type { DocumentResult } from "@/server/stock-transfers";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * The purchase orders pages' steps (wave 11 unit D, D383), each with the store's slug as its bound first argument and `products:write`; the
  * server functions check it again and hold every rule (never more in than was ordered, the cost converted at the store's rates).
  */
 
-const refused = async (): Promise<DocumentResult> => ({ ok: false, problems: [adminText(await actionAdminLang(), "inventory").noAccess] });
+const refused = async (): Promise<DocumentResult> => ({ ok: false, problems: [INVENTORY_WORDS[await actionAdminLang()].noAccess] });
 
 export async function createPurchaseOrderAction(storeSlug: string, raw: unknown): Promise<DocumentResult> {
   const member = await checkPermission(storeSlug, "products:write");

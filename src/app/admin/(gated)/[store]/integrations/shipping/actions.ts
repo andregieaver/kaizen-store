@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING, parseCheckoutSettings } from "@/lib/delivery-options";
 import { canCheck, CARRIERS, isCarrierId } from "@/lib/shipping-carriers";
+import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole } from "@/server/permissions";
 import { checkCarrier } from "@/server/bring-shipping";
@@ -16,8 +16,8 @@ import { CHECKOUT_SERVICES, saveCheckoutSettings } from "@/server/delivery-optio
 import { getCarrier, removeCarrier, saveCarrier } from "@/server/shipping-carriers";
 
 /** What the carriers' actions answer, in the account's language (D312 A8); before an owner is known, the request's. */
-const requestWords = async () => adminText(await actionAdminLang(), "shipping").carrierActions;
-const wordsOf = (held: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(held.account.adminLocale), "shipping").carrierActions;
+const requestWords = async () => SHIPPING_WORDS[await actionAdminLang()].carrierActions;
+const wordsOf = (held: { account: { adminLocale?: string | null } }) => SHIPPING_WORDS[adminLangOf(held.account.adminLocale)].carrierActions;
 
 /** A carrier's agreement holds the store's own keys, so only an owner saves or forgets it (D133). */
 export async function saveCarrierAction(storeSlug: string, carrier: string, _state: FormState, formData: FormData): Promise<FormState> {

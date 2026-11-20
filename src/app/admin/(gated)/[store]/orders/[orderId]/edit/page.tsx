@@ -14,9 +14,10 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/drafts-words";
 import { blockTextWords, editProblemText } from "@/lib/drafts-words-english";
+import { areaTexts } from "@/lib/admin-area";
+import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
 
 import {
   applyOrderEditAction,
@@ -46,7 +47,7 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
   const orderHref = `/admin/${store.slug}/orders/${order.id}`;
   const locale = store.markets[0]?.locale ?? order.locale;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "drafts");
+  const words = DRAFTS_WORDS[lang];
   const w = words.edit.page;
   const heading = (
     <div>
@@ -92,7 +93,7 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
   }));
   const summary = initial && "priced" in initial ? editSummaryView(initial) : null;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["drafts"])}>
+    <AdminTextScope texts={areaTexts(lang, { drafts: DRAFTS_WORDS })}>
     <div className="flex flex-col gap-6">
       {heading}
       <OrderEditEditor

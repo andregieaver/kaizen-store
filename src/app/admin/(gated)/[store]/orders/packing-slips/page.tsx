@@ -7,8 +7,8 @@ import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { BULK_PRINT_MAX } from "@/lib/order-bulk";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { packingSlipData } from "@/server/packing-slips";
 import { requirePermission } from "@/server/permissions";
 
@@ -36,7 +36,7 @@ export default async function PackingSlipsPage({ params, searchParams }: PagePro
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const words = adminText(adminLangOf(gated.account.adminLocale), "orders");
+  const words = ORDERS_WORDS[adminLangOf(gated.account.adminLocale)];
   const w = words.slips;
   const ids = idsOf((await searchParams).ids);
   const set = await packingSlipData(store.id, ids);

@@ -8,7 +8,6 @@ import { IntegrationMark } from "@/components/admin/integration-mark";
 import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { formatMoney } from "@/lib/money";
 import { norwegianOrgNumber } from "@/lib/tripletex";
@@ -16,6 +15,7 @@ import { failureWords } from "@/lib/tripletex-errors";
 import { invoicesFrom } from "@/lib/tripletex-invoices";
 import { BOOKING_KEYS, DEFAULT_BOOKING, type BookingKey } from "@/lib/tripletex-settings";
 import { bookingProblem, receivableProblem, type Chart, type SettingsProblem } from "@/lib/tripletex-setup";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import type { Membership } from "@/server/auth";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { checkTripletexSettings, getTripletexConnection, storeOrgNumber, tripletexCounts, tripletexProblems } from "@/server/tripletex";
@@ -53,7 +53,7 @@ function optionsFor(problem: SettingsProblem, chart: Chart): { number: number; n
  * why, and one button that brings it in. Reading Tripletex takes a moment, so it streams in under the card.
  */
 async function InvoicesPreview({ member, from, lang }: { member: Membership; from: string; lang: AdminLang }) {
-  const w = adminText(lang, "notifications").integrations.tripletex.invoices;
+  const w = NOTIFICATIONS_WORDS[lang].integrations.tripletex.invoices;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });
   const read = await previewTripletexInvoices(member, from);
@@ -142,7 +142,7 @@ export default async function TripletexPage({ params, searchParams }: PageProps<
   const current = await requirePermission(slug, "settings:read");
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "notifications").integrations.tripletex;
+  const w = NOTIFICATIONS_WORDS[lang].integrations.tripletex;
   const owner = memberCan(current, "owner");
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });

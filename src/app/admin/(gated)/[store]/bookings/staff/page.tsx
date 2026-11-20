@@ -8,7 +8,8 @@ import { listResources } from "@/server/bookings";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 
 export const metadata: Metadata = { title: "Staff and hours" };
 
@@ -19,8 +20,8 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
   if (off) return off;
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "bookings").staff;
-  const hw = adminText(lang, "settings").hours;
+  const w = BOOKINGS_WORDS[lang].staff;
+  const hw = SETTINGS_WORDS[lang].hours;
   const staff = await listResources(store.id);
   const base = `/admin/${store.slug}/bookings/staff`;
 

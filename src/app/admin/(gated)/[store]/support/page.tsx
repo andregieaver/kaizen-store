@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
 import { Inbox } from "@/components/admin/support/inbox";
 import type { SupportDeskContext } from "@/components/admin/support/desk-context";
 import { requirePermission } from "@/server/permissions";
@@ -10,6 +9,8 @@ import { presence } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
 import { openingInbox } from "@/server/support-inbox";
 import { storeBase, storeHref } from "@/lib/paths";
+import { areaTexts } from "@/lib/admin-area";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 import {
   supportActAction,
@@ -69,7 +70,7 @@ export default async function SupportInboxPage({
   };
   return (
     <AdminTextScope
-      texts={adminTexts(adminLangOf(member.account.adminLocale), ["support"])}
+      texts={areaTexts(adminLangOf(member.account.adminLocale), { support: SUPPORT_WORDS })}
     >
       <Inbox
         context={context}

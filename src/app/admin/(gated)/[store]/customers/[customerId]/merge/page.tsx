@@ -8,7 +8,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { findCustomer } from "@/server/customer-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -32,10 +33,10 @@ export default async function MergeCustomerPage({ params }: PageProps<"/admin/[s
   if (!ref) notFound();
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}/merge`);
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "customers").staff.merge;
+  const w = CUSTOMERS_WORDS[lang].staff.merge;
   const back = `/admin/${store.slug}/customers/${ref.key}`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["customers"])}>
+    <AdminTextScope texts={areaTexts(lang, { customers: CUSTOMERS_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: back, label: w.back }} title={w.title} description={w.description} meta={[`${w.keep}: ${ref.email}`]} />
         <Card>

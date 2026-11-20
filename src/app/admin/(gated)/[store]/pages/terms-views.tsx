@@ -5,8 +5,10 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { TermsManager } from "@/components/admin/terms";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { termContentOf, type PageType } from "@/lib/page-content";
+import { areaTexts } from "@/lib/admin-area";
+import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { requirePageTypeAccess } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
 
@@ -23,11 +25,11 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store, account } = gated;
-  const tw = adminText(adminLangOf(account.adminLocale), "website").storePages.types[type];
+  const tw = WEBSITE_WORDS[adminLangOf(account.adminLocale)].storePages.types[type];
   const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
   return (
     // The categories manager's words are the products' (it is the same manager as theirs).
-    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["productsEditor"])}>
+    <AdminTextScope texts={areaTexts(adminLangOf(account.adminLocale), { productsEditor: PRODUCTS_EDITOR_WORDS })}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Link href={storePagesBase(store, type)} className="w-fit text-sm underline">

@@ -5,8 +5,8 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { EVIDENCE_FIELDS } from "@/lib/dispute-evidence";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { saveDisputeEvidence } from "@/server/dispute-evidence";
 import { requirePermission } from "@/server/permissions";
 
@@ -16,7 +16,7 @@ import { requirePermission } from "@/server/permissions";
  */
 export async function saveEvidenceAction(storeSlug: string, orderId: string, disputeId: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await requirePermission(storeSlug, "orders:write");
-  const w = adminText(adminLangOf(member.account.adminLocale), "order").messages;
+  const w = ORDER_WORDS[adminLangOf(member.account.adminLocale)].messages;
   const send = form.get("intent") === "send";
   if (send && form.get("confirm") !== "yes") return { status: "error", messages: [w.evidenceConfirm], fields: { confirm: w.evidenceConfirm } };
   const input = Object.fromEntries(EVIDENCE_FIELDS.map((f) => [f, String(form.get(f) ?? "")]));

@@ -14,8 +14,9 @@ import { IMPORT_FILE_KEEP_DAYS, REDIRECTS_MAX, REDIRECT_IMPORT_MAX_ROWS } from "
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { redirectPaths } from "@/lib/redirect-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -32,7 +33,7 @@ type Props = PageProps<"/admin/[store]/redirects/import">;
  */
 export default async function RedirectImportPage({ params }: Props) {
   const { store, account } = await requirePermission((await params).store, "website:read");
-  const w = adminText(adminLangOf(account.adminLocale), "redirects");
+  const w = REDIRECTS_WORDS[adminLangOf(account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead slug={store.slug} active="import" title={w.import.title} intro={<><span className="sm:hidden">{w.import.phone.lead}</span><span className="max-sm:hidden">{w.import.intro}</span></>} words={w} />
@@ -48,14 +49,14 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   if (!memberCan(member, "website:write")) notFound();
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "redirects");
+  const w = REDIRECTS_WORDS[lang];
   const i = w.import;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const jobs = await listJobs(member, "redirect_import", 10);
   const open = jobs.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const base = `${redirectPaths(store.slug).import}`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+    <AdminTextScope texts={areaTexts(lang, { redirects: REDIRECTS_WORDS })}>
       {open ? (
         <Notice title={i.openTitle}>
           <p>

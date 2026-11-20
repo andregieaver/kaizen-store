@@ -11,9 +11,12 @@ import { requireOwnerRole } from "@/server/permissions";
 import { todayIn } from "@/lib/work-dates";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { exportProblemWords } from "@/lib/data-admin";
 import { EXPORT_KEEP_DAYS } from "@/lib/data-limits";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
@@ -35,10 +38,10 @@ export default async function OrderExportPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const notes = adminText(lang, "screens").exportNotes;
-  const w = adminText(lang, "orders").export;
+  const notes = SCREENS_WORDS[lang].exportNotes;
+  const w = ORDERS_WORDS[lang].export;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["orders"])}>
+    <AdminTextScope texts={areaTexts(lang, { orders: ORDERS_WORDS })}>
     <div className="flex flex-col gap-6">
       <DataPageHead
         backHref={`/admin/${store.slug}/orders`}
@@ -75,25 +78,25 @@ export default async function OrderExportPage({ params, searchParams }: Props) {
 
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requireOwnerRole(storeSlug);
-  const w = adminText(adminLangOf(member.account.adminLocale), "orders").export;
-  const history = adminText(adminLangOf(member.account.adminLocale), "orders").historyImport;
+  const w = ORDERS_WORDS[adminLangOf(member.account.adminLocale)].export;
+  const history = ORDERS_WORDS[adminLangOf(member.account.adminLocale)].historyImport;
   const query = await searchParams;
   const code = first(query.problem);
   const exportLang = adminLangOf(member.account.adminLocale);
-  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
+  const problem = code ? exportProblemWords(code, SCREENS_WORDS[exportLang].exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   // A number or two from an order's own page; only a plain list is taken, shown in a field (never as markup).
   const numbers = (first(query.numbers) ?? "").slice(0, 4_000);
   return (
     <>
       <ProblemAlert text={problem} />
-      <OrderExportForm slug={member.store.slug} defaultNumbers={numbers} today={todayIn(member.store.timeZone)} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
+      <OrderExportForm slug={member.store.slug} defaultNumbers={numbers} today={todayIn(member.store.timeZone)} words={BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].exports} />
       <PhoneRows>
       <PhoneRow flat last title={w.amounts} sub={w.phone.amountsSub} change={w.phone.read} done={w.phone.close}>
       <Notice title={w.amounts}>
-        <p>{adminText(exportLang, "screens").exportNotes.mainCurrency}</p>
-        <p className="mt-1">{adminText(exportLang, "screens").exportNotes.testPayment}</p>
+        <p>{SCREENS_WORDS[exportLang].exportNotes.mainCurrency}</p>
+        <p className="mt-1">{SCREENS_WORDS[exportLang].exportNotes.testPayment}</p>
         <p className="mt-1">
-          {adminText(exportLang, "screens").exportNotes.notStatement} {w.see} <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/invoices`}>{w.invoices}</Link> {w.and}{" "}
+          {SCREENS_WORDS[exportLang].exportNotes.notStatement} {w.see} <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/invoices`}>{w.invoices}</Link> {w.and}{" "}
           <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/analytics/tax`}>{w.reports}</Link>.
         </p>
       </Notice>

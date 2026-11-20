@@ -14,8 +14,10 @@ import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page
 import { appliedCountsOfJob, dryCountsOfJob, importStage, isWorking, momentText, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { parseImportOptions } from "@/lib/product-import";
+import { areaTexts } from "@/lib/admin-area";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 import { isJobId, listItems } from "@/server/data-job-store";
 import { jobFor } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -41,7 +43,7 @@ export default async function ImportJobPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
-  const w = adminText(adminLangOf(gated.account.adminLocale), "products").jobPage;
+  const w = PRODUCTS_WORDS[adminLangOf(gated.account.adminLocale)].jobPage;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead backHref={`/admin/${store.slug}/products/import`} backLabel={w.back} title={w.title} intro={w.intro} />
@@ -79,7 +81,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   const dry = dryCountsOfJob(job.counts);
   const view = { id: job.id, kind: job.kind, status: job.status, phase: job.phase, rowsDone: job.rowsDone, rowsTotal: job.rowsTotal, problem: job.problem };
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "products");
+  const all = PRODUCTS_WORDS[lang];
   const w = all.jobPage;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const hrefFor = (q: { severity?: SeverityFilter; page?: number }) => {
@@ -91,7 +93,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["products"])}>
+    <AdminTextScope texts={areaTexts(lang, { products: PRODUCTS_WORDS })}>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={w.theFile}>
         <span className="font-medium break-all">{job.inputName ?? w.productFile}</span>
         <span className="text-muted">{job.format === "shopify" ? w.shopifyFile : job.format === "woocommerce" ? w.woocommerceFile : w.kaizenFile}</span>
@@ -142,7 +144,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
           pageSize={PAGE_SIZE}
           hrefFor={hrefFor}
           problemsHref={`${base}/problems`}
-          words={adminText(lang, "bookings").findings}
+          words={BOOKINGS_WORDS[lang].findings}
         />
       )}
       <p className="text-sm">

@@ -8,7 +8,6 @@ import { HeatmapsHub, MAP_DAYS, MAP_VIEWS, PageMapView, pageName, recordingsOfPa
 import { RefreshWhile } from "@/components/admin/refresh-while";
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { formatCount } from "@/lib/analytics-core";
 import { addDays, todayIn } from "@/lib/analytics-period";
@@ -25,6 +24,10 @@ import { memberCan } from "@/server/permissions";
 import { heatPages, pageDevices, pageHeat, taggedTests } from "@/server/page-heat-read";
 import { heatKeyPage } from "@/server/page-signals";
 import { variantNameText } from "@/lib/experiment-words";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
+import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
 
 import { takeNewPictureAction } from "./actions";
 
@@ -41,10 +44,10 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
   const query = await searchParams;
   const ctx = await analyticsContext((await params).store, query);
   const { store } = ctx;
-  const words = adminText(ctx.lang, "heatmaps");
+  const words = HEATMAPS_WORDS[ctx.lang];
   const page = one(query.page);
   const scope = (children: React.ReactNode) => (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
       <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
         <div className="flex flex-col gap-8">{children}</div>
       </ExportScope>
@@ -80,7 +83,7 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
   const tests = await taggedTests(store.id, page);
   const askedTag = one(query.tag) ?? "";
   const tag = tests.some((t) => t.versions.some((v) => `${t.id}:${v.key}` === askedTag)) ? askedTag : "";
-  const experimentWords = adminText(ctx.lang, "experiments");
+  const experimentWords = EXPERIMENTS_WORDS[ctx.lang];
   const versions = tests.flatMap((t) => t.versions.map((v) => ({ tag: `${t.id}:${v.key}`, label: `${t.name}: ${variantNameText(v.name, experimentWords)}` })));
   const devices = await pageDevices(store.id, page, period, tag);
   const askedDevice = one(query.device);

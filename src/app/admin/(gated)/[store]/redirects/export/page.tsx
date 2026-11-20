@@ -10,10 +10,12 @@ import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { redirectPaths } from "@/lib/redirect-admin";
 import { requirePermission } from "@/server/permissions";
 import { exportProblemWords } from "@/lib/data-admin";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
 export const metadata: Metadata = { title: "Export redirects" };
 
@@ -29,7 +31,7 @@ const first = (value: string | string[] | undefined): string | null => (typeof v
 export default async function RedirectExportPage({ params, searchParams }: Props) {
   const { store, account } = await requirePermission((await params).store, "website:read");
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "redirects");
+  const w = REDIRECTS_WORDS[lang];
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead
@@ -53,15 +55,15 @@ export default async function RedirectExportPage({ params, searchParams }: Props
 
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requirePermission(storeSlug, "website:read");
-  const w = adminText(adminLangOf(member.account.adminLocale), "redirects").export;
+  const w = REDIRECTS_WORDS[adminLangOf(member.account.adminLocale)].export;
   const query = await searchParams;
   const code = first(query.problem);
   const exportLang = adminLangOf(member.account.adminLocale);
-  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
+  const problem = code ? exportProblemWords(code, SCREENS_WORDS[exportLang].exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   return (
     <>
       <ProblemAlert text={problem} />
-      <RedirectExportForm slug={member.store.slug} words={adminText(adminLangOf(member.account.adminLocale), "redirects")} exportWords={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
+      <RedirectExportForm slug={member.store.slug} words={REDIRECTS_WORDS[adminLangOf(member.account.adminLocale)]} exportWords={BOOKINGS_WORDS[adminLangOf(member.account.adminLocale)].exports} />
       {/* Round 55 (D806): on a phone what the file holds is a row after the button; from `sm` up as before. */}
       <div className="max-sm:overflow-hidden max-sm:rounded-panel">
       <PhoneRow flat last title={w.aboutTitle} sub={w.phone.aboutSub} change={w.phone.open} done={w.phone.done}>

@@ -12,9 +12,12 @@ import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { LIST_PAGE_SIZE, listPage } from "@/lib/list-page";
+import { areaTexts } from "@/lib/admin-area";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
+import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { productsListReads } from "@/server/admin-screens";
 import { PRODUCT_SHOWS, type ProductShow } from "@/server/product-list";
@@ -34,9 +37,9 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = member;
   const canWrite = memberCan(member, "products:write");
-  const w = adminText(adminLangOf(member.account.adminLocale), "products").list;
+  const w = PRODUCTS_WORDS[adminLangOf(member.account.adminLocale)].list;
   const menuItem = "flex min-h-10 items-center rounded-panel px-3 text-sm text-ink hover:bg-sunken";
-  const c = adminText(adminLangOf(member.account.adminLocale), "products").catalogue;
+  const c = PRODUCTS_WORDS[adminLangOf(member.account.adminLocale)].catalogue;
   return (
     <div className="flex flex-col gap-6">
       {/* Round 2 (D597): the header's one green action, Lisa's tools in one menu. */}
@@ -81,8 +84,8 @@ async function ProductList({
   const { store } = member;
   const canWrite = memberCan(member, "products:write");
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "products").list;
-  const c = adminText(lang, "products").catalogue;
+  const w = PRODUCTS_WORDS[lang].list;
+  const c = PRODUCTS_WORDS[lang].catalogue;
   const query = await searchParams;
   // The view (code review 1.13, D834): the chips are the search form's buttons, sent after the view it keeps, so the last one named wins.
   const show = [query.show].flat().reduce<ProductShow>((was, value) => PRODUCT_SHOWS.find((s) => s === value) ?? was, "all");
@@ -123,8 +126,8 @@ async function ProductList({
 
   const market = store.markets[0];
   return (
-    <AdminTextScope texts={adminTexts(lang, ["products"])}>
-      {!needsFilter && <NeedsContentNotice count={needingCount} href={needsHref} words={adminText(lang, "screens").unitGaps} />}
+    <AdminTextScope texts={areaTexts(lang, { products: PRODUCTS_WORDS })}>
+      {!needsFilter && <NeedsContentNotice count={needingCount} href={needsHref} words={SCREENS_WORDS[lang].unitGaps} />}
       {openImport && (
         <p className="rounded-panel bg-sunken p-3 text-sm">
           {fillWords(w.openImport, { name: openImport.inputName ?? w.aFile })}{" "}
@@ -160,7 +163,7 @@ async function ProductList({
         )}
       </nav>
       {needsFilter ? (
-        <NeedsContentList products={needing} base={base} words={adminText(lang, "screens").unitGaps} />
+        <NeedsContentList products={needing} base={base} words={SCREENS_WORDS[lang].unitGaps} />
       ) : none ? (
         <div className={`p-8 text-center ${CARD_CLASS}`}>
           <p className="mb-3">{archived ? w.noArchived : w.none}</p>
@@ -196,7 +199,7 @@ async function ProductList({
                 label={c.search}
                 placeholder={c.searchPlaceholder}
                 maxLength={100}
-                words={adminText(lang, "kit").search}
+                words={KIT_WORDS[lang].search}
                 button="hidden"
                 keep={{ show: kept.show }}
                 className="min-w-0 flex-[1_1_16rem]"
@@ -222,7 +225,7 @@ async function ProductList({
                 }
               />
             }
-            pager={<Pager words={adminText(lang, "kit").pager} label={w.title} base={base} query={kept} page={page} size={LIST_PAGE_SIZE} shown={products.length} total={total} />}
+            pager={<Pager words={KIT_WORDS[lang].pager} label={w.title} base={base} query={kept} page={page} size={LIST_PAGE_SIZE} shown={products.length} total={total} />}
           />
         </>
       )}

@@ -19,8 +19,10 @@ import { storeTags } from "@/server/segments";
 import { tagKey } from "@/lib/order-tags";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { LIST_PAGE_SIZE, listOffset, listPage } from "@/lib/list-page";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { AdminLink, ButtonLink, CARD_CLASS, EmptyState, ListSearch, PageHeader, Pager, Select, TextInput } from "@/components/admin/ui";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 
@@ -43,7 +45,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "customers");
+  const all = CUSTOMERS_WORDS[lang];
   const words = all.list;
   const staff = all.staff;
   const query = await searchParams;
@@ -65,7 +67,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const base = `/admin/${store.slug}/customers`;
   const now = new Date();
-  const when = adminText(lang, "home").today.when;
+  const when = HOME_WORDS[lang].today.when;
   // The last order in words near today ("Today", "3 days ago"), its day and month further back.
   const lastWords = (iso: string) => {
     const days = (now.getTime() - Date.parse(iso)) / 86_400_000;
@@ -275,7 +277,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
         />
       )}
       <Pager
-        words={adminText(lang, "kit").pager}
+        words={KIT_WORDS[lang].pager}
         label={words.title}
         base={base}
         query={{ q: q || undefined, tag: tag ?? undefined, show: show ?? undefined, sort: sort === "recent" ? undefined : sort }}

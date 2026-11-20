@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { isProvider } from "@/lib/integrations";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
@@ -20,7 +20,7 @@ async function asOwner(storeSlug: string): Promise<Membership | string> {
 }
 
 /** The answers in a member's language, or in the request's before a member is known. */
-const wordsOf = async (member: Membership | null) => adminText(member ? adminLangOf(member.account.adminLocale) : await actionAdminLang(), "notifications").integrations.answers;
+const wordsOf = async (member: Membership | null) => NOTIFICATIONS_WORDS[member ? adminLangOf(member.account.adminLocale) : await actionAdminLang()].integrations.answers;
 
 export async function saveIntegrationAction(
   storeSlug: string,
@@ -37,7 +37,7 @@ export async function saveIntegrationAction(
     events: formData.getAll("events").map(String),
     enabled: formData.get("enabled") === "on",
   });
-  return result.ok ? { status: "ok", messages: [adminText(adminLangOf(owner.account.adminLocale), "notifications").common.saved] } : { status: "error", messages: result.problems.map((p) => w.save[p] ?? p) };
+  return result.ok ? { status: "ok", messages: [NOTIFICATIONS_WORDS[adminLangOf(owner.account.adminLocale)].common.saved] } : { status: "error", messages: result.problems.map((p) => w.save[p] ?? p) };
 }
 
 export type TestResult = { ok: boolean; message: string };

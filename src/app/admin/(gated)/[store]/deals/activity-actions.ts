@@ -6,13 +6,14 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
-import { adminText } from "@/lib/admin-text";
 import { featureOffText } from "@/lib/feature-labels";
 import { createActivity, deleteActivity, setActivityDone, updateActivity, type ActivityResult } from "@/server/activities";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { dealsOn } from "@/lib/extensions";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 
 /**
  * Activities' actions (S3, D468), on a deal's, a person's and a company's page and on the store's home: each checks the member may change
@@ -25,10 +26,10 @@ type Words = DealsMessages["activities"];
 /** The member, when they may change customers and Deals is on; else the reason, in their words. */
 async function writer(storeSlug: string): Promise<{ member: Membership; w: Words } | { refused: string }> {
   const member = await checkPermission(storeSlug, "customers:write", "deals");
-  if (!member) return { refused: adminText(await actionAdminLang(), "deals").activities.problems.forbidden };
+  if (!member) return { refused: DEALS_WORDS[await actionAdminLang()].activities.problems.forbidden };
   const lang = adminLangOf(member.account.adminLocale);
-  if (!dealsOn(member.store)) return { refused: featureOffText("sales", adminText(lang, "common").features) };
-  return { member, w: adminText(lang, "deals").activities };
+  if (!dealsOn(member.store)) return { refused: featureOffText("sales", COMMON_WORDS[lang].features) };
+  return { member, w: DEALS_WORDS[lang].activities };
 }
 
 /** Which field each problem is about, so the form marks it (`FormState.fields`). */

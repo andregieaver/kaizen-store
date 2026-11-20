@@ -7,9 +7,11 @@ import { Search } from "lucide-react";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { adminLangOf } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { INTEGRATIONS } from "@/lib/integrations";
 import { canCheck, CARRIERS } from "@/lib/shipping-carriers";
+import { CARRIERS_WORDS } from "@/lib/admin-words/carriers";
+import { FIKEN_WORDS } from "@/lib/admin-words/fiken";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
 import { listEndpoints } from "@/server/webhook-endpoints";
@@ -46,8 +48,8 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
   const q = (typeof query.q === "string" ? query.q : "").trim().slice(0, 60);
   const show = typeof query.show === "string" && (GROUPS as readonly string[]).includes(query.show) ? (query.show as Group) : null;
   const lang = adminLangOf(member.account.adminLocale);
-  const all = adminText(lang, "notifications");
-  const carrierWords = adminText(lang, "carriers") as Record<string, { summary: string } | undefined>;
+  const all = NOTIFICATIONS_WORDS[lang];
+  const carrierWords = CARRIERS_WORDS[lang] as Record<string, { summary: string } | undefined>;
   const w = all.integrations;
   const h = w.hub;
   const k = w.carrier;
@@ -74,7 +76,7 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
         : tripletex.state === "on"
           ? { text: tx.on, tone: ON }
           : { text: tx[tripletex.state], tone: QUIET };
-  const fk = adminText(lang, "fiken").listStatus;
+  const fk = FIKEN_WORDS[lang].listStatus;
   const fikenBadge: Badge | null = !fiken
     ? null
     : fiken.state === "auth_failed"

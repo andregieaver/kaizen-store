@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { sendEndpointTest } from "@/server/integrations";
@@ -22,10 +22,10 @@ import {
 
 /** An owner's endpoints get customers' details, so only an owner adds or changes them (D354), as with the services (D41). */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  return (await checkOwnerRole(storeSlug)) ?? adminText(await actionAdminLang(), "notifications").integrations.endpoints.ownerOnly;
+  return (await checkOwnerRole(storeSlug)) ?? NOTIFICATIONS_WORDS[await actionAdminLang()].integrations.endpoints.ownerOnly;
 }
 
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "notifications").integrations.endpoints;
+const wordsOf = (member: Membership) => NOTIFICATIONS_WORDS[adminLangOf(member.account.adminLocale)].integrations.endpoints;
 
 export type EndpointAnswer = { ok: true; secret?: string; message?: string } | { ok: false; message: string };
 

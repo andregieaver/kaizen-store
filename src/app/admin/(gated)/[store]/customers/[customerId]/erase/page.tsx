@@ -9,8 +9,9 @@ import { ErasurePlanView } from "@/components/admin/privacy/plan-view";
 import { EraseSkeleton } from "@/components/admin/privacy/skeletons";
 import { alertText } from "@/components/admin/privacy/styles";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { planReasonsNb } from "@/lib/personal-data.nb";
+import { areaTexts } from "@/lib/admin-area";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { findCustomer } from "@/server/customer-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { erasurePreview } from "@/server/privacy-admin";
@@ -57,9 +58,9 @@ async function Preview({ storeSlug, customerId, searchParams }: { storeSlug: str
   if (!preview) notFound();
   const locale = store.markets[0]?.locale ?? "en-GB";
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "privacy");
+  const w = PRIVACY_WORDS[lang];
   return (
-    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+    <AdminTextScope texts={areaTexts(lang, { privacy: PRIVACY_WORDS })}>
       <div className="flex flex-col gap-6">
         <div>
           <PageHeader

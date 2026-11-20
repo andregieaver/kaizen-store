@@ -5,8 +5,8 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { dayText } from "@/components/admin/analytics/overview-view";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { channelLabel } from "@/lib/analytics-traffic";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { addSpend, deleteSpend, importSpend } from "@/server/analytics-settings";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
@@ -26,7 +26,7 @@ export async function addSpendAction(storeSlug: string, _state: FormState, form:
   const result = await addSpend(member, Object.fromEntries(form));
   if (!result.ok) return failed(result.problems);
   refresh();
-  const words = adminText(await actionAdminLang(), "reports");
+  const words = REPORTS_WORDS[await actionAdminLang()];
   const w = words.spendAnswers;
   const raw = form.get("channel");
   const day = typeof form.get("day") === "string" ? dayText(String(form.get("day"))) : w.thatDay;
@@ -42,7 +42,7 @@ export async function deleteSpendAction(storeSlug: string, _state: FormState, fo
   const result = await deleteSpend(member, typeof id === "string" ? id : "");
   if (!result.ok) return failed(result.problems);
   refresh();
-  const w = adminText(await actionAdminLang(), "reports").spendAnswers;
+  const w = REPORTS_WORDS[await actionAdminLang()].spendAnswers;
   return { status: "ok", messages: [result.deleted ? w.removed : w.alreadyGone] };
 }
 
@@ -50,7 +50,7 @@ export async function deleteSpendAction(storeSlug: string, _state: FormState, fo
 export async function importSpendAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "analytics:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const w = adminText(await actionAdminLang(), "reports").campaigns;
+  const w = REPORTS_WORDS[await actionAdminLang()].campaigns;
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) return failed([w.importNoFile]);
   if (file.size > 1_000_000) return failed([w.importTooBig]);

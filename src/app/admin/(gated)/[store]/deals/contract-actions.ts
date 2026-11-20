@@ -8,13 +8,14 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
-import { adminText } from "@/lib/admin-text";
 import { featureOffText } from "@/lib/feature-labels";
 import type { Membership } from "@/server/auth";
 import { signAsStore } from "@/server/contract-signing";
 import { cancelContract, createContract, deleteDraft, newVersion, saveDraft, saveSigners, type ContractProblem } from "@/server/contracts";
 import { storeAction } from "@/server/store-action";
 import { dealsOn } from "@/lib/extensions";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 
 /**
  * Contracts' actions (D695): each runs through `storeAction()` with `customers:write` (a deal's key), checks Deals is on whatever a stale
@@ -24,11 +25,11 @@ import { dealsOn } from "@/lib/extensions";
 
 const uuid = z.uuid();
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
-const wordsOf = (member: Membership): DealsMessages["contracts"] => adminText(adminLangOf(member.account.adminLocale), "deals").contracts;
+const wordsOf = (member: Membership): DealsMessages["contracts"] => DEALS_WORDS[adminLangOf(member.account.adminLocale)].contracts;
 
 /** Deals off for this store: the reason, in the member's words. */
 const offFor = (member: Membership): string | null =>
-  dealsOn(member.store) ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
+  dealsOn(member.store) ? null : featureOffText("sales", COMMON_WORDS[adminLangOf(member.account.adminLocale)].features);
 
 const problemText = (w: DealsMessages["contracts"], problem: ContractProblem): string => w.problems[problem];
 

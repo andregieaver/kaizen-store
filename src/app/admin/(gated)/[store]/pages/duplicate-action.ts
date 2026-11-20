@@ -5,14 +5,14 @@ import { z } from "zod";
 
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import { PAGE_TYPES, type PageType } from "@/lib/page-content";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { NO_ACCESS, checkPageTypeAccess } from "@/server/permissions";
 import { fieldsTag } from "@/server/custom-fields";
 import { duplicatePage } from "@/server/page-duplicate";
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
 /** The pages' refusals and answers in the account's language (D312 A7). */
-const said = async () => adminText(await actionAdminLang(), "website").pageActions;
+const said = async () => WEBSITE_WORDS[await actionAdminLang()].pageActions;
 
 /**
  * Duplicates one of a store's pages, articles, layouts, headers or footers as a new draft (D126), bound to the store

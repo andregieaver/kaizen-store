@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { OrderListView } from "@/components/admin/orders/order-list-view";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { tableRowsOf } from "@/lib/order-list-admin";
 import { ordersListReads } from "@/server/admin-screens";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -13,6 +12,9 @@ import { AdminLink, PageHeader } from "@/components/admin/ui";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { whenWords } from "@/lib/home";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { HOME_WORDS } from "@/lib/admin-words/home";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { toSendSummary } from "@/server/home";
 
 import { bulkOrdersAction, deleteOrderViewAction, reorderOrderViewsAction, saveOrderViewAction, updateOrderViewAction } from "./list-actions";
@@ -33,13 +35,13 @@ export default async function OrdersPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "orders").page;
+  const w = ORDERS_WORDS[lang].page;
   const sending = await toSendSummary(store.id);
   // Round 2 (D597): the bare address shows what needs sending while anything does, without a second trip; All has its own address (`?show=all`).
   const query = await searchParams;
   const listQuery = sending.count > 0 && Object.keys(query).length === 0 ? { show: "to-send" } : query;
   const canWrite = memberCan(member, "orders:write");
-  const when = sending.oldest ? whenWords(sending.oldest, new Date(), store.timeZone, adminText(lang, "home").today.when) : null;
+  const when = sending.oldest ? whenWords(sending.oldest, new Date(), store.timeZone, HOME_WORDS[lang].today.when) : null;
   const menuItem = "flex min-h-10 items-center rounded-panel px-3 text-sm text-ink hover:bg-sunken";
   return (
     <div className="flex flex-col gap-6">
@@ -111,8 +113,8 @@ async function OrderListBody({ storeSlug, query, toSend }: { storeSlug: string; 
       markets={markets}
       tagSuggestions={suggestions.map((s) => s.label)}
       canWrite={canWrite}
-      words={adminText(lang, "orders")}
-      statusWords={adminText(lang, "common").orderStatus}
+      words={ORDERS_WORDS[lang]}
+      statusWords={COMMON_WORDS[lang].orderStatus}
       locale={lang === "en" ? "en" : ADMIN_LANG_FACTS[lang].locale}
       bulk={bulkOrdersAction.bind(null, store.slug)}
       viewActions={

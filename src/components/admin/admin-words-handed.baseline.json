@@ -1509,7 +1509,7 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREAS": {
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREA_WORDS": {
       "areas": [
         "builder",
         "blocks",
@@ -1545,7 +1545,7 @@
         "backdrops"
       ]
     },
-    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREAS#2": {
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREA_WORDS#2": {
       "areas": [
         "builder",
         "blocks",
@@ -1581,7 +1581,7 @@
         "backdrops"
       ]
     },
-    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREAS#3": {
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREA_WORDS#3": {
       "areas": [
         "builder",
         "blocks",

@@ -8,11 +8,11 @@ import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/
 import { BOOKING_KEYS, norwegianOrgNumber } from "@/lib/accounting-docs";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { fikenFailureWords } from "@/lib/fiken-errors";
 import { FIKEN_SALE_VAT_TYPES } from "@/lib/fiken-settings";
 import { fikenOptionsFor } from "@/lib/fiken-setup";
+import { FIKEN_WORDS } from "@/lib/admin-words/fiken";
 import { storeOrgNumber } from "@/server/accounting-documents";
 import { checkFikenSettingsNow, fikenCompanies, fikenCounts, fikenOffered, fikenProblems, getFikenConnection } from "@/server/fiken";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -48,7 +48,7 @@ export default async function FikenPage({ params, searchParams }: PageProps<"/ad
   const current = await requirePermission(slug, "settings:read");
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
-  const w = adminText(lang, "fiken");
+  const w = FIKEN_WORDS[lang];
   const owner = memberCan(current, "owner");
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });

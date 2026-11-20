@@ -11,9 +11,10 @@ import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { DropShipWaitForm, SupplierFormCard } from "@/components/admin/inventory/suppliers-view";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { countryName, supplierCountries } from "@/lib/drop-shipping";
 import { inventoryPaths } from "@/lib/inventory-admin";
+import { areaTexts } from "@/lib/admin-area";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { supplierPerformance } from "@/server/supplier-orders";
 import { dropShipWait, listDropShipSuppliers } from "@/server/suppliers";
@@ -34,7 +35,7 @@ export default async function SuppliersPage({ params }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const all = adminText(lang, "inventory");
+  const all = INVENTORY_WORDS[lang];
   const w = all.pages.suppliers;
   return (
     <div className="flex flex-col gap-6">
@@ -56,7 +57,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const t = adminText(lang, "inventory");
+  const t = INVENTORY_WORDS[lang];
   const w = t.suppliers;
   const pw = t.phone;
   const write = memberCan(member, "products:write");
@@ -64,7 +65,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const perf = new Map(performance.map((p) => [p.supplierId, p]));
   const base = inventoryPaths(store.slug).suppliers;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+    <AdminTextScope texts={areaTexts(lang, { inventory: INVENTORY_WORDS })}>
       <div className="flex flex-col gap-6">
         {suppliers.length === 0 ? (
           <p className="max-w-3xl text-sm text-muted">{w.none}</p>

@@ -5,7 +5,7 @@ import { requirePermission } from "@/server/permissions";
 import { hostChoices } from "@/server/hosts";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 import { saveUnitAction } from "../../actions";
 import { UnitForm } from "../unit-form";
@@ -18,7 +18,7 @@ export default async function NewUnitPage({ params, searchParams }: PageProps<"/
   if (off) return off;
   const { store } = current;
   const kind = (await searchParams).kind === "item" ? "item" : "unit";
-  const t = adminText(adminLangOf(current.account.adminLocale), "bookings");
+  const t = BOOKINGS_WORDS[adminLangOf(current.account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <PageHeader

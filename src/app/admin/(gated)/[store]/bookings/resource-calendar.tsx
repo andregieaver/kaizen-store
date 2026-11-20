@@ -8,7 +8,7 @@ import { Card } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 /**
  * What the panel does, as server actions already bound to the store and
@@ -47,7 +47,7 @@ export async function ResourceCalendar({
   /** The admin's language (D312 A11); English when none is given. */
   lang?: AdminLang;
 }) {
-  const w = adminText(lang, "bookings").calendar;
+  const w = BOOKINGS_WORDS[lang].calendar;
   const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const [blocks, feeds] = await Promise.all([listBlocks(storeId, resource.id), listFeeds(storeId, resource.id)]);
   const unit = resource.kind === "unit";

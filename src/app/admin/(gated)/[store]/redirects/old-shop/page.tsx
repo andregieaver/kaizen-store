@@ -9,9 +9,10 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { momentText } from "@/lib/data-admin";
 import { OLD_SHOP_SUGGESTED_ROWS } from "@/lib/old-shop";
+import { areaTexts } from "@/lib/admin-area";
+import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
 import { oldShopCheck } from "@/server/old-shop";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -31,7 +32,7 @@ type Props = PageProps<"/admin/[store]/redirects/old-shop">;
  */
 export default async function OldShopPage({ params }: Props) {
   const { store, account } = await requirePermission((await params).store, "website:read");
-  const w = adminText(adminLangOf(account.adminLocale), "redirects");
+  const w = REDIRECTS_WORDS[adminLangOf(account.adminLocale)];
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead slug={store.slug} active="oldShop" title={w.oldShop.title} intro={<><span className="sm:hidden">{w.oldShop.phone.lead}</span><span className="max-sm:hidden">{w.oldShop.intro}</span></>} words={w} />
@@ -46,7 +47,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "website:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "redirects");
+  const w = REDIRECTS_WORDS[lang];
   const o = w.oldShop;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const canWrite = memberCan(member, "website:write");
@@ -61,7 +62,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
 
   if (!check)
     return (
-      <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+      <AdminTextScope texts={areaTexts(lang, { redirects: REDIRECTS_WORDS })}>
         <section className={card}>{canWrite ? <OldShopStart read={actions.read} /> : <p className="text-sm">{o.start.help}</p>}</section>
         <HowItWorks words={o.notes} phone={o.phone} />
       </AdminTextScope>
@@ -72,7 +73,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const shown = unsure.slice(0, OLD_SHOP_SUGGESTED_ROWS);
   const here: Partial<Record<string, number>> = check.here;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+    <AdminTextScope texts={areaTexts(lang, { redirects: REDIRECTS_WORDS })}>
       <section className={`${card} flex flex-col gap-3`} aria-live="polite">
         <p className="text-lg font-medium" role="status">
           {needing === 0 ? countWords(check.total, o.all, { n: n(check.total) }) : fillWords(o.some, { working: n(check.working), total: n(check.total) })}

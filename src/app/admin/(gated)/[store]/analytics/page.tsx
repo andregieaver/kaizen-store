@@ -9,9 +9,10 @@ import { moneyLines, moneyWriter } from "@/components/admin/analytics/overview-t
 import { fillWords } from "@/lib/admin-fill";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { AlertsStream, ChannelsStream, DiagnosisStream, ForecastStream, FunnelStream, ProductsStream, TargetStream, type StreamProps } from "@/components/admin/analytics/overview-streams";
-import { adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { analyticsWords } from "@/lib/analytics-words";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
@@ -49,7 +50,7 @@ export default async function AnalyticsOverviewPage({ params, searchParams }: Pa
   const loading = w.loading;
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         {/* Round 3 (D603): the answer in a sentence, the period as one button, then what needs doing, four figures, the chart and what sells;

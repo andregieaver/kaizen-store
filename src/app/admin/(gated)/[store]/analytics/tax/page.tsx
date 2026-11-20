@@ -10,7 +10,6 @@ import { TaxViewTabs } from "@/components/admin/analytics/tax-parts";
 import { TaxView } from "@/components/admin/analytics/tax-view";
 import { fillWords } from "@/lib/admin-fill";
 import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { addDays, rangeLabel, todayIn } from "@/lib/analytics-period";
 import { parseTaxQuery, periodOptions, taxHref, type TaxViewId } from "@/lib/tax-admin";
 import type { ReturnMode } from "@/lib/oss-return";
@@ -23,6 +22,10 @@ import { reconciliation, taxSnapshot } from "@/server/tax-reconciliation";
 import type { Store } from "@/server/stores";
 import { returnView, vatReport } from "@/server/tax-reports";
 import { businessSplit } from "@/lib/business-change";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
+import { BUSINESS_WORDS } from "@/lib/admin-words/business";
+import { TAX_REPORTS_WORDS } from "@/lib/admin-words/tax-reports";
 import { businessChangesOf } from "@/server/business-change";
 
 import { fetchEcbRateAction, setRateOverrideAction } from "./actions";
@@ -92,7 +95,7 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
   const { store } = ctx;
-  const w = ctx.lang === "en" ? taxReportsEn : adminText(ctx.lang, "taxReports");
+  const w = ctx.lang === "en" ? taxReportsEn : TAX_REPORTS_WORDS[ctx.lang];
   const today = todayIn(ctx.now, store.timeZone);
   const query = parseTaxQuery(raw, today);
   // Amounts are written the way the files write them (a decimal point), whatever the store's first market or the admin's language speaks:
@@ -157,11 +160,11 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
     shown.from,
     shown.to,
   );
-  const bw = split ? adminText(ctx.lang, "business").split : null;
+  const bw = split ? BUSINESS_WORDS[ctx.lang].split : null;
   const partHref = (part: { from: string; to: string }) => taxHref(ctx.base, { view: "vat" }, { period: "custom", from: part.from, to: addDays(part.to, -1) });
 
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
     <div className="flex flex-col gap-8">
       <AnalyticsHeader
         ctx={ctx}

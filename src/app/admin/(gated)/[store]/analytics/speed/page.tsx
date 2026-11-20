@@ -4,8 +4,10 @@ import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { SpeedView } from "@/components/admin/analytics/speed-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
+import { areaTexts } from "@/lib/admin-area";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
+import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { speedReport } from "@/server/analytics-speed";
@@ -20,9 +22,9 @@ export default async function AnalyticsSpeedPage({ params, searchParams }: PageP
   const query = await searchParams;
   const ctx = await analyticsContext((await params).store, query);
   const report = await speedReport(ctx.store);
-  const words = adminText(ctx.lang, "analytics");
+  const words = ANALYTICS_WORDS[ctx.lang];
   return (
-    <AdminTextScope texts={adminTexts(ctx.lang, ["analyticsExport"])}>
+    <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
       <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
         <div className="flex flex-col gap-8">
           <AnalyticsHeader ctx={ctx} path="/analytics/speed" title={words.speed.title} description={<><span className="sm:hidden">{words.speed.phone.lead}</span><span className="max-sm:hidden">{words.speed.description}</span></>} picker={false} showCompare={false} />

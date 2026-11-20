@@ -2,7 +2,6 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import {
@@ -13,6 +12,7 @@ import {
   updateGroupMember,
   type GroupResult,
 } from "@/server/product-groups";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /** A product's combined listing (D566): every step changes products, so each is `products:write`, checked again by the server. */
 
@@ -21,7 +21,7 @@ async function writer(storeSlug: string) {
 }
 const refused = async (): Promise<GroupResult> => ({
   ok: false,
-  problem: adminText(await actionAdminLang(), "inventory").noAccess,
+  problem: INVENTORY_WORDS[await actionAdminLang()].noAccess,
 });
 const after = (result: GroupResult) => {
   if (result.ok) refresh();

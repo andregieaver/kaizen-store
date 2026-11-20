@@ -2,10 +2,10 @@
 
 import { refresh } from "next/cache";
 
-import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { cancelJob, registerHistoryImport, startHistoryApply, startHistoryCheck, startHistoryUpload } from "@/server/data-jobs";
 import { checkPermission } from "@/server/permissions";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 
 /**
  * The order history import's steps (wave 11 unit E, D384), each with the store's slug as its bound first argument: the owner's alone, as the
@@ -13,7 +13,7 @@ import { checkPermission } from "@/server/permissions";
  * open page's ticks and in the five-minute job.
  */
 
-const noAccess = async () => adminText(await actionAdminLang(), "customers").saved.noAccess;
+const noAccess = async () => CUSTOMERS_WORDS[await actionAdminLang()].saved.noAccess;
 
 type Step = { ok: true } | { ok: false; problem: string };
 

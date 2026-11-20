@@ -5,8 +5,9 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AdminLink, ButtonLink, Card, CARD_CLASS, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { ReadyKey } from "@/lib/report-catalogue";
+import type { AdminAreaMessages } from "@/lib/admin-text";
+import { CUSTOM_REPORTS_WORDS } from "@/lib/admin-words/custom-reports";
 import { analyticsContext } from "@/server/analytics-context";
 import { readyAnswers, type ReadyAnswer } from "@/server/report-answers";
 import { listSavedReports } from "@/server/saved-reports";
@@ -21,7 +22,7 @@ const QUESTIONS: { key: "sells" | "where" | "pay" | "when"; reports: ReadyKey[] 
   { key: "when", reports: ["sales_by_day", "new_and_returning"] },
 ];
 
-type Words = ReturnType<typeof adminText<"customReports">>;
+type Words = AdminAreaMessages["customReports"];
 
 /**
  * Analytics → Reports (wave 8 unit A, D345; drawn for Homer in round 9, D630): the store's saved reports first, then the ready ones under
@@ -32,7 +33,7 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
   const ctx = await analyticsContext((await params).store, await searchParams);
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
-  const w = adminText(ctx.lang, "customReports");
+  const w = CUSTOM_REPORTS_WORDS[ctx.lang];
   const saved = await listSavedReports(ctx.store.id);
   const view = `${ctx.base}/analytics/reports/view`;
   return (

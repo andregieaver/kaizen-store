@@ -9,8 +9,8 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { CONTRACT_CSS, ContractDocumentView } from "@/components/documents/contract-document-view";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { CONTRACT_FIELDS, fillContract, type ContractField } from "@/lib/contract-fields";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { getTemplate } from "@/server/contracts";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -36,7 +36,7 @@ export default async function ContractTemplatePage({ params }: PageProps<"/admin
   const template = await getTemplate(member, templateId);
   if (!template) notFound();
   const lang = adminLangOf(member.account.adminLocale);
-  const deals = adminText(lang, "deals");
+  const deals = DEALS_WORDS[lang];
   const w = deals.templates;
   const canChange = memberCan(member, "customers:write");
   const base = `/admin/${member.store.slug}/deals/contract-templates`;

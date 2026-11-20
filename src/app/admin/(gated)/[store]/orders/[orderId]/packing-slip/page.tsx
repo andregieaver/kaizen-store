@@ -9,7 +9,8 @@ import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
+import { ORDERS_WORDS } from "@/lib/admin-words/orders";
 import { packingSlipData, parcelSlipData, type PackingSlip } from "@/server/packing-slips";
 import { requirePermission } from "@/server/permissions";
 
@@ -30,7 +31,7 @@ export default async function PackingSlipPage({ params, searchParams }: PageProp
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "order").views;
+  const w = ORDER_WORDS[lang].views;
   if (!z.uuid().safeParse(orderId).success) notFound();
   const shipment = (await searchParams).shipment;
   if (shipment !== undefined) {
@@ -48,7 +49,7 @@ export default async function PackingSlipPage({ params, searchParams }: PageProp
     return (
       <div className="flex flex-col gap-3">
         <h1 className="text-2xl font-semibold">{w.slipTitle}</h1>
-        <p className="rounded-lg border border-border bg-surface p-4 text-sm">{fillWords(w.noSlip, { reason: adminText(lang, "orders").bulk.reasons[skipped.reason].replace(/^It /, "it ").replace(/\.$/, "") })}</p>
+        <p className="rounded-lg border border-border bg-surface p-4 text-sm">{fillWords(w.noSlip, { reason: ORDERS_WORDS[lang].bulk.reasons[skipped.reason].replace(/^It /, "it ").replace(/\.$/, "") })}</p>
         <Link href={`/admin/${store.slug}/orders/${orderId}`} className="text-sm underline underline-offset-2">
           {w.backToOrder}
         </Link>

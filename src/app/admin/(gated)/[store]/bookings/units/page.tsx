@@ -7,7 +7,7 @@ import { listResources, type BookingResource } from "@/server/bookings";
 import { PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 
 
 export const metadata: Metadata = { title: "Rooms and rental items" };
@@ -18,7 +18,7 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
   const off = requireFeature(current, "bookings");
   if (off) return off;
   const { store } = current;
-  const w = adminText(adminLangOf(current.account.adminLocale), "bookings").units;
+  const w = BOOKINGS_WORDS[adminLangOf(current.account.adminLocale)].units;
   const all = await listResources(store.id, ["unit", "item"]);
   const base = `/admin/${store.slug}/bookings/units`;
   const button = "min-h-10 rounded-pill border border-edge px-4 py-2 text-sm font-medium";

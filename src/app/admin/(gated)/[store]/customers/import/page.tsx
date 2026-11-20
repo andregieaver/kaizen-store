@@ -12,11 +12,15 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { CUSTOMER_FILE_ROWS_MAX } from "@/lib/customer-import";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { IMPORT_FILE_KEEP_DAYS } from "@/lib/data-limits";
 import { momentIn } from "@/lib/inventory-words";
+import { areaTexts } from "@/lib/admin-area";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { CUSTOMERS_STAFF_WORDS } from "@/lib/admin-words/customers-staff";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
+import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
 import { listJobs } from "@/server/data-jobs";
 import { requireOwnerRole } from "@/server/permissions";
 
@@ -36,10 +40,10 @@ export default async function CustomerImportPage({ params }: Props) {
   const shopOff = requireFeature(member, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "customers").staff.import;
+  const w = CUSTOMERS_WORDS[lang].staff.import;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${member.store.slug}/customers`, label: adminText(lang, "customers").staff.newPage.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.intro}</span></>} />
+      <PageHeader back={{ href: `/admin/${member.store.slug}/customers`, label: CUSTOMERS_WORDS[lang].staff.newPage.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.intro}</span></>} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={member.store.slug} />
       </Suspense>
@@ -55,8 +59,8 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const base = `/admin/${store.slug}/customers/import`;
   const lang = adminLangOf(member.account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const shared = adminText(lang, "inventory").import;
-  const w = adminText(lang, "customers").staff.import;
+  const shared = INVENTORY_WORDS[lang].import;
+  const w = CUSTOMERS_WORDS[lang].staff.import;
   return (
     <>
       {open ? (
@@ -70,7 +74,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </p>
         </Notice>
       ) : (
-        <AdminTextScope texts={adminTexts(lang, ["customersStaff", "inventoryImport"])}>
+        <AdminTextScope texts={areaTexts(lang, { customersStaff: CUSTOMERS_STAFF_WORDS, inventoryImport: INVENTORY_IMPORT_WORDS })}>
           <CustomerUpload slug={store.slug} rowsMax={CUSTOMER_FILE_ROWS_MAX} words={{ fileLabel: w.fileLabel, hint: w.hint, phoneHint: w.phone.hint }} start={startCustomerUploadAction.bind(null, store.slug)} register={registerCustomerUploadAction.bind(null, store.slug)} />
         </AdminTextScope>
       )}
@@ -129,7 +133,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
         </section>
       )}
       <p className={`${hint} ${card} !p-3 max-sm:!bg-transparent max-sm:!p-0`}>
-        <span className="sm:hidden">{fillWords(adminText(lang, "inventory").phone.importKept, { days: IMPORT_FILE_KEEP_DAYS })}</span>
+        <span className="sm:hidden">{fillWords(INVENTORY_WORDS[lang].phone.importKept, { days: IMPORT_FILE_KEEP_DAYS })}</span>
         <span className="max-sm:hidden">{fillWords(shared.kept, { days: IMPORT_FILE_KEEP_DAYS })}</span>
       </p>
     </>

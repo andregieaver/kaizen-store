@@ -33,9 +33,13 @@ import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
 import { t } from "@/lib/i18n";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/drafts-words";
 import { dealsOn } from "@/lib/extensions";
+import { areaTexts } from "@/lib/admin-area";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
+import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
+import { PRODUCT_WORDS } from "@/lib/admin-words/product";
 
 export const metadata: Metadata = { title: "Draft order" };
 
@@ -82,22 +86,22 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
   const currency = preview.market?.currency ?? draft.currency;
   const locale = preview.market?.locale ?? draft.locale;
   const lang = adminLangOf(member.account.adminLocale);
-  const words = adminText(lang, "drafts");
+  const words = DRAFTS_WORDS[lang];
   // Unit names for the summary's unit prices, read here: the editor's scripts never hold a storefront language.
   const bases = t(lang).unitPrice.bases;
-  const builtInVat: Record<string, { label: string } | undefined> = adminText(lang, "product").vatCategory.builtIn;
-  const addedVat: Record<string, { label: string } | undefined> = adminText(lang, "common").vatCategories;
+  const builtInVat: Record<string, { label: string } | undefined> = PRODUCT_WORDS[lang].vatCategory.builtIn;
+  const addedVat: Record<string, { label: string } | undefined> = COMMON_WORDS[lang].vatCategories;
   const vatCategoryName = (code: string, nameEn: string) => builtInVat[code]?.label ?? addedVat[code]?.label ?? nameEn;
   const problems = preview.problems.map((p) => ({ code: p.code, key: p.key ?? null, blocking: p.blocking, text: draftProblemText(p.code, words.problems) }));
   const base = `/admin/${store.slug}/orders/drafts`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["drafts"])}>
+    <AdminTextScope texts={areaTexts(lang, { drafts: DRAFTS_WORDS })}>
       <PageHeader back={{ href: base, label: words.pages.listTitle }} title={fillWords(words.pages.draftTitle, { number: draft.number })}
         meta={[draft.source === "quote" && draft.status === "open" ? (draft.quoteDeclinedAt ? words.list.quoteDeclined : words.list.quoteRequested) : words.status[draft.status]]}
       />
       {deal && (
         <p className="text-sm" data-draft-deal>
-          {fillWords(words.pages.fromDeal, { status: adminText(lang, "deals").statuses[deal.status] })}{" "}
+          {fillWords(words.pages.fromDeal, { status: DEALS_WORDS[lang].statuses[deal.status] })}{" "}
           <Link href={`/admin/${store.slug}/deals/${deal.id}`} className="underline">
             {deal.title}
           </Link>
