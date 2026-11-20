@@ -229,8 +229,10 @@ describe("end_plan", () => {
     const mark = stripe.calls.length;
     await tools.preflightEndPlan(ctx(owner), { when: "period_end" });
     expect(await refusal(tools.preflightEndPlan(ctx(owner), { when: "undo" }))).toBe("The plan is not set to end.");
+    // The day Stripe says the paid period ends (the stand-in counts it from today), not a fixed date: it failed at midnight UTC.
+    const periodEnd = new Date(stripe.subscriptions.get(subscription)!.items.data[0].current_period_end * 1000).toISOString().slice(0, 10);
     expect(await tools.endPlanTool(ctx(owner), { when: "period_end" })).toEqual({
-      done: "The plan ends on 2026-12-09; until then everything works as now.",
+      done: `The plan ends on ${periodEnd}; until then everything works as now.`,
       link: `/admin/${shop.slug}/billing`,
     });
     expect(await billingRow()).toMatchObject({ cancel_at_period_end: true, status: "active" });
