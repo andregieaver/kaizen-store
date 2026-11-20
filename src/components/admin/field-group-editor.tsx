@@ -401,7 +401,7 @@ export function FieldGroupEditor({
           </div>
           {fields.length === 0 ? (
             // Add a field, just above, is the next step.
-            <EmptyState title={w.noFields} />
+            <EmptyState compact title={w.noFields} />
           ) : (
             <FieldList
               fields={fields}
