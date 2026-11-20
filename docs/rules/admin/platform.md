@@ -367,6 +367,20 @@ under *What the router fetches ahead*.
   by a keyed hash of the address, never the address; every address counted alike so the answer never says which have access).
   Two-step pages live under `/admin/sign-in/two-step` and `/admin/account`.
 
+## A person's own name and email (D836, `src/server/email-change.ts`)
+
+- Your account changes the person's own name (`changeOwnName()`, `cleanName()`: 1 to 120 characters) and, one step away at
+  `/admin/account/email`, their email. Nothing else writes `accounts.name` or `accounts.email` after an account is made (and the account's
+  erasure); a platform admin corrects a name with `correctName()` (the stores area) and never sets an address.
+- An email moves only by `confirmEmailChange()`, the button of the page the link opens (`/admin/account/email/confirm`, outside the gate):
+  asked with `requestEmailChange()` (the second step where the account has one, a sign-in from the last ten minutes, `freshness()`) or sent
+  by an owner of the platform with `sendEmailChangeFor()` after their own fresh sign-in. The change waits in `commerce.account_email_changes`
+  (one per account, a SHA-256 of the token, 24 hours); the token is in no log; Supabase Auth's email is set last in the same transaction, and
+  its refusal rolls the change back. The old address is told when it is asked and when it is done.
+- The person's customer of Kaizena Flow's own store follows a new name or address only while it still matches the account; a store owner
+  never renames a member (the account is theirs across stores). Every step is `auditAccount()` with the field `{ changed: true }`, never a
+  name or an address as a value. A new reader of a person's address reads `accounts.email`; a new copy of it is kept in step here.
+
 ## Permissions (D158)
 
 - **Permissions (D158)**: every store admin page, action, route and helper asks `requirePermission(slug, key)`, `checkPermission`,

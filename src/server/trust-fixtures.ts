@@ -74,6 +74,8 @@ export type FakeAuthState = {
   /** The signed-in user (the account's `auth_user_id`), or null for nobody. */
   sub: string | null;
   aal: "aal1" | "aal2";
+  /** The signed list of how and when the session signed in (`amr`), for the checks that ask for a recent sign-in; none by default. */
+  amr?: { method: string; timestamp: number }[];
   /** The factors the Auth SERVER holds. */
   factors: FakeFactor[];
   /** What the session cookie's copy of the user claims: the person's to edit, never trusted. */
@@ -99,7 +101,7 @@ export function fakeSupabase(state: FakeAuthState) {
     auth: {
       async getClaims() {
         state.calls.push("getClaims");
-        return state.sub ? ok({ claims: { sub: state.sub, aal: state.aal }, header: {}, signature: new Uint8Array() }) : fail("no session");
+        return state.sub ? ok({ claims: { sub: state.sub, aal: state.aal, ...(state.amr ? { amr: state.amr } : {}) }, header: {}, signature: new Uint8Array() }) : fail("no session");
       },
       /** What the session cookie holds: the person can edit it, so nothing the gate decides may come from here. */
       async getSession() {

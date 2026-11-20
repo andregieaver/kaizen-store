@@ -946,6 +946,13 @@
       "when": 1795132613490,
       "tag": "20261119235653_workspace_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1795135723179,
+      "tag": "20261120004843_account_email_changes",
+      "breakpoints": true
     }
   ]
 }

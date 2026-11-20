@@ -838,7 +838,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D833 | **One part draws an order's totals, and the catalogue one product card query (bloat review step 3.16)** | 2026-11-20 | [text](decisions/D833.md) |
 | D834 | **One way to search and page a list: Customers, Products, Invoices and Returns page with Pager, search with ListSearch, and say when th…** | 2026-11-20 | [text](decisions/D834.md) |
 | D835 | **Admin redesign round 66: Kaizena Flow's plan analytics, AI usage and access requests on a phone** | 2026-11-20 | [text](decisions/D835.md) |
-| D836 | **Each person changes their own name and email: the name on Your account, the email after a link to the new address, the o** | 2026-11-20 | [text](decisions/D836.md) |
+| D836 | **Each person changes their own name and email: the name on Your account, the email after a link to the new address, the old one told** | 2026-11-20 | [text](decisions/D836.md) |
 | D837 | **Admin redesign round 67: Kaizena Flow's domains, AI and change log on a phone** | 2026-11-20 | [text](decisions/D837.md) |
 <!-- /decisions:index -->
 

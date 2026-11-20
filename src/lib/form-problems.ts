@@ -18,6 +18,11 @@ export function formProblems(issues: readonly { path: readonly PropertyKey[]; me
   return { status: "error", messages: [...new Set(issues.map((issue) => issue.message))], fields };
 }
 
+/** One problem as a form's refusal, shown under its field when it names one (D836's forms, and any action that refuses in one line). */
+export function formRefusal(message: string, field?: string): FormAnswer {
+  return field ? { status: "error", messages: [message], fields: { [field]: message } } : { status: "error", messages: [message] };
+}
+
 /** The id a field's message has, under the field or in the form's list of problems. */
 export const problemId = (form: string, field: string): string => `${form}-problem-${field.replace(/[^A-Za-z0-9_-]/g, "_")}`;
 

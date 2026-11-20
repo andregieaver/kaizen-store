@@ -70,19 +70,23 @@ export async function auditAccount(
   accountId: string,
   action: string,
   details: Record<string, unknown> = {},
-  options: { actorId?: string | null; perStore?: boolean; label?: string } = {},
+  options: { actorId?: string | null; perStore?: boolean; label?: string; changes?: AuditChanges } = {},
 ): Promise<void> {
   try {
     const actor = options.actorId ?? accountId;
     const json = JSON.stringify({ ...(options.label ? { label: options.label } : {}), ...details });
+    // What changed, as fields alone where they are a person's data (D836: `{ email: { changed: true } }`); checked as `auditChange()` checks.
+    const problem = changesProblem(options.changes);
+    if (problem) throw new Error(`auditAccount: ${problem}`);
+    const changes = options.changes ? JSON.stringify(options.changes) : null;
     await db().execute(sql`
-      insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id)
-      values (${actor}::uuid, null, ${action}, ${json}::jsonb, 'account', 'account', ${accountId})
+      insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id, changes)
+      values (${actor}::uuid, null, ${action}, ${json}::jsonb, 'account', 'account', ${accountId}, ${changes}::jsonb)
     `);
     if (options.perStore !== false) {
       await db().execute(sql`
-        insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id)
-        select ${actor}::uuid, m.store_id, ${action}, ${json}::jsonb, 'staff', 'account', ${accountId}
+        insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id, changes)
+        select ${actor}::uuid, m.store_id, ${action}, ${json}::jsonb, 'staff', 'account', ${accountId}, ${changes}::jsonb
         from commerce.store_members m
         where m.account_id = ${accountId}::uuid and m.disabled_at is null
       `);

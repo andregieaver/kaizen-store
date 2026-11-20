@@ -410,6 +410,12 @@ const WORDS: Record<string, (label: string) => string> = {
   "account.two_step_reset": (l) => `A platform admin reset two-step sign-in for ${l}`,
   "account.recovery_codes_generated": (l) => `${l} made new recovery codes`,
   "account.recovery_code_used": (l) => `${l} used a recovery code`,
+  "account.name_changed": (l) => `${l} changed their name`,
+  "account.name_corrected": (l) => `A platform admin corrected the name of ${l}`,
+  "account.email_change_requested": (l) => `${l} asked to change their email`,
+  "account.email_change_sent": (l) => `A platform admin sent a link to change the email of ${l}`,
+  "account.email_change_cancelled": (l) => `The change of email of ${l} was cancelled`,
+  "account.email_changed": (l) => `The email of ${l} was changed after its link was opened`,
   "activity.exported": () => "Downloaded the change log",
 };
 
