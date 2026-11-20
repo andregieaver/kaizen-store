@@ -70,7 +70,7 @@ export type DueTone = "urgent" | "warn" | "calm";
  * nothing to say (a return that has ended without a refund, or one not yet approved). `urgent` is past the legal
  * deadline, `warn` is the last days, `calm` is the rest.
  */
-export function dueMark(due: RefundDue, timeZone: string, w: ReturnsMessages, locale = "en-GB"): { text: string; tone: DueTone } | null {
+export function dueMark(due: RefundDue, timeZone: string, w: Pick<ReturnsMessages, "marks">, locale = "en-GB"): { text: string; tone: DueTone } | null {
   const m = w.marks;
   const by = due.deadline ? dayText(due.deadline, timeZone, locale) : null;
   const left = due.daysToDeadline;
@@ -119,7 +119,7 @@ const text = (value: unknown): string => (typeof value === "string" ? value : ""
 const whole = (value: unknown): number | null => (typeof value === "number" && Number.isSafeInteger(value) ? value : null);
 
 /** One event of a return as a sentence. Money is written by `formatMoney` in the order's currency; unknown types are named, never hidden. */
-export function eventSentence(type: string, data: Record<string, unknown>, currency: string, locale = "en-GB", w: ReturnsMessages): string {
+export function eventSentence(type: string, data: Record<string, unknown>, currency: string, locale = "en-GB", w: Pick<ReturnsMessages, "events"> & { labels: Pick<ReturnsMessages["labels"], "channels"> }): string {
   const e = w.events;
   const money = (minor: number | null) => (minor === null ? e.anAmount : formatMoney(minor, currency, locale));
   const reasoned = (sentence: string, reason: unknown) => (text(reason) ? fillWords(e.withReason, { text: sentence, reason: text(reason) }) : sentence);
@@ -202,7 +202,7 @@ export const isReturnEvent = (type: string): boolean => type.startsWith("return.
 // ---------------------------------------------------------------------------
 
 /** A short sentence on what the numbers say, for the queue's header; empty when there is nothing to do. */
-export function countsSentence(counts: { open: number; requested: number; overdue: number; acknowledgementPending: number }, w: ReturnsMessages): string {
+export function countsSentence(counts: { open: number; requested: number; overdue: number; acknowledgementPending: number }, w: Pick<ReturnsMessages, "counts">): string {
   const c = w.counts;
   const parts: string[] = [];
   if (counts.overdue > 0) parts.push(fillWords(c.overdue, { n: counts.overdue }));
