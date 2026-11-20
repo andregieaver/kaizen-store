@@ -3,6 +3,8 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { returnQueueFilter } from "@/lib/return-input";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
+import { kitEn } from "@/lib/admin-messages/kit.en";
 
 import { ReturnsQueueView } from "./queue-view";
 import { plain, row } from "./test-fixtures";
@@ -19,6 +21,8 @@ const draw = (rows = [row()], over: { filter?: ReturnType<typeof filter>; counts
       queue: { rows, total: over.total ?? rows.length, page: over.page ?? 1, pageSize: 25 },
       counts: over.counts ?? counts,
       timeZone: "Europe/Oslo",
+      words: returnsEn,
+      pagerWords: kitEn.pager,
     }),
   );
   const text = plain(html);

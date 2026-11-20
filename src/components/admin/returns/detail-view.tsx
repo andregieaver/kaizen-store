@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { FoldRow } from "@/components/admin/fold-row";
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { formatMoney } from "@/lib/money";
 import { formatPriceInput } from "@/lib/product-input";
 import { declineReasonText, eventSentence, exclusionLabel, outcomeLabel, timeText as timeIn, type RefundPreviewData } from "@/lib/return-admin";
@@ -67,7 +67,7 @@ export function ReturnDetailView({
   locale = "en-GB",
   exchangeCard = null,
   labelCard = null,
-  words: w = returnsEn,
+  words: w,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -83,7 +83,7 @@ export function ReturnDetailView({
   exchangeCard?: ReactNode;
   /** The **Return shipping** card (D239, `LabelCard`); placed after the instructions. */
   labelCard?: ReactNode;
-  words?: ReturnsMessages;
+  words: ReturnsMessages;
 }) {
   const d = w.detail;
   const L = w.labels;

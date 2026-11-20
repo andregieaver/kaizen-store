@@ -1,9 +1,7 @@
-import { returnsEn } from "@/lib/admin-messages/returns.en";
-
 const block = "animate-pulse rounded-lg bg-card";
 
 /** The queue's shape while it is read: the heading, the four figures, the filter and the table, in the admin's placeholder style. */
-export function QueueSkeleton({ label = returnsEn.queue.loading }: { label?: string }) {
+export function QueueSkeleton({ label }: { label: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">{label}</span>

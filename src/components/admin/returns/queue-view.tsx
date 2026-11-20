@@ -3,8 +3,7 @@ import Link from "next/link";
 import { CHIP_ITEM, CHIP_STRIP } from "@/lib/chip-strip";
 import { formatMoney } from "@/lib/money";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { kitEn } from "@/lib/admin-messages/kit.en";
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { countsSentence, dayText, exchangeFilters, kindFilters, queueHref, queueQuery, statusFilters, type ExchangeMark } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
@@ -25,8 +24,8 @@ export function ReturnsQueueView({
   timeZone,
   locale = "en-GB",
   exchange = null,
-  words: w = returnsEn,
-  pagerWords = kitEn.pager,
+  words: w,
+  pagerWords,
 }: {
   /** `/admin/{store}/returns` */
   base: string;
@@ -37,9 +36,9 @@ export function ReturnsQueueView({
   counts: ReturnCounts;
   timeZone: string;
   locale?: string;
-  words?: ReturnsMessages;
+  words: ReturnsMessages;
   /** The kit's pager words (`KIT_WORDS[lang].pager`, D834). */
-  pagerWords?: PagerWords;
+  pagerWords: PagerWords;
 }) {
   const q = w.queue;
   const filtered = filter.status !== "open" || filter.kind !== "all" || filter.q !== "" || filter.overdue || exchange !== null;

@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { exchangeOutcome } from "@/lib/exchange";
 import type { ExchangePreview, ExchangeView } from "@/server/exchanges";
 import type { LabelOptions } from "@/server/return-labels";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
+import { kitEn } from "@/lib/admin-messages/kit.en";
 
 import { ReturnDetailView } from "./detail-view";
 import { ExchangeCard, type ExchangeStepActions } from "./exchange-card";
@@ -112,6 +114,7 @@ const card = (props: Partial<Parameters<typeof ExchangeCard>[0]> = {}) => {
       timeZone: "Europe/Oslo",
       today: "2026-10-05",
       ...props,
+      words: returnsEn,
     }),
   );
   const text = plain(html);
@@ -268,7 +271,7 @@ describe("the exchange summary", () => {
 
 const labelOptions = (over: Partial<LabelOptions> = {}): LabelOptions => ({ block: null, carrier: { id: "bring", name: "Posten / Bring" }, service: "9300", weightGrams: 1200, payer: "shopper", ...over });
 const labelCard = (props: Partial<Parameters<typeof LabelCard>[0]> = {}) => {
-  const html = renderToString(h(LabelCard, { detail: detail(), options: labelOptions(), printHref: "/admin/s/returns/r/label", book: none, canWrite: true, timeZone: "Europe/Oslo", ...props }));
+  const html = renderToString(h(LabelCard, { detail: detail(), options: labelOptions(), printHref: "/admin/s/returns/r/label", book: none, canWrite: true, timeZone: "Europe/Oslo", ...props, words: returnsEn }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };
@@ -320,7 +323,7 @@ describe("the return shipping card", () => {
 describe("the exchange and label settings", () => {
   it("draws the switches, the carriers and the services, and nothing editable for staff", () => {
     const draw = (canEdit: boolean, carriers = [{ id: "bring", name: "Posten / Bring", ready: true }]) =>
-      renderToString(h(ExchangeSettingsForm, { values: { exchanges: true, labelCarrier: "bring", labelService: null, labelAuto: false }, carriers, canEdit, action: none, integrationsHref: "/admin/s/integrations" }));
+      renderToString(h(ExchangeSettingsForm, { values: { exchanges: true, labelCarrier: "bring", labelService: null, labelAuto: false }, carriers, canEdit, action: none, integrationsHref: "/admin/s/integrations", words: returnsEn }));
     const html = draw(true);
     const text = plain(html);
     expect(text).not.toMatch(BAD);
@@ -344,6 +347,8 @@ describe("the queue and the return page", () => {
         queue: { rows: [row({ exchange: "waiting_payment", labelFailed: true })], total: 1, page: 1, pageSize: 25 },
         counts: { open: 1, requested: 0, overdue: 0, acknowledgementPending: 0 },
         timeZone: "Europe/Oslo",
+        words: returnsEn,
+        pagerWords: kitEn.pager,
       }),
     );
     const text = plain(html);
@@ -356,7 +361,7 @@ describe("the queue and the return page", () => {
   it("places the cards on the return's page and words an exchanged return's credit", () => {
     const d = detail({ outcome: "exchanged" as never, refund: { ...detail().refund, recorded: true, amountMinor: 35_000 } });
     const text = plain(
-      renderToString(h(ReturnDetailView, { base: "/admin/s", detail: d, preview: null, actions, timeZone: "Europe/Oslo", today: "2026-10-05", exchangeCard: h("p", null, "EXCHANGE-SLOT"), labelCard: h("p", null, "LABEL-SLOT") })),
+      renderToString(h(ReturnDetailView, { base: "/admin/s", detail: d, preview: null, actions, timeZone: "Europe/Oslo", today: "2026-10-05", exchangeCard: h("p", null, "EXCHANGE-SLOT"), labelCard: h("p", null, "LABEL-SLOT"), words: returnsEn })),
     );
     expect(text).toContain("EXCHANGE-SLOT");
     expect(text).toContain("LABEL-SLOT");

@@ -60,6 +60,7 @@ export const shellNb: ShellMessages = {
     privacyRequest: "Laster forespørselen…",
     erasePlan: "Regner ut hva slettingen vil gjøre…",
     retention: "Laster oppbevaringsreglene…",
+    returns: "Laster returene…",
   },
   error: {
     title: "Denne siden kunne ikke lastes",

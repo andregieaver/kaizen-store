@@ -1,6 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { FoldRow } from "@/components/admin/fold-row";
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { RETURN_SERVICES } from "@/lib/return-services";
 import type { CarrierId } from "@/lib/shipping-carriers";
 
@@ -21,7 +21,7 @@ export function ExchangeSettingsForm({
   canEdit,
   action,
   integrationsHref,
-  words = returnsEn,
+  words,
 }: {
   values: ExchangeSettingsValues;
   carriers: { id: string; name: string; ready: boolean }[];
@@ -29,7 +29,7 @@ export function ExchangeSettingsForm({
   action: (state: FormState, form: FormData) => Promise<FormState>;
   /** `/admin/{store}/integrations` */
   integrationsHref: string;
-  words?: ReturnsMessages;
+  words: ReturnsMessages;
 }) {
   const t = words.settings;
   return (

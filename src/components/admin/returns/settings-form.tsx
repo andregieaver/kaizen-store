@@ -3,7 +3,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { FoldRow } from "@/components/admin/fold-row";
 import { submitClass } from "@/lib/submit-class";
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import type { InstructionTranslations } from "@/lib/return-instructions";
 import { MAX_INSTRUCTIONS, MAX_TRANSIT_DAYS, MAX_WINDOW_DAYS, MIN_WINDOW_DAYS, type ReturnSettings } from "@/lib/withdrawal";
 
@@ -28,7 +28,7 @@ export function ReturnSettingsForm({
   action,
   translateHref,
   sellsToBusinesses = true,
-  words = returnsEn,
+  words,
 }: {
   settings: ReturnSettings;
   translations: InstructionTranslations;
@@ -40,7 +40,7 @@ export function ReturnSettingsForm({
   translateHref: string;
   /** Sell to businesses is on (D178): only then is the choice about companies' returns shown; off, it is kept as it was. */
   sellsToBusinesses?: boolean;
-  words?: ReturnsMessages;
+  words: ReturnsMessages;
 }) {
   const t = words.settings;
   const address = settings.returnAddress;

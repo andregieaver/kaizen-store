@@ -2,13 +2,15 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { returnsEn } from "@/lib/admin-messages/returns.en";
+
 import { ReturnDetailView } from "./detail-view";
 import { actions, detail, line, plain, preview } from "./test-fixtures";
 
 const BAD = /\bNaN\b|Infinity|undefined|\[object|\bnull\b/;
 
 const draw = (d = detail(), p: ReturnType<typeof preview> | null = null) => {
-  const html = renderToString(h(ReturnDetailView, { base: "/admin/s", detail: d, preview: p, actions, timeZone: "Europe/Oslo", today: "2026-10-05" }));
+  const html = renderToString(h(ReturnDetailView, { base: "/admin/s", detail: d, preview: p, actions, timeZone: "Europe/Oslo", today: "2026-10-05", words: returnsEn }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };

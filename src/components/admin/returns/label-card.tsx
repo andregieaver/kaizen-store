@@ -1,6 +1,6 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { formatMoney } from "@/lib/money";
 import { labelSentence, timeText } from "@/lib/return-admin";
 import { labelProblemText } from "@/lib/return-label";
@@ -26,7 +26,7 @@ export function LabelCard({
   canWrite,
   timeZone,
   locale = "en-GB",
-  words: w = returnsEn,
+  words: w,
 }: {
   detail: ReturnDetail;
   /** What booking offers (`labelOptions()`); null when the return is gone. */
@@ -37,7 +37,7 @@ export function LabelCard({
   canWrite: boolean;
   timeZone: string;
   locale?: string;
-  words?: ReturnsMessages;
+  words: ReturnsMessages;
 }) {
   const c = w.labelCard;
   const label = detail.label;

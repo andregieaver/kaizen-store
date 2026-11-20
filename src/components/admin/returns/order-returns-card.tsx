@@ -73,7 +73,7 @@ export function OrderReturnsCard({
   partlySent?: boolean;
   /** The orders this order's returns were exchanged for (D239), by return id: "Exchanged: order {M}". */
   exchanges?: Record<string, { orderId: string; orderNumber: string; settled: boolean }>;
-  /** The reader's words (D312 A4); English unless given. */
+  /** The reader's words (D312 A4). */
   words: ReturnsMessages;
 }) {
   const c = w.orderCard;

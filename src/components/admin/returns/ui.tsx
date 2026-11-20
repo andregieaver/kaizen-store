@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { dueMark, TONE_CLASS } from "@/lib/return-admin";
 import type { ReturnKind, ReturnStatus } from "@/lib/return-status";
 import type { RefundDue } from "@/lib/withdrawal";
@@ -22,16 +22,16 @@ const STATUS_TONE: Record<ReturnStatus, string> = {
   cancelled: "border-line text-muted",
 };
 
-export function StatusBadge({ status, words = returnsEn }: { status: ReturnStatus; words?: ReturnsMessages }) {
+export function StatusBadge({ status, words }: { status: ReturnStatus; words: ReturnsMessages }) {
   return <span className={`${BADGE} ${STATUS_TONE[status]}`}>{words.labels.status[status]}</span>;
 }
 
-export function KindBadge({ kind, words = returnsEn }: { kind: ReturnKind; words?: ReturnsMessages }) {
+export function KindBadge({ kind, words }: { kind: ReturnKind; words: ReturnsMessages }) {
   return <span className={`${BADGE} border-line text-muted`}>{words.labels.kind[kind]}</span>;
 }
 
 /** What to do about the refund and by when; nothing at all when there is nothing to say. */
-export function DueMark({ due, timeZone, words = returnsEn, locale = "en-GB" }: { due: RefundDue; timeZone: string; words?: ReturnsMessages; locale?: string }) {
+export function DueMark({ due, timeZone, words, locale = "en-GB" }: { due: RefundDue; timeZone: string; words: ReturnsMessages; locale?: string }) {
   const mark = dueMark(due, timeZone, words, locale);
   if (!mark) return null;
   return <span className={`text-sm ${TONE_CLASS[mark.tone]} ${mark.tone === "urgent" ? "font-medium" : ""}`}>{mark.text}</span>;

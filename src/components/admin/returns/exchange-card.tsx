@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Chip } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import type { ExchangeBlock } from "@/lib/exchange";
 import type { BuilderForm } from "@/lib/exchange-form";
 import { formatMoney } from "@/lib/money";
@@ -52,7 +52,7 @@ export function ExchangeCard({
   timeZone,
   today,
   locale = "en-GB",
-  words: w = returnsEn,
+  words: w,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -69,7 +69,7 @@ export function ExchangeCard({
   timeZone: string;
   today: string;
   locale?: string;
-  words?: ReturnsMessages;
+  words: ReturnsMessages;
 }) {
   const x = w.exchange;
   const live = exchange && LIVE.includes(exchange.status) ? exchange : null;

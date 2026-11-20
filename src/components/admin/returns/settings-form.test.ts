@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_RETURN_SETTINGS, type ReturnSettings } from "@/lib/withdrawal";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
 
 import { ReturnSettingsForm } from "./settings-form";
 import { plain } from "./test-fixtures";
@@ -28,6 +29,7 @@ const draw = (over: Partial<Parameters<typeof ReturnSettingsForm>[0]> = {}) => {
       action,
       translateHref: "/admin/s/translate",
       ...over,
+      words: returnsEn,
     }),
   );
   const text = plain(html);
