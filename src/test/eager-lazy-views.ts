@@ -35,16 +35,32 @@ vi.mock("@/components/lazy/blocks", async () => ({
   CarouselControls: await pick(() => import("@/components/carousel-controls"), "CarouselControls"),
 }));
 
-vi.mock("@/components/lazy/shop", async () => ({
+// The shop's stand-ins, one module per group (bloat review step 2.9, commit 3).
+vi.mock("@/components/lazy/checkout", async () => ({
   CheckoutForm: await pick(() => import("@/components/checkout-form"), "CheckoutForm"),
+}));
+
+vi.mock("@/components/lazy/account", async () => ({
   DetailsForm: await pick(() => import("@/components/account-forms"), "DetailsForm"),
   PasswordForm: await pick(() => import("@/components/account-forms"), "PasswordForm"),
   SignOutButton: await pick(() => import("@/components/account-forms"), "SignOutButton"),
   AvatarPicker: await pick(() => import("@/components/avatar-picker"), "AvatarPicker"),
+}));
+
+vi.mock("@/components/lazy/subscription", async () => ({
   SubscriptionButton: await pick(() => import("@/components/subscription-button"), "SubscriptionButton"),
   SubscriptionContentsForm: await pick(() => import("@/components/subscription-contents-form"), "SubscriptionContentsForm"),
+}));
+
+vi.mock("@/components/lazy/wishlist", async () => ({
   WishlistView: await pick(() => import("@/components/wishlist-view"), "WishlistView"),
+}));
+
+vi.mock("@/components/lazy/bonus", async () => ({
   BonusCreditsForm: await pick(() => import("@/components/bonus-credits-form"), "BonusCreditsForm"),
+}));
+
+vi.mock("@/components/lazy/deliveries", async () => ({
   DeliverySetupForm: await pick(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms"), "DeliverySetupForm"),
   DeliveryAddressForm: await pick(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms"), "DeliveryAddressForm"),
   ConfirmButton: await pick(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms"), "ConfirmButton"),

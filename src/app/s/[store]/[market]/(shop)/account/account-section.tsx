@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AccountAccess } from "@/components/account-sign-in";
-import { AccountTabs, AvatarPicker, DetailsForm, PasswordForm, SignOutButton } from "@/components/lazy/shop";
+import { AccountTabs, AvatarPicker, DetailsForm, PasswordForm, SignOutButton } from "@/components/lazy/account";
 import { Avatar } from "@/components/avatar";
 import type { IconName } from "@/components/icons";
 import { BonusCard } from "@/components/bonus-account-view";

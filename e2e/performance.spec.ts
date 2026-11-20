@@ -67,7 +67,8 @@ test("the front page's first scripts carry no zod, no lightbox and no checkout f
  * that needs a budget raised says why in docs/decisions.md. Since each working route loads its own parts (bloat review step 2.9), measured on
  * the build of 20 November 2026: a category, a tag and the search 621,749 each (the front page's figure), the cart 683,531, the checkout
  * 673,336, My account 636,534, the wishlist 626,775, an order 644,334, the cookie list 625,054 (729,906 each before); the step's ceiling
- * of 650,000 caps My account and the order, and the cart and checkout are over the step's 670,000.
+ * of 650,000 caps My account and the order, and the cart and checkout are over the step's 670,000. With the shop's stand-ins split by
+ * group (step 2.9, commit 3): the cart 678,956 (still over), the checkout 668,938, My account 634,240, the wishlist 622,192.
  */
 const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
   "/s/demo/no": 633_000,
