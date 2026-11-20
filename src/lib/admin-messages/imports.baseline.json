@@ -1,6 +1,3 @@
 {
-  "already": [
-    "screens.en.ts -> lib/analytics-export.ts",
-    "screens.en.ts -> lib/storefront-api.ts"
-  ]
+  "already": []
 }
