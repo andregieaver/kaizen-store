@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
-import { termInput } from "./taxonomy";
-import { compactSeo, hasTermSeo, parseTermSeo, termMetaDescription, termMetaTitle, termSeoFor, termSeoInput, termShare, type TermSeo } from "./term-seo";
+import { termInput } from "./taxonomy-schema";
+import { compactSeo, hasTermSeo, termMetaDescription, termMetaTitle, termSeoFor, termShare, type TermSeo } from "./term-seo";
+import { parseTermSeo, termSeoInput } from "./term-seo-schema";
 
 const LOCALES = ["nb-NO", "sv-SE", "en"];
 const seo: TermSeo = {

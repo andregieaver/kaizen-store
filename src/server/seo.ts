@@ -43,7 +43,8 @@ import { docsHost, docsUrl } from "@/lib/docs-host";
 import { themeStoreAlternates, themeStoreUrl, themesHost, themesOrigin } from "@/lib/theme-host";
 import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures } from "@/lib/store-features";
-import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
+import type { TermSeo } from "@/lib/term-seo";
+import { parseTermSeo } from "@/lib/term-seo-schema";
 
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";

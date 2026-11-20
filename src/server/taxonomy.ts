@@ -4,18 +4,11 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
-import {
-  TERMS_MAX,
-  TERM_LABELS,
-  selfAndDescendants,
-  termInput,
-  type ContentType,
-  type Term,
-  type TermKind,
-  type TermScope,
-} from "@/lib/taxonomy";
+import { TERMS_MAX, TERM_LABELS, selfAndDescendants, type ContentType, type Term, type TermKind, type TermScope } from "@/lib/taxonomy";
+import { termInput } from "@/lib/taxonomy-schema";
 
-import { termSeoInput, parseTermSeo, type TermSeo } from "@/lib/term-seo";
+import type { TermSeo } from "@/lib/term-seo";
+import { termSeoInput, parseTermSeo } from "@/lib/term-seo-schema";
 import { cleanTermDescription, parseTermDescription, parseTermTexts, termTextsInput, type TermTexts } from "@/lib/term-texts";
 import type { RichTextDoc } from "@/lib/page-content";
 import { parseTermRules, type TermRules } from "@/lib/term-rules";

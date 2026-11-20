@@ -52,7 +52,7 @@ import { slugify } from "./slug";
 import type { ShopTiles } from "./shop-tiles";
 import { SHOP_PART_KEYS, type ShopPart } from "./store-parts";
 import { THEME_PART_HEADING_MAX, THEME_PART_TEXT_MAX, THEME_STORE_PARTS, type ThemeStorePart } from "./theme-store-parts";
-import { termIdsSchema } from "./taxonomy";
+import { termIdsSchema } from "./taxonomy-schema";
 import { ICONS, type IconName } from "./icons";
 import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "./social-links";
 import { embedUrl } from "./video-embed";

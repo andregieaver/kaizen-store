@@ -30,7 +30,8 @@ import {
 } from "@/lib/store-translate";
 
 import { INFO_MAX, INSTRUCTIONS_MAX, NAME_MAX } from "@/lib/shipping-limits";
-import { parseTermSeo, termSeoFor, termSeoInput, type TermSeo } from "@/lib/term-seo";
+import { termSeoFor, type TermSeo } from "@/lib/term-seo";
+import { parseTermSeo, termSeoInput } from "@/lib/term-seo-schema";
 import { parseTermDescription, parseTermTexts, termTextsInput, type TermTexts } from "@/lib/term-texts";
 
 import { audit, type Membership } from "./auth";

@@ -12,7 +12,7 @@ import { MAX_MEDIA, MEDIA_KINDS, VIDEO_SOURCES } from "./product-media";
 import { CATEGORY_ID, MAX_ATTRIBUTE_VALUES } from "./product-taxonomy";
 import { BASES, UNITS, baseFits, parseMeasureAmount } from "./unit-price";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX } from "./seo";
-import { termIdsSchema } from "./taxonomy";
+import { termIdsSchema } from "./taxonomy-schema";
 import { VAT_CATEGORY_CODE } from "./vat";
 import { MAX_DISCOUNT_PERCENT, MAX_MIN_CYCLES, MAX_PLANS, MAX_TRIAL_DAYS, PLAN_INTERVALS } from "./subscriptions";
 import {

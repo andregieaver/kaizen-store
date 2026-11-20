@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { categoryTree, knownIds, selfAndDescendants, termInput, withDescendants, type Term } from "./taxonomy";
+import { categoryTree, knownIds, selfAndDescendants, withDescendants, type Term } from "./taxonomy";
+import { termInput } from "./taxonomy-schema";
 
 const term = (id: string, name: string, parentId: string | null = null, kind: Term["kind"] = "category"): Term => ({
   id,
