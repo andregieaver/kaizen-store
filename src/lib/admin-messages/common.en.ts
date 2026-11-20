@@ -12,6 +12,7 @@ export const commonEn = {
   accountMenu: {
     yourAccount: "Your account",
     contactSupport: "Contact Kaizena Flow support",
+    addToAccount: "Add to your account",
     colours: "Colours",
     toDark: "Switch to dark colours",
     toLight: "Switch to light colours",

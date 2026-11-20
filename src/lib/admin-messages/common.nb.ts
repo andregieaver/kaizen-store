@@ -13,6 +13,7 @@ export const commonNb: CommonMessages = {
   accountMenu: {
     yourAccount: "Din konto",
     contactSupport: "Kontakt kundestøtten i Kaizena Flow",
+    addToAccount: "Legg til på kontoen",
     colours: "Farger",
     toDark: "Bytt til mørke farger",
     toLight: "Bytt til lyse farger",

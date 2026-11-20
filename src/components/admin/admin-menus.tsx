@@ -86,17 +86,23 @@ export function AdminSwitcher({
   level,
   label,
   stores,
+  workspaces = [],
   currentSlug,
   owner,
+  accountOwner = owner,
   platform,
 }: {
   level: "platform" | "control" | "store" | "hosting";
   /** The current place's name: the store's, or the level's. */
   label: string;
   stores: SwitcherStore[];
+  /** The workspaces the person works in (D748 E7), by their business's name: never among the stores. */
+  workspaces?: { slug: string; name: string }[];
   currentSlug?: string;
   /** Whether the person owns a store, so has a control center. */
   owner: boolean;
+  /** Whether the person owns a store or a workspace, so the account's billing is theirs. */
+  accountOwner?: boolean;
   /** Kaizen's team: requests waiting. Null for everyone else. */
   platform: { waiting: number } | null;
 }) {
@@ -149,8 +155,21 @@ export function AdminSwitcher({
               )}
             </Section>
           )}
+          {workspaces.length > 0 && (
+            <Section id="switch-business" title={w.business} first={!owner && shown.length === 0}>
+              {workspaces.map((s) => {
+                const here = level === "store" && s.slug === currentSlug;
+                return (
+                  <AdminLink key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
+                    <span className="truncate">{s.name}</span>
+                    <Here on={here} />
+                  </AdminLink>
+                );
+              })}
+            </Section>
+          )}
           {platform && (
-            <Section id="switch-kaizen" title="Kaizena Flow" first={!owner && shown.length === 0}>
+            <Section id="switch-kaizen" title="Kaizena Flow" first={!owner && shown.length === 0 && workspaces.length === 0}>
               <AdminLink role="menuitem" href="/admin/platform" aria-current={level === "platform" ? "page" : undefined} className={item}>
                 {w.platform}
                 {platform.waiting > 0 && (
@@ -160,11 +179,11 @@ export function AdminSwitcher({
               </AdminLink>
             </Section>
           )}
-          <Section id="switch-you" title={w.you} first={!owner && shown.length === 0 && !platform}>
+          <Section id="switch-you" title={w.you} first={!owner && shown.length === 0 && workspaces.length === 0 && !platform}>
             <AdminLink role="menuitem" href="/admin/account" className={item}>
               {w.yourAccount}
             </AdminLink>
-            {owner && (
+            {accountOwner && (
               <>
                 <AdminLink role="menuitem" href="/admin/account/billing" className={item}>
                   {w.billing}

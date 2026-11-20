@@ -273,6 +273,6 @@ describe("Kaizena Flow's own store is not a customer (D466)", () => {
   });
 
   it("exempts it from the limits, bills it nowhere and lists it among no plans", () => {
-    expect(code(path.join(ROOT, "src/server/billing.ts"))).toMatch(/not s\.house` : sql`s\.status <> 'closed' and not s\.starter and not s\.sandbox and not s\.house`/);
+    expect(code(path.join(ROOT, "src/server/billing.ts"))).toMatch(/not s\.house(?: and not s\.workspace)?`\s*:\s*sql`s\.status <> 'closed' and not s\.starter and not s\.sandbox and not s\.house/);
   });
 });

@@ -121,6 +121,7 @@ export const shellEn = {
     controlCenter: "Control center",
     allYourStoresShort: "all your stores",
     stores: "Stores",
+    business: "Your business",
     suspended: "Suspended",
     staff: "Staff",
     allStores: "All {count} stores",

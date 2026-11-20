@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignCards } from "@/components/admin/design-cards";
 import { StoresList } from "@/components/admin/stores-list";
-import { listClosedStores, listStores, requireAccount } from "@/server/auth";
+import { listClosedStores, listStores, listWorkspaces, requireAccount } from "@/server/auth";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { PROMPT_MAX, PROMPT_MIN } from "@/lib/dream-factory";
@@ -29,9 +29,17 @@ export default async function AllStoresPage() {
   const lang = adminLangOf(account.adminLocale);
   const words = HOME_WORDS[lang];
   const { stores: w, common: c } = words;
-  const [stores, hostings, copies, closed] = await Promise.all([listStores(account), listHostings(account), listStoreCopies(account), listClosedStores(account)]);
+  const [stores, hostings, copies, closed, workspaces] = await Promise.all([
+    listStores(account),
+    listHostings(account),
+    listStoreCopies(account),
+    listClosedStores(account),
+    listWorkspaces(account),
+  ]);
   const owned = stores.filter((store) => store.role === "owner").length;
-  const canCreate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
+  // A workspace's owner (D748 E7) may open their account's first store, as Add to your account offers.
+  const ownsWorkspace = workspaces.some((place) => place.role === "owner");
+  const canCreate = account.platformAdmin || ((owned > 0 || ownsWorkspace) && owned < MAX_STORES_PER_OWNER);
   // Duplicating (D129) makes one more store, so it has the same room as creating one.
   const canDuplicate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
   const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;

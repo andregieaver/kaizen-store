@@ -511,6 +511,8 @@ export const NAV_NB: Record<string, string> = {
     "Be Kaizena Flow om hjelp med butikkene dine eller kontoen din, og les svarene.",
   "The plan of each store you own, what it costs and when it renews.": "Abonnementet til hver butikk du eier, hva det koster og når det fornyes.",
   "The extensions your account has, their trials and prices, and adding or ending one.": "Utvidelsene kontoen din har, prøveperiodene og prisene, og å legge til eller avslutte en.",
+  "Add to your account": "Legg til på kontoen",
+  "An online store or another extension, one press each to start its free trial.": "En nettbutikk eller en annen utvidelse, ett trykk hver for å starte den gratis prøveperioden.",
   "What the AI used for the stores you own, with what it cost.": "Hva KI-en har brukt for butikkene du eier, med hva det kostet.",
   "What the AI manager finished or waits on while you were away, in every store.": "Hva KI-assistenten gjorde ferdig eller venter på mens du var borte, i alle butikker.",
   "Your referral link, the stores that opened through it and your credit.": "Vervelenken din, butikkene som åpnet gjennom den og kreditten din.",

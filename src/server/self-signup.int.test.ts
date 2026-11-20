@@ -65,11 +65,11 @@ describe("self-serve sign-up (D359)", () => {
     expect(received).toBe(0);
 
     const token = await linkSentTo(email);
-    expect(await signup.confirmationOf(token)).toEqual({ storeName: `Shop ${run}`, lang: "en" });
+    expect(await signup.confirmationOf(token)).toEqual({ storeName: `Shop ${run}`, lang: "en", workspace: false });
     expect(await signup.confirmationOf("x".repeat(43))).toBeNull();
 
     const done = await signup.confirmSelfSignup(token);
-    expect(done).toEqual({ ok: true, storeName: `Shop ${run}`, password: false });
+    expect(done).toEqual({ ok: true, storeName: `Shop ${run}`, password: false, workspace: false });
     const after = await requestOf(email);
     expect(after).toMatchObject({ status: "approved", confirm_hash: null, decided_by: null });
     const storeId = String(after.store_id);
@@ -106,12 +106,12 @@ describe("self-serve sign-up (D359)", () => {
     expect(await signup.confirmationOf(token)).not.toBeNull();
     expect(set).toEqual([]);
     const strong = "lantern orbit maple 42";
-    expect(await signup.confirmSelfSignup(token, { password: strong, setPassword })).toEqual({ ok: true, storeName: `Pw ${run}`, password: true });
+    expect(await signup.confirmSelfSignup(token, { password: strong, setPassword })).toEqual({ ok: true, storeName: `Pw ${run}`, password: true, workspace: false });
     expect(set).toEqual([{ email, password: strong }]);
     // A password that could not be set leaves the emailed link: the store is still made.
     const other = `pw2-${run}@example.com`;
     await signup.startSelfSignup(input(other, `Pw2 ${run}`), null);
-    expect(await signup.confirmSelfSignup(await linkSentTo(other), { password: strong, setPassword: async () => false })).toEqual({ ok: true, storeName: `Pw2 ${run}`, password: false });
+    expect(await signup.confirmSelfSignup(await linkSentTo(other), { password: strong, setPassword: async () => false })).toEqual({ ok: true, storeName: `Pw2 ${run}`, password: false, workspace: false });
   });
 
   it("gives a taken store name a free address", async () => {
@@ -142,7 +142,7 @@ describe("self-serve sign-up (D359)", () => {
     await signup.startSelfSignup(input(email), null);
     const token = await linkSentTo(email);
     await signup.setSelfServe(admin as never, false);
-    expect(await signup.confirmSelfSignup(token)).toEqual({ ok: false, problem: "off" });
+    expect(await signup.confirmSelfSignup(token)).toEqual({ ok: false, problem: "off", workspace: false });
     expect(await requestOf(email)).toMatchObject({ status: "pending", store_id: null });
     expect((await listAccessRequests()).some((r) => r.email === email)).toBe(true);
   });

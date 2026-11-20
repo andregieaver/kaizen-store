@@ -515,10 +515,12 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
 
 /**
  * The stores the billing lists hold, so the list and its count cannot drift. Store templates (D175) have no plan: they are listed
- * under Store templates, not here. Nor has Kaizena Flow's own store (D466).
+ * under Store templates, not here. Nor has Kaizena Flow's own store (D466), nor a workspace (D748 E7), which is billed with its account.
  */
 const billingWhere = (includeClosed: boolean) =>
-  includeClosed ? sql`not s.starter and not s.sandbox and not s.house` : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house`;
+  includeClosed
+    ? sql`not s.starter and not s.sandbox and not s.house and not s.workspace`
+    : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house and not s.workspace`;
 
 /**
  * Every store's billing; closed stores only for the platform's own list, which must find them to reopen them (D171). With `limit`, one page

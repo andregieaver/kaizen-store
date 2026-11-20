@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 
 import { can, pageTypeKey, type Access, type PermissionKey } from "@/lib/permissions";
 import { allowedWhenNotOpen } from "@/lib/store-closure";
+import { allowedInWorkspace } from "@/lib/workspace-admin";
 
 import { getMembership, holderOf, requireMember, type Membership } from "./auth";
 import { passMember } from "./edit-pass";
@@ -33,9 +34,11 @@ export const NO_ACCESS = "You do not have access to this.";
  * What a member may do, without a request: for the navigation, a page that shows a control only to those who can use it, and the checks below.
  * In a store that is not open (suspended or closed, D171) a member may only read and handle what already happened (`allowedWhenNotOpen()`), whatever
  * their role holds: this is the one place that rule is kept, so no page or action of a closed store can sell, publish or change the shop.
+ * A workspace (D748 E7) serves only its own areas (`allowedInWorkspace()`): no page or action of orders, products, the website or bookings.
  */
-export const memberCan = (member: Pick<Membership, "role" | "kind" | "permissions"> & { store?: { status?: string } }, key: PermissionKey): boolean => {
+export const memberCan = (member: Pick<Membership, "role" | "kind" | "permissions"> & { store?: { status?: string; workspace?: boolean } }, key: PermissionKey): boolean => {
   if (member.store?.status && member.store.status !== "active" && !allowedWhenNotOpen(key)) return false;
+  if (member.store?.workspace && !allowedInWorkspace(key)) return false;
   return can(holderOf(member), key);
 };
 

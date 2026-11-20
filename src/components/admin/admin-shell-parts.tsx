@@ -6,7 +6,7 @@ import { AccountMenu, AdminSwitcher, MenuLink, MenuRow } from "@/components/admi
 import { MenuNotices } from "@/components/admin/ai-notices";
 import { Avatar } from "@/components/avatar";
 import { platformRoleOf } from "@/lib/platform-access";
-import { listStores, type Account } from "@/server/auth";
+import { listStores, listWorkspaces, type Account } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { kaizenLifeAppUrl } from "@/server/kaizen-life-accounts";
 import { countPendingRequests } from "@/server/platform";
@@ -22,6 +22,15 @@ import { signOut } from "@/app/admin/(gated)/actions";
 /** The stores an account works in, once per request (the switcher and the pages both ask). */
 export const storesOf = cache((account: Account) => listStores(account));
 
+/** The workspaces an account works in (D748 E7), once per request: never among its stores. */
+export const workspacesOf = cache((account: Account) => listWorkspaces(account));
+
+/** Whether the person owns an account's stores or its workspace: the account's billing, extensions and Add to your account are theirs. */
+export const ownsAccount = async (account: Account): Promise<boolean> => {
+  const [stores, workspaces] = await Promise.all([storesOf(account), workspacesOf(account)]);
+  return [...stores, ...workspaces].some((place) => place.role === "owner");
+};
+
 /** Requests waiting for Kaizen's team, once per request. */
 const waitingFor = cache(() => countPendingRequests());
 
@@ -29,14 +38,16 @@ const waitingFor = cache(() => countPendingRequests());
 export async function LevelSwitcher({ account, level, label, currentSlug }: { account: Account; level: "platform" | "control" | "store" | "hosting"; label: string; currentSlug?: string }) {
   // Everyone on the platform's team reaches the platform (D510).
   const team = platformRoleOf(account) !== null;
-  const [stores, waiting] = await Promise.all([storesOf(account), team ? waitingFor() : 0]);
+  const [stores, workspaces, waiting] = await Promise.all([storesOf(account), workspacesOf(account), team ? waitingFor() : 0]);
   return (
     <AdminSwitcher
       level={level}
       label={label}
       stores={stores}
+      workspaces={workspaces}
       currentSlug={currentSlug}
       owner={stores.some((store) => store.role === "owner")}
+      accountOwner={[...stores, ...workspaces].some((place) => place.role === "owner")}
       platform={team ? { waiting } : null}
     />
   );
@@ -50,13 +61,15 @@ export async function AdminAccountMenu({ account, role }: { account: Account; ro
   // In the account's language (D312 A0).
   const w = COMMON_WORDS[adminLangOf(account.adminLocale)].accountMenu;
   const avatar = avatarFor(account);
-  const life = await kaizenLifeAppUrl(account.id);
+  const [life, owner] = await Promise.all([kaizenLifeAppUrl(account.id), ownsAccount(account)]);
   return (
     <AccountMenu avatar={<Avatar avatar={avatar} size={32} />} initials={avatar.initials} name={account.name} email={account.email}>
       <MenuLink href="/admin/account">
         {w.yourAccount}
         {role ? <span className="ml-auto text-xs text-muted">{role}</span> : null}
       </MenuLink>
+      {/* The account's owner adds an online store or an extension in one press (D748 E7). */}
+      {owner ? <MenuLink href="/admin/account/add">{w.addToAccount}</MenuLink> : null}
       <MenuNotices label={ASSISTANT_WORDS[adminLangOf(account.adminLocale)].notices.menu} href="/admin/account/notices" />
       <MenuLink href="/admin/account/kaizen-support">{w.contactSupport}</MenuLink>
       {life ? <MenuLink href={life}>{w.kaizenLife} ↗</MenuLink> : null}

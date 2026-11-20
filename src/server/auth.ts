@@ -3,6 +3,7 @@ import { storeExtensionOn } from "@/lib/extensions";
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
@@ -20,6 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assuranceOf, heldPath, KILL_SWITCH_ACTION, mayUseAdmin, twoStepKillSwitch, TWO_STEP_PATHS, type Assurance } from "@/lib/two-step";
 
 import { getStore, type Store } from "./stores";
+import { col, typedRows } from "./typed-rows";
 import { currentActor } from "./actor";
 
 export type Role = "owner" | "admin";
@@ -297,6 +299,26 @@ export async function listStores(account: Account): Promise<StoreSummary[]> {
     workOn: Boolean(row.work_on),
     workExtension: Boolean(row.work_extension),
   }));
+}
+
+/**
+ * The workspaces an account works in (D748 E7): a standalone account's, never in `listStores()`. Reached from the person's Home (the
+ * control center sends someone with no store there), the level switcher and Work, as an owner's account (`ownerWho()`).
+ */
+export async function listWorkspaces(account: Pick<Account, "id">): Promise<StoreSummary[]> {
+  const rows = await typedRows(
+    z.object({ slug: col.text, name: col.text, role: z.enum(["owner", "admin"]), work_on: col.bool, work_extension: col.bool }),
+    sql`
+      select s.slug, s.name, m.role, ('work' = any(s.modules) and commerce.extension_on(s.id, 'work')) as work_on,
+        commerce.extension_on(s.id, 'work') as work_extension
+      from commerce.store_members m
+      join commerce.stores s on s.id = m.store_id and s.workspace and s.status <> 'closed'
+      where m.account_id = ${account.id}::uuid and m.disabled_at is null
+        and (m.expires_at is null or m.expires_at > now())
+      order by (m.role = 'owner') desc, lower(s.name), s.slug
+    `,
+  );
+  return rows.map((row) => ({ slug: row.slug, name: row.name, role: row.role, workOn: row.work_on, workExtension: row.work_extension }));
 }
 
 /** Whether the signed-in person proved who they are in the last ten minutes (D171): asked before closing a store. The claim is the verified token's own. */

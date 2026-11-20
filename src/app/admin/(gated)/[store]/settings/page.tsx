@@ -38,7 +38,7 @@ export default async function StoreSettingsPage({ params }: PageProps<"/admin/[s
   const t = HOME_WORDS[lang].settings;
   // The cards of a member's own role only (wave 1, 1f): a card for a page they cannot open would be a link to a 404.
   const holder = holderOf(member);
-  const section = storeSections(store, (path) => canOpenPath(holder, path)).find((s) => s.key === "settings") ?? STORE_SECTIONS.find((s) => s.key === "settings")!;
+  const section = storeSections(store, (path) => canOpenPath(holder, path, store.workspace)).find((s) => s.key === "settings") ?? STORE_SECTIONS.find((s) => s.key === "settings")!;
   const [progress, team] = await Promise.all([getSetupProgress(store), teamSize(store.id)]);
   const selling = featureOn(store, "shop");
   const base = `/admin/${store.slug}`;
@@ -99,13 +99,18 @@ export default async function StoreSettingsPage({ params }: PageProps<"/admin/[s
   return (
     <SettingsHub
       title={navWord(lang, section.label)}
-      lead={lead}
-      progress={{
-        done: essentials.length - left.length,
-        total: essentials.length,
-        label: fillWords(t.progress, { done: essentials.length - left.length, total: essentials.length }),
-        next: owner && left[0] ? left[0].fix : null,
-      }}
+      lead={store.workspace ? t.workspaceLead : lead}
+      // A workspace (D748 E7) has no store to set up before real payments: no essentials strip.
+      progress={
+        store.workspace
+          ? null
+          : {
+              done: essentials.length - left.length,
+              total: essentials.length,
+              label: fillWords(t.progress, { done: essentials.length - left.length, total: essentials.length }),
+              next: owner && left[0] ? left[0].fix : null,
+            }
+      }
       groups={groups}
       rest={rest}
       words={{ find: t.find, findPlaceholder: t.findPlaceholder, progressSub: t.progressSub, everythingElse: t.everythingElse, show: t.show, hide: t.hide, everythingElseSub: countWords(rest.length, t.everythingElseSub) }}

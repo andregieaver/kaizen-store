@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { holdsDomains } from "@/server/domain-account";
 
-import { storesOf } from "@/components/admin/admin-shell-parts";
+import { storesOf, workspacesOf } from "@/components/admin/admin-shell-parts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { StoreCard } from "@/components/admin/store-card";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
@@ -35,6 +35,9 @@ export default async function ControlCenterPage() {
   const [stores, hostings] = await Promise.all([storesOf(account), listHostings(account)]);
   const owner = stores.some((store) => store.role === "owner");
   if (!owner) {
+    // Someone whose account has no store, only a workspace (D748 E7), works there: it is their Home.
+    const workspaces = stores.length === 0 && hostings.length === 0 && !account.platformAdmin ? await workspacesOf(account) : [];
+    if (workspaces.length > 0) redirect(`/admin/${workspaces[0].slug}`);
     if (stores.length === 1 && hostings.length === 0 && !account.platformAdmin) redirect(`/admin/${stores[0].slug}`);
     if (stores.length > 0) redirect("/admin/stores");
     if (hostings.length > 0) redirect("/admin/hosting");

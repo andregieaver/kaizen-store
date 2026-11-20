@@ -36,14 +36,26 @@ describe("commerce.make_workspace() (D748 E7)", () => {
   it("makes one hidden, private store in its owner's account, with a market and its owner, open for jobs", async () => {
     const person = await account();
     const { id } = await make(person);
-    const store = await one<{ workspace: boolean; private_mode: boolean; slug: string; owner: string | null; organisation: string | null; active: boolean; market: string | null }>(
-      `select s.workspace, s.private_mode, s.slug, s.organisation_id as organisation, commerce.store_is_active(s.id) as active,
+    const store = await one<{
+      workspace: boolean;
+      private_mode: boolean;
+      slug: string;
+      owner: string | null;
+      organisation: string | null;
+      active: boolean;
+      market: string | null;
+      features: string[];
+      modules: string[];
+    }>(
+      `select s.workspace, s.private_mode, s.slug, s.organisation_id as organisation, commerce.store_is_active(s.id) as active, s.features, s.modules,
               (select m.account_id from commerce.store_members m where m.store_id = s.id and m.role = 'owner') as owner,
               (select k.currency from commerce.markets k where k.store_id = s.id and k.active) as market
          from commerce.stores s where s.id = $1`,
       [id],
     );
     expect(store).toMatchObject({ workspace: true, private_mode: true, owner: person, active: true, market: "NOK" });
+    // E7 part three: Deals' store feature and Work switched on, never the online shop.
+    expect(store).toMatchObject({ features: ["sales"], modules: ["work"] });
     expect(store.slug).toMatch(/^ws-[0-9a-f]{12}$/);
     const own = await one<{ organisation_id: string }>("select organisation_id from commerce.organisation_members where account_id = $1 and role = 'owner'", [person]);
     expect(store.organisation).toBe(own.organisation_id);

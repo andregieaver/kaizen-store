@@ -8,6 +8,7 @@ import { EXTENSION_IDS, storeExtensionsOn, type ExtensionId } from "./extensions
 import type { NavIconName } from "@/components/admin/nav-icons";
 
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
+import { STORE_ONLY_EXTENSIONS } from "./workspace-admin";
 
 /**
  * What the navigation is filtered by: the store's features (D178), as kept (`store.features`); a page or section behind a feature is offered
@@ -17,6 +18,8 @@ export type StoreFlags = FeatureSource & {
   house?: boolean;
   /** The account's paid-extension facts (D748 E3, `Store.extensionFacts`): a page or section behind an extension is offered only while it works. */
   extensionFacts?: unknown;
+  /** A standalone account's workspace (D748 E7): only its extensions' pages and those marked `workspace` are offered. */
+  workspace?: boolean;
 };
 
 /**
@@ -38,6 +41,8 @@ export type StoreItem = {
   extension?: ExtensionId;
   /** A page only a customer's store has: left out for Kaizena Flow's own store (D466), which has no plan and is never closed. */
   customer?: true;
+  /** A page a workspace (D748 E7) offers besides its extensions' own: always (`true`), or while the account has that extension. */
+  workspace?: true | ExtensionId;
   /** A page that is not what its section's tab stands for (Custom fields under Products): the tab never opens on it, and a section with only
    * such pages left is not in the menu. */
   aside?: true;
@@ -128,7 +133,7 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Customers",
         items: [
-          item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: CUSTOMERS_FEATURE, icon: "users", basic: true }),
+          item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: CUSTOMERS_FEATURE, icon: "users", basic: true, workspace: true }),
           item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop", icon: "users-round" }),
           item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop", icon: "banknote" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business", icon: "building", basic: true }),
@@ -136,7 +141,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           // The leads inbox, a tab of Deals before (ecosystem plan E2.8, D713): its own page, so it is found and its address is its own.
           item("/leads", "Leads", "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.", { extension: "deals", feature: "sales", icon: "user-plus", basic: true }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop", icon: "heart" }),
-          item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock.", { icon: "shield-check", basic: true }),
+          item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock.", { icon: "shield-check", basic: true, workspace: true }),
         ],
       },
     ],
@@ -167,7 +172,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/flows", "Flows", "Emails one after another to each person from the moment something happens, read as a story.", { extension: "email_automation", icon: "mail-check" }),
           item("/text-messages", "Text messages", "Offers by text message to the numbers that asked for them at checkout, in their daytime.", { icon: "message-text" }),
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop", icon: "cart" }),
-          item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check" }),
+          item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check", workspace: "email_automation" }),
           // Who a message goes to, not a group with a discount (Customer groups): ecosystem plan E3.7, D718.
           item("/segments", "Segments", "Who gets an email or a text message, chosen by rules on what people did and counted again as you open them.", { extension: "email_automation", icon: "chart-pie" }),
         ],
@@ -324,7 +329,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           // Support's own names (ecosystem plan E3.7, D718): Reports are Analytics', Settings the store's.
           item("/support/reports", "Support reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.", { extension: "support_desk", icon: "chart-column" }),
           item("/support/replies", "Saved replies", "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's.", { extension: "support_desk", icon: "message-text" }),
-          item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from.", { icon: "bot" }),
+          item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from.", { icon: "bot", workspace: "support_desk" }),
           item("/support/widgets", "Website chat", "The chat on your other websites: widgets with their own look, each with a tag to paste on one or several sites.", { extension: "support_desk", icon: "globe", basic: true }),
           item("/support/settings", "Support settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", { extension: "support_desk", icon: "settings-2" }),
         ],
@@ -342,7 +347,7 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Store",
         items: [
-          item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show.", { icon: "store", basic: true }),
+          item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show.", { icon: "store", basic: true, workspace: true }),
           item("/settings/books", "Books", "Your own books, kept from your invoices and credit notes as you issue them: the trial balance, what waits, and locking a period.", { extension: "work", icon: "book-open" }),
           item("/settings/domains", "Domains", "The addresses the store is reached at.", { icon: "link", basic: true }),
           item("/settings/moving", "Moving in", "Bring a shop over from Shopify: connect it, check its old links, and import the rest.", { icon: "import" }),
@@ -365,7 +370,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/prices", "Prices and quantity", "How shoppers see prices, with or without ,00 on whole amounts and your words before and after them, and how they choose how many.", { feature: "shop", icon: "calculator" }),
           // Ecosystem plan E3.3 (D718): one home for what runs by itself.
           item("/settings/automatic", "Automatic", "Everything that happens by itself in the store, and when it last did: what follows a paid order, workflows, emails, alerts and connections.", { icon: "clock", basic: true }),
-          item("/settings/workflows", "Workflows", "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.", { icon: "workflow" }),
+          item("/settings/workflows", "Workflows", "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.", { icon: "workflow", workspace: true }),
           item("/settings/automation", "Automation", "Rules that tag, hold or tell staff about paid orders that match conditions you choose, and the log of what they did.", { feature: "shop", icon: "zap" }),
           item("/settings/returns", "Return settings", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop", icon: "undo" }),
           item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms.", { icon: "scale", basic: true }),
@@ -373,7 +378,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/customs", "Duties and import VAT", "Who pays duties and import VAT in each country outside your customs area: your customer to the carrier on delivery, or with the order at checkout.", { feature: "shop", icon: "container" }),
           item("/settings/invoices", "Invoicing", "Switch on invoices, the numbering, the note printed on every invoice and credit note.", { feature: "shop", icon: "file-text" }),
           item("/settings/producer-responsibility", "Producer responsibility", "Registrations for packaging, electrical equipment, batteries and other schemes in each country, and what is not sold without one.", { feature: "shop", icon: "recycle" }),
-          item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services.", { icon: "puzzle" }),
+          item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services.", { icon: "puzzle", workspace: true }),
         ],
       },
       {
@@ -390,17 +395,17 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Tools",
         items: [
           item("/search", "Search", "How the store's search works: keywords, meaning and what shoppers searched for.", { feature: "shop", icon: "search" }),
-          item("/settings/ai", "AI", "The AI provider and models the store uses, or its own key.", { icon: "sparkles" }),
-          item("/settings/api", "Apps and API", "Tokens for your own apps, warehouse or accounting to read and change the store through the Admin API.", { icon: "braces" }),
+          item("/settings/ai", "AI", "The AI provider and models the store uses, or its own key.", { icon: "sparkles", workspace: true }),
+          item("/settings/api", "Apps and API", "Tokens for your own apps, warehouse or accounting to read and change the store through the Admin API.", { icon: "braces", workspace: true }),
         ],
       },
       {
         heading: "Account",
         items: [
           item("/billing", "Billing", "The store's plan, what it costs and its invoices.", { icon: "receipt-text", basic: true, customer: true }),
-          item("/staff", "Team", "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in.", { icon: "user-cog", basic: true }),
+          item("/staff", "Team", "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in.", { icon: "user-cog", basic: true, workspace: true }),
           // The audit log, named apart from a customer's Activities (D468): ecosystem plan E3.7, D718.
-          item("/activity", "Change log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings.", { icon: "file-clock" }),
+          item("/activity", "Change log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings.", { icon: "file-clock", workspace: true }),
         ],
       },
     ],
@@ -419,20 +424,26 @@ export type CanOpen = (path: string) => boolean;
  * a section and a hub's card with none left are not drawn. `STORE_SECTIONS` itself stays whole: `sectionOf()` and the permissions read it.
  */
 export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSection[] {
-  const working = new Set<ExtensionId>(Array.isArray(flags) ? EXTENSION_IDS : storeExtensionsOn(flags as { extensionFacts?: unknown }));
+  // A workspace (D748 E7) offers only its extensions' pages and those marked for it, never a store-only extension's (A/B tests need a site).
+  const workspace = !Array.isArray(flags) && (flags as { workspace?: boolean }).workspace === true;
+  const working = new Set<ExtensionId>(
+    (Array.isArray(flags) ? EXTENSION_IDS : storeExtensionsOn(flags as { extensionFacts?: unknown })).filter((id) => !workspace || !STORE_ONLY_EXTENSIONS.includes(id)),
+  );
+  const ours = (part: { extension?: ExtensionId; workspace?: true | ExtensionId }) =>
+    !workspace || part.extension !== undefined || part.workspace === true || (part.workspace !== undefined && working.has(part.workspace));
   const on = (part: { feature?: FeatureRequirement; extension?: ExtensionId }) => requirementMet(flags, part.feature) && (!part.extension || working.has(part.extension));
   const house = !Array.isArray(flags) && (flags as { house?: boolean }).house === true;
   const open = (path: string) => !canOpen || canOpen(path);
   return STORE_SECTIONS.filter((s) => on(s))
     .map((s) => {
-      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
+      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i) && ours(i) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
       // A section whose main page is hidden opens on the first page it has left (D178 step 5: a website's Customers open on Privacy requests).
       // A page that is aside (Custom fields under Products) is never where a tab leads: a website's Products tab would open on Custom fields.
       const left = groups.flatMap((g) => g.items.filter((i) => !i.aside).map((i) => i.path));
       const start = s.hub || left.length === 0 || left.includes(s.start) ? s.start : left[0];
       return { section: { ...s, start, groups }, onlyAside: !s.hub && left.length === 0 && groups.length > 0 };
     })
-    .filter(({ section, onlyAside }) => (!canOpen || section.groups.length > 0) && !onlyAside)
+    .filter(({ section, onlyAside }) => (!(canOpen || workspace) || section.groups.length > 0) && !onlyAside)
     .map(({ section }) => section);
 }
 

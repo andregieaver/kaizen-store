@@ -697,6 +697,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Utvidelser",
     keywords: ["utvidelser", "tillegg", "prøveperiode", "abonner", "a/b-testing", "kundestøtte", "e-postautomatisering", "work", "avtaler"],
   },
+  "account:account.add": {
+    title: "Legg til på kontoen",
+    keywords: ["legg til", "åpne en butikk", "nettbutikk", "ny butikk", "prøv", "prøveperiode", "utvidelse", "tillegg"],
+  },
   "account:account.delete": { title: "Slett kontoen din", keywords: ["slett konto", "slette konto", "personvern", "fjern opplysningene mine"] },
   "account:account.email": { title: "Endre e-postadressen din", keywords: ["e-post", "endre e-post", "ny e-postadresse", "e-postadresse"] },
   "account:account.appearance": { title: "Utseende", keywords: ["utseende", "farger", "tema", "fargeskjema", "mørk", "lys"] },

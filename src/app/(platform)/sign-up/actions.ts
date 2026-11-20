@@ -145,6 +145,11 @@ export async function requestExtensions(_state: FormState, formData: FormData): 
 export async function confirmSignup(_state: FormState, formData: FormData): Promise<FormState> {
   const w = platformText(langOfForm(formData)).signUp.selfServe;
   const done = await confirmSelfSignup(String(formData.get("token") ?? ""), { password: String(formData.get("password") ?? "") });
-  if (done.ok) return { status: "ok", messages: [(done.password ? w.doneWithPassword : w.done).replaceAll("{store}", done.storeName)] };
-  return { status: "error", messages: [w[done.problem]] };
+  // A sign-up for extensions (D748 E7) is told about its account, not a store.
+  if (done.ok) {
+    const text = done.workspace ? (done.password ? w.doneWorkspaceWithPassword : w.doneWorkspace) : done.password ? w.doneWithPassword : w.done;
+    return { status: "ok", messages: [text.replaceAll("{store}", done.storeName)] };
+  }
+  const problem = done.workspace && done.problem === "off" ? w.offWorkspace : done.workspace && done.problem === "failed" ? w.failedWorkspace : w[done.problem];
+  return { status: "error", messages: [problem] };
 }

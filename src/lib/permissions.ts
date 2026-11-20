@@ -24,6 +24,7 @@ import {
   type PermissionKey,
 } from "./permission-keys";
 import { sectionOf } from "./store-nav";
+import { allowedInWorkspace } from "./workspace-admin";
 
 export * from "./permission-keys";
 
@@ -150,10 +151,14 @@ export function storePageKeys(access: Access = "read"): { id: string; path: stri
 /** The pages of the store admin that need no area (Home, the setup wizard and the activity log): membership is enough. */
 export const MEMBERSHIP_ONLY_PAGE_IDS = ["overview", "setup", "setup.step", "activity"] as const;
 
-/** Whether a holder may open a page at this address after the store's: the navigation offers only these (a page they cannot open would be a 404). */
-export function canOpenPath(holder: PermissionHolder, path: string): boolean {
+/**
+ * Whether a holder may open a page at this address after the store's: the navigation offers only these (a page they cannot open would be a 404).
+ * In a workspace (D748 E7) only its own areas (`allowedInWorkspace()`, as `memberCan()` holds them) and never the setup wizard.
+ */
+export function canOpenPath(holder: PermissionHolder, path: string, workspace = false): boolean {
+  if (workspace && (path === "/setup" || path.startsWith("/setup/"))) return false;
   const key = permissionOfPath(path, "read");
-  return key === null || can(holder, key);
+  return key === null || (can(holder, key) && (!workspace || allowedInWorkspace(key)));
 }
 
 /**

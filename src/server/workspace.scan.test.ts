@@ -17,6 +17,12 @@ const LEAVES_IT_OUT: Record<string, string> = {
   "src/server/stores.ts": "getOpenStore(): the storefront, its chooser and robots.txt.",
   "src/server/store-facts.ts": "storeFactsOf(): what the proxy serves for a store's address.",
   "src/server/seo.ts": "listPublicStores(): the sitemaps, robots and llms.txt.",
+  // E7 part three: the platform's own counts name workspaces apart.
+  "src/server/platform-overview.ts": "platformOverview(): the platform's store figures, with workspaces counted on their own.",
+  "src/server/platform-home.ts": "signUpFunnel(): a sign-up approved into a workspace is no store opened.",
+  "src/server/platform-briefing.ts": "platformSnapshot() and periodFigures(): stores opened today, this month and in a period.",
+  "src/server/billing.ts": "billingWhere(): the platform's Stores list and its count (a workspace is billed with its account).",
+  "src/server/manager-tools.ts": "The platform AI manager's store figures.",
 };
 
 const code = (file: string) =>

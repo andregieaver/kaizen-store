@@ -445,9 +445,22 @@ wanted, the business's name and country, and the person; `requestExtensions()` k
 Approval, by a platform admin or the person's own confirmation, goes through `approveAccessRequest()`: a request without a store is approved
 into its account's workspace (`commerce.approve_workspace_request()`, `20261120070225_approve_workspace_request`: the account made or found,
 `make_workspace()` in the request's country with its currency and first language), never with a store's trial; every approval then starts
-the trials of what was ticked (`startChosenTrials()`, as the owner would: none before extensions are sold). The confirmation page still says
-"store" (part three words it for a workspace). Dark until part three: `STANDALONE_SIGNUP_OPEN` is off, so the page answers 404, its action
-refuses and the store's sign-up does not link to it; nobody signs up into an admin that shows them nothing.
+the trials of what was ticked (`startChosenTrials()`, as the owner would: none before extensions are sold). Dark until part three, which opened it.
+
+**E7 as built, part three (20 November 2026).** The workspace's admin is the store frame at its own address with only its own: `memberCan()`
+refuses orders, products, the website and bookings in a workspace (`allowedInWorkspace()`, `src/lib/workspace-admin.ts`), the nav
+(`storeSections()` with `workspace`) offers each extension's pages and those marked `workspace` (customers, privacy requests, subscribers
+with email automation, the chat assistant with the support desk, company, workflows, integrations, AI, apps and API, the team, the change
+log), never A/B tests (`STORE_ONLY_EXTENSIONS`, the catalogue's `store_only`), and no View store. A workspace now starts with `sales` and
+Work on, never the shop (migration `20261120072737_workspace_features`). Its Home is a card per extension it has, the AI manager and Add to
+your account (`WorkspaceHome`). `/admin` sends a person with only a workspace there; `listWorkspaces()` puts it in the level switcher under
+Your business; its owner owns the account at the account's level (`ownerWho()`: Billing, Extensions, Work). **Add to your account**
+(`/admin/account/add`, in the account menu and Account's sidebar): "Open an online store" (an account with only a workspace opens its first
+store there with the plan's trial, `createStoreForOwner()`; one with stores goes to Your stores) and each extension it does not have, one
+press to try it free (or add it after a trial). The confirmation page and the sign-up's emails speak of the account and its trials for a
+workspace. The platform's counts leave workspaces out of stores (overview, briefing, the Stores list, the AI manager's figures) and the
+sign-up funnel names those who started with extensions alone. `STANDALONE_SIGNUP_OPEN` is on. Kaizena Flow's own admin needs no workspace
+(its own store has every extension), so this stays the customers'. Left for part four: the product pages.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 

@@ -250,6 +250,20 @@ export async function tryExtensionAction(extension: string): Promise<FormState> 
   return { status: "ok", messages: [common.trialStarted] };
 }
 
+/**
+ * Add to your account → Open an online store (D748 E7 part three): the account's owner opens a store at a free address from its name, the
+ * Standard store's copy as any owner's new store is; an account with only a workspace gets the plan's free trial with its first store
+ * (`createStoreForOwner()`). The store opens on its setup.
+ */
+export async function openStoreAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const account = await requireAccount();
+  const name = String(formData.get("name") ?? "").trim();
+  const [{ freeSlug }, { createStoreForOwner }] = await Promise.all([import("@/server/self-signup"), import("@/server/platform")]);
+  const result = await createStoreForOwner(account, name, name ? await freeSlug(name) : "");
+  if (!result.ok) return { status: "error", messages: result.problems };
+  redirect(`/admin/${result.slug}/setup`);
+}
+
 /** Adds an extension to the account's subscription (Stripe Checkout when the account pays for nothing yet), or ends one bought on its own. */
 export async function setExtensionAction(extension: string, on: boolean): Promise<FormState> {
   const { account, organisationId, w } = await extensionsAccount();

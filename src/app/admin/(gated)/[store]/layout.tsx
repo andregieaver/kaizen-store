@@ -86,7 +86,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const holder = holderOf(member);
   // A store that is not open (suspended or closed, D171) offers only what a member may still do there: its orders, customers and analytics.
   const open = store.status === "active";
-  const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
+  // A workspace (D748 E7) offers only its own areas: no orders, products, website or bookings, and no storefront to view.
+  const canOpen = (path: string) => canOpenPath(holder, path, store.workspace) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
   const lang = adminLangOf(account.adminLocale);
   // A paid extension in its grace period or read-only (D748 E5): the frame says so on its pages.
   const banners = extensionBanners(readExtensionFacts(store.extensionFacts), new Date());
@@ -135,13 +136,15 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
                 />
               </AdminTextScope>
             )}
-            <Link href={storeHref(store.slug, storeBase(store.slug))} prefetch={false} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
-              <span className="hidden sm:inline">{w.store.viewStore}</span>
-              <span className="sr-only sm:hidden">{w.store.viewStore}</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 5h5v5M19 5l-8 8M10 5H5v14h14v-5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
+            {!store.workspace && (
+              <Link href={storeHref(store.slug, storeBase(store.slug))} prefetch={false} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
+                <span className="hidden sm:inline">{w.store.viewStore}</span>
+                <span className="sr-only sm:hidden">{w.store.viewStore}</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 5h5v5M19 5l-8 8M10 5H5v14h14v-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            )}
           </>
         }
         account={<AdminAccountMenu account={account} role={member.roleName ?? (member.kind === "collaborator" ? "collaborator" : role)} />}

@@ -127,8 +127,8 @@ export async function platformSnapshot(now = new Date(), options: { house?: bool
     FIGURES,
     sql`select
           (select count(*)::int from commerce.access_requests where (created_at at time zone ${OSLO})::date = ${today}::date) as asked_today,
-          (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date = ${today}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as opened_today,
-          (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date >= ${month}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as new_stores,
+          (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date = ${today}::date and not (s.is_template or s.starter or s.sandbox or s.house or s.workspace)) as opened_today,
+          (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date >= ${month}::date and not (s.is_template or s.starter or s.sandbox or s.house or s.workspace)) as new_stores,
           (select count(distinct b.subscription_id)::int from commerce.store_plans b where b.mode::text = 'live' and b.status = 'trialing' and b.trial_ends_at between now() and now() + interval '3 days') as trials_ending,
           (select count(*)::int from commerce.access_requests where status = 'pending') as waiting,
           (select extract(epoch from now() - min(created_at)) / 3600 from commerce.access_requests where status = 'pending')::float8 as oldest_hours,
@@ -239,7 +239,7 @@ async function periodFigures(from: string, to: string) {
     sql`select
           (select count(*)::int from commerce.access_requests where (created_at at time zone ${OSLO})::date between ${from}::date and ${to}::date) as asked,
           (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date between ${from}::date and ${to}::date
-              and not (s.is_template or s.starter or s.sandbox or s.house)) as opened,
+              and not (s.is_template or s.starter or s.sandbox or s.house or s.workspace)) as opened,
           (select count(*)::int from commerce.plan_moves where mode = 'live' and kind = 'started' and (at at time zone ${OSLO})::date between ${from}::date and ${to}::date) as started,
           (select count(*)::int from commerce.plan_moves where mode = 'live' and kind = 'cancelled' and (at at time zone ${OSLO})::date between ${from}::date and ${to}::date) as cancelled`,
   );

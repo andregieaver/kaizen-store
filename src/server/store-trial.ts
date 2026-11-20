@@ -26,7 +26,7 @@ export const TRIAL_DAYS = 14;
  * Starts the trial for a store that has none and is on no plan: a store that had one, or is on a plan, is left as it is, so starting the
  * Dream Factory again never gives a store a second trial. Returns whether a trial was started; audited as `store.trial_started`.
  */
-export async function grantTrial(storeId: string, accountId: string | null, via: "dream_factory" | "self_signup"): Promise<boolean> {
+export async function grantTrial(storeId: string, accountId: string | null, via: "dream_factory" | "self_signup" | "workspace"): Promise<boolean> {
   const started = await writeTrial(storeId);
   if (started) await audit(accountId, storeId, "store.trial_started", { days: TRIAL_DAYS, via }, { area: "settings", target: { type: "store", id: storeId } });
   return started;

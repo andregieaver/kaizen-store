@@ -2,6 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { EXTENSION_IDS, EXTENSION_SOURCES } from "@/lib/extensions";
+import { STORE_ONLY_EXTENSIONS } from "@/lib/workspace-admin";
 
 import { createTestDatabase } from "./testing";
 
@@ -40,6 +41,8 @@ describe("the extension catalogue (D748 E2)", () => {
     expect(found.map((e) => e.id)).toEqual([...EXTENSION_IDS]);
     expect(found.filter((e) => e.standalone).map((e) => e.id)).toEqual(["support_desk", "email_automation", "work", "deals"]);
     expect(found.filter((e) => e.store_only).map((e) => e.id)).toEqual(["ab_testing"]);
+    // A workspace (D748 E7) is never offered one: the code's list is the catalogue's.
+    expect(found.filter((e) => e.store_only).map((e) => e.id)).toEqual([...STORE_ONLY_EXTENSIONS]);
   });
 
   it("prices every size at the list price in euros and kroner, a month and a year at ten months", async () => {

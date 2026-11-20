@@ -14,6 +14,8 @@ type Row = Record<string, unknown>;
 export type PlatformOverview = {
   requests: { waiting: number; oldest: string | null };
   stores: { total: number; suspended: number; notOpen: number; newThisWeek: number; paying: number; overdue: number; withoutPlan: number };
+  /** Accounts with extensions and no store (D748 E7): their workspaces, never counted as stores. */
+  workspaces: number;
   plans: { total: number };
   emails: { failed: number; sent: number };
   ai: { requests: number; failed: number };
@@ -32,10 +34,12 @@ export async function platformOverview(): Promise<PlatformOverview> {
         count(*) filter (where s.created_at >= now() - interval '7 days')::int as new_this_week,
         count(*) filter (where b.status in ('active', 'trialing'))::int as paying,
         count(*) filter (where b.status in ('past_due', 'unpaid'))::int as overdue,
-        count(*) filter (where b.status is null or b.status in ('canceled', 'incomplete', 'incomplete_expired'))::int as without_plan
+        count(*) filter (where b.status is null or b.status in ('canceled', 'incomplete', 'incomplete_expired'))::int as without_plan,
+        (select count(*)::int from commerce.stores w where w.workspace and w.status <> 'closed') as workspaces
       from commerce.stores s
       left join commerce.store_plans b on b.store_id = s.id
-      where s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
+      -- A workspace (D748 E7) is no store: counted on its own.
+      where s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house) and not s.workspace
     `),
     db().execute<Row>(sql`
       select count(*) filter (where status in ('failed', 'bounced', 'complained'))::int as failed,
@@ -57,6 +61,7 @@ export async function platformOverview(): Promise<PlatformOverview> {
       overdue: Number(stores?.overdue ?? 0),
       withoutPlan: Number(stores?.without_plan ?? 0),
     },
+    workspaces: Number(stores?.workspaces ?? 0),
     plans: { total: plans.length },
     emails: { failed: Number(emails?.failed ?? 0), sent: Number(emails?.sent ?? 0) },
     ai: { requests: ai.requests, failed: ai.failed },

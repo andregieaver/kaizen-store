@@ -35,4 +35,14 @@ describe("a request's emails (D312 P6)", () => {
     expect(requestLang(null)).toBe("en");
     expect(requestLang("de-DE")).toBe("en");
   });
+
+  it("tell a sign-up for extensions about its account and trials, never a store, and decline both alike (D748 E7)", () => {
+    const input = { name: "Ada", storeName: "Ada's desk", url: "https://example.com/x", workspace: true };
+    const approved = accessEmail("approved", "en", input);
+    expect(approved.subject).toBe("Your Kaizena Flow account for Ada's desk is ready");
+    const confirm = JSON.stringify(accessEmail("confirm", "nb", input));
+    expect(confirm).toContain("prøveperiode");
+    expect(confirm).not.toContain("demoprodukter");
+    expect(accessEmail("declined", "en", input)).toEqual(accessEmail("declined", "en", { ...input, workspace: false }));
+  });
 });

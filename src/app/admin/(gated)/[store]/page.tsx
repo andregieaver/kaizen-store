@@ -9,6 +9,7 @@ import { StoreDraftsSection } from "@/components/admin/store-drafts-section";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { BasicViewHint } from "@/components/admin/admin-view";
 import { DemoContentCard } from "@/components/admin/demo-content-card";
+import { WorkspaceHome } from "@/components/admin/workspace-home";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
 import { AskCard } from "@/components/admin/home/ask-card";
@@ -47,6 +48,8 @@ type Props = PageProps<"/admin/[store]">;
 export default async function AdminOverview({ params, searchParams }: Props) {
   const current = await requireMemberAny((await params).store);
   const { account, store } = current;
+  // A standalone account's workspace (D748 E7) has no store to set up: its Home is its extensions, the AI manager and Add to your account.
+  if (store.workspace) return <WorkspaceHome store={store} owner={memberCan(current, "owner")} words={HOME_WORDS[adminLangOf(account.adminLocale)].workspace} now={new Date()} />;
   // A new owner's first stop is the setup wizard.
   // A store template (D175) is never opened, so its owners are not sent to the setup wizard.
   if (!store.setupCompletedAt && !store.starter && memberCan(current, "owner")) {

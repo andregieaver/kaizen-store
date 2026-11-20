@@ -1135,6 +1135,10 @@ const PAGES: readonly AdminPage[] = [
   account("account.extensions", "/account/extensions", "Extensions", "The paid extensions of the account (D748): A/B testing, AI support desk, email automation, Work and deals and contracts, each with whether the account has it (in its plan, added, a free trial and until when, read-only), its price from, and a free trial, adding or ending it.", {
     keywords: ["extensions", "add-ons", "trial", "subscribe", "a/b testing", "support desk", "email automation", "work", "deals"],
   }),
+  account("account.add", "/account/add", "Add to your account", "An online store and each extension the account does not have, one press each (D748 E7): an account with no store opens its first one with the plan's free trial; an extension never tried starts its free trial, one whose trial ended is added.", {
+    keywords: ["add", "open a store", "online store", "new store", "try", "trial", "extension", "add-on"],
+    tasks: ["Open an online store", "Try an extension free"],
+  }),
   account("account.appearance", "/account/appearance", "Appearance", "How the admin looks for you: light or dark, and the colour scheme, with every scheme drawn in light and dark with the admin's buttons, cards, figures and lists so you can compare them. Your stores keep their own colours.", {
     keywords: ["appearance", "colours", "colors", "theme", "scheme", "dark", "light", "meadow", "indigo", "look"],
     tasks: ["Choose light or dark", "Choose the admin's colour scheme", "Compare the schemes side by side"],

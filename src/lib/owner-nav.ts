@@ -23,6 +23,7 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account/domains", icon: "globe", label: "Your domains", description: "Every domain you hold, which store uses it, renewal, DNS and moving it.", holder: true },
   { path: "/account/billing", icon: "receipt-text", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true },
   { path: "/account/extensions", icon: "blocks", label: "Extensions", description: "The extensions your account has, their trials and prices, and adding or ending one.", owner: true },
+  { path: "/account/add", icon: "list-plus", label: "Add to your account", description: "An online store or another extension, one press each to start its free trial.", owner: true },
   { path: "/account/usage", icon: "sparkles", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
   { path: "/account/limits", icon: "gauge", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
   { path: "/account/referrals", icon: "share", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },

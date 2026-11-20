@@ -189,6 +189,8 @@ export const homeEn = {
   settings: {
     needs: { one: "One thing needs you before real payments: {list}.", many: "{n} things need you before real payments: {list}." },
     allSet: "Your store is set up. Change anything below at any time.",
+    /** A workspace's (D748 E7): no store to set up, so no essentials. */
+    workspaceLead: "Your business details, your team and the tools your account works with.",
     find: "Find a setting",
     findPlaceholder: "Find a setting, such as VAT or cookies",
     progress: "{done} of {total} set up",
@@ -769,6 +771,41 @@ export const homeEn = {
         suggested: "A suggestion from the analysis. Change it until it says what you want, then plan your changes. 20 to 2,000 characters.",
       },
     },
+  },
+  /** A standalone account's workspace (D748 E7): its Home, and Add to your account. */
+  workspace: {
+    eyebrow: "Your business",
+    description: "Everything your account has, in one place.",
+    open: "Open",
+    extensions: {
+      support_desk: { title: "Support desk", text: "Your customers' conversations, the AI's answers and what waits for you." },
+      email_automation: { title: "Email automation", text: "Broadcasts, flows and the people who get them." },
+      work: { title: "Work", text: "Your clients, the time you spend and your invoices." },
+      deals: { title: "Deals and contracts", text: "Your deals from the first talk to signed, and the leads to follow up." },
+    },
+    assistant: "AI manager",
+    assistantText: "Ask what is going on, or have it do things for you.",
+    add: "Add to your account",
+    addText: "An online store or another extension, each free to try.",
+    none: "Nothing is running in your account right now.",
+    noneLink: "Choose what to keep",
+  },
+  add: {
+    title: "Add to your account",
+    description: "Each starts with a free trial. Nothing is charged until you add it for good.",
+    storeTitle: "Open an online store",
+    storeText: "Sell online with your own shop: products, checkout, payments and shipping. Free for {days} days.",
+    storeName: "Store name",
+    storeButton: "Open my store",
+    storeMore: "Open another store",
+    try: "Try it free",
+    freeFor: "Free for {days} days",
+    add: "Add",
+    tried: "Your trial has ended: add it to keep it.",
+    from: "From {price} a month",
+    has: "Already in your account: {names}.",
+    everything: "Your account has every extension.",
+    ownerOnly: "Only the account's owner adds to it.",
   },
 };
 

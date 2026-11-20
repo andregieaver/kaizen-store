@@ -437,3 +437,34 @@ describe("the menu's cost (bloat review step 0.17)", () => {
     }
   });
 });
+
+describe("a standalone account's workspace (D748 E7)", () => {
+  const owner: PermissionHolder = { role: "owner" };
+  const workspace = (facts: unknown) => ({ features: ["sales"], workspace: true, extensionFacts: facts });
+  const sections = (facts: unknown) => storeSections(workspace(facts), (path) => canOpenPath(owner, path, true));
+  const paths = (facts: unknown) => sections(facts).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)));
+
+  it("offers only its extensions' pages, the people, a few settings and the team: no shop, website, bookings or A/B tests", () => {
+    const all = paths(null);
+    expect(all).toEqual(expect.arrayContaining(["/deals", "/leads", "/customers", "/broadcasts", "/flows", "/subscribers", "/support", "/chat", "/settings/books", "/analytics/sales"]));
+    expect(all).toEqual(expect.arrayContaining(["/settings/company", "/staff", "/activity", "/settings/workflows", "/integrations", "/settings/api", "/settings/ai"]));
+    for (const gone of ["/orders", "/products", "/discounts", "/pages", "/media", "/forms", "/experiments", "/bookings", "/settings/payments", "/settings/domains", "/settings/features", "/billing", "/analytics/traffic", "/text-messages"]) {
+      expect(all, gone).not.toContain(gone);
+    }
+    expect(sections(null).map((s) => s.key)).toEqual(["customers", "marketing", "analytics", "support", "settings"]);
+  });
+
+  it("follows what the account has: the support desk alone is its inbox, the people and the settings", () => {
+    const desk = { platform: false, launchedAt: "2026-01-01T00:00:00Z", included: ["support_desk"], rows: [] };
+    const some = paths(desk);
+    expect(some).toEqual(expect.arrayContaining(["/support", "/chat", "/customers"]));
+    for (const gone of ["/deals", "/broadcasts", "/subscribers", "/segments", "/settings/books", "/analytics/sales"]) expect(some, gone).not.toContain(gone);
+    expect(sections(desk).map((s) => s.key)).toEqual(["customers", "support", "settings"]);
+  });
+
+  it("opens none of the areas it does not serve, nor the setup wizard, whatever the role holds", () => {
+    for (const path of ["/orders", "/products", "/pages", "/bookings", "/setup", "/setup/details"]) expect(canOpenPath(owner, path, true), path).toBe(false);
+    for (const path of ["/support", "/deals", "/broadcasts", "/settings/company", "/staff", "/assistant"]) expect(canOpenPath(owner, path, true), path).toBe(true);
+    expect(canOpenPath(owner, "/orders")).toBe(true);
+  });
+});

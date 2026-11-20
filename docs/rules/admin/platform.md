@@ -288,6 +288,11 @@ under *What the router fetches ahead*.
   one per account, never marked or unmarked after. It is no store: every place that lists a person's stores, counts them against
   `stores_owned` or serves a storefront names `workspace` and leaves it out (the scan's list says which; a new one joins it). Its jobs
   run and its emails send as any store's: never add it to `store_is_active()` or `email.ts`'s holds.
+- Its admin shows only its extensions, the people, a few settings and the AI manager (part three): `memberCan()` refuses orders,
+  products, the website and bookings there (`allowedInWorkspace()`), the nav offers an extension's pages and those marked `workspace`,
+  and it starts with `sales` and Work on, never the shop. A new page a workspace needs is marked in `store-nav.ts`.
+- `/admin` sends a person with only a workspace there; its owner owns the account (`ownerWho()`), opens its first store from Add to
+  your account with the plan's trial, and the platform's counts name workspaces apart.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

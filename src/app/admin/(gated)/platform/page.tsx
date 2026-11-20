@@ -249,6 +249,8 @@ export default async function PlatformOverviewPage() {
                     </li>
                   ))}
                 </ul>
+                {/* Sign-ups for extensions alone (D748 E7) are named apart: their workspace is no store opened. */}
+                {funnel.workspaces > 0 && <p className="text-caption text-muted">{fillWords(t.workspaces, { n: funnel.workspaces })}</p>}
               </HomeCard>
             )}
           </>

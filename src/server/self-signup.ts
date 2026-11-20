@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { cacheLife, cacheTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
@@ -19,6 +20,7 @@ import { offerLinkByEmail } from "./kaizen-life-accounts";
 import { startDreamRun } from "./dream-factory";
 import { log } from "./log";
 import { TRIAL_DAYS, writeTrial } from "./store-trial";
+import { col, typedRow } from "./typed-rows";
 import { adminAuth } from "./supabase-admin";
 import { approveAccessRequest, createAccessRequest, isSlugTaken, sendAccessEmail, type AccessRequestInput } from "./platform";
 import { sameEmail } from "@/lib/email-address";
@@ -137,14 +139,20 @@ export async function startSelfSignup(
   log("info", "self_signup.started", { requestId: String(row.id) });
 }
 
-/** What the confirmation page shows for a link: the store's name and the request's language, or null for a link that does not work. */
-export async function confirmationOf(token: string): Promise<{ storeName: string; lang: PlatformLang } | null> {
+/**
+ * What the confirmation page shows for a link: the store's (or the business's) name, the request's language and whether it asks for no store
+ * (a sign-up for extensions, D748 E7), or null for a link that does not work.
+ */
+export async function confirmationOf(token: string): Promise<{ storeName: string; lang: PlatformLang; workspace: boolean } | null> {
   if (!isToken(token)) return null;
-  const [row] = await db().execute<Row>(sql`
-    select store_name, locale from commerce.access_requests
-    where confirm_hash = ${hashOf(token)} and status = 'pending' and self_serve and confirm_expires_at > now()
-  `);
-  return row ? { storeName: String(row.store_name), lang: requestLang(row.locale as string | null) } : null;
+  const row = await typedRow(
+    z.object({ store_name: col.text, locale: col.textOrNull, wants_store: col.bool }),
+    sql`
+      select store_name, locale, wants_store from commerce.access_requests
+      where confirm_hash = ${hashOf(token)} and status = 'pending' and self_serve and confirm_expires_at > now()
+    `,
+  );
+  return row ? { storeName: row.store_name, lang: requestLang(row.locale), workspace: !row.wants_store } : null;
 }
 
 /** A free store address from the store's name: the name's own, else with a number, else with a random end. */
@@ -158,7 +166,9 @@ export async function freeSlug(storeName: string): Promise<string> {
   return `${stem}-${randomBytes(3).toString("hex")}`;
 }
 
-export type ConfirmResult = { ok: true; storeName: string; password: boolean } | { ok: false; problem: "unknown" | "off" | "failed" | "password" };
+export type ConfirmResult =
+  | { ok: true; storeName: string; password: boolean; workspace: boolean }
+  | { ok: false; problem: "unknown" | "off" | "failed" | "password"; workspace?: boolean };
 
 /** Sets the new owner's password in Supabase Auth (an account confirmed by our own link); false when it could not be set. Injectable for tests. */
 export type SetOwnerPassword = (email: string, password: string) => Promise<boolean>;
@@ -208,18 +218,19 @@ export async function confirmSelfSignup(
   const [claimed] = await db().execute<Row>(sql`
     update commerce.access_requests set confirmed_at = now(), confirm_hash = null
      where confirm_hash = ${hashOf(token)} and status = 'pending' and self_serve and confirm_expires_at > now()
-    returning id, store_name, locale, message, dream
+    returning id, store_name, locale, message, dream, wants_store
   `);
   if (!claimed) return { ok: false, problem: "unknown" };
   const requestId = String(claimed.id);
   const storeName = String(claimed.store_name);
-  if (!(await selfServeOn())) return { ok: false, problem: "off" };
+  const workspace = claimed.wants_store === false;
+  if (!(await selfServeOn())) return { ok: false, problem: "off", workspace };
   try {
     const slug = await freeSlug(storeName);
     const made = await approveAccessRequest(null, requestId, slug, storeName, siteUrl());
     if (!made.ok) {
       log("error", "self_signup.store_failed", { requestId, problems: made.problems.length });
-      return { ok: false, problem: "failed" };
+      return { ok: false, problem: "failed", workspace };
     }
     // A store's own trial; a workspace (D748 E7) has no store to try, only the extensions' trials its approval started.
     if (!made.workspace) await writeTrial(made.storeId);
@@ -233,10 +244,10 @@ export async function confirmSelfSignup(
     if (claimed.dream === true && owner) await startDreamFromSignup(slug, String(owner.id), String(claimed.message ?? ""), requestId);
     // The confirmation link proved the address: linked to the Kaizen Life user with the same verified email, if there is one (3.3).
     if (owner) afterAnswer(() => offerLinkByEmail(String(owner.id), made.email));
-    return { ok: true, storeName, password: passwordSet };
+    return { ok: true, storeName, password: passwordSet, workspace: Boolean(made.workspace) };
   } catch (error) {
     log("error", "self_signup.store_failed", { requestId }, error);
-    return { ok: false, problem: "failed" };
+    return { ok: false, problem: "failed", workspace };
   }
 }
 

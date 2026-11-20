@@ -52,15 +52,19 @@ export async function waitingRequests(limit = 4): Promise<{ id: string; name: st
   return rows.map((r) => ({ id: r.id, name: r.name, storeName: r.store_name, createdAt: r.created_at }));
 }
 
-const FUNNEL_ROW = z.object({ asked: col.int, opened: col.int, set_up: col.int, paying: col.int });
+const FUNNEL_ROW = z.object({ asked: col.int, opened: col.int, set_up: col.int, paying: col.int, workspaces: col.int });
 
-export type SignUpFunnel = { asked: number; opened: number; setUp: number; paying: number };
+export type SignUpFunnel = { asked: number; opened: number; setUp: number; paying: number; workspaces: number };
 
-/** Of the people who asked for a store in the last `months` months: how many have one, finished setting it up, and pay for a plan. */
+/**
+ * Of the people who asked for a store in the last `months` months: how many have one, finished setting it up, and pay for a plan; and how
+ * many started with extensions alone (D748 E7: approved into a workspace, never counted as a store opened).
+ */
 export async function signUpFunnel(months = 6, now = new Date()): Promise<SignUpFunnel> {
   const row = await typedRow(FUNNEL_ROW, sql`
     select count(*)::int as asked,
-           count(s.id)::int as opened,
+           count(s.id) filter (where not s.workspace)::int as opened,
+           count(s.id) filter (where s.workspace)::int as workspaces,
            count(s.id) filter (where s.setup_completed_at is not null)::int as set_up,
            count(s.id) filter (where b.mode::text = 'live' and b.status in ('active', 'past_due'))::int as paying
     from commerce.access_requests r
@@ -68,5 +72,5 @@ export async function signUpFunnel(months = 6, now = new Date()): Promise<SignUp
     left join commerce.store_plans b on b.store_id = s.id
     where r.created_at >= ${now.toISOString()}::timestamptz - make_interval(months => ${months})
   `);
-  return { asked: row?.asked ?? 0, opened: row?.opened ?? 0, setUp: row?.set_up ?? 0, paying: row?.paying ?? 0 };
+  return { asked: row?.asked ?? 0, opened: row?.opened ?? 0, setUp: row?.set_up ?? 0, paying: row?.paying ?? 0, workspaces: row?.workspaces ?? 0 };
 }

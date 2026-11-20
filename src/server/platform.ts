@@ -129,13 +129,16 @@ export async function createAccessRequest(
  */
 export async function sendAccessEmail(kind: AccessEmailKind, requestId: string, url?: string): Promise<void> {
   try {
-    const [row] = await db().execute<Row>(sql`select email, name, store_name, locale from commerce.access_requests where id = ${requestId}::uuid`);
+    const row = await typedRow(
+      z.object({ email: col.text, name: col.text, store_name: col.text, locale: col.textOrNull, wants_store: col.bool }),
+      sql`select email, name, store_name, locale, wants_store from commerce.access_requests where id = ${requestId}::uuid`,
+    );
     if (!row) return;
-    const email = renderEmail(accessEmail(kind, requestLang(row.locale as string | null), { name: String(row.name), storeName: String(row.store_name), url }));
+    const email = renderEmail(accessEmail(kind, requestLang(row.locale), { name: row.name, storeName: row.store_name, url, workspace: !row.wants_store }));
     await sendEmail({
       storeId: null,
       kind: ACCESS_EMAIL_KINDS[kind],
-      to: String(row.email),
+      to: row.email,
       email,
       fromName: "Kaizena Flow",
       // A confirmation is sent again for each sign-up (a new link each time), so its key carries the link's own end.
@@ -595,15 +598,21 @@ export async function createStoreForOwner(
   if (designPresetId && !(await isOfferedDesign(designPresetId))) problems.push("That theme is not offered any more. Choose another.");
   if (problems.length > 0) return { ok: false, problems };
 
-  const [owned] = await db().execute<Row>(sql`
-    select count(*)::int as n from commerce.store_members m
-    join commerce.stores s on s.id = m.store_id
-    where m.account_id = ${account.id}::uuid and m.role = 'owner' and m.disabled_at is null
-      -- A workspace (D748 E7) is no store: never counted against the stores an owner may have.
-      and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house) and not s.workspace
-  `);
-  const count = Number(owned?.n ?? 0);
-  if (!account.platformAdmin && count === 0) {
+  const owned = await typedRow(
+    z.object({ n: col.int, workspace: col.bool }),
+    sql`
+      select count(*) filter (where not s.workspace)::int as n, coalesce(bool_or(s.workspace), false) as workspace
+        from commerce.store_members m
+        join commerce.stores s on s.id = m.store_id
+       where m.account_id = ${account.id}::uuid and m.role = 'owner' and m.disabled_at is null
+         -- A workspace (D748 E7) is no store: never counted against the stores an owner may have.
+         and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
+    `,
+  );
+  const count = owned?.n ?? 0;
+  // A workspace's owner (D748 E7) opens their account's first store from Add to your account, with the plan's free trial.
+  const firstFromWorkspace = count === 0 && owned?.workspace === true;
+  if (!account.platformAdmin && count === 0 && !firstFromWorkspace) {
     return { ok: false, problems: ["Only store owners can create more stores. Ask for a store at /sign-up."] };
   }
   if (!account.platformAdmin && count >= MAX_STORES_PER_OWNER) {
@@ -631,6 +640,7 @@ export async function createStoreForOwner(
   // The design profile chosen (D176), applied right after; a failure leaves the store with its template's look.
   const design = designPresetId ? await applyChosenDesign(storeId, designPresetId, account.id, designVariation) : null;
   await markNewStore(storeId);
+  if (firstFromWorkspace) await (await import("./store-trial")).grantTrial(storeId, account.id, "workspace");
   return { ok: true, slug, storeId, design };
 }
 

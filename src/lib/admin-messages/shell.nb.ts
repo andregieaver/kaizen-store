@@ -109,6 +109,7 @@ export const shellNb: ShellMessages = {
     controlCenter: "Kontrollsenter",
     allYourStoresShort: "alle butikkene dine",
     stores: "Butikker",
+    business: "Din bedrift",
     suspended: "Stengt midlertidig",
     staff: "Ansatt",
     allStores: "Alle {count} butikker",

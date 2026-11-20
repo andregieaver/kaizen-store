@@ -10,7 +10,11 @@ import { confirmationOf } from "@/server/self-signup";
 
 /** The confirmation page's head: never indexed, and the link's token never leaves in a referrer. */
 export function signUpConfirmMetadata(lang: PlatformLang): Metadata {
-  return { title: platformText(lang).signUp.selfServe.confirmTitle, robots: { index: false, follow: false }, referrer: "no-referrer" };
+  return {
+    title: platformText(lang).signUp.selfServe.confirmTitle,
+    robots: { index: false, follow: false },
+    referrer: "no-referrer",
+  };
 }
 
 /**
@@ -21,8 +25,14 @@ export function SignUpConfirmRoute({ lang, params }: { lang: PlatformLang; param
   const w = platformText(lang).signUp.selfServe;
   return (
     <main id="main" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-tight">{w.confirmTitle}</h1>
-      <Suspense fallback={<div className="h-24 animate-pulse rounded-lg bg-surface" />}>
+      <Suspense
+        fallback={
+          <>
+            <h1 className="text-3xl font-semibold tracking-tight">{w.confirmTitle}</h1>
+            <div className="h-24 animate-pulse rounded-lg bg-surface" />
+          </>
+        }
+      >
         <Confirm lang={lang} params={params} />
       </Suspense>
     </main>
@@ -35,36 +45,50 @@ async function Confirm({ lang, params }: { lang: PlatformLang; params: Promise<{
   const found = await confirmationOf(token);
   if (!found) {
     return (
-      <p role="alert">
-        {w.unknown}{" "}
-        <Link href={platformPath(lang, "/sign-up")} className="underline">
-          {platformText(lang).signUp.title}
-        </Link>
-      </p>
+      <>
+        <h1 className="text-3xl font-semibold tracking-tight">{w.confirmTitle}</h1>
+        <p role="alert">
+          {w.unknown}{" "}
+          <Link href={platformPath(lang, "/sign-up")} className="underline">
+            {platformText(lang).signUp.title}
+          </Link>
+        </p>
+      </>
     );
   }
+  // A sign-up for extensions without a store (D748 E7) starts its account and trials, not a store.
+  const words = found.workspace
+    ? {
+        title: w.confirmTitleWorkspace,
+        body: w.confirmBodyWorkspace,
+        button: w.confirmButtonWorkspace,
+      }
+    : { title: w.confirmTitle, body: w.confirmBody, button: w.confirmButton };
   return (
-    <ActionForm action={confirmSignup} className="flex flex-col gap-4" replaceOnSuccess>
-      <input type="hidden" name="token" value={token} />
-      <input type="hidden" name="locale" value={PLATFORM_LANG_FACTS[lang].locale} />
-      <p>{w.confirmBody.replaceAll("{store}", found.storeName)}</p>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        {w.passwordLabel}
-        <input
-          type="password"
-          name="password"
-          autoComplete="new-password"
-          maxLength={200}
-          aria-describedby="signup-password-hint"
-          className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-normal"
-        />
-        <span id="signup-password-hint" className="font-normal text-muted">
-          {w.passwordHint}
-        </span>
-      </label>
-      <div>
-        <SubmitButton>{w.confirmButton}</SubmitButton>
-      </div>
-    </ActionForm>
+    <>
+      <h1 className="text-3xl font-semibold tracking-tight">{words.title}</h1>
+      <ActionForm action={confirmSignup} className="flex flex-col gap-4" replaceOnSuccess>
+        <input type="hidden" name="token" value={token} />
+        <input type="hidden" name="locale" value={PLATFORM_LANG_FACTS[lang].locale} />
+        <p>{words.body.replaceAll("{store}", found.storeName)}</p>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {w.passwordLabel}
+          <input
+            type="password"
+            name="password"
+            autoComplete="new-password"
+            maxLength={200}
+            aria-describedby="signup-password-hint"
+            className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-normal"
+          />
+          <span id="signup-password-hint" className="font-normal text-muted">
+            {w.passwordHint}
+          </span>
+        </label>
+        <div>
+          <SubmitButton>{words.button}</SubmitButton>
+        </div>
+      </ActionForm>
+    </>
   );
 }

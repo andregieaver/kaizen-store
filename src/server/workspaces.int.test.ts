@@ -17,6 +17,9 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 const auth = await import("./auth");
 const limits = await import("./limits");
 const stores = await import("./stores");
+const permissions = await import("./permissions");
+const platform = await import("./platform");
+const ownerLevel = await import("./owner-level");
 
 const run = Date.now().toString(36);
 let owner: Account;
@@ -45,5 +48,37 @@ describe("a workspace is no store (D748 E7)", () => {
     expect(await stores.getOpenStore(slug)).toBeNull();
     const [active] = await db().execute<Row>(sql`select commerce.store_is_active(id) as on from commerce.stores where slug = ${slug}`);
     expect(active.on).toBe(true);
+  });
+
+  it("refuses its owner the areas it does not serve, as a key they lack (E7 part three)", async () => {
+    const store = (await stores.getStore(slug))!;
+    const member = { role: "owner" as const, kind: "staff" as const, permissions: null, store };
+    for (const key of ["orders:read", "products:write", "website:read", "bookings:read"] as const) expect(permissions.memberCan(member, key), key).toBe(false);
+    for (const key of ["owner", "customers:write", "marketing:write", "support:read", "settings:write", "staff:write", "books:read"] as const) {
+      expect(permissions.memberCan(member, key), key).toBe(true);
+    }
+  });
+
+  it("is its owner's place: in their workspaces, and their account's owner at the account's level", async () => {
+    expect((await auth.listWorkspaces(owner)).map((s) => s.slug)).toEqual([slug]);
+    const { who } = await ownerLevel.ownerWho(owner, await auth.listStores(owner));
+    expect(who.owner).toBe(true);
+  });
+
+  it("lets its owner open the account's first store, with the plan's free trial, while an account with neither is refused", async () => {
+    const [b] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`nobody-${run}@example.com`}, 'Nobody') returning id, email`);
+    const nobody: Account = { id: String(b.id), email: String(b.email), name: "Nobody", platformAdmin: false };
+    expect(await platform.createStoreForOwner(nobody, "Nobody's", `nobody-${run}`)).toMatchObject({ ok: false });
+
+    const made = await platform.createStoreForOwner(owner, "Solo shop", `solo-shop-${run}`);
+    expect(made).toMatchObject({ ok: true });
+    if (!made.ok) return;
+    const [trial] = await db().execute<Row>(sql`
+      select coalesce((select b.trial_ends_at from commerce.store_billing b where b.store_id = s.id),
+                      (select o.trial_ends_at from commerce.organisation_billing o where o.organisation_id = s.organisation_id)) is not null as trial,
+             s.organisation_id = (select w.organisation_id from commerce.stores w where w.slug = ${slug}) as same_account
+        from commerce.stores s where s.id = ${made.storeId}::uuid`);
+    expect(trial).toEqual({ trial: true, same_account: true });
+    expect(await limits.ownedStoreCount(owner.id)).toBe(1);
   });
 });

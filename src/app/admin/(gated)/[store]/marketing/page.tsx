@@ -99,7 +99,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   ];
 
   const holder = holderOf(member);
-  const section = storeSections(store, (path) => canOpenPath(holder, path)).find((s) => s.key === "marketing") ?? STORE_SECTIONS.find((s) => s.key === "marketing")!;
+  const section = storeSections(store, (path) => canOpenPath(holder, path, store.workspace)).find((s) => s.key === "marketing") ?? STORE_SECTIONS.find((s) => s.key === "marketing")!;
   const tools = section.groups.flatMap((g) => g.items);
   const listed = subscribers.subscribed;
   // On a phone (round 38, D728) the first six tools show, the rest behind +N.

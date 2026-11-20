@@ -125,6 +125,14 @@ export const platformEn = {
       passwordHint: "At least 12 characters, not your email address. Without one, you sign in with a link we email you.",
       password: "Choose a password of at least 12 characters that is not your email address, or leave it empty.",
       doneWithPassword: "{store} is ready. Sign in with your email address and the password you chose.",
+      /** The same page for a sign-up for extensions without a store (D748 E7): the account and its trials. */
+      confirmTitleWorkspace: "Start your free trial",
+      confirmBodyWorkspace: "Your account for {store} is made when you press the button, with the free trials you chose.",
+      confirmButtonWorkspace: "Start my free trial",
+      doneWorkspace: "Your account for {store} is ready. We have emailed you a link to sign in.",
+      doneWorkspaceWithPassword: "Your account for {store} is ready. Sign in with your email address and the password you chose.",
+      failedWorkspace: "We could not make your account just now. We have kept your request and will set it up for you.",
+      offWorkspace: "Signing up on your own is closed just now. We have kept your request and will write to you when your account is ready.",
       /** The Dream Factory (D409): the store built by AI from what they will sell. */
       dream: "Build my store with AI from this description",
       dreamHint:
@@ -371,6 +379,31 @@ export const platformEn = {
       body: "Press the button to confirm this address. {store} is made at once, ready to try with demo products, and stays private until you open it. The link works for 24 hours.",
       button: "Confirm and start my store",
       ignore: "If you did not sign up, ignore this email: nothing is made unless the button is pressed.",
+    },
+    /** A sign-up for extensions without a store (D748 E7): the same emails, about the account and its trials. */
+    workspace: {
+      received: {
+        subject: "We got your request for {store}",
+        preview: "We will write to you again when your account is ready.",
+        heading: "Thank you, {name}",
+        body: "We got your request to start Kaizena Flow for {store}. We read every request, and we write to you again when your account is ready.",
+        nothing: "You do not need to do anything now.",
+      },
+      approved: {
+        subject: "Your Kaizena Flow account for {store} is ready",
+        preview: "Sign in with this email address to start.",
+        heading: "Your account is ready",
+        body: "Your account for {store} is set up, with your free trials. Sign in with this email address to start. We have also sent you a sign-in link in an email of its own.",
+        button: "Sign in",
+      },
+      confirm: {
+        subject: "Confirm your email to start {store}",
+        preview: "One press and your free trials start.",
+        heading: "Confirm your email, {name}",
+        body: "Press the button to confirm this address. Your account for {store} is made at once, with the free trials you chose. The link works for 24 hours.",
+        button: "Confirm and start my free trial",
+        ignore: "If you did not sign up, ignore this email: nothing is made unless the button is pressed.",
+      },
     },
   },
   /** Reporting illegal content on a store (DSA art. 16, D411): the public form and its emails. */

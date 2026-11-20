@@ -33,7 +33,7 @@ export async function findStorePagesAction(store: string, query: string): Promis
       extensions: storeExtensionsOn(member.store),
       work: member.store.workOn,
       owner: can(holder, "owner"),
-      canOpen: (page) => page.area !== "store" || canOpenPath(holder, page.path),
+      canOpen: (page) => page.area !== "store" || canOpenPath(holder, page.path, member.store.workspace),
     },
   }).map((item) => ({ ...item, group: navWord(lang, item.group) }));
   const q = recordQuery(asked);
