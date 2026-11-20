@@ -5,8 +5,9 @@ import { z } from "zod";
 
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import { normaliseTarget } from "@/lib/redirect-path";
-import { readRule } from "@/lib/search-rules";
-import { readSynonym, synonymLine } from "@/lib/search-synonyms";
+import { readRule } from "@/lib/search-rules-schema";
+import { synonymLine } from "@/lib/search-synonyms";
+import { readSynonym } from "@/lib/search-synonyms-schema";
 import { ruleSentence, ruleProblemWords, synonymProblemWords } from "@/lib/search-tools";
 
 import type { Account } from "./auth";

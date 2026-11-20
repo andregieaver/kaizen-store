@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { merchandise, readRule, ruleApplies, rulesFor, searchRedirect, type SearchRule } from "./search-rules";
+import { merchandise, ruleApplies, rulesFor, searchRedirect, type SearchRule } from "./search-rules";
+import { readRule } from "./search-rules-schema";
 
 /** Search merchandising (wave 6 unit F2, D324, `docs/wave-6-catalogue.md` F.2). */
 

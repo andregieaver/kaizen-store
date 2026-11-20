@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
-import { readSynonym, SYNONYMS_MAX, type SynonymGroup, type SynonymKind, type SynonymProblem } from "@/lib/search-synonyms";
+import { SYNONYMS_MAX, type SynonymGroup, type SynonymKind, type SynonymProblem } from "@/lib/search-synonyms";
+import { readSynonym } from "@/lib/search-synonyms-schema";
 
 import { audit } from "./auth";
 import { col, typedRow, typedRows } from "./typed-rows";

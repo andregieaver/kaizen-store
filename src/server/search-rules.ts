@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import { normaliseTarget } from "@/lib/redirect-path";
-import { RULES_MAX, readRule, type RuleAction, type RuleMatch, type RuleProblem, type SearchRule } from "@/lib/search-rules";
+import { RULES_MAX, type RuleAction, type RuleMatch, type RuleProblem, type SearchRule } from "@/lib/search-rules";
+import { readRule } from "@/lib/search-rules-schema";
 
 import { audit } from "./auth";
 import { inTerms } from "./product-conditions";

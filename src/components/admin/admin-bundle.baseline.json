@@ -1,7 +1,5 @@
 {
   "zodReach": [
-    "app/admin/(gated)/[store]/search/rules-card.tsx",
-    "app/admin/(gated)/[store]/search/synonyms-card.tsx",
     "components/admin/affiliate-settings-form.tsx",
     "components/admin/ai-provider-form.tsx",
     "components/admin/ai-writer.tsx",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanWord, expandQuery, MAX_ALTERNATIVES, readSynonym, splitWords, synonymLine, type SynonymGroup } from "./search-synonyms";
+import { cleanWord, expandQuery, MAX_ALTERNATIVES, splitWords, synonymLine, type SynonymGroup } from "./search-synonyms";
+import { readSynonym } from "./search-synonyms-schema";
 
 /** Search synonyms (wave 6 unit F1, D324, `docs/wave-6-catalogue.md` F.1). */
 
