@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { targetLabel } from "@/lib/ab-site";
 import { applyChanges, offeredBlocks, partOf } from "@/lib/experiment-tools";
-import { builderEn } from "@/lib/admin-messages/builder.en";
+import { VERSION_DIFFERENCE_EN } from "@/lib/version-difference-labels";
 import { experimentCard, type CardState } from "@/lib/experiment-card";
 import { compareToOriginal, estimateRuntime, normalQuantile } from "@/lib/experiment-results";
 import { GUARDRAIL_HARM, GUARDRAIL_WATCHES, guardrailStopReason } from "@/lib/experiment-guardrails";
@@ -52,7 +52,8 @@ import { salesFunnel } from "./owner-insights";
 import { heatPages } from "./page-heat-read";
 import { savePage } from "./pages";
 import type { Store } from "./stores";
-import { experimentsEn } from "@/lib/admin-messages/experiments.en";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
+import { HEAT_TOOL_WORDS } from "@/lib/heat-labels";
 
 type Row = Record<string, unknown>;
 type Ctx = { account: import("./auth").Account; store: Store; invalidate: (tag: string) => void };
@@ -264,7 +265,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
     },
     what_each_version_changed: test.variants
       .filter((v) => v.key !== "a")
-      .map((v) => ({ version: v.name, changes: (changes[v.key] ?? []).slice(0, 12).map((d) => differenceLine(d, builderEn)) })),
+      .map((v) => ({ version: v.name, changes: (changes[v.key] ?? []).slice(0, 12).map((d) => differenceLine(d, VERSION_DIFFERENCE_EN)) })),
     by_day: card.showFigures && goal.kind === "rate" ? byDay(r, test.variants.map((v) => v.key)) : undefined,
     if_everyone_saw_it: card.impact
       ? `About ${card.impact.perWeek} more visitors a week who ${goal.per} with ${name(card.impact.key)} (likely ${card.impact.low} to ${card.impact.high}), at the traffic the test counted.`
@@ -318,7 +319,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     heatPages(store.id, { from: addDays(today, -29), to: addDays(today, 1) }),
     testRoom(store.id),
   ]);
-  const stuck = hubFigures(heat).where_visitors_get_stuck;
+  const stuck = hubFigures(heat, HEAT_TOOL_WORDS).where_visitors_get_stuck;
   const running = tests.filter((t) => t.status === "running" || t.status === "scheduled");
   // The shop's own traffic (D660): each candidate's visitors who could take part, and how long each counted goal would take there.
   const traffic = await experimentTraffic(store, targets);
@@ -328,7 +329,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     // The goals the tools offer (`TOOL_GOALS`): a sign-up to Kaizena Flow is its own store's, chosen on the new-test form (D757).
     const days = Object.fromEntries(
       COUNTED_GOALS.filter((goal) => !isHouseGoal(goal)).map((goal) => {
-        const e = goalEstimate({ facts: traffic, targetId, goal, trafficShare: 1, versions: 2, words: experimentsEn });
+        const e = goalEstimate({ facts: traffic, targetId, goal, trafficShare: 1, versions: 2, words: EXPERIMENTS_WORDS.en });
         return [goal, e ? (e.days > MAX_RUN_DAYS ? "longer than a test may run" : `about ${e.days} days`) : "no figure to work from"];
       }),
     );
@@ -358,7 +359,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
   );
   const estimate =
     input.visitors_per_day && input.current_rate_percent
-      ? estimateRuntime({ baseline: input.current_rate_percent / 100, relativeChange: input.change_percent / 100, versions: 2, eligiblePerDay: input.visitors_per_day, trafficShare: 1, words: experimentsEn })
+      ? estimateRuntime({ baseline: input.current_rate_percent / 100, relativeChange: input.change_percent / 100, versions: 2, eligiblePerDay: input.visitors_per_day, trafficShare: 1, words: EXPERIMENTS_WORDS.en })
       : null;
   return {
     can_be_tested: candidates,

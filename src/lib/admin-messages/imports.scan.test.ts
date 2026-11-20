@@ -60,6 +60,8 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/feature-common-labels.ts": "The store features' common words (common.features), read by FEATURE_WORDS_EN, the AI manager, the setup tools and the server's refusals as well; apart, so the common catalogue in the browser carries no settings words.",
   "lib/tax-readiness-labels.ts": "What the VAT features need, read by the AI manager's tax tools (readiness() in English) as well.",
   "lib/turnover-watch-labels.ts": "The threshold watch's sentences, read by the store checkup (watchText() in English) as well.",
+  "lib/version-difference-labels.ts": "What a version changes (differences, blockNames) in English, read by the AI manager's A/B test tools (differenceLine()) as well.",
+  "lib/heat-labels.ts": "The heatmap parts, bands and the front page's name in English, read by the AI manager's heatmap tools (pageFigures(), hubFigures()) as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
 

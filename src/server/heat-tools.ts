@@ -5,6 +5,8 @@ import { frustratedVersion } from "@/lib/heat-read";
 import { hubFigures, pageFigures, versionFigures } from "@/lib/heat-tools";
 import { addDays, todayIn } from "@/lib/analytics-period";
 import { variantNameText } from "@/lib/experiment-words";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
+import { HEAT_TOOL_WORDS } from "@/lib/heat-labels";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import { getExperiment } from "./experiment-admin";
@@ -30,7 +32,7 @@ export async function pageBehaviourTool({ store }: Ctx, { page, days, device }: 
   const periodWords = `${period.from} to ${today} (${days} days)`;
   if (!page) {
     const rows = await heatPages(store.id, { ...period, device });
-    return { measuring, period: periodWords, device: device ? DEVICE_WORDS[device] : "all", ...hubFigures(rows), page: base };
+    return { measuring, period: periodWords, device: device ? DEVICE_WORDS[device] : "all", ...hubFigures(rows, HEAT_TOOL_WORDS), page: base };
   }
   if (!PAGE_KEY.test(page)) throw new OwnerToolError("That is not a page key: use one as page_behaviour lists them, such as /no/p/mug.");
   const devices = await pageDevices(store.id, page, period);
@@ -41,7 +43,7 @@ export async function pageBehaviourTool({ store }: Ctx, { page, days, device }: 
     period: periodWords,
     device: DEVICE_WORDS[chosen],
     page_views_per_device: Object.fromEntries(HEAT_DEVICES.map((d) => [DEVICE_WORDS[d], devices[d]])),
-    ...pageFigures({ ...heat, layout }),
+    ...pageFigures({ ...heat, layout }, HEAT_TOOL_WORDS),
     page: `${base}?${new URLSearchParams({ page, device: chosen, days: String(days) }).toString()}`,
   };
 }
@@ -52,7 +54,7 @@ export async function versionBehaviourTool({ store }: Ctx, { experiment }: Owner
   const rows = await versionBehaviour(store.id, test.id);
   const byKey = new Map(rows.map((r) => [r.version, r]));
   const flagged = frustratedVersion(rows, FLAG_VERSION_VIEWS);
-  const name = (key: string) => variantNameText(test.variants.find((v) => v.key === key)?.name ?? key.toUpperCase());
+  const name = (key: string) => variantNameText(test.variants.find((v) => v.key === key)?.name ?? key.toUpperCase(), EXPERIMENTS_WORDS.en);
   return {
     measuring: store.heatmaps || rows.length > 0 ? "From heatmaps' daily totals over every page the test touched; never a visitor." : "Heatmaps are off and the test has no totals: nothing to say.",
     test: test.name,

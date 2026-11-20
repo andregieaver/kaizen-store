@@ -1,4 +1,5 @@
-import { experimentsEn, type ExperimentsMessages } from "./admin-messages/experiments.en";
+import type { ExperimentsMessages } from "./admin-messages/experiments.en";
+import { EXPERIMENTS_WORDS } from "./admin-words/experiments";
 import { isTestedPlace, type TargetKind } from "./ab-site";
 
 /**
@@ -32,10 +33,12 @@ function patternsOf<K extends string>(texts: Record<K, string>): Pattern<K>[] {
 
 const fill = (template: string, values: Record<string, string>) => template.replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
 
-const PART_PATTERNS = patternsOf(experimentsEn.parts);
+const english = EXPERIMENTS_WORDS.en;
+
+const PART_PATTERNS = patternsOf(english.parts);
 
 /** A part's label (`Row 2`, `Column 1 of row 2`, `Heading “Welcome” in row 1`) in the language; a component's own kind stays as written. */
-export function partLabelText(label: string, words: ExperimentsMessages = experimentsEn): string {
+export function partLabelText(label: string, words: ExperimentsMessages): string {
   for (const { key, names, re } of PART_PATTERNS) {
     const match = re.exec(label);
     if (match) return fill(words.parts[key], Object.fromEntries(names.map((n, i) => [n, match[i + 1]])));
@@ -44,30 +47,30 @@ export function partLabelText(label: string, words: ExperimentsMessages = experi
 }
 
 /** A version's stored name (`Original`, `Version B`) in the language; a name the owner gave stays as it is. */
-export function variantNameText(name: string, words: ExperimentsMessages = experimentsEn): string {
-  if (name === experimentsEn.variants.original) return words.variants.original;
+export function variantNameText(name: string, words: ExperimentsMessages): string {
+  if (name === english.variants.original) return words.variants.original;
   const match = /^Version ([A-D])$/.exec(name);
   return match ? fill(words.variants.version, { key: match[1] }) : name;
 }
 
 /** A test's target in a sentence or a table, as `targetLabel()` writes it, in the language. */
-export function targetLabelText(kind: TargetKind, slug: string, title: string, role: string | null | undefined, words: ExperimentsMessages = experimentsEn): string {
+export function targetLabelText(kind: TargetKind, slug: string, title: string, role: string | null | undefined, words: ExperimentsMessages): string {
   if (kind === "page") return `/${slug}`;
   if (kind === "role" && isTestedPlace(role)) return `${words.roles[role]}: ${title}`;
   return `${words.kinds[kind].name}: ${title}`;
 }
 
-const PROBLEM_PATTERNS = patternsOf(experimentsEn.problems);
+const PROBLEM_PATTERNS = patternsOf(english.problems);
 
 /** A refusal of the server in the language: a version's letter carried over, a part's label and a block's word said in the language too. */
-export function experimentProblemText(text: string, words: ExperimentsMessages = experimentsEn): string {
+export function experimentProblemText(text: string, words: ExperimentsMessages): string {
   for (const { key, names, re } of PROBLEM_PATTERNS) {
     const match = re.exec(text);
     if (!match) continue;
     const values = Object.fromEntries(
       names.map((name, i) => {
         const value = match[i + 1];
-        if (name === "part") return [name, value === experimentsEn.words.partUnderTest ? words.words.partUnderTest : partLabelText(value, words)];
+        if (name === "part") return [name, value === english.words.partUnderTest ? words.words.partUnderTest : partLabelText(value, words)];
         if (name === "word") return [name, value === "form" ? words.words.form : words.words.button];
         return [name, value];
       }),
@@ -77,7 +80,7 @@ export function experimentProblemText(text: string, words: ExperimentsMessages =
   return text;
 }
 
-export const experimentProblems = (problems: readonly string[], words: ExperimentsMessages = experimentsEn): string[] => problems.map((p) => experimentProblemText(p, words));
+export const experimentProblems = (problems: readonly string[], words: ExperimentsMessages): string[] => problems.map((p) => experimentProblemText(p, words));
 
 /** An action's answer with its refusals said in the language; the rest as it was. Run on the server, so no client module holds the English to match. */
 export function experimentAnswer<T>(answer: T, words: ExperimentsMessages): T {

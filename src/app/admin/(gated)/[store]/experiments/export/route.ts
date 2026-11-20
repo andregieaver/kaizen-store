@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
         name: t.name,
         status: t.status,
         goal: t.goal,
-        target: targetLabelText(t.page.kind, t.page.slug, t.page.title, t.page.role) + (t.part ? ` (${t.part.label})` : ""),
+        target: targetLabelText(t.page.kind, t.page.slug, t.page.title, t.page.role, experimentsEn) + (t.part ? ` (${t.part.label})` : ""),
         startedAt: t.startedAt,
         stoppedAt: t.stoppedAt,
         appliedVariant: t.appliedVariant,

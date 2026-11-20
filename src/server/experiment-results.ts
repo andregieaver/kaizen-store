@@ -24,7 +24,7 @@ import { dayIn, daysBetween } from "@/lib/work-dates";
 import type { ExperimentInfo } from "./experiment-admin";
 import { col, typedRows } from "./typed-rows";
 import type { Store } from "./stores";
-import { experimentsEn } from "@/lib/admin-messages/experiments.en";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 
 type Row = Record<string, unknown>;
 
@@ -213,7 +213,7 @@ export async function experimentResults(
     minDays: test.minDays,
     currency,
     locale: store.markets[0]?.locale ?? "en",
-    words: say?.words ?? experimentsEn,
+    words: say ? say.words : EXPERIMENTS_WORDS.en,
     ...(say && { numberLocale: say.numberLocale }),
   });
   const watched = await guardrailCounts(store, test, now, zone);
