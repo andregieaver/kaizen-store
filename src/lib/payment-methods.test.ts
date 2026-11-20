@@ -11,6 +11,7 @@ import {
   stateReason,
   SWITCHABLE_METHODS,
 } from "./payment-methods";
+import { paymentsEn } from "./admin-messages/payments.en";
 
 describe("payment methods per country (D291)", () => {
   it("asks for cards first, the base methods, and the European bank methods, each once", () => {
@@ -57,8 +58,8 @@ describe("payment methods per country (D291)", () => {
     expect(methodStateOf(states, methodInfo("blik")!)).toBe("unavailable");
     expect(methodStateOf(states, methodInfo("eps")!)).toBe("requested");
     expect(methodStateOf(null, methodInfo("eps")!)).toBe("not_read");
-    expect(stateReason("unsupported_country")).toMatch(/your country/);
-    expect(stateReason("some_new_code")).toBe("some_new_code");
-    expect(stateReason(null)).toBeNull();
+    expect(stateReason("unsupported_country", paymentsEn.methods.reasons)).toMatch(/your country/);
+    expect(stateReason("some_new_code", paymentsEn.methods.reasons)).toBe("some_new_code");
+    expect(stateReason(null, paymentsEn.methods.reasons)).toBeNull();
   });
 });

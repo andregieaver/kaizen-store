@@ -1,4 +1,4 @@
-import { paymentsEn } from "./admin-messages/payments.en";
+import { METHOD_STATES } from "./payment-method-labels";
 
 /**
  * Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6). Kaizena Flow asks Stripe for each method's capability on every
@@ -99,10 +99,10 @@ export function methodStateOf(states: Record<string, CapabilityState> | null, me
   return "unavailable";
 }
 
-export const METHOD_STATE_WORDS: Record<MethodStateWord, string> = paymentsEn.methods.states;
+export const METHOD_STATE_WORDS: Record<MethodStateWord, string> = METHOD_STATES;
 
-/** Stripe's reason a capability is not on, in words (English unless `words` are given); an unknown code is shown as Stripe gave it. */
-export function stateReason(code: string | null | undefined, words: Record<string, string> = paymentsEn.methods.reasons): string | null {
+/** Stripe's reason a capability is not on, in the words given (`payments.methods.reasons`); an unknown code is shown as Stripe gave it. */
+export function stateReason(code: string | null | undefined, words: Record<string, string>): string | null {
   if (!code) return null;
   return words[code] ?? code;
 }

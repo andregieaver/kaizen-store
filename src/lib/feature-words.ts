@@ -5,8 +5,10 @@
  */
 
 import { countWords } from "./admin-fill";
-import { commonEn, type CommonMessages } from "./admin-messages/common.en";
-import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
+import type { CommonMessages } from "./admin-messages/common.en";
+import type { SettingsMessages } from "./admin-messages/settings.en";
+import { FEATURE_COMMON_EN } from "./feature-common-labels";
+import { FEATURE_SETTINGS_EN } from "./store-feature-labels";
 import {
   dependentsOf,
   FEATURE_IDS,
@@ -30,7 +32,7 @@ export type FeatureBlocker = { text: string; path: string };
  */
 export type FeatureWords = { s: SettingsMessages["features"]; c: CommonMessages["features"] };
 
-export const FEATURE_WORDS_EN: FeatureWords = { s: settingsEn.features, c: commonEn.features };
+export const FEATURE_WORDS_EN: FeatureWords = { s: FEATURE_SETTINGS_EN, c: FEATURE_COMMON_EN };
 
 function subscriptionBlockers(f: FeatureFacts, w: FeatureWords): FeatureBlocker[] {
   return f.runningSubscriptions > 0 ? [{ text: countWords(f.runningSubscriptions, w.s.blockers.subscriptions), path: "/subscriptions" }] : [];

@@ -54,6 +54,12 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/campaign-labels.ts": "What a code or a campaign gives in English (describeCampaign()), read by the AI manager's campaign list as well.",
   "lib/support-inbox-text-english.ts": "Why a conversation went to a person, a summary's outcome and the topics' own words in English, read by the AI manager's support tools as well.",
   "lib/support-report-labels.ts": "A support report's units in English, read by support-reports.ts's rateWords() and durationFigureWords() for the AI manager and the platform as well.",
+  "lib/store-closure-labels.ts": "What stands in the way of closing a store and what is worth knowing first, read by the closing service and store-closure.ts on shoppers' routes as well.",
+  "lib/payment-method-labels.ts": "A payment method's state in English, read by payment-methods.ts (METHOD_STATE_WORDS), which a client card imports, as well.",
+  "lib/store-feature-labels.ts": "The store features' settings words (settings.features), read by FEATURE_WORDS_EN for the AI manager and the setup tools as well.",
+  "lib/feature-common-labels.ts": "The store features' common words (common.features), read by FEATURE_WORDS_EN, the AI manager, the setup tools and the server's refusals as well; apart, so the common catalogue in the browser carries no settings words.",
+  "lib/tax-readiness-labels.ts": "What the VAT features need, read by the AI manager's tax tools (readiness() in English) as well.",
+  "lib/turnover-watch-labels.ts": "The threshold watch's sentences, read by the store checkup (watchText() in English) as well.",
 };
 const isLeaf = (file: string) => rel(file) in ALLOWED_LEAVES;
 

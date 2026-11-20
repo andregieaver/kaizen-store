@@ -37,6 +37,7 @@ import { limitRefusal } from "@/lib/usage-format";
 import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { featureOn, kindFeature } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
+import { FEATURE_COMMON_EN } from "@/lib/feature-common-labels";
 import { MEDIA_KINDS, mediaFileOk, type MediaItemKind, type VideoSource } from "@/lib/product-media";
 import { INHERIT_WORDS, parseProductPriceWords, productWordsColumn, type WordsByLocale } from "@/lib/price-words";
 import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-check";
@@ -745,7 +746,7 @@ export async function saveProduct(
     : [];
   const neededFeature = kindFeature(given.kind);
   if (neededFeature && !featureOn(store, neededFeature) && stored?.kind !== given.kind) {
-    return { ok: false, problems: [`${featureOffText(neededFeature)} Products of that kind can't be added until it is switched on.`] };
+    return { ok: false, problems: [`${featureOffText(neededFeature, FEATURE_COMMON_EN)} Products of that kind can't be added until it is switched on.`] };
   }
   // A bundle (D322) is made as one and stays one: its variant holds no stock, a goods variant's stock has nowhere to go in a bundle.
   if (stored && (stored.kind === "bundle") !== (given.kind === "bundle")) {

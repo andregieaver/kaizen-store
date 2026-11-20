@@ -4,7 +4,7 @@
  * them into words, so a view test can hold them. The admin is English only. The sentences that touch the law (personal data, consent, a reduction against the
  * lowest price of 30 days) are listed in `docs/wave-2-data.md` section 8 for a person to read before real use.
  */
-import { commonEn, type CommonMessages } from "./admin-messages/common.en";
+import type { CommonMessages } from "./admin-messages/common.en";
 import { fillWords } from "./admin-fill";
 import { DATA_EXPORTS_ACTIVE_MAX, EXPORT_KEEP_DAYS, EXPORT_MAX_ROWS } from "./data-limits";
 import { type JobKind, type JobPhase, type JobStatus } from "./data-job";
@@ -64,13 +64,12 @@ export function exportProblemWords(code: string, words: { problems: Record<strin
   return fillWords(template, { max: EXPORT_MAX_ROWS.toLocaleString(locale), n: DATA_EXPORTS_ACTIVE_MAX });
 }
 
-/** The data jobs' words (`common.dataJobs`, D312): English unless a page hands in the admin's. */
+/** The data jobs' words (`common.dataJobs`, D312), handed in by the page. */
 export type DataJobWords = CommonMessages["dataJobs"];
-const JOB_WORDS: DataJobWords = commonEn.dataJobs;
 const counted = (n: number, words: { one: string; many: string }) => fillWords(n === 1 ? words.one : words.many, { n });
 
 /** How long a file is kept, in words: `expires in 6 days`, `expires in 3 hours`, `expired`. */
-export function expiryWords(expiresAt: string | null, now: Date, words: DataJobWords = JOB_WORDS): string {
+export function expiryWords(expiresAt: string | null, now: Date, words: DataJobWords): string {
   if (!expiresAt) return "";
   const left = new Date(expiresAt).getTime() - now.getTime();
   if (Number.isNaN(left) || left <= 0) return words.expired;
@@ -135,7 +134,7 @@ export function importStage(status: JobStatus): ImportStage {
 export const isWorking = (status: JobStatus): boolean => status === "checking" || status === "queued" || status === "running";
 
 /** What the progress bar says: `Checking the file`, `Saving products`, `Preparing your file`, `Making the file`. */
-export function workingWords(kind: JobKind, status: JobStatus, phase: JobPhase | null, words: DataJobWords = JOB_WORDS): string {
+export function workingWords(kind: JobKind, status: JobStatus, phase: JobPhase | null, words: DataJobWords): string {
   const saving = words.saving[kind];
   if (saving) return status === "checking" ? words.statuses.checking : saving;
   if (status === "queued") return words.statuses.queued;
@@ -143,7 +142,7 @@ export function workingWords(kind: JobKind, status: JobStatus, phase: JobPhase |
 }
 
 /** `120 of 400 rows` / `120 of 400 products`; `locale` writes the numbers (the admin's, en-GB unless given). */
-export function doneOfTotal(done: number | null, total: number | null, unit: string, words: DataJobWords = JOB_WORDS, locale = "en-GB"): string {
+export function doneOfTotal(done: number | null, total: number | null, unit: string, words: DataJobWords, locale = "en-GB"): string {
   if (total === null || total === undefined) return done ? fillWords(words.count, { n: wholeNumber(done, locale), unit }) : "";
   return fillWords(words.doneOf, { done: wholeNumber(done ?? 0, locale), total: wholeNumber(total, locale), unit });
 }

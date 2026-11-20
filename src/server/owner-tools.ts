@@ -287,6 +287,7 @@ import {
 } from "./site-tools";
 import { draftStore } from "./store-drafts";
 import { CAMPAIGN_DESCRIBE } from "@/lib/campaign-labels";
+import { TAX_READINESS_EN } from "@/lib/tax-readiness-labels";
 
 type Row = Record<string, unknown>;
 
@@ -1068,7 +1069,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
 
 /** The store's tax registration (D157), read only. The seller's own number is on its documents; no buyer's is ever here. */
 async function getTaxProfileTool({ store }: OwnerToolContext) {
-  const { profile, country, check } = await taxProfileView(store.id);
+  const { profile, country, check } = await taxProfileView(store.id, TAX_READINESS_EN);
   return {
     store_country: country,
     registered_for_vat: profile.vatRegistered,
@@ -1086,7 +1087,7 @@ async function getTaxProfileTool({ store }: OwnerToolContext) {
 
 /** What the VAT features need (D157): on or off, and what is missing, from `readiness()`. */
 async function taxReadinessTool({ store }: OwnerToolContext) {
-  const { readiness: all } = await taxProfileView(store.id);
+  const { readiness: all } = await taxProfileView(store.id, TAX_READINESS_EN);
   // Reverse charge is for selling to businesses (D178): left out while that is switched off, as the Tax page does.
   const lines = featureOn(store, "business") ? all : all.filter((line) => line.key !== "reverse_charge");
   return {
