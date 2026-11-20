@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
+import type { PrivacyMessages } from "@/lib/admin-messages/privacy.en";
 import type { RequestView } from "@/server/privacy-requests";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
@@ -30,7 +30,7 @@ export function RequestsView({
   filter,
   canWrite,
   timeZone,
-  words = privacyEn,
+  words,
   locale = "en-GB",
 }: {
   /** `/admin/{store}` */
@@ -40,7 +40,7 @@ export function RequestsView({
   canWrite: boolean;
   timeZone?: string;
   /** The privacy screens' words in the admin's language, and its date locale. */
-  words?: PrivacyMessages;
+  words: PrivacyMessages;
   locale?: string;
 }) {
   const w = words.list;

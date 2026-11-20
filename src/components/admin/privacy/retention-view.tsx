@@ -2,7 +2,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { PERSONAL_DATA } from "@/lib/personal-data";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
+import type { PrivacyMessages } from "@/lib/admin-messages/privacy.en";
+import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
 import { isBookkeepingKind, RETENTION_KINDS, type Period, type RetentionKind } from "@/lib/retention";
 import type { RetentionOverview, StoredRule } from "@/server/retention";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
@@ -14,10 +15,10 @@ import { alertText, card, dayText } from "./styles";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
-export const KIND_LABELS: Record<RetentionKind, string> = privacyEn.retention.kinds;
+export const KIND_LABELS: Record<RetentionKind, string> = PRIVACY_WORDS.en.retention.kinds;
 
 /** What a rule row says in one line in the admin's language, as `describePeriod()` writes it in English. */
-export function periodText(p: Period, w: PrivacyMessages["retention"]["period"] = privacyEn.retention.period): string {
+export function periodText(p: Period, w: PrivacyMessages["retention"]["period"]): string {
   if (p.periodUnit === "months" && p.periodValue % 12 === 0) {
     const base = countWords(p.periodValue / 12, w.years);
     return p.countsFrom === "end_of_year" ? fillWords(w.fromYearEnd, { period: base }) : base;
@@ -88,7 +89,7 @@ export function RetentionView({
   verify,
   change,
   today,
-  words = privacyEn,
+  words,
   locale = "en-GB",
 }: {
   overview: RetentionOverview;
@@ -97,7 +98,7 @@ export function RetentionView({
   change: Action;
   today: string;
   /** The privacy screens' words in the admin's language, and its date locale. */
-  words?: PrivacyMessages;
+  words: PrivacyMessages;
   locale?: string;
 }) {
   const w = words.retention;

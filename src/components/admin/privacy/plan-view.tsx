@@ -1,6 +1,6 @@
 import { adminDay } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
+import type { PrivacyMessages } from "@/lib/admin-messages/privacy.en";
 import type { ErasurePlan } from "@/lib/erasure-plan";
 import { formatMoney } from "@/lib/money";
 
@@ -14,14 +14,14 @@ import { card } from "./styles";
 export function ErasurePlanView({
   plan,
   locale = "en-GB",
-  words = privacyEn,
+  words,
   dateLocale = "en-GB",
 }: {
   plan: ErasurePlan;
   /** The store's locale, for amounts. */
   locale?: string;
   /** The privacy screens' words in the admin's language, and its date locale. */
-  words?: PrivacyMessages;
+  words: PrivacyMessages;
   dateLocale?: string;
 }) {
   const w = words.plan;

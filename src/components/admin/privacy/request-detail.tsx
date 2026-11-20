@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
+import type { PrivacyMessages } from "@/lib/admin-messages/privacy.en";
 import { labelOf, type PlanSummary } from "@/lib/erasure-plan";
 import type { RequestView } from "@/server/privacy-requests";
 import { PageHeader } from "@/components/admin/ui";
@@ -32,7 +32,7 @@ export function RequestDetail({
   holdsData,
   actions,
   problem,
-  words = privacyEn,
+  words,
   locale = "en-GB",
 }: {
   /** `/admin/{store}` */
@@ -49,7 +49,7 @@ export function RequestDetail({
   /** A refused download's fixed sentence (from `?export=`), never text from the address. */
   problem?: string | null;
   /** The privacy screens' words in the admin's language, and its date locale. */
-  words?: PrivacyMessages;
+  words: PrivacyMessages;
   locale?: string;
 }) {
   const w = words.detail;

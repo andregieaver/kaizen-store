@@ -3,12 +3,13 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RETENTION_KINDS, RETENTION_SEED } from "@/lib/retention";
+import { privacyEn } from "@/lib/admin-messages/privacy.en";
 
 import { KIND_LABELS, RetentionView, setInCode } from "./retention-view";
 import { BAD, noop, overview, plain, rule } from "./test-fixtures";
 
 const draw = (over: Partial<Parameters<typeof RetentionView>[0]> = {}) => {
-  const html = renderToString(h(RetentionView, { overview: overview(), verify: () => noop, change: noop, today: "2026-10-04", ...over }));
+  const html = renderToString(h(RetentionView, { overview: overview(), verify: () => noop, change: noop, today: "2026-10-04", ...over, words: privacyEn }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };

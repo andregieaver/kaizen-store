@@ -2,14 +2,16 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import { RequestDetail } from "./request-detail";
+import { privacyEn } from "@/lib/admin-messages/privacy.en";
 import { BAD, noop, overdue, plain, request } from "./test-fixtures";
 
 const KEY = "22222222-2222-4222-8222-222222222222";
 const actions = { extend: noop, refuse: noop, closeNoData: noop, cancel: noop, identity: noop };
 
 const draw = (over: Partial<Parameters<typeof RequestDetail>[0]> = {}) => {
-  const html = renderToString(h(RequestDetail, { base: "/admin/s", request: request(), canWrite: true, subjectKey: KEY, holdsData: true, actions, ...over }));
+  const html = renderToString(h(RequestDetail, { base: "/admin/s", request: request(), canWrite: true, subjectKey: KEY, holdsData: true, actions, ...over, words: privacyEn }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };

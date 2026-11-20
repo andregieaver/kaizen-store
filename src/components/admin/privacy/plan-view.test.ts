@@ -2,11 +2,13 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import { ErasurePlanView } from "./plan-view";
+import { privacyEn } from "@/lib/admin-messages/privacy.en";
 import { BAD, plain, plan } from "./test-fixtures";
 
 const draw = (p = plan()) => {
-  const html = renderToString(h(ErasurePlanView, { plan: p }));
+  const html = renderToString(h(ErasurePlanView, { plan: p, words: privacyEn }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };

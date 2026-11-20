@@ -2,11 +2,13 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+
 import { RequestsView, requestsFilter } from "./requests-view";
+import { privacyEn } from "@/lib/admin-messages/privacy.en";
 import { BAD, overdue, plain, request } from "./test-fixtures";
 
 const draw = (over: Partial<Parameters<typeof RequestsView>[0]> = {}) => {
-  const html = renderToString(h(RequestsView, { base: "/admin/s", requests: [request(), overdue({ id: "99999999-9999-4999-8999-999999999999", subjectEmail: "ola@example.com" })], filter: "open", canWrite: true, ...over }));
+  const html = renderToString(h(RequestsView, { base: "/admin/s", requests: [request(), overdue({ id: "99999999-9999-4999-8999-999999999999", subjectEmail: "ola@example.com" })], filter: "open", canWrite: true, ...over, words: privacyEn }));
   const text = plain(html);
   expect(text).not.toMatch(BAD);
   return { html, text };
