@@ -123,9 +123,11 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
   // The words and how it will look sit side by side; one press stacks them, and the browser keeps the choice (D862).
   const layout = page.locator("[data-layout]");
   await expect(layout).toHaveAttribute("data-layout", "inline");
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: test.info().outputPath("contract-side-by-side.png") });
   await page.getByRole("group", { name: "Layout" }).getByRole("button", { name: "Stacked" }).click();
   await expect(layout).toHaveAttribute("data-layout", "stacked");
+  await page.screenshot({ path: test.info().outputPath("contract-stacked.png") });
   await page.reload();
   await expect(page.locator("[data-layout]")).toHaveAttribute("data-layout", "stacked");
   await page.getByRole("group", { name: "Layout" }).getByRole("button", { name: "Side by side" }).click();
