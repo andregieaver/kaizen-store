@@ -25,7 +25,7 @@ import { checkWalletDomains } from "@/server/express-checkout";
 import { MOLLIE_COOKIE, MOLLIE_COOKIE_PATH } from "@/lib/mollie";
 import { activateMollieMethod, chooseCheckoutProvider, disconnectMollie, mollieStart } from "@/server/mollie";
 import { saveShippingSettings, setStripeProvider, type SaveResult } from "@/server/settings";
-import { paymentsEn } from "@/lib/admin-messages/payments.en";
+import type { PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { knownText } from "@/lib/known-words";
 import { BILLING_WORDS } from "@/lib/admin-words/billing";
 import { PAYMENTS_WORDS } from "@/lib/admin-words/payments";
@@ -59,10 +59,10 @@ async function origin(): Promise<string> {
  */
 async function inPayments(state: FormState): Promise<FormState> {
   const w = PAYMENTS_WORDS[await actionAdminLang()];
-  return { ...state, messages: state.messages?.map((m) => knownText(m, paymentsEn.problems, w.problems)) };
+  return { ...state, messages: state.messages?.map((m) => knownText(m, PAYMENTS_WORDS.en.problems, w.problems)) };
 }
 
-async function paymentsWord(pick: (w: typeof paymentsEn.actions) => string): Promise<string> {
+async function paymentsWord(pick: (w: PaymentsMessages["actions"]) => string): Promise<string> {
   return pick(PAYMENTS_WORDS[await actionAdminLang()].actions);
 }
 

@@ -1,5 +1,5 @@
 import { accountSessionAction, createStripeAccountAction, refreshStripeAccountAction } from "@/app/admin/(gated)/actions";
-import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
+import type { PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
 import type { StripeAccount } from "@/server/connect";
 import { platformPublishableKey } from "@/server/stripe";
@@ -18,15 +18,15 @@ export function StripeAccountPanel({
   account,
   isOwner,
   title,
-  words = paymentsEn.stripe,
+  words,
 }: {
   storeSlug: string;
   mode: PaymentModeName;
   account: StripeAccount | undefined;
   isOwner: boolean;
   title?: string;
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: PaymentsMessages["stripe"];
+  /** The words, in the account's language (D312 A8). */
+  words: PaymentsMessages["stripe"];
 }) {
   const w = words;
   const stage = accountStage(account ?? null);

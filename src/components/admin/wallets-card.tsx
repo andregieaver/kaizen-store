@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
+import type { PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { Card, Chip } from "@/components/admin/ui";
 import { WALLETS, walletWordOf, type WalletDomain, type WalletWord } from "@/lib/express-checkout";
 import { methodStateOf, PAYMENT_METHODS, type CapabilityState, type MethodStateWord } from "@/lib/payment-methods";
@@ -34,8 +34,8 @@ export function WalletsCard({
   states,
   isOwner,
   action,
-  words = paymentsEn.wallets,
-  methodWords = paymentsEn.methods,
+  words,
+  methodWords,
   locale = "en",
   timeZone,
 }: {
@@ -45,8 +45,8 @@ export function WalletsCard({
   states: Record<string, CapabilityState> | null;
   isOwner: boolean;
   action: (state: FormState, formData: FormData) => Promise<FormState>;
-  words?: PaymentsMessages["wallets"];
-  methodWords?: PaymentsMessages["methods"];
+  words: PaymentsMessages["wallets"];
+  methodWords: PaymentsMessages["methods"];
   locale?: string;
   /** The store's time zone: when the wallets were last checked, on the store's clock (D812). */
   timeZone: string;

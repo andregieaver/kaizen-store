@@ -4,7 +4,7 @@ import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { submitClass } from "@/lib/submit-class";
 import { fillWords } from "@/lib/admin-fill";
-import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
+import type { PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { MOLLIE_DASHBOARD, MOLLIE_LEFT_OUT } from "@/lib/mollie";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import type { MollieConnection } from "@/server/mollie";
@@ -27,7 +27,7 @@ export function MollieCard({
   providerAction,
   disconnectAction,
   activateAction,
-  words = paymentsEn.mollie,
+  words,
 }: {
   connection: MollieConnection | null;
   appOn: boolean;
@@ -39,8 +39,8 @@ export function MollieCard({
   providerAction: Action;
   disconnectAction: () => Promise<FormState>;
   activateAction: Action;
-  /** The words, in the account's language (D312 A8); English unless given. */
-  words?: PaymentsMessages["mollie"];
+  /** The words, in the account's language (D312 A8). */
+  words: PaymentsMessages["mollie"];
 }) {
   if (!appOn) return null;
   const w = words;

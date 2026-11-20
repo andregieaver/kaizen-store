@@ -10,7 +10,6 @@ import { WalletsCard } from "@/components/admin/wallets-card";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { paymentsEn } from "@/lib/admin-messages/payments.en";
 import { knownText } from "@/lib/known-words";
 import { mainCurrency } from "@/lib/markets";
 import { accountStage } from "@/lib/stripe-account";
@@ -158,7 +157,7 @@ export default async function PaymentSettingsPage({
             {testReady
               ? w.test.ready
               : testSetup && !testSetup.ok
-                ? fillWords(w.test.failed, { problem: knownText(testSetup.problem, paymentsEn.problems, w.problems) })
+                ? fillWords(w.test.failed, { problem: knownText(testSetup.problem, PAYMENTS_WORDS.en.problems, w.problems) })
                 : w.test.creating}
           </p>
           <p className="text-muted">{w.test.howTo}</p>

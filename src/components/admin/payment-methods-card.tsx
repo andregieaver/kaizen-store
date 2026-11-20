@@ -1,6 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
-import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
+import type { PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { Card, Chip } from "@/components/admin/ui";
 import {
   methodOn,
@@ -40,7 +40,7 @@ export function PaymentMethodsCard({
   markets,
   isOwner,
   action,
-  words = paymentsEn.methods,
+  words,
   locale = "en",
 }: {
   states: Record<string, CapabilityState> | null;
@@ -48,8 +48,8 @@ export function PaymentMethodsCard({
   markets: readonly string[];
   isOwner: boolean;
   action: (state: FormState, formData: FormData) => Promise<FormState>;
-  /** The words, in the account's language (D312 A8), and its locale for country names; English unless given. */
-  words?: PaymentsMessages["methods"];
+  /** The words, in the account's language (D312 A8), and its locale for country names. */
+  words: PaymentsMessages["methods"];
   locale?: string;
 }) {
   const w = words;
