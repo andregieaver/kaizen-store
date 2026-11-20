@@ -16,6 +16,13 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.51 — 2026-11-20
+
+Segment rules gain products a signed-in customer looked at (email plan M2.4), from the views a store keeps while a browse email runs.
+
+- `{"kind": "viewed", "has": true | false, "products": ["<product id>"], "days": n}`: looked at one of the products (ever, of the views
+  kept, or in the last `n` days), or not. Without views kept, it holds for nobody.
+
 ## 1.50 — 2026-11-20
 
 Segment rules gain a customer's field (email plan M2.4), for fields the store marked *Use it in segments* (a field of a group for

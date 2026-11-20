@@ -71,6 +71,8 @@ export type Person = {
   lastClickAt?: string | null;
   /** The values of the customer's fields marked for marketing (M2.4), by field id, each as words in lower case (a choice by its key). */
   fields?: Record<string, string[]>;
+  /** When a signed-in customer last looked at each of the products the rules name (M2.4), while views are kept (D691), by product id. */
+  viewedProducts?: Record<string, string>;
 };
 
 /** How long presses are kept, as `CLICK_DAYS` in `email-clicks.ts` (which this browser-side module cannot import: it signs with node:crypto). */
@@ -117,6 +119,8 @@ const MORE_CONDITIONS = [
   z.object({ kind: z.literal("sms"), statuses: z.array(z.enum(SMS_CONSENTS)).min(1, CHOOSE_SOME).max(SMS_CONSENTS.length) }),
   // Email engagement (email plan M2.4): pressed a link in the store's emails in the last days, or none within the clicks kept.
   z.object({ kind: z.literal("clicked"), op: z.enum(["within", "never"]), days: days.optional() }),
+  // Products a signed-in customer looked at (M2.4), kept only while a browse email runs (D691): ever (of those kept) or in the last days, or not.
+  z.object({ kind: z.literal("viewed"), has: z.boolean(), products: z.array(z.uuid()).min(1, CHOOSE_SOME).max(PRODUCTS_PER_CONDITION), days: days.optional() }),
   // A customer's field marked for marketing (M2.4), by the field's id: what it says, or whether it is filled in.
   z.object({ kind: z.literal("field"), field: z.string().min(1, CHOOSE_SOME).max(80), op: z.enum(["is", "isNot", "filled", "empty"]), value: z.string().trim().max(200).optional() }),
 ] as const;
@@ -219,6 +223,11 @@ export function holds(c: Condition, p: Person, today: Date): boolean {
     case "clicked":
       if (p.lastClickAt === undefined) return false;
       return c.op === "never" ? p.lastClickAt === null : inLast(p.lastClickAt, c.days ?? 0, today);
+    case "viewed": {
+      if (!p.viewedProducts) return false;
+      const seen = c.products.some((id) => inLast(p.viewedProducts?.[id], c.days, today));
+      return c.has ? seen : !seen;
+    }
     case "field": {
       if (p.fields === undefined) return false;
       const values = p.fields[c.field] ?? [];
@@ -253,6 +262,8 @@ export type SegmentNeeds = {
   clicks: boolean;
   /** The ids of the customer fields conditions name, each once. */
   fields: string[];
+  /** The product ids "looked at" conditions name, each once. */
+  viewed: string[];
 };
 
 export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
@@ -275,6 +286,7 @@ export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
     sms: kinds.has("sms"),
     clicks: kinds.has("clicked"),
     fields: [...new Set(conditions.flatMap((c) => (c.kind === "field" ? [c.field] : [])))],
+    viewed: [...new Set(conditions.flatMap((c) => (c.kind === "viewed" ? c.products : [])))],
   };
 }
 
@@ -377,6 +389,11 @@ export function describeCondition(c: Condition, ctx: DescribeContext): string {
       return fillWords(w.sms, { list: or(c.statuses.map((s) => w.smsWords[s]), w) });
     case "clicked":
       return c.op === "never" ? fillWords(w.clickedNever, { days: days(SEGMENT_CLICK_DAYS) }) : fillWords(w.clickedWithin, { days: days(c.days ?? 0) });
+    case "viewed": {
+      const list = namedList(c.products, ctx.productName, w.goneProduct, w.chosenProducts, w);
+      const template = c.has ? (c.days === undefined ? w.viewedAny : w.viewedWithin) : c.days === undefined ? w.viewedNot : w.viewedNotWithin;
+      return fillWords(template, { list, days: days(c.days ?? 0) });
+    }
     case "field": {
       const field = ctx.fieldLabel?.(c.field) ?? w.aField;
       const template = { is: w.fieldIs, isNot: w.fieldIsNot, filled: w.fieldFilled, empty: w.fieldEmpty }[c.op];
@@ -450,6 +467,8 @@ export function newCondition(kind: ConditionKind): Condition {
       return { kind, statuses: ["subscribed"] };
     case "clicked":
       return { kind, op: "within", days: 90 };
+    case "viewed":
+      return { kind, has: true, products: [], days: 7 };
     case "field":
       return { kind, field: "", op: "filled" };
   }
@@ -477,6 +496,7 @@ export const CONDITION_KIND_WORDS: Record<ConditionKind, string> = {
   sms: "Text consent",
   clicked: "Email engagement",
   field: "Customer field",
+  viewed: "Looked at a product",
 };
 
 /**
@@ -484,7 +504,7 @@ export const CONDITION_KIND_WORDS: Record<ConditionKind, string> = {
  * order, who they are, how they may be reached, and how they deal with the store.
  */
 export const CONDITION_GROUPS: readonly { id: "bought" | "orders" | "who" | "reach" | "talks"; kinds: readonly ConditionKind[] }[] = [
-  { id: "bought", kinds: ["bought", "boughtCategory", "subscription"] },
+  { id: "bought", kinds: ["bought", "boughtCategory", "viewed", "subscription"] },
   { id: "orders", kinds: ["orders", "spent", "lastOrder", "firstOrder", "rfm"] },
   { id: "who", kinds: ["country", "language", "group", "company", "account", "tag", "field"] },
   { id: "reach", kinds: ["consent", "clicked", "sms"] },
@@ -495,7 +515,7 @@ export const CONDITION_GROUPS: readonly { id: "bought" | "orders" | "who" | "rea
 /** A customer's field marked for marketing (M2.4), as the rule builder offers it: its id, label, type and choices. */
 export type SegmentField = { id: string; label: string; type: string; choices: { key: string; label: string }[] };
 
-export type ConditionOffer = { rfmReady: boolean; deals: boolean; reviews: boolean; subscriptions: boolean; sms: boolean; fields?: boolean };
+export type ConditionOffer = { rfmReady: boolean; deals: boolean; reviews: boolean; subscriptions: boolean; sms: boolean; fields?: boolean; views?: boolean };
 
 export function conditionOffered(kind: ConditionKind, offer: ConditionOffer): boolean {
   switch (kind) {
@@ -511,6 +531,8 @@ export function conditionOffered(kind: ConditionKind, offer: ConditionOffer): bo
       return offer.sms;
     case "field":
       return offer.fields === true;
+    case "viewed":
+      return offer.views === true;
     default:
       return true;
   }

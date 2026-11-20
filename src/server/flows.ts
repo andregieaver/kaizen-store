@@ -742,6 +742,12 @@ export const BROWSE_ON = (store: ReturnType<typeof sql>) => sql`(
   exists (select 1 from commerce.automations a where a.store_id = ${store} and a.kind = 'browse' and a.enabled)
   or exists (select 1 from commerce.flows f where f.store_id = ${store} and f.trigger = 'customer.browsed' and f.enabled))`;
 
+/** Whether the store keeps product views now (D691): a browse email on, so segments may ask what a customer looked at (M2.4). */
+export async function viewsKept(storeId: string): Promise<boolean> {
+  const row = await typedRow(z.object({ on: col.bool }), sql`select ${BROWSE_ON(sql`${storeId}::uuid`)} as on`);
+  return row?.on ?? false;
+}
+
 /** Deletes the store's product views when no browse email is on any more (D691: nothing kept for an email that will not go). */
 export async function dropProductViewsUnlessBrowsing(storeId: string): Promise<void> {
   await db().execute(sql`delete from commerce.customer_product_views where store_id = ${storeId}::uuid and not ${BROWSE_ON(sql`${storeId}::uuid`)}`);
