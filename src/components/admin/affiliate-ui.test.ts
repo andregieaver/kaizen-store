@@ -6,7 +6,8 @@ import { orderEn } from "@/lib/admin-messages/order.en";
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
-import { formFromSettings, readAffiliateForm } from "@/lib/affiliate-admin";
+import { formFromSettings } from "@/lib/affiliate-admin";
+import { readAffiliateForm } from "@/lib/affiliate-admin-schema";
 import { AFFILIATE_DEFAULTS, type AffiliateAttributionRow, type AffiliateOverview, type AffiliateRow, type AffiliateSettings, type CustomerAffiliate } from "@/lib/affiliates";
 
 import { AffiliateBlockForm } from "./affiliate-block-form";

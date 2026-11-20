@@ -7,11 +7,11 @@ import {
   example,
   formFromSettings,
   orderedProblems,
-  readAffiliateForm,
   rulesSummary,
   type AffiliateField,
   type AffiliateFormValues,
 } from "@/lib/affiliate-admin";
+import { readAffiliateForm } from "@/lib/affiliate-admin-schema";
 import type { AffiliateResult, AffiliateSettings } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
 

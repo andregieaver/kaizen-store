@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { AFFILIATE_FIELD_ORDER, attributionStatus, example, formFromSettings, orderedProblems, overviewRows, personLabel, readAffiliateForm, rulesSummary, type AffiliateFormValues } from "./affiliate-admin";
+import {
+  AFFILIATE_FIELD_ORDER,
+  attributionStatus,
+  example,
+  formFromSettings,
+  orderedProblems,
+  overviewRows,
+  personLabel,
+  rulesSummary,
+  type AffiliateFormValues,
+} from "./affiliate-admin";
+import { readAffiliateForm } from "./affiliate-admin-schema";
 import { AFFILIATE_EXPLANATION, AFFILIATE_NEEDS_BONUS } from "./affiliate-admin-english";
 import { AFFILIATE_DEFAULTS, type AffiliateOverview, type AffiliateSettings } from "./affiliates";
 import { moneyIn } from "./bonus-admin";
