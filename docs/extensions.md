@@ -471,6 +471,9 @@ refuses and the store's sign-up does not link to it; nobody signs up into an adm
   3a7f447c, held back from run 1738 while main was red over a bundle budget not of this change). In production: all 32 extension prices
   and 8 bundle prices carry the price sheet's founding prices; no founding offer is set (`extension_founding_until` null), so none is sold
   yet. E8 (the Extensions block) deployed with it; it needs no migration. Advisors: INFO only, nothing new on the changed tables.
+- E7 part one: `20261119235642_red_ezekiel_stane`, `20261119235653_workspace_rules`, applied by CI 20 November 2026 (held back from run 1747
+  while main was red over a date fixed in another session's test, ci-red #27). In production: `stores.workspace` and
+  `commerce.make_workspace()` in place, no workspace made yet. Advisors: INFO only, nothing on the new column, index, function or trigger.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
