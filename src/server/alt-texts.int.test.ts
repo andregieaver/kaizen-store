@@ -317,4 +317,22 @@ describe("alt texts written by the store's AI (D89)", () => {
     expect((await altTexts.writeAltText(owner(), fresh.id)).ok).toBe(true);
     expect(await triesOf(fresh.id)).toBe(0);
   });
+
+  it("refreshes a store once its queue is empty, not on every run (bloat review step 2.14)", async () => {
+    // Nothing else of the store's is due: twelve new pictures, four a run.
+    await db().execute(sql`update commerce.media set alt_tried_at = now() where store_id = ${storeId}::uuid and kind = 'image' and alt_source is null`);
+    for (let i = 1; i <= 12; i++) await addPicture(`kopp-q${i}`);
+    fakeAi();
+    // Not in the first five minutes of an hour: the job's ordinary pass.
+    const now = new Date(Date.UTC(2026, 10, 20, 12, 30));
+    const refreshed: boolean[] = [];
+    for (let i = 0; i < 3; i++) {
+      const result = await altTexts.refreshAltTexts(4, 5, { now });
+      refreshed.push(result.owners.some((o) => o.storeId === storeId));
+    }
+    expect(refreshed).toEqual([false, false, true]);
+    // A fourth run finds nothing due, writes nothing and refreshes nothing.
+    const fourth = await altTexts.refreshAltTexts(4, 5, { now });
+    expect(fourth.owners.some((o) => o.storeId === storeId)).toBe(false);
+  });
 });

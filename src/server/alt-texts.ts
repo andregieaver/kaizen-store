@@ -242,7 +242,10 @@ export async function sitesDueForAltText(full = false): Promise<Row[]> {
  * run (those waiting longest first), on sites whose AI has a text model that sees pictures. A language added since is filled by
  * the pass in the first five minutes of each hour. A picture that failed waits a day and is left alone by the job after five
  * failures in a row (a person's own run still tries it). A site with no model that sees pictures is looked at once a day.
- * Returns the owners whose texts changed, for their caches.
+ * Returns the owners whose texts changed, for their caches: only once nothing is left due for the owner (bloat review step 2.14), so a
+ * store with 40 new pictures is refreshed once, when its queue empties, not on each of its 10 runs; until then its pages show their
+ * pictures' new texts within the minutes the queue takes. No page is refreshed on its own: nothing indexes which pages hold a picture
+ * (step 0.28 adds no such index), and `mediaUses()` reads every page's text per picture, too costly for a five-minute job.
  */
 export async function refreshAltTexts(
   perSite = 4,
@@ -254,10 +257,12 @@ export async function refreshAltTexts(
   const sites = await sitesDueForAltText(full);
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const owners: MediaOwner[] = [];
+  const sitesOf = new Map<MediaOwner, AltSite | null>();
   for (const row of sites) {
     if (owners.length >= sitesPerRun) break;
     const owner = { storeId: row.store_id ? String(row.store_id) : null, storeSlug: row.slug ? String(row.slug) : null };
-    const due = await dueForAltText(owner, since, false, await altSite(owner), true);
+    const site = await altSite(owner);
+    const due = await dueForAltText(owner, since, false, site, true);
     if (due.length === 0) continue;
     if (!seeing(await aiFor(owner.storeId))) {
       // No model that sees pictures: the site waits a day, and no try is counted against a picture.
@@ -269,10 +274,19 @@ export async function refreshAltTexts(
       continue;
     }
     owners.push(owner);
+    sitesOf.set(owner, site);
   }
   const runs = await Promise.all(owners.map((owner) => writeAltTexts(owner, { since, limit: perSite, job: true })));
+  // Asked again with the first call's arguments: an owner whose queue is empty now is refreshed once, for everything its runs wrote. A
+  // last run whose pictures all failed still settles the queue, so the texts the runs before it wrote are shown.
+  const settled = await Promise.all(
+    owners.map(
+      async (owner, index) =>
+        runs[index].written + runs[index].failed > 0 && (await dueForAltText(owner, since, false, sitesOf.get(owner) ?? null, true)).length === 0,
+    ),
+  );
   return {
-    owners: owners.filter((_, index) => runs[index].written > 0),
+    owners: owners.filter((_, index) => settled[index]),
     written: runs.reduce((sum, run) => sum + run.written, 0),
   };
 }
