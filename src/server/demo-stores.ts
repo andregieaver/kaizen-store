@@ -9,7 +9,7 @@ import { variationsOf } from "@/lib/design-variations";
 import { demoStoreAddress, presetRefusal, type DemoDetails, type LiveDemo, type LookPart } from "@/lib/demo-stores";
 import { slugProblem } from "@/lib/slug";
 import { starterRefusal, type StarterRow } from "@/lib/store-starters";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import { audit, platformCan, type Account } from "./auth";
 import { addVariation } from "./design-variations";

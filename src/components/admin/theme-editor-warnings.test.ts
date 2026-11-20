@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
-import { THEME_TEMPLATES, parseStoreTheme, themeWarnings, type StoreTheme } from "@/lib/theme";
+import { THEME_TEMPLATES, themeWarnings, type StoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import { ThemeEditor, type ThemeActions } from "./theme-editor";
 

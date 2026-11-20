@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import { SYSTEM_FONT, stripeAppearance, stripeFonts } from "./checkout-appearance";
 import { CHECKOUT_LOOK_DEFAULTS, checkoutAppearanceFor, checkoutLookOf, checkoutLookOwn, followTheme, patchCheckoutLook, radiusPx } from "./checkout-look";
-import { parseStoreTheme, templateSettings, themeCss, themeSettingsSchema, type ThemeSettings } from "./theme";
+import { templateSettings, themeCss, type ThemeSettings } from "./theme";
+import { parseStoreTheme, themeSettingsSchema } from "./theme-schema";
 
 /** Stripe's payment form in the store's look (D337, `docs/wave-7-storefront.md` C): two themes, light and dark, corners and font. */
 describe("Stripe's appearance from the theme (D337)", () => {

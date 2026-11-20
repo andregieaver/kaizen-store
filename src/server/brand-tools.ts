@@ -3,7 +3,8 @@ import "server-only";
 import type { BrandInput } from "@/lib/brand";
 import type { BrandMarksInput } from "@/lib/brand-marks";
 import { designedStoreTheme, designedTheme, type DesignLookInput } from "@/lib/brand-design";
-import { parseStoreTheme, templateSettings, themeWarnings, type StoreTheme } from "@/lib/theme";
+import { templateSettings, themeWarnings, type StoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import { getBrand, setBrand, type BrandScope } from "./brand";
 import { makeBrandMarks, type MarksScope } from "./brand-marks";

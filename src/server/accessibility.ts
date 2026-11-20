@@ -14,7 +14,8 @@ import {
 import { pageIssues, blockingIssues, themeSetsOf } from "@/lib/page-a11y";
 import { parsePageContent } from "@/lib/page-content";
 import { marketUrl, storeBase, storeSiteUrl } from "@/lib/paths";
-import { parseStoreTheme, themeWarnings } from "@/lib/theme";
+import { themeWarnings } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import { audit, type Membership } from "./auth";
 import { makeDraftPage, type StarterOutcome } from "./legal-starters";

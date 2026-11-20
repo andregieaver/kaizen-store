@@ -7,7 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { parsePageContent, type PageRow } from "@/lib/page-content";
 import type { SectionStyles } from "@/lib/section-styles";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { detachThemeValues } from "@/lib/theme-detach";
 import type { ThemeElements } from "@/lib/theme-elements";
 

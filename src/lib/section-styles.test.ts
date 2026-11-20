@@ -4,7 +4,8 @@ vi.mock("server-only", () => ({}));
 
 import { pageRowSchema, type PageBlock, type PageRow } from "./page-content";
 import { CORE_SECTION_STYLES, SECTION_STYLES_MAX, sectionElements, sectionStyleChoices, sectionStyleLabel } from "./section-styles";
-import { parseStoreTheme, templateSettings, themeTabValue, withThemeTab } from "./theme";
+import { templateSettings, themeTabValue, withThemeTab } from "./theme";
+import { parseStoreTheme } from "./theme-schema";
 import { layerElement, sectionStylesSchema, themedRows, type ThemeElements } from "./theme-elements";
 import { detachThemeValues } from "./theme-detach";
 import { typographyAt } from "./typography";

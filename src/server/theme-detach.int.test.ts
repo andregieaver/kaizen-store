@@ -5,7 +5,7 @@ import { closeDb, db } from "@/db/client";
 import { canonicalJson } from "@/lib/lifecycle";
 import { pageInput, type PageRow } from "@/lib/page-content";
 import { defaultHeader } from "@/lib/site-layout";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { themedRows } from "@/lib/theme-elements";
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, refresh: () => {} }));

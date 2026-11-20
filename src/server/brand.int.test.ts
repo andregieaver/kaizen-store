@@ -7,7 +7,8 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 const { closeDb, db } = await import("@/db/client");
 const { makeAccount, makeStore } = await import("./trust-fixtures");
 const { designLookInput } = await import("@/lib/brand-design");
-const { THEME_TEMPLATE_KEYS, parseStoreTheme, templateSettings, themeWarnings } = await import("@/lib/theme");
+const { THEME_TEMPLATE_KEYS, templateSettings, themeWarnings } = await import("@/lib/theme");
+const { parseStoreTheme } = await import("@/lib/theme-schema");
 const { themeFontFamilies } = await import("@/lib/theme-elements");
 const { getBrandTool, setBrandTool, designLookTool } = await import("./brand-tools");
 const { listInstalls, switchToInstall } = await import("./theme-installs");

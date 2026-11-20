@@ -8,13 +8,12 @@ import {
   THEME_TEMPLATE_KEYS,
   contrastRatio,
   darkBehindLogo,
-  parseStoreTheme,
   templateSettings,
   themeAttributes,
   themeCss,
-  themeSettingsSchema,
   themeWarnings,
 } from "./theme";
+import { parseStoreTheme, themeSettingsSchema } from "./theme-schema";
 
 describe("design themes (D60)", () => {
   it("has templates that are valid and readable in both colour sets", () => {

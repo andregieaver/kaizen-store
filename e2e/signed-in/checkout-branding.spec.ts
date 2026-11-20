@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { parseStoreTheme } from "../../src/lib/theme";
+import { parseStoreTheme } from "../../src/lib/theme-schema";
 import { themeFontFamilies } from "../../src/lib/theme-elements";
 import { testDb } from "../db";
 import { OWNER } from "./accounts";

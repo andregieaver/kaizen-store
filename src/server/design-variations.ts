@@ -5,7 +5,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { VARIATIONS_MAX, type DesignVariation } from "@/lib/design-presets";
 import { variationKey, variationName, type DraftVariation } from "@/lib/design-variations";
-import { parseStoreTheme, storeThemeInput, type StoreTheme } from "@/lib/theme";
+import type { StoreTheme } from "@/lib/theme";
+import { parseStoreTheme, storeThemeInput } from "@/lib/theme-schema";
 import { themeFontFamilies } from "@/lib/theme-elements";
 
 import { audit, type Account } from "./auth";

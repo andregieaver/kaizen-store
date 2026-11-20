@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { menuInput } from "@/lib/navigation";
 import { pageInput, parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { pageTypeKey } from "@/lib/permissions";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { compareLooks, compareVersions, type LookArea, type PageDifference } from "@/lib/version-compare";
 
 import { audit, type Membership } from "./auth";

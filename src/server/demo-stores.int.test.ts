@@ -5,7 +5,8 @@ import { closeDb, db } from "@/db/client";
 import { parseDesignSnapshot } from "@/lib/design-presets";
 import { withCoreStyles } from "@/lib/launch-themes";
 import { parseStarterDetails } from "@/lib/store-starters";
-import { parseStoreTheme, templateSettings } from "@/lib/theme";
+import { templateSettings } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import type { Account } from "./auth";
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { SURFACE_OPACITY_MIN, partSurface, surfaceClass, surfaceOf } from "./background-surface";
-import { contrastRatio, parseStoreTheme, themeCss } from "./theme";
+import { contrastRatio, themeCss } from "./theme";
+import { parseStoreTheme } from "./theme-schema";
 
 /** A part's own background decides the colour set of the text over it (D390), only where it hides what is behind it. */
 describe("surfaceOf", () => {

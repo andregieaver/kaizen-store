@@ -6,7 +6,8 @@ import { DEFAULT_BREAKPOINTS } from "./breakpoints";
 import { partFonts, pageInput, type PageBlock, type PageRow } from "./page-content";
 import { blockStyle, columnStyle, partCss, rowStyle, rowWidthStyle } from "./part-css";
 import { WIDTHS, partStyleAt } from "./part-css.testing";
-import { THEME_TEMPLATES, parseStoreTheme, themeCss, themeSettingsSchema, themeTabValue, withThemeTab, type ThemeSettings } from "./theme";
+import { THEME_TEMPLATES, themeCss, themeTabValue, withThemeTab, type ThemeSettings } from "./theme";
+import { parseStoreTheme, themeSettingsSchema } from "./theme-schema";
 import {
   THEME_ELEMENT_KEYS,
   elementAsPart,

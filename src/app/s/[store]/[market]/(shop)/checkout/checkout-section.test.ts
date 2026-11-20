@@ -83,7 +83,8 @@ import { stripeAppearance } from "@/lib/checkout-appearance";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
-import { parseStoreTheme, templateSettings } from "@/lib/theme";
+import { templateSettings } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import type { Store } from "@/server/stores";
 
 import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutItems, CheckoutPayment, CheckoutTerms, CheckoutTotals } from "./checkout-section";

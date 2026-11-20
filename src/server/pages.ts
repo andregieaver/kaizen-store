@@ -25,7 +25,7 @@ import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 import { isLegalRole, LEGAL_ROLE_COPY, type LegalRole } from "@/lib/legal-roles";
 import { issueCounts, pageIssues, blockingIssues, refusedIssues, themeSetsOf, unacknowledged, type PageIssue } from "@/lib/page-a11y";
 import { reservedChoiceSlugs } from "@/lib/store-address";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { textStylesCss } from "@/lib/text-styles";
 
 import { audit, type Account } from "./auth";

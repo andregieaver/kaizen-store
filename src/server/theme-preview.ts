@@ -5,7 +5,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 import { themeLayersOf } from "@/lib/section-styles";
-import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
+import type { StoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { whatChanges, type ChangesWords, type LayoutKind, type LookFacts, type PageFacts, type WhatChanges } from "@/lib/theme-changes";
 import { themeFontFamilies } from "@/lib/theme-elements";
 

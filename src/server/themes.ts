@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "@/lib/page-content";
-import { storeThemeInput, THEME_TEMPLATE_KEYS, themeSettingsSchema, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
+import { THEME_TEMPLATE_KEYS, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
+import { storeThemeInput, themeSettingsSchema } from "@/lib/theme-schema";
 import { colourLibrarySchema } from "@/lib/colour-library";
 import { sectionStylesSchema, themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
 import { themeHoverSchema } from "@/lib/hover-timing";

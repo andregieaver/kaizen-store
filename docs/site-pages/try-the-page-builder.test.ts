@@ -15,7 +15,7 @@ import { inlinePlain } from "@/lib/inline-text";
 import { blockingIssues, pageIssues, themeSetsOf } from "@/lib/page-a11y";
 import { pageInput, pageSlugFromTitle, pageSlugProblem } from "@/lib/page-content";
 import { textStylesCss } from "@/lib/text-styles";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 const id = () => randomUUID();
 const SAND = "#908064";

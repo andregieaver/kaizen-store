@@ -24,7 +24,8 @@ import {
   valueAt,
   withAt,
 } from "./responsive";
-import { parseStoreTheme, templateSettings, themeSettingsSchema } from "./theme";
+import { templateSettings } from "./theme";
+import { parseStoreTheme, themeSettingsSchema } from "./theme-schema";
 import { typographyValueAt } from "./typography";
 
 /**

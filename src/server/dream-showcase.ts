@@ -7,7 +7,8 @@ import { latestMade, siteOf, type FeedItem } from "@/lib/dream-showcase";
 import { LEGAL_ROLE_COPY, isLegalRole } from "@/lib/legal-roles";
 import { formatMoney } from "@/lib/money";
 import type { SiteFonts } from "@/lib/fonts-schema";
-import { parseStoreTheme, type Palette } from "@/lib/theme";
+import type { Palette } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import { parsePageContent } from "@/lib/page-content";
 import { compareVersions, type PageDifference } from "@/lib/version-compare";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { newPageContent, type PageContent, type PageRow } from "./page-content";
-import { parseStoreTheme } from "./theme";
+import { parseStoreTheme } from "./theme-schema";
 import { compareLooks, compareVersions } from "./version-compare";
 
 const row = (id: string, heading: string, extra: Partial<PageRow> = {}): PageRow =>

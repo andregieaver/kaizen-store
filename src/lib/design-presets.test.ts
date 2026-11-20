@@ -29,7 +29,8 @@ import {
 import { pageInput, type PageBlock, type PageContent } from "./page-content";
 import { newBlock } from "./page-rows";
 import { defaultFooter, defaultHeader } from "./site-layout";
-import { templateSettings, themeSettingsSchema } from "./theme";
+import { templateSettings } from "./theme";
+import { themeSettingsSchema } from "./theme-schema";
 
 const SOURCE = "11111111-1111-4111-8111-111111111111";
 const HEADER_MENU = "22222222-2222-4222-8222-222222222222";

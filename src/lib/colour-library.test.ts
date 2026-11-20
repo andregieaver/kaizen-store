@@ -22,7 +22,8 @@ import {
 import { pageInput, type PageBlock, type PageRow } from "./page-content";
 import { partCss } from "./part-css";
 import { WIDTHS, partStyleAt } from "./part-css.testing";
-import { THEME_TEMPLATES, themeSettingsSchema } from "./theme";
+import { THEME_TEMPLATES } from "./theme";
+import { themeSettingsSchema } from "./theme-schema";
 import { typographyDecl, typographyPatch } from "./typography";
 
 /** Saved colours and gradients, text gradients, and a gradient background's opacity and overlay (D183). */

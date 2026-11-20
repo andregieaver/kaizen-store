@@ -27,7 +27,8 @@ import {
 } from "./template-content";
 import type { ListingLanguages, ThemeListing } from "./theme-store";
 import type { ThemePrice } from "./theme-prices";
-import { THEME_TEMPLATE_KEYS, themeSettingsSchema, type ThemeSettings, type ThemeTemplate } from "./theme";
+import { THEME_TEMPLATE_KEYS, type ThemeSettings, type ThemeTemplate } from "./theme";
+import { themeSettingsSchema } from "./theme-schema";
 
 /**
  * Design profiles (D176, `docs/design-profiles.md`): a frozen snapshot of a store's look, never its content, that the platform's admins

@@ -9,7 +9,8 @@ import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { parseStarterDetails } from "@/lib/store-starters";
 import { defaultFooter, defaultHeader } from "@/lib/site-layout";
 import { withCoreStyles } from "@/lib/launch-themes";
-import { parseStoreTheme, templateSettings } from "@/lib/theme";
+import { templateSettings } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import type { Account } from "./auth";
 

@@ -22,7 +22,8 @@ import {
 import { type TrackingSettings } from "@/lib/cookie-consent";
 import { parseTracking } from "@/lib/cookie-consent-schema";
 import { parseSiteFonts, type SiteFonts } from "@/lib/fonts-schema";
-import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
+import type { StoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { PLATFORM_NAVIGATION_TAG } from "@/lib/cache-tags";
 
 import { audit, type Account } from "./auth";

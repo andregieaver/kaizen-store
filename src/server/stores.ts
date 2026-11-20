@@ -25,7 +25,8 @@ import { parseMenuItems, parseNavigation, type Menu, type StoreNavigation } from
 import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
 import { returnPolicyOf, type ReturnPolicyFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures, type FeatureId } from "@/lib/store-features";
-import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
+import type { StoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { rememberStoreAddress, type StoreAddress } from "@/lib/store-address";
 import { localized, type LanguageSettings } from "@/lib/store-localized";
 import { isPriceDecimals, type PriceDecimals } from "@/lib/money";

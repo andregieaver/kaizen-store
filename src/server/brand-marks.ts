@@ -14,7 +14,8 @@ import {
   type Box,
   type BrandMarksInput,
 } from "@/lib/brand-marks";
-import { parseStoreTheme, type ThemeSettings } from "@/lib/theme";
+import type { ThemeSettings } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import { fontOutlines, type Fetcher } from "./font-outlines";
 import { storageRefusal } from "./limits";

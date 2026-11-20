@@ -7,7 +7,8 @@ import { newPageContent, pageInput, type PageBlock, type PageContent, type PageR
 import { copyBlock, copyColumn, copyRow } from "./page-rows";
 import { savedPartInput } from "./saved-parts";
 import { sanitizeTemplate } from "./template-content";
-import { templateSettings, themeSettingsSchema } from "./theme";
+import { templateSettings } from "./theme";
+import { themeSettingsSchema } from "./theme-schema";
 
 /**
  * A part's settings by screen size (`at`) and its visibility (`visibility.hideAt`) are part of the part (D179 phase 2,

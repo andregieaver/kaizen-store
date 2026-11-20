@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { isLookVersionKind, LOOK_VERSIONS_KEPT, type LookVersionItem, type LookVersionKind } from "@/lib/look-versions";
-import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
+import type { StoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 
 import { col, typedRow, typedRows } from "./typed-rows";
 

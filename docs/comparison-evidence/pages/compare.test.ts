@@ -13,7 +13,7 @@ import { expect, it } from "vitest";
 
 import { pageInput, pageSlugProblem } from "@/lib/page-content";
 import { pageIssues, themeSetsOf, blockingIssues } from "@/lib/page-a11y";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme } from "@/lib/theme-schema";
 import { textStylesCss } from "@/lib/text-styles";
 import { findClaims } from "@/lib/claims";
 import { inlinePlain } from "@/lib/inline-text";
