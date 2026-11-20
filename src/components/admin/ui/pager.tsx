@@ -7,7 +7,7 @@ import { AdminLink } from "./link";
  * without a script and keep the address's other query values. Two ways to page: by number (`page`, `size`, `shown`, `total`: "100 of
  * 150", *Next 100*; the Stores, Pages and Articles lists, bloat review step 2.17) or by cursor (`previous` and `next` as addresses, `first`
  * when the way back is to the first page; the Orders list, so a boundary never loses or repeats a row). The words are the kit's
- * (`adminText(lang, "kit").pager`), or a list's own ("Next 50 orders"); `{n}` is the page's size. No state: drawn on the server.
+ * (`KIT_WORDS[lang].pager`), or a list's own ("Next 50 orders"); `{n}` is the page's size. No state: drawn on the server.
  */
 
 export type PagerWords = { label: string; shownOf: string; previous: string; next: string; first: string };

@@ -9,10 +9,10 @@ import { DesignPreviewLink } from "./design-cards";
 import { Card, Chip } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { platformText } from "@/lib/platform-text";
 import { themeStoreUrl } from "@/lib/theme-host";
 import { chargeButton, chargeLine, chargeToken, type ChargeWords, type ThemeCharge } from "@/lib/theme-prices";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 
 /**
  * A design profile offered to a store, with where its preview is, what making it live costs the store (D286; none: free), and its looks'
@@ -92,7 +92,7 @@ export function DesignProfilePanel({
   /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
   timeZone: string;
 }) {
-  const all = adminText(lang, "design");
+  const all = DESIGN_WORDS[lang];
   const { common: c, add: w } = all;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const cards = platformText(lang).themeCards;

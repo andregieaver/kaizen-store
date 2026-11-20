@@ -11,8 +11,8 @@ import baseline from "./admin-words-handed.baseline.json";
 
 /**
  * Every place the admin hands words to the browser (bloat review step 1.28, `docs/performance.md`, `docs/rules/budgets.md`). A site is
- * one `adminTexts(lang, areas)` call or one `<AdminAreas areas={...}>`; its id is the file and the areas (`views.tsx#website+schedules`,
- * or the constant's name). Per site and language the test counts the bytes handed (the areas' catalogues as JSON) and the bytes named:
+ * one `areaTexts(lang, { area: AREA_WORDS })` call (bloat review step 2.25; `adminTexts(lang, areas)` before it) or one
+ * `<AdminAreas areas={...}>`; its id is the file and the areas (`views.tsx#website+schedules`, or the constant's name). Per site and language the test counts the bytes handed (the areas' catalogues as JSON) and the bytes named:
  * the groups the client parts under the site read, found in source by static import (`useAdminText("area").group`, a destructuring, or
  * the variable's later uses; anything else takes the whole area). Named is counted from source, not what a browser reads at load: the
  * browser record of step 1.5 (`e2e/signed-in/admin-scripts.spec.ts`) is the cross-check on five screens, and step 2.27 works the list down.
@@ -104,11 +104,16 @@ const SITE_FILES = ALL.filter((file) => {
   return (name.startsWith("src/app/admin/") || name.startsWith("src/components/admin/")) && !SKIP.includes(name);
 });
 
-/** The strings of `const NAME = [ ... ]` in this file or the file NAME is imported from; a spread of another constant is resolved too. */
+/**
+ * The strings of `const NAME = [ ... ]`, or the keys of `const NAME = { area: AREA_WORDS, ... }`, in this file or the file NAME is
+ * imported from; a spread of another constant is resolved too.
+ */
 function constantAreas(name: string, file: string, depth = 0): string[] | null {
   if (depth > 4) return null;
   const own = new RegExp(`(?:export\\s+)?const\\s+${name}\\b[^=]*=\\s*\\[([\\s\\S]*?)\\]`).exec(read(file));
   if (own) return listAreas(own[1], file, depth);
+  const object = new RegExp(`(?:export\\s+)?const\\s+${name}\\b[^=]*=\\s*\\{([\\s\\S]*?)\\}`).exec(read(file));
+  if (object) return objectAreas(object[1], file, depth);
   for (const match of read(file).matchAll(IMPORT)) {
     if (match[2] === undefined || !new RegExp(`\\b${name}\\b`).test(match[1])) continue;
     const target = resolve(file, match[2]);
@@ -132,6 +137,22 @@ function listAreas(body: string, file: string, depth = 0): string[] | null {
   return found;
 }
 
+/** The keys of `{ area: AREA_WORDS, ...OTHER }`, the modules an `areaTexts()` call or `<AdminAreas>` hands (bloat review step 2.25). */
+function objectAreas(body: string, file: string, depth = 0): string[] | null {
+  const found: string[] = [];
+  for (const part of body.split(",").map((piece) => piece.trim()).filter(Boolean)) {
+    const entry = /^([A-Za-z]+)\s*:\s*[A-Z][A-Z_]*_WORDS$/.exec(part);
+    const spread = /^\.\.\.([A-Z_]+)$/.exec(part);
+    if (entry) found.push(entry[1]);
+    else if (spread) {
+      const inner = constantAreas(spread[1], file, depth + 1);
+      if (!inner) return null;
+      found.push(...inner);
+    } else return null;
+  }
+  return found;
+}
+
 type Site = { id: string; file: string; areas: string[] };
 
 function findSites(): { sites: Site[]; unresolved: string[] } {
@@ -140,16 +161,16 @@ function findSites(): { sites: Site[]; unresolved: string[] } {
   for (const file of SITE_FILES) {
     const text = read(file);
     const found: { index: number; list: string }[] = [];
-    for (const match of text.matchAll(/adminTexts\(\s*([^,]+),\s*(\[[^\]]*\]|[A-Z_]+)\s*\)/g)) found.push({ index: match.index!, list: match[2] });
-    for (const match of text.matchAll(/<AdminAreas\s+areas=\{(\[[^\]]*\]|[A-Z_]+)\}/g)) found.push({ index: match.index!, list: match[1] });
+    for (const match of text.matchAll(/(?:adminTexts|areaTexts)\(\s*([^,]+),\s*(\[[^\]]*\]|\{[^}]*\}|[A-Z_]+)\s*\)/g)) found.push({ index: match.index!, list: match[2] });
+    for (const match of text.matchAll(/<AdminAreas\s+areas=\{(\[[^\]]*\]|\{[^}]*\}|[A-Z_]+)\}/g)) found.push({ index: match.index!, list: match[1] });
     // A call the patterns do not match is named, not skipped.
-    const calls = [...text.matchAll(/(?<![.\w])adminTexts\(/g)].filter((m) => !/^\s*(?:export\s+)?(?:async\s+)?function/.test(text.slice(Math.max(0, m.index! - 40), m.index!).split("\n").pop() ?? ""));
-    const matched = found.filter((entry) => /adminTexts\(/.test(text.slice(entry.index, entry.index + 12)) ).length;
-    if (calls.length > matched) unresolved.push(`${repo(file)}: ${calls.length - matched} adminTexts() call(s) the patterns do not match`);
+    const calls = [...text.matchAll(/(?<![.\w])(?:adminTexts|areaTexts)\(/g)].filter((m) => !/^\s*(?:export\s+)?(?:async\s+)?function/.test(text.slice(Math.max(0, m.index! - 40), m.index!).split("\n").pop() ?? ""));
+    const matched = found.filter((entry) => /^(?:adminTexts|areaTexts)\(/.test(text.slice(entry.index, entry.index + 12))).length;
+    if (calls.length > matched) unresolved.push(`${repo(file)}: ${calls.length - matched} areaTexts() call(s) the patterns do not match`);
     const used = new Map<string, number>();
     for (const { list } of found.sort((a, b) => a.index - b.index)) {
       const constant = /^[A-Z_]+$/.test(list);
-      const areas = constant ? constantAreas(list, file) : listAreas(list.slice(1, -1), file);
+      const areas = constant ? constantAreas(list, file) : list.startsWith("{") ? objectAreas(list.slice(1, -1), file) : listAreas(list.slice(1, -1), file);
       if (!areas) {
         unresolved.push(`${repo(file)}: ${list}`);
         continue;

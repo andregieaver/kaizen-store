@@ -12,7 +12,7 @@ import { arrivedEnglish, englishLater, noteFallback, type LaterArea } from "./ad
 
 /**
  * The admin's words in the browser (D312 A0, `docs/platform-admin-i18n.md` 3.3): the signed-in layout hands its client parts the account's
- * language and the slices of the catalogue they read (`adminTexts()`), and a part asks `useAdminText(area)`. An area not handed down is
+ * language and the slices of the catalogue they read (`areaTexts()`, `src/lib/admin-area.ts`), and a part asks `useAdminText(area)`. An area not handed down is
  * read in English, fetched then (`admin-text-later.ts`), so a part converted before its layout still draws.
  */
 
@@ -26,7 +26,7 @@ type AtHand = keyof typeof ENGLISH;
 export { AdminTextProvider } from "./admin-text-context";
 
 /**
- * More areas for the client parts under it (D312 A4): a page hands down the slices its own parts read (`adminTexts(lang, ["orders"])`),
+ * More areas for the client parts under it (D312 A4): a page hands down the slices its own parts read (`areaTexts(lang, { orders: ORDERS_WORDS })`),
  * kept beside the layout's, so the layout's provider stays small.
  */
 export function AdminTextScope({ texts, children }: { texts: Partial<AdminAreaMessages>; children: ReactNode }) {

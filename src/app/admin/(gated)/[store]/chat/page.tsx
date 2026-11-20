@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ChatAgentView } from "@/components/admin/chat-agent-view";
 import { requirePermission } from "@/server/permissions";
 import { adminLangOf } from "@/lib/admin-lang";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { uploadsEnabled } from "@/server/media";
 import { AdminAreas } from "@/components/admin/admin-areas";
 
@@ -15,7 +16,7 @@ export default async function StoreChatPage({ params }: PageProps<"/admin/[store
   const { store: slug } = await params;
   const { store, account } = await requirePermission(slug, "support:read");
   return (
-    <AdminAreas areas={["websitePick"]}>
+    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS }}>
     <ChatAgentView
       storeId={store.id}
       siteName={store.name}

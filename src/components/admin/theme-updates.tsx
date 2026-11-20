@@ -4,7 +4,7 @@ import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/adm
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 
 /** As the card shows them (`themeUpdates()` in `src/server/design-presets.ts`). */
 export type UpdateWaiting = { installId: string; title: string; live: boolean; from: number | null; to: number; followsUpdates: boolean; whatsNew: string[] };
@@ -46,7 +46,7 @@ export function ThemeUpdates({
   timeZone: string;
 }) {
   if (available.length === 0 && made.length === 0 && installs.length === 0) return null;
-  const { common: c, updates: w } = adminText(lang, "design");
+  const { common: c, updates: w } = DESIGN_WORDS[lang];
   const version = (n: number | null) => (n === null ? c.firstVersion : fillWords(c.versionLower, { n }));
   return (
     <Card title={w.title} description={description ?? fillWords(w.description, { days: keepDays })} compact>

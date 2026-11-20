@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ButtonLink, Card } from "@/components/admin/ui";
 import { todayList } from "@/lib/activities";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { todayActivities } from "@/server/activities";
 import type { Membership } from "@/server/auth";
 
@@ -16,7 +16,7 @@ import { activityViews } from "./activity-view";
  */
 export async function TodayCard({ member, team, lang, done }: { member: Membership; team: boolean; lang: AdminLang; done: ActivityActions["done"] | null }) {
   const { store, account } = member;
-  const all = adminText(lang, "deals");
+  const all = DEALS_WORDS[lang];
   const w = all.today;
   const now = new Date();
   const list = await todayActivities(store, team ? null : account.id, now);

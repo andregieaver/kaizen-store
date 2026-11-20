@@ -3,7 +3,7 @@ import { ClipboardList, Plus } from "lucide-react";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminDate } from "@/lib/admin-date";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import type { FormSummary, FormUse } from "@/server/forms-admin";
 
 import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "../ui";
@@ -14,7 +14,7 @@ import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } f
  */
 /** `timeZone`: the store's, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own forms: the last response on its clock (D812). */
 export function FormsList({ lang, base, forms, uses, timeZone }: { lang: AdminLang; base: string; forms: FormSummary[]; uses: FormUse[]; timeZone: string }) {
-  const w = adminText(lang, "forms");
+  const w = FORMS_WORDS[lang];
   if (forms.length === 0) {
     return (
       <Card>

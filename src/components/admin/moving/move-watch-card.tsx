@@ -3,11 +3,11 @@ import Link from "next/link";
 import { Card } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import type { Membership } from "@/server/auth";
 import { watchView } from "@/server/shopify-move";
 
 import { overWords } from "@/lib/over-words";
+import { MOVING_WORDS } from "@/lib/admin-words/moving";
 
 import { ShopifyClosedButton } from "./shopify-closed-button";
 
@@ -41,7 +41,7 @@ export async function MoveWatchCard({
 }) {
   const view = await watchView(member).catch(() => null);
   if (!view) return null;
-  const all = adminText(lang, "moving");
+  const all = MOVING_WORDS[lang];
   const woo = view.source === "woocommerce";
   // A WooCommerce shop's words (D446) over the shared ones; its closing steps are its own.
   const w = woo ? overWords(all.watch, all.woo.watch) : all.watch;

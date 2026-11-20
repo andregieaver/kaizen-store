@@ -1,6 +1,6 @@
 import { DIALECTS, DIALECT_IDS, type DialectId } from "@/lib/csv";
 import { ORDER_SELECTION_MAX } from "@/lib/data-limits";
-import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
+import type { AdminAreaMessages } from "@/lib/admin-text";
 import { addCalendarDays } from "@/lib/work-dates";
 
 import { PhoneRow } from "@/components/admin/phone-row";
@@ -14,9 +14,8 @@ import { card, field, hint, label, primary } from "./ui";
  * choices the route reads (`parse*ExportOptions()`); nothing a person typed is shown back except in a field.
  */
 
-/** The forms' words; a page passes the account's language (D312 A11), English unless given. */
+/** The forms' words; a page passes them in the account's language (D312 A11). */
 export type ExportWords = AdminAreaMessages["bookings"]["exports"];
-const EN: ExportWords = adminText("en", "bookings").exports;
 
 /** A phone row's line for each file format, shown while it is the chosen one (round 39, D731); written out so Tailwind finds them. */
 const DIALECT_SHOWN: Record<DialectId, string> = {
@@ -24,7 +23,7 @@ const DIALECT_SHOWN: Record<DialectId, string> = {
   excel_nordic: "hidden group-has-[option[value=excel_nordic]:checked]/format:inline",
 };
 
-export function DialectField({ defaultValue, id = "dialect", words: w = EN }: { defaultValue: DialectId; id?: string; words?: ExportWords }) {
+export function DialectField({ defaultValue, id = "dialect", words: w }: { defaultValue: DialectId; id?: string; words: ExportWords }) {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className={label}>
@@ -45,7 +44,7 @@ export function DialectField({ defaultValue, id = "dialect", words: w = EN }: { 
 
 export type TermOption = { id: string; name: string; kind: "category" | "tag" };
 
-export function ProductExportForm({ slug, terms, words: w = EN }: { slug: string; terms: TermOption[]; words?: ExportWords }) {
+export function ProductExportForm({ slug, terms, words: w }: { slug: string; terms: TermOption[]; words: ExportWords }) {
   return (
     <form method="post" action={`/admin/${slug}/products/export/file`} className={`${card} flex flex-col gap-4`}>
       <fieldset className="flex flex-col gap-2">
@@ -95,7 +94,7 @@ export function ProductExportForm({ slug, terms, words: w = EN }: { slug: string
   );
 }
 
-export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: { slug: string; defaultNumbers: string; today: string; words?: ExportWords }) {
+export function OrderExportForm({ slug, defaultNumbers, today, words: w }: { slug: string; defaultNumbers: string; today: string; words: ExportWords }) {
   const startWithNumbers = defaultNumbers.trim() !== "";
   const monthAgo = addCalendarDays(today, -30);
   const p = w.phone;
@@ -214,7 +213,7 @@ export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: 
   );
 }
 
-export function CustomerExportForm({ slug, words: w = EN }: { slug: string; words?: ExportWords }) {
+export function CustomerExportForm({ slug, words: w }: { slug: string; words: ExportWords }) {
   return (
     <form method="post" action={`/admin/${slug}/customers/export/file`} className={`${card} flex flex-col gap-4`}>
       <p className="text-sm">{w.customers}</p>

@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh:
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 vi.mock("@/app/admin/(gated)/[store]/orders/export/actions", () => ({ checkNumbersAction: async () => ({ ok: true, found: [], unknown: [], over: 0 }) }));
 
+import { bookingsEn } from "@/lib/admin-messages/bookings.en";
 import { DEFAULT_IMPORT_OPTIONS } from "@/lib/product-import";
 
 import { CustomerExportForm, OrderExportForm, ProductExportForm } from "./export-forms";
@@ -103,7 +104,7 @@ describe("the findings of an import", () => {
     { seq: 2, ref: null, rows: [], outcome: "checked", will: null, messages: [{ severity: "info", code: "column.ignored", text: "The Vendor column was ignored." }] },
   ];
   const hrefFor = (q: { severity?: string; page?: number }) => `/p?severity=${q.severity ?? "all"}&page=${q.page ?? 1}`;
-  const base = { items, total: 3, severity: "all" as const, page: 1, pageSize: 50, hrefFor, problemsHref: "/admin/shop/products/import/j/problems" };
+  const base = { items, total: 3, severity: "all" as const, page: 1, pageSize: 50, hrefFor, problemsHref: "/admin/shop/products/import/j/problems", words: bookingsEn.findings };
 
   it("shows rows, product, result, severity, code and the sentence", () => {
     const out = html(createElement(FindingsTable, base));
@@ -140,9 +141,9 @@ describe("the findings of an import", () => {
   });
 
   it("words the result of an item", () => {
-    expect(outcomeWords({ outcome: "checked", will: "drafted" })).toBe("Would be saved as a draft");
-    expect(outcomeWords({ outcome: "drafted", will: null })).toBe("Saved as a draft");
-    expect(outcomeWords({ outcome: "checked", will: null })).toBe("Checked");
+    expect(outcomeWords({ outcome: "checked", will: "drafted" }, bookingsEn.findings)).toBe("Would be saved as a draft");
+    expect(outcomeWords({ outcome: "drafted", will: null }, bookingsEn.findings)).toBe("Saved as a draft");
+    expect(outcomeWords({ outcome: "checked", will: null }, bookingsEn.findings)).toBe("Checked");
   });
 });
 
@@ -229,7 +230,7 @@ describe("the import forms", () => {
 
 describe("the export forms", () => {
   it("posts the product export to its file route with a choice of products, format and pictures", () => {
-    const out = html(createElement(ProductExportForm, { slug: "shop", terms: [{ id: "t1", name: "Shirts", kind: "category" }, { id: "t2", name: "Sale", kind: "tag" }] }));
+    const out = html(createElement(ProductExportForm, { words: bookingsEn.exports, slug: "shop", terms: [{ id: "t1", name: "Shirts", kind: "category" }, { id: "t2", name: "Sale", kind: "tag" }] }));
     expect(out).toContain('action="/admin/shop/products/export/file" method="post"');
     expect(out).toContain('name="scope" checked="" value="all"');
     expect(out).toContain('name="status"');
@@ -243,11 +244,11 @@ describe("the export forms", () => {
   });
 
   it("leaves out the category choice for a store with none", () => {
-    expect(html(createElement(ProductExportForm, { slug: "shop", terms: [] }))).not.toContain('name="termId"');
+    expect(html(createElement(ProductExportForm, { words: bookingsEn.exports, slug: "shop", terms: [] }))).not.toContain('name="termId"');
   });
 
   it("starts the order export minimal: paid orders, a row per line, no contact details, Nordic Excel, copied history off", () => {
-    const out = html(createElement(OrderExportForm, { slug: "shop", defaultNumbers: "", today: "2026-10-05" }));
+    const out = html(createElement(OrderExportForm, { words: bookingsEn.exports, slug: "shop", defaultNumbers: "", today: "2026-10-05" }));
     expect(out).toContain('action="/admin/shop/orders/export/file"');
     expect(out).toContain('name="mode" checked="" value="range"');
     expect(out).toContain('name="from" value="2026-09-05"');
@@ -263,14 +264,14 @@ describe("the export forms", () => {
   });
 
   it("opens on the selection when an order's page sent a number", () => {
-    const out = html(createElement(OrderExportForm, { slug: "shop", defaultNumbers: "1007", today: "2026-10-05" }));
+    const out = html(createElement(OrderExportForm, { words: bookingsEn.exports, slug: "shop", defaultNumbers: "1007", today: "2026-10-05" }));
     expect(out).toContain('name="mode" checked="" value="numbers"');
     expect(out).toContain("1007</textarea>");
     expect(out).toContain("At most 500 order numbers");
   });
 
   it("posts the customer export", () => {
-    const out = html(createElement(CustomerExportForm, { slug: "shop" }));
+    const out = html(createElement(CustomerExportForm, { words: bookingsEn.exports, slug: "shop" }));
     expect(out).toContain('action="/admin/shop/customers/export/file"');
     expect(out).toContain("once per email address");
   });

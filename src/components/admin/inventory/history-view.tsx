@@ -5,10 +5,10 @@ import { PhoneRow } from "@/components/admin/phone-row";
 import { momentShort } from "@/lib/data-admin";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { INVENTORY_RETENTION_MONTHS, MOVEMENT_REASONS } from "@/lib/inventory";
 import { historyHref, type HistoryQuery } from "@/lib/inventory-admin";
 import { byIn, deltaIn, figureIn, momentIn, reasonIn } from "@/lib/inventory-words";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import type { HistoryRow } from "@/server/inventory";
 
 /**
@@ -34,7 +34,7 @@ export function HistoryView({
   timeZone: string;
   lang?: AdminLang;
 }) {
-  const t = adminText(lang, "inventory");
+  const t = INVENTORY_WORDS[lang];
   const w = t.history;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${slug}/inventory/history`;

@@ -32,7 +32,7 @@ export function SetupFrame({
   title: string;
   intro: ReactNode;
   children: ReactNode;
-  /** The frame's words in the account's language (`adminText(lang, "setup").frame`); the steps come named in it. */
+  /** The frame's words in the account's language (`SETUP_WORDS[lang].frame`); the steps come named in it. */
   w?: SetupMessages["frame"];
 }) {
   const index = steps.findIndex((s) => s.id === step);

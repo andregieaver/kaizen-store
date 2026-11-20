@@ -1,7 +1,7 @@
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import type { InstagramStatus } from "@/server/instagram";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
@@ -104,7 +104,7 @@ export function InstagramSettings({
   );
 }
 
-const words = (lang: AdminLang) => adminText(lang, "notifications").instagram;
+const words = (lang: AdminLang) => NOTIFICATIONS_WORDS[lang].instagram;
 
 /** What the callback's `?instagram=` says, if it is one of the known answers. */
 export const instagramReturned = (value: unknown): "connected" | "cancelled" | "failed" | null =>

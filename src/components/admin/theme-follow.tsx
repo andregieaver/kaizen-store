@@ -4,7 +4,7 @@ import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/adm
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 
 /** A run of the page migration as the card shows it (`DetachRun` in `src/server/theme-detach.ts`). */
 export type FollowRun = { runId: string; at: string; pages: number; followed: number; kept: number; undoneAt: string | null };
@@ -36,7 +36,7 @@ export function ThemeFollow({
   run: Action | null;
   undo: Action | null;
 }) {
-  const { common: c, follow: w } = adminText(lang, "design");
+  const { common: c, follow: w } = DESIGN_WORDS[lang];
   const settings = (n: number) => countWords(n, c.settings);
   const pages = (n: number) => countWords(n, c.pages);
   return (

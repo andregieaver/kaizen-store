@@ -7,12 +7,13 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import type { AssistantMessages } from "@/lib/admin-messages/assistant.en";
 import type { HouseAutopilotMessages } from "@/lib/admin-messages/house-autopilot.en";
-import { adminText } from "@/lib/admin-text";
 import { formatUsd } from "@/lib/ai-cost";
 import { AUTONOMY_AREAS, AUTONOMY_LEVELS, levelOf } from "@/lib/autopilot-autonomy";
 import { suggestedSignupPercent } from "@/lib/autopilot-goals";
 import { FINISHED_STEPS, RETRY_OPTIONS } from "@/lib/autopilot-plans";
 import { testLine } from "@/lib/autopilot-tests";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
+import { HOUSE_AUTOPILOT_WORDS } from "@/lib/admin-words/house-autopilot";
 import type { AutopilotOverview } from "@/server/autopilot-overview";
 import type { Plan, PlanStep } from "@/server/autopilot-plans";
 
@@ -58,11 +59,11 @@ export function AutopilotPage({
   /** The store's time zone, or the platform's for Kaizena Flow's own autopilot (D786). */
   timeZone: string;
 }) {
-  const w = adminText(lang, "assistant");
+  const w = ASSISTANT_WORDS[lang];
   const a = w.autopilot;
   const date = (iso: string) => adminDate(timeZone, iso, "day", lang);
   // Kaizena Flow's own site (E5.3, D757): a server area, so these words are not handed to the browser with the assistant's.
-  const house = adminText(lang, "houseAutopilot");
+  const house = HOUSE_AUTOPILOT_WORDS[lang];
   const waiting = overview.calls.length + overview.questions.length + overview.ownerOnly.length;
   const tabClass = (on: boolean) => `rounded-pill px-3 py-1.5 text-sm ${on ? "bg-sunken text-ink" : "text-muted hover:bg-sunken"}`;
   return (

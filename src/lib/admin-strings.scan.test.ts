@@ -4,9 +4,9 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * The admin's words come from its catalogues (D312, `docs/platform-admin-i18n.md` 3.3): `adminText(lang, area)` on the server and
- * `useAdminText(area)` in the browser, never words written into a component. The admin is converted area by area (A1 to A11), so this
- * holds what is there: each file's English, counted, may only fall. `admin-strings.baseline.json` is how much each file had when the
+ * The admin's words come from its catalogues (D312, `docs/platform-admin-i18n.md` 3.3): `<AREA>_WORDS[lang]`, the area's module in
+ * `src/lib/admin-words`, on the server and `useAdminText(area)` in the browser, never words written into a component. The admin is
+ * converted area by area (A1 to A11), so this holds what is there: each file's English, counted, may only fall. `admin-strings.baseline.json` is how much each file had when the
  * scan began; a file with more than it, or a new file with any, fails; one with less asks for the baseline to be written again, so it only
  * ever shrinks. Names that are the same in every language (Kaizena Flow, a person's or a product's name typed as data) are allowed.
  *

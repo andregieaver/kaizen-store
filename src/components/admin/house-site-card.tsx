@@ -5,9 +5,9 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { countWords } from "@/lib/admin-fill";
 import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import type { SiteCopy } from "@/server/house-site";
 
 type CopyAction = ComponentProps<typeof ActionForm>["action"];
@@ -17,7 +17,7 @@ type CopyAction = ComponentProps<typeof ActionForm>["action"];
  * copied, a link to look at the copy in the store, and the one button that copies it again. The live site never changes from here.
  */
 export function HouseSiteCard({ lang, last, copy }: { lang: AdminLang; last: SiteCopy; copy: CopyAction }) {
-  const w = adminText(lang, "console").houseSite;
+  const w = CONSOLE_WORDS[lang].houseSite;
   const when = last.copiedAt ? adminDate(PLATFORM_TIME_ZONE, last.copiedAt, "dayTime", lang) : null;
   return (
     <Card title={w.title} description={w.description}>

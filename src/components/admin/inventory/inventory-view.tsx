@@ -6,9 +6,9 @@ import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { Search } from "lucide-react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { listHref, type ListQuery } from "@/lib/inventory-admin";
 import { figureIn } from "@/lib/inventory-words";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import type { InventoryPage } from "@/server/inventory";
 
 import { InventoryTable, type InventoryTools } from "./inventory-table";
@@ -37,7 +37,7 @@ export function InventoryView({
   tools: InventoryTools;
   lang?: AdminLang;
 }) {
-  const t = adminText(lang, "inventory");
+  const t = INVENTORY_WORDS[lang];
   const w = t.list;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${slug}/inventory`;

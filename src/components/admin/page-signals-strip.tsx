@@ -6,12 +6,13 @@ import type { ReactNode } from "react";
 import { AskAboutAlert } from "@/components/admin/analytics/ask-about-alert";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { NO_FIGURE } from "@/lib/analytics-core";
 import { setAnalyticsLang } from "@/lib/analytics-lang";
 import { MIN_MAP_VIEWS } from "@/lib/page-heat";
 import { askText, deviceRows, speedVerdict, stripText, type SignalFacts } from "@/lib/page-signals";
 import { speedValueText } from "@/lib/speed";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
+import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
 import { log } from "@/server/log";
 import { pageSignals, type SignalTarget } from "@/server/page-signals";
 import type { Store } from "@/server/stores";
@@ -56,9 +57,9 @@ export async function PageSignalsStrip({
   }
   // The figures' own convention (a decimal comma in Norwegian), as the analytics pages write them.
   setAnalyticsLang(lang);
-  const w = adminText(lang, "heatmaps");
+  const w = HEATMAPS_WORDS[lang];
   const words = w.strip;
-  const speedWords = adminText(lang, "analytics").speed;
+  const speedWords = ANALYTICS_WORDS[lang].speed;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${store.slug}`;
   const text = stripText(facts, words);

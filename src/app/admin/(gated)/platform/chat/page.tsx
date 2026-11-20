@@ -4,6 +4,7 @@ import { ChatAgentView } from "@/components/admin/chat-agent-view";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { adminLangOf } from "@/lib/admin-lang";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { AdminAreas } from "@/components/admin/admin-areas";
 
 import { uploadPlatformImageAction } from "../actions";
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Chat agent" };
 export default async function PlatformChatPage() {
   const account = await requirePlatformReader();
   return (
-    <AdminAreas areas={["websitePick"]}>
+    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS }}>
     <ChatAgentView
       storeId={null}
       siteName="Kaizena Flow"

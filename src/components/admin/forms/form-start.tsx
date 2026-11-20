@@ -1,7 +1,8 @@
 import { CATEGORY_ICONS, type FormTemplateItem } from "@/lib/form-templates";
 import type { AdminLang } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
+import { FORM_TEMPLATES_WORDS } from "@/lib/admin-words/form-templates";
+import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { NavIcon, type NavIconName } from "../nav-icons";
@@ -15,8 +16,8 @@ type Card = { key: string; icon: NavIconName; name: string; text: string; kind: 
  * to the template's id (`blank` for the blank form); it opens the new form. A hidden template is not offered.
  */
 export function FormStart({ lang, items, make }: { lang: AdminLang; items: (FormTemplateItem & { hidden: boolean })[]; make: (key: string) => Promise<void> }) {
-  const w = adminText(lang, "forms");
-  const t = adminText(lang, "formTemplates");
+  const w = FORMS_WORDS[lang];
+  const t = FORM_TEMPLATES_WORDS[lang];
   const card = (item: FormTemplateItem): Card => ({
     key: item.id,
     icon: CATEGORY_ICONS[item.category] as NavIconName,

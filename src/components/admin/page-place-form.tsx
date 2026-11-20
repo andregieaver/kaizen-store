@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { FoldRow } from "@/components/admin/fold-row";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { requestAdminLang } from "@/server/admin-request-lang";
 
 type Action = (state: never, form: FormData) => Promise<never>;
@@ -29,7 +29,7 @@ export async function PagePlaceForm({
   start: Action;
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
-  const w = adminText(await requestAdminLang(), "screens").pagePlace;
+  const w = SCREENS_WORDS[await requestAdminLang()].pagePlace;
   const chosen = pages.find((p) => p.id === current);
   // A row since round 16 (D650): what the place shows, and Change opening its choice and starter in place.
   return (

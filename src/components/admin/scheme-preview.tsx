@@ -1,7 +1,7 @@
 import { Bell, FileText } from "lucide-react";
 
 import type { AdminScheme } from "@/lib/admin-schemes";
-import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
+import type { AdminAreaMessages } from "@/lib/admin-text";
 
 import { NavIcon } from "./nav-icons";
 import { Button, Card, Chip, CountBadge, InsightPanel, KpiTile, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText, ScoreBar, ShareBar, TrendChip } from "./ui";
@@ -14,12 +14,12 @@ import { Button, Card, Chip, CountBadge, InsightPanel, KpiTile, List, ListRow, P
 export function SchemePreview({
   scheme,
   mode,
-  words: w = adminText("en", "bookings").schemePreview,
+  words: w,
 }: {
   scheme: AdminScheme;
   mode: "light" | "dark";
-  /** The words in the account's language (D312 A11); English unless given. */
-  words?: AdminAreaMessages["bookings"]["schemePreview"];
+  /** The words in the account's language (D312 A11). */
+  words: AdminAreaMessages["bookings"]["schemePreview"];
 }) {
   return (
     <figure className="flex min-w-0 flex-col gap-2">

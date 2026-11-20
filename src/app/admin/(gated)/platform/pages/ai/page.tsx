@@ -13,6 +13,7 @@ import {
   platformStudioSpeakAction,
   platformStudioTalkAction,
 } from "./actions";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 
 export const metadata: Metadata = { title: "Create a page with AI" };
 
@@ -23,7 +24,7 @@ export const maxDuration = 300;
 export default async function PlatformPageStudio() {
   const abilities = await studioAbilities(null);
   return (
-    <AdminAreas areas={["website"]}>
+    <AdminAreas areas={{ website: WEBSITE_WORDS }}>
     <PageStudioView
       actions={{
         talk: platformStudioTalkAction,

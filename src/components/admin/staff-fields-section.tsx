@@ -3,7 +3,9 @@ import { EntityFieldsCard } from "@/components/admin/lazy/editors";
 import { entityFieldsSetup } from "@/app/admin/(gated)/[store]/fields/data";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { FIELDS_WORDS } from "@/lib/admin-words/fields";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { staffFieldsForEditor, type StaffEntity } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
@@ -31,9 +33,9 @@ export async function StaffFieldsSection({
   if (!editor || editor.groups.length === 0) return null;
   // In the account's language (D312 A5), as the page around it is.
   const lang = await requestAdminLang();
-  const w = adminText(lang, "fields").form;
+  const w = FIELDS_WORDS[lang].form;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["fieldsEditor"])}>
+    <AdminTextScope texts={areaTexts(lang, { fieldsEditor: FIELDS_EDITOR_WORDS })}>
     <EntityFieldsCard
       groups={editor.groups}
       data={editor.data}

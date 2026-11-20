@@ -3,10 +3,11 @@ import Link from "next/link";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { SEVERITY_FILTERS, type SeverityFilter } from "@/lib/data-admin";
 import type { Finding, ItemOutcome } from "@/lib/data-job";
 import { numberIn, rowsIn } from "@/lib/inventory-words";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * What a customer import found and did (wave 10 unit C, D366), presentational: the dry run's numbers, the apply's, and every row with its
@@ -32,7 +33,7 @@ export type ImportWords = {
   result: string;
 };
 
-const customerWords = (lang: AdminLang): ImportWords => adminText(lang, "customers").staff.import;
+const customerWords = (lang: AdminLang): ImportWords => CUSTOMERS_WORDS[lang].staff.import;
 
 const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
@@ -101,7 +102,7 @@ export function CustomerFindings({
   lang: AdminLang;
   words?: ImportWords;
 }) {
-  const w = adminText(lang, "inventory").import.findings;
+  const w = INVENTORY_WORDS[lang].import.findings;
   const own = words ?? customerWords(lang);
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (

@@ -6,7 +6,7 @@ import { useId, type ReactNode } from "react";
  * navigation and the words stay in the address (a bookmark and the back button work). The bar is the Orders list's: a search icon, the
  * field, the arrow that searches, and room for the list's own tools (`tools`: a Filters fold); `aside` sits beside the bar (*Clear
  * all*) and `children` under it, inside the same form. `keep` carries the list's other values (its view, its order) as hidden inputs.
- * The words are the kit's (`adminText(lang, "kit").search`) or the list's own, the field's label and placeholder the list's. No state:
+ * The words are the kit's (`KIT_WORDS[lang].search`) or the list's own, the field's label and placeholder the list's. No state:
  * drawn on the server.
  */
 export function ListSearch({

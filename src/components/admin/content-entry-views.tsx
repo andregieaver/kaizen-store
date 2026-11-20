@@ -6,8 +6,12 @@ import type { ContentSite } from "@/components/admin/content-site";
 import { EntryEditor } from "@/components/admin/entry-editor";
 import { Chip, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { entryStatus, entryTitle } from "@/lib/content-types";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { CONTENT_WORDS } from "@/lib/admin-words/content";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { getContentType } from "@/server/content-types";
 import { getEntry } from "@/server/content-entries";
 
@@ -19,7 +23,7 @@ export async function EntryView({ site, typeId, entryId }: { site: ContentSite; 
   if (!type) notFound();
   const entry = entryId ? await getEntry(site.owner, entryId) : null;
   if (entryId && (!entry || entry.typeId !== type.id)) notFound();
-  const w = adminText(site.lang, "content");
+  const w = CONTENT_WORDS[site.lang];
   const locales = site.languages.map((l) => l.locale);
   const main = locales[0] ?? "en";
   const status = entry ? entryStatus(entry) : null;
@@ -27,7 +31,7 @@ export async function EntryView({ site, typeId, entryId }: { site: ContentSite; 
   const base = `${site.base}/${type.id}`;
 
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fieldsEditor", "builderText", "websitePick"])}>
+    <AdminTextScope texts={areaTexts(site.lang, { content: CONTENT_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: fillWords(w.entry.back, { type: type.name }) }}

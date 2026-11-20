@@ -13,6 +13,7 @@ import { uploadPlatformImageAction } from "../actions";
 import { savePlatformNavigationAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
 import { AdminAreas } from "@/components/admin/admin-areas";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 
 export const metadata: Metadata = { title: "Header and footer" };
 
@@ -27,7 +28,7 @@ export default async function PlatformNavigationPage() {
     listPlatformMenus(),
   ]);
   return (
-    <AdminAreas areas={["website"]}>
+    <AdminAreas areas={{ website: WEBSITE_WORDS }}>
     <>
       <PageHeader
         title={n.title}

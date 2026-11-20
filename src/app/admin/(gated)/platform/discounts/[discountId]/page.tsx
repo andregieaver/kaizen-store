@@ -13,7 +13,8 @@ import { requirePlatformReader } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Discount code" };
@@ -21,7 +22,7 @@ export const metadata: Metadata = { title: "Discount code" };
 /** Changes one of Kaizen's plan codes (D31). */
 export default async function PlatformDiscountPage({ params }: PageProps<"/admin/platform/discounts/[discountId]">) {
   const account = await requirePlatformReader();
-  const t = adminText(adminLangOf(account.adminLocale), "platform");
+  const t = PLATFORM_WORDS[adminLangOf(account.adminLocale)];
   const w = t.discounts;
   const { discountId } = await params;
   if (!z.uuid().safeParse(discountId).success) notFound();
@@ -30,7 +31,7 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
   if (!discount) notFound();
 
   return (
-    <AdminAreas areas={["discounts"]}>
+    <AdminAreas areas={{ discounts: DISCOUNTS_WORDS }}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: "/admin/platform/discounts", label: w.back }}

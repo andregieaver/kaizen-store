@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh:
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 
 import { AdminTextProvider } from "@/components/admin/admin-text";
+import { inventoryEn } from "@/lib/admin-messages/inventory.en";
 import { adminTexts } from "@/lib/admin-text";
 import type { HistoryRow, InventoryPage, InventoryRow } from "@/server/inventory";
 
@@ -362,10 +363,10 @@ describe("the stock file", () => {
   });
 
   it("names the result of an applied row, and says so when no row has a finding of a kind", () => {
-    expect(stockResultWords({ outcome: "updated", will: null })).toBe("Changed");
-    expect(stockResultWords({ outcome: "skipped", will: null })).toBe("Skipped");
-    expect(stockResultWords({ outcome: "checked", will: "skip" })).toBe("Would be skipped");
-    expect(stockResultWords({ outcome: "checked", will: null })).toBe("Checked");
+    expect(stockResultWords({ outcome: "updated", will: null }, inventoryEn.import)).toBe("Changed");
+    expect(stockResultWords({ outcome: "skipped", will: null }, inventoryEn.import)).toBe("Skipped");
+    expect(stockResultWords({ outcome: "checked", will: "skip" }, inventoryEn.import)).toBe("Would be skipped");
+    expect(stockResultWords({ outcome: "checked", will: null }, inventoryEn.import)).toBe("Checked");
     expect(findings([], "error")).toContain("No row has a finding of this kind.");
     expect(findings([], "all")).toContain("Nothing to show.");
   });

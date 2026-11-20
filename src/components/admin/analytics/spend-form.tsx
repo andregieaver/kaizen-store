@@ -5,9 +5,9 @@ import { fillWords } from "@/lib/admin-fill";
 import { CHANNELS } from "@/lib/analytics-channels";
 import { formatCount } from "@/lib/analytics-core";
 import { channelLabel } from "@/lib/analytics-traffic";
-import { adminText } from "@/lib/admin-text";
 import { analyticsLang } from "@/lib/analytics-lang";
 import { analyticsWords } from "@/lib/analytics-words";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import type { StoredSpend } from "@/server/analytics-settings";
 
 import { DataTable, type Column } from "./data-table";
@@ -57,7 +57,7 @@ export function SpendSection({ currency, locale, today, entries, limit, actions 
   const money = moneyWriter(currency, locale);
   const w = analyticsWords().spend;
   // A channel's name in the request's language (D312), the registry's English where the words have none.
-  const channelWords: Record<string, string | undefined> = adminText(analyticsLang(), "reports").channels;
+  const channelWords: Record<string, string | undefined> = REPORTS_WORDS[analyticsLang()].channels;
   const channelName = (key: string) => channelWords[key] ?? channelLabel(key);
   const columns: Column<StoredSpend>[] = [
     { key: "day", label: w.day, cell: (e) => dayText(e.day) },

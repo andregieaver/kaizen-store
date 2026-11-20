@@ -4,15 +4,15 @@ import { checkTripletexDocumentAction, postTripletexAgainAction, retryTripletexD
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { failureWords } from "@/lib/tripletex-errors";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import type { DocumentInTripletex, TripletexConnection } from "@/server/tripletex";
 
 const card = "rounded-lg border border-line bg-card p-5";
 
 type Kind = "work_invoice" | "work_credit_note" | "shop_invoice" | "shop_credit_note";
 
-const wordsOf = (lang: AdminLang) => adminText(lang, "notifications").integrations.tripletex;
+const wordsOf = (lang: AdminLang) => NOTIFICATIONS_WORDS[lang].integrations.tripletex;
 
 /** Why a document waits, in words: a reason of its own (`blocks`), else what its failure says. */
 function reasonOf(w: ReturnType<typeof wordsOf>, state: DocumentInTripletex): string | null {

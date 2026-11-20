@@ -1,7 +1,7 @@
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { isWorking } from "@/lib/data-admin";
 import type { JobKind } from "@/lib/data-job";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
 import type { Membership } from "@/server/auth";
 import { jobFor, listJobs } from "@/server/data-jobs";
 import type { DataJob } from "@/server/data-job-store";
@@ -34,7 +34,7 @@ export async function ExportSection({ member, kind, jobId, base, now }: { member
   const named_ = named && named.kind === kind ? named : null;
   const shown = named_ ?? recent.find((j) => isWorking(j.status)) ?? null;
   const row = shown ? rowOf(shown) : null;
-  const buttons = adminText(adminLangOf(member.account.adminLocale), "common").jobs;
+  const buttons = COMMON_WORDS[adminLangOf(member.account.adminLocale)].jobs;
   return (
     <div className="flex flex-col gap-4">
       {row && isWorking(row.status) && <JobTracker tickUrl={`${base}/${row.id}/tick`} initial={row} />}

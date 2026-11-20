@@ -27,7 +27,7 @@ export function BusinessDetailsFields({
   details: StoreDetails;
   countries: Country[];
   fallbackEmail: string;
-  /** The fields' words in the account's language (`adminText(lang, "setup").businessFields`). */
+  /** The fields' words in the account's language (`SETUP_WORDS[lang].businessFields`). */
   w?: SetupMessages["businessFields"];
 }) {
   const asks = (key: "legalName" | "postalAddress" | "country") => !only || only.includes(key);

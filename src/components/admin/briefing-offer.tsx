@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { HOME_WORDS } from "@/lib/admin-words/home";
 import { briefingOffered } from "@/server/staff-alerts";
 
 type Action = Parameters<typeof ActionForm>[0]["action"];
@@ -18,7 +18,7 @@ export async function BriefingOffer({ storeId, lang, turnOn, dismiss }: { storeI
     return null;
   }
   if (!offered) return null;
-  const w = adminText(lang, "home").briefing;
+  const w = HOME_WORDS[lang].briefing;
   return (
     <Card title={w.title} description={w.description}>
       <div className="flex flex-wrap items-center gap-3" data-briefing-offer>

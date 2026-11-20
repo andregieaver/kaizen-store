@@ -6,13 +6,14 @@ import { Button, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, 
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import {
   CONTENT_TYPE_PRESETS,
   entryStatus,
   entryTitle,
   type EntryStatus,
 } from "@/lib/content-types";
+import { areaTexts } from "@/lib/admin-area";
+import { CONTENT_WORDS } from "@/lib/admin-words/content";
 import { listEntries } from "@/server/content-entries";
 import { getContentType, listContentTypes } from "@/server/content-types";
 
@@ -25,7 +26,7 @@ export const SIGNAL: Record<EntryStatus, "neutral" | "positive" | "warning"> = {
 
 /** The owner's content types: each with its number of entries and a way to add one; with none, starting points to begin from. */
 export async function ContentListView({ site }: { site: ContentSite }) {
-  const w = adminText(site.lang, "content");
+  const w = CONTENT_WORDS[site.lang];
   const types = await listContentTypes(site.owner);
   const { base } = site;
   const presets = (
@@ -43,7 +44,7 @@ export async function ContentListView({ site }: { site: ContentSite }) {
   );
 
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content"])}>
+    <AdminTextScope texts={areaTexts(site.lang, { content: CONTENT_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={w.list.title}
@@ -96,7 +97,7 @@ export async function ContentListView({ site }: { site: ContentSite }) {
 export async function ContentEntriesView({ site, typeId, q }: { site: ContentSite; typeId: string; q: unknown }) {
   const type = await getContentType(site.owner, typeId);
   if (!type) notFound();
-  const w = adminText(site.lang, "content");
+  const w = CONTENT_WORDS[site.lang];
   const main = site.languages[0]?.locale ?? "en";
   const query = typeof q === "string" ? q.trim().toLowerCase() : "";
   const all = (await listEntries(site.owner, type.id)).map((entry) => ({ entry, title: entryTitle(type, entry.draft.data, main, main) }));
@@ -104,7 +105,7 @@ export async function ContentEntriesView({ site, typeId, q }: { site: ContentSit
   const { base } = site;
 
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content"])}>
+    <AdminTextScope texts={areaTexts(site.lang, { content: CONTENT_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: w.type.backToList }}

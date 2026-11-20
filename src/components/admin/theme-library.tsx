@@ -4,9 +4,9 @@ import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead } from "@/co
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { chargeButton, chargeLine, chargeToken, type ThemeCharge } from "@/lib/theme-prices";
 import type { ScheduleChip } from "@/lib/page-schedules";
+import { DESIGN_WORDS } from "@/lib/admin-words/design";
 
 import { ScheduleChipView } from "./pages-table";
 
@@ -43,7 +43,7 @@ export function ThemeLibrary({
   switchTo: ((state: FormState, formData: FormData) => Promise<FormState>) | null;
   remove: ((state: FormState, formData: FormData) => Promise<FormState>) | null;
 }) {
-  const all = adminText(lang, "design");
+  const all = DESIGN_WORDS[lang];
   const { common: c, library: w } = all;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   return (

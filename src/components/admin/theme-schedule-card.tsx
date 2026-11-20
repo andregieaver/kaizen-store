@@ -2,8 +2,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { wallClock, type ScheduleFacts, type ScheduleFormAction } from "@/lib/page-schedules";
+import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 
 import { Card } from "./ui";
 
@@ -30,7 +30,7 @@ export function ThemeScheduleCard({
   lang?: AdminLang;
   now?: Date;
 }) {
-  const all = adminText(lang, "schedules");
+  const all = SCHEDULES_WORDS[lang];
   const w = all.theme;
   const when = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "long", timeStyle: "short", timeZone: zone });
   const at = (iso: string) => when.format(new Date(iso));

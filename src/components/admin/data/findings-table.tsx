@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
+import type { AdminAreaMessages } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { SEVERITY_FILTERS, rowsPhrase, wholeNumber, type SeverityFilter } from "@/lib/data-admin";
 import type { Finding, ItemOutcome } from "@/lib/data-job";
@@ -10,11 +10,10 @@ import { hint, tableShell, td, th } from "./ui";
 /** One product's line of an import: what the file said about it and what happened (or would happen). */
 export type FindingItem = { seq: number; ref: string | null; rows: number[]; outcome: ItemOutcome; will: string | null; messages: Finding[] };
 
-/** The table's words; a page passes the account's language (D312 A11), English unless given. */
+/** The table's words; a page passes them in the account's language (D312 A11). */
 export type FindingsWords = AdminAreaMessages["bookings"]["findings"];
-const EN: FindingsWords = adminText("en", "bookings").findings;
 
-export const outcomeWords = (item: Pick<FindingItem, "outcome" | "will">, w: FindingsWords = EN): string => {
+export const outcomeWords = (item: Pick<FindingItem, "outcome" | "will">, w: FindingsWords): string => {
   const will = w.will as Record<string, string>;
   const outcome = w.outcome as Record<string, string>;
   return item.outcome === "checked" ? (item.will ? (will[item.will] ?? w.checked) : w.checked) : (outcome[item.outcome] ?? item.outcome);
@@ -35,7 +34,7 @@ export function FindingsTable({
   pageSize,
   hrefFor,
   problemsHref,
-  words: w = EN,
+  words: w,
 }: {
   items: FindingItem[];
   total: number;
@@ -44,7 +43,7 @@ export function FindingsTable({
   pageSize: number;
   hrefFor: (query: { severity?: SeverityFilter; page?: number }) => string;
   problemsHref: string | null;
-  words?: FindingsWords;
+  words: FindingsWords;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (

@@ -8,7 +8,6 @@ import type { Conversation, ConversationSummary } from "@/server/owner-assistant
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { AdminTextScope } from "./admin-text";
 
@@ -16,6 +15,8 @@ import { AiManagerChat, type Abilities, type AiManagerActions } from "./ai-manag
 import { AiMemory } from "./ai-memory";
 import { AiSkills } from "./ai-skills";
 import type { RemoveSkill, SaveSkill } from "@/lib/saved-skills";
+import { areaTexts } from "@/lib/admin-area";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 
 /**
  * The AI manager's own page (D103), for a store or the platform: the
@@ -53,14 +54,14 @@ export async function AiManagerPage({
   /** The account's admin language (D312 A10); English until the route passes it. */
   lang?: AdminLang;
 }) {
-  const w = adminText(lang, "assistant");
+  const w = ASSISTANT_WORDS[lang];
   const memory = tab === "memory";
   const skills = tab === "skills" && skillActions !== undefined;
   const [memories, learning] = memory ? await Promise.all([listMemories(accountId), learningOn(accountId)]) : [[], true];
   const saved = skills ? await listSkills({ accountId, storeId }) : [];
   const tabClass = (on: boolean) => `rounded-md px-3 py-1.5 text-sm ${on ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+    <AdminTextScope texts={areaTexts(lang, { assistant: ASSISTANT_WORDS })}>
     <div className="flex flex-col gap-4">
       <PageHeader
         title={w.name}

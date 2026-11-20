@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { FIKEN_WORDS } from "@/lib/admin-words/fiken";
 import type { FikenConnection } from "@/server/fiken";
 
 const card = "rounded-lg border border-line bg-card p-5";
@@ -12,7 +12,7 @@ const card = "rounded-lg border border-line bg-card p-5";
  * Shown instead of Tripletex's card, as a store sends to one system at a time.
  */
 export function FikenAccountingCard({ lang, storeSlug, connection, needYou }: { lang: AdminLang; storeSlug: string; connection: FikenConnection; needYou: number }) {
-  const w = adminText(lang, "fiken");
+  const w = FIKEN_WORDS[lang];
   const status =
     connection.state === "on" && connection.company
       ? fillWords(w.workCard.text, { company: connection.company.name })

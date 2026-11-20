@@ -29,7 +29,7 @@ export function CountriesForm({
   /** Read-only, for a member who may not change it. */
   disabled?: boolean;
   note?: ReactNode;
-  /** The form's words in the account's language (`adminText(lang, "setup").countriesForm`). */
+  /** The form's words in the account's language (`SETUP_WORDS[lang].countriesForm`). */
   w?: SetupMessages["countriesForm"];
 }) {
   const on = new Set(several ? chosen : chosen.slice(0, 1));

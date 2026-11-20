@@ -4,16 +4,16 @@ import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import type { InventoryMessages } from "@/lib/admin-messages/inventory.en";
-import { adminText } from "@/lib/admin-text";
 import { SEVERITY_FILTERS, type SeverityFilter } from "@/lib/data-admin";
 import type { Finding, ItemOutcome } from "@/lib/data-job";
 import { deltaIn, figureIn, numberIn, rowsIn } from "@/lib/inventory-words";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 const wholeIn = (n: number, lang: AdminLang) => numberIn(Math.round(n), ADMIN_LANG_FACTS[lang].locale);
 
 /** The numbers of a dry run: what an import would do. In the admin's language (`lang`, D312 A5), as are the parts below. */
 export function StockDryRun({ counts, lang = "en" }: { counts: { toUpdate: number; unchanged: number; conflicts: number; withProblems: number }; lang?: AdminLang }) {
-  const w = adminText(lang, "inventory").import.dry;
+  const w = INVENTORY_WORDS[lang].import.dry;
   const items: [string, number][] = [
     [w.toChange, counts.toUpdate],
     [w.unchanged, counts.unchanged],
@@ -50,7 +50,7 @@ export function StockApplied({
   written: boolean;
   lang?: AdminLang;
 }) {
-  const w = adminText(lang, "inventory").import.applied;
+  const w = INVENTORY_WORDS[lang].import.applied;
   const items: [string, number][] = [
     [w.changed, counts.updated],
     [w.unchanged, counts.unchanged],
@@ -93,8 +93,8 @@ export type StockItem = {
 
 type ResultWords = Pick<InventoryMessages["import"], "will" | "done">;
 
-/** What a row's result is called: the check's advice, or what the apply did, in the words given (English unless given). */
-export function stockResultWords(item: Pick<StockItem, "outcome" | "will">, words: ResultWords = adminText("en", "inventory").import): string {
+/** What a row's result is called: the check's advice, or what the apply did, in the words given, in the account's language. */
+export function stockResultWords(item: Pick<StockItem, "outcome" | "will">, words: ResultWords): string {
   const will: Record<string, string | undefined> = words.will;
   const done: Record<string, string | undefined> = words.done;
   if (item.outcome === "checked") return item.will && item.will !== "checked" ? (will[item.will] ?? words.will.checked) : words.will.checked;
@@ -127,7 +127,7 @@ export function StockFindings({
   problemsHref: string | null;
   lang?: AdminLang;
 }) {
-  const t = adminText(lang, "inventory").import;
+  const t = INVENTORY_WORDS[lang].import;
   const w = t.findings;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const pages = Math.max(1, Math.ceil(total / pageSize));

@@ -2,6 +2,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { bookingsEn } from "@/lib/admin-messages/bookings.en";
 import { ADMIN_SCHEMES } from "@/lib/admin-schemes";
 
 import { SchemePreview } from "./scheme-preview";
@@ -9,7 +10,7 @@ import { SchemePreview } from "./scheme-preview";
 /** The Appearance page's sample of a scheme (D222): coloured by its own mark, a picture nothing in can be pressed, named in words. */
 describe("a scheme's preview", () => {
   it.each(ADMIN_SCHEMES.flatMap((scheme) => (["light", "dark"] as const).map((mode) => [scheme.id, mode, scheme] as const)))("%s in %s", (id, mode, scheme) => {
-    const out = renderToStaticMarkup(h(SchemePreview, { scheme, mode }));
+    const out = renderToStaticMarkup(h(SchemePreview, { scheme, mode, words: bookingsEn.schemePreview }));
     expect(out).toContain(`data-scheme-preview="${id}"`);
     expect(out).toContain(`data-preview-mode="${mode}"`);
     expect(out).toContain(`color-scheme:${mode}`);

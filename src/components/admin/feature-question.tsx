@@ -23,7 +23,7 @@ export function FeatureQuestion({
   answers: OnboardingAnswers;
   warnings: QuestionWarning[];
   note: string | null;
-  /** The setup words in the account's language (`adminText(lang, "setup")`): the answers by id, the question's own words. */
+  /** The setup words in the account's language (`SETUP_WORDS[lang]`): the answers by id, the question's own words. */
   w?: SetupMessages;
 }) {
   return (

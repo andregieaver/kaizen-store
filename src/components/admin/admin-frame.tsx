@@ -6,7 +6,7 @@ import { HidingHeader, MobileMenu } from "@/components/store-chrome";
 import type { AdminLang } from "@/lib/admin-lang";
 import type { AdminLayoutId } from "@/lib/admin-layouts";
 import { navAreasIn, navItemsIn } from "@/lib/admin-nav-words";
-import { adminText } from "@/lib/admin-text";
+import { SHELL_WORDS } from "@/lib/admin-words/shell";
 
 import { AdminMain } from "./admin-main";
 import { ByPath } from "./by-path";
@@ -88,11 +88,11 @@ export function AdminFrame({
   lang?: AdminLang;
   children: ReactNode;
 }) {
-  const w = adminText(lang, "shell").frame;
+  const w = SHELL_WORDS[lang].frame;
   // `?` lists the admin's keyboard shortcuts on every page (PSI UX-07).
   const sheet = (
     <>
-      <ShortcutSheet words={adminText(lang, "shell").shortcuts} />
+      <ShortcutSheet words={SHELL_WORDS[lang].shortcuts} />
       <AdminTooltips />
     </>
   );

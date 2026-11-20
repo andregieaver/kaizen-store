@@ -1,7 +1,8 @@
 import { DialectField } from "@/components/admin/data/export-forms";
 import { card, primary } from "@/components/admin/data/ui";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 
 /**
  * The stock file's form (wave 3, D172, `docs/wave-3-inventory.md` 2.4): only the file's format, as the file is always the same set of rows (one for each
@@ -12,10 +13,10 @@ import { adminText } from "@/lib/admin-text";
 export function StockExportForm({ slug, lang = "en" }: { slug: string; lang?: AdminLang }) {
   return (
     <form method="post" action={`/admin/${slug}/inventory/export/file`} className={`${card} flex flex-col gap-4`}>
-      <DialectField defaultValue="standard" words={adminText(lang, "bookings").exports} />
+      <DialectField defaultValue="standard" words={BOOKINGS_WORDS[lang].exports} />
       <div>
         <button type="submit" className={primary}>
-          {adminText(lang, "inventory").export.button}
+          {INVENTORY_WORDS[lang].export.button}
         </button>
       </div>
     </form>

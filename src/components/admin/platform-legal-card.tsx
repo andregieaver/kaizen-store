@@ -6,7 +6,7 @@ import { Card } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { PlatformLegalMessages } from "@/lib/admin-messages/platform-legal.en";
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_LEGAL_WORDS } from "@/lib/admin-words/platform-legal";
 import type { LegalPagesOverview } from "@/server/platform-legal";
 
 /** The action that writes the pages, as `ActionForm` takes it. */
@@ -26,7 +26,7 @@ export function PlatformLegalCard({
   overview: LegalPagesOverview;
   write: WriteAction;
 }) {
-  const w = adminText(lang, "platformLegal");
+  const w = PLATFORM_LEGAL_WORDS[lang];
   const missing = overview.missing.map((key) => w.facts[key]).join(", ");
   const n = overview.missing.length;
   return (

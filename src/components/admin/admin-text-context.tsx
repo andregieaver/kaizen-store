@@ -15,7 +15,7 @@ export type ProvidedAdminText = { lang: AdminLang; texts: Partial<AdminAreaMessa
 
 export const AdminTextContext = createContext<ProvidedAdminText>({ lang: "en", texts: {} });
 
-/** Hands its client parts the account's language and the areas they read (`adminTexts()`); no catalogue of its own. */
+/** Hands its client parts the account's language and the areas they read (`areaTexts()`); no catalogue of its own. */
 export function AdminTextProvider({ lang, texts, children }: ProvidedAdminText & { children: ReactNode }) {
   return <AdminTextContext.Provider value={{ lang, texts }}>{children}</AdminTextContext.Provider>;
 }

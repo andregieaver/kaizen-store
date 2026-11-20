@@ -10,7 +10,9 @@ import { openUnansweredCount } from "@/server/unanswered-questions";
 import { PageHeader, buttonClass } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { areaTexts } from "@/lib/admin-area";
+import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
+import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 
 import { AdminTextScope } from "./admin-text";
 import { PhoneRow } from "./phone-row";
@@ -54,8 +56,8 @@ export async function ChatAgentView({
   /** The reader's admin language (D312). */
   lang?: AdminLang;
 }) {
-  const w = adminText(lang, "platformTools").chat;
-  const q = adminText(lang, "support").questions;
+  const w = PLATFORM_TOOLS_WORDS[lang].chat;
+  const q = SUPPORT_WORDS[lang].questions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const [agent, connection, documents, status, unanswered] = await Promise.all([
     getChatAgentForEdit(storeId),
@@ -74,7 +76,7 @@ export async function ChatAgentView({
   const aiLink = (text: string) => (aiPage ? <Link href={aiPage} className="underline">{text}</Link> : text);
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["platformTools"])}>
+    <AdminTextScope texts={areaTexts(lang, { platformTools: PLATFORM_TOOLS_WORDS })}>
     <div className="flex max-w-3xl flex-col gap-6">
       <PageHeader
         title={w.title}

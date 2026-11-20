@@ -8,8 +8,13 @@ import type { ContentSite } from "@/components/admin/content-site";
 import { Button, ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminText, adminTexts } from "@/lib/admin-text";
 import { emptyType, typeFromPreset, typeToInput } from "@/lib/content-types";
+import { areaTexts } from "@/lib/admin-area";
+import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { CONTENT_WORDS } from "@/lib/admin-words/content";
+import { FIELDS_WORDS } from "@/lib/admin-words/fields";
+import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { contentTypeChoices, getContentType, listContentTypes } from "@/server/content-types";
 import { getPageForEdit } from "@/server/pages";
 
@@ -17,11 +22,11 @@ import { getPageForEdit } from "@/server/pages";
 
 /** A new content type, from scratch or from a starting point (`preset`), made in the admin's language. */
 export async function NewContentTypeView({ site, preset }: { site: ContentSite; preset: unknown }) {
-  const w = adminText(site.lang, "content");
+  const w = CONTENT_WORDS[site.lang];
   const taken = (await listContentTypes(site.owner)).map((t) => t.slug);
   const initial = (typeof preset === "string" && typeFromPreset(preset, site.lang, taken)) || emptyType(site.lang, taken);
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "fieldsEditor", "builderText", "websitePick"])}>
+    <AdminTextScope texts={areaTexts(site.lang, { content: CONTENT_WORDS, fields: FIELDS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: site.base, label: w.type.backToList }} title={w.type.newTitle} />
         <ContentTypeChoices types={await contentTypeChoices(site.owner)}>
@@ -36,12 +41,12 @@ export async function NewContentTypeView({ site, preset }: { site: ContentSite; 
 export async function ContentTypeSettingsView({ site, typeId }: { site: ContentSite; typeId: string }) {
   const type = await getContentType(site.owner, typeId);
   if (!type) notFound();
-  const w = adminText(site.lang, "content");
+  const w = CONTENT_WORDS[site.lang];
   const { base } = site;
   const layout = type.layoutId ? await getPageForEdit(site.owner, type.layoutId, "entry_layout") : null;
   const design = site.actions.designLayout;
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "fieldsEditor", "builderText", "websitePick"])}>
+    <AdminTextScope texts={areaTexts(site.lang, { content: CONTENT_WORDS, fields: FIELDS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS })}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `${base}/${type.id}`, label: w.type.back }} title={fillWords(w.type.settingsTitle, { type: type.name })} />
         <ContentTypeChoices types={await contentTypeChoices(site.owner)}>

@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh:
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 
 import type { FindingItem } from "@/components/admin/data/findings-table";
+import { bookingsEn } from "@/lib/admin-messages/bookings.en";
 import { finding } from "@/lib/data-job";
 
 import { NotFoundTable, type MissingRow, type ReportActions } from "./not-found-table";
@@ -232,7 +233,7 @@ describe("the import's screens", () => {
 
 describe("the redirect file's form", () => {
   it("posts to the page's file route with the choice of redirects and the format", () => {
-    const out = html(createElement(RedirectExportForm, { slug: "demo" }));
+    const out = html(createElement(RedirectExportForm, { slug: "demo", exportWords: bookingsEn.exports }));
     expect(out).toContain('method="post"');
     expect(out).toContain('action="/admin/demo/redirects/export/file"');
     expect(out).toMatch(/name="scope" checked="" value="manual"/);

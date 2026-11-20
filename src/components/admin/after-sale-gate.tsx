@@ -9,7 +9,7 @@ import { afterSaleOf, afterSaleOpen } from "@/server/after-sale";
 
 import { FeatureOff } from "./feature-off";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { requestAdminLang } from "@/server/admin-request-lang";
 
 /**
@@ -35,7 +35,7 @@ export async function AfterSaleNote({ store }: { store: { id: string; slug: stri
   const after = await afterSaleOf(store.id);
   if (!afterSaleIsOpen(after)) return null;
   const base = `/admin/${store.slug}`;
-  const w = adminText(await requestAdminLang(), "screens").afterSale;
+  const w = SCREENS_WORDS[await requestAdminLang()].afterSale;
   const parts = [
     after.withdrawable > 0 && countWords(after.withdrawable, w.withdrawable),
     after.openReturns > 0 && countWords(after.openReturns, w.openReturns),

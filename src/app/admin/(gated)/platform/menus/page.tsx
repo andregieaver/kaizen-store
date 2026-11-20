@@ -9,6 +9,9 @@ import { PLATFORM_KINDS } from "@/components/admin/menu-links";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import type { PageType } from "@/lib/page-content";
 import { termTargets } from "@/lib/taxonomy";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
+import { WEBSITE_MENUS_WORDS } from "@/lib/admin-words/website-menus";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { requirePlatformReader } from "@/server/auth";
 import { listPlatformMenus, menuUses } from "@/server/menus";
 import { uploadsEnabled } from "@/server/media";
@@ -19,7 +22,6 @@ import { PageHeader } from "@/components/admin/ui";
 import { uploadPlatformImageAction } from "../actions";
 import { deletePlatformMenuAction, savePlatformMenuAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
-import { adminText } from "@/lib/admin-text";
 import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Menus" };
@@ -31,7 +33,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
   await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
-    <AdminAreas areas={["websitePick", "websiteMenus"]}>
+    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS, websiteMenus: WEBSITE_MENUS_WORDS }}>
     <>
       <PageHeader
         title={w.misc.menus.title}
@@ -48,7 +50,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
 
 async function Menus({ searchParams }: { searchParams: PageProps<"/admin/platform/menus">["searchParams"] }) {
   const { lang, w: site } = await platformSiteWords();
-  const w = adminText(lang, "website").menusPage;
+  const w = WEBSITE_WORDS[lang].menusPage;
   const m = site.misc.menus;
   const { menu: wanted } = await searchParams;
   const [menus, uses, pages, terms, articles, blogTerms] = await Promise.all([

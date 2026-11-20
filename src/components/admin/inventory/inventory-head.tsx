@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
 import { INVENTORY_TABS, inventoryPaths, type InventoryTab } from "@/lib/inventory-admin";
+import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -31,7 +31,7 @@ export function InventoryHead({
   lang?: AdminLang;
 }) {
   const paths = inventoryPaths(slug);
-  const w = adminText(lang, "inventory").head;
+  const w = INVENTORY_WORDS[lang].head;
   return (
     <header className="flex flex-col gap-3">
       {back && (

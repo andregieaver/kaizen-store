@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { MediaLibrary } from "@/components/admin/media-library";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { mediaQuery } from "@/lib/media-query";
+import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
+import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { requirePlatformReader } from "@/server/auth";
 import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
@@ -37,7 +39,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
   await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
-    <AdminAreas areas={["websitePick", "websiteMedia"]}>
+    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS }}>
     <>
       <PageHeader
         title={w.misc.media.title}

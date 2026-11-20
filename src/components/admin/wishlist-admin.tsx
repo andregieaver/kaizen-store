@@ -3,7 +3,6 @@ import Link from "next/link";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
-import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { CART_ADD_STATUS, type CartAddRow, type CartAddStatus } from "@/server/wishlist-admin";
 
@@ -14,10 +13,9 @@ export function variantText(options: Record<string, string> | null, sku: string)
 }
 
 type WishlistWords = BookingsMessages["wishlists"];
-const ENGLISH = (): WishlistWords => adminText("en", "bookings").wishlists;
 
 /** The two views of the store's wishlists (D36): the lists, and what went from them to the cart and was bought. */
-export function WishlistTabs({ storeSlug, current, words: w = ENGLISH() }: { storeSlug: string; current: "lists" | "activity"; words?: WishlistWords }) {
+export function WishlistTabs({ storeSlug, current, words: w }: { storeSlug: string; current: "lists" | "activity"; words: WishlistWords }) {
   const base = `/admin/${storeSlug}/wishlists`;
   const tabs = [
     { key: "lists", href: base, label: w.tabs.lists },
@@ -66,7 +64,7 @@ export function CartAddTable({
   locale,
   showList = true,
   showCustomer = true,
-  words: w = ENGLISH(),
+  words: w,
   dateLocale = locale,
   timeZone,
 }: {
@@ -75,8 +73,8 @@ export function CartAddTable({
   locale: string;
   showList?: boolean;
   showCustomer?: boolean;
-  /** The table's words and date format (D312 A11); English when none are given. */
-  words?: WishlistWords;
+  /** The table's words and date format (D312 A11), in the account's language. */
+  words: WishlistWords;
   dateLocale?: string;
   /** The store's time zone (D786). */
   timeZone: string;

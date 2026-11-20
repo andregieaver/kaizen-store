@@ -8,7 +8,6 @@ import { formatAmount } from "@/lib/analytics-format";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { submitClass } from "@/lib/submit-class";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
-import { adminText } from "@/lib/admin-text";
 import { analyticsDateLocale, analyticsLang } from "@/lib/analytics-lang";
 import { analyticsWords, countText } from "@/lib/analytics-words";
 import {
@@ -20,6 +19,8 @@ import {
 import type { AnalyticsSetupSummary } from "@/server/analytics-settings-data";
 import type { StoredPeriodTarget, StoredTarget } from "@/server/analytics-settings";
 import { TARGET_METRICS, TARGET_PERIODS } from "@/lib/analytics-targets";
+import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
+import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
 
 import { DataTable, StatusPill, type Column } from "./data-table";
 import { AnalyticsSection, Note } from "./section";
@@ -583,7 +584,7 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
 // ---------------------------------------------------------------------------
 
 export function SignalsSection({ heatmaps, action }: { heatmaps: boolean; action: FormAction | null }) {
-  const w = adminText(analyticsLang(), "heatmaps");
+  const w = HEATMAPS_WORDS[analyticsLang()];
   return (
     <AnalyticsSection id="signals" title={w.title} description={w.description}>
       <div className={card}>
@@ -636,14 +637,14 @@ export function SignalsSection({ heatmaps, action }: { heatmaps: boolean; action
 export const RECORDING_SHARE_CHOICES = [10, 25, 50, 100] as const;
 
 export function RecordingsSection({ recordings, action }: { recordings: NonNullable<AnalyticsSettingsViewProps["recordings"]>; action: FormAction | null }) {
-  const w = adminText(analyticsLang(), "recordings").settings;
+  const w = RECORDINGS_WORDS[analyticsLang()].settings;
   const { on, share, mask, available, privacyHref, assessmentHref } = recordings;
   return (
     <AnalyticsSection id="recordings" title={w.title} description={w.description}>
       <div className={card}>
         <div className="flex flex-wrap items-center gap-3">
           <StatusPill tone={on ? "good" : "neutral"}>{on ? w.on : w.off}</StatusPill>
-          <p className="text-sm">{on ? fillWords(w.stateOn, { share }) : available ? w.stateOff : adminText(analyticsLang(), "recordings").notAvailable}</p>
+          <p className="text-sm">{on ? fillWords(w.stateOn, { share }) : available ? w.stateOff : RECORDINGS_WORDS[analyticsLang()].notAvailable}</p>
         </div>
         <p className="text-sm text-muted">{w.kept}</p>
         {action && (available || on) ? (
@@ -782,12 +783,12 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
           <VisitsSection summary={summary} visitCounting={visitCounting} actions={actions} />
         </PhoneRow>
         {props.heatmaps !== undefined && (
-          <PhoneRow opens="signals" title={adminText(analyticsLang(), "heatmaps").title} sub={props.heatmaps ? p.on : p.off} action={!props.heatmaps && actions?.setHeatmaps ? turnOn(actions.setHeatmaps) : undefined} {...row}>
+          <PhoneRow opens="signals" title={HEATMAPS_WORDS[analyticsLang()].title} sub={props.heatmaps ? p.on : p.off} action={!props.heatmaps && actions?.setHeatmaps ? turnOn(actions.setHeatmaps) : undefined} {...row}>
             <SignalsSection heatmaps={props.heatmaps} action={actions?.setHeatmaps ?? null} />
           </PhoneRow>
         )}
         {props.recordings ? (
-          <PhoneRow opens="recordings" title={adminText(analyticsLang(), "recordings").settings.title} sub={props.recordings.on ? p.on : props.recordings.available ? p.off : p.notAvailable} {...row}>
+          <PhoneRow opens="recordings" title={RECORDINGS_WORDS[analyticsLang()].settings.title} sub={props.recordings.on ? p.on : props.recordings.available ? p.off : p.notAvailable} {...row}>
             <RecordingsSection recordings={props.recordings} action={actions?.setRecordings ?? null} />
           </PhoneRow>
         ) : null}

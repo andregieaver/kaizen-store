@@ -20,7 +20,7 @@ export function PlaceFields({
   defaultCountry: string;
   /** "the office", "the store", "the pickup point": for the hint under the notes. */
   what: string;
-  /** The words in the account's language (`adminText(lang, "settings")`). */
+  /** The words in the account's language (`SETTINGS_WORDS[lang]`). */
   w?: SettingsMessages;
   /** Round 51 (D784): the address alone, or the optional phone and directions alone, so a page can put the second behind a phone row. */
   part?: "all" | "address" | "extras";

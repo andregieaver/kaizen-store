@@ -6,8 +6,8 @@ import { Card } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
 import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
+import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import type { SiteSwitch } from "@/server/house-switch";
 
 type SwitchAction = ComponentProps<typeof ActionForm>["action"];
@@ -18,7 +18,7 @@ type SwitchAction = ComponentProps<typeof ActionForm>["action"];
  * to edit the site in the store and the button that switches back. Nothing is deleted either way.
  */
 export function SiteSwitchCard({ lang, state, on, off }: { lang: AdminLang; state: SiteSwitch; on: SwitchAction; off: SwitchAction }) {
-  const w = adminText(lang, "console").siteSwitch;
+  const w = CONSOLE_WORDS[lang].siteSwitch;
   const when = (iso: string | null) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   if (state.on) {
     return (

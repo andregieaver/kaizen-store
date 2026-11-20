@@ -21,7 +21,9 @@ import { requirePlatformReader } from "@/server/auth";
 import { ButtonLink, Card, CARD_CLASS, Chip, EmptyState, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BILLING_WORDS } from "@/lib/admin-words/billing";
+import { DISCOUNTS_WORDS } from "@/lib/admin-words/discounts";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Discounts" };
@@ -37,7 +39,7 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
   await connection();
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
-  const t = adminText(lang, "platform");
+  const t = PLATFORM_WORDS[lang];
   const w = t.discounts;
   const [discounts, currencies, plans] = await Promise.all([listPlatformDiscounts(), planCurrencies(), listPlans()]);
   const modes = platformModes();
@@ -67,7 +69,7 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
   const fold = `group ${CARD_CLASS}`;
   const summary = "flex min-h-12 cursor-pointer list-none items-center px-6 py-3 text-body text-ink [&::-webkit-details-marker]:hidden";
   return (
-    <AdminAreas areas={["discounts"]}>
+    <AdminAreas areas={{ discounts: DISCOUNTS_WORDS }}>
     <>
       <PageHeader
         title={w.title}
@@ -118,7 +120,7 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
                           {w.campaign} · {fillWords(w.campaignWhen, { from: day(d.campaign.startsAt), to: day(d.expiresAt) })} · {stateOf(d)}
                         </span>
                       )}
-                      {platformDiscountSummary(d, money, adminText(adminLangOf(account.adminLocale), "billing").discount)}
+                      {platformDiscountSummary(d, money, BILLING_WORDS[adminLangOf(account.adminLocale)].discount)}
                       {d.syncedModes.length > 0 ? fillWords(w.inStripe, { modes: d.syncedModes.join(", ") }) : w.notInStripe}
                       {d.syncError && <span className="block text-danger-text">{d.syncError}</span>}
                     </>
