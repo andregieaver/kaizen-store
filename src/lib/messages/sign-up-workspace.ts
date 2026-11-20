@@ -3,9 +3,26 @@ import type { PlatformLang } from "../platform-lang";
 /**
  * The words a sign-up for extensions without a store (D748 E7) reads where a store's sign-up reads its own: the confirmation page and the
  * emails about the request, which speak of the account and its trials. Kept apart from `platformText()`, which the storefront's layout
- * reaches, so no store page carries them (`scripts/route-budget.mjs`): only the confirmation page, its action and `access-emails.ts` import it.
+ * reaches, so no store page carries them (`scripts/route-budget.mjs`): only the sign-up for extensions (its picker's words, D859), the
+ * confirmation page, its action and `access-emails.ts` import it.
  */
 const en = {
+  /** The picker on the sign-up for extensions (D859): bundles over the extensions, and the bundle chosen or proposed with its prices. */
+  picker: {
+    bundles: "Bundles",
+    oneByOne: "Or one by one",
+    price: "{price} a month",
+    holds: "Holds {names}",
+    saves: "{amount} a month less than one by one",
+    later: "{names}: works once you add your store",
+    inBundle: "In the {bundle} bundle",
+    switched: "Cheaper as the {bundle} bundle: {price} instead of {from} a month.",
+    offer: "The {bundle} bundle holds all of this for {price} instead of {from} a month.",
+    propose: "For {extra} more a month, the {bundle} bundle also gives you {adds}.",
+    proposeLater: "{names} works once you add your store.",
+    choose: "Choose {bundle}",
+    total: "Your choice: {total} a month after the free trial, excl. VAT.",
+  },
   confirm: {
     title: "Start your free trial",
     body: "Your account for {store} is made when you press the button, with the free trials you chose.",
@@ -42,6 +59,21 @@ const en = {
 };
 
 const nb: typeof en = {
+  picker: {
+    bundles: "Pakker",
+    oneByOne: "Eller hver for seg",
+    price: "{price} i måneden",
+    holds: "Inneholder {names}",
+    saves: "{amount} mindre i måneden enn hver for seg",
+    later: "{names}: virker når du legger til nettbutikken",
+    inBundle: "I pakken {bundle}",
+    switched: "Billigere som pakken {bundle}: {price} i stedet for {from} i måneden.",
+    offer: "Pakken {bundle} har alt dette for {price} i stedet for {from} i måneden.",
+    propose: "For {extra} mer i måneden gir pakken {bundle} deg også {adds}.",
+    proposeLater: "{names} virker når du legger til nettbutikken.",
+    choose: "Velg {bundle}",
+    total: "Ditt valg: {total} i måneden etter prøveperioden, ekskl. mva.",
+  },
   confirm: {
     title: "Start den gratis prøveperioden",
     body: "Kontoen for {store} lages når du trykker på knappen, med de gratis prøveperiodene du valgte.",

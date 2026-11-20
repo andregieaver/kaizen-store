@@ -392,6 +392,14 @@ export const platformNb: PlatformMessages = {
       notOffered: "Tilbys ikke: alle kontoer betaler prisene.",
       price: "Grunnleggerpris",
     },
+    upsell: {
+      title: "Pakker ved registrering",
+      hint: "Registreringen for utvidelser velger en pakke for personen når den har det de krysset av for, uten å koste mer. Den foreslår også en pakke som har mer, når den koster høyst så mye mer og gir noe de kan bruke.",
+      percent: "Foreslå når den koster høyst (%) mer",
+      on: "Foreslås når den koster høyst {percent} % mer",
+      off: "Av: ingen pakke foreslås for mer",
+      bad: "Oppgi en prosent fra 0 til 100; 0 foreslår ingen.",
+    },
     launch: {
       title: "Lanser utvidelsene",
       lead: "Lanseringen starter salget av utvidelser. Fra da av har hver konto det planen gir, det den betaler for og prøveperiodene sine.",

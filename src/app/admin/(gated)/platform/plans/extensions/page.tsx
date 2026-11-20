@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, Field, PageHeader, TextInput } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
@@ -21,13 +21,14 @@ import {
   extensionCurrencies,
   extensionFounding,
   extensionsLaunchedAt,
+  extensionUpsellPercent,
   getExtensionCatalogue,
   type CatalogueBundle,
   type CatalogueExtension,
   type ExtensionPrice,
 } from "@/server/extensions";
 
-import { launchExtensionsAction, saveBundleAction, saveExtensionAction, saveFoundingAction, savePlanGrantsAction } from "./actions";
+import { launchExtensionsAction, saveBundleAction, saveExtensionAction, saveFoundingAction, savePlanGrantsAction, saveUpsellAction } from "./actions";
 
 export const metadata: Metadata = { title: "Extensions" };
 
@@ -46,12 +47,13 @@ export default async function ExtensionsPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = PLATFORM_WORDS[lang].extensions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const [catalogue, plans, currencies, launchedAt, founding] = await Promise.all([
+  const [catalogue, plans, currencies, launchedAt, founding, upsell] = await Promise.all([
     getExtensionCatalogue(),
     listPlans(),
     extensionCurrencies(),
     extensionsLaunchedAt(),
     extensionFounding(),
+    extensionUpsellPercent(),
   ]);
   const columns = plans.filter((plan) => plan.active);
   // The launch's preview is read only until it has happened.
@@ -90,6 +92,12 @@ export default async function ExtensionsPage() {
           done={w.phone.close}
         >
           <FoundingCard founding={founding} lang={lang} w={w} />
+        </PhoneRow>
+      </div>
+
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow flat last title={w.upsell.title} sub={upsell > 0 ? fillWords(w.upsell.on, { percent: String(upsell) }) : w.upsell.off} change={w.phone.edit} done={w.phone.close}>
+          <UpsellCard percent={upsell} w={w} />
         </PhoneRow>
       </div>
 
@@ -474,6 +482,26 @@ function FoundingCard({ founding, lang, w }: { founding: { until: Date | null; m
           {f.months}
           <input type="number" name="months" min={1} max={36} defaultValue={founding.months} className={`${control} w-24`} />
         </label>
+        <SubmitButton>{w.save}</SubmitButton>
+      </ActionForm>
+    </section>
+  );
+}
+
+/** Bundles at the sign-up for extensions (D859): how much more a bundle that holds more may cost to be proposed; 0 proposes none. */
+function UpsellCard({ percent, w }: { percent: number; w: W }) {
+  const u = w.upsell;
+  return (
+    <section aria-labelledby="upsell" className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
+      <h2 id="upsell" className="text-title text-ink">
+        {u.title}
+      </h2>
+      <p className="text-sm text-muted">{u.hint}</p>
+      <p className="text-sm">{percent > 0 ? fillWords(u.on, { percent: String(percent) }) : u.off}</p>
+      <ActionForm action={saveUpsellAction} className="flex flex-wrap items-end gap-4">
+        <Field label={u.percent} className="w-80 max-w-full">
+          {(field) => <TextInput {...field} type="number" name="percent" min={0} max={100} defaultValue={percent} />}
+        </Field>
         <SubmitButton>{w.save}</SubmitButton>
       </ActionForm>
     </section>

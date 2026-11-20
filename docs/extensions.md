@@ -479,6 +479,13 @@ store owners), Add to your account offers an account without a store only what i
 `docs/site-pages/standalone-products.test.ts` from `docs/site-design.md` (the feature pages' shape), each claim built and its source in the
 generator, are saved as drafts of Kaizena Flow's own store for the owner to publish together with the sign-up (`docs/site-pages/README.md`).
 
+**E7 as built, part five (20 November 2026, D859).** The sign-up for extensions lists the bundles above the extensions, priced a month in
+the chosen country's currency; a chosen bundle ticks and holds its extensions and starts every part's trial. `bundleUpsell()` chooses a
+bundle for the person when it holds everything chosen for no more (saying why; taken off, it is only offered and what it replaced comes
+back), and proposes one for at most `extension_upsell_percent` % more (Platform → Plans → Extensions, 20 by default, migration
+`20261120161643_lush_the_liberteens`) when it adds a part they can use now; parts that need a store are marked and never what a bundle is
+sold on without one.
+
 **E9 as built, part one (20 November 2026, D852).** The manager's suggestions (section 6) are two tools, in a store's manager for its
 account's owner only: `extension_offers` counts the store's records (`offerFacts()`: customer conversations and contact form messages in 7
 days for the support desk, subscribers for email automation, form messages and quote requests in 30 days for Deals, page views in 30 days
@@ -528,6 +535,10 @@ through `commerce.set_price`. Allowances, trial and grace lengths and founding o
   applied by CI 20 November 2026 with run 1780 or 1781 (held back from runs 1762 to 1779: part two's sign-up page broke the build, fixed
   in `676e5dae`, then other sessions' tests, ci-red #30). In production: `commerce.approve_workspace_request()` and a workspace made with
   `sales` and Work on; email automation no longer sold on its own; the sign-up for extensions open. Advisors: INFO only, nothing new.
+- E9 parts one and two: `20261120140730_furry_shiva` (`extension_offers`) and `20261120144933_youthful_justice` (`platform_price_changes`,
+  the price tuning setting), applied by CI 20 November 2026 with run 1804 (commit 57736c0c; held back from run 1798, red over another
+  session's test, ci-red #34). In production: no offer kept yet, price tuning off at 20 %. Advisors: INFO only (RLS on, no policy; the new
+  indexes not yet used); no new warning.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 

@@ -118,8 +118,12 @@ export async function requestExtensions(_state: FormState, formData: FormData): 
   if (!STANDALONE_SIGNUP_OPEN) return { status: "error", messages: [w.failed] };
   if (String(formData.get("website") ?? "") !== "") return { status: "ok", messages: [x.received] };
   const wantsStore = formData.get("store") === "on";
-  const offered = (await getPublicExtensions()).extensions.filter((e) => wantsStore || e.standalone).map((e) => e.id);
-  const extensions = [...new Set(formData.getAll("extension").map(String))].filter((id): id is ExtensionId => isExtensionId(id) && offered.includes(id));
+  const catalogue = await getPublicExtensions();
+  const offered = catalogue.extensions.filter((e) => wantsStore || e.standalone).map((e) => e.id);
+  // A bundle chosen (D859) brings every one of its parts, those that work once a store is added too: their trials start with the rest.
+  const chosen = new Set(formData.getAll("bundle").map(String));
+  const bundled = catalogue.bundles.filter((b) => chosen.has(b.id)).flatMap((b) => b.members);
+  const extensions = [...new Set([...formData.getAll("extension").map(String).filter((id) => offered.includes(id as ExtensionId)), ...bundled])].filter(isExtensionId);
   const country = String(formData.get("country") ?? "").trim().toUpperCase();
   const parsed = inputIn(w.errors)
     .pick({ name: true, email: true, storeName: true })

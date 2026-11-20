@@ -347,6 +347,20 @@ export async function extensionFounding(): Promise<{ until: Date | null; months:
   return { until: row?.until ? new Date(row.until) : null, months: row?.months ?? 12 };
 }
 
+/** How much more a bundle may cost to be proposed at the sign-up for extensions, in percent (D859); 0 proposes none. */
+export async function extensionUpsellPercent(): Promise<number> {
+  const row = await typedRow(z.object({ percent: col.int }), sql`select extension_upsell_percent as percent from commerce.platform_settings`);
+  return row?.percent ?? 20;
+}
+
+/** Saves it, from Platform → Plans → Extensions. */
+export async function saveExtensionUpsell(actor: Account, percent: number): Promise<SaveResult> {
+  if (!Number.isInteger(percent) || percent < 0 || percent > 100) return { ok: false, problems: ["From 0 to 100 %."] };
+  await db().execute(sql`update commerce.platform_settings set extension_upsell_percent = ${percent}`);
+  await audit(actor.id, null, "platform.extension_upsell_saved", { percent });
+  return { ok: true };
+}
+
 /** Saves the founding offer: offered through `until` (a day, ending at midnight in Kaizena Flow's time zone), or not offered (null). */
 export async function saveExtensionFounding(actor: Account, until: string | null, months: number): Promise<SaveResult> {
   await db().execute(sql`

@@ -394,6 +394,14 @@ export const platformEn = {
       notOffered: "Not offered: every account pays the prices.",
       price: "Founding price",
     },
+    upsell: {
+      title: "Bundles at sign-up",
+      hint: "The sign-up for extensions chooses a bundle for the person when it holds what they ticked for no more. It also proposes a bundle that holds more, when it costs at most this much more and adds something they can use.",
+      percent: "Propose when it costs at most (%) more",
+      on: "Proposed when it costs at most {percent} % more",
+      off: "Off: no bundle is proposed for more",
+      bad: "Give a percent from 0 to 100; 0 proposes none.",
+    },
     launch: {
       title: "Launch extensions",
       lead: "Launching starts selling extensions. From then on each account has what its plan includes, what it pays for and its trials.",

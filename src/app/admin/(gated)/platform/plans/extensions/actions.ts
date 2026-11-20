@@ -11,7 +11,7 @@ import { ALLOWANCES_OF, EXTENSION_IDS, isExtensionId, type ExtensionId } from "@
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { listPlans } from "@/server/billing";
 import { launchExtensions } from "@/server/extension-launch";
-import { extensionCurrencies, getExtensionCatalogue, saveBundle, saveExtension, saveExtensionFounding, savePlanGrants } from "@/server/extensions";
+import { extensionCurrencies, getExtensionCatalogue, saveBundle, saveExtension, saveExtensionFounding, saveExtensionUpsell, savePlanGrants } from "@/server/extensions";
 import { platformAction } from "@/server/store-action";
 
 /** The extension catalogue's three forms (D748 step E2), at the platform's plans area, write. */
@@ -95,6 +95,17 @@ export async function saveFoundingAction(_state: FormState, form: FormData): Pro
     const parsed = parseFoundingForm(form);
     if (!parsed.ok) return said(lang, parsed.problems);
     await saveExtensionFounding(account, parsed.input.until, parsed.input.months);
+    refresh();
+    return { status: "ok", messages: [words(lang).saved] };
+  });
+}
+
+/** Saves how much more a bundle may cost to be proposed at the sign-up for extensions (D859). */
+export async function saveUpsellAction(_state: FormState, form: FormData): Promise<FormState> {
+  return platformAction({ area: "plans", action: "platform.extension_upsell_save", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (account, lang) => {
+    const percent = Number.parseInt(String(form.get("percent") ?? ""), 10);
+    const result = await saveExtensionUpsell(account, percent);
+    if (!result.ok) return { status: "error", messages: [words(lang).upsell.bad] };
     refresh();
     return { status: "ok", messages: [words(lang).saved] };
   });

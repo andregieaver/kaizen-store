@@ -613,6 +613,12 @@ under *What the router fetches ahead*.
 - **For extensions (D748 E7)**: `/sign-up/extensions` keeps what was ticked on the request (`wants_store`, `extensions`, `country`); a request
   without a store is approved into a workspace by the same `approveAccessRequest()` (`commerce.approve_workspace_request()`), and every
   approval starts the ticked trials (`startChosenTrials()`). A workspace never gets a store's own trial.
+- **Its bundles and upsells (D859)**: the page's `ExtensionPicker` lists the bundles above the extensions, priced in the chosen country's
+  currency (`signUpCurrency()`); a chosen bundle is sent as `bundle` and `requestExtensions()` adds every part it holds, those not sold on
+  their own too. `bundleUpsell()` (pure) decides what is chosen, offered or proposed: a bundle holding everything chosen for no more is
+  chosen and said, and only offered once taken off; one for at most `extension_upsell_percent` % more is proposed only for a part usable
+  now (a part that needs a store counts only with *Also open an online store* ticked), and never once taken off. Its words are
+  `signUpWorkspaceText(lang).picker`, kept out of the storefront's messages.
 
 ## Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`, `src/server/content-moderation.ts`)
 

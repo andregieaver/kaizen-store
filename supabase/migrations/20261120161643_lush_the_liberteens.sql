@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "extension_upsell_percent" integer DEFAULT 20 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD CONSTRAINT "platform_settings_extension_upsell" CHECK ("commerce"."platform_settings"."extension_upsell_percent" between 0 and 100);

@@ -1,6 +1,6 @@
 {
-  "id": "a9a76f82-ecf8-4341-9373-fa91f79bf815",
-  "prevId": "8cacfbf7-0a6b-419f-9cf9-3c63b0625386",
+  "id": "1406e13f-311d-445e-af96-67cbe66e4e8d",
+  "prevId": "a9a76f82-ecf8-4341-9373-fa91f79bf815",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -62231,6 +62231,13 @@
           "notNull": true,
           "default": 12
         },
+        "extension_upsell_percent": {
+          "name": "extension_upsell_percent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 20
+        },
         "price_tuning": {
           "name": "price_tuning",
           "type": "text",
@@ -62551,6 +62558,10 @@
         "platform_settings_price_tuning": {
           "name": "platform_settings_price_tuning",
           "value": "\"commerce\".\"platform_settings\".\"price_tuning\" in ('off', 'propose', 'auto')"
+        },
+        "platform_settings_extension_upsell": {
+          "name": "platform_settings_extension_upsell",
+          "value": "\"commerce\".\"platform_settings\".\"extension_upsell_percent\" between 0 and 100"
         },
         "platform_settings_price_tuning_range": {
           "name": "platform_settings_price_tuning_range",

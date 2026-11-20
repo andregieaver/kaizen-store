@@ -4,14 +4,18 @@ import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PolicyLink } from "@/components/policy-link";
+import { ExtensionPicker } from "@/components/platform-routes/extension-picker";
 import { control, field, SignUpAcceptance } from "@/components/platform-routes/sign-up";
 import { requestExtensions } from "@/app/(platform)/sign-up/actions";
 import { ReferralKeeper } from "@/app/(platform)/sign-up/referral-keeper";
 import { extensionsIn } from "@/lib/extension-words";
-import { isExtensionId, STANDALONE_SIGNUP_OPEN } from "@/lib/extensions";
+import { foundingShown, paidMonthly } from "@/lib/extension-offer";
+import { isExtensionId, STANDALONE_SIGNUP_OPEN, STORE_ONLY_EXTENSIONS } from "@/lib/extensions";
+import { signUpWorkspaceText } from "@/lib/messages/sign-up-workspace";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { languageMeta } from "@/server/platform-lang-meta";
+import { extensionUpsellPercent } from "@/server/extensions";
 import { getPublicExtensions } from "@/server/public-extensions";
 import { referralPublicSettings } from "@/server/referrals";
 import { listCountries } from "@/server/stores";
@@ -32,8 +36,21 @@ export async function ExtensionsSignUpRoute({ lang, ticked }: { lang: PlatformLa
   if (!STANDALONE_SIGNUP_OPEN) notFound();
   const s = platformText(lang).signUp;
   const w = s.extensions;
-  const [catalogue, countries, referrals] = await Promise.all([getPublicExtensions(), listCountries(), referralPublicSettings()]);
-  const offered = extensionsIn(catalogue, lang).extensions.filter((e) => e.standalone);
+  const [catalogue, countries, referrals, nearPercent] = await Promise.all([getPublicExtensions(), listCountries(), referralPublicSettings(), extensionUpsellPercent()]);
+  const words = extensionsIn(catalogue, lang);
+  const founding = foundingShown(catalogue);
+  // The picker (D859): the bundles over the extensions sold on their own, each priced a month in every currency the price list has.
+  const picker = {
+    extensions: words.extensions.filter((e) => e.standalone && e.size).map((e) => ({ id: e.id, name: e.name, description: e.description, prices: paidMonthly(e.size!.prices, founding) })),
+    bundles: words.bundles.map((b) => ({ id: b.id, name: b.name, description: b.description, members: b.members, prices: paidMonthly(b.prices, founding) })),
+    names: Object.fromEntries(words.extensions.map((e) => [e.id, e.name])),
+    partPrices: Object.fromEntries(words.extensions.map((e) => [e.id, e.size ? paidMonthly(e.size.prices, founding) : {}])),
+    needsStore: words.extensions.filter((e) => !e.standalone || STORE_ONLY_EXTENSIONS.includes(e.id)).map((e) => e.id),
+    currencies: Object.fromEntries(countries.map((c) => [c.code, c.currency])),
+    nearPercent,
+    lang: PLATFORM_LANG_FACTS[lang].locale,
+    w: signUpWorkspaceText(lang).picker,
+  };
   const home = lang === "nb" ? "NO" : "";
   return (
     <main id="main" className="flex flex-1 flex-col bg-[radial-gradient(120%_45%_at_50%_0%,rgb(144_128_100/0.18),transparent)]">
@@ -53,8 +70,8 @@ export async function ExtensionsSignUpRoute({ lang, ticked }: { lang: PlatformLa
           <input type="hidden" name="locale" value={PLATFORM_LANG_FACTS[lang].locale} />
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-1 text-sm font-medium">{w.pick}</legend>
-            <Suspense fallback={<ExtensionChoices offered={offered} ticked={[]} />}>
-              <TickedChoices offered={offered} ticked={ticked} />
+            <Suspense fallback={<ExtensionPicker {...picker} initial={[]} />}>
+              <TickedPicker picker={picker} ticked={ticked} />
             </Suspense>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-dashed border-border p-4 text-sm transition-colors has-[:checked]:border-foreground">
               <input type="checkbox" name="store" className="mt-0.5 size-5 shrink-0 accent-foreground" />
@@ -114,22 +131,8 @@ export async function ExtensionsSignUpRoute({ lang, ticked }: { lang: PlatformLa
   );
 }
 
-type Offered = { id: string; name: string; description: string }[];
-
-/** The extensions to tick, with those a link asked for ticked. */
-function ExtensionChoices({ offered, ticked }: { offered: Offered; ticked: readonly string[] }) {
-  return offered.map((e) => (
-    <label key={e.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 text-sm transition-colors has-[:checked]:border-foreground">
-      <input type="checkbox" name="extension" value={e.id} defaultChecked={ticked.includes(e.id)} className="mt-0.5 size-5 shrink-0 accent-foreground" />
-      <span className="flex flex-col gap-1">
-        <span className="font-medium">{e.name}</span>
-        <span className="text-muted">{e.description}</span>
-      </span>
-    </label>
-  ));
-}
-
-/** The same, once the request's `?with=` is read (per request, inside the form's `<Suspense>`). */
-async function TickedChoices({ offered, ticked }: { offered: Offered; ticked: Promise<readonly string[]> }) {
-  return <ExtensionChoices offered={offered} ticked={(await ticked).filter(isExtensionId)} />;
+/** The picker with what the request's `?with=` asked to tick (per request, inside the form's `<Suspense>`). */
+async function TickedPicker({ picker, ticked }: { picker: Omit<Parameters<typeof ExtensionPicker>[0], "initial">; ticked: Promise<readonly string[]> }) {
+  const offered = new Set(picker.extensions.map((e) => e.id));
+  return <ExtensionPicker {...picker} initial={(await ticked).filter(isExtensionId).filter((id) => offered.has(id))} />;
 }

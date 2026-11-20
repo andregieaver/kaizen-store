@@ -1974,6 +1974,11 @@ export const platformSettings = commerce.table(
     extensionFoundingUntil: timestamp("extension_founding_until", { withTimezone: true }),
     extensionFoundingMonths: integer("extension_founding_months").notNull().default(12),
     /**
+     * The sign-up for extensions proposes a bundle that holds what was chosen and more when it costs at most this many percent more (D859,
+     * `bundleUpsell()` in `src/lib/bundle-upsell.ts`); 0 proposes none. Set on Platform → Plans → Extensions.
+     */
+    extensionUpsellPercent: integer("extension_upsell_percent").notNull().default(20),
+    /**
      * How far the AI may tune Kaizena Flow's plan, extension and bundle prices (D748 E9 part two, D854, `src/lib/price-tuning.ts`): `off`, it
      * changes none; `propose`, each change waits for a platform owner's yes; `auto`, it changes a price itself within
      * `price_tuning_range_percent` of the price a person last set, and asks beyond it.
@@ -2050,6 +2055,7 @@ export const platformSettings = commerce.table(
     check("platform_settings_briefing", sql`${t.briefing} in ('off', 'daily', 'weekly')`),
     check("platform_settings_founding_months", sql`${t.extensionFoundingMonths} between 1 and 36`),
     check("platform_settings_price_tuning", sql`${t.priceTuning} in ('off', 'propose', 'auto')`),
+    check("platform_settings_extension_upsell", sql`${t.extensionUpsellPercent} between 0 and 100`),
     check("platform_settings_price_tuning_range", sql`${t.priceTuningRangePercent} between 1 and 50`),
     check("platform_settings_single_row", sql`${t.id}`),
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
