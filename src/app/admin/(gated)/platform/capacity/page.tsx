@@ -6,7 +6,7 @@ import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { PlatformFlagsCard } from "@/components/admin/platform-flags-card";
 import { ColdStartsCard } from "@/components/admin/cold-starts-card";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -144,7 +144,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
       <div id="jobs">
         <Card title={w.jobs.title} description={w.jobs.description} compact>
           {jobs.length === 0 ? (
-            <p className="text-body text-muted">{w.jobs.none}</p>
+            <EmptyState compact title={w.jobs.none} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-caption">
@@ -184,7 +184,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
       <div id="cache">
         <Card title={w.cache.title} description={w.cache.description} compact>
           {cacheRows.length === 0 ? (
-            <p className="text-body text-muted">{w.cache.none}</p>
+            <EmptyState compact title={w.cache.none} />
           ) : (
             <>
               {cacheWeek.flagged.map((r) => (

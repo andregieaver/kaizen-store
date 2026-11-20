@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
-import { Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { Card, EmptyState, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -55,7 +55,7 @@ export default async function PlatformApiPage() {
         )}
         <Card title={w.inUse}>
           {tokens.length === 0 ? (
-            <p className="text-sm text-muted">{w.none}</p>
+            <EmptyState compact title={w.none} />
           ) : (
             <List label={w.inUse}>
               {tokens.map((token) => (

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { Card, Chip, EmptyState, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -39,7 +39,7 @@ export default async function PlatformAppsPage() {
       <PageHeader title={w.title} description={w.description} />
       <Card title={w.waiting}>
         {waiting.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <List label={w.waiting}>
             {waiting.map((app) => (

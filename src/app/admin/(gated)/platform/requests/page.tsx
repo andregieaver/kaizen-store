@@ -13,7 +13,7 @@ import { designLookValue, type DesignCard } from "@/lib/design-presets";
 import { requirePlatformReader } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 import { designChoices } from "@/server/design-presets";
-import { CARD_CLASS, Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
@@ -93,7 +93,7 @@ export default async function PlatformPage() {
           {fillWords(w.waiting, { n: pending.length })}
         </h2>
         {pending.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState title={w.none} />
         ) : (
           <div className="flex flex-col gap-4 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
             {pending.map((request, index) => (

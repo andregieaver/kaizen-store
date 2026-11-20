@@ -13,7 +13,7 @@ import { money } from "@/lib/control-center";
 import { bpsText, type AdminReferrer } from "@/lib/referrals";
 import { requirePlatformReader } from "@/server/auth";
 import { getReferralSettings, listReferrals, listReferrers, referralTotals } from "@/server/referrals";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -199,9 +199,7 @@ export default async function PlatformReferralsPage() {
       <div className={inRow}>
       <Section id="referrers-heading" title={w.referrers}>
         {referrers.length === 0 ? (
-          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            {w.noReferrers}
-          </p>
+          <EmptyState title={w.noReferrers} />
         ) : (
           <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">
@@ -263,9 +261,7 @@ export default async function PlatformReferralsPage() {
       <div className={inRow}>
       <Section id="referred-heading" title={w.referredStores}>
         {referrals.length === 0 ? (
-          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            {w.noReferred}
-          </p>
+          <EmptyState title={w.noReferred} />
         ) : (
           <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">

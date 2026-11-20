@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { UsageLines } from "@/components/admin/usage-limits";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 import { requireAccount } from "@/server/auth";
@@ -23,9 +23,7 @@ export default async function OwnerLimitsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title={w.owner.title} description={w.owner.description} />
       {stores.length === 0 ? (
-        <Card compact>
-          <p className="text-body text-muted">{w.owner.none}</p>
-        </Card>
+        <EmptyState title={w.owner.none} />
       ) : (
         stores.map((store) => (
           <Card key={store.id} title={store.name} description={w.usage.month} compact>

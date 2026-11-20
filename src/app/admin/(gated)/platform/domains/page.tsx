@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
-import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -123,7 +123,7 @@ export default async function PlatformDomainsPage() {
                 <SubmitButton>{w.openStore}</SubmitButton>
               </ActionForm>
               {stores.length === 0 ? (
-                <p className="text-body text-muted">{w.none}</p>
+                <EmptyState compact title={w.none} />
               ) : (
                 <ul className="flex flex-col divide-y divide-line">
                   {stores.map((s) => (
@@ -206,7 +206,7 @@ export default async function PlatformDomainsPage() {
       <PhoneRow flat {...row} title={w.purchases} sub={purchases.length === 0 ? ph.none : countWords(purchases.length, ph.needLook)}>
       <Card title={w.purchases}>
         {purchases.length === 0 ? (
-          <p className="text-body text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {purchases.map((p, i) => (
@@ -229,7 +229,7 @@ export default async function PlatformDomainsPage() {
       <PhoneRow flat last {...row} title={w.registrations} sub={registrations.length === 0 ? ph.noneYet : countWords(registrations.length, ph.registered)}>
       <Card title={w.registrations} count={registrations.length}>
         {registrations.length === 0 ? (
-          <p className="text-body text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {registrations.map((r) => (

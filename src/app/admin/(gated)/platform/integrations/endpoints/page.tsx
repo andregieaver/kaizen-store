@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } from "@/components/admin/webhook-endpoints";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
@@ -91,7 +91,7 @@ export default async function PlatformEndpointsPage() {
           <p className="text-sm text-ink-2">{own.endpointsOwnerOnly}</p>
         )}
         {views.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState title={w.none} />
         ) : (
           views.map((endpoint) => <EndpointCard key={endpoint.id} endpoint={endpoint} topics={topics} owner={owner} actions={actions} />)
         )}

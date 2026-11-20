@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { clientNeeds, type ClientNeed } from "@/lib/books-clients";
@@ -42,9 +42,7 @@ export default async function AccountBooksPage() {
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={w.description} />
       {all.length === 0 ? (
-        <Card>
-          <p className="text-sm text-muted">{w.none}</p>
-        </Card>
+        <EmptyState title={w.none} />
       ) : (
         <ul className="flex flex-col gap-4">
           {clients.map((c) => {

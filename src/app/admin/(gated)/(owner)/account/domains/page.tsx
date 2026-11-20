@@ -6,7 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DnsZoneCard } from "@/components/admin/dns-zone-card";
 import { DomainRegistrationsCard } from "@/components/admin/domain-registrations-card";
 import { HolderAssistant } from "@/components/admin/holder-assistant";
-import { ButtonLink, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, EmptyState, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -56,7 +56,7 @@ export default async function YourDomainsPage() {
       />
       <Card title={words.account.title}>
         {held.length === 0 ? (
-          <p className="text-body text-muted">{words.account.none}</p>
+          <EmptyState compact title={words.account.none} />
         ) : (
           <List label={words.account.title}>
             {held.map((d) => {

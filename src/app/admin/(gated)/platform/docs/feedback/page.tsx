@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { docsPageAt } from "@/lib/docs-content";
 import { docsUrl } from "@/lib/docs-host";
 import { DOCS_SEARCH_SUB, docsSearchQueryString, NO_FILTERS } from "@/lib/docs-search";
@@ -46,7 +47,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
       <PageHeader title={w.title} description={w.description} meta={[`${total} · ${w.answers.toLowerCase()}`]} />
       <Card title={w.byPage}>
         {tally.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-caption">
@@ -81,7 +82,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
       </Card>
       <Card title={w.misses} description={w.missesHint}>
         {misses.length === 0 ? (
-          <p className="text-sm text-muted">{w.missesNone}</p>
+          <EmptyState compact title={w.missesNone} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-caption">
@@ -161,7 +162,15 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
           </button>
         </form>
         {rows.length === 0 ? (
-          <p className="text-sm text-muted">{tally.length === 0 ? w.none : w.noneFound}</p>
+          <EmptyState
+            compact
+            title={tally.length === 0 ? w.none : w.noneFound}
+            action={
+              tally.length > 0 && (
+                <ButtonLink href="/admin/platform/docs/feedback">{COMMON_WORDS[lang].list.clearFilters}</ButtonLink>
+              )
+            }
+          />
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {rows.map((row) => (

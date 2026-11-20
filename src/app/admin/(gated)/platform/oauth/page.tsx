@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
-import { buttonClass, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { buttonClass, Card, Chip, EmptyState, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
@@ -30,7 +30,7 @@ export default async function PlatformOAuthPage() {
       <PageHeader title={w.title} description={w.description} />
       <Card title={w.title}>
         {clients.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <List label={w.title}>
             {clients.map((client) => (

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import type { SandboxMessages } from "@/lib/admin-messages/sandbox.en";
 import { sandboxBase, sandboxHome, type SandboxKind } from "@/lib/sandbox";
 import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
@@ -88,7 +88,7 @@ function Kind({
       }
     >
       {items.length === 0 ? (
-        <p className="text-body text-muted">{w.none}</p>
+        <EmptyState compact title={w.none} />
       ) : (
         <ul className="flex flex-col divide-y divide-line">
           {items.map((item) => (

@@ -18,7 +18,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
 import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
-import { Card, CARD_CLASS, Chip, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, EmptyState, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
@@ -79,9 +79,8 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
       </div>
 
       {tests.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {everything ? w.noneEver : w.noneActive}
-        </p>
+        // Everything, above, shows the tests that ended too.
+        <EmptyState title={everything ? w.noneEver : w.noneActive} />
       ) : (
         // Round 68 (D841): on a phone each test is one line, its state at the end; the verdict's sentence shows from sm up.
         <Card compact className="max-sm:[&_li]:flex-nowrap">
@@ -167,9 +166,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           <p className="max-w-2xl text-sm text-muted">{w.ownText}</p>
         </div>
         {own.length === 0 ? (
-          <p className={`p-6 text-center text-sm text-muted ${CARD_CLASS}`}>
-            {w.noOwn}
-          </p>
+          <EmptyState title={w.noOwn} />
         ) : (
           <ul className={`flex flex-col divide-y divide-line ${CARD_CLASS}`}>
             {own.map((t) => (
