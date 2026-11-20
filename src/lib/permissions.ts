@@ -1,7 +1,8 @@
 /**
  * What a member of a store may do (wave 1, 1f, `docs/wave-1-trust.md` 2.7 and 4.6). Pure: the keys are in
  * `permission-keys.ts`, the rules are `can()`, and `permissionOfPath()` says which key a page or an action needs, from
- * its place in the store navigation, so a page can never be forgotten here: a test fails when a store page has no area.
+ * the area its store navigation item names (D851, not the section it is listed in), so a page can never be forgotten here: a test fails
+ * when a store page has no area.
  *
  * - `owner` holds everything. `admin` with no custom role holds `ADMIN_DEFAULT`, which is what an admin could do before
  *   there were roles. An `admin` with a custom role (`store_roles`) holds that role's keys.
@@ -24,7 +25,7 @@ import {
   type AreaPermission,
   type PermissionKey,
 } from "./permission-keys";
-import { sectionOf } from "./store-nav";
+import { STORE_NAV_AREAS, areaIn } from "./store-nav";
 
 export * from "./permission-keys";
 
@@ -91,24 +92,14 @@ export function can(holder: PermissionHolder, key: PermissionKey): boolean {
 // Which key a page or action needs
 // ---------------------------------------------------------------------------
 
-/** Pages that belong to an area other than their navigation section's: the Team and Billing pages live in the Settings sidebar. */
-const AREA_OVERRIDES: { path: string; area: Area }[] = [
-  { path: "/staff", area: "staff" },
-  { path: "/billing", area: "billing" },
-  // The store's own books (D512) live in the Settings sidebar but are an area of their own, an accountant's.
-  { path: "/settings/books", area: "books" },
-  // What visitors sent with the store's forms (D705) is people's data: read with the customers, though the forms are the website's.
-  { path: "/forms/responses", area: "customers" },
-];
-
-/** The area of a page after the store's address (`/orders/[orderId]`, `/settings/shipping`), or null for Home's pages (membership only). */
+/**
+ * The area of a page after the store's address (`/orders/[orderId]`, `/settings/shipping`), or null for Home's pages (membership only): the
+ * area its navigation item names (D851), by the longest item address it is or is inside, never the section the item is listed in. Team,
+ * Billing and Books name their own areas in the Settings sidebar; a form's responses are the customers' under the website's Forms.
+ */
 export function areaOfPath(path: string): Area | null {
   const clean = path === "" ? "" : `/${path.replace(/^\/+/, "").replace(/\/+$/, "")}`;
-  for (const override of AREA_OVERRIDES) {
-    if (clean === override.path || clean.startsWith(`${override.path}/`)) return override.area;
-  }
-  const section = sectionOf(clean);
-  return section ? section.key : null;
+  return areaIn(STORE_NAV_AREAS, clean) ?? null;
 }
 
 /** What permissionOfPath() answered, by access and path (bloat review step 0.17): process-wide, never per person; cleared when it holds 2,000. */

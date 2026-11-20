@@ -3,12 +3,15 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { platformAreaOfPath } from "./platform-access";
+import { ADMIN_PAGES } from "./admin-map";
+import { platformAreaIn, platformAreaOfPath, platformNavAreas } from "./platform-access";
+import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
 
 /**
- * The platform's guards (D510) stay where they belong: every `requirePlatform("area")` under the platform admin names the area of the folder it
- * sits in (the root's actions name each their own), and no server action or route that changes something asks only `requirePlatformReader()`,
- * which lets every role in. A guard's area is in code because a server action can be posted to any page's address.
+ * The platform's guards (D510) stay where they belong: every `requirePlatform("area")` and `platformCan(account, "area")` under the platform
+ * admin names the area of the folder it sits in (the root's actions and Home's controls name each their own), and no server action or route
+ * that changes something asks only `requirePlatformReader()`, which lets every role in. A guard's area is in code because a server action can
+ * be posted to any page's address; this test holds that copy to the area the page's navigation entry names (D851), never its tab.
  */
 
 const root = path.resolve(__dirname, "../..");
@@ -22,6 +25,8 @@ function filesUnder(dir: string): string[] {
 }
 
 const files = filesUnder(base);
+/** Each folder of the platform admin as an address after its base, route groups and all ("/plans/analytics/payouts/[payoutId]"). */
+const folders = [...new Set(files.map((file) => path.relative(base, path.dirname(file)).split(path.sep).join("/")))].filter((rel) => rel !== "");
 
 describe("the platform's guards (D510)", () => {
   it("name the area of the folder they sit in", () => {
@@ -30,7 +35,10 @@ describe("the platform's guards (D510)", () => {
       const rel = path.relative(base, path.dirname(file)).split(path.sep).join("/");
       if (rel === "") continue; // The root's actions are each their own area's.
       const area = platformAreaOfPath(`/${rel}`);
-      for (const m of readFileSync(file, "utf8").matchAll(/requirePlatform\("(\w+)"/g)) if (m[1] !== area) wrong.push(`${path.relative(root, file)}: ${m[1]} (the folder is ${area})`);
+      const source = readFileSync(file, "utf8");
+      for (const m of source.matchAll(/requirePlatform\("(\w+)"/g)) if (m[1] !== area) wrong.push(`${path.relative(root, file)}: ${m[1]} (the folder is ${area})`);
+      // A page's or a route's own check by hand (`if (!platformCan(account, "settings", "read")) notFound()`) and a control's are held the same way.
+      for (const m of source.matchAll(/platformCan\(\w+, "(\w+)"/g)) if (m[1] !== area) wrong.push(`${path.relative(root, file)}: platformCan ${m[1]} (the folder is ${area})`);
     }
     expect(wrong).toEqual([]);
   });
@@ -41,5 +49,32 @@ describe("the platform's guards (D510)", () => {
       return text.includes("requirePlatformReader(") && (/^["']use server["']/m.test(text) || /export async function (POST|PUT|PATCH|DELETE)\b/.test(text));
     });
     expect(servers.map((f) => path.relative(root, f))).toEqual([]);
+  });
+});
+
+describe("a platform page's area is its own, not its tab (D851)", () => {
+  /** Every folder the guards above are held to, and every platform page of the map. */
+  const addresses = [...new Set(["", ...folders.map((rel) => `/${rel}`), ...ADMIN_PAGES.filter((p) => p.area === "platform").map((p) => p.path)])];
+  const lists = [WEBSITE_ITEMS, PLAN_ITEMS, SUPPORT_ITEMS, SETTINGS_ITEMS];
+  const listAreas = ["website", "plans", "support", "settings"] as const;
+
+  it("leaves every folder's and page's area as it is when any sidebar page moves to another section", () => {
+    const before = addresses.map((address) => platformAreaOfPath(address));
+    let moves = 0;
+    lists.forEach((list, l) =>
+      list.forEach((item, i) => {
+        const moved = lists.map((items) => [...items]);
+        const [taken] = moved[l].splice(i, 1);
+        const to = (l + 1) % moved.length;
+        moved[to].push(taken);
+        // The menu now lists it under another section, whose area decided before D851.
+        expect([item.path, listAreas[to] === item.area]).toEqual([item.path, false]);
+        const areas = platformNavAreas(moved);
+        expect([item.path, addresses.map((address) => platformAreaIn(areas, address))]).toEqual([item.path, before]);
+        moves += 1;
+      }),
+    );
+    expect(moves).toBeGreaterThan(50);
+    expect(addresses.length).toBeGreaterThan(100);
   });
 });
