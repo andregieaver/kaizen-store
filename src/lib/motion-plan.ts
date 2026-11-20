@@ -3,10 +3,8 @@ import {
   ENTER_EFFECTS,
   HOVER_EFFECTS,
   SCROLL_EFFECTS,
-  backgroundMotionSchema,
   enterFits,
   hoverFits,
-  partMotionSchema,
   scrollFits,
   type BackgroundEffect,
   type BackgroundMotion,
@@ -23,6 +21,7 @@ import {
   type ScrollEffect,
   type ScrollMotion,
 } from "./motion";
+import { backgroundMotionSchema, partMotionSchema } from "./motion-schema";
 import {
   blockText,
   type BlockType,

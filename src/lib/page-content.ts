@@ -8,15 +8,13 @@ import {
   GRADIENT_COLORS_MIN,
   GRADIENT_FLOWS,
   GRADIENT_STYLES,
-  backgroundMotionSchema,
-  gradientFocusSchema,
-  partMotionSchema,
   type BackgroundMotion,
   type GradientFlow,
   type GradientFocus,
   type GradientStyle,
   type PartMotion,
 } from "./motion";
+import { backgroundMotionSchema, gradientFocusSchema, partMotionSchema } from "./motion-schema";
 import { ANIMATION_SIDE_MIN, type AnimationFile } from "./animation";
 import { layersShow, type BackgroundLayer } from "./background-layers";
 import { MENU_SIDES, MENU_TYPES, type MenuSide, type MenuType } from "./menu-drawer";

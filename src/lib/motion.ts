@@ -1,6 +1,4 @@
-import { z } from "zod";
-
-import { hoverTimingSchema, type HoverTiming } from "./hover-timing";
+import type { HoverTiming } from "./hover-timing";
 
 /**
  * Motion (D128): a curated set of effects an owner picks for a row, column or component and for their backgrounds:
@@ -174,42 +172,10 @@ export const GRADIENT_COLORS_MAX = 4;
 /** Where a radial blur's colours spread from (D531): percent across and down the row or column; the centre unless set. */
 export type GradientFocus = { x: number; y: number };
 export const GRADIENT_FOCUS_DEFAULT: GradientFocus = { x: 50, y: 50 };
-/** A focal point's schema, shared by a part's gradient and a saved one. */
-export const gradientFocusSchema = z.object({ x: z.number().int().min(0).max(100), y: z.number().int().min(0).max(100) });
 
 // ---------------------------------------------------------------------------
 // Schemas, shared by the browser and the server
 // ---------------------------------------------------------------------------
-
-const speed = z.enum(Object.keys(MOTION_SPEEDS) as [MotionSpeed, ...MotionSpeed[]]).optional();
-const intensity = z.enum(Object.keys(MOTION_INTENSITIES) as [MotionIntensity, ...MotionIntensity[]]).optional();
-
-const enterMotion = z.object({
-  effect: z.enum(ENTER_IDS),
-  speed,
-  ease: z.enum(Object.keys(MOTION_EASES) as [MotionEase, ...MotionEase[]]).optional(),
-  distance: z.enum(Object.keys(MOTION_DISTANCES) as [MotionDistance, ...MotionDistance[]]).optional(),
-  delay: z.number().int().min(0).max(DELAY_MAX).optional(),
-  duration: z.number().int().min(DURATION_MIN).max(DURATION_MAX).optional(),
-  trigger: z.enum(["view", "load"]).optional(),
-  start: z.enum(Object.keys(MOTION_STARTS) as [MotionStart, ...MotionStart[]]).optional(),
-  once: z.boolean().optional(),
-  stagger: z.number().int().min(0).max(STAGGER_MAX).optional(),
-});
-
-/** A part's motion (D128); an empty one is left out. */
-export const partMotionSchema = z
-  .object({
-    enter: enterMotion.optional(),
-    hover: z.object({ effect: z.enum(HOVER_IDS), intensity }).optional(),
-    scroll: z.object({ effect: z.enum(SCROLL_IDS), intensity }).optional(),
-    hoverTime: hoverTimingSchema,
-  })
-  .optional()
-  .transform((motion) => (motion && (motion.enter || motion.hover || motion.scroll || motion.hoverTime) ? motion : undefined));
-
-/** A row's or column's background motion (D128). */
-export const backgroundMotionSchema = z.object({ effect: z.enum(BACKGROUND_IDS), intensity }).optional();
 
 // ---------------------------------------------------------------------------
 // Helpers

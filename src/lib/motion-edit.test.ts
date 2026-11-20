@@ -10,10 +10,10 @@ import {
   STAGGER_MAX,
   enterFits,
   hoverFits,
-  partMotionSchema,
   scrollFits,
   type PartMotion,
 } from "./motion";
+import { partMotionSchema } from "./motion-schema";
 import {
   GRADIENT_ANGLE_DEFAULT,
   GRADIENT_PALETTE,

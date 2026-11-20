@@ -6,7 +6,7 @@ import { BrandsView } from "@/components/brands-view";
 import { PageBlockView } from "@/components/page-block";
 import { hoverTimingSchema, hoverTimingVars, themeHoverSchema } from "./hover-timing";
 import { partFx } from "./motion-attrs";
-import { partMotionSchema } from "./motion";
+import { partMotionSchema } from "./motion-schema";
 import { setHoverTime } from "./motion-edit";
 import { pageBlockSchema, type BrandsBlock, type PageBlock } from "./page-content";
 import { THEME_TEMPLATES, themeAttributes, themeCss, themeTabValue, withThemeTab, type ThemeSettings } from "./theme";

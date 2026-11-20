@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { backgroundMotionSchema, partMotionSchema, type EnterMotion } from "./motion";
+import type { EnterMotion } from "./motion";
+import { backgroundMotionSchema, partMotionSchema } from "./motion-schema";
 import {
   CAPS,
   OUTLINE_MAX_CHARACTERS,

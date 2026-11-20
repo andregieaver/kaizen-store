@@ -5,11 +5,11 @@ import {
   GRADIENT_COLORS_MIN,
   GRADIENT_FLOWS,
   GRADIENT_STYLES,
-  gradientFocusSchema,
   type GradientFlow,
   type GradientFocus,
   type GradientStyle,
 } from "./motion";
+import { gradientFocusSchema } from "./motion-schema";
 
 /**
  * A store's saved colours and gradients (D183): named, kept on its theme (`ThemeSettings.library`) and offered in every colour
