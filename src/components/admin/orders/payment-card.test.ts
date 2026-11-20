@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 import { CaptureCard } from "./capture-card";
 import { PaymentCard, type PaymentCardDispute, type PaymentCardPayment } from "./payment-card";
@@ -38,24 +39,24 @@ const dispute = (over: Partial<PaymentCardDispute> = {}): PaymentCardDispute => 
 
 describe("the order's Payment card (D288)", () => {
   it("says how it was paid and shows no risk when Stripe found it normal", () => {
-    const words = text(renderToString(h(PaymentCard, { payments: [payment()], disputes: [], money, due: () => "Thu 29 Oct" })));
+    const words = text(renderToString(h(PaymentCard, { payments: [payment()], disputes: [], money, due: () => "Thu 29 Oct", words: orderEn.payment })));
     expect(words).toContain("Apple Pay (Visa)");
     expect(words).not.toContain("risk");
   });
 
   it("shows an elevated risk and Unknown for a payment not read yet", () => {
-    const words = text(renderToString(h(PaymentCard, { payments: [payment({ riskLevel: "elevated", riskScore: 71 }), payment({ id: "p2", read: false, methodType: null, wallet: null, riskLevel: null })], disputes: [], money, due: () => "" })));
+    const words = text(renderToString(h(PaymentCard, { payments: [payment({ riskLevel: "elevated", riskScore: 71 }), payment({ id: "p2", read: false, methodType: null, wallet: null, riskLevel: null })], disputes: [], money, due: () => "", words: orderEn.payment })));
     expect(words).toContain("Stripe: elevated risk (71 of 100)");
     expect(words).toContain("Unknown (not read from Stripe yet)");
   });
 
   it("shows an open dispute with its reason, deadline and the link to Stripe, and a lost one with its fee", () => {
-    const open = renderToString(h(PaymentCard, { payments: [payment()], disputes: [dispute()], money, due: () => "Thu 29 Oct 2026, 23:59" }));
+    const open = renderToString(h(PaymentCard, { payments: [payment()], disputes: [dispute()], money, due: () => "Thu 29 Oct 2026, 23:59", words: orderEn.payment }));
     expect(text(open)).toContain("Disputed");
     expect(text(open)).toContain("The cardholder says they did not make the payment");
     expect(text(open)).toContain("Evidence due Thu 29 Oct 2026, 23:59");
     expect(open).toContain("https://dashboard.stripe.com/payments/disputes/dp_1");
-    const lost = text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute({ status: "lost", outcome: "lost", feeMinor: 15_000 })], money, due: () => "" })));
+    const lost = text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute({ status: "lost", outcome: "lost", feeMinor: 15_000 })], money, due: () => "", words: orderEn.payment })));
     expect(lost).toContain("Dispute lost");
     expect(lost).toContain("150.00 NOK");
     expect(lost).not.toContain("Evidence due");
@@ -63,22 +64,22 @@ describe("the order's Payment card (D288)", () => {
 
   it("offers the chargeback assistant for a Stripe dispute that asks for an answer, and says when evidence was sent (D417)", () => {
     const href = (id: string) => `/admin/s/orders/o1/dispute/${id}`;
-    const open = renderToString(h(PaymentCard, { payments: [payment()], disputes: [dispute()], money, due: () => "Thu 29 Oct", evidenceHref: href }));
+    const open = renderToString(h(PaymentCard, { payments: [payment()], disputes: [dispute()], money, due: () => "Thu 29 Oct", evidenceHref: href, words: orderEn.payment }));
     expect(open).toContain('href="/admin/s/orders/o1/dispute/d1"');
     expect(text(open)).toContain("Prepare the evidence");
     expect(text(open)).toContain("Without evidence the dispute is lost.");
-    const sent = text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute({ evidenceSentAt: "2026-10-20T10:00:00.000Z" })], money, due: () => "Tue 20 Oct", evidenceHref: href })));
+    const sent = text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute({ evidenceSentAt: "2026-10-20T10:00:00.000Z" })], money, due: () => "Tue 20 Oct", evidenceHref: href, words: orderEn.payment })));
     expect(sent).toContain("Evidence sent Tue 20 Oct");
     expect(sent).not.toContain("Prepare the evidence");
     // Not for a dispute under review, a closed one or a Mollie chargeback, and not without the page's address.
     for (const d of [dispute({ status: "under_review" }), dispute({ status: "lost", outcome: "lost" }), dispute({ provider: "mollie" })]) {
-      expect(text(renderToString(h(PaymentCard, { payments: [], disputes: [d], money, due: () => "", evidenceHref: href })))).not.toContain("Prepare the evidence");
+      expect(text(renderToString(h(PaymentCard, { payments: [], disputes: [d], money, due: () => "", evidenceHref: href, words: orderEn.payment })))).not.toContain("Prepare the evidence");
     }
-    expect(text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute()], money, due: () => "" })))).not.toContain("Prepare the evidence");
+    expect(text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute()], money, due: () => "", words: orderEn.payment })))).not.toContain("Prepare the evidence");
   });
 
   it("draws nothing for an order with no payment", () => {
-    expect(renderToString(h(PaymentCard, { payments: [], disputes: [], money, due: () => "" }))).toBe("");
+    expect(renderToString(h(PaymentCard, { payments: [], disputes: [], money, due: () => "", words: orderEn.payment }))).toBe("");
   });
 });
 

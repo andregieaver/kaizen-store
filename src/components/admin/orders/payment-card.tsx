@@ -1,5 +1,5 @@
 import { Card, Chip } from "@/components/admin/ui";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { fillWords } from "@/lib/admin-fill";
 import {
   DISPUTE_STATUS_WORDS,
@@ -53,12 +53,12 @@ export function PaymentCard({
   money,
   due,
   evidenceHref,
-  words: w = orderEn.payment,
+  words: w,
 }: {
   /** The chargeback assistant's page for a dispute (D417); left out, no link is drawn. */
   evidenceHref?: (disputeId: string) => string;
   /** The `order` catalogue's `payment` words in the account's language (D312 A4). */
-  words?: OrderMessages["payment"];
+  words: OrderMessages["payment"];
   payments: readonly PaymentCardPayment[];
   disputes: readonly PaymentCardDispute[];
   money: (minor: number, currency: string) => string;

@@ -1,6 +1,6 @@
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { moneyIn, refundNotes, type OrderBonus } from "@/lib/bonus-admin";
 
 type Words = OrderMessages["bonus"];
@@ -13,12 +13,12 @@ export function BonusUsedRow({
   bonus,
   currency,
   locale,
-  words: w = orderEn.bonus,
+  words: w,
 }: {
   bonus: OrderBonus | null;
   currency: string;
   locale: string;
-  words?: Words;
+  words: Words;
 }) {
   if (!bonus || bonus.usedMinor <= 0) return null;
   return (
@@ -34,14 +34,14 @@ export function BonusEarnedRow({
   currency,
   locale,
   now = new Date(),
-  words: w = orderEn.bonus,
+  words: w,
   timeZone,
 }: {
   bonus: OrderBonus | null;
   currency: string;
   locale: string;
   now?: Date;
-  words?: Words;
+  words: Words;
   /** The store's time zone: the day the bonus can be used is the store's (D786). */
   timeZone: string;
 }) {
@@ -68,13 +68,13 @@ export function BonusRefundNote({
   currency,
   locale,
   refund,
-  words: w = orderEn.bonus,
+  words: w,
 }: {
   bonus: OrderBonus | null;
   currency: string;
   locale: string;
   refund?: { refundedMinor: number; totalMinor: number };
-  words?: Words;
+  words: Words;
 }) {
   const notes = refundNotes(bonus, moneyIn(currency, locale), refund);
   if (notes.length === 0) return null;

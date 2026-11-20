@@ -3,7 +3,7 @@ import Link from "next/link";
 import { attributionStatus } from "@/lib/affiliate-admin";
 import type { AffiliateAttributionRow } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 
 type Words = OrderMessages["referral"];
 
@@ -12,12 +12,12 @@ export function ReferralDiscountRow({
   minor,
   currency,
   locale,
-  words: w = orderEn.referral,
+  words: w,
 }: {
   minor: number;
   currency: string;
   locale: string;
-  words?: Words;
+  words: Words;
 }) {
   if (minor <= 0) return null;
   return (
@@ -36,12 +36,12 @@ export function OrderAttributionCard({
   attribution,
   storeSlug,
   locale,
-  words: w = orderEn.referral,
+  words: w,
 }: {
   attribution: AffiliateAttributionRow | null;
   storeSlug: string;
   locale: string;
-  words?: Words;
+  words: Words;
 }) {
   if (!attribution) return null;
   const credits = moneyIn(attribution.creditsCurrency, locale);

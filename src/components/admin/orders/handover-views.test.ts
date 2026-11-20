@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 import { ordersEn } from "@/lib/admin-messages/orders.en";
 
@@ -54,7 +55,7 @@ const state = (change: Partial<HandoverState> = {}): HandoverState => ({ status:
 
 describe("the pickup card", () => {
   it("shows where to collect from the order's own snapshot, and Ready for pickup and Collected while nothing is marked", () => {
-    const { text, html } = draw(h(PickupPanel, { delivery: PICKUP, readyAt: null, state: state(), canWrite: true, today: "2026-10-14", when, ready: action, collected: action }));
+    const { text, html } = draw(h(PickupPanel, { delivery: PICKUP, readyAt: null, state: state(), canWrite: true, today: "2026-10-14", when, ready: action, collected: action, words: orderEn.handover }));
     expect(text).toContain("Collect at Shop Oslo");
     expect(text).toContain("Storgata 1, 0155 Oslo");
     expect(text).toContain("Opening hours: Mon–Tue 10:00–18:00");
@@ -70,7 +71,7 @@ describe("the pickup card", () => {
   });
 
   it("offers Send the email again once marked ready, and asks staff to confirm units sold on backorder", () => {
-    const { text, html } = draw(h(PickupPanel, { delivery: PICKUP, readyAt: "2026-10-13T10:00:00Z", state: state({ waitingUnits: 1 }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action }));
+    const { text, html } = draw(h(PickupPanel, { delivery: PICKUP, readyAt: "2026-10-13T10:00:00Z", state: state({ waitingUnits: 1 }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action, words: orderEn.handover }));
     expect(text).toContain("Marked ready for pickup 2026-10-13.");
     expect(text).toContain("Send the email again");
     expect(html).toContain('name="resend" value="1"');
@@ -79,16 +80,16 @@ describe("the pickup card", () => {
   });
 
   it("shows only the facts on a collected, copied or read-only order, and waits while a change is unpaid", () => {
-    const collected = draw(h(PickupPanel, { delivery: PICKUP, readyAt: "2026-10-13T10:00:00Z", state: state({ status: "fulfilled", unitsToSend: 0, deliveredOn: "2026-10-14" }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action }));
+    const collected = draw(h(PickupPanel, { delivery: PICKUP, readyAt: "2026-10-13T10:00:00Z", state: state({ status: "fulfilled", unitsToSend: 0, deliveredOn: "2026-10-14" }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action, words: orderEn.handover }));
     expect(collected.text).toContain("Collected on 2026-10-14.");
     expect(collected.text).toContain("A mistake is taken back with Undo");
     expect(collected.html).not.toContain('name="on"');
-    const copied = draw(h(PickupPanel, { delivery: PICKUP, readyAt: null, state: state({ copied: true }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action }));
+    const copied = draw(h(PickupPanel, { delivery: PICKUP, readyAt: null, state: state({ copied: true }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action, words: orderEn.handover }));
     expect(copied.text).toContain("A copied order is history and is never handed over.");
     expect(copied.html).not.toContain("<button");
-    const readOnly = draw(h(PickupPanel, { delivery: PICKUP, readyAt: null, state: state(), canWrite: false, today: "2026-10-14", when, ready: action, collected: action }));
+    const readOnly = draw(h(PickupPanel, { delivery: PICKUP, readyAt: null, state: state(), canWrite: false, today: "2026-10-14", when, ready: action, collected: action, words: orderEn.handover }));
     expect(readOnly.html).not.toContain("<button");
-    const pending = draw(h(PickupPanel, { delivery: null, readyAt: null, state: state({ editPending: true }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action }));
+    const pending = draw(h(PickupPanel, { delivery: null, readyAt: null, state: state({ editPending: true }), canWrite: true, today: "2026-10-14", when, ready: action, collected: action, words: orderEn.handover }));
     expect(pending.text).toContain("Nothing is handed over until it is paid, cancelled or expired.");
     expect(pending.text).toContain("its details were not kept on this order");
   });
@@ -97,7 +98,7 @@ describe("the pickup card", () => {
 describe("the local delivery card", () => {
   it("shows the area, phone and the driver's note, with Out for delivery and a one-press Mark delivered", () => {
     const { text } = draw(
-      h(LocalDeliveryPanel, { delivery: LOCAL, note: "Ring twice, the door is round the back.", phone: "+47 400 00 000", takenOutAt: null, state: state(), canWrite: true, when, today: "2026-10-14", out: action, delivered: action }),
+      h(LocalDeliveryPanel, { delivery: LOCAL, note: "Ring twice, the door is round the back.", phone: "+47 400 00 000", takenOutAt: null, state: state(), canWrite: true, when, today: "2026-10-14", out: action, delivered: action, words: orderEn.handover }),
     );
     expect(text).toContain("Local delivery: Oslo centre");
     expect(text).toContain("Priced for postal code 0155");
@@ -112,14 +113,14 @@ describe("the local delivery card", () => {
   });
 
   it("after the driver left, offers only Mark delivered; once delivered, nothing; waiting stock blocks taking it out", () => {
-    const out = draw(h(LocalDeliveryPanel, { delivery: LOCAL, note: null, phone: null, takenOutAt: "2026-10-14T08:00:00Z", state: state({ status: "fulfilled", unitsToSend: 0 }), canWrite: true, when, today: "2026-10-14", out: action, delivered: action }));
+    const out = draw(h(LocalDeliveryPanel, { delivery: LOCAL, note: null, phone: null, takenOutAt: "2026-10-14T08:00:00Z", state: state({ status: "fulfilled", unitsToSend: 0 }), canWrite: true, when, today: "2026-10-14", out: action, delivered: action, words: orderEn.handover }));
     expect(out.text).toContain("Out for delivery 2026-10-14.");
     expect(out.text).not.toContain("Records the handover");
     expect(out.text).toContain("Mark delivered");
-    const done = draw(h(LocalDeliveryPanel, { delivery: LOCAL, note: null, phone: null, takenOutAt: "2026-10-14T08:00:00Z", state: state({ status: "fulfilled", unitsToSend: 0, deliveredOn: "2026-10-14" }), canWrite: true, when, today: "2026-10-14", out: action, delivered: action }));
+    const done = draw(h(LocalDeliveryPanel, { delivery: LOCAL, note: null, phone: null, takenOutAt: "2026-10-14T08:00:00Z", state: state({ status: "fulfilled", unitsToSend: 0, deliveredOn: "2026-10-14" }), canWrite: true, when, today: "2026-10-14", out: action, delivered: action, words: orderEn.handover }));
     expect(done.text).toContain("Delivered on 2026-10-14.");
     expect(done.html).not.toContain("<button");
-    const waiting = draw(h(LocalDeliveryPanel, { delivery: LOCAL, note: null, phone: null, takenOutAt: null, state: state({ waitingUnits: 2 }), canWrite: true, when, today: "2026-10-14", out: action, delivered: action }));
+    const waiting = draw(h(LocalDeliveryPanel, { delivery: LOCAL, note: null, phone: null, takenOutAt: null, state: state({ waitingUnits: 2 }), canWrite: true, when, today: "2026-10-14", out: action, delivered: action, words: orderEn.handover }));
     expect(waiting.text).toContain("Part of this order is waiting for stock.");
     expect(waiting.html).not.toContain("<button");
   });
@@ -141,7 +142,7 @@ describe("handovers in the order's list of what left", () => {
       undone: null,
     });
     const { text } = draw(
-      h(ShipmentList, { shipments: [shipment("pickup"), shipment("local")], base: "/b", when, emailAgain: () => async () => ({ ok: true, message: "" }), undo: null, receiptRecorded: false } as never),
+      h(ShipmentList, { shipments: [shipment("pickup"), shipment("local")], base: "/b", when, emailAgain: () => async () => ({ ok: true, message: "" }), undo: null, receiptRecorded: false, words: orderEn.parcels } as never),
     );
     expect(text).toContain("Collected by the customer");
     expect(text).toContain("Taken out by your own driver");

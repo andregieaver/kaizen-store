@@ -5,7 +5,6 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { paymentsEn } from "@/lib/admin-messages/payments.en";
 import { knownText } from "@/lib/known-words";
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS } from "@/lib/order-limits";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -24,7 +23,7 @@ export async function saveOrderSettingsAction(storeSlug: string, _previous: Form
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [PAYMENTS_WORDS[await actionAdminLang()].problems.noChange] };
   const w = PAYMENTS_WORDS[adminLangOf(member.account.adminLocale)];
-  const said = (text: string) => knownText(text, paymentsEn.problems, w.problems);
+  const said = (text: string) => knownText(text, PAYMENTS_WORDS.en.problems, w.problems);
 
   const input: OrderSettingsInput = { giftMessages: form.get("giftMessages") === "on" };
 

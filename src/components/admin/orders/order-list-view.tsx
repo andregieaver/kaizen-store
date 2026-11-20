@@ -5,7 +5,7 @@ import { Pager } from "../ui/pager";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import type { OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { pageHref, stateQuery } from "@/lib/order-list-admin";
 import { matchingWords } from "@/lib/order-list-words";
 import { columnsOf, hasFilters, type OrderListParams } from "@/lib/order-list";
@@ -38,7 +38,7 @@ export function OrderListView({
   canWrite,
   bulk,
   viewActions,
-  words = ordersEn,
+  words,
   statusWords,
   locale = "en",
   toSend = 0,
@@ -64,7 +64,7 @@ export function OrderListView({
   bulk: OrderTableProps["bulk"];
   viewActions: ViewToolActions | null;
   /** The `orders` catalogue in the account's language (D312 A4), and its number format. */
-  words?: OrdersMessages;
+  words: OrdersMessages;
   statusWords?: OrderTableProps["statusWords"];
   locale?: string;
 }) {

@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 import { GiftCard } from "./gift-card";
 import { ArchiveButton, TagsCard } from "./order-ops";
@@ -81,7 +82,7 @@ describe("the archive button", () => {
 
 describe("the gift card", () => {
   it("shows To, From and the whole message, with its line breaks kept, and a link to the price-free slip", () => {
-    const html = renderToString(h(GiftCard, { gift: { isGift: true, to: "Anna", from: "Kari", message: "Happy birthday!\nSee you soon." }, slipHref: "/admin/shop/orders/abc/packing-slip" }));
+    const html = renderToString(h(GiftCard, { gift: { isGift: true, to: "Anna", from: "Kari", message: "Happy birthday!\nSee you soon." }, slipHref: "/admin/shop/orders/abc/packing-slip", words: orderEn.gift }));
     const text = check(html);
     expect(text).toContain("Anna");
     expect(text).toContain("Kari");
@@ -93,7 +94,7 @@ describe("the gift card", () => {
   });
 
   it("never draws the buyer's words as HTML", () => {
-    const html = renderToString(h(GiftCard, { gift: { isGift: true, to: "<i>A</i>", from: null, message: "<script>alert(1)</script><b>x</b>" }, slipHref: null }));
+    const html = renderToString(h(GiftCard, { gift: { isGift: true, to: "<i>A</i>", from: null, message: "<script>alert(1)</script><b>x</b>" }, slipHref: null, words: orderEn.gift }));
     expect(html).not.toContain("<script>");
     expect(html).not.toContain("<b>x</b>");
     expect(html).not.toContain("<i>A</i>");
@@ -101,7 +102,7 @@ describe("the gift card", () => {
   });
 
   it("is a gift with no message and no slip when nothing is shipped", () => {
-    const html = renderToString(h(GiftCard, { gift: { isGift: true, to: null, from: null, message: null }, slipHref: null }));
+    const html = renderToString(h(GiftCard, { gift: { isGift: true, to: null, from: null, message: null }, slipHref: null, words: orderEn.gift }));
     const text = check(html);
     expect(text).toContain("No message.");
     expect(text).not.toContain("Print gift slip");

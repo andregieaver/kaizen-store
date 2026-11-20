@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Chip } from "@/components/admin/ui";
 import type { ParcelTracking } from "@/server/shipment-tracking";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { countWords, fillWords } from "@/lib/admin-fill";
 
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
@@ -18,10 +18,10 @@ export function ParcelStatus({
   carrierName,
   when,
   checkNow,
-  words: w = orderEn.tracking,
+  words: w,
 }: {
   /** The `order` catalogue's `tracking` words in the account's language (D312 A4). */
-  words?: OrderMessages["tracking"];
+  words: OrderMessages["tracking"];
   /** The parcel's stored tracking, or undefined when Kaizen does not follow it. */
   tracking: ParcelTracking | undefined;
   carrierName: string;

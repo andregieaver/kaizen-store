@@ -6,7 +6,6 @@ import { z } from "zod";
 import { parcelLinesInput } from "@/lib/parcel-input";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { orderEn } from "@/lib/admin-messages/order.en";
 import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { requirePermission } from "@/server/permissions";
 import { bringBook, bringOptionsFor, type BringOptions } from "@/server/bring-shipping";
@@ -29,7 +28,7 @@ const wordsOf = (member: { account: { adminLocale?: string | null } }) => ORDER_
 /** The Bring services and pickup points for this parcel and this order's recipient (D134). */
 export async function bringOptionsAction(storeSlug: string, orderId: string, parcel: unknown): Promise<BringOptions> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return { ok: false, problem: orderEn.messages.gone };
+  if (!found) return { ok: false, problem: ORDER_WORDS.en.messages.gone };
   if (found.order.copied) return { ok: false, problem: COPIED_ORDER_MESSAGE };
   return bringOptionsFor(found.member.store.id, orderId, parcel);
 }
@@ -48,7 +47,7 @@ const bookInput = z.object({
 /** Books the chosen service: a real booking marks the order as sent (and tells the customer when asked), a test one only says it worked. */
 export async function bringBookAction(storeSlug: string, orderId: string, raw: unknown): Promise<BringBookState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return { ok: false, message: orderEn.messages.gone };
+  if (!found) return { ok: false, message: ORDER_WORDS.en.messages.gone };
   const { w } = found;
   if (found.order.copied) return { ok: false, message: COPIED_ORDER_MESSAGE };
   const input = bookInput.safeParse(raw);

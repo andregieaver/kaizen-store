@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/app/admin/(gated)/[store]/orders/actions", () => {
@@ -29,7 +30,7 @@ const when = (iso: string) => iso.slice(0, 10);
 
 describe("the order's hold (D238, 2.6)", () => {
   it("says who held it and why, with Release for those who may", () => {
-    const html = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "Check the address", rule: { id: "r1", name: "Big orders" }, workflow: null, byAccount: null }, base: "/admin/kaffe", when, release: action, holdAction: null })));
+    const html = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "Check the address", rule: { id: "r1", name: "Big orders" }, workflow: null, byAccount: null }, base: "/admin/kaffe", when, release: action, holdAction: null, words: orderEn.hold })));
     expect(html).not.toMatch(BAD);
     expect(html).toContain("On hold: Check the address");
     expect(html).toContain('href="/admin/kaffe/settings/automation/r1"');
@@ -38,15 +39,15 @@ describe("the order's hold (D238, 2.6)", () => {
   });
 
   it("names a deleted rule plainly and a person by name; no Release without orders:write", () => {
-    const deleted = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: { id: "r1", name: null }, workflow: null, byAccount: null }, base: "/b", when, release: null, holdAction: null })));
+    const deleted = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: { id: "r1", name: null }, workflow: null, byAccount: null }, base: "/b", when, release: null, holdAction: null, words: orderEn.hold })));
     expect(deleted).toContain("that was deleted since");
     expect(deleted).not.toContain(">Release<");
-    const person = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: null, workflow: null, byAccount: { id: "a", name: "Kari" } }, base: "/b", when, release: null, holdAction: null })));
+    const person = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: null, workflow: null, byAccount: { id: "a", name: "Kari" } }, base: "/b", when, release: null, holdAction: null, words: orderEn.hold })));
     expect(person).toContain("by Kari");
   });
 
   it("names the workflow that held it, linked to the workflows (ecosystem plan E3.3, D718)", () => {
-    const html = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "Check it", rule: null, workflow: { id: "w1", name: "Big orders" }, byAccount: null }, base: "/admin/kaffe", when, release: null, holdAction: null })));
+    const html = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "Check it", rule: null, workflow: { id: "w1", name: "Big orders" }, byAccount: null }, base: "/admin/kaffe", when, release: null, holdAction: null, words: orderEn.hold })));
     expect(html).toContain("by the workflow");
     expect(html).toContain('href="/admin/kaffe/settings/workflows"');
     expect(html).toContain("Big orders");
@@ -54,10 +55,10 @@ describe("the order's hold (D238, 2.6)", () => {
   });
 
   it("offers Hold with a reason when the order can be held, and nothing when it cannot", () => {
-    const html = plain(renderToString(h(HoldPanel, { hold: null, base: "/b", when, release: null, holdAction: action })));
+    const html = plain(renderToString(h(HoldPanel, { hold: null, base: "/b", when, release: null, holdAction: action, words: orderEn.hold })));
     expect(html).toContain("Hold fulfilment");
     expect(html).toMatch(/name="reason"[^>]*required|required[^>]*name="reason"/);
-    expect(renderToString(h(HoldPanel, { hold: null, base: "/b", when, release: null, holdAction: null }))).toBe("");
+    expect(renderToString(h(HoldPanel, { hold: null, base: "/b", when, release: null, holdAction: null, words: orderEn.hold }))).toBe("");
   });
 });
 
@@ -81,7 +82,7 @@ const tracking = (over: Partial<ParcelTracking> = {}): ParcelTracking => ({
 
 describe("a parcel's tracking on the staff order page (D238, 2.3)", () => {
   it("shows the phase, the stored events, when it was last checked and Check now", () => {
-    const html = plain(renderToString(h(ParcelStatus, { tracking: tracking(), carrierName: "Posten / Bring", when, checkNow: action })));
+    const html = plain(renderToString(h(ParcelStatus, { tracking: tracking(), carrierName: "Posten / Bring", when, checkNow: action, words: orderEn.tracking })));
     expect(html).not.toMatch(BAD);
     expect(html).toContain("On its way");
     expect(html).toContain("The parcel is on its way, Oslo");
@@ -91,25 +92,25 @@ describe("a parcel's tracking on the staff order page (D238, 2.3)", () => {
   });
 
   it("says so when the carrier has nothing, when checks fail, and when the code is not verified", () => {
-    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ events: [], phase: "unknown" }), carrierName: "PostNord", when, checkNow: null })))).toContain("PostNord has no news about this parcel yet.");
-    const failing = plain(renderToString(h(ParcelStatus, { tracking: tracking({ lastCheckFailed: true, failures: 3 }), carrierName: "PostNord", when, checkNow: null })));
+    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ events: [], phase: "unknown" }), carrierName: "PostNord", when, checkNow: null, words: orderEn.tracking })))).toContain("PostNord has no news about this parcel yet.");
+    const failing = plain(renderToString(h(ParcelStatus, { tracking: tracking({ lastCheckFailed: true, failures: 3 }), carrierName: "PostNord", when, checkNow: null, words: orderEn.tracking })));
     expect(failing).toContain("the last 3 checks did not reach PostNord");
     expect(failing).not.toMatch(/error/i);
-    const unverified = plain(renderToString(h(ParcelStatus, { tracking: tracking({ phaseVerified: false }), carrierName: "Helthjem", when, checkNow: null })));
+    const unverified = plain(renderToString(h(ParcelStatus, { tracking: tracking({ phaseVerified: false }), carrierName: "Helthjem", when, checkNow: null, words: orderEn.tracking })));
     expect(unverified).toContain("no email or delivery date comes from it");
-    const stopped = plain(renderToString(h(ParcelStatus, { tracking: tracking({ stopped: "carrier_failing" }), carrierName: "Helthjem", when, checkNow: action })));
+    const stopped = plain(renderToString(h(ParcelStatus, { tracking: tracking({ stopped: "carrier_failing" }), carrierName: "Helthjem", when, checkNow: action, words: orderEn.tracking })));
     expect(stopped).toContain("Kaizena Flow could not reach the carrier");
   });
 
   it("shows a carrier's delivery and a warning for a problem", () => {
-    const delivered = plain(renderToString(h(ParcelStatus, { tracking: tracking({ phase: "delivered", deliveredAt: "2026-10-03T12:00:00Z" }), carrierName: "Posten / Bring", when, checkNow: null })));
+    const delivered = plain(renderToString(h(ParcelStatus, { tracking: tracking({ phase: "delivered", deliveredAt: "2026-10-03T12:00:00Z" }), carrierName: "Posten / Bring", when, checkNow: null, words: orderEn.tracking })));
     expect(delivered).toContain("Delivered (from Posten / Bring, 2026-10-03)");
-    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ phase: "problem" }), carrierName: "x", when, checkNow: null })))).toContain("bg-warning-soft");
+    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ phase: "problem" }), carrierName: "x", when, checkNow: null, words: orderEn.tracking })))).toContain("bg-warning-soft");
   });
 
   it("tells staff how to have a parcel followed when its carrier is not connected", () => {
-    expect(plain(renderToString(h(ParcelStatus, { tracking: undefined, carrierName: "x", when, checkNow: null })))).toContain("Kaizena Flow follows parcels from carriers you connect under Integrations.");
-    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ followed: null }), carrierName: "x", when, checkNow: null })))).toContain("carriers you connect under Integrations");
+    expect(plain(renderToString(h(ParcelStatus, { tracking: undefined, carrierName: "x", when, checkNow: null, words: orderEn.tracking })))).toContain("Kaizena Flow follows parcels from carriers you connect under Integrations.");
+    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ followed: null }), carrierName: "x", when, checkNow: null, words: orderEn.tracking })))).toContain("carriers you connect under Integrations");
   });
 });
 

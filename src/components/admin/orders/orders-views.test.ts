@@ -77,6 +77,7 @@ const draw = (over: Record<string, unknown> = {}, query = "") => {
       canWrite: true,
       bulk: async () => ({ ok: false as const, message: "x" }),
       viewActions,
+      words: ordersEn,
       ...over,
     } as never),
   );

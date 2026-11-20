@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 import { orderNb } from "@/lib/admin-messages/order.nb";
 import { EVIDENCE_FIELDS, type Evidence } from "@/lib/dispute-evidence";
@@ -15,7 +16,7 @@ const save = async () => ({ status: "ok" as const, messages: [] });
 
 describe("the evidence form", () => {
   it("puts what a bank looks at first for the reason before everything else, behind one step", () => {
-    const html = renderToString(h(DisputeEvidenceForm, { fields, reason: "product_not_received", action: save }));
+    const html = renderToString(h(DisputeEvidenceForm, { fields, reason: "product_not_received", action: save, words: orderEn.dispute }));
     const first = html.indexOf("What a bank looks at first");
     const more = html.indexOf("Everything else Stripe takes");
     expect(first).toBeGreaterThan(-1);
@@ -28,12 +29,12 @@ describe("the evidence form", () => {
   });
 
   it("asks for the tick and offers Send and Save draft; shows the fields read-only with nothing to press without an action", () => {
-    const html = renderToString(h(DisputeEvidenceForm, { fields, reason: "fraudulent", action: save }));
+    const html = renderToString(h(DisputeEvidenceForm, { fields, reason: "fraudulent", action: save, words: orderEn.dispute }));
     expect(html).toContain('name="confirm"');
     expect(text(html)).toContain("I have read this evidence and it is true.");
     expect(html).toContain('value="send"');
     expect(html).toContain('value="save"');
-    const read = renderToString(h(DisputeEvidenceForm, { fields, reason: "fraudulent", action: null }));
+    const read = renderToString(h(DisputeEvidenceForm, { fields, reason: "fraudulent", action: null, words: orderEn.dispute }));
     expect(read).not.toContain('name="confirm"');
     expect(read).not.toContain("<form");
     expect(read).toContain("readOnly");

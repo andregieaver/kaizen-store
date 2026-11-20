@@ -5,7 +5,7 @@ import { parseOpeningHours } from "@/lib/opening-hours-schema";
 import { weekSummary } from "@/lib/opening-hours";
 import { readyInWords } from "@/lib/pickup";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 
 type Words = OrderMessages["handover"];
 
@@ -57,7 +57,7 @@ export function PickupPanel({
   when,
   ready,
   collected,
-  words: w = orderEn.handover,
+  words: w,
 }: {
   delivery: PickupDelivery | null;
   readyAt: string | null;
@@ -68,7 +68,7 @@ export function PickupPanel({
   when: (iso: string) => string;
   ready: Action;
   collected: Action;
-  words?: Words;
+  words: Words;
 }) {
   const hours = parseOpeningHours(delivery?.hours ?? null);
   const live = (state.status === "paid" || state.status === "authorized" || state.status === "fulfilled") && !state.copied;
@@ -156,7 +156,7 @@ export function LocalDeliveryPanel({
   today,
   out,
   delivered,
-  words: w = orderEn.handover,
+  words: w,
 }: {
   delivery: LocalDelivery | null;
   note: string | null;
@@ -170,7 +170,7 @@ export function LocalDeliveryPanel({
   out: Action;
   /** *Mark delivered* (`markDelivered()`): on an order never taken out it writes the handover first, so one press is enough. */
   delivered: Action;
-  words?: Words;
+  words: Words;
 }) {
   const live = (state.status === "paid" || state.status === "authorized" || state.status === "fulfilled") && !state.copied;
   return (

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { dayText } from "@/lib/return-admin";
 import { formatStoreDay } from "@/lib/return-time";
 import type { OrderReturnsOverview } from "@/server/order-returns";
@@ -14,8 +14,8 @@ import { Card, StatusBadge } from "./ui";
 /** Where an order stands in the 14 days, in a sentence for staff. */
 export function windowSentence(
   overview: Pick<OrderReturnsOverview, "window" | "business" | "copied" | "unitsLeft" | "right">,
+  w: ReturnsMessages,
   locale = "en-GB",
-  w: ReturnsMessages = returnsEn,
 ): string {
   const c = w.orderCard;
   if (overview.copied) return c.copied;
@@ -53,7 +53,7 @@ export function OrderReturnsCard({
   today,
   partlySent = false,
   exchanges = {},
-  words: w = returnsEn,
+  words: w,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -74,7 +74,7 @@ export function OrderReturnsCard({
   /** The orders this order's returns were exchanged for (D239), by return id: "Exchanged: order {M}". */
   exchanges?: Record<string, { orderId: string; orderNumber: string; settled: boolean }>;
   /** The reader's words (D312 A4); English unless given. */
-  words?: ReturnsMessages;
+  words: ReturnsMessages;
 }) {
   const c = w.orderCard;
   const open = !overview.copied && overview.window !== null;
@@ -82,7 +82,7 @@ export function OrderReturnsCard({
   return (
     <AdminTextScope texts={{ returns: w }}>
     <Card id="returns" title={c.title}>
-      <p className="mb-3 text-sm text-muted">{windowSentence(overview, locale, w)}</p>
+      <p className="mb-3 text-sm text-muted">{windowSentence(overview, w, locale)}</p>
       {overview.heldBack.length > 0 && (
         <p role="note" className="mb-3 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
           {fillWords(c.heldBack, { lines: overview.heldBack.map((line) => `${line.quantity} × ${line.title}`).join(", "), them: overview.heldBack.length === 1 ? c.it : c.them })}

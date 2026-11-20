@@ -1,6 +1,8 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { draftsEn } from "@/lib/admin-messages/drafts.en";
+import { orderEn } from "@/lib/admin-messages/order.en";
 
 import { EDIT_BLOCKS, type EditBlockReason } from "@/lib/order-edit";
 import { addedMug, BOOK, MUG, summaryOf } from "@/lib/order-edit-view-fixture";
@@ -156,6 +158,7 @@ describe("the parcels (D174 2.1)", () => {
         base: "/admin/shop/orders/o1",
         when,
         emailAgain: () => answer,
+        words: orderEn.parcels,
       }),
     );
     const text = check(html);
@@ -171,7 +174,7 @@ describe("the parcels (D174 2.1)", () => {
   });
 
   it("says a parcel from before parcels listed their items counts as everything sent, and offers no Email again to someone who may not", () => {
-    const html = renderToString(h(ShipmentList, { shipments: [shipment({ legacy: true, lines: [] })], base: "/admin/shop/orders/o1", when, emailAgain: null }));
+    const html = renderToString(h(ShipmentList, { shipments: [shipment({ legacy: true, lines: [] })], base: "/admin/shop/orders/o1", when, emailAgain: null, words: orderEn.parcels }));
     const text = check(html);
     expect(text).toContain("Recorded before parcels listed their items: counts as everything sent.");
     expect(text).not.toContain("Packing slip");
@@ -179,7 +182,7 @@ describe("the parcels (D174 2.1)", () => {
   });
 
   it("draws nothing without parcels", () => {
-    expect(renderToString(h(ShipmentList, { shipments: [], base: "/x", when, emailAgain: null }))).toBe("");
+    expect(renderToString(h(ShipmentList, { shipments: [], base: "/x", when, emailAgain: null, words: orderEn.parcels }))).toBe("");
   });
 });
 
@@ -200,7 +203,7 @@ describe("undoing a parcel (D174 follow-up)", () => {
   const undoAnswer = async () => ({ status: "ok" as const, messages: ["done"] });
 
   it("offers Undo \"sent\" for a parcel that stands, with the warnings and an optional reason, and says the customer is not emailed", () => {
-    const html = renderToString(h(ShipmentList, { shipments: [shipment()], base: "/admin/shop/orders/o1", when, emailAgain: null, undo: () => undoAnswer }));
+    const html = renderToString(h(ShipmentList, { shipments: [shipment()], base: "/admin/shop/orders/o1", when, emailAgain: null, undo: () => undoAnswer, words: orderEn.parcels }));
     const text = check(html);
     expect(text).toContain("Undo “sent”");
     expect(text).toContain("Undo “sent” for parcel 1?");
@@ -215,14 +218,14 @@ describe("undoing a parcel (D174 follow-up)", () => {
 
   it("warns that a carrier's booking is not cancelled and that a recorded receipt is cleared", () => {
     const text = check(
-      renderToString(h(ShipmentList, { shipments: [shipment({ carrierId: "bring", hasLabel: true })], base: "/x", when, emailAgain: null, undo: () => undoAnswer, receiptRecorded: true })),
+      renderToString(h(ShipmentList, { shipments: [shipment({ carrierId: "bring", hasLabel: true })], base: "/x", when, emailAgain: null, undo: () => undoAnswer, receiptRecorded: true, words: orderEn.parcels })),
     );
     expect(text).toContain("The booking with Posten / Bring is not cancelled: cancel it with Posten / Bring yourself.");
     expect(text).toContain("The recorded receipt date is cleared");
   });
 
   it("offers no undo to someone who may not change orders", () => {
-    expect(check(renderToString(h(ShipmentList, { shipments: [shipment()], base: "/x", when, emailAgain: null })))).not.toContain("Undo");
+    expect(check(renderToString(h(ShipmentList, { shipments: [shipment()], base: "/x", when, emailAgain: null, words: orderEn.parcels })))).not.toContain("Undo");
   });
 
   it("keeps an undone parcel listed, struck through and muted, with when, by whom and why, and offers nothing on it", () => {
@@ -236,6 +239,7 @@ describe("undoing a parcel (D174 follow-up)", () => {
         when,
         emailAgain: () => answer,
         undo: () => undoAnswer,
+        words: orderEn.parcels,
       }),
     );
     const text = check(html);
@@ -253,7 +257,7 @@ describe("undoing a parcel (D174 follow-up)", () => {
   });
 
   it("writes an undone parcel without a reason or a person plainly", () => {
-    const text = check(renderToString(h(ShipmentList, { shipments: [shipment({ undone: { at: "2026-10-07T09:00:00Z", by: null, reason: null } })], base: "/x", when, emailAgain: null })));
+    const text = check(renderToString(h(ShipmentList, { shipments: [shipment({ undone: { at: "2026-10-07T09:00:00Z", by: null, reason: null } })], base: "/x", when, emailAgain: null, words: orderEn.parcels })));
     expect(text).toContain("Undone 2026-10-07");
     expect(text).not.toMatch(/Undone 2026-10-07 by|Undone 2026-10-07:/);
   });
@@ -279,14 +283,14 @@ describe("the order page's Change the items card (D174 2.2)", () => {
   const base = { editHref: "/admin/shop/orders/o1/edit", money, when, hasEmail: true, mayRecordOutside: true, awaitingActions: null };
 
   it("says when a change's refund failed after it was applied, with what the customer is still owed (review fix), and nothing when nothing is owed", () => {
-    const owed = check(renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: null, edits: [edit({ refundOwedMinor: 10000 })] })));
+    const owed = check(renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: null, edits: [edit({ refundOwedMinor: 10000 })], words: draftsEn })));
     expect(owed).toContain("The refund of change E1 failed. 100.00 kr has not reached the customer");
-    const none = check(renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: null, edits: [edit({ refundOwedMinor: 0 })] })));
+    const none = check(renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: null, edits: [edit({ refundOwedMinor: 0 })], words: draftsEn })));
     expect(none).not.toContain("failed");
   });
 
   it("offers Edit items when the order can be changed, and lists the changes so far without staff's note", () => {
-    const html = renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: null, edits: [edit()] }));
+    const html = renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: null, edits: [edit()], words: draftsEn }));
     const text = check(html);
     expect(html).toContain('href="/admin/shop/orders/o1/edit"');
     expect(text).toContain("Edit items");
@@ -298,7 +302,7 @@ describe("the order page's Change the items card (D174 2.2)", () => {
 
   it("shows why an order cannot be changed, in words, for every reason, and no Edit items", () => {
     for (const reason of Object.keys(EDIT_BLOCKS) as EditBlockReason[]) {
-      const html = renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: EDIT_BLOCKS[reason], edits: [] }));
+      const html = renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: EDIT_BLOCKS[reason], edits: [], words: draftsEn }));
       const text = check(html);
       expect(text, reason).toContain(plain(EDIT_BLOCKS[reason]).trim());
       expect(text, reason).not.toContain("Edit items");
@@ -306,7 +310,7 @@ describe("the order page's Change the items card (D174 2.2)", () => {
   });
 
   it("offers nothing to change to someone who may only read", () => {
-    const html = renderToString(h(OrderEditCard, { ...base, canWrite: false, blockText: null, edits: [edit({ status: "awaiting_payment", differenceMinor: 14900, expiresAt: "2026-10-13T10:00:00Z", appliedAt: null })] }));
+    const html = renderToString(h(OrderEditCard, { ...base, canWrite: false, blockText: null, edits: [edit({ status: "awaiting_payment", differenceMinor: 14900, expiresAt: "2026-10-13T10:00:00Z", appliedAt: null })], words: draftsEn }));
     const text = check(html);
     expect(text).not.toContain("Edit items");
     expect(text).toContain("Change E1 is waiting for the customer's payment of 149.00 kr until 2026-10-13");
@@ -317,10 +321,10 @@ describe("the order page's Change the items card (D174 2.2)", () => {
   it("shows a change waiting for payment with Send again, a link to share, Record as paid outside and Cancel", () => {
     const awaitingActions = { resend: answer, cancel: answer, paidOutside: answer };
     const waiting = edit({ status: "awaiting_payment", differenceMinor: 14900, expiresAt: "2026-10-13T10:00:00Z", appliedAt: null });
-    const text = check(renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: EDIT_BLOCKS.edit_pending, edits: [waiting], awaitingActions })));
+    const text = check(renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: EDIT_BLOCKS.edit_pending, edits: [waiting], awaitingActions, words: draftsEn })));
     for (const words of ["Send again", "Create a link to share", "Record as paid outside Kaizena Flow", "Cancel the change", "The order stays as it is until it is paid"]) expect(text).toContain(words);
     // Without an email address there is nobody to send it to; without the owner's leave, staff cannot record money taken outside Kaizen.
-    const noEmail = check(renderToString(h(OrderEditCard, { ...base, hasEmail: false, mayRecordOutside: false, canWrite: true, blockText: null, edits: [waiting], awaitingActions })));
+    const noEmail = check(renderToString(h(OrderEditCard, { ...base, hasEmail: false, mayRecordOutside: false, canWrite: true, blockText: null, edits: [waiting], awaitingActions, words: draftsEn })));
     expect(noEmail).not.toContain("Send again");
     expect(noEmail).toContain("Only the owner can record a payment taken outside Kaizena Flow");
   });
