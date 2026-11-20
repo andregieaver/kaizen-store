@@ -121,6 +121,7 @@ export async function getPublicExtensions(): Promise<PublicExtensions> {
  */
 export async function publicUpsellPercent(): Promise<number> {
   "use cache";
+  cacheLife("hours");
   cacheTag(EXTENSIONS_TAG);
   const [row] = await typedRows(z.object({ percent: col.int }), sql`select extension_upsell_percent as percent from commerce.platform_settings`, readDb());
   return row?.percent ?? 20;
