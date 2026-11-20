@@ -846,6 +846,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D841 | **Admin redesign round 68: Kaizena Flow's search, AI prices and A/B tests on a phone** | 2026-11-20 | [text](decisions/D841.md) |
 | D842 | **A listing fetches its first screen of tiles ahead and the rest on intent** | 2026-11-20 | [text](decisions/D842.md) |
 | D843 | **No scheduled job fails in silence: report() for caught errors, trackedWork() for work after a route's answer (bloat revi** | 2026-11-20 | [text](decisions/D843.md) |
+| D844 | **Admin redesign round 69: Kaizena Flow's new form, referrals and docs guide on a phone** | 2026-11-20 | [text](decisions/D844.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
