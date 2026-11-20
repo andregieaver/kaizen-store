@@ -16,7 +16,6 @@ import type { RandomBytes } from "./recovery-codes";
  * who may change what, and when (`src/server/email-change.ts`). Never import this from a "use client" file: it hashes with `node:crypto`.
  */
 
-export { EMAIL_CHANGE_HOURS, NAME_MAX };
 
 export type NameProblem = "empty" | "long";
 
@@ -81,7 +80,7 @@ export type EmailChangeFacts = {
   person: string;
   /** The new address: whole in the link's email, half hidden (`maskEmail()`) in the notices to the old address. */
   email: string;
-  /** When it happened, as the reader reads it (`2026-10-03 14:05 UTC`). */
+  /** When it happened, on the platform's clock in the reader's language (`dateIn()`). */
   when: string;
   /** A platform admin asked for it, for the person. */
   byAdmin: boolean;

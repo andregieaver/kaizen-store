@@ -11,10 +11,10 @@ import { dateIn, PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { normaliseEmail } from "@/lib/email-address";
 import {
-  EMAIL_CHANGE_HOURS,
   cleanName,
   emailChangeEmail,
   emailChangeTokenHash,
+  linkWorks,
   makeEmailChangeToken,
   maskEmail,
   newAddress,
@@ -22,6 +22,7 @@ import {
   type EmailChangeEmailKind,
   type NameProblem,
 } from "@/lib/email-change";
+import { EMAIL_CHANGE_HOURS } from "@/lib/email-change-limits";
 import { renderEmail } from "@/lib/email-layout";
 import type { RandomBytes } from "@/lib/recovery-codes";
 import { siteUrl } from "@/lib/site";
@@ -315,7 +316,7 @@ export async function pendingEmailChange(accountId: string, now: Date = new Date
     `,
   );
   if (!row) return null;
-  return { email: row.new_email, createdAt: row.created_at, expiresAt: row.expires_at, byAdmin: row.by_admin, expired: new Date(row.expires_at).getTime() <= now.getTime() };
+  return { email: row.new_email, createdAt: row.created_at, expiresAt: row.expires_at, byAdmin: row.by_admin, expired: !linkWorks({ expiresAt: row.expires_at, usedAt: null }, now) };
 }
 
 /** Cancels the account's pending change (by the person, or by a platform admin for them): its link stops working. False when none waited. */
@@ -356,7 +357,7 @@ export async function emailChangeLink(token: unknown, now: Date = new Date()): P
   if (!row || !row.active) return { state: "unknown" };
   const lang = adminLangOf(row.admin_locale);
   if (row.used_at) return { state: "used", email: row.new_email, lang };
-  if (new Date(row.expires_at).getTime() <= now.getTime()) return { state: "expired", lang };
+  if (!linkWorks({ expiresAt: row.expires_at, usedAt: null }, now)) return { state: "expired", lang };
   return { state: "valid", email: row.new_email, lang };
 }
 
@@ -419,7 +420,7 @@ export async function confirmEmailChange(token: unknown, deps: EmailChangeDeps =
       if (!row || !row.active) return { ok: false as const, problem: "unknown" as const };
       seen.lang = adminLangOf(row.admin_locale);
       if (row.used_at) return { ok: false as const, problem: "used" as const };
-      if (new Date(row.expires_at).getTime() <= now.getTime()) return { ok: false as const, problem: "expired" as const };
+      if (!linkWorks({ expiresAt: row.expires_at, usedAt: null }, now)) return { ok: false as const, problem: "expired" as const };
       if (await addressTaken(row.new_email, row.account_id, tx)) return { ok: false as const, problem: "taken" as const };
 
       await tx.execute(sql`update commerce.accounts set email = ${row.new_email} where id = ${row.account_id}::uuid`);

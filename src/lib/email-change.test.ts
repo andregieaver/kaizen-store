@@ -3,10 +3,9 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
+import { EMAIL_CHANGE_HOURS, NAME_MAX } from "./email-change-limits";
 import { renderEmail } from "./email-layout";
 import {
-  EMAIL_CHANGE_HOURS,
-  NAME_MAX,
   cleanName,
   emailChangeEmail,
   emailChangeTokenHash,
