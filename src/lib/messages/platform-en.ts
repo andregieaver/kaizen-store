@@ -25,6 +25,10 @@ export const platformEn = {
     bundles: "Bundles",
     holds: (names: string): string => `Holds ${names}`,
     saves: (amount: string): string => `${amount} less a month than one by one`,
+    savesYear: (amount: string): string => `${amount} less a year than one by one`,
+    recommended: "Recommended",
+    compare: "Compare extensions",
+    extension: "Extension",
   },
   nav: { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog", menu: "Menu" },
   /** The platform's menus' names (D85) in another language, by the name they were given; English says the name as given. */

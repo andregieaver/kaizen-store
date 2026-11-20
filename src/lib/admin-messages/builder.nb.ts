@@ -919,6 +919,9 @@ export const builderNb: BuilderMessages = {
     showBundles: "Pakker som vises",
     noChoices: "Ingen utvidelse har pris ennå: legg til en under Planer → Utvidelser.",
     hiddenCount: "{count} slått av",
+    recommend: "Utvidelse eller pakke å anbefale",
+    comparisonHint: "Hver utvidelse som vises på en rad, med en hake for hver pakke og plan som inkluderer den, under kortene.",
+    oneRecommended: "én anbefalt",
   },
   plans: {
     hint: "Tegner et kort for hver av de aktive planene dine, med pris, gebyr per salg og hva den inneholder. Planene, prisene og funksjonene redigeres under Planer: en endring der vises på denne siden med en gang.",

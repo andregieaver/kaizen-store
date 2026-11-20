@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { extensionChoices, extensionOffer, offerCurrency, type PublicExtensions } from "@/lib/extension-offer";
+import { extensionChoices, extensionComparison, extensionOffer, offerCurrency, type PublicExtensions, type PublicPrice } from "@/lib/extension-offer";
 import { extensionsIn } from "@/lib/extension-words";
 import { blockHasContent, pageBlockSchema, type ExtensionsBlock } from "@/lib/page-content";
 import { mapBlockTexts } from "@/lib/page-translation";
@@ -69,7 +69,72 @@ describe("extensionOffer", () => {
   });
 });
 
+/** The same sheet with yearly prices: ten months for twelve, founding prices too. */
+const yearOf = (p: PublicPrice) => ({ ...p, interval: "year" as const, amountMinor: p.amountMinor * 10, foundingMinor: p.foundingMinor === null ? null : p.foundingMinor * 10 });
+const withYears: PublicExtensions = {
+  ...data,
+  extensions: data.extensions.map((e) => (e.size ? { ...e, size: { ...e.size, prices: [...e.size.prices, ...e.size.prices.map(yearOf)] } } : e)),
+  bundles: data.bundles.map((b) => ({ ...b, prices: [...b.prices, ...b.prices.map(yearOf)] })),
+};
+
+describe("extensionOffer, as the Plans block shows prices", () => {
+  it("leads with the monthly price and shows the yearly one under it, with what the year saves", () => {
+    const { extensions, bundles } = extensionOffer(withYears, "NOK", now);
+    expect(extensions[0]).toMatchObject({ price: { interval: "month", foundingMinor: 19000 }, other: { interval: "year", foundingMinor: 190000 }, yearlySavingPercent: 17 });
+    expect(bundles[0]).toMatchObject({ price: { interval: "month" }, other: { interval: "year" }, savingMinor: 18000 });
+  });
+
+  it("leads with the yearly price when asked, saving a year against the extensions' yearly prices, and marks the one recommended", () => {
+    const { extensions, bundles } = extensionOffer(withYears, "NOK", now, [], { interval: "year", highlightId: "b1" });
+    expect(extensions[0]).toMatchObject({ price: { interval: "year" }, other: null, yearlySavingPercent: 17, highlighted: false });
+    expect(bundles[0]).toMatchObject({ price: { interval: "year" }, savingMinor: 180000, highlighted: true });
+    // Monthly only: no yearly line, nothing said of a year.
+    expect(extensionOffer(withYears, "NOK", now, [], { interval: "month" }).extensions[0]).toMatchObject({ other: null, yearlySavingPercent: null });
+    // Asked for yearly with no yearly price: the monthly one.
+    expect(extensionOffer(data, "NOK", now, [], { interval: "year" }).extensions[0].price.interval).toBe("month");
+  });
+
+  it("compares each extension shown against each bundle shown and each plan that includes one of them", () => {
+    const shown = extensionOffer(data, "NOK", now, ["email_automation"]);
+    expect(extensionComparison(data, shown)).toEqual({
+      columns: [
+        { id: "b1", name: "Customers" },
+        { id: "p1", name: "Grow" },
+        { id: "p2", name: "Advanced" },
+        { id: "p3", name: "Plus" },
+      ],
+      rows: [
+        { id: "ab_testing", name: "A/B testing", included: [false, true, true, true] },
+        { id: "support_desk", name: "AI support desk", included: [true, false, true, true] },
+        { id: "deals", name: "Deals and contracts", included: [true, false, false, true] },
+      ],
+    });
+    expect(extensionComparison(data, { extensions: [], bundles: [] })).toEqual({ columns: [], rows: [] });
+  });
+});
+
 describe("ExtensionsView", () => {
+  it("draws the switch with both sets of cards, the recommended mark and the comparison table when asked", () => {
+    const html = renderToStaticMarkup(createElement(ExtensionsView, { block: { ...block, switcher: true, highlightId: "support_desk", comparison: true }, data: withYears, lang: "en", now }));
+    expect(html).toContain('data-plan-switch=""');
+    expect(html).toContain('data-plan-panel="month"');
+    expect(html).toContain('data-plan-panel="year"');
+    expect(html).toContain("Save 17 %");
+    expect(html).toContain("per year, billed yearly");
+    expect(html.match(/>Recommended</g)?.length).toBe(2);
+    expect(html).toContain("Compare extensions");
+    expect(html).toContain("less a year than one by one");
+    expect(pageBlockSchema.safeParse({ ...block, switcher: true, interval: "year", highlightId: "b1", comparison: true }).success).toBe(true);
+  });
+
+  it("shows the yearly price under the monthly one by default", () => {
+    const html = renderToStaticMarkup(createElement(ExtensionsView, { block, data: withYears, lang: "en", now }));
+    expect(html).toContain("or NOK");
+    expect(html).toContain("Save 17 % with yearly billing");
+    expect(html).not.toContain("data-plan-switch");
+    expect(html).not.toContain("Compare extensions");
+  });
+
   it("draws a card per extension and the bundles, without VAT, with a free trial to sign up", () => {
     const html = renderToStaticMarkup(createElement(ExtensionsView, { block, data, lang: "en", now }));
     expect(html).toContain("A/B testing");

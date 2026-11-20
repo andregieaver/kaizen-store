@@ -122,9 +122,9 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
 
 /**
  * Monthly or yearly (D481): two radio buttons drawn as one control, the chosen one filled; what the yearly prices save beside it.
- * Native radios, so the keyboard and screen readers know them; the cards follow by CSS alone.
+ * Native radios, so the keyboard and screen readers know them; the cards follow by CSS alone. The Extensions block's switch too.
  */
-function IntervalSwitch({ name, start, saving, allSame, m }: { name: string; start: PlanInterval; saving: number | null; allSame: boolean; m: ReturnType<typeof t>["plans"] }) {
+export function IntervalSwitch({ name, start, saving, allSame, m }: { name: string; start: PlanInterval; saving: number | null; allSame: boolean; m: ReturnType<typeof t>["plans"] }) {
   const option = (interval: PlanInterval, text: string) => (
     <span className="relative">
       <input type="radio" name={name} id={`${name}-${interval}`} value={interval} defaultChecked={interval === start} data-plan-pick={interval} className="peer sr-only" />

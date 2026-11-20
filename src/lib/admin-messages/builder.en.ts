@@ -969,6 +969,9 @@ export const builderEn = {
     showBundles: "Bundles to show",
     noChoices: "No extension has a price yet: add one under Plans → Extensions.",
     hiddenCount: "{count} switched off",
+    recommend: "Extension or bundle to recommend",
+    comparisonHint: "Every extension shown in a row, with a tick for each bundle and plan that includes it, under the cards.",
+    oneRecommended: "one recommended",
   },
   plans: {
     hint: "Draws a card for each of your active plans, with its price, fee per sale and what it includes. The plans, prices and features are edited under Plans: a change there shows on this page at once.",

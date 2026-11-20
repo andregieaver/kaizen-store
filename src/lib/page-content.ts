@@ -967,8 +967,19 @@ export type ExtensionsBlock = PartBase & {
   type: "extensions";
   /** The currency the prices show in; none: the one most prices are in. */
   currency?: string;
+  /**
+   * Which price each card shows, as on the Plans block: both (the default) shows the monthly price and the yearly one under it. With
+   * `switcher` it is the one the cards start on (monthly unless yearly).
+   */
+  interval?: "month" | "year";
+  /** Visitors switch between monthly and yearly prices above the cards, as on the Plans block. */
+  switcher?: boolean;
   /** `hide_whole` leaves the decimals off whole amounts, as on the Plans block. */
   decimals?: "hide_whole";
+  /** The extension (its id) or bundle (its uuid) marked as the one to choose. */
+  highlightId?: string;
+  /** Under the cards, a table with every extension shown in a row and a tick for each bundle and plan that includes it. */
+  comparison?: boolean;
   /** The bundles under the extensions; shown unless set false. */
   bundles?: boolean;
   /**
@@ -3016,7 +3027,11 @@ const extensionsBlock = z.object({
   id: itemId,
   type: z.literal("extensions"),
   currency: z.string().trim().regex(/^[A-Z]{3}$/, "Choose a currency such as NOK or EUR.").optional(),
+  interval: z.enum(["month", "year"]).optional(),
+  switcher: z.boolean().optional(),
   decimals: z.literal("hide_whole").optional(),
+  highlightId: z.string().trim().min(1).max(64).optional(),
+  comparison: z.boolean().optional(),
   bundles: z.boolean().optional(),
   hide: z.array(z.string().trim().min(1).max(64)).max(40).optional(),
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),

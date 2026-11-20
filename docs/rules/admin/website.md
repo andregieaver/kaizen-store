@@ -686,6 +686,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   or the founding offer refreshes it. An ended offer is left out by the cached read (read again within the hour it ends, by the
   database's clock), so the view reads no clock. Only Kaizena Flow's pages hold it (`pageRulesProblem()`); its words are
   `platformText(lang).extensions`, the catalogue's through `extensionsIn()` (`EXTENSION_WORDS_NB`, by the English); amounts exclude VAT.
+- It has the Plans block's settings (the owner, 20 November 2026): which price leads (monthly with the yearly under it, one of them, or
+  the visitors' switch, `IntervalSwitch` shared with the Plans block and CSS-only), whole amounts, one extension or bundle to recommend
+  (`highlightId`, marked and with a filled button) and a comparison table (`extensionComparison()`: each extension shown in a row against
+  each bundle shown and each plan that includes one). A card's price is chosen as `planCards()` chooses one; a bundle's saving is against
+  its parts at the same interval, founding against founding. The visitor words it shares with the Plans block are `t(lang).plans`', so
+  the storefront's messages budget holds.
 
 ## Kaizen's own front page, blog and 404 page (D143, `src/lib/platform-roles.ts`, `src/server/platform-roles.ts`, `commerce.platform_page_roles`,…
 
