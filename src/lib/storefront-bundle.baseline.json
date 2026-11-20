@@ -173,17 +173,7 @@
       "components/wishlist-heart": "in first scripts on 2026-11 (bloat review step 1.27)"
     }
   },
-  "laterChains": [
-    "components/carousel => lib/background-layers",
-    "components/carousel => lib/page-content",
-    "components/carousel => zod",
-    "components/lazy/blocks => lib/background-layers",
-    "components/lazy/blocks => lib/page-content",
-    "components/lazy/blocks => zod",
-    "components/recommended-grid => lib/background-layers",
-    "components/recommended-grid => lib/page-content",
-    "components/recommended-grid => zod"
-  ],
+  "laterChains": [],
   "adminWords": {
     "app/(platform)/sign-up/sign-up-wizard": "the sign-up wizard is an admin form on a public address"
   },

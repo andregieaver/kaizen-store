@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * Colours with an opacity (D180, `docs/text-colour.md`): a colour is always stored as `#rrggbb` and an opacity as a whole
  * number from 0 to 100 (solid when left out). `colourCss()` is the one place either becomes CSS, for text (typography, the
@@ -8,13 +6,6 @@ import { z } from "zod";
  */
 
 export const HEX6 = /^#[0-9a-fA-F]{6}$/;
-
-/** An opacity as stored: 0 (invisible) to 100 (solid). */
-export const opacityValue = z
-  .number()
-  .int("An opacity is a whole number from 0 to 100.")
-  .min(0, "An opacity is 0 to 100.")
-  .max(100, "An opacity is 0 to 100.");
 
 /** Whether a value is an opacity as stored. */
 export const isOpacity = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100;

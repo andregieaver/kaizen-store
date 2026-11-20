@@ -44,8 +44,10 @@ test("the grid shows picks with a reason, leaves out what the shopper has looked
   try {
     // Every script the page loads, and whether it came after the shopper's picks were answered (bloat review step 2.10).
     let answered = false;
+    let counting = true;
     const later: Promise<{ url: string; body: Buffer }>[] = [];
     page.on("response", (response) => {
+      if (!counting) return;
       if (new URL(response.url()).pathname === "/api/recommendations") answered = true;
       else if (answered && response.request().resourceType() === "script") later.push(response.body().then((body) => ({ url: response.url(), body })));
     });
@@ -56,16 +58,20 @@ test("the grid shows picks with a reason, leaves out what the shopper has looked
     await expect(page.getByText("Populært i butikken").first()).toBeVisible();
     // The tab reported what it was shown, under a random id and the ranking it got.
     await expect.poll(async () => Number((await sql`select count(*)::int as n from commerce.recommendation_events where store_id = ${storeId} and event = 'impression'`)[0].n)).toBeGreaterThan(0);
-    // The tiles a recommending grid loads once the picks arrive take the browser's words: no whole language and no zod (D212, D211).
+    // The tiles a recommending grid loads once the picks arrive take the browser's words and read no schema: no whole language, no zod
+    // and no page model (D212, D211; "Filters are for grids of products." is one of the page model's own messages).
     await page.waitForLoadState("networkidle");
+    counting = false;
     const loaded = await Promise.all(later);
     const total = loaded.reduce((sum, script) => sum + script.body.length, 0);
     console.log(`scripts loaded after /api/recommendations answered: ${total} bytes`, loaded.map((script) => `${new URL(script.url).pathname} ${script.body.length}`));
     expect(answered).toBe(true);
-    for (const marker of ["nettbutikk med levering i", "webbutik med leverans i", "webshop med levering i", "online store delivering in", "ZodError"]) {
+    for (const marker of ["nettbutikk med levering i", "webbutik med leverans i", "webshop med levering i", "online store delivering in", "ZodError", "Filters are for grids of products."]) {
       expect(loaded.filter((script) => script.body.toString("utf8").includes(marker)).map((script) => script.url), marker).toEqual([]);
     }
-    expect(total).toBeLessThanOrEqual(335_000);
+    // 649,561 bytes before (all four languages, zod and the page model); 98,341 measured locally after, of which 52,913 are the product
+    // page's own scripts, fetched ahead for the tiles' links (bloat review step 2.10).
+    expect(total).toBeLessThanOrEqual(140_000);
     const arms = await sql`select distinct arm, placement from commerce.recommendation_events where store_id = ${storeId}`;
     expect(arms).toEqual([expect.objectContaining({ arm: "ai", placement: "page" })]);
 
