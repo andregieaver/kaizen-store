@@ -5,7 +5,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { DraftActionResponse, DraftProblemWords, SaveDraftResponse } from "@/app/admin/(gated)/[store]/orders/drafts/actions";
 import { field, hint, secondary } from "@/components/admin/data/ui";
 import { addGoods, addTags, customLine, fingerprint, formFromDraft, goodsLine, inputFromForm, moveLine, shipsGoods, type DraftLike, type EditorAddress, type EditorLine, type EditorState } from "@/lib/draft-editor";
-import { draftInput, parsePercentBps, type ManualPaymentMethod } from "@/lib/draft-input";
+import { parsePercentBps, type ManualPaymentMethod } from "@/lib/draft-input";
+import { draftInput } from "@/lib/draft-input-schema";
 import { draftMarketChoice, draftMarketSlug, type DraftMarketOptions } from "@/lib/draft-markets";
 import {
   DRAFT_DISCOUNT_LABEL_MAX,

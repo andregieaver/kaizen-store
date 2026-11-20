@@ -21,7 +21,8 @@ import {
   type DraftPricing,
   type DraftProblem,
 } from "@/lib/draft-order";
-import { draftInput, draftPaidOutsideInput, draftSendInput, formatPercentBps, parsePercentBps, type DraftAddress, type DraftInput } from "@/lib/draft-input";
+import { formatPercentBps, parsePercentBps, type DraftAddress, type DraftInput } from "@/lib/draft-input";
+import { draftInput, draftPaidOutsideInput, draftSendInput } from "@/lib/draft-input-schema";
 import { canReopenDraft, draftPruneCutoffs, isDraftDeletable, type DraftStatus } from "@/lib/draft-status";
 import { shownOptions, t } from "@/lib/i18n";
 import { conversionFor } from "@/lib/localization";

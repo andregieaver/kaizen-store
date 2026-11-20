@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { draftInput } from "./draft-input";
+import { draftInput } from "./draft-input-schema";
 import { addGoods, addTags, customLine, fingerprint, formFromDraft, goodsLine, inputFromForm, moveLine, shipsGoods, splitTags, type DraftLike, type EditorState } from "./draft-editor";
 
 const draft = (over: Partial<DraftLike> = {}): DraftLike => ({

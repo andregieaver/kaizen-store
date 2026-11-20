@@ -1,17 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  MANUAL_METHOD_LABELS,
-  MANUAL_PAYMENT_METHODS,
-  draftInput,
-  draftLineInput,
-  draftPaidOutsideInput,
-  draftSendInput,
-  draftTagProblems,
-  formatPercentBps,
-  manualRefundInput,
-  parsePercentBps,
-} from "./draft-input";
+import { MANUAL_METHOD_LABELS, MANUAL_PAYMENT_METHODS, draftTagProblems, formatPercentBps, parsePercentBps } from "./draft-input";
+import { draftInput, draftLineInput, draftPaidOutsideInput, draftSendInput, manualRefundInput } from "./draft-input-schema";
 import { parsePrice } from "./product-input";
 
 const ID = "0b8c2d44-5f3e-4a62-9d11-2f6a8c1e7b90";
