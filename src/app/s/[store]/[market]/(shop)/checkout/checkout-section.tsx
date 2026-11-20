@@ -14,6 +14,7 @@ import { HoldClock } from "@/components/hold-clock";
 import { BackorderLine } from "@/components/backorder-note";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { LogoPicture } from "@/components/logo-picture";
+import { OrderDeliveryRows } from "@/components/order-totals";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { offersAccountAtCheckout } from "@/lib/customer-accounts";
@@ -21,9 +22,7 @@ import { cartBonusOff } from "@/lib/bonus";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { featureOn } from "@/lib/store-features";
-import { pickupPointLine } from "@/lib/delivery-options";
-import { deliveryRowLabel, withDeliveryWords } from "@/lib/delivery-words";
-import { formatWindow } from "@/lib/porterbuddy";
+import { withDeliveryWords } from "@/lib/delivery-words";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
@@ -335,18 +334,7 @@ function totalsList(view: CheckoutView, market: Market) {
           <dt>{m.subtotal}</dt>
           <dd>{money(business ? linesNet : order.subtotalMinor)}</dd>
         </div>
-        {order.ships && (
-          <div className="flex justify-between">
-            <dt>{deliveryRowLabel(order.deliveryKept ?? order.delivery, m)}</dt>
-            <dd>{order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor, order.shippingVatRate)}</dd>
-          </div>
-        )}
-        {order.ships && order.delivery?.pickupPoint && (
-          <p className="text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
-        )}
-        {order.ships && order.delivery?.window && (
-          <p className="text-muted">{m.deliveryChoice.windowLine(formatWindow(order.delivery.window, order.locale, view.timeZone))}</p>
-        )}
+        <OrderDeliveryRows order={order} m={m} timeZone={view.timeZone} amount={order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor, order.shippingVatRate)} />
         {order.discountMinor > 0 && (
           <div className="flex justify-between">
             <dt>
