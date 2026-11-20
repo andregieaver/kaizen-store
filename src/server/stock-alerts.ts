@@ -18,6 +18,7 @@ import { sendEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { emailFooter, storeById } from "./shopper-emails";
 import { alertRecipients } from "./staff-alerts";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -82,12 +83,14 @@ const TOLD: readonly SendOutcome[] = ["sent", "logged", "duplicate"];
  * that fails is logged and the next one goes on; what could not be sent stays unmarked and is tried again at the next run (every five minutes).
  */
 export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}): Promise<LowStockRun> {
+  const report = jobReport();
   const send = deps.send ?? sendEmail;
   const out: LowStockRun = { stores: 0, emails: 0, crossings: 0, failed: 0 };
   let pending: Pending[];
   try {
     pending = await pendingCrossings();
   } catch (error) {
+    report(error, "crossings-read");
     log("error", "stock_alerts.crossings_read_failed", {}, error);
     return out;
   }
@@ -143,6 +146,7 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
       out.emails += outcomes.filter((o) => TOLD.includes(o)).length;
       out.crossings += crossings.length;
     } catch (error) {
+      report(error, "email");
       out.failed += 1;
       log("error", "stock_alerts.email_failed", { storeId }, error);
     }

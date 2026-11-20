@@ -59,6 +59,17 @@ export const customersEn = {
     tagLabel: "Tag",
     addTag: "Add a tag",
     removeTag: "Take a tag off",
+    /** Deleting the people ticked (test sign-ups and the like); those with orders or subscriptions are kept. */
+    delete: "Delete",
+    deleteQuestion: {
+      one: "Delete {n} customer? Their own deals, notes and tags go too. Customers with orders or subscriptions are kept.",
+      many: "Delete {n} customers? Their own deals, notes and tags go too. Customers with orders or subscriptions are kept.",
+    },
+    deleted: { one: "{n} customer deleted.", many: "{n} customers deleted." },
+    deletedKept: {
+      one: " {n} with orders or subscriptions was kept: to erase them, use Privacy requests.",
+      many: " {n} with orders or subscriptions were kept: to erase them, use Privacy requests.",
+    },
     wholeList: "Tag everyone the search finds",
     morePictures: "+{n}",
   },
@@ -83,6 +94,10 @@ export const customersEn = {
   },
   customer: {
     back: "Customers",
+    /** Deleting this customer (test sign-ups and the like); one with orders or subscriptions is kept. */
+    deleteCustomer: "Delete customer",
+    deleteCustomerQuestion: "Delete {name}? Their own deals, notes and tags go too.",
+    deleteCustomerKept: "{name} has orders or subscriptions, so they are kept. To erase them, use Privacy requests.",
     firstOrder: "First order {date}",
     accountSince: "Account since {date}",
     lastSignIn: "Last signed in {date}",

@@ -52,6 +52,7 @@ import { memberCan, NO_ACCESS } from "./permissions";
 import { refreshTag } from "./refresh";
 import type { Store } from "./stores";
 import { typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * The AI writing and keeping a store's legal pages (D311, unit L, `docs/ai-autopilot.md` 8.3 to 8.6). An owner asks for one kind of page
@@ -563,6 +564,7 @@ async function step(write: WriteRow, deps: WriterDeps): Promise<void> {
 
 /** The job: steps of waiting writes until the time is used (after a press, and in the five-minute dispatcher). */
 export async function runLegalWrites(deps: WriterDeps = {}, budgetMs = 120_000): Promise<{ steps: number }> {
+  const report = jobReport();
   const start = Date.now();
   let steps = 0;
   while (Date.now() - start < budgetMs) {
@@ -571,6 +573,7 @@ export async function runLegalWrites(deps: WriterDeps = {}, budgetMs = 120_000):
     try {
       await step(write, deps);
     } catch (error) {
+      report(error, "step");
       log("error", "legal_writer.step_failed", { write: write.id }, error);
       await finish(write.id, "failed", { problems: ["The write stopped with an error."] });
     }
@@ -651,6 +654,7 @@ const dueStore = z.object({ store_id: z.string(), slug: z.string(), turned_on_by
 
 /** The five-minute dispatcher's upkeep: a few stores with it on whose last comparison is older than `UPKEEP_EVERY_HOURS`. */
 export async function runLegalUpkeep(deps: { texts?: SourceText[] } = {}): Promise<{ stores: number; queued: number }> {
+  const report = jobReport();
   // Upkeep is AI no person started: it waits while a platform admin has paused AI that acts on its own (PSI AST-07).
   if (await skipWhilePaused("legal_upkeep")) return { stores: 0, queued: 0 };
   const due = await typedRows(
@@ -678,6 +682,7 @@ export async function runLegalUpkeep(deps: { texts?: SourceText[] } = {}): Promi
     try {
       queued += await upkeepStore(member, texts);
     } catch (error) {
+      report(error, "store");
       log("error", "legal_upkeep.store_failed", { store: row.store_id }, error);
     }
   }

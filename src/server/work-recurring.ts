@@ -27,6 +27,7 @@ import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors"
 import { sendInvoiceEmail } from "./work-emails";
 import { deleteDraft, issueInvoice, type WorkActor } from "./work-invoices";
 import { memberCan } from "./permissions";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -692,6 +693,7 @@ async function recordIssueFailure(storeId: string, templateId: string, invoiceId
  * or store never stops the rest, and nothing here throws.
  */
 export async function prepareDueRecurringWork(options: { now?: Date; storeId?: string } = {}): Promise<RecurringRun> {
+  const report = jobReport();
   const result: RecurringRun = { stores: 0, generated: 0, issued: 0, emailed: 0, failed: 0 };
   let stores: Row[];
   try {
@@ -705,6 +707,7 @@ export async function prepareDueRecurringWork(options: { now?: Date; storeId?: s
       order by s.id
     `);
   } catch (error) {
+    report(error, "stores-list");
     log("error", "work_recurring.stores_list_failed", {}, error);
     result.failed += 1;
     return result;
@@ -714,6 +717,7 @@ export async function prepareDueRecurringWork(options: { now?: Date; storeId?: s
       await prepareStore(String(store.id), todayIn(String(store.time_zone), options.now ?? new Date()), result);
       result.stores += 1;
     } catch (error) {
+      report(error, "store");
       result.failed += 1;
       log("error", "work_recurring.store_failed", { storeId: String(store.id) }, error);
     }

@@ -10,6 +10,7 @@ import { audit } from "./auth";
 import { BASE_CAPABILITIES, INCLUDE, makeTestAccount, requestIp, stripeProblem, type StripeAccount } from "./connect";
 import type { Hosting } from "./hosts";
 import { platformStripe } from "./stripe";
+import { jobReport } from "./job-report";
 
 /**
  * Paying hosts (D71). A host's booking is a direct charge on the host's own
@@ -314,6 +315,7 @@ const RETRY = sql`make_interval(mins => least(5 * power(2, least(attempts, 10)),
  * tried again later. Returns how many were sent.
  */
 export async function payHostCommissions({ id = null, limit = 20 }: { id?: string | null; limit?: number } = {}): Promise<number> {
+  const report = jobReport();
   const due = await db().execute<Row>(sql`
     select c.id, c.order_id, c.kind, c.store_id, c.host_id, c.mode, c.currency, c.amount_minor, c.reversed_minor, c.attempts,
       o.number, sa.account_id as store_account
@@ -373,12 +375,18 @@ export async function payHostCommissions({ id = null, limit = 20 }: { id?: strin
       `);
       sent += 1;
     } catch (error) {
+      // Stripe's refusal is the store's to settle (kept on the commission); anything else is the job's fault.
+      const fromStripe = error instanceof Error && String((error as { type?: unknown }).type ?? "").startsWith("Stripe");
+      if (!fromStripe) report(error, "transfer");
       await fail(stripeProblem(error));
       // Stores' accounts take payments; receiving transfers is asked for when first needed.
       if (Number(row.attempts) === 0) {
         await stripe.v2.core.accounts
           .update(storeAccount, { configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } } } })
-          .catch(() => null);
+          .catch((error: unknown) => {
+            report(error, "transfer-capability");
+            return null;
+          });
       }
     }
   }

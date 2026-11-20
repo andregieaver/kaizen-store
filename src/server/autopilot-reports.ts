@@ -27,6 +27,7 @@ import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * The autopilot's daily digest and weekly report (D309, `docs/ai-autopilot.md` 7.5), the only writer of `commerce.autopilot_reports`, from the
@@ -52,6 +53,7 @@ export type ReportRun = { daily: number; weekly: number; monthly: number };
 const RECIPIENT = z.object({ store_id: col.uuid.nullable(), account_id: col.uuid, slug: col.textOrNull, time_zone: col.textOrNull });
 
 export async function sendAutopilotReports(deps: ReportDeps = {}): Promise<ReportRun> {
+  const report = jobReport();
   const now = deps.now ?? new Date();
   const run: ReportRun = { daily: 0, weekly: 0, monthly: 0 };
   const recipients = await typedRows(
@@ -91,6 +93,7 @@ export async function sendAutopilotReports(deps: ReportDeps = {}): Promise<Repor
         if (await sendOne(who, "monthly", `${previousMonth(today.slice(0, 7))}-01`, now, deps)) run.monthly++;
       }
     } catch (error) {
+      report(error, "report");
       log("error", "autopilot.report_failed", { store: r.store_id, account: r.account_id }, error);
     }
   }

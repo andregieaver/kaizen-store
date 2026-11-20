@@ -26,6 +26,7 @@ import { getWallet, walletCall, type CardWallet, type WalletDeps } from "./card-
 import { log } from "./log";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Purchases the owner approved for the AI (D599, step 2 of `docs/agent-spending.md`): the only writer of `commerce.agent_purchases` and
@@ -264,6 +265,7 @@ const PER_RUN = 60;
  * failed after an hour. Never throws for one purchase; returns counts.
  */
 export async function syncAgentPurchases(deps: WalletDeps & { deadline?: number } = {}): Promise<{ looked: number; charged: number; closed: number; failed: number }> {
+  const report = jobReport();
   const now = (deps.now ?? (() => new Date()))();
   const deadline = deps.deadline ?? Date.now() + 60_000;
   const open = await typedRows(
@@ -320,6 +322,7 @@ export async function syncAgentPurchases(deps: WalletDeps & { deadline?: number 
       if (next.spentMinor > 0 && p.status === "card_ready") counts.charged++;
       if (status === "closed") counts.closed++;
     } catch (error) {
+      report(error, "sync");
       log("error", "agent_purchases.sync_failed", { storeId: p.store_id, purchase: p.id }, error);
     }
   }

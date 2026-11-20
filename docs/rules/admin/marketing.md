@@ -337,6 +337,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - The list (D603, D834): `customerPage()` (`src/server/customer-admin.ts`) reads a hundred a page with the count of what the search, tag and view find,
   ordered to the email; *Tag everyone the search finds* reads the same search, tag and view again on the server, on every page, at most `BULK_TAG_MAX`.
   Kaizena Flow's Customers page the same (`platformCustomerPage()`).
+- Deleting customers (`src/server/customer-delete.ts`, `customers:write`): **Delete** in the bar of the people ticked (at most a page,
+  `DELETE_CUSTOMERS_MAX`) and *Delete customer* on a customer's page, each after the admin's dialog. A customer with an order, a subscription,
+  a subscription box or a creator profile is kept and counted in the answer: a person to be forgotten goes through Privacy requests. The others
+  go with their own deals (about them, no company), notes and tags; a cart and their marketing and text consents are kept without them; audited
+  `customer.deleted`. Kaizena Flow's own store never takes in the live drills' test addresses (`DRILL_EMAIL_DOMAIN`, `syncHouseCustomers()`),
+  so a deleted drill customer does not come back.
 
 ## A customer's timeline (D462, `src/lib/customer-timeline.ts`, `src/server/customer-timeline.ts`, `CustomerTimeline`)
 

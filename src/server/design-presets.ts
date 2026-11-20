@@ -67,6 +67,7 @@ import { parseSiteFonts } from "@/lib/fonts-schema";
 
 import { platformTheme } from "./platform-navigation";
 import { PLATFORM_INSTALLS_MAX, platformInstallCount, type PlatformLook } from "./platform-theme-installs";
+import { jobReport } from "./job-report";
 
 /**
  * Design profiles (D176, `docs/design-profiles.md`): a frozen snapshot of a store's look (theme, header, footer, standard product layout
@@ -1858,6 +1859,7 @@ export const THEME_UPDATE_KEEP_DAYS = 90;
  * the install as it was, to be tried again next time or updated by hand. Never throws.
  */
 export async function runThemeUpdates(limit = 20, deps: ApplyDeps = {}): Promise<{ updated: number; refused: number; stores: { id: string; slug: string }[] }> {
+  const report = jobReport();
   const due = await db().execute<Row>(sql`
     select i.id, i.store_id, s.slug from commerce.store_theme_installs i
     join commerce.stores s on s.id = i.store_id and s.status = 'active' and not (s.is_template or s.starter or s.sandbox)
@@ -1879,6 +1881,7 @@ export async function runThemeUpdates(limit = 20, deps: ApplyDeps = {}): Promise
         stores.set(String(row.store_id), { id: String(row.store_id), slug: String(row.slug) });
       } else refused += 1;
     } catch (error) {
+      report(error, "update-job-install");
       log("error", "design_presets.update_job_install_failed", {}, error);
       refused += 1;
     }
@@ -2205,6 +2208,7 @@ function updatesView(rows: Row[], made: Row[], words?: UpdateWords): { available
  * caller refreshes Kaizena Flow's site.
  */
 export async function runPlatformThemeUpdates(limit = 5, deps: ApplyDeps = {}): Promise<{ updated: number; refused: number; live: boolean }> {
+  const report = jobReport();
   const due = await db().execute<Row>(sql`
     select i.id, i.live from commerce.platform_theme_installs i
     join commerce.design_presets p on p.id = i.preset_id and p.published and p.archived_at is null
@@ -2225,6 +2229,7 @@ export async function runPlatformThemeUpdates(limit = 5, deps: ApplyDeps = {}): 
         if (row.live) live = true;
       } else refused += 1;
     } catch (error) {
+      report(error, "platform-update-job");
       log("error", "design_presets.platform_update_job_failed", {}, error);
       refused += 1;
     }

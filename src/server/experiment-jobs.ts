@@ -11,6 +11,7 @@ import { experimentResults } from "./experiment-results";
 import { pruneExperimentData } from "./experiments";
 import { log } from "./log";
 import { getStore } from "./stores";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -23,6 +24,7 @@ type Row = Record<string, unknown>;
  * and the store's owners are emailed, and a test that has an answer for the first time tells them so (D662); old carts' visitors are forgotten.
  */
 export async function runExperimentJobs(now = new Date()): Promise<{ started: number; stopped: number; checked: number; answered: number; pruned: number }> {
+  const report = jobReport();
   let started = 0;
   let stopped = 0;
   let checked = 0;
@@ -43,10 +45,12 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
         if (result.ok) started += 1;
         else await unscheduleExperiment(null, storeId, id, `The scheduled start did not happen. ${result.problems.join(" ")}`.slice(0, 600));
       } catch (error) {
+        report(error, "scheduled-start");
         log("error", "experiments.scheduled_start_failed", { experimentId: id }, error);
       }
     }
   } catch (error) {
+    report(error, "scheduled-starts");
     log("error", "experiments.scheduled_starts_failed", {}, error);
   }
   try {
@@ -79,16 +83,19 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
           }
         }
       } catch (error) {
+        report(error, "check");
         log("error", "experiments.check_failed", { experimentId: id }, error);
       }
     }
   } catch (error) {
+    report(error, "checks");
     log("error", "experiments.checks_failed", {}, error);
   }
   let pruned = 0;
   try {
     pruned = await pruneExperimentData();
   } catch (error) {
+    report(error, "prune");
     log("error", "experiments.prune_failed", {}, error);
   }
   return { started, stopped, checked, answered, pruned };

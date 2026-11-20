@@ -19,6 +19,7 @@ import { refreshTag } from "./refresh";
 import { currentStore, type Store } from "./stores";
 import { switchToInstall } from "./theme-installs";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Watch and roll back (`docs/100-day-challenge.md` F4): every hour, each change the autopilot made itself in the last two days that can be
@@ -239,6 +240,7 @@ export type WatchRun = { judged: number; reverted: number; waiting: number };
 
 /** The hourly watch (the dispatcher's job `autopilotWatch`, in the first five minutes of each hour). */
 export async function watchAutopilotChanges(options: { now?: Date; everyRun?: boolean } = {}): Promise<WatchRun> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const run: WatchRun = { judged: 0, reverted: 0, waiting: 0 };
   if (!options.everyRun && now.getUTCMinutes() >= 5) return run;
@@ -293,10 +295,12 @@ export async function watchAutopilotChanges(options: { now?: Date; everyRun?: bo
           run.waiting++;
         }
       } catch (error) {
+        report(error, "watch");
         log("error", "autopilot.watch_failed", { storeId: c.store_id, tool }, error);
       }
     }
   } catch (error) {
+    report(error, "watch-run");
     log("error", "autopilot.watch_run_failed", {}, error);
   }
   return run;

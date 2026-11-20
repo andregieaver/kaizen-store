@@ -29,6 +29,9 @@ export function allowanceSeconds(everySeconds: number): number {
 
 export function cronHealth(row: CronJobRow, now: Date = new Date()): CronHealth {
   if (row.failures >= FAILING_AFTER) return "failing";
+  // The work a route does after answering (trackedWork) runs only when there is work: never late, only failing or ok (bloat review
+  // step 1.26).
+  if (row.job.endsWith(".work")) return "ok";
   if (!row.lastFinishedAt) return "late";
   const age = (now.getTime() - new Date(row.lastFinishedAt).getTime()) / 1000;
   return age > allowanceSeconds(row.everySeconds) ? "late" : "ok";

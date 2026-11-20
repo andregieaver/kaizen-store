@@ -7,6 +7,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { adminDate } from "@/lib/admin-date";
 import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import { CustomerForm, CustomerNotes, EMPTY_CUSTOMER_FORM } from "@/components/admin/customer-staff";
 import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/customer-affiliate";
 import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
@@ -56,7 +57,7 @@ import { Mail } from "lucide-react";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
-import { addCustomerTagAction, addGuestAction, addNoteAction, adjustBonusAction, deleteNoteAction, removeCustomerTagAction, saveCustomerFieldsAction, updateCustomerAction } from "./actions";
+import { addCustomerTagAction, addGuestAction, addNoteAction, adjustBonusAction, deleteNoteAction, removeCustomerTagAction, saveCustomerFieldsAction, updateCustomerAction, deleteCustomerAction } from "./actions";
 import { dealsOn } from "@/lib/extensions";
 import { areaTexts } from "@/lib/admin-area";
 import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
@@ -410,6 +411,20 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                 />
               </section>
             </details>
+          )}
+
+          {/* Deleting the customer (test sign-ups and the like): one with orders or subscriptions is kept, and the form says why. */}
+          {mayTag && customer.customerId && (
+            <ActionForm action={deleteCustomerAction.bind(null, store.slug, customer.email, customer.name ?? "")} className="flex flex-col gap-2">
+              <ConfirmButton
+                kind="none"
+                className="w-fit text-sm text-danger-text underline disabled:opacity-50"
+                question={fillWords(words.deleteCustomerQuestion, { name: customer.name || customer.email })}
+                confirm={words.deleteCustomer}
+              >
+                {words.deleteCustomer}
+              </ConfirmButton>
+            </ActionForm>
           )}
 
         </div>

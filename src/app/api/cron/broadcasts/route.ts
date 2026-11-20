@@ -8,7 +8,7 @@ import { runBroadcasts } from "@/server/broadcasts";
 import { deliverGiftCards } from "@/server/gift-card-delivery";
 import { runReviewRequests } from "@/server/review-requests";
 import { cronAuthorised } from "@/server/cron-auth";
-import { trackedRoute } from "@/server/cron-runs";
+import { trackedRoute, trackedWork } from "@/server/cron-runs";
 
 export const maxDuration = 120;
 
@@ -27,20 +27,23 @@ async function run(request: Request) {
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
   const deadline = Date.now() + RUN_MS;
   after(async () => {
-    await runBroadcasts({ deadline });
-    await runAutomations({ deadline });
-    // Flows (D767): people enter from the event log, and each due run moves on; nothing is read while no flow is on.
-    await tickFlows();
-    // Review request emails that are due (D301 G3), to subscribed buyers only.
-    await runReviewRequests({ deadline });
-    // Gift cards whose day has come (D300 F2), and any whose email failed before.
-    await deliverGiftCards({ deadline });
-    // Server-side conversion events (D303 I2): queue what orders may send, then send what is due.
-    await queueAdConversions();
-    await sendAdConversions({ deadline });
-    // Kaizena Flow's own (C2, D523): sign-ups and first paid plans, through its store's connections.
-    await queuePlatformAdConversions();
-    await sendPlatformAdConversions({ deadline });
+    // The route's own record says only that it answered; the work is kept as `route.broadcasts.work` (bloat review step 1.26).
+    await trackedWork("route.broadcasts", 60, async () => {
+      await runBroadcasts({ deadline });
+      await runAutomations({ deadline });
+      // Flows (D767): people enter from the event log, and each due run moves on; nothing is read while no flow is on.
+      await tickFlows();
+      // Review request emails that are due (D301 G3), to subscribed buyers only.
+      await runReviewRequests({ deadline });
+      // Gift cards whose day has come (D300 F2), and any whose email failed before.
+      await deliverGiftCards({ deadline });
+      // Server-side conversion events (D303 I2): queue what orders may send, then send what is due.
+      await queueAdConversions();
+      await sendAdConversions({ deadline });
+      // Kaizena Flow's own (C2, D523): sign-ups and first paid plans, through its store's connections.
+      await queuePlatformAdConversions();
+      await sendPlatformAdConversions({ deadline });
+    });
   });
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }

@@ -4,7 +4,7 @@ import { runEvents } from "@/server/autopilot-events";
 import { runGoalReviews } from "@/server/autopilot-reviews";
 import { runAutopilot } from "@/server/autopilot-runner";
 import { cronAuthorised } from "@/server/cron-auth";
-import { trackedRoute } from "@/server/cron-runs";
+import { trackedRoute, trackedWork } from "@/server/cron-runs";
 
 export const maxDuration = 300;
 
@@ -20,10 +20,13 @@ async function run(request: Request) {
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
   const deadline = Date.now() + RUN_MS;
   after(async () => {
-    // Side by side (docs/100-day-challenge.md H1), so a long step never leaves a review or an event for the next minute: the plans' next steps,
-    // the goals due a look (D328: a review makes the next plan once a goal's plan ended, and on a schedule) and what happened (D331: a customer
-    // waiting for a person, a test that ended by itself, an urgent alert). Each part claims its own work, so they never take the same thing.
-    await Promise.allSettled([runAutopilot({ deadline }), runGoalReviews({ deadline }), runEvents({ deadline })]);
+    // The route's own record says only that it answered; the work is kept as `route.autopilot.work` (bloat review step 1.26).
+    await trackedWork("route.autopilot", 60, async () => {
+      // Side by side (docs/100-day-challenge.md H1), so a long step never leaves a review or an event for the next minute: the plans' next steps,
+      // the goals due a look (D328: a review makes the next plan once a goal's plan ended, and on a schedule) and what happened (D331: a customer
+      // waiting for a person, a test that ended by itself, an urgent alert). Each part claims its own work, so they never take the same thing.
+      await Promise.allSettled([runAutopilot({ deadline }), runGoalReviews({ deadline }), runEvents({ deadline })]);
+    });
   });
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }

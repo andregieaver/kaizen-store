@@ -150,7 +150,7 @@ commit as the fix.
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | In progress | 18 Nov, 222eb50c, D770: 23,289 bytes no store page draws (held 25,000); first reading to take. |
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Done | 17 Nov (a0c1757f; D723): session-load.mjs measures what a session loads (1 of 20 samples); files over 100 KB (17) and 2,000 lines (12) only fall. |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Done | 17 Nov (e6dd7843; D745): refreshes counted per day, a job refreshing one subject 11+ times flagged. Store draws not counted: an `after()` in a render broke redirects (ede2cb39). |
-| 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
+| 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Done | 20 Nov (D843): 99 silent catches in 58 jobs report (jobReport()), 4 normal states named; 7 routes' work in trackedWork(). Jobs failing after the deploy: see D843. |
 | 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Done | 17 Nov (da36c66c; D716): first scripts held by name per page; browser words held at 34,360 B (owner's rule, 0.43). |
 | 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | Done | 17 Nov (9d9ad9b5; D717): 229 hand-down sites counted; 12.7 MB handed, 3.9 MB named; 63 hand an area nothing reads. |
 | 1.29 | Only if the free switches are not enough: build in CI and deploy the prebuilt output |  | M | strong | 1.21, 0.38, 1.20 | In progress | 18 Nov, efe24bc8, D773: manual prebuilt preview job; commit 2 waits for the trial, secrets and a deploy design. |
@@ -216,7 +216,7 @@ commit as the fix.
 |---|---|---|---|---|---|---|---|
 | 3.1 | Run one tick a minute, and call a route only when work waits | CR-1, CR-7, DQ-1, DP-7, SF-10, GAP-scheduled-s1 | L | review | 0.23, 1.10, 1.26, 1.22 | Open | |
 | 3.2 | Let the three feature routes follow what is due | CR-3, GAP-scheduled-1 | M | strong | 3.1, 1.10, 1.9 | Open | |
-| 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 | Open | |
+| 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 | Open | The registry keeps report() (jobReport(), D843). |
 | 3.4 | Give every daily function a ledger row of its own | CR-17, GAP-scheduled-s6 | M | review | 3.3, 3.1, 1.22, 1.26, 0.31 | Open | |
 | 3.5 | Give every table that grows by time a delete rule | DS-13, CR-10, GAP-database-s6 | M | strong | 0.2, 3.4 | Open | |
 | 3.6 | Indexes that fit the document jobs' windows |  | S | review |  | Done | 19 Nov, migration 20261119202909_document_job_indexes: the eight and step 3.7's two PDF-waiting indexes; EXPLAIN uses each for its job's statement. |
@@ -752,6 +752,30 @@ Every area ends at an A. Where a challenger found the plan short of the bar, the
 
 Each area's measures, today's values, the targets, how each is measured and the steps that reach it are in
 `bloat-review-2026-11/grade-a/<area>.md`.
+
+### Where the grades stand now
+
+Updated as steps land; last on 20 November 2026. A grade rises only for fixes seen working in production. On 20 November 81 of
+the 156 steps are done, 24 in progress and 51 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
+under way. No area is a D any more: 11 are a C and 2 a B.
+
+| Area | 12 Nov | Now | Steps done | What moved it, or what the next grade waits on |
+|---|---|---|---|---|
+| What a shopper's browser gets | C | C | 19 of 30 | Store pages static, layout sent once, links with a policy, a listing fetches its first screen ahead; B after 2.9 to 2.12 and 2.45. |
+| What an owner's browser gets | D | C | 16 of 29 | Supabase, zod and the builder's English off every screen; the builder 2.79 to 2.01 MB; an untouched tab asks 6 times an hour, not 60. B after 2.30, 2.46 and 2.9. |
+| What the server loads and asks | D | C | 30 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons 426 to 477 modules, no Stripe. B after 2.23, 2.24, 2.47, 2.19, 2.14 and 2.15. |
+| Scheduled work | D | C | 14 of 24 | The scheduler's log pruned, statements per run held, a watchdog every 15 minutes. Further with 1.26 and phase 3's one tick. |
+| The database | C | B | 23 of 34 | Its phase 0 and 1 steps are live: statements per page and run held, lists read 100 rows a page. A after 2.19 and phase 3. |
+| The page builder's model and a built page | C | C | 16 of 27 | Layout sent once, built pages' links stay in the app. B after 2.10, 2.12, 2.14, 2.15 and 2.30. |
+| Styles | C | C | 6 of 12 | A after 1.23's reading, 2.11 and 2.49. |
+| Interface text | C | C | 17 of 24 | B once step 2.25 is live: each admin page reaches the words of about 4 areas (213 KB), not all 77 (4 MB). Then 2.50. |
+| AI calls | C | C | 9 of 16 | Waits on the owner's eval run (1.19), then 2.36 to 2.39. |
+| The product's surface | C | C | 14 of 25 | B after 2.32 and 2.36 to 2.38. |
+| The code itself | C | C | 22 of 37 | B once 1.20's ceilings are set; then phase 3. |
+| Tests, CI and the build | D | C | 4 of 13 | Every check timed, the build reports its peak (6.8 GB). B after 1.20, 1.21, 2.42 and 2.44. |
+| The written rules | D | B | 9 of 10 | CLAUDE.md held under its budget, how-to loads by folder, one file per decision. A after step 4.5's sample of real sessions. |
+
+The same grades, with the plan's ladder, are on the review's page (`https://claude.ai/artifact/Sg9prUD3r9j8dBR27kgeRc`).
 
 ## 2. What is good and should stay
 

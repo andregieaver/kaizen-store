@@ -26,7 +26,7 @@ import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { AdminLink, ButtonLink, CARD_CLASS, EmptyState, ListSearch, PageHeader, Pager, Select, TextInput } from "@/components/admin/ui";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 
-import { bulkTagAction, tagTickedAction } from "./actions";
+import { bulkTagAction, deleteTickedAction, tagTickedAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -244,6 +244,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
         <CustomerList
           base={base}
           tagAction={canWrite ? tagTickedAction.bind(null, store.slug) : null}
+          deleteAction={canWrite ? deleteTickedAction.bind(null, store.slug) : null}
           items={customers.map((c) => ({
             key: c.key,
             email: c.email,
@@ -272,6 +273,8 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             tagLabel: words.tagLabel,
             addTag: words.addTag,
             removeTag: words.removeTag,
+            delete: words.delete,
+            deleteQuestion: words.deleteQuestion,
             morePictures: words.morePictures,
           }}
         />

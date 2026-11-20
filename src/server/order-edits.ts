@@ -56,6 +56,7 @@ import { uuidList } from "./sql-arrays";
 import { applyRestock, planRestock, type RestockItem } from "./stock-restock";
 import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 type Runner = Pick<Db, "execute">;
 
@@ -1431,6 +1432,7 @@ export type ExpireEditsRun = { expired: number; waiting: number; paid: number };
  * applied (not expired) and one still processing makes the job wait. Per store, never throwing.
  */
 export async function expireOrderEdits(now: Date = new Date(), options: { limit?: number } = {}): Promise<ExpireEditsRun> {
+  const report = jobReport();
   const run: ExpireEditsRun = { expired: 0, waiting: 0, paid: 0 };
   const due = await typedRows(
     DUE_ROW,
@@ -1446,6 +1448,7 @@ export async function expireOrderEdits(now: Date = new Date(), options: { limit?
       else if (done.problem === "paid") run.paid += 1;
       else if (done.problem === "processing") run.waiting += 1;
     } catch (error) {
+      report(error, "expire");
       log("error", "order_edits.expire_failed", { editId: String(row.id) }, error);
     }
   }

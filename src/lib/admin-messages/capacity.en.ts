@@ -120,6 +120,9 @@ export const capacityEn = {
     choose: "Choose open or closed.",
   },
   editor: {
+    /** Round 70 (D846): Limits on a phone. */
+    phoneLead: "What each plan includes. Empty means the default decides; traffic only warns.",
+    phoneWarns: "Only warns",
     title: "Limits",
     description: "What each plan includes. Empty means the default decides; tick Unlimited for no limit. Traffic only warns: a shop is never taken offline.",
     default: "Default",

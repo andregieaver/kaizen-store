@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
@@ -33,7 +34,12 @@ export default async function PlatformStatusPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={w.description}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
         meta={[fillWords(w.subscribers, { n: subscribers })]}
         actions={
           <ButtonLink kind="secondary" href="/status">
@@ -42,12 +48,13 @@ export default async function PlatformStatusPage() {
         }
       />
       <Card title={w.componentsTitle}>
-        <ul className="flex flex-col gap-2 text-sm">
+        {/* Round 70 (D846): on a phone each part is a short row, its state at the end; when it was checked shows from sm up. */}
+        <ul className="flex flex-col gap-2 text-sm max-sm:gap-0 max-sm:divide-y max-sm:divide-line">
           {view.components.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-center gap-2">
+            <li key={c.id} className="flex flex-wrap items-center gap-2 max-sm:min-h-11 max-sm:flex-nowrap max-sm:justify-between">
               <span className="text-body-strong text-ink">{names[c.id]}</span>
               <Chip signal={c.state === "ok" ? "positive" : c.state === "degraded" ? "danger" : "neutral"}>{w.state[c.state]}</Chip>
-              {c.checkedAt && <span className="text-muted">{fillWords(w.checkedAt, { at: adminDate(PLATFORM_TIME_ZONE, c.checkedAt, "dayTime", lang) })}</span>}
+              {c.checkedAt && <span className="text-muted max-sm:hidden">{fillWords(w.checkedAt, { at: adminDate(PLATFORM_TIME_ZONE, c.checkedAt, "dayTime", lang) })}</span>}
             </li>
           ))}
         </ul>
@@ -55,6 +62,9 @@ export default async function PlatformStatusPage() {
       <Card title={w.openTitle}>
         {view.open.length === 0 ? <p className="text-sm text-muted">{w.none}</p> : view.open.map((i) => <IncidentAdmin key={i.id} incident={i} w={w} names={names} lang={lang} />)}
       </Card>
+      {/* Round 70 (D846): on a phone posting an incident is a row that opens its form. */}
+      <PhoneRows>
+      <PhoneRow flat last title={w.postTitle} sub={w.phone.postSub} change={w.phone.open} done={w.phone.close}>
       <Card title={w.postTitle}>
         <ActionForm action={postIncidentAction} className="flex flex-col gap-3" replaceOnSuccess>
           <label className={field}>
@@ -96,6 +106,8 @@ export default async function PlatformStatusPage() {
           </div>
         </ActionForm>
       </Card>
+      </PhoneRow>
+      </PhoneRows>
       {view.recent.length > 0 && (
         <Card title={w.recentTitle}>
           <ul className="flex flex-col gap-1 text-sm">

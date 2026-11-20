@@ -25,6 +25,7 @@ import { log } from "./log";
 import { isSlugTaken, MAX_STORES_PER_OWNER } from "./platform";
 import { copyStoreMedia, tablesPointingAtOriginal, type MediaCopyDeps } from "./store-copy-media";
 import { storeSlugOf } from "./stores";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -672,6 +673,7 @@ export async function runStoreCopy(id: string, deps: StoreCopyDeps = {}): Promis
  * Never throws.
  */
 export async function runStoreCopies(deps: StoreCopyDeps = {}): Promise<{ ran: number; done: number; failed: number }> {
+  const report = jobReport();
   try {
     const [next] = await db().execute<Row>(sql`
       select id from commerce.store_copies
@@ -686,6 +688,7 @@ export async function runStoreCopies(deps: StoreCopyDeps = {}): Promise<{ ran: n
       failed: outcome === "failed" ? 1 : 0,
     };
   } catch (error) {
+    report(error, "job");
     log("error", "store_copy.job_failed", {}, error);
     return { ran: 0, done: 0, failed: 0 };
   }

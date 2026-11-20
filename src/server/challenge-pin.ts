@@ -11,6 +11,7 @@ import { promptVersions, toolsVersion } from "./agent-eval";
 import { getAiSettings } from "./ai";
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Challenge stores protected from deploys (`docs/100-day-challenge.md` F5): what each one's AI runs on is pinned when the challenge is set,
@@ -48,6 +49,7 @@ const ROW = z.object({ store_id: col.uuid, challenge: z.unknown() });
  * challenge with the time, and what is seen moves on. A store not pinned yet is pinned. Returns the changes logged.
  */
 export async function watchChallengeVersions(now: Date = new Date()): Promise<number> {
+  const report = jobReport();
   let logged = 0;
   try {
     const rows = await typedRows(ROW, sql`select store_id, challenge from commerce.autopilot_settings where challenge is not null`);
@@ -66,6 +68,7 @@ export async function watchChallengeVersions(now: Date = new Date()): Promise<nu
       logged += changes.length;
     }
   } catch (error) {
+    report(error, "version-watch");
     log("error", "challenge.version_watch_failed", {}, error);
   }
   return logged;

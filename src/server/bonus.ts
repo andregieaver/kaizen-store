@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/money";
 import { audit, type Account } from "./auth";
 import type { Shop } from "./cart";
 import { log } from "./log";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 export type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -538,28 +539,33 @@ const BATCH = 200;
  * throws: a failing step is left for the next run.
  */
 export async function runBonusJobs(): Promise<{ expired: number; reminded: number; released: number; birthdays: number }> {
+  const report = jobReport();
   const out = { expired: 0, reminded: 0, released: 0, birthdays: 0 };
   try {
     // The birthday credit (D401): on each store's own day, once a year per customer, so running every few minutes is safe.
     const [row] = await db().execute<Row>(sql`select commerce.bonus_birthday_grants() as given`);
     out.birthdays = Number(row?.given ?? 0);
   } catch (error) {
+    report(error, "birthday-grants");
     log("error", "bonus.birthday_grants_failed", {}, error);
   }
   try {
     const [row] = await db().execute<Row>(sql`select commerce.bonus_expire_due(2000) as expired`);
     out.expired = Number(row?.expired ?? 0);
-  } catch {
+  } catch (error) {
+    report(error, "expiry");
     // Left for the next run.
   }
   try {
     out.released = await releaseHeldCredits();
-  } catch {
+  } catch (error) {
+    report(error, "held-credits");
     // Left for the next run.
   }
   try {
     out.reminded = await remindExpiring();
-  } catch {
+  } catch (error) {
+    report(error, "expiry-reminders");
     // Left for the next run.
   }
   return out;

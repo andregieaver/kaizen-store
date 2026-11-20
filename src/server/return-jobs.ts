@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 
 import { sendRefundOverdueReminder, sendWithdrawalAcknowledgement } from "./return-emails";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -44,6 +45,7 @@ export type ReturnJobs = {
 
 /** Reminders for refunds past their deadline (once per return) and unsent acknowledgements tried again. */
 export async function runReturnJobs(): Promise<ReturnJobs> {
+  const report = jobReport();
   const out: ReturnJobs = { overdueReminders: 0, acknowledgementsRetried: 0 };
   try {
     const overdue = await db().execute<Row>(sql`
@@ -55,10 +57,14 @@ export async function runReturnJobs(): Promise<ReturnJobs> {
       order by r.refund_deadline limit ${OVERDUE_BATCH}
     `);
     for (const row of overdue) {
-      const outcome = await sendRefundOverdueReminder(String(row.store_id), String(row.id)).catch(() => null);
+      const outcome = await sendRefundOverdueReminder(String(row.store_id), String(row.id)).catch((error: unknown) => {
+        report(error, "overdue-reminder");
+        return null;
+      });
       if (outcome === "sent" || outcome === "logged") out.overdueReminders++;
     }
-  } catch {
+  } catch (error) {
+    report(error, "overdue-reminders");
     // A job that cannot read does nothing this time and is tried again in five minutes.
   }
   try {
@@ -85,21 +91,24 @@ export async function runReturnJobs(): Promise<ReturnJobs> {
         out.acknowledgementsRetried++;
       }
     }
-  } catch {
+  } catch (error) {
+    report(error, "acknowledgements");
     // Tried again in five minutes.
   }
   // Exchanges (D239): proposals and pay steps past their end are expired (a processed one only after its Stripe sessions are closed).
   try {
     const { expireExchanges } = await import("./exchanges");
     out.exchangesExpired = (await expireExchanges()).expired;
-  } catch {
+  } catch (error) {
+    report(error, "exchanges");
     // Tried again in five minutes.
   }
   // Return labels (D239): withdrawal returns of stores with automatic labels on are booked here, never in the shopper's confirmation request.
   try {
     const { bookPendingLabels } = await import("./return-labels");
     out.labelsBooked = (await bookPendingLabels()).booked;
-  } catch {
+  } catch (error) {
+    report(error, "labels");
     // Tried again in five minutes.
   }
   return out;

@@ -13,6 +13,7 @@ import { marketUrl } from "@/lib/paths";
 import { bonusProgram } from "./bonus";
 import { sendEmail, type SendOutcome } from "./email";
 import { emailContext, emailFooter } from "./shopper-emails";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -91,6 +92,7 @@ export async function sendReferrerRewardEmail(storeId: string, orderId: string):
  * confirmed at the venue, are covered here. Never throws: a failing email is left as it is.
  */
 export async function runAffiliateJobs(): Promise<{ emailed: number }> {
+  const report = jobReport();
   let emailed = 0;
   try {
     const rows = await db().execute<Row>(sql`
@@ -104,7 +106,8 @@ export async function runAffiliateJobs(): Promise<{ emailed: number }> {
       const outcome = await sendReferrerRewardEmail(String(row.store_id), String(row.order_id));
       if (outcome === "sent" || outcome === "logged") emailed++;
     }
-  } catch {
+  } catch (error) {
+    report(error, "reward-emails");
     // Left for the next run.
   }
   return { emailed };

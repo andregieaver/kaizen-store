@@ -28,6 +28,7 @@ import { deskSettings } from "./support";
 import type { Desk, StaffDesk } from "./support-desk";
 import { systemDesk } from "./support-desk";
 import { owned } from "./owned";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -122,6 +123,7 @@ async function setStatus(desk: Desk, conversationId: string, status: "skipped" |
 
 /** The summaries still to write, oldest end first (the five-minute dispatcher): each is tried again until it is done or has had its tries. */
 export async function summarisePending(limit = 30): Promise<{ done: number; failed: number; skipped: number }> {
+  const report = jobReport();
   const out = { done: 0, failed: 0, skipped: 0 };
   const rows = await db().execute<Row>(sql`
     select id, store_id from commerce.support_conversations
@@ -136,6 +138,7 @@ export async function summarisePending(limit = 30): Promise<{ done: number; fail
       else if (outcome === "failed") out.failed++;
       else if (outcome === "skipped") out.skipped++;
     } catch (error) {
+      report(error, "summary");
       log("error", "support.summary_failed", { conversationId: String(row.id) }, error);
     }
   }

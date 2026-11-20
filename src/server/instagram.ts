@@ -17,6 +17,7 @@ import { refreshTag } from "./refresh";
 import { encryptionKey } from "./encryption-key";
 import { col, typedRows } from "./typed-rows";
 import { owned } from "./owned";
+import { jobReport } from "./job-report";
 
 /**
  * The Instagram feed's connection (D560, pure parts in `src/lib/instagram.ts`): Kaizena Flow's Instagram app (`INSTAGRAM_APP_ID`,
@@ -188,6 +189,7 @@ export async function postMedia(storeId: string | null, postId: string, kind: "p
  * stays expired until the owner connects again. At most `limit` accounts a run, the longest unread first.
  */
 export async function refreshInstagramFeeds(now = new Date(), limit = 20): Promise<{ refreshed: number; read: number; failed: number }> {
+  const report = jobReport();
   const key = encryptionKey();
   const outcome = { refreshed: 0, read: 0, failed: 0 };
   if (!key) return outcome;
@@ -224,6 +226,8 @@ export async function refreshInstagramFeeds(now = new Date(), limit = 20): Promi
       }
     } catch (error) {
       outcome.failed += 1;
+      // An account Instagram refuses (a token run out, a permission taken back) is the owner's to settle, kept as its problem.
+      if (!(error instanceof InstagramError)) report(error, "account");
       const problem = error instanceof InstagramError ? error.message.slice(0, 300) : "The posts could not be read.";
       await db().execute(sql`update commerce.instagram_accounts set problem = ${problem}, posts_fetched_at = now(), updated_at = now() where id = ${row.id}::uuid`);
       log("warn", "instagram.refresh_failed", { account: row.id }, error);

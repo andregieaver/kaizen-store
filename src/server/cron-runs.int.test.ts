@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const { closeDb, db } = await import("@/db/client");
-const { claimDay, cronJobRows, runJobs, tracked } = await import("./cron-runs");
+const { claimDay, cronJobRows, runJobs, tracked, trackedWork } = await import("./cron-runs");
 const { cronHealth } = await import("@/lib/cron-health");
 
 const prefix = `test-${Date.now().toString(36)}`;
@@ -12,6 +12,7 @@ const rowOf = async (job: string) => (await cronJobRows()).find((r) => r.job ===
 
 afterAll(async () => {
   await db().execute(sql`delete from commerce.cron_jobs where job like ${`${prefix}%`}`);
+  await db().execute(sql`delete from commerce.cron_jobs where job = 'route.page-jobs.work'`);
   await closeDb();
 });
 
@@ -82,6 +83,56 @@ describe("the cron run ledger (PSI 2026-10-24, REL-06)", () => {
     expect((await rowOf(`${prefix}.store-copies`))!.failures).toBe(0);
     expect((await rowOf(`${prefix}.b`))!.failures).toBe(1);
     expect((await rowOf(`${prefix}.c`))!.failures).toBe(0);
+    quiet.mockRestore();
+  });
+
+  it("a job whose first part fails still runs its second part, and its run is counted as failed (bloat review step 1.26)", async () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const job = `${prefix}.parts`;
+    let second = false;
+    const answer = await tracked(job, 300, async (report) => {
+      try {
+        throw new Error("mail down");
+      } catch (error) {
+        report(error, "first");
+      }
+      second = true;
+      return 5;
+    });
+    expect(answer).toBe(5);
+    expect(second).toBe(true);
+    let row = await rowOf(job);
+    expect(row).toMatchObject({ failures: 1 });
+    expect(row!.lastError).toContain("1 part(s) failed (first)");
+    expect(row!.lastError).toContain("mail down");
+    await tracked(job, 300, async () => 1);
+    row = await rowOf(job);
+    expect(row!.failures).toBe(0);
+
+    const p = `${prefix}-report`;
+    const results = await runJobs(p, 300, {
+      a: async (report) => {
+        report(new Error("x"), "p");
+        return 1;
+      },
+      b: async () => 2,
+    });
+    expect(results).toEqual({ a: 1, b: 2 });
+    expect((await rowOf(`${p}.a`))!.failures).toBe(1);
+    expect((await rowOf(`${p}.b`))!.failures).toBe(0);
+    quiet.mockRestore();
+  });
+
+  it("a runner that throws after the answer leaves the route's work failed", async () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    await trackedWork(`${prefix}.page-jobs`, 60, async () => {
+      throw new Error("model down");
+    });
+    expect((await rowOf(`${prefix}.page-jobs.work`))!.failures).toBe(1);
+    await trackedWork("route.page-jobs", 60, async () => {
+      throw new Error("model down");
+    });
+    expect((await rowOf("route.page-jobs.work"))!.failures).toBeGreaterThanOrEqual(1);
     quiet.mockRestore();
   });
 

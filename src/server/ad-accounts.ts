@@ -41,6 +41,7 @@ import { addDays, todayIn } from "@/lib/analytics-period";
 import { toMainOne } from "./analytics-sql";
 import { pgTextArray } from "./pg-arrays";
 import { storeOf } from "./product-data";
+import { jobReport } from "./job-report";
 
 /**
  * A store's ad account, connected for its budgets (D585, step 1 of `docs/agent-spending.md`): the only writer of `commerce.ad_accounts` and
@@ -400,6 +401,7 @@ export async function syncAdSpend(storeId: string, fetcher: MetaFetch = realFetc
 
 /** The dispatcher's job `adSpend`: the accounts whose spend was not read in `SPEND_EVERY_HOURS`, a few a run. Never throws. */
 export async function syncAllAdSpend(fetcher: MetaFetch = realFetch, now = new Date()): Promise<number> {
+  const report = jobReport();
   let synced = 0;
   try {
     const due = await typedRows(
@@ -416,6 +418,7 @@ export async function syncAllAdSpend(fetcher: MetaFetch = realFetch, now = new D
       else log("warn", "ad_accounts.spend_not_synced", { storeId: store_id, problem: result.problem });
     }
   } catch (error) {
+    report(error, "spend-sync");
     log("error", "ad_accounts.spend_sync_failed", {}, error);
   }
   return synced;

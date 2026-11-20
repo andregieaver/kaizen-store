@@ -44,6 +44,7 @@ export const platformNb: PlatformMessages = {
       "Innholdet er JSON, slik Zapier og Make får det: id, event, created_at, platform, og det hendelsen gjelder under sitt eget navn (request, store og plan, eller report).",
   },
   api: {
+    phone: { lead: "Lesetokener for Kaizena Flows egne verktøy.", makeSub: "Butikker, abonnementer, forespørsler, tall", howSub: "Adressen, reglene og {n} ruter", open: "Åpne", read: "Les", close: "Lukk" },
     title: "API",
     description: "La Kaizena Flows egne verktøy (et dashbord, et skript, et regneark) lese plattformen: butikkene og abonnementene deres, abonnementene, forespørslene om en butikk og tallene fra forsiden. Bare lesing, hver med sin egen nøkkel.",
     cardDescription: "Les plattformens butikker, abonnementer, forespørsler og tall fra dine egne verktøy, med en nøkkel.",
@@ -812,6 +813,7 @@ export const platformNb: PlatformMessages = {
     },
   },
   status: {
+    phone: { lead: "Det den offentlige statussiden viser: kontroller hvert femte minutt og hendelsene du legger ut.", postSub: "Abonnenter får en e-post for hver hendelse", open: "Åpne", close: "Lukk" },
     title: "Statusside",
     description: "Det den offentlige statussiden viser: sjekkene av hver del hvert femte minutt, og hendelsene du legger ut. Abonnenter får en e-post for hver hendelse og oppdatering.",
     open: "Åpne statussiden",

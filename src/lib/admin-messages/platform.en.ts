@@ -46,6 +46,8 @@ export const platformEn = {
   },
   /** Kaizena Flow's own API (D518): the store's token words, with these of the platform's own. */
   api: {
+    /** Round 70 (D846): the API page on a phone. `{n}`. */
+    phone: { lead: "Read-only tokens for Kaizena Flow's own tools.", makeSub: "Stores, plans, requests, figures", howSub: "The address, the rules and {n} routes", open: "Open", read: "Read", close: "Close" },
     title: "API",
     description: "Let Kaizena Flow's own tools (a dashboard, a script, a spreadsheet) read the platform: its stores and their plans, the plans, the requests for a store and the home's figures. Read only, each with a token of its own.",
     cardDescription: "Read the platform's stores, plans, requests and figures from your own tools, with a token.",
@@ -821,6 +823,8 @@ export const platformEn = {
   },
   /** The status page's admin (D360). */
   status: {
+    /** Round 70 (D846): the status page on a phone. */
+    phone: { lead: "What the public status page shows: checks every five minutes and the incidents you post.", postSub: "Subscribers get an email for each incident", open: "Open", close: "Close" },
     title: "Status page",
     description: "What the public status page shows: each part's checks every five minutes, and the incidents you post. Subscribers get an email for each incident and update.",
     open: "Open the status page",

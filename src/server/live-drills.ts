@@ -26,6 +26,7 @@ import { storeSlugOf } from "./stores";
 import { connectWebhookUrl, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
+import { jobReport } from "./job-report";
 
 /**
  * Live drills (consolidation, D406): Kaizena Flow runs a store's money paths for real in Stripe's test mode and keeps what each found, so a person or an AI
@@ -398,9 +399,11 @@ async function runOne(storeId: string, kind: DrillKind, requestedBy: string | nu
 
 /** The five-minute dispatcher's part: one requested run, claimed under a lock, each drill in order, the results kept. Returns how many drills ran. */
 export async function runLiveDrills(): Promise<number> {
+  const report = jobReport();
   try {
     await settleDreamDrills();
   } catch (error) {
+    report(error, "dream-settle");
     log("error", "live_drill.dream_settle_failed", {}, error);
   }
   const [claimed] = await typedRows(

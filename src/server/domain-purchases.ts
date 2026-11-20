@@ -40,6 +40,7 @@ import { registrarById, registrarFor } from "./registrars";
 import { RegistrarError, type DomainRegistrar } from "./registrars/types";
 import { platformStripe } from "./stripe";
 import { billedAccount, collectionFor, type ThemeBillingStripe } from "./theme-prices";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 type Result<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] };
@@ -437,20 +438,26 @@ const stripeWords = (error: unknown) => (error instanceof Stripe.errors.StripeEr
  * at once by the plan's card when there is one, otherwise sent to pay (registration waits for it). Safe to repeat. Never throws.
  */
 export async function chargeDomainPurchases(scope: { storeId?: string; purchaseId?: string; limit?: number } = {}, deps: DomainBillingDeps = {}): Promise<{ invoiced: number; failed: number }> {
+  const report = jobReport();
   const mode = deps.mode ?? billingMode();
   const stripe = deps.stripe ?? (mode ? (platformStripe(mode) as unknown as ThemeBillingStripe) : null);
   if (!mode || !stripe) return { invoiced: 0, failed: 0 };
   let invoiced = 0;
   let failed = 0;
   for (let n = 0; n < (scope.limit ?? 10); n++) {
-    const row = await claim(["quoted"], scope.storeId, scope.purchaseId).catch(() => null);
+    const row = await claim(["quoted"], scope.storeId, scope.purchaseId).catch((error: unknown) => {
+      report(error, "claim");
+      return null;
+    });
     if (!row) break;
     try {
       await invoiceOne(row, mode, stripe, deps);
       invoiced++;
     } catch (error) {
       failed++;
-      await later(String(row.id), Number(row.tries), error instanceof BillingProblem ? error.message : stripeWords(error)).catch(() => {});
+      // A declined card or Stripe's refusal is the buyer's to settle (tried again later); anything else is the job's fault.
+      if (!(error instanceof BillingProblem) && !(error instanceof Stripe.errors.StripeError)) report(error, "invoice");
+      await later(String(row.id), Number(row.tries), error instanceof BillingProblem ? error.message : stripeWords(error)).catch((error: unknown) => report(error, "retry-later"));
     }
   }
   return { invoiced, failed };
@@ -615,20 +622,26 @@ export async function applyDomainInvoiceEvent(event: Stripe.Event): Promise<{ ha
  * and the store connected when asked. A registration that cannot be made fails and is refunded. Never throws.
  */
 export async function registerPaidDomains(scope: { storeId?: string; limit?: number } = {}, deps: DomainBillingDeps = {}): Promise<{ done: number; failed: number }> {
+  const report = jobReport();
   let done = 0;
   let failed = 0;
   for (let n = 0; n < (scope.limit ?? 10); n++) {
-    const row = await claim(["paid", "registering"], scope.storeId).catch(() => null);
+    const row = await claim(["paid", "registering"], scope.storeId).catch((error: unknown) => {
+      report(error, "claim");
+      return null;
+    });
     if (!row) break;
     try {
       const outcome = await registerOne(row, deps);
       if (outcome === "done") done++;
       if (outcome === "failed") failed++;
     } catch (error) {
-      await later(String(row.id), Number(row.tries), error instanceof RegistrarError ? `The registrar: ${error.message}` : "The registration could not be followed up; it is tried again.").catch(() => {});
+      // The registrar's refusal is the purchase's outcome (tried again, then refunded); anything else is the job's fault.
+      if (!(error instanceof RegistrarError)) report(error, "registration");
+      await later(String(row.id), Number(row.tries), error instanceof RegistrarError ? `The registrar: ${error.message}` : "The registration could not be followed up; it is tried again.").catch((error: unknown) => report(error, "retry-later"));
     }
   }
-  await refundFailed(deps).catch(() => {});
+  await refundFailed(deps).catch((error: unknown) => report(error, "refunds"));
   return { done, failed };
 }
 

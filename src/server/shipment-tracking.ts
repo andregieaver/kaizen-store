@@ -25,6 +25,7 @@ import { fetchCarrierEvents, type CarrierAnswer } from "./carrier-tracking";
 import { textList } from "./sql-arrays";
 import type { SendOutcome } from "./email";
 import { sendParcelEvent } from "./shopper-emails";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -293,6 +294,7 @@ export type PollSummary = { checked: number; failed: number; stopped: number; em
  * counted and planned again.
  */
 export async function pollTracking(options: { now?: Date; fetchEvents?: FetchEvents; limits?: Partial<Record<keyof typeof POLL_LIMITS, number>> } = {}): Promise<PollSummary> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const limits = { ...POLL_LIMITS, ...options.limits };
   const summary: PollSummary = { checked: 0, failed: 0, stopped: 0, emails: 0, delivered: 0 };
@@ -300,7 +302,8 @@ export async function pollTracking(options: { now?: Date; fetchEvents?: FetchEve
   try {
     summary.stopped += await stopOldParcels(now);
     candidates = await dueParcels(now, limits.perRun * 4);
-  } catch {
+  } catch (error) {
+    report(error, "due-parcels");
     return summary;
   }
   const perCarrier = new Map<string, number>();
@@ -317,7 +320,8 @@ export async function pollTracking(options: { now?: Date; fetchEvents?: FetchEve
       const before = await claim(p, now, false);
       if (!before) return null;
       return await checkClaimed(p, before, now, options.fetchEvents ?? defaultFetch);
-    } catch {
+    } catch (error) {
+      report(error, "parcel");
       return null;
     }
   });

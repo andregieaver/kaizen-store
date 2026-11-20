@@ -116,6 +116,8 @@ export const capacityNb: CapacityMessages = {
     choose: "Velg åpent eller stengt.",
   },
   editor: {
+    phoneLead: "Hva hvert abonnement har med. Tomt betyr at standarden avgjør; trafikk gir bare varsel.",
+    phoneWarns: "Varsler bare",
     title: "Grenser",
     description: "Hva hvert abonnement inkluderer. Tomt betyr at standarden avgjør; kryss av Ubegrenset for ingen grense. Trafikk gir bare varsel: en butikk blir aldri stengt.",
     default: "Standard",

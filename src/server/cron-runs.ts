@@ -11,6 +11,7 @@ import { pooled } from "@/lib/job-pool";
 import { flushCacheEvents, inJob } from "./cache-events";
 import { cronAuthorised } from "./cron-auth";
 import { noteFirstRequest } from "./instance-start";
+import { withReport, type JobReport } from "./job-report";
 import { log } from "./log";
 import { textList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
@@ -20,7 +21,8 @@ type Row = Record<string, unknown>;
 /**
  * Scheduled jobs keep their last run in `commerce.cron_jobs` (PSI 2026-10-24, REL-06), so a job that stops or keeps failing shows on
  * the platform home (`src/lib/cron-health.ts`) instead of going unnoticed. Every cron route runs inside `tracked()`, and the
- * five-minute dispatcher runs each of its jobs through `runJobs()`: a job that throws is logged and recorded, and the others finish.
+ * five-minute dispatcher runs each of its jobs through `runJobs()`: a job that throws, or reports an error it caught (`report()`, bloat
+ * review step 1.26), is logged and recorded as failed, and the others finish.
  */
 
 /** Writes a finished run. Never throws: a ledger that cannot be written must not stop the job it records. */
@@ -60,14 +62,25 @@ async function record(job: string, everySeconds: number, started: Date, error: u
 }
 
 /**
- * Runs one job and keeps its run: the job's answer, or null when it threw (logged as `cron.job_failed` and counted). `everySeconds`
- * is how often its schedule runs it, which is how late it may be (`allowanceSeconds()`).
+ * Runs one job and keeps its run: the job's answer, or null when it threw (logged as `cron.job_failed` and counted). The job is handed
+ * a `report()` for errors it catches: the run is then counted as failed once it ends. `everySeconds` is how often its schedule runs it,
+ * which is how late it may be (`allowanceSeconds()`).
  */
-export async function tracked<T>(job: string, everySeconds: number, run: () => Promise<T>): Promise<T | null> {
+export async function tracked<T>(job: string, everySeconds: number, run: (report: JobReport) => Promise<T>): Promise<T | null> {
   const started = new Date();
+  const reported: { part: string | null; error: unknown }[] = [];
+  const report: JobReport = (error, part) => {
+    reported.push({ part: part ?? null, error });
+    log("error", "cron.job_part_failed", { job, part: part ?? null }, error);
+  };
   try {
-    const result = await inJob(job, run);
-    await record(job, everySeconds, started, null);
+    const result = await inJob(job, () => withReport(report, () => run(report)));
+    // A part that failed and was reported: the run is failed, and still answers what its other parts did.
+    const failed =
+      reported.length === 0
+        ? null
+        : new Error(`${reported.length} part(s) failed (${reported.map((r) => r.part ?? "?").join(", ")})`, { cause: reported[0].error });
+    await record(job, everySeconds, started, failed);
     await flushCacheEvents();
     return result;
   } catch (error) {
@@ -130,7 +143,7 @@ export const JOB_LANE_MS = 60_000;
  * Runs a dispatcher's jobs four at a time (`JOB_LANES`), each tracked as `{prefix}.{name}` in kebab case; each answer is the job's, or
  * null when it threw. A job that has run for `JOB_LANE_MS` gives its lane to the next and is still recorded when it ends.
  */
-export async function runJobs<J extends Record<string, () => Promise<unknown>>>(
+export async function runJobs<J extends Record<string, (report: JobReport) => Promise<unknown>>>(
   prefix: string,
   everySeconds: number,
   jobs: J,
@@ -143,7 +156,7 @@ export async function runJobs<J extends Record<string, () => Promise<unknown>>>(
       .catch((error: unknown) => log("warn", "cron.retire_failed", {}, error));
   }
   const results = await pooled(
-    names.map((name) => () => tracked(`${prefix}.${kebab(name)}`, everySeconds, jobs[name])),
+    names.map((name) => () => tracked(`${prefix}.${kebab(name)}`, everySeconds, (report) => jobs[name](report))),
     {
       lanes: options.lanes ?? JOB_LANES,
       laneMs: options.laneMs ?? JOB_LANE_MS,
@@ -151,6 +164,14 @@ export async function runJobs<J extends Record<string, () => Promise<unknown>>>(
     },
   );
   return Object.fromEntries(names.map((name, i) => [name, results[i]])) as { [K in keyof J]: Awaited<ReturnType<J[K]>> | null };
+}
+
+/**
+ * The work a route does after answering (`after()`), kept as a job of its own, `{route}.work`: the route's own row records only that it
+ * answered (bloat review step 1.26).
+ */
+export function trackedWork<T>(route: string, everySeconds: number, run: (report: JobReport) => Promise<T>): Promise<T | null> {
+  return tracked(`${route}.work`, everySeconds, run);
 }
 
 /** Every job's last run, for the platform's view of them. */

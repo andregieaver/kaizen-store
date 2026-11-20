@@ -53,6 +53,7 @@ import { staffSummaryFigures, type StaffSummaryFigures } from "./staff-summary";
 import { uuidList } from "./sql-arrays";
 import type { CheckupFinding } from "./store-checkup";
 import { getStore, type Store } from "./stores";
+import { jobReport } from "./job-report";
 
 type Row = Record<string, unknown>;
 
@@ -1029,6 +1030,7 @@ export async function pruneStoreEvents(now = new Date()): Promise<number> {
 export async function sendDueSummaries(
   options: { now?: Date; send?: typeof sendEmail; note?: (store: Store, lang: AdminLang, items: readonly string[]) => Promise<string | null> } = {},
 ): Promise<{ stores: number; emails: number }> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const send = options.send ?? sendEmail;
   const out = { stores: 0, emails: 0 };
@@ -1039,7 +1041,8 @@ export async function sendDueSummaries(
       from commerce.staff_alert_settings a join commerce.stores s on s.id = a.store_id
       where a.summary <> 'off' and commerce.store_is_active(s.id) and commerce.feature_on(s.id, 'shop')
     `);
-  } catch {
+  } catch (error) {
+    report(error, "stores");
     return out;
   }
   for (const row of rows) {
@@ -1085,6 +1088,7 @@ export async function sendDueSummaries(
       await db().execute(sql`update commerce.staff_alert_settings set summary_last_period = ${due.key} where store_id = ${storeId}::uuid`);
       out.stores++;
     } catch (error) {
+      report(error, "summary");
       log("error", "staff_alerts.summary_failed", { storeId }, error);
     }
   }
@@ -1141,6 +1145,7 @@ export function analyticsAlertsEmail(store: EmailStore, day: string, alerts: rea
  * emailed today (rows of `analytics_alert_sends` claimed first), worded in each recipient's language, one email per recipient. Never throws.
  */
 export async function sendAnalyticsAlertEmails(options: { now?: Date; send?: typeof sendEmail } = {}): Promise<{ stores: number; emails: number }> {
+  const report = jobReport();
   const now = options.now ?? new Date();
   const send = options.send ?? sendEmail;
   const out = { stores: 0, emails: 0 };
@@ -1153,7 +1158,8 @@ export async function sendAnalyticsAlertEmails(options: { now?: Date; send?: typ
         and (exists (select 1 from commerce.staff_alert_recipients r where r.store_id = s.id and 'analytics' = any(r.events))
           or 'analytics' = any(coalesce(a.contact_events, '{}'::text[])))
     `);
-  } catch {
+  } catch (error) {
+    report(error, "stores");
     return out;
   }
   for (const row of rows) {
@@ -1190,6 +1196,7 @@ export async function sendAnalyticsAlertEmails(options: { now?: Date; send?: typ
       out.emails += result.outcomes.filter((o) => o === "sent" || o === "logged").length;
       out.stores++;
     } catch (error) {
+      report(error, "email");
       log("error", "analytics_alerts.email_failed", { store: storeId }, error);
     }
   }

@@ -24,6 +24,7 @@ import { createStripeAccount, ensureTestAccount, getStripeAccounts } from "./con
 import { log } from "./log";
 import { platformStripe } from "./stripe";
 import { getStore } from "./stores";
+import { jobReport } from "./job-report";
 
 /**
  * Premium themes (D286, `docs/theme-prices.md`): a theme's prices, what making one live costs a store, and the purchases the database makes
@@ -350,6 +351,7 @@ async function claimDue(storeId: string | undefined): Promise<Row | null> {
  * Run from `after()` where a store opens or a theme is bought, and from the five-minute job. Never throws.
  */
 export async function chargeDueThemePurchases(scope: { storeId?: string; limit?: number } = {}, deps: ThemeBillingDeps = {}): Promise<{ invoiced: number; failed: number }> {
+  const report = jobReport();
   const mode = deps.mode ?? billingMode();
   const stripe = deps.stripe ?? (mode ? platformStripe(mode) : null);
   if (!mode || !stripe) return { invoiced: 0, failed: 0 };
@@ -360,6 +362,7 @@ export async function chargeDueThemePurchases(scope: { storeId?: string; limit?:
     try {
       row = await claimDue(scope.storeId);
     } catch (error) {
+      report(error, "claim");
       log("error", "theme_prices.claim_failed", {}, error);
       break;
     }
@@ -370,14 +373,21 @@ export async function chargeDueThemePurchases(scope: { storeId?: string; limit?:
     } catch (error) {
       failed++;
       const problem = (error instanceof BillingProblem ? error.message : stripeWords(error)).slice(0, 500);
-      if (!(error instanceof BillingProblem) && !(error instanceof Stripe.errors.StripeError)) log("error", "theme_prices.invoice_failed", {}, error);
+      // A declined card or Stripe's refusal is the buyer's to settle (kept as the purchase's problem); anything else is the job's fault.
+      if (!(error instanceof BillingProblem) && !(error instanceof Stripe.errors.StripeError)) {
+        log("error", "theme_prices.invoice_failed", {}, error);
+        report(error, "invoice");
+      }
       await db()
         .execute(sql`
           update commerce.theme_purchases set problem = ${problem}, claimed_until = null, updated_at = now(),
             next_try_at = now() + ${`${nextTryDelayMs(Number(row.tries))} milliseconds`}::interval
            where id = ${String(row.id)}::uuid and status = 'due'
         `)
-        .catch((recordError) => log("error", "theme_prices.problem_record_failed", {}, recordError));
+        .catch((recordError: unknown) => {
+          log("error", "theme_prices.problem_record_failed", {}, recordError);
+          report(recordError, "problem-record");
+        });
     }
   }
   return { invoiced, failed };

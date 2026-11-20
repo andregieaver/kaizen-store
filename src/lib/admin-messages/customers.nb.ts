@@ -54,6 +54,16 @@ export const customersNb: CustomersMessages = {
     tagLabel: "Merke",
     addTag: "Legg til et merke",
     removeTag: "Ta bort et merke",
+    delete: "Slett",
+    deleteQuestion: {
+      one: "Slette {n} kunde? Deres egne avtaler, notater og merker slettes også. Kunder med ordre eller abonnement beholdes.",
+      many: "Slette {n} kunder? Deres egne avtaler, notater og merker slettes også. Kunder med ordre eller abonnement beholdes.",
+    },
+    deleted: { one: "{n} kunde slettet.", many: "{n} kunder slettet." },
+    deletedKept: {
+      one: " {n} med ordre eller abonnement ble beholdt: bruk Personvernforespørsler for å slette dem helt.",
+      many: " {n} med ordre eller abonnement ble beholdt: bruk Personvernforespørsler for å slette dem helt.",
+    },
     wholeList: "Merk alle søket finner",
     morePictures: "+{n}",
   },
@@ -78,6 +88,9 @@ export const customersNb: CustomersMessages = {
   },
   customer: {
     back: "Kunder",
+    deleteCustomer: "Slett kunden",
+    deleteCustomerQuestion: "Slette {name}? Deres egne avtaler, notater og merker slettes også.",
+    deleteCustomerKept: "{name} har ordre eller abonnement og beholdes. Bruk Personvernforespørsler for å slette dem helt.",
     firstOrder: "Første ordre {date}",
     accountSince: "Konto siden {date}",
     lastSignIn: "Sist logget inn {date}",

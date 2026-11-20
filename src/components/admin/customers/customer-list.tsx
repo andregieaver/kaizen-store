@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import { Pictures } from "@/components/admin/home/home-parts";
 import { AdminLink } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -46,6 +47,9 @@ export type CustomerListWords = {
   tagLabel: string;
   addTag: string;
   removeTag: string;
+  /** Deleting the people ticked; absent where the viewer may not. */
+  delete?: string;
+  deleteQuestion?: Plural;
   morePictures: string;
 };
 
@@ -57,7 +61,20 @@ const GRID = "grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-4 g
  * The customers list (round 3, D603): a picture or initials, the town, what they last bought in pictures, the last order in words and what they
  * spent. Ticking people brings a bar to tag them; with nobody ticked there is nothing to read past the people.
  */
-export function CustomerList({ base, items, words, tagAction }: { base: string; items: CustomerListItem[]; words: CustomerListWords; tagAction: ((state: FormState, form: FormData) => Promise<FormState>) | null }) {
+export function CustomerList({
+  base,
+  items,
+  words,
+  tagAction,
+  deleteAction = null,
+}: {
+  base: string;
+  items: CustomerListItem[];
+  words: CustomerListWords;
+  tagAction: ((state: FormState, form: FormData) => Promise<FormState>) | null;
+  /** Deletes the people ticked (`customers:write`), after asking. */
+  deleteAction?: ((state: FormState, form: FormData) => Promise<FormState>) | null;
+}) {
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
   const [selecting, setSelecting] = useState(false);
   const plain = !selecting;
@@ -163,6 +180,25 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
               <X aria-hidden className="size-4" />
             </button>
           </ActionForm>
+          {deleteAction && words.delete && words.deleteQuestion && (
+            <ActionForm
+              action={deleteAction}
+              className="mt-2 flex flex-wrap items-center gap-2 border-t border-card/15 pt-2"
+              successClassName="rounded-pill bg-card px-3 py-1 text-caption text-ink"
+            >
+              {chosen.map((item) => (
+                <input key={item.key} type="hidden" name="email" value={item.email} />
+              ))}
+              <ConfirmButton
+                kind="none"
+                className="min-h-9 rounded-pill px-3 text-body font-medium text-card underline underline-offset-2 hover:bg-card/10 disabled:opacity-50"
+                question={countWords(chosen.length, words.deleteQuestion)}
+                confirm={words.delete}
+              >
+                {words.delete}
+              </ConfirmButton>
+            </ActionForm>
+          )}
         </div>
       )}
     </PhoneMore>

@@ -23,6 +23,7 @@ import { log } from "./log";
 import { memberCan } from "./permissions";
 import { refreshStoreById, type Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
+import { jobReport } from "./job-report";
 
 /**
  * Changing the business behind a store (B8 of `docs/own-books-and-sales.md` section 4.5, D473): the one reader and writer of
@@ -158,6 +159,7 @@ export async function cancelBusinessChange(member: Membership): Promise<Business
  * its first document of the day was issued) is drawn again, so its pages, emails and checkout show the new business. Never throws.
  */
 export async function runBusinessChanges(): Promise<{ applied: number; refreshed: number }> {
+  const report = jobReport();
   let applied = 0;
   let refreshed = 0;
   try {
@@ -171,6 +173,7 @@ export async function runBusinessChanges(): Promise<{ applied: number; refreshed
         const [result] = await db().execute<{ applied: boolean }>(sql`select commerce.apply_business_change(${store_id}::uuid) as applied`);
         if (result?.applied) applied += 1;
       } catch (error) {
+        report(error, "apply");
         log("error", "business_change.apply_failed", { storeId: store_id }, error);
       }
     }
@@ -185,6 +188,7 @@ export async function runBusinessChanges(): Promise<{ applied: number; refreshed
     }
     if (applied > 0 || refreshed > 0) log("info", "business_change.applied", { applied, refreshed });
   } catch (error) {
+    report(error, "run");
     log("error", "business_change.run_failed", {}, error);
   }
   return { applied, refreshed };
