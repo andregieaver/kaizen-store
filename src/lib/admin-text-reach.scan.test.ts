@@ -97,6 +97,7 @@ function offenders(planted: Map<string, string[]> = new Map()): string[] {
 }
 
 const catalogues = (seen: Set<string>) => [...seen].filter((file) => file.startsWith(MESSAGES)).length;
+const catalogueBytes = (seen: Set<string>) => [...seen].filter((file) => file.startsWith(MESSAGES)).reduce((sum, file) => sum + statSync(file).size, 0);
 
 /** Catalogue files behind each entry that runs for shoppers; each only falls. */
 const CEILINGS: Record<string, number> = {
@@ -131,6 +132,11 @@ describe("the admin's words outside the admin (bloat review step 0.7)", () => {
     });
   }
 
+  // Step 2.50's line for the store layout: at most 8 catalogue files (CEILINGS holds 4) and 0.21 MB of them (91,644 bytes on 20 November).
+  it("holds the store layout to 0.21 MB of catalogue files: Case B", () => {
+    expect(catalogueBytes(reach(join(process.cwd(), "src/app/s/[store]/[market]/layout.tsx")))).toBeLessThanOrEqual(210_000);
+  });
+
   // The registry holds types only since bloat review step 2.25; the one table of every area left is the tests' own.
   it("would notice: the tests' table of every area reaches every catalogue: Case D", () => {
     expect(catalogues(reach(TABLE))).toBeGreaterThanOrEqual(130);
@@ -141,6 +147,53 @@ describe("the admin's words outside the admin (bloat review step 0.7)", () => {
     const planted = catalogues(reach(entry, new Map([[entry, ["@/test/admin-words-all"]]])));
     expect(planted).toBeGreaterThanOrEqual(130);
     expect(planted).toBeGreaterThan(CEILINGS["src/app/api/visit/route.ts"]);
+  });
+});
+
+/**
+ * Who imports a catalogue (bloat review step 2.50): a value import of a file of `src/lib/admin-messages` is made only by its area module
+ * (`src/lib/admin-words/{stem}.ts`, server code reads `X_WORDS[lang]`), another catalogue file, the three words' context files below and
+ * tests (`*.test.*` and `src/test`). A server part takes its words as a required prop or argument from its page; a client part takes them
+ * from its server parent (step 2.26); English that code with no language reads lives in a `<thing>-labels.ts` leaf.
+ */
+const CONTEXT_FILES = [
+  // The common words' English, at hand at once in the browser (useAdminText("common")).
+  "src/components/admin/admin-text.tsx",
+  // useCommonText(): the common words for parts shown outside the signed-in admin too (ActionForm on sign-up, sign-in).
+  "src/components/admin/admin-text-context.tsx",
+  // useSignInText(): sign-in's English on the signed-out pages, kept out of every screen's first scripts (step 0.9).
+  "src/components/admin/sign-in-text.tsx",
+];
+
+function catalogueImporters(planted: Map<string, string[]> = new Map()): string[] {
+  return files(SRC)
+    .filter((file) => !file.startsWith(MESSAGES) && !file.startsWith(join(SRC, "lib/admin-words") + "/") && !rel(file).startsWith("src/test/"))
+    .filter((file) => !CONTEXT_FILES.includes(rel(file)))
+    .filter((file) => {
+      const specifiers = [...(planted.get(file) ?? [])];
+      for (const match of readFileSync(file, "utf8").matchAll(IMPORT)) {
+        if (match[2] !== undefined && typesOnly(match[1])) continue;
+        specifiers.push(match[2] ?? match[3]);
+      }
+      return specifiers.some((specifier) => resolve(file, specifier)?.startsWith(MESSAGES));
+    })
+    .map(rel);
+}
+
+describe("who imports a catalogue (bloat review step 2.50)", () => {
+  it("only the area modules, the three context files and tests import a catalogue file", () => {
+    expect(catalogueImporters()).toEqual([]);
+  });
+
+  it("would notice: a planted import of a catalogue in a server part and in a page", () => {
+    const card = join(SRC, "components/admin/orders/payment-card.tsx");
+    const page = join(SRC, "app/admin/(gated)/[store]/orders/page.tsx");
+    const found = catalogueImporters(new Map([[card, ["@/lib/admin-messages/orders.en"]], [page, ["@/lib/admin-messages/order.nb"]]]));
+    expect(found).toEqual(expect.arrayContaining(["src/components/admin/orders/payment-card.tsx", "src/app/admin/(gated)/[store]/orders/page.tsx"]));
+  });
+
+  it("the context files exist (a renamed one would leave a stale exception)", () => {
+    for (const file of CONTEXT_FILES) expect(existsSync(join(process.cwd(), file)), file).toBe(true);
   });
 });
 
@@ -166,9 +219,17 @@ const ADMIN_REACH = {
 };
 const AREAS_ROOM = 2;
 const BYTES_ROOM = 1.15;
-/** The step's ceilings for the median entry (67 areas and 3.46 MB before it). */
-const MEDIAN_AREAS_MAX = 30;
-const MEDIAN_BYTES_MAX = 1_310_000;
+/** Step 2.50's ceilings for the median entry (67 areas and 3.46 MB before step 2.25; 4 areas and 238 KB on 20 November). */
+const MEDIAN_AREAS_MAX = 18;
+const MEDIAN_BYTES_MAX = 900_000;
+/**
+ * The largest entry, held at its figure on 20 November 2026 (step 2.50), a ceiling that only falls: lower it when the walk finds less. Step
+ * 2.50's target of 28 areas and 1.66 MB is not met yet in bytes: the article editor (platform/articles/[pageId]) reads the builder, reports and
+ * platform areas (180, 142 and 139 KB of both languages) beside 22 more.
+ */
+const LARGEST_MAX = { areas: 25, bytes: 1_856_932 };
+/** The most areas any entry reaches (26 on 20 November, under step 2.50's line of 28); it only falls. */
+const MOST_AREAS_MAX = 26;
 
 const valueImports = (file: string): string[] => {
   const found: string[] = [];
@@ -222,7 +283,7 @@ describe("the admin's words on admin routes (bloat review step 2.25)", () => {
     expect(new Set(valueImports(TABLE).filter((target) => target.startsWith(WORDS))).size).toBeGreaterThan(40);
   });
 
-  it("what an admin entry reaches: the median at most 30 areas and 1.31 MB, and the recorded figures only fall", { timeout: 120_000 }, () => {
+  it("what an admin entry reaches: the median at most 18 areas and 0.9 MB, the largest within its ceiling, and the recorded figures only fall", { timeout: 120_000 }, () => {
     const rows = files(ADMIN)
       .filter(isEntry)
       .map((entry) => ({ entry: rel(entry), ...wordsReached(entry) }));
@@ -236,6 +297,10 @@ describe("the admin's words on admin routes (bloat review step 2.25)", () => {
     const largest = rows.reduce((a, b) => (b.bytes > a.bytes ? b : a));
     expect(largest.bytes, `${largest.entry} reaches ${largest.areas} areas`).toBeLessThanOrEqual(ADMIN_REACH.largest.bytes * BYTES_ROOM);
     expect(largest.areas).toBeLessThanOrEqual(ADMIN_REACH.largest.areas + AREAS_ROOM);
+    expect(largest.bytes, `${largest.entry} is over LARGEST_MAX`).toBeLessThanOrEqual(LARGEST_MAX.bytes);
+    expect(largest.areas, `${largest.entry} is over LARGEST_MAX`).toBeLessThanOrEqual(LARGEST_MAX.areas);
+    const most = rows.reduce((a, b) => (b.areas > a.areas ? b : a));
+    expect(most.areas, `${most.entry} reaches more areas than MOST_AREAS_MAX`).toBeLessThanOrEqual(MOST_AREAS_MAX);
     const home = rows.find((row) => row.entry === "src/app/admin/(gated)/platform/page.tsx")!;
     expect(home.areas).toBeLessThanOrEqual(ADMIN_REACH.platformHome.areas + AREAS_ROOM);
     expect(home.bytes).toBeLessThanOrEqual(ADMIN_REACH.platformHome.bytes * BYTES_ROOM);
