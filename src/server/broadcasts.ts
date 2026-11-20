@@ -1014,9 +1014,47 @@ export async function rewriteEmail<T extends { subject: string; preview: string;
   tone: RewriteTone,
   options: { complete?: typeof chatWithTools } = {},
 ): Promise<{ ok: true; content: T } | { ok: false; problem: string }> {
+  const language = LANGUAGE_NAMES[locale.slice(0, 2)] ?? locale;
+  return reworkTexts(store, accountId, content, `You rewrite the texts of a marketing email of the shop "${store.name}", in ${language}.`, TONE_WORDS[tone], options);
+}
+
+/**
+ * An email's words in another of the store's languages (email plan M3.7), for the owner to read over before it is tested: translated text
+ * by text and put back in the same blocks, as `rewriteEmail()` does, with the same refusals. Nothing is saved here.
+ */
+export async function translateEmail<T extends { subject: string; preview: string; blocks: BroadcastBlock[] }>(
+  store: EmailStore,
+  accountId: string,
+  content: T,
+  from: string,
+  to: string,
+  options: { complete?: typeof chatWithTools } = {},
+): Promise<{ ok: true; content: T } | { ok: false; problem: string }> {
+  const source = LANGUAGE_NAMES[from.slice(0, 2)] ?? from;
+  const target = LANGUAGE_NAMES[to.slice(0, 2)] ?? to;
+  const out = await reworkTexts(
+    store,
+    accountId,
+    content,
+    `You translate the texts of a marketing email of the shop "${store.name}" from ${source} into ${target}.`,
+    `Write as a native speaker of ${target} would, naturally rather than word for word, keeping the tone; keep the shop's and products' names as they are.`,
+    options,
+  );
+  // The preview line is said in the email's own language too: without a translation, none.
+  return out.ok ? { ok: true, content: { ...out.content, preview: "" } } : out;
+}
+
+/** The rewriter and translator's one way (M3.7): the email's texts in order out, one text back for each, put back by code and checked. */
+async function reworkTexts<T extends { subject: string; preview: string; blocks: BroadcastBlock[] }>(
+  store: EmailStore,
+  accountId: string,
+  content: T,
+  task: string,
+  how: string,
+  options: { complete?: typeof chatWithTools },
+): Promise<{ ok: true; content: T } | { ok: false; problem: string }> {
   const connection = await aiFor(store.id, { feature: "marketing_email", accountId });
   if (!connection?.textModel) return { ok: false, problem: "No AI with a text model is set up for this store." };
-  const language = LANGUAGE_NAMES[locale.slice(0, 2)] ?? locale;
   const brand = await brandOf(store.id);
   const guide = brandGuide(brand);
   const texts = rewritableTexts(content);
@@ -1024,8 +1062,8 @@ export async function rewriteEmail<T extends { subject: string; preview: string;
     {
       role: "system",
       content: [
-        `You rewrite the texts of a marketing email of the shop "${store.name}", in ${language}.`,
-        TONE_WORDS[tone],
+        task,
+        how,
         "Keep what each text means. Add no fact, product, offer, price, discount, stock level or delivery time that the texts do not already say.",
         "No urgency or scarcity, no best or lowest price claims, no environmental claims.",
         RULES_STAND,

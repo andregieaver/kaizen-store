@@ -216,4 +216,19 @@ describe("the writer's tools", () => {
     const claim = (async () => ({ content: JSON.stringify({ texts: ["Hei!", "Siste sjanse i dag."] }), toolCalls: [] })) as never;
     expect(await bc.rewriteEmail(emailStore, store.accountId, content, "nb-NO", "direct", { complete: claim })).toMatchObject({ ok: false });
   });
+
+  it("translates an email into another language text by text, keeping its blocks, without the preview line (M3.7)", async () => {
+    const emailStore = (await storeById(store.storeId))!;
+    const content = { subject: "Hei", preview: "Fra oss", blocks: [{ type: "paragraph" as const, text: "Takk." }, { type: "divider" as const }] };
+    const asked: string[] = [];
+    const complete = (async (_c: unknown, messages: { content?: string | null }[]) => {
+      asked.push(messages[0].content ?? "");
+      return { content: JSON.stringify({ texts: ["Hi", "Thank you."] }), toolCalls: [] };
+    }) as never;
+    expect(await bc.translateEmail(emailStore, store.accountId, content, "nb-NO", "en-GB", { complete })).toEqual({
+      ok: true,
+      content: { subject: "Hi", preview: "", blocks: [{ type: "paragraph", text: "Thank you." }, { type: "divider" }] },
+    });
+    expect(asked[0]).toContain("from Norwegian (Bokmål) into English");
+  });
 });

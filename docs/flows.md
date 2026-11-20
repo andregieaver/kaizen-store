@@ -87,7 +87,8 @@ hands it to the store's writer (`suggestBroadcast()`: the store's facts, brand a
 picks takes no products the writer chose. Under the subject, three subject lines to choose from (`suggestSubjects()`, nothing
 saved until one is pressed; a line making a claim AI may not make is left out), and Rewrite with AI: shorter, warmer or more direct
 (`rewriteEmail()`: one text back for each of the email's own, put back in its block by code, so pictures, products and addresses never
-move; refused on a claim). Each change is a new
+move; refused on a claim). A language not written yet can also be translated with AI from the first (`translateEmail()`, the same
+text-by-text way, the preview line left empty), to read over in place before the flow is tested. Each change is a new
 version, off until tested; the story above is drawn from the same tree.
 
 ## Presses in a flow's emails (19 November 2026)

@@ -15,7 +15,7 @@ import { broadcastBlockSchema, REWRITE_TONES, suggestionBlocks, type RewriteTone
 import { flowAudience } from "@/lib/flow-audience";
 import { marketingProblem } from "@/lib/marketing-words";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
-import { rewriteEmail, suggestBroadcast, suggestSubjects } from "@/server/broadcasts";
+import { rewriteEmail, suggestBroadcast, suggestSubjects, translateEmail } from "@/server/broadcasts";
 import { checkPermission } from "@/server/permissions";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -294,5 +294,21 @@ export async function rewriteFlowEmailAction(storeSlug: string, flowId: string, 
     const result = await rewriteEmail(member.store, member.account.id, content, locale, tone);
     if (!result.ok) return marketingProblem(result.problem, problems);
     return withLanguageContent(flow.steps, stepId, locale, result.content);
+  });
+}
+
+/**
+ * An email written in a language it lacks, translated with AI from one it has (email plan M3.7), for the owner to read over in place: a
+ * new version, off until tested. Never over words already written in that language.
+ */
+export async function translateFlowEmailAction(storeSlug: string, flowId: string, stepId: string, from: string, to: string): Promise<FormState> {
+  return saveTree(storeSlug, flowId, async (flow, _storeId, member) => {
+    const problems = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].problems;
+    if (typeof to !== "string" || !member.store.localization.keptLocales.includes(to)) return problems.storeLanguage;
+    const step = findStep(flow.steps, stepId);
+    if (step?.kind !== "email" || typeof from !== "string" || !step.content[from] || step.content[to]) return null;
+    const result = await translateEmail(member.store, member.account.id, step.content[from], from, to);
+    if (!result.ok) return marketingProblem(result.problem, problems);
+    return withLanguageContent(flow.steps, stepId, to, result.content);
   });
 }

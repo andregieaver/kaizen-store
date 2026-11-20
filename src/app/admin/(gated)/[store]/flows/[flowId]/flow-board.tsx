@@ -31,6 +31,7 @@ import {
   writeFlowEmailAction,
   suggestFlowSubjectsAction,
   rewriteFlowEmailAction,
+  translateFlowEmailAction,
   changeFlowLapseAction,
   changeFlowPicksAction,
   changeFlowTriggerAction,
@@ -288,6 +289,19 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
           className="self-start rounded-full border border-line px-3 py-1 text-sm text-ink hover:border-ink"
         >
           {w.inPlace.startFrom.replace("{language}", nameOf(first))}
+        </button>
+        <button
+          type="button"
+          disabled={busy || !step.content[first]}
+          onClick={() =>
+            start(async () => {
+              const result = await translateFlowEmailAction(p.storeSlug, p.flowId, step.id, first, locale);
+              setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
+            })
+          }
+          className="self-start rounded-full border border-line px-3 py-1 text-sm text-ink hover:border-ink"
+        >
+          {w.inPlace.translateFrom.replace("{language}", nameOf(first))}
         </button>
         {said && <p role="status" className="text-sm text-ink-2">{said.text}</p>}
       </div>
