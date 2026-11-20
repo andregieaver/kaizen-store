@@ -56,8 +56,10 @@ test.beforeAll(async () => {
       insert into commerce.pages (store_id, slug, draft, published, published_at, first_published_at)
       values (${store.id}, ${SLUG}, ${sql.json(content)}, ${sql.json(content)}, now(), now()) returning id`;
     pageId = String(row.id);
+    // A plain product (a rental, a stay or an appointment is shown only where the store takes bookings), the same one each run: the
+    // template's products are copied in one statement, so they share one created_at.
     const [product] = await sql`
-      select handle from commerce.products where store_id = ${store.id} and status = 'active' order by created_at limit 1`;
+      select handle from commerce.products where store_id = ${store.id} and status = 'active' and kind = 'goods' order by created_at, handle limit 1`;
     productHandle = String(product.handle);
     productPath = `${home}/p/${productHandle}`;
     // The page in the store's main menu, under its own title (a link with no label of its own, D85).
@@ -152,15 +154,21 @@ async function saveMenu(page: import("@playwright/test").Page) {
 }
 
 test("a change to its title reaches the home's menu at once", async ({ page, request }) => {
-  // The page's link, under its title, in the home's menu.
+  // The home drawn again with the page in its menu, and kept: without the new title. Whether the link shows yet is not asked: the page
+  // was put live by SQL, not by a publish, so the store's kept list of its pages (the pages tag, which the menu's links are named from)
+  // may have been read before it existed, by any earlier visit to the store; a real page's first publish refreshes that list.
   await saveMenu(page);
-  await expect.poll(async () => (await request.get(home)).text()).toContain(`/${SLUG}`);
+  expect(await cached(request, home)).toBe("HIT");
+  expect(await (await request.get(home)).text()).not.toContain(TITLE);
 
   await page.goto(`/admin/${E2E_STORE}/pages/${pageId}`);
   await expect(page.locator("[data-editor-bar]")).toBeVisible();
   await page.getByLabel("Title", { exact: true }).fill(TITLE);
   await publishInBuilder(page);
+  // The cached home shows the new title at once, as the name of the page's link in its menu.
   await expect.poll(async () => (await request.get(home)).text()).toContain(TITLE);
+  const menu = (await (await request.get(home)).text()).match(new RegExp(`<a[^>]*href="[^"]*/${SLUG}"[^>]*>(?:(?!</a>).)*${TITLE}`, "s"));
+  expect(menu).not.toBeNull();
 
   // The menu as it was, for the other specs.
   const sql = testDb();
