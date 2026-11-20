@@ -196,6 +196,23 @@ export function withEmailWords(steps: readonly FlowStep[], id: string, locale: s
   });
 }
 
+/**
+ * One piece of an email's words changed where it is (email plan M3.4): the subject (`index` -1), or a heading's, paragraph's or button's words
+ * (`index` the block's place), in one language. The same tree when there is no such piece. Pure; the save checks the lengths.
+ */
+export function withBlockText(steps: readonly FlowStep[], id: string, locale: string, index: number, text: string): FlowStep[] {
+  return replaceStep(steps, id, (step) => {
+    if (step.kind !== "email") return step;
+    const current = step.content[locale];
+    if (!current) return step;
+    if (index === -1) return { ...step, content: { ...step.content, [locale]: { ...current, subject: text } } };
+    const block = current.blocks[index];
+    if (!block || (block.type !== "heading" && block.type !== "paragraph" && block.type !== "button")) return step;
+    const blocks = current.blocks.map((b, i) => (i === index ? { ...b, text } : b));
+    return { ...step, content: { ...step.content, [locale]: { ...current, blocks } } };
+  });
+}
+
 /** A wait step with a new number of days (D767 slice 2). */
 export function withWaitDays(steps: readonly FlowStep[], id: string, days: number): FlowStep[] {
   return replaceStep(steps, id, (step) => (step.kind === "wait" ? { ...step, hours: Math.round(days * 24) } : step));

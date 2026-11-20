@@ -22,7 +22,7 @@ import type { FlowCondition, FlowPlace, FlowStep } from "@/lib/flows";
 
 import {
   changeFlowConditionAction,
-  changeFlowEmailAction,
+  changeFlowBlockAction,
   changeFlowLapseAction,
   changeFlowPicksAction,
   changeFlowTriggerAction,
@@ -225,6 +225,89 @@ function find(steps: readonly FlowStep[], id: string): FlowStep | null {
   return null;
 }
 
+/**
+ * The email as it reads, its words changed where they are (email plan M3.4): the subject and each heading, paragraph and button in the store's
+ * first language, each saved when the owner clicks away (`changeFlowBlockAction()`). Emptied words are put back, not saved. Pictures, products
+ * and dividers show as they are; every language side by side is under Change in the story.
+ */
+function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "email" }> }) {
+  const { w } = p;
+  const locale = step.content[p.locale] ? p.locale : (Object.keys(step.content)[0] ?? p.locale);
+  const c = step.content[locale];
+  const [busy, start] = useTransition();
+  const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
+  if (!c) return null;
+  const editable = (index: number, before: string, label: string, className: string, multiline: boolean) => (
+    <span
+      role="textbox"
+      aria-label={label}
+      aria-multiline={multiline || undefined}
+      contentEditable={!busy}
+      suppressContentEditableWarning
+      data-in-place={index}
+      onKeyDown={(e) => {
+        if (!multiline && e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+      onBlur={(e) => {
+        const text = e.currentTarget.textContent ?? "";
+        if (text.trim() === before.trim()) return;
+        if (!text.trim()) {
+          e.currentTarget.textContent = before;
+          return;
+        }
+        start(async () => {
+          const result = await changeFlowBlockAction(p.storeSlug, p.flowId, step.id, locale, index, text);
+          setSaid({ ok: result.status === "ok", text: result.messages.join(" ") });
+        });
+      }}
+      className={`block rounded px-1 outline-none hover:bg-sunken/60 focus:bg-sunken focus:ring-2 focus:ring-ink/20 ${className}`}
+    >
+      {before}
+    </span>
+  );
+  return (
+    <div className="flex flex-col gap-2" data-email-in-place>
+      <p className="text-caption text-muted">{w.inPlace.hint}</p>
+      <div className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4">
+        <div>
+          <span className="text-caption text-muted">{w.subject}</span>
+          {editable(-1, c.subject, w.subject, "text-body-strong text-ink", false)}
+        </div>
+        <hr className="border-line" />
+        {c.blocks.map((block, i) => {
+          if (block.type === "heading") return <div key={i}>{editable(i, block.text, w.inPlace.heading, "text-title text-ink", false)}</div>;
+          if (block.type === "paragraph") return <div key={i}>{editable(i, block.text, w.words, "text-sm text-ink-2 whitespace-pre-wrap", true)}</div>;
+          if (block.type === "button")
+            return (
+              <div key={i} className="self-start rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-card">
+                {editable(i, block.text, w.inPlace.button, "", false)}
+              </div>
+            );
+          if (block.type === "image")
+            // eslint-disable-next-line @next/next/no-img-element -- the email's own picture, as the reader's mail app shows it.
+            return <img key={i} src={block.url} alt={block.alt} className="max-h-40 w-auto self-start rounded" />;
+          if (block.type === "divider") return <hr key={i} className="border-line" />;
+          return (
+            <p key={i} className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">
+              {w.inPlace.product}
+              {"label" in block && block.label ? `: ${block.label}` : ""}
+            </p>
+          );
+        })}
+        {step.picks && <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted">{w.canvas.pickKinds[step.picks]}</p>}
+      </div>
+      {said && (
+        <p role="status" className={`text-sm ${said.ok ? "text-ink-2" : "text-danger-text"}`}>
+          {said.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** The settings of what is selected: the trigger, or one step. Forms post to the same actions as everywhere on the page. */
 function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected, null>; onClose: () => void }) {
   const { w } = p;
@@ -255,23 +338,9 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
       </>
     );
   } else if (step?.kind === "email") {
-    const first = step.content[p.locale] ?? Object.values(step.content)[0];
-    const text = first?.blocks.find((b) => b.type === "paragraph") as { text?: string } | undefined;
     body = (
       <>
-        <ActionForm key={step.id} action={changeFlowEmailAction.bind(null, p.storeSlug, p.flowId, step.id, p.locale)} className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            {w.subject}
-            <input name="subject" required defaultValue={first?.subject ?? ""} maxLength={200} className={FIELD} />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {w.words}
-            <textarea name="text" required defaultValue={text?.text ?? ""} rows={5} maxLength={5000} className={`${FIELD} py-2`} />
-          </label>
-          <div>
-            <SubmitButton variant="secondary">{w.save}</SubmitButton>
-          </div>
-        </ActionForm>
+        <EmailInPlace key={step.id} p={p} step={step} />
         <ActionForm action={changeFlowPicksAction.bind(null, p.storeSlug, p.flowId, step.id)}>
           <div role="group" aria-label={w.canvas.picks} className="flex flex-wrap items-center gap-2 text-sm">
             <span className="w-full text-caption text-muted">{w.canvas.picks}</span>

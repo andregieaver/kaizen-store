@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import { PhoneRow } from "@/components/admin/phone-row";
 import Link from "next/link";
 
 import { PeriodLinks, UsageReport } from "@/components/admin/usage-report";
@@ -36,7 +38,12 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
         />
         <PeriodLinks base="/admin/platform/ai/usage" period={chosen.id} words={w} />
       </div>
-      <TokensPerCall stats={stats} words={w.perCall} locale={locale} />
+      {/* Round 66 (D835): on a phone tokens per call is a row, as the breakdowns under the figures are. */}
+      <div className="max-sm:order-last max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow flat last title={w.perCall.title} change={w.phoneOpen} done={w.phoneClose}>
+          <TokensPerCall stats={stats} words={w.perCall} locale={locale} />
+        </PhoneRow>
+      </div>
       <UsageReport rows={rows} days={days} scope="platform" words={w} locale={locale} />
     </div>
   );

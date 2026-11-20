@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { domainPrice } from "@/lib/domain-prices";
@@ -40,16 +42,38 @@ export default async function PlatformDomainsPage() {
     domainLeads(),
   ]);
   const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
+  const ph = w.phone;
+  const percent = (bps: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(bps / 100);
+  const lowest = (minor: number, currency: string) => formatMoney(minor, currency, locale);
+  const row = { change: ph.open, done: ph.close } as const;
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.intro.replace("{date}", day ? date(day) : w.noRate)} />
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{ph.lead}</span>
+            <span className="max-sm:hidden">{w.intro.replace("{date}", day ? date(day) : w.noRate)}</span>
+          </>
+        }
+      />
 
-      <Card title={w.pricing}>
-        <div className="flex flex-col gap-4">
-          {pricing.map((p) => {
+      {/* Round 67 (D837): on a phone each currency is a row saying its margin and lowest price, opening its form; from sm up the forms as before. */}
+      <Card title={w.pricing} className="max-sm:p-0 max-sm:[&>header]:mb-0 max-sm:[&>header]:px-4 max-sm:[&>header]:pt-4">
+        <div className="flex flex-col gap-4 max-sm:gap-0 max-sm:px-4">
+          {pricing.map((p, i) => {
             const example = domainPrice("11.25", "USD", 1, p, rates);
             return (
+              <PhoneRow
+                key={p.currency}
+                inset
+                last={i === pricing.length - 1}
+                title={p.currency}
+                sub={fillWords(ph.currencySub, { margin: percent(p.marginBps), lowest: lowest(p.minimumMinor, p.currency) })}
+                change={ph.change}
+                done={ph.close}
+              >
               <ActionForm key={p.currency} action={saveDomainPricingAction} className="grid items-end gap-3 sm:grid-cols-[6rem_1fr_1fr_1fr_auto]">
                 <input type="hidden" name="currency" value={p.currency} />
                 <span className="text-body-strong text-ink">{p.currency}</span>
@@ -72,10 +96,15 @@ export default async function PlatformDomainsPage() {
                   </p>
                 )}
               </ActionForm>
+              </PhoneRow>
             );
           })}
         </div>
       </Card>
+
+      {/* Round 67 (D837): on a phone the rest of the page is one card of rows, each saying where it stands and opening its card. */}
+      <PhoneRows>
+      <PhoneRow flat {...row} title={w.stores} sub={openToAll ? w.allOpen : countWords(stores.length, ph.storesSub)}>
 
       <Card title={w.stores} description={openToAll ? w.allOpen : w.openAllNote}>
         <div className="flex flex-col gap-4">
@@ -114,14 +143,18 @@ export default async function PlatformDomainsPage() {
           )}
         </div>
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat {...row} title={w.publicTitle} sub={sellsPublic ? ph.publicOn : ph.publicOff}>
       <Card title={w.publicTitle} description={sellsPublic ? w.publicOn : w.publicOff}>
         <ActionForm action={domainsPublicAction}>
           {!sellsPublic && <input type="hidden" name="on" value="on" />}
           <SubmitButton variant="secondary">{sellsPublic ? w.publicStop : w.publicStart}</SubmitButton>
         </ActionForm>
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat {...row} title={w.leadsTitle} sub={fillWords(ph.leadsSub, { came: leads.accounts, opened: leads.opened })}>
       <Card title={w.leadsTitle} description={w.leadsIntro}>
         <dl className="grid gap-4 sm:grid-cols-3">
           {(
@@ -140,8 +173,10 @@ export default async function PlatformDomainsPage() {
           ))}
         </dl>
       </Card>
+      </PhoneRow>
 
       {inReview.length > 0 && (
+        <PhoneRow flat defaultOpen {...row} title={w.reviewTitle} sub={countWords(inReview.length, ph.waiting)}>
         <Card title={w.reviewTitle} description={w.reviewIntro} count={inReview.length}>
           <ul className="flex flex-col divide-y divide-line">
             {inReview.map((p) => (
@@ -165,8 +200,10 @@ export default async function PlatformDomainsPage() {
             ))}
           </ul>
         </Card>
+        </PhoneRow>
       )}
 
+      <PhoneRow flat {...row} title={w.purchases} sub={purchases.length === 0 ? ph.none : countWords(purchases.length, ph.needLook)}>
       <Card title={w.purchases}>
         {purchases.length === 0 ? (
           <p className="text-body text-muted">{w.none}</p>
@@ -187,7 +224,9 @@ export default async function PlatformDomainsPage() {
           </ul>
         )}
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat last {...row} title={w.registrations} sub={registrations.length === 0 ? ph.noneYet : countWords(registrations.length, ph.registered)}>
       <Card title={w.registrations} count={registrations.length}>
         {registrations.length === 0 ? (
           <p className="text-body text-muted">{w.none}</p>
@@ -206,6 +245,8 @@ export default async function PlatformDomainsPage() {
           </ul>
         )}
       </Card>
+      </PhoneRow>
+      </PhoneRows>
     </div>
   );
 }

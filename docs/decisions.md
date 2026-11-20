@@ -835,8 +835,11 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D830 | **Admin redesign round 64: Kaizena Flow's record of processing, themes and languages on a phone** | 2026-11-19 | [text](decisions/D830.md) |
 | D831 | **A save keeps its redraw; the store menu sends each address once** | 2026-11-19 | [text](decisions/D831.md) |
 | D832 | **Admin redesign round 65: Kaizena Flow's duty rates, content notices and usage and limits on a phone** | 2026-11-19 | [text](decisions/D832.md) |
-| D833 | **One part draws an order's totals, and the catalogue one product card query (bloat review step 3.16)** | 2026-11-19 | [text](decisions/D833.md) |
+| D833 | **One part draws an order's totals, and the catalogue one product card query (bloat review step 3.16)** | 2026-11-20 | [text](decisions/D833.md) |
 | D834 | **One way to search and page a list: Customers, Products, Invoices and Returns page with Pager, search with ListSearch, an** | 2026-11-20 | [text](decisions/D834.md) |
+| D835 | **Admin redesign round 66: Kaizena Flow's plan analytics, AI usage and access requests on a phone** | 2026-11-20 | [text](decisions/D835.md) |
+| D836 | **Each person changes their own name and email: the name on Your account, the email after a link to the new address, the o** | 2026-11-20 | [text](decisions/D836.md) |
+| D837 | **Admin redesign round 67: Kaizena Flow's domains, AI and change log on a phone** | 2026-11-20 | [text](decisions/D837.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

@@ -92,6 +92,7 @@ export const flowsNb: FlowsMessages = {
     },
   },
   widths: { label: "Vist som", desktop: "Datamaskin", phone: "Mobil" },
+  inPlace: { hint: "Klikk på en tekst for å endre den; den lagres når du klikker et annet sted.", heading: "Overskrift", button: "Knappetekst", product: "Vare" },
   change: "Endre",
   subject: "Emne",
   words: "Tekst",

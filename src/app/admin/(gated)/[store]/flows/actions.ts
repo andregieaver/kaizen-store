@@ -10,7 +10,7 @@ import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow
 import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { insertStep, moveStep, newStep, removeStep, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { insertStep, moveStep, newStep, removeStep, withBlockText, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -204,4 +204,13 @@ export async function dropFlowStepAction(storeSlug: string, flowId: string, kind
   const parsed = placeSchema.safeParse(place);
   const k = KINDS.find((x) => x === kind);
   return saveTree(storeSlug, flowId, (flow) => (parsed.success && k ? insertStep(flow.steps, newStep(flow.steps, k, locale, words), parsed.data) : null));
+}
+
+/**
+ * One piece of an email's words changed where it is on the canvas (email plan M3.4): the subject (`index` -1) or a heading's, paragraph's or
+ * button's words, in one language. Empty is refused; the lengths are the email's own (`broadcastContentSchema`, checked by the save).
+ */
+export async function changeFlowBlockAction(storeSlug: string, flowId: string, stepId: string, locale: string, index: number, text: string): Promise<FormState> {
+  const words = text.replace(/\s+/g, " ").trim();
+  return saveTree(storeSlug, flowId, (flow) => (words ? withBlockText(flow.steps, stepId, locale, index, words) : null));
 }

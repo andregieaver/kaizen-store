@@ -807,6 +807,8 @@ export const platformNb: PlatformMessages = {
   },
   requests: {
     title: "Forespørsler om tilgang",
+    /** Runde 66 (D835): forespørslene på en telefon. */
+    phone: { lead: "Å godkjenne lager butikken og sender eieren en innloggingslenke.", on: "På", off: "Av", open: "Åpne", close: "Lukk", approve: "Godkjenn" },
     selfServe: {
       title: "Registrering på egen hånd",
       on: "På: den som registrerer seg, bekrefter e-postadressen og får en butikk med en gang, privat til den åpnes og gratis å prøve i 14 dager. Forespørslene nedenfor er de som ble bekreftet uten at butikken kunne lages, eller som kom før.",
@@ -1058,6 +1060,7 @@ export const platformNb: PlatformMessages = {
     title: "Endringslogg",
     description:
       "Det plattformadministratorer og plattformen gjorde, som ikke hører til én butikk: hendelser i totrinnsinnloggingen, gjenopprettingskoder som er brukt, tilbakestillinger og godkjenninger. En butikks egne endringer står i loggen til den butikken. Oppføringene beholdes i 24 måneder og kan ikke endres.",
+    phone: { lead: "Det plattformadministratorer gjorde. Beholdes i 24 måneder, endres aldri.", filter: "Filter", anyTime: "når som helst", change: "Endre", close: "Lukk" },
   },
   newReminder: { back: "Abonnementspåminnelser", title: "Ny påminnelse" },
   emailDetail: { back: "E-poster" },

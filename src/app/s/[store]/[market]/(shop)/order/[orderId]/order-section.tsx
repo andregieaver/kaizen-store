@@ -7,30 +7,23 @@ import { BackorderOrderLine } from "@/components/backorder-note";
 import { DeliveryBlock } from "@/components/delivery-block";
 import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments as DocumentLinks } from "@/components/documents/order-documents";
-import { OrderCustomsNote, OrderCustomsRows } from "@/components/order-customs";
-import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { OrderShipments } from "@/components/order-shipments";
+import { OrderTotals as TotalsList } from "@/components/order-totals";
 import { LineUnitPrice } from "@/components/price";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
-import { StaffDiscountRow } from "@/components/staff-discount-row";
 import { componentsText } from "@/lib/bundles";
 import { dateIn } from "@/lib/dates";
 import { earnedText } from "@/lib/bonus-shopper";
-import { discountNote } from "@/lib/customer-tiers";
-import { pickupPointLine } from "@/lib/delivery-options";
-import { deliveryRowLabel } from "@/lib/delivery-words";
-import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
 import { marketPath, marketHome } from "@/lib/paths";
-import { vatText } from "@/lib/vat-text";
 import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { termsForOrder } from "@/server/checkout-terms";
@@ -355,81 +348,7 @@ function giftBlock({ order, m }: OrderView) {
 }
 
 function totalsList({ order, m, money, store, market }: OrderView) {
-  const vatWords = vatText(market.lang);
-  return (
-    <>
-      <dl className="flex flex-col gap-1">
-      {order.ships && (
-        <div className="flex justify-between">
-          <dt>{deliveryRowLabel(order.deliveryKept ?? order.delivery, m)}</dt>
-          <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
-        </div>
-      )}
-      {order.ships && order.delivery?.pickupPoint && (
-        <p className="text-sm text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
-      )}
-      {order.ships && order.delivery?.window && (
-        <p className="text-sm text-muted">{m.deliveryChoice.windowLine(formatWindow(order.delivery.window, order.locale, store.timeZone))}</p>
-      )}
-      {order.discountMinor > 0 && (
-        <div className="flex justify-between">
-          <dt>
-            {m.discount}
-            {discountNote(order) && <span className="text-sm text-muted"> ({discountNote(order)})</span>}
-          </dt>
-          <dd>−{money(order.discountMinor)}</dd>
-        </div>
-      )}
-      {/* The discount staff gave on a draft order (D173), under the name they gave it. */}
-      <StaffDiscountRow order={order} fallback={m.discount} money={money} />
-      {order.referralDiscountMinor > 0 && (
-        // The friend's welcome discount (D131).
-        <div className="flex justify-between">
-          <dt>{m.affiliate.discountRow}</dt>
-          <dd>−{money(order.referralDiscountMinor)}</dd>
-        </div>
-      )}
-      {order.bonus && order.bonus.usedMinor > 0 && (
-        // Bonus credits used (D130).
-        <div className="flex justify-between">
-          <dt>{m.bonus.usedRow}</dt>
-          <dd>−{money(order.bonus.usedMinor)}</dd>
-        </div>
-      )}
-      <OrderVatRelief order={order} text={vatWords} money={money} />
-      <div className="flex justify-between font-semibold">
-        <dt>{m.total}</dt>
-        <dd>{money(order.totalMinor)}</dd>
-      </div>
-      <OrderVatRows order={order} text={vatWords} money={money} label={m.vatAmount} />
-      <OrderCustomsRows order={order} lang={market.lang} money={money} paidLabel={m.toPay} />
-      {order.balanceMinor > 0 && !order.paymentTerms && (
-        // Paid at the appointment (D66): what is still to pay there.
-        <div className="flex justify-between">
-          <dt>{m.booking.atVenue}</dt>
-          <dd>{money(order.balanceMinor)}</dd>
-        </div>
-      )}
-      {order.company && (
-        // Bought for a business (B2B): the total without VAT, and whom for.
-        <>
-          <div className="flex justify-between text-sm text-muted">
-            <dt>{m.totalExclVat}</dt>
-            <dd>{money(order.totalMinor - order.taxMinor)}</dd>
-          </div>
-          <div className="flex justify-between border-t border-border pt-2 text-sm">
-            <dt>{order.company.name}</dt>
-            <dd>
-              {m.company.number}: {order.company.number}
-            </dd>
-          </div>
-        </>
-      )}
-      </dl>
-      <OrderVatNotes order={order} text={vatWords} />
-      <OrderCustomsNote order={order} lang={market.lang} money={money} />
-    </>
-  );
+  return <TotalsList order={order} m={m} lang={market.lang} timeZone={store.timeZone} money={money} balanceAtVenue={!order.paymentTerms} />;
 }
 
 /** What the order earned in bonus credits (D130) and from when they can be used; nothing for an order that earned none. */

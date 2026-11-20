@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+
 import {
   costWords,
   groupUsage,
@@ -153,11 +155,11 @@ function GroupList({ groups, empty, w }: { groups: UsageGroup[]; empty: string; 
   );
 }
 
-function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
+function Tile({ label, value, note, className = "" }: { label: string; value: string; note?: string; className?: string }) {
   return (
-    <div className="rounded-panel border border-line p-4">
+    <div className={`rounded-panel border border-line p-4 max-sm:p-3 ${className}`}>
       <p className="text-eyebrow text-muted uppercase">{label}</p>
-      <p className="mt-1 text-metric text-ink tabular-nums">{value}</p>
+      <p className="mt-1 text-metric text-ink tabular-nums max-sm:text-title">{value}</p>
       {note && <p className="mt-1 text-xs text-muted">{note}</p>}
     </div>
   );
@@ -206,15 +208,18 @@ export function PeriodLinks({ base, period, extra = "", words = EN }: { base: st
 
 const card = "rounded-lg border border-line bg-card p-5";
 
-function Section({ id, title, note, children }: { id: string; title: string; note?: string; children: ReactNode }) {
+/** A breakdown's card; on a phone a row of one card opening it (round 66, D835). */
+function Section({ id, title, note, last = false, open, close, children }: { id: string; title: string; note?: string; last?: boolean; open: string; close: string; children: ReactNode }) {
   return (
+    <PhoneRow flat last={last} title={title} change={open} done={close}>
     <section aria-labelledby={id} className={card}>
-      <h2 id={id} className="text-title text-ink">
+      <h2 id={id} className="text-title text-ink max-sm:sr-only">
         {title}
       </h2>
       {note && <p className="mb-3 mt-1 text-sm text-muted">{note}</p>}
       <div className={note ? "" : "mt-3"}>{children}</div>
     </section>
+    </PhoneRow>
   );
 }
 
@@ -236,7 +241,7 @@ export function UsageReport({ rows, days, scope, words = EN, locale = "en-GB" }:
   const anyEstimated = total.estimatedRequests > 0;
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label={w.totals} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <section aria-label={w.totals} className="grid grid-cols-2 gap-3 max-sm:gap-2 lg:grid-cols-5">
         <Tile label={w.requests} value={w.n(total.requests)} note={total.failed > 0 ? fillWords(w.failedCount, { count: w.n(total.failed) }) : undefined} />
         <Tile label={w.inputTokens} value={w.n(total.inputTokens)} />
         <Tile label={w.outputTokens} value={w.n(total.outputTokens)} />
@@ -252,6 +257,7 @@ export function UsageReport({ rows, days, scope, words = EN, locale = "en-GB" }:
           }
         />
         <Tile
+          className="max-sm:hidden"
           label={scope === "platform" ? w.onKaizenKey : w.onKaizenAi}
           value={w.n(onKaizen.inputTokens + onKaizen.outputTokens)}
           note={onOwn.requests > 0 ? fillWords(w.tokensOnOwn, { count: w.n(onOwn.inputTokens + onOwn.outputTokens) }) : w.tokens}
@@ -259,20 +265,23 @@ export function UsageReport({ rows, days, scope, words = EN, locale = "en-GB" }:
       </section>
       {otherUse(total, w) && <p className="text-sm text-muted">{fillWords(w.alsoLine, { what: otherUse(total, w) })}</p>}
 
-      <Section id="daily" title={w.perDay}>
+      <PhoneRows>
+      <Section id="daily" title={w.perDay} open={w.phoneOpen} close={w.phoneClose}>
         <DailyBars days={days} w={w} />
       </Section>
 
       <Section
         id="models"
         title={w.byModel}
+        open={w.phoneOpen}
+        close={w.phoneClose}
         note={scope === "platform" ? w.byModelPlatform : w.byModelOwner}
       >
         <ModelTable rows={rows} w={w} />
       </Section>
 
       {scope === "platform" && (
-        <Section id="owners" title={w.byOwner} note={w.byOwnerNote}>
+        <Section id="owners" title={w.byOwner} note={w.byOwnerNote} open={w.phoneOpen} close={w.phoneClose}>
           <GroupList groups={perOwner} empty={w.nothing} w={w} />
         </Section>
       )}
@@ -280,14 +289,17 @@ export function UsageReport({ rows, days, scope, words = EN, locale = "en-GB" }:
       <Section
         id="stores"
         title={w.byStore}
+        open={w.phoneOpen}
+        close={w.phoneClose}
         note={scope === "platform" ? w.byStorePlatform : w.byStoreOwner}
       >
         <GroupList groups={perStore} empty={w.nothing} w={w} />
       </Section>
 
-      <Section id="features" title={w.byFeature}>
+      <Section id="features" title={w.byFeature} last open={w.phoneOpen} close={w.phoneClose}>
         <GroupList groups={groupUsage(rows, withFeature)} empty={w.nothing} w={w} />
       </Section>
+      </PhoneRows>
 
       <p className="text-sm text-muted">
         {w.countedFrom} {anyEstimated && `${fillWords(w.estimatedNote, { count: w.n(total.estimatedRequests) })} `}

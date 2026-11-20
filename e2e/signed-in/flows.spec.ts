@@ -134,6 +134,15 @@ test("on the canvas, a step is added in a branch, dragged to a new place, change
   await expect(page.locator("[data-flow-story]")).toContainText("if they did not press a link");
   await page.screenshot({ path: "test-results/flow-canvas.png", fullPage: true });
 
+  // Words changed where they are (M3.4): the new email's words, in the drawn email, saved on clicking away.
+  await board.getByRole("button", { name: "Email: A new email" }).click();
+  const words = page.locator("[data-email-in-place]").getByRole("textbox", { name: "Words" }).first();
+  await words.fill("Written where it reads.");
+  await words.press("Tab");
+  await expect(page.locator("[data-email-in-place]").getByRole("status")).toHaveText("Saved. The flow is off until you test it again.");
+  await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toContainText("Written where it reads.");
+  await page.screenshot({ path: "test-results/flow-in-place.png", fullPage: true });
+
   // Removed in the panel: gone from the story.
   await board.getByRole("button", { name: "Email: A new email" }).click();
   await page.locator("[data-board-panel]").getByRole("button", { name: "Remove" }).click();

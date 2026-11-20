@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ShareBar } from "@/components/admin/ui/bars";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
@@ -202,18 +203,29 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const moved = (list: MovementFigure[]) => list.filter((m) => m.count > 0);
   const since = a.since ? adminDate(PLATFORM_TIME_ZONE, a.since, "day", lang) : null;
 
+  // Round 66 (D835): on a phone the four figures are a compact strip, their explanations from sm up.
   const summary = (s: PlanSummary) => (
+    <div className="max-sm:[&>div]:gap-2 max-sm:[&>div>*]:gap-0.5 max-sm:[&>div>*]:p-3 max-sm:[&_.text-caption]:hidden max-sm:[&_.text-metric]:text-title">
     <StatGrid>
       <Stat label={w.mrr} value={tile(s.mrr)} sub={w.mrrSub} />
       <Stat label={w.paying} value={s.paying} sub={s.late > 0 ? fillWords(w.late, { n: s.late }) : undefined} />
       <Stat label={w.trialing} value={s.trialing} />
       <Stat label={w.cancelling} value={s.cancelling} sub={w.cancellingSub} />
     </StatGrid>
+    </div>
   );
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title={w.title} description={w.description} />
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.phoneLead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
+      />
 
       <nav aria-label={w.period} className="flex flex-wrap gap-2">
         {PERIODS.map((d) => (
@@ -235,7 +247,10 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
         {summary(a.live)}
       </section>
 
+      {/* Round 66 (D835): on a phone each report is a row of one card, opening it; from sm up the cards as before. */}
+      <PhoneRows className="sm:gap-8">
       {/* Targets and the morning briefing (D513): this month's targets, their progress, and the briefing's setting. */}
+      <PhoneRow flat title={`${tw.targetsTitle} · ${monthLabel}`} change={w.phoneOpen} done={w.phoneClose}>
       <Card title={`${tw.targetsTitle} · ${monthLabel}`} description={tw.targetsDescription}>
         <div className="flex flex-col gap-4">
           {snapshot.targets.length === 0 ? (
@@ -299,7 +314,9 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
           </ActionForm>
         </div>
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat title={fillWords(w.funnelTitle, { n: a.days })} change={w.phoneOpen} done={w.phoneClose}>
       <Card title={fillWords(w.funnelTitle, { n: a.days })} description={w.funnelDescription}>
         <div className="flex flex-col gap-3">
           {(
@@ -314,7 +331,9 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
           ))}
         </div>
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat title={fillWords(w.channels.title, { n: days })} change={w.phoneOpen} done={w.phoneClose}>
       <OwnerChannelsCard
         days={days}
         currency={channels.currency}
@@ -328,8 +347,10 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
         save={savePlatformSpendAction}
         remove={removePlatformSpendAction}
       />
+      </PhoneRow>
 
       {/* Sign-ups and first paid plans as ad conversions (C2, D523), connected in Kaizena Flow's store. */}
+      <PhoneRow flat title={w.ads.title} change={w.phoneOpen} done={w.phoneClose}>
       <PlatformAdsCard
         counts={adCounts}
         connected={adConnections.on}
@@ -337,9 +358,13 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
         words={w}
         platformNames={adminText(lang, "marketing").ads.platforms}
       />
+      </PhoneRow>
 
+      <PhoneRow flat title={w.owners.title} change={w.phoneOpen} done={w.phoneClose}>
       <OwnerCohortsCard currency={cohorts.currency} rows={cohorts.rows} locale={locale} words={w} />
+      </PhoneRow>
 
+      <PhoneRow flat title={fillWords(w.movesTitle, { n: a.days })} change={w.phoneOpen} done={w.phoneClose}>
       <Card title={fillWords(w.movesTitle, { n: a.days })} description={since ? fillWords(w.movesSince, { date: since }) : w.movesNone}>
         {moved(a.moves.live).length === 0 ? (
           <p className="text-sm text-muted">{w.noMoves}</p>
@@ -358,7 +383,9 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
           </ul>
         )}
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat title={w.byPlanTitle} change={w.phoneOpen} done={w.phoneClose}>
       <Card title={w.byPlanTitle} description={w.byPlanDescription}>
         {a.live.byPlan.length === 0 ? (
           <p className="text-sm text-muted">{w.noPlans}</p>
@@ -375,7 +402,9 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
           </ul>
         )}
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat title={fillWords(sw.title, { year })} change={w.phoneOpen} done={w.phoneClose}>
       <Card title={fillWords(sw.title, { year })} description={sw.description}>
         <div className="flex flex-col gap-4">
           {sales.live.months.length === 0 ? <p className="text-sm text-muted">{sw.none}</p> : salesTable(sales.live.months, sales.live.totals)}
@@ -427,7 +456,9 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
           </section>
         </div>
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat last title={fillWords(pw.title, { year })} change={w.phoneOpen} done={w.phoneClose}>
       <Card title={fillWords(pw.title, { year })} description={pw.description}>
         <div className="flex flex-col gap-4">
           {payouts.live.length === 0 ? <p className="text-sm text-muted">{pw.none}</p> : payoutsTable(payouts.live)}
@@ -439,6 +470,8 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
           )}
         </div>
       </Card>
+      </PhoneRow>
+      </PhoneRows>
 
       {(a.test.paying > 0 || a.test.trialing > 0) && (
         <section aria-labelledby="test-heading" className="flex flex-col gap-4">

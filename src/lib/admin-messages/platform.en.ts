@@ -813,6 +813,8 @@ export const platformEn = {
   },
   requests: {
     title: "Access requests",
+    /** Round 66 (D835): the requests on a phone. */
+    phone: { lead: "Approving makes the store and emails the owner a sign-in link.", on: "On", off: "Off", open: "Open", close: "Close", approve: "Approve" },
     selfServe: {
       title: "Self-serve sign-up",
       on: "On: a person who signs up confirms their email and gets a store at once, private until they open it and free to try for 14 days. Requests below are those confirmed whose store could not be made, or made before.",
@@ -1062,6 +1064,8 @@ export const platformEn = {
     title: "Change log",
     description:
       "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets and approvals. A store's own changes are in that store's log. Entries are kept for 24 months and cannot be changed.",
+    /** Round 67 (D837): the change log on a phone. */
+    phone: { lead: "What platform admins did. Kept 24 months, never changed.", filter: "Filter", anyTime: "any time", change: "Change", close: "Close" },
   },
   newReminder: { back: "Plan reminders", title: "New reminder" },
   emailDetail: { back: "Emails" },

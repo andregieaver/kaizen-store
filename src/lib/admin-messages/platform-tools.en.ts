@@ -31,6 +31,20 @@ export const platformToolsEn = {
     on: "On",
     off: "Off",
     notSetUp: "Not set up: stores have keyword search only, unless they bring their own AI.",
+    /** Round 67 (D837): the AI page on a phone. `{n}`. */
+    phone: {
+      noPictures: "No model looks at pictures yet",
+      choose: "Choose one",
+      running: "Running: autopilots, AI manager, Dream Factory",
+      paused: "Paused: nothing acts on its own",
+      notSet: "Not set up",
+      noKey: "no key yet",
+      testSub: "A search, the evals and a picture",
+      runs: { one: "1 recent run", many: "{n} recent runs" },
+      change: "Change",
+      more: "More",
+      close: "Close",
+    },
     whose: "Kaizena Flow's AI",
     usageLink: "AI usage",
     usageEnd: ": what every store and Kaizena Flow itself used, per provider and model.",
@@ -508,6 +522,9 @@ export const platformToolsEn = {
   },
   usage: {
     title: "AI usage",
+    /** Round 66 (D835): the breakdowns on a phone. */
+    phoneOpen: "Open",
+    phoneClose: "Close",
     platformIntro: "What every store and Kaizena Flow itself used, {period}.",
     aiSettings: "AI settings",
     requests: "Requests",

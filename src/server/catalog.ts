@@ -281,17 +281,8 @@ const styled = (view: PriceView, row: Row, market: Market): PriceView =>
 const productAudience = (row: Row): ProductAudience =>
   row.store_audience === "both" ? parseProductAudience(row.audience) : "all";
 
-/** Active products with a price in the market, cheapest variant first. */
-export async function listProducts(storeId: string, market: Market): Promise<ProductSummary[]> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(CATALOG_TAG, catalogTag(storeId));
-  const { code: marketCode, locale } = market;
-
-  const rows = await typedRows(
-    SUMMARY_ROW,
-    sql`
-    select
+/** A product card's columns, shared by `listProducts()` and `listGridProducts()` (bloat review step 3.16): it reads the translations as `tl` and `tf`. */
+const cardColumns = (locale: string, marketCode: string) => sql`
       p.id,
       p.handle,
       p.group_id::text as group_id,
@@ -312,15 +303,10 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       ) end as subscriber_discount,
       p.audience, p.price_words, p.price_on_request,
       ${STORE_AUDIENCE} as store_audience,
-      commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
-    from commerce.products p
-    join commerce.stores s on s.id = p.store_id
-    left join commerce.product_translations tl
-      on tl.product_id = p.id and tl.locale = ${locale}
-    left join lateral (
-      select title from commerce.product_translations
-      where product_id = p.id order by locale limit 1
-    ) tf on true
+      commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate`;
+
+/** A product card's first picture and its prices in the market (the lateral joins `m` and `pr`), shared by the two card reads. */
+const cardJoins = (marketCode: string) => sql`
     left join lateral (
       select url, thumbnail_url, alt from commerce.product_media
       where product_id = p.id order by position limit 1
@@ -336,7 +322,55 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       from commerce.current_prices cp
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
-    ) pr on pr.min_amount is not null
+    ) pr on pr.min_amount is not null`;
+
+/** A card from its row: its group, picture and the price shown in the market (D109), kept in the country's own currency. */
+function cardOf(row: z.output<typeof SUMMARY_ROW>, market: Market, groups: Map<string, ProductGroupView>): ProductSummary {
+  // Sold only by subscription: the best subscriber's price, as "from".
+  const discount = numOrNull(row.subscriber_discount);
+  const vat = priceVat(row.store_audience, row.vat_rate);
+  return {
+    group: typeof row.group_id === "string" ? (groups.get(row.group_id) ?? null) : null,
+    id: str(row.id),
+    handle: str(row.handle),
+    title: str(row.title),
+    image: summaryImage(row),
+    // Kept in the country's own currency; shown in the one chosen (D109).
+    price: styled(
+      discount === null
+        ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat, shownMeasure(row, market))
+        : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
+      row,
+      market,
+    ),
+    priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
+    audience: productAudience(row),
+    preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
+    priceOnRequest: Boolean(row.price_on_request),
+  };
+}
+
+/** Active products with a price in the market, cheapest variant first. */
+export async function listProducts(storeId: string, market: Market): Promise<ProductSummary[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CATALOG_TAG, catalogTag(storeId));
+  const { code: marketCode, locale } = market;
+
+  const rows = await typedRows(
+    SUMMARY_ROW,
+    sql`
+    select
+      ${cardColumns(locale, marketCode)}
+    from commerce.products p
+    join commerce.stores s on s.id = p.store_id
+    left join commerce.product_translations tl
+      on tl.product_id = p.id and tl.locale = ${locale}
+    left join lateral (
+      select title from commerce.product_translations
+      where product_id = p.id order by locale limit 1
+    ) tf on true
+    ${cardJoins(marketCode)}
     where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
     order by p.created_at, p.handle
   `,
@@ -344,30 +378,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
   );
 
   const groups = await groupsFor(storeId, locale, rows.flatMap((row) => (typeof row.group_id === "string" ? [row.group_id] : [])));
-  return rows.map((row) => {
-    // Sold only by subscription: the best subscriber's price, as "from".
-    const discount = numOrNull(row.subscriber_discount);
-    const vat = priceVat(row.store_audience, row.vat_rate);
-    return {
-      group: typeof row.group_id === "string" ? (groups.get(row.group_id) ?? null) : null,
-      id: str(row.id),
-      handle: str(row.handle),
-      title: str(row.title),
-      image: summaryImage(row),
-      // Kept in the country's own currency; shown in the one chosen (D109).
-      price: styled(
-        discount === null
-          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat, shownMeasure(row, market))
-          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
-        row,
-        market,
-      ),
-      priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
-      audience: productAudience(row),
-      preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
-      priceOnRequest: Boolean(row.price_on_request),
-    };
-  });
+  return rows.map((row) => cardOf(row, market, groups));
 }
 
 /** One active product with its variants priced in the market, or null. */
@@ -673,29 +684,9 @@ export async function listGridProducts(
     SUMMARY_ROW,
     sql`
     select
-      p.id,
-      p.handle,
-      p.group_id::text as group_id,
-      coalesce(tl.title, tf.title) as title,
+      ${cardColumns(locale, marketCode)},
       coalesce(nullif(tl.description, ''), tf.description, '') as description,
-      coalesce(nullif(tl.excerpt, ''), tf.excerpt, '') as excerpt,
-      coalesce(m.thumbnail_url, m.url) as image_url,
-      coalesce(nullif(m.alt ->> ${locale}, ''), commerce.media_alt(m.url, ${locale}), '') as image_alt,
-      -- The picture beside its small copy (D336), with its own width where the library knows it, for a card's srcset.
-      case when m.thumbnail_url is not null and m.thumbnail_url <> m.url then m.url end as image_large,
-      (select md.width from commerce.media md where md.url = m.url) as image_width,
-      -- Its 800 px copy (bloat review step 0.33), from the same library row, offered between the two when there is one.
-      (select md.medium_url from commerce.media md where md.url = m.url) as image_medium,
-      pr.min_amount,
-      pr.max_amount,
-      pr.currency,
-      pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base, pr.preorder_until::text as preorder_until,
-      case when p.subscription_only then (
-        select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
-      ) end as subscriber_discount,
-      p.audience, p.price_words, p.price_on_request,
-      ${STORE_AUDIENCE} as store_audience,
-      commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
+      coalesce(nullif(tl.excerpt, ''), tf.excerpt, '') as excerpt
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
     left join commerce.product_translations tl
@@ -704,22 +695,7 @@ export async function listGridProducts(
       select title, description, excerpt from commerce.product_translations
       where product_id = p.id order by locale limit 1
     ) tf on true
-    left join lateral (
-      select url, thumbnail_url, alt from commerce.product_media
-      where product_id = p.id order by position limit 1
-    ) m on true
-    join lateral (
-      select
-        min(cp.amount_minor) as min_amount,
-        max(cp.amount_minor) as max_amount,
-        min(cp.currency) as currency,
-        (array_agg(cp.prior_30d_minor order by cp.amount_minor, v.sku))[1] as prior_30d,
-        ${CHEAPEST_MEASURE},
-        ${EARLIEST_PREORDER}
-      from commerce.current_prices cp
-      join commerce.product_variants v on v.id = cp.variant_id
-      where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
-    ) pr on pr.min_amount is not null
+    ${cardJoins(marketCode)}
     where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
       and ${inTerms(filter.categoryIds)}
       and ${inTerms(filter.tagIds)}
@@ -731,29 +707,5 @@ export async function listGridProducts(
   );
 
   const groups = await groupsFor(storeId, locale, rows.flatMap((row) => (typeof row.group_id === "string" ? [row.group_id] : [])));
-  return rows.map((row) => {
-    const discount = numOrNull(row.subscriber_discount);
-    const vat = priceVat(row.store_audience, row.vat_rate);
-    return {
-      group: typeof row.group_id === "string" ? (groups.get(row.group_id) ?? null) : null,
-      id: str(row.id),
-      handle: str(row.handle),
-      title: str(row.title),
-      description: str(row.description),
-      excerpt: str(row.excerpt),
-      image: summaryImage(row),
-      // Kept in the country's own currency; shown in the one chosen (D109).
-      price: styled(
-        discount === null
-          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat, shownMeasure(row, market))
-          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
-        row,
-        market,
-      ),
-      priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
-      audience: productAudience(row),
-      preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
-      priceOnRequest: Boolean(row.price_on_request),
-    };
-  });
+  return rows.map((row) => ({ ...cardOf(row, market, groups), description: str(row.description), excerpt: str(row.excerpt) }));
 }

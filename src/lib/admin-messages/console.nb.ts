@@ -50,6 +50,10 @@ export const consoleNb: ConsoleMessages = {
   },
   planAnalytics: {
     title: "Abonnementsanalyse",
+    /** Runde 66 (D835): rapportene på en telefon. */
+    phoneLead: "Hva butikkenes planer tjener, og hvor mange som spør som ender med å betale.",
+    phoneOpen: "Åpne",
+    phoneClose: "Lukk",
     description:
       "Hva butikkenes abonnementer gir hver måned, hvordan det har endret seg, og hvor mange av dem som ber om en butikk som ender med å betale.",
     period: "Periode",

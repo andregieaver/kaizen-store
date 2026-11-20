@@ -9,18 +9,12 @@ import { DeliveryBlock } from "@/components/delivery-block";
 import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments } from "@/components/documents/order-documents";
 import { OrderShipments } from "@/components/order-shipments";
-import { OrderCustomsNote, OrderCustomsRows } from "@/components/order-customs";
-import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
+import { OrderTotals } from "@/components/order-totals";
 import { LineUnitPrice } from "@/components/price";
 import { OwnBookings } from "@/components/own-bookings";
-import { StaffDiscountRow } from "@/components/staff-discount-row";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { accountTabHref } from "@/lib/account-tabs";
 import { earnedText } from "@/lib/bonus-shopper";
-import { discountNote } from "@/lib/customer-tiers";
-import { pickupPointLine } from "@/lib/delivery-options";
-import { deliveryRowLabel } from "@/lib/delivery-words";
-import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
 import { dateIn } from "@/lib/dates";
@@ -28,7 +22,6 @@ import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
-import { vatText } from "@/lib/vat-text";
 import { getCustomer, ownsOrder } from "@/server/customers";
 import { shopperFulfilment } from "@/server/fulfilment";
 import { parcelTrackingFor } from "@/server/shipment-tracking";
@@ -84,7 +77,6 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const exchangeOriginal = order.exchange && (await ownsOrder(store.id, customer.id, order.exchange.originalOrderId)) ? order.exchange.originalOrderId : null;
   const m = t(market.lang);
   const a = m.account;
-  const vatWords = vatText(market.lang);
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const date = (iso: string) => dateIn(store, iso, "long", market.locale);
   const address = order.shippingAddress;
@@ -178,80 +170,16 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         </ul>
         {/* The buyer's own gift message (D173). */}
         <GiftNote gift={order.gift} m={m} />
-        <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
-          {order.ships && (
-            <div className="flex justify-between">
-              <dt>{deliveryRowLabel(order.deliveryKept ?? order.delivery, m)}</dt>
-              <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
-            </div>
-          )}
-          {order.ships && order.delivery?.pickupPoint && (
-            <p className="text-sm text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
-          )}
-          {order.ships && order.delivery?.window && (
-            <p className="text-sm text-muted">{m.deliveryChoice.windowLine(formatWindow(order.delivery.window, order.locale, store.timeZone))}</p>
-          )}
-          {order.discountMinor > 0 && (
-            <div className="flex justify-between">
-              <dt>
-                {m.discount}
-                {discountNote(order) && <span className="text-sm text-muted"> ({discountNote(order)})</span>}
-              </dt>
-              <dd>−{money(order.discountMinor)}</dd>
-            </div>
-          )}
-          {/* The discount staff gave on a draft order (D173), under the name they gave it. */}
-          <StaffDiscountRow order={order} fallback={m.discount} money={money} />
-          {order.referralDiscountMinor > 0 && (
-            <div className="flex justify-between">
-              <dt>{m.affiliate.discountRow}</dt>
-              <dd>−{money(order.referralDiscountMinor)}</dd>
-            </div>
-          )}
-          {order.bonus && order.bonus.usedMinor > 0 && (
-            <div className="flex justify-between">
-              <dt>{m.bonus.usedRow}</dt>
-              <dd>−{money(order.bonus.usedMinor)}</dd>
-            </div>
-          )}
-          <OrderVatRelief order={order} text={vatWords} money={money} />
-          <div className="flex justify-between font-semibold">
-            <dt>{m.total}</dt>
-            <dd>{money(order.totalMinor)}</dd>
-          </div>
-          <OrderVatRows order={order} text={vatWords} money={money} label={m.vatAmount} />
-          <OrderCustomsRows order={order} lang={market.lang} money={money} paidLabel={m.toPay} />
-          {order.balanceMinor > 0 && (
-            // Paid at the appointment (D66): what is still to pay there.
-            <div className="flex justify-between">
-              <dt>{m.booking.atVenue}</dt>
-              <dd>{money(order.balanceMinor)}</dd>
-            </div>
-          )}
-          {order.company && (
-            // Bought for a business (B2B): the total without VAT, and whom for.
-            <>
-              <div className="flex justify-between text-sm text-muted">
-                <dt>{m.totalExclVat}</dt>
-                <dd>{money(order.totalMinor - order.taxMinor)}</dd>
-              </div>
-              <div className="flex justify-between border-t border-border pt-2 text-sm">
-                <dt>{order.company.name}</dt>
-                <dd>
-                  {m.company.number}: {order.company.number}
-                </dd>
-              </div>
-            </>
-          )}
-          {order.refundedMinor > 0 && (
-            <div className="flex justify-between text-sm">
-              <dt>{a.refunded}</dt>
-              <dd>−{money(order.refundedMinor)}</dd>
-            </div>
-          )}
-        </dl>
-        <OrderVatNotes order={order} text={vatWords} />
-        <OrderCustomsNote order={order} lang={market.lang} money={money} />
+        <OrderTotals
+          order={order}
+          m={m}
+          lang={market.lang}
+          timeZone={store.timeZone}
+          money={money}
+          className="mt-3 flex flex-col gap-1 border-t border-border pt-3"
+          balanceAtVenue
+          refundedLabel={a.refunded}
+        />
         {earned && <p className="mt-3 text-sm">{earned}</p>}
       </section>
 
