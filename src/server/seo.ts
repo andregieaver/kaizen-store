@@ -181,7 +181,8 @@ export async function listPublicStores(): Promise<PublicStore[]> {
         filter (where m.code is not null), '[]') as markets
     from commerce.stores s
     left join commerce.markets m on m.store_id = s.id and m.active
-    where s.status = 'active'
+    -- A workspace (D748 E7) has no shop to index.
+    where s.status = 'active' and not s.workspace
     group by s.id
     order by s.created_at
   `);

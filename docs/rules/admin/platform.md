@@ -277,6 +277,13 @@ under *What the router fetches ahead*.
 - **The cheapest way (E6)**: an account buys `accountCover()`'s answer, never a list made elsewhere: each extension once, never one
   the plan includes, a founding price only while offered or kept.
 
+## A standalone account's workspace (D748 E7, `commerce.make_workspace()`, `src/server/workspace.scan.test.ts`)
+
+- A workspace is the store row that holds an extensions-only account's data (`stores.workspace`), made only by `commerce.make_workspace()`,
+  one per account, never marked or unmarked after. It is no store: every place that lists a person's stores, counts them against
+  `stores_owned` or serves a storefront names `workspace` and leaves it out (the scan's list says which; a new one joins it). Its jobs
+  run and its emails send as any store's: never add it to `store_is_active()` or `email.ts`'s holds.
+
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 
 - **Free trials and their end (D420, `src/server/store-trial.ts`)**: self-serve sign-up and every Dream Factory run give a store

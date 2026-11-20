@@ -429,6 +429,15 @@ the extensions (each product's page links to it with its own ticked), which make
 manager; the account menu's Add to your account offers "Open an online store" and the other extensions, each one press to start a trial.
 4. **The product pages**: `/support-desk`, `/email-automation`, `/work`, `/deals` from `docs/site-design.md`, saved as drafts for the owner.
 
+**E7 as built, part one (20 November 2026).** `stores.workspace` (migration `20261119235642_red_ezekiel_stane`, with `stores_workspace_alone`,
+never also a template, demo store, sandbox or Kaizena Flow's own, and `stores_one_workspace_idx`, one per account) and
+`commerce.make_workspace(account, name, country, currency, language)` (`20261119235653_workspace_rules`): a private store row with one market
+and its owner, in the owner's account, made only there (`stores_workspace_fixed` refuses any other way and any change of the flag). It is
+left out of the owner's store lists and the control center, of what counts against `stores_owned` (its use still counts towards the
+account's other limits), of the storefront (`getOpenStore()`, `storeFactsOf()`) and of the public store lists behind the sitemaps; it stays
+open for jobs and its emails send. Nothing makes one yet: the sign-up of part two does. The platform's own counts still count it as a store
+until part three names workspaces there.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.

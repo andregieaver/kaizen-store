@@ -1,6 +1,6 @@
 {
-  "id": "80695b95-c051-4c48-b41d-9d7717ca749c",
-  "prevId": "018f7a2b-12b5-464d-9b1f-0db0dd847a39",
+  "id": "7c976bc0-2aba-4aa9-a219-e492952a63bc",
+  "prevId": "0c3d8c5d-5345-4743-a9b4-861121f05262",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -86819,6 +86819,13 @@
           "notNull": true,
           "default": false
         },
+        "workspace": {
+          "name": "workspace",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "made_from_starter": {
           "name": "made_from_starter",
           "type": "uuid",
@@ -87255,6 +87262,22 @@
           "where": "\"commerce\".\"stores\".\"house\"",
           "concurrently": false
         },
+        "stores_one_workspace_idx": {
+          "name": "stores_one_workspace_idx",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"stores\".\"workspace\"",
+          "concurrently": false
+        },
         "stores_created_by_idx": {
           "name": "stores_created_by_idx",
           "columns": [
@@ -87520,6 +87543,10 @@
         "stores_price_decimals": {
           "name": "stores_price_decimals",
           "value": "\"commerce\".\"stores\".\"price_decimals\" in ('always', 'hide_whole')"
+        },
+        "stores_workspace_alone": {
+          "name": "stores_workspace_alone",
+          "value": "not \"commerce\".\"stores\".\"workspace\" or not (\"commerce\".\"stores\".\"is_template\" or \"commerce\".\"stores\".\"starter\" or \"commerce\".\"stores\".\"sandbox\" or \"commerce\".\"stores\".\"house\")"
         },
         "stores_quantity_picker": {
           "name": "stores_quantity_picker",

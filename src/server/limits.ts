@@ -164,17 +164,18 @@ export async function ownerLimitFor(accountId: string, key: LimitKey): Promise<R
 }
 
 /**
- * The stores that count towards `stores_owned`: open ones, never templates; those the person owns, or, when their account is billed
- * through its account, the account's.
+ * The stores that count towards `stores_owned`: open ones, never templates nor a workspace (D748 E7: no store, though its use counts
+ * towards the account's other limits); those the person owns, or, when their account is billed through its account, the account's.
  */
 export async function ownedStoreCount(accountId: string): Promise<number> {
   const [row] = await db().execute<Row>(sql`
     with billed as (${BILLED_ACCOUNT(accountId)})
     select case when exists (select 1 from billed) then (
-             select count(*)::int from commerce.stores s2 where s2.organisation_id = (select organisation_id from billed) and ${COUNTED})
+             select count(*)::int from commerce.stores s2 where s2.organisation_id = (select organisation_id from billed) and ${COUNTED} and not s2.workspace)
            else (
              select count(distinct s.id)::int from commerce.store_members m
                join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
+                and not s.workspace
               where m.account_id = ${accountId}::uuid and m.role = 'owner' and m.disabled_at is null)
            end as n
   `);

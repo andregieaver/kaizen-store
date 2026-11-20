@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "workspace" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "stores_one_workspace_idx" ON "commerce"."stores" USING btree ("organisation_id") WHERE "commerce"."stores"."workspace";--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_workspace_alone" CHECK (not "commerce"."stores"."workspace" or not ("commerce"."stores"."is_template" or "commerce"."stores"."starter" or "commerce"."stores"."sandbox" or "commerce"."stores"."house"));

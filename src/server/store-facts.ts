@@ -46,7 +46,7 @@ export async function storeFactsOf(slug: string): Promise<StoreFacts> {
         (select coalesce(json_agg(json_build_object('code', a.code, 'currency', a.currency, 'defaultLocale', a.default_locale)
            order by a.active desc, (a.code = s.country) desc nulls last, a.created_at, a.code), '[]')
            from commerce.markets a where a.store_id = s.id) as all_markets
-      from commerce.stores s where s.slug = ${slug} and s.status = 'active'
+      from commerce.stores s where s.slug = ${slug} and s.status = 'active' and not s.workspace
     `);
     if (!row) return null;
     const { markets, address } = localized(row);

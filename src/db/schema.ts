@@ -735,6 +735,13 @@ export const stores = commerce.table(
      * Kaizena Flow's customers; its members are the platform admins. At most one, made only by `commerce.make_house_store()`, never unmarked.
      */
     house: boolean("house").notNull().default(false),
+    /**
+     * A standalone account's workspace (D748 E7, `docs/extensions.md` 7): the store row that holds the data of an account that buys
+     * extensions without a store. No website and no shop: never listed as a store, never served as a storefront, never counted against
+     * `stores_owned`; its jobs run and its emails send as any store's. At most one per account, made only by `commerce.make_workspace()`,
+     * never marked or unmarked after.
+     */
+    workspace: boolean("workspace").notNull().default(false),
     /** The store template this store was made from (D175), for the platform's counts; nothing behaves differently by it. */
     madeFromStarter: uuid("made_from_starter").references((): AnyPgColumn => storeStarters.id),
     /** The account that owns the store (D748 E1, `docs/extensions.md` 8.1), set by the database (`commerce.place_store()`). */
@@ -942,6 +949,7 @@ export const stores = commerce.table(
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
     check("stores_price_decimals", sql`${t.priceDecimals} in ('always', 'hide_whole')`),
+    check("stores_workspace_alone", sql`not ${t.workspace} or not (${t.isTemplate} or ${t.starter} or ${t.sandbox} or ${t.house})`),
     check("stores_quantity_picker", sql`${t.quantityPicker} in ('buttons', 'box', 'hidden')`),
     check("stores_language_rule", sql`${t.languageRule} in ('own', 'location', 'location-browser', 'browser')`),
     // A language's currency (D479): two-letter languages to a three-letter currency or `own`, at most 64 of them.
@@ -977,6 +985,7 @@ export const stores = commerce.table(
     check("stores_sandbox_not_template", sql`not (${t.sandbox} and (${t.isTemplate} or ${t.starter}))`),
     // Kaizena Flow's own store (D466): one at most, and never a template, a store template or a sandbox.
     uniqueIndex("stores_one_house_idx").on(t.house).where(sql`${t.house}`),
+    uniqueIndex("stores_one_workspace_idx").on(t.organisationId).where(sql`${t.workspace}`),
     check("stores_house_real", sql`not (${t.house} and (${t.isTemplate} or ${t.starter} or ${t.sandbox}))`),
     index("stores_created_by_idx").on(t.createdBy),
     index("stores_organisation_idx").on(t.organisationId),

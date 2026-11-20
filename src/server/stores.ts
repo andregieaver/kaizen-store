@@ -49,6 +49,8 @@ export type Store = {
   sandbox: boolean;
   /** Kaizena Flow's own store (D466, docs/platform-parity-plan.md): its site and customers; never billed, limited, closed or counted as a customer. */
   house: boolean;
+  /** A standalone account's workspace (D748 E7): the extensions' data, no website or shop; never listed or served as a store. */
+  workspace: boolean;
   /**
    * Its pages are Kaizena Flow's own site now (D484): Kaizena Flow's own store while the switch is on. Its addresses are then on Kaizena
    * Flow's own host (`storeOrigin()`, remembered by `getStore()`).
@@ -265,7 +267,7 @@ export async function currentStore(slug: string): Promise<Store | null> {
 async function readStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
-      s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.house, s.setup_completed_at,
+      s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.house, s.workspace, s.setup_completed_at,
       (s.house and coalesce((select p.site_from_store from commerce.platform_settings p), false)) as on_site,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.customer_accounts, s.checkout_phone, s.checkout_name, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.heatmaps, s.recordings, s.recording_share, s.recording_mask, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
@@ -326,6 +328,7 @@ async function readStore(slug: string): Promise<Store | null> {
     starter: Boolean(row.starter),
     sandbox: Boolean(row.sandbox),
     house: Boolean(row.house),
+    workspace: Boolean(row.workspace),
     onSite: row.on_site === true,
     setupCompletedAt: row.setup_completed_at
       ? new Date(String(row.setup_completed_at)).toISOString()
@@ -403,7 +406,8 @@ function themed(value: unknown): Pick<Store, "theme" | "fonts"> {
 /** A store whose storefront is open to shoppers, or null. */
 export async function getOpenStore(slug: string): Promise<Store | null> {
   const store = await getStore(slug);
-  return store?.status === "active" ? store : null;
+  // A workspace (D748 E7) has no shop: it is never served as a storefront.
+  return store?.status === "active" && !store.workspace ? store : null;
 }
 
 /** The template store's slug: the demo shown to visitors, prerendered at build. */
