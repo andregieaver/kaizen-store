@@ -87,6 +87,7 @@ export const flowsEn = {
   noPerson: "Nobody is on your list yet to draw them for.",
   frame: "The email {subject}",
   newestPerson: "the newest person on your list",
+  contactPolicy: "How often each person may hear from you: the contact policy, for every flow and broadcast",
   report: {
     title: "The last 30 days",
     nobody: "Nobody started it in the last 30 days.",
