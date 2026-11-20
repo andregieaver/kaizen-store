@@ -115,7 +115,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.8 | Cut the repeated round trips | FF4, FV8 | S | Open | |
 | 3.9 | Stop reading the whole catalogue for one page | FF2, FF5 | S | Open | |
 | 3.10 | Cache tags per product | FF3 | M | Open | |
-| 3.11 | One card query; smaller storefront files | FF10 | M | Open | |
+| 3.11 | One card query; smaller storefront files | FF10 | M | In progress | 20 Nov 2026, D833: the card query part is done (one column list, joins and mapper in `catalog.ts`); the file splits stay open |
 | 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
 | 3.13 | Domain folders | FV4, FH6 | L | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach; when a feature gets its folder, its reads and writes become two files (bloat step 2.20) |
 | 3.14 | Split `schema.ts` | FD5 | M | In progress | 12 Nov, bloat review step 0.4 commit 1: client.ts no longer imports the schema; splitting the file by area stays open, it saves reading only; pages' reads and writes two files (bloat 2.21, 19 Nov) |
@@ -188,6 +188,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 19 November 2026: D811's found fault fixed (D815): the platform's Stripe webhooks are replaced new first, so a failure part way leaves the working ones.
 - 19 November 2026: step 1.12 done (D818, finding FS4): the admin kit (Field, TextInput, Select, EmptyState, ConfirmButton, Pager, ListSearch) in `A/ui`; 17 list pages on it; the ratchet lists hand-made field boxes and pill links per file; `confirmFiles` 42 to 32.
 - 19 November 2026: step 1.15 done (D829, finding FS6): a refused field shows its problem under it, *Saved* goes on the next edit, every admin form is busy while it works; 77 raw action forms are `QuietActionForm`; the ratchet's `rawActionForms` fell from 107 to 29, each kept one named.
+- 20 November 2026: step 3.11's card query part done with bloat review step 3.16 (D833); the storefront file splits stay open.
 
 **Notes on the steps**
 

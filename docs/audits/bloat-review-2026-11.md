@@ -229,7 +229,7 @@ commit as the fix.
 | 3.13 | Give the five file imports one core | CP-1, FM-6 | M | strong | 1.17 | Open | |
 | 3.14 | Draw Work once for store and account, and keep one Domains move page | CP-5, FM-10, GAP-code-s5 | M | review | 1.17, 3.13 | Open | |
 | 3.15 | Keep one of each small thing: helpers, SQL fragments, English word lists | CP-8, CP-16, FM-12, CP-9, DD-7, CP-13 | M | review | 1.17, 3.13 | Open | |
-| 3.16 | Draw an order's totals from one part | CP-12 | S | review | 2.2 | Open | |
+| 3.16 | Draw an order's totals from one part | CP-12 | S | review | 2.2 | Done | 20 Nov (D833): OrderTotals on both order pages (994 to 841 lines), checkout's delivery rows; one card query, catalog.ts 759 to 711. |
 | 3.17 | Keep one stored page shape | PM-9, DD-9 | M | strong | 0.46 | Open | |
 | 3.18 | Build twice per push, and lint and type-check once | TC-7 | M | strong | 0.38, 1.20 | Open | |
 | 3.19 | Let a burst of pushes share one deploy | CA-2 | S | review | 0.38, 1.29, 0.43 | Open | |
