@@ -9,7 +9,6 @@ import type { ExtensionChoice } from "@/lib/extension-offer";
 import type { ExtensionsBlock } from "@/lib/page-content";
 import type { BlockPatch } from "@/lib/page-rows";
 
-import { Choices } from "./block-fields";
 import { Check } from "./check-field";
 
 /**
@@ -82,15 +81,22 @@ export function ExtensionsFields({
         </Select>
       </label>
       {block.switcher && (
-        <Choices
-          legend={pw.shownFirst}
-          options={[
-            { value: "month", label: pw.firstMonthly },
-            { value: "year", label: pw.firstYearly },
-          ]}
-          value={block.interval === "year" ? "year" : "month"}
-          onChange={(start) => onChange({ interval: start === "year" ? "year" : undefined })}
-        />
+        // Which side of the switch a visitor sees first: monthly unless yearly is chosen (plain radios: the builder's `Choices` reaches zod).
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <legend className="mb-1 font-medium">{pw.shownFirst}</legend>
+          {(["month", "year"] as const).map((start) => (
+            <label key={start} className="flex items-center gap-2">
+              <input
+                type="radio"
+                name={`${id}-first`}
+                checked={(block.interval === "year" ? "year" : "month") === start}
+                onChange={() => onChange({ interval: start === "year" ? "year" : undefined })}
+                className="size-4"
+              />
+              {start === "year" ? pw.firstYearly : pw.firstMonthly}
+            </label>
+          ))}
+        </fieldset>
       )}
       <Check label={w.wholeAmounts} hint={w.wholeAmountsHint} checked={block.decimals === "hide_whole"} onChange={(whole) => onChange({ decimals: whole ? "hide_whole" : undefined })} />
       <label htmlFor={`${id}-highlight`} className="flex flex-col gap-1 text-sm font-medium">
