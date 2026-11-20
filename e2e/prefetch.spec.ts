@@ -355,14 +355,20 @@ test("a press on a built page's tile stays in the app", async ({ browser }) => {
     await page.goto("/s/demo/no", { waitUntil: "networkidle" });
     const tile = page.locator("main article a[href*='/p/']").first();
     await expect(tile).toBeVisible();
+    const pressed = new URL((await tile.getAttribute("href")) ?? "", page.url()).pathname;
     const requests = collect(page);
     await tile.tap();
     await expect(page).toHaveURL(/\/p\//);
     await page.waitForTimeout(3500);
     requests.stop();
-    if (MEASURE) console.log(`[tile] documents ${requests.documents().length}, requests ${requests.all().length}\n${requests.list()}`);
+    // What the tap costs: the pressed product and the scripts it needs. Once the product page is drawn it fetches its own links ahead
+    // (the cart, the listing), which its page budget above holds; those are not the tap's.
+    const ahead = (request: Request) =>
+      Object.keys(request.headers()).some((name) => name.startsWith("next-router-")) && new URL(request.url()).pathname !== pressed;
+    const own = requests.all().filter((request) => !ahead(request));
+    if (MEASURE) console.log(`[tile] documents ${requests.documents().length}, the tap's own ${own.length} of ${requests.all().length}\n${requests.list()}`);
     expect(requests.documents().length, `document requests of the tap:\n${requests.list()}`).toBe(0);
-    expect(requests.all().length, `requests of the tap (42 before step 2.7):\n${requests.list()}`).toBeLessThanOrEqual(8);
+    expect(own.length, `requests of the tap (42 before step 2.7):\n${requests.list()}`).toBeLessThanOrEqual(8);
   } finally {
     await context.close();
   }

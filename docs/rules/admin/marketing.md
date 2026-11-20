@@ -366,6 +366,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   parts get theirs as props.
 
 
+## Contracts' words (D695, D856, `src/lib/contract-fields.ts`, `src/lib/contract-rich.ts`, `ContractTextEditor`)
+
+- **Contracts' words (D695, D856, `src/lib/contract-fields.ts`, `src/lib/contract-rich.ts`, `ContractTextEditor`)**: a template's and a
+  draft's paragraphs and clauses are written in `ContractTextEditor` (rich text), never a textarea, and kept as the block's `doc` beside its
+  plain `text`. A contract takes paragraphs, bulleted and numbered lists, line breaks, bold, italic and underline only (`contractDoc()`):
+  no link, colour, text style or heading inside a block. `text` is always the `doc`'s words (`contractDocText()`, set by `parseBlocks()`,
+  never taken as sent), so whatever reads words (fields, the AI manager's tools) reads `text`; a block without `doc` is
+  plain text and stays valid. `fillContract()` fills `doc` and `text` with the same fields; `ContractDocumentView` draws `doc` as elements,
+  never as HTML. A new mark or node is added to `contractDoc()`, the editor's extensions and the view together, with a test in
+  `contract-rich.test.ts` and `static-markup.test.ts`.
+
 ## Sales reports (S6, D520, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)
 
 - **Sales reports (S6, D520, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)**: Analytics → Sales, behind the

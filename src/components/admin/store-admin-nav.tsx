@@ -171,7 +171,8 @@ export function LinkPending({ className = "inset-x-3 bottom-1" }: { className?: 
 /**
  * The phone's bottom bar (admin redesign round 1): under `md`, where the rail is not drawn, the level's first four sections sit at the foot
  * of the screen within a thumb's reach, each an icon over its name, and More opens the slide-out menu with everything else. It is drawn by
- * the frame in the `rail` layout only, and not in the `focus` layout.
+ * the frame in the `rail` layout only, and not in the `focus` layout. A page with a bar of its own at the foot of the screen (the page
+ * editor's Save, View page and Duplicate; the navigation editor's Save) marks it `data-bottom-bar`, and this bar steps aside for it.
  */
 export function PhoneTabBar({ items, label, more, areas }: { items: NavItem[]; label: string; more: string; areas?: NavArea[] }) {
   const isCurrent = useIsCurrent(areas);
@@ -180,7 +181,7 @@ export function PhoneTabBar({ items, label, more, areas }: { items: NavItem[]; l
     <nav
       aria-label={label}
       data-phone-tabs
-      className="fixed inset-x-0 bottom-0 z-40 rounded-t-[20px] bg-rail px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 rounded-t-[20px] bg-rail px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden [body:has([data-bottom-bar])_&]:hidden"
     >
       <ul className="grid grid-cols-5">
         {shown.map((item) => (

@@ -1,10 +1,15 @@
 import { z } from "zod";
 
+import { contractDoc, contractDocText, fillContractDoc } from "./contract-rich";
+import type { RichTextDoc } from "./rich-text-doc";
+
 /**
  * Contracts for deals (D695, `docs/contracts.md`), pure: what a template's or a draft's block may be, the closed list of fields a block may
  * name, and the contract filled in from the facts the server gathered (`fillContract()`), which is what is frozen when it is sent. Text is
  * text: a field's value and a block's words are never HTML, and the views escape them. A field that has no value is reported, never left as
- * `{key}` in what is sent. Nothing here knows a database.
+ * `{key}` in what is sent. A paragraph or a clause may also carry its words formatted (`doc`, `contract-rich.ts`: lists, bold, italic,
+ * underline), drawn as elements; its `text` is then always those words as plain text, worked out here, never taken as typed. Nothing here
+ * knows a database.
  */
 
 export const CONTRACT_TEXT_MAX = 20_000;
@@ -39,15 +44,23 @@ const FIELD = /\{([a-z_]+\.[a-z_]+)\}/g;
 
 const words = (max: number) => z.string().max(max);
 const clauseId = z.string().regex(/^[a-z0-9_-]{1,40}$/);
+/** A block's words formatted, cut to what a contract takes (`contractDoc()`). */
+const formatted = z
+  .custom<RichTextDoc>((value) => contractDoc(value).ok)
+  .transform((value) => {
+    const cleaned = contractDoc(value);
+    return cleaned.ok ? cleaned.doc : { type: "doc" as const, content: [] };
+  });
 
 const heading = z.object({ type: z.literal("heading"), text: words(CONTRACT_HEADING_MAX) });
-const paragraph = z.object({ type: z.literal("paragraph"), text: words(CONTRACT_TEXT_MAX) });
+const paragraph = z.object({ type: z.literal("paragraph"), text: words(CONTRACT_TEXT_MAX), doc: formatted.optional() });
 /** A clause Lisa may leave out of a contract (`optional`), in a draft `included` or not. */
 const clause = z.object({
   type: z.literal("clause"),
   id: clauseId,
   title: words(CONTRACT_HEADING_MAX),
   text: words(CONTRACT_TEXT_MAX),
+  doc: formatted.optional(),
   optional: z.boolean().default(false),
   included: z.boolean().default(true),
 });
@@ -68,6 +81,12 @@ export function parseBlocks(raw: unknown): { ok: true; blocks: ContractBlock[] }
   if (!parsed.success) {
     const at = parsed.error.issues[0]?.path[0];
     return { ok: false, problems: [{ kind: "shape", at: typeof at === "number" ? at : null }] };
+  }
+  // A formatted block's text is its document's words, whatever was sent beside it.
+  for (const [at, block] of parsed.data.entries()) {
+    if ((block.type !== "paragraph" && block.type !== "clause") || !block.doc) continue;
+    block.text = contractDocText(block.doc);
+    if (block.text.length > CONTRACT_TEXT_MAX) return { ok: false, problems: [{ kind: "shape", at }] };
   }
   const problems: BlocksProblem[] = [];
   const unknown = new Set<string>();
@@ -107,8 +126,8 @@ export type ContractFacts = {
 /** A block as it was sent: its words with every field filled in. */
 export type FilledBlock =
   | { type: "heading"; text: string }
-  | { type: "paragraph"; text: string }
-  | { type: "clause"; id: string; title: string; text: string }
+  | { type: "paragraph"; text: string; doc?: RichTextDoc }
+  | { type: "clause"; id: string; title: string; text: string; doc?: RichTextDoc }
   | { type: "quote_lines"; lines: QuoteLineFact[]; total: string }
   | { type: "signatures" };
 
@@ -133,16 +152,24 @@ export type FillProblem =
   | { kind: "no_store_signer" }
   | { kind: "no_customer_signer" };
 
+/** One `{key}` as written, filled: its value, or itself when it has none (then reported) or is not a field. */
+const fillField = (whole: string, values: ContractFacts["values"], missing: Set<ContractField>): string => {
+  const key = whole.slice(1, -1);
+  if (!isField(key)) return whole;
+  const value = values[key]?.trim();
+  if (!value) {
+    missing.add(key);
+    return whole;
+  }
+  return value;
+};
+
 const fill = (text: string, values: ContractFacts["values"], missing: Set<ContractField>): string =>
-  text.replace(FIELD, (whole, key: string) => {
-    if (!isField(key)) return whole;
-    const value = values[key]?.trim();
-    if (!value) {
-      missing.add(key);
-      return whole;
-    }
-    return value;
-  });
+  text.replace(FIELD, (whole) => fillField(whole, values, missing));
+
+/** A formatted block's document filled in as its text is: the same fields, the same values. */
+const fillDoc = (doc: RichTextDoc | undefined, values: ContractFacts["values"], missing: Set<ContractField>): { doc?: RichTextDoc } =>
+  doc ? { doc: fillContractDoc(doc, FIELD, (whole) => fillField(whole, values, missing)) } : {};
 
 /**
  * The contract filled in: optional clauses left out drop away, each field takes its value, the quote's block takes the quote's lines. It
@@ -159,11 +186,20 @@ export function fillContract(
   for (const block of input.blocks) {
     switch (block.type) {
       case "heading":
+        blocks.push({ type: "heading", text: fill(block.text, facts.values, missing) });
+        break;
       case "paragraph":
-        blocks.push({ type: block.type, text: fill(block.text, facts.values, missing) });
+        blocks.push({ type: "paragraph", text: fill(block.text, facts.values, missing), ...fillDoc(block.doc, facts.values, missing) });
         break;
       case "clause":
-        if (block.included || !block.optional) blocks.push({ type: "clause", id: block.id, title: fill(block.title, facts.values, missing), text: fill(block.text, facts.values, missing) });
+        if (block.included || !block.optional)
+          blocks.push({
+            type: "clause",
+            id: block.id,
+            title: fill(block.title, facts.values, missing),
+            text: fill(block.text, facts.values, missing),
+            ...fillDoc(block.doc, facts.values, missing),
+          });
         break;
       case "quote_lines":
         // With no quote linked the table is left out: the contract is its own document, the quote only a list it may show.

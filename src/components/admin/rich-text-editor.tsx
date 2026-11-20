@@ -4,7 +4,7 @@ import { Mark } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { Placeholder } from "@tiptap/extensions";
 import StarterKit from "@tiptap/starter-kit";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState } from "react";
 
 import { HEX6, colourCss, isOpacity } from "@/lib/colour";
 import { formatHtml, htmlLeftOut } from "@/lib/rich-html";
@@ -14,6 +14,7 @@ import { isLinkAddress, type RichTextDoc } from "@/lib/page-content";
 import { fillWords } from "@/lib/admin-fill";
 import { useAdminText } from "./admin-text";
 import { ColorField } from "./colour-field";
+import { ListIcon, NumberedIcon, toolButton } from "./rich-text-tools";
 import { StyleMenu, useTextStyles } from "./text-styles";
 
 
@@ -121,9 +122,6 @@ export function linkFromInput(value: string): string {
   if (/^[^@\s/:]+@[^@\s]+\.[^@\s]+$/.test(text)) return `mailto:${text}`;
   return text;
 }
-
-const tool =
-  "flex min-h-9 min-w-9 items-center justify-center rounded px-2 text-sm hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink disabled:opacity-40";
 
 export function RichTextEditor({
   value,
@@ -255,21 +253,7 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
     (attrs ? next.setMark("textStyle", attrs) : next.unsetMark("textStyle")).run();
   };
 
-  const button = (name: string, pressed: boolean | undefined, run: () => void, children: ReactNode, disabled = false) => (
-    <button
-      type="button"
-      title={name}
-      aria-label={name}
-      aria-pressed={pressed}
-      disabled={disabled}
-      // Keep the text selected while the toolbar is used.
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={run}
-      className={tool}
-    >
-      {children}
-    </button>
-  );
+  const button = toolButton;
 
   return (
     <div className="sticky top-0 z-10 rounded-t-md border-b border-line bg-card">
@@ -450,16 +434,6 @@ const svg = "size-4";
 const LinkIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden className={svg} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" />
-  </svg>
-);
-const ListIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden className={svg} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
-  </svg>
-);
-const NumberedIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden className={svg} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <path d="M10 6h10M10 12h10M10 18h10M4 5l1-1v4M4 14h2l-2 3h2" />
   </svg>
 );
 const QuoteIcon = () => (

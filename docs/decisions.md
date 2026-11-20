@@ -858,6 +858,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D853 | **Admin redesign round 71: Kaizena Flow's Stripe, stores' support and docs feedback on a phone** | 2026-11-20 | [text](decisions/D853.md) |
 | D854 | **The AI tunes Kaizena Flow's prices, as far as the platform admin allows (D748 E9 part two)** | 2026-11-20 | [text](decisions/D854.md) |
 | D855 | **The AI manager reads and starts flows: list_flows and start_flow (email plan M3.9)** | 2026-11-20 | [text](decisions/D855.md) |
+| D856 | **Contract words as rich text: a paragraph's and a clause's doc beside its plain text** | 2026-11-20 | [text](decisions/D856.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
