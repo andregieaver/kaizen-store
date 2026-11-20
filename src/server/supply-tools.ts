@@ -6,7 +6,7 @@ import { z } from "zod";
 import { fillWords } from "@/lib/admin-fill";
 import { renderEmail } from "@/lib/email-layout";
 import { mainCurrency } from "@/lib/markets";
-import { formatMoney, minorUnitDigits } from "@/lib/money";
+import { minorUnitDigits, englishMoney as money } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import { purchaseBudgetProblem, purchaseTotalMinor } from "@/lib/purchase-budget";
 import { purchaseOrderWords } from "@/lib/purchase-order-email";
@@ -36,7 +36,6 @@ const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
 const fail = (message: string): never => {
   throw new OwnerToolError(message);
 };
-const money = (minor: number, currency: string) => formatMoney(minor, currency, "en-GB");
 /** An amount in minor units as the screen's form takes it: the major units with the currency's own decimals. */
 const asText = (minor: number, currency: string) => {
   const digits = minorUnitDigits(currency);

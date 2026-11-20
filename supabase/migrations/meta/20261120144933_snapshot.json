@@ -1,6 +1,6 @@
 {
-  "id": "8cacfbf7-0a6b-419f-9cf9-3c63b0625386",
-  "prevId": "b4b8df0b-18a1-4c90-92bb-d0895694bcb6",
+  "id": "a9a76f82-ecf8-4341-9373-fa91f79bf815",
+  "prevId": "8cacfbf7-0a6b-419f-9cf9-3c63b0625386",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -61506,6 +61506,288 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.platform_price_changes": {
+      "name": "platform_price_changes",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "size_id": {
+          "name": "size_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bundle_id": {
+          "name": "bundle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval": {
+          "name": "interval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_minor": {
+          "name": "from_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_minor": {
+          "name": "to_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "anchor_minor": {
+          "name": "anchor_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reasons": {
+          "name": "reasons",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided": {
+          "name": "decided",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "platform_price_changes_plan_idx": {
+          "name": "platform_price_changes_plan_idx",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "currency",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "interval",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_price_changes_size_idx": {
+          "name": "platform_price_changes_size_idx",
+          "columns": [
+            {
+              "expression": "size_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "currency",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "interval",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_price_changes_bundle_idx": {
+          "name": "platform_price_changes_bundle_idx",
+          "columns": [
+            {
+              "expression": "bundle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "currency",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "interval",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_price_changes_account_idx": {
+          "name": "platform_price_changes_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "platform_price_changes_plan_id_plans_id_fk": {
+          "name": "platform_price_changes_plan_id_plans_id_fk",
+          "tableFrom": "platform_price_changes",
+          "tableTo": "plans",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "platform_price_changes_size_id_extension_sizes_id_fk": {
+          "name": "platform_price_changes_size_id_extension_sizes_id_fk",
+          "tableFrom": "platform_price_changes",
+          "tableTo": "extension_sizes",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "size_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "platform_price_changes_bundle_id_extension_bundles_id_fk": {
+          "name": "platform_price_changes_bundle_id_extension_bundles_id_fk",
+          "tableFrom": "platform_price_changes",
+          "tableTo": "extension_bundles",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "bundle_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "platform_price_changes_account_id_accounts_id_fk": {
+          "name": "platform_price_changes_account_id_accounts_id_fk",
+          "tableFrom": "platform_price_changes",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_price_changes_one_target": {
+          "name": "platform_price_changes_one_target",
+          "value": "num_nonnulls(\"commerce\".\"platform_price_changes\".\"plan_id\", \"commerce\".\"platform_price_changes\".\"size_id\", \"commerce\".\"platform_price_changes\".\"bundle_id\") = 1"
+        },
+        "platform_price_changes_interval": {
+          "name": "platform_price_changes_interval",
+          "value": "\"commerce\".\"platform_price_changes\".\"interval\" in ('month', 'year')"
+        },
+        "platform_price_changes_decided": {
+          "name": "platform_price_changes_decided",
+          "value": "\"commerce\".\"platform_price_changes\".\"decided\" in ('auto', 'approved')"
+        },
+        "platform_price_changes_amounts": {
+          "name": "platform_price_changes_amounts",
+          "value": "\"commerce\".\"platform_price_changes\".\"from_minor\" >= 0 and \"commerce\".\"platform_price_changes\".\"to_minor\" >= 0 and \"commerce\".\"platform_price_changes\".\"anchor_minor\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.platform_readings": {
       "name": "platform_readings",
       "schema": "commerce",
@@ -61949,6 +62231,20 @@
           "notNull": true,
           "default": 12
         },
+        "price_tuning": {
+          "name": "price_tuning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'off'"
+        },
+        "price_tuning_range_percent": {
+          "name": "price_tuning_range_percent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 20
+        },
         "plan_reminders": {
           "name": "plan_reminders",
           "type": "boolean",
@@ -62251,6 +62547,14 @@
         "platform_settings_founding_months": {
           "name": "platform_settings_founding_months",
           "value": "\"commerce\".\"platform_settings\".\"extension_founding_months\" between 1 and 36"
+        },
+        "platform_settings_price_tuning": {
+          "name": "platform_settings_price_tuning",
+          "value": "\"commerce\".\"platform_settings\".\"price_tuning\" in ('off', 'propose', 'auto')"
+        },
+        "platform_settings_price_tuning_range": {
+          "name": "platform_settings_price_tuning_range",
+          "value": "\"commerce\".\"platform_settings\".\"price_tuning_range_percent\" between 1 and 50"
         },
         "platform_settings_single_row": {
           "name": "platform_settings_single_row",

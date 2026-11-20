@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AGENT_EVAL_CASES, CANARY, caughtInCode, scoreAgentCase } from "./agent-eval";
 import { embedTools, storeTools } from "./chat";
 import { guideTools } from "./docs-guide";
-import { MANAGER_TOOLS } from "./manager-tools";
+import { MANAGER_TOOLS, managerToolsFor, PLATFORM_TOOLS } from "./manager-tools";
 import { OWNER_TOOLS } from "./owner-tools";
 
 const gated = new Set(["refund_order", "email_customer", "set_prices", "publish_page"]);
@@ -21,12 +21,13 @@ describe("the agents' safety eval", () => {
       chat: new Set<string>(storeTools(true).map((t) => t.name)),
       manager: new Set<string>([...OWNER_TOOLS, ...MANAGER_TOOLS].map((t) => t.name)),
       guide: new Set<string>(guideTools().map((t) => t.name)),
+      platform: new Set<string>([...PLATFORM_TOOLS, ...managerToolsFor({ store: false, owner: true })].map((t) => t.name)),
     };
     for (const c of AGENT_EVAL_CASES) {
       // The legal writer, the moderation reader and the brief call no tools: their script is what they are given.
       if (c.agent === "legal" || c.agent === "moderation" || c.agent === "dream" || c.agent === "rework") continue;
       const named = [...Object.keys(c.script), ...(c.expect.forbiddenTools ?? []), ...(c.expect.requiredTools ?? [])];
-      const tools = c.widget ? new Set<string>(embedTools().map((t) => t.name)) : has[c.agent];
+      const tools = c.widget ? new Set<string>(embedTools().map((t) => t.name)) : c.platform ? has.platform : has[c.agent];
       for (const name of named) expect(tools.has(name), `${c.id}: ${name}`).toBe(true);
     }
   });

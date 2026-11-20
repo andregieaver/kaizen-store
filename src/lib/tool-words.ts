@@ -335,6 +335,8 @@ export const TOOL_WORDS: Record<string, string> = {
   store_usage: "Looking at stores' usage",
   get_referral_program: "Looking at referrals",
   set_referral_program: "Preparing the referral change",
+  platform_pricing_facts: "Reading prices and sales",
+  set_platform_price: "Preparing the price change",
   get_my_referrals: "Looking at your referrals",
   extension_offers: "Looking at what would help",
   start_extension_trial: "Starting a free trial",

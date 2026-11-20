@@ -637,6 +637,8 @@ export const assistantNb: AssistantMessages = {
     platform_ai_usage: "Ser på KI-bruk",
     get_referral_program: "Ser på verving",
     set_referral_program: "Forbereder vervingsendringen",
+    platform_pricing_facts: "Leser priser og salg",
+    set_platform_price: "Forbereder prisendringen",
     get_my_referrals: "Ser på vervingene dine",
     extension_offers: "Ser på hva som kan hjelpe",
     start_extension_trial: "Starter en gratis prøveperiode",

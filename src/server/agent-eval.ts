@@ -21,7 +21,7 @@ import { cleanGuideReply, guideTools } from "@/lib/docs-guide";
 import { MODERATION_OPTIONS } from "@/lib/content-moderation";
 import { BRIEF_OPTIONS, REWORK_OPTIONS, type ReworkFacts } from "@/lib/dream-factory";
 import type { ChatTurn } from "@/lib/legal-writer";
-import { MANAGER_TOOLS } from "@/lib/manager-tools";
+import { MANAGER_TOOLS, managerToolsFor, PLATFORM_TOOLS } from "@/lib/manager-tools";
 import { toolKey } from "@/lib/owner-tool-permissions";
 import { OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
 import { LOAD_TOOLS, chooseTools, loadToolsDefinition, readLoadTools, toolArea, type ToolArea } from "@/lib/tool-budget";
@@ -30,7 +30,7 @@ import { AiError, chatWithTools, completeText, type AiConnection, type ToolChatM
 import type { Account } from "./auth";
 import { ownHosts } from "./docs-guide";
 import { log } from "./log";
-import { fixedManagerPrompt, managerPromptVersion } from "./owner-assistant";
+import { fixedManagerPrompt, fixedPlatformPrompt, managerPromptVersion } from "./owner-assistant";
 import {
   chatPromptVersion,
   dreamPromptVersion,
@@ -77,12 +77,14 @@ export function promptVersions(): PromptVersions {
  * read them.
  */
 export function toolsVersion(): string {
-  const all: ToolDefinition[] = [...OWNER_TOOLS, ...MANAGER_TOOLS].map(toolDefinition).concat(storeTools(true), guideTools(), embedTools().map((t) => ({ ...t, name: `widget:${t.name}` })));
+  const all: ToolDefinition[] = [...OWNER_TOOLS, ...MANAGER_TOOLS]
+    .map(toolDefinition)
+    .concat(storeTools(true), guideTools(), embedTools().map((t) => ({ ...t, name: `widget:${t.name}` })), PLATFORM_TOOLS.map((t) => ({ ...toolDefinition(t), name: `platform:${t.name}` })));
   return promptHash(JSON.stringify(all.map((t) => [t.name, t.description, t.parameters]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))));
 }
 
 /** The tools that change something: the gated owner tools. */
-const GATED = new Set<string>(OWNER_TOOLS.filter((t) => t.gate).map((t) => t.name));
+const GATED = new Set<string>([...OWNER_TOOLS, ...PLATFORM_TOOLS].filter((t) => t.gate).map((t) => t.name));
 /** Rounds of tool calls a case may take, as the manager's own turns do at most (`MAX_STEPS` there is ten; the cases need far fewer). */
 const STEPS = 5;
 const AT_ONCE = 3;
@@ -153,6 +155,9 @@ function managerTools(testCase: AgentEvalCase, wanted: ToolArea[]): ToolDefiniti
   return [...OWNER_TOOLS.filter((t) => chosen.has(t.name)), ...MANAGER_TOOLS].map(toolDefinition).concat(load ? [load] : []);
 }
 
+/** Kaizena Flow's own manager's tools, as a platform admin's turn is given them. */
+const platformTools = (): ToolDefinition[] => [...PLATFORM_TOOLS, ...managerToolsFor({ store: false, owner: true })].map(toolDefinition);
+
 /** One case through its agent's prompt and tools, against the model given. */
 async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<AgentRun> {
   if (testCase.agent === "legal") return { answer: await model.write(fixedLegalMessages(String(testCase.script.passage ?? ""))), calls: [] };
@@ -163,9 +168,18 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
   if (testCase.agent === "rework") return { answer: await model.write(fixedReworkMessages(testCase.says, testCase.script.facts as ReworkFacts), REWORK_OPTIONS), calls: [] };
   const wanted: ToolArea[] = [];
   const ownTools = testCase.agent === "guide" ? guideTools() : testCase.widget ? embedTools() : storeTools(true);
-  const toolsNow = () => (testCase.agent === "manager" ? managerTools(testCase, wanted) : ownTools);
-  const prompt =
-    testCase.agent === "manager" ? fixedManagerPrompt() : testCase.agent === "guide" ? fixedGuidePrompt() : testCase.widget ? fixedWidgetPrompt() : fixedChatPrompt();
+  // Kaizena Flow's own manager (D854): the platform's prompt and every tool it is given, with no areas to load.
+  const platform = testCase.agent === "manager" && testCase.platform === true;
+  const toolsNow = () => (platform ? platformTools() : testCase.agent === "manager" ? managerTools(testCase, wanted) : ownTools);
+  const prompt = platform
+    ? fixedPlatformPrompt()
+    : testCase.agent === "manager"
+      ? fixedManagerPrompt()
+      : testCase.agent === "guide"
+        ? fixedGuidePrompt()
+        : testCase.widget
+          ? fixedWidgetPrompt()
+          : fixedChatPrompt();
   const messages: ToolChatMessage[] = [
     { role: "system", content: prompt },
     { role: "user", content: testCase.says },

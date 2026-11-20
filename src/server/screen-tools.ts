@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { presetPeriod, todayIn } from "@/lib/analytics-period";
 import { normaliseEmail } from "@/lib/email-address";
-import { formatMoney } from "@/lib/money";
+import { englishMoney as money } from "@/lib/money";
 import { weekSummary } from "@/lib/opening-hours";
 import { parsePrice } from "@/lib/product-input";
 import type { OwnerToolInput } from "@/lib/owner-tools";
@@ -44,7 +44,6 @@ const fail = (message: string): never => {
   throw new OwnerToolError(message);
 };
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-const money = (minor: number, currency: string) => formatMoney(minor, currency, "en-GB");
 
 // ---------------------------------------------------------------------------
 // Purchase orders (D383)

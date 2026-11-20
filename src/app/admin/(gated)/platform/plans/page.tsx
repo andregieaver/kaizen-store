@@ -6,7 +6,10 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatBps, PLAN_INTERVALS, priceLabel, type PlanInterval } from "@/lib/plans";
 import { formatPriceInput } from "@/lib/product-input";
 import { listPlans, planCurrencies, type Plan } from "@/server/billing";
+import { getPriceTuning, recentPriceChanges } from "@/server/price-tuning";
 import { platformModes } from "@/server/stripe";
+
+import { AiPricesCard } from "./ai-prices-card";
 
 import { savePlanAction, syncPlansAction } from "../actions";
 import { requirePlatformReader } from "@/server/auth";
@@ -33,7 +36,7 @@ export default async function PlansPage() {
   const w = PLATFORM_WORDS[lang].plans;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const intervals = BILLING_WORDS[lang].intervals;
-  const [plans, currencies] = await Promise.all([listPlans(), planCurrencies()]);
+  const [plans, currencies, tuning, changes] = await Promise.all([listPlans(), planCurrencies(), getPriceTuning(), recentPriceChanges(5)]);
   const modes = platformModes();
   return (
     <>
@@ -109,6 +112,8 @@ export default async function PlansPage() {
           </div>
         </ActionForm>
       </section>
+
+      <AiPricesCard tuning={tuning} changes={changes} w={w.aiPrices} lang={lang} locale={locale} />
     </>
   );
 }

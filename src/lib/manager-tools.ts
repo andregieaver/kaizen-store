@@ -270,6 +270,25 @@ export const PLATFORM_TOOLS = [
     }),
     "public",
   ),
+  // The AI tunes Kaizena Flow's prices, as far as a platform owner allows (D748 E9 part two, D854).
+  tool(
+    "platform_pricing_facts",
+    "Kaizena Flow's prices and how they sell, every figure counted in code: each plan's, extension size's and bundle's prices with their ids and who pays them, plan moves and requests that became paying stores in the period, extension trials started, paying now and ended, and the AI's recent price changes with their reasons. Also how far the AI may change prices. Read it before set_platform_price.",
+    z.object({ days: z.number().int().min(7).max(365).default(90).describe("The period, in days.") }),
+  ),
+  tool(
+    "set_platform_price",
+    "Changes one price of Kaizena Flow's: a plan's, an extension size's or a bundle's, in one currency and interval, by its id from platform_pricing_facts. It is a new price: accounts paying today keep theirs. Only as far as Platform → Plans allows (off, every change waits for a yes, or changes within a range run on their own). Give the reasons from platform_pricing_facts's figures.",
+    z.object({
+      target: z.enum(["plan", "extension", "bundle"]),
+      id: z.uuid().describe("The plan's, the extension size's or the bundle's id from platform_pricing_facts."),
+      currency: z.string().trim().length(3),
+      interval: z.enum(["month", "year"]),
+      price: z.string().trim().min(1).max(20).describe("The new price in that currency, VAT not included, such as 249 or 249.50."),
+      reasons: z.string().trim().min(10).max(600).describe("Why, from the figures platform_pricing_facts gave."),
+    }),
+    "public",
+  ),
   tool(
     "list_ab_tests",
     "Every store's A/B tests, read-only: what is running, scheduled or stopped and waiting for the owner's decision, with each one's store, what it tests, its visitors and verdict sentence, and what needs a look (a version selling less, visitors divided unevenly, a test nobody sees, one past its end or forgotten, a scheduled start that did not happen). Also the tests that run on their own: the search test (keyword against hybrid) and each store's held-out recommendations. You cannot start, stop or change a store's test: the owner does; tell them what needs a look.",

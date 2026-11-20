@@ -1,7 +1,7 @@
 import "server-only";
 
 import { mainCurrency } from "@/lib/markets";
-import { formatMoney, minorUnitDigits } from "@/lib/money";
+import { minorUnitDigits, englishMoney as money } from "@/lib/money";
 import { replacementCapProblem } from "@/lib/replacements";
 
 import type { Account } from "./auth";
@@ -16,7 +16,6 @@ import type { Store } from "./stores";
 
 type Ctx = { account: Account; store: Store };
 
-const money = (minor: number, currency: string) => formatMoney(minor, currency, "en-GB");
 
 const REFUSED: Record<ReplacementRefusal, (ref: string) => string> = {
   not_found: (ref) => `No order ${ref} in this store.`,

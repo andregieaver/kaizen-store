@@ -289,6 +289,30 @@ export async function saveBundle(actor: Account, bundleId: string | null, input:
   return { ok: true };
 }
 
+/**
+ * One price of a size or a bundle changed to a new amount (the AI's price tuning, D854): the price on offer in that currency and interval is
+ * switched off and a new row takes its place with the same founding price, so accounts paying the old one keep it. Null with no such price.
+ */
+export async function setOneExtensionPrice(
+  actor: Account,
+  kind: "size" | "bundle",
+  ownerId: string,
+  price: { currency: string; interval: PlanInterval; amountMinor: number },
+): Promise<{ fromMinor: number } | null> {
+  const table = PRICE_TABLES[kind];
+  const done = await db().transaction(async (tx) => {
+    const current = (await typedRows(ACTIVE_PRICE_ROW, table.current(ownerId), tx)).find((p) => p.currency === price.currency && p.interval === price.interval);
+    if (!current) return null;
+    await tx.execute(table.off(current.id));
+    await tx.execute(table.add(ownerId, { currency: price.currency, interval: price.interval, amountMinor: price.amountMinor, foundingMinor: current.founding_minor }));
+    return { fromMinor: current.amount_minor };
+  });
+  if (!done) return null;
+  await audit(actor.id, null, "platform.extension_price_set", { kind, ownerId, currency: price.currency, interval: price.interval, from: done.fromMinor, to: price.amountMinor });
+  refreshTag(EXTENSIONS_TAG);
+  return done;
+}
+
 /** What each of the shown plans includes: every grant of those plans is replaced by the given ones (a size's id, or nothing). */
 export async function savePlanGrants(actor: Account, planIds: readonly string[], grants: readonly GrantInput[]): Promise<SaveResult> {
   if (planIds.length === 0) return { ok: true };

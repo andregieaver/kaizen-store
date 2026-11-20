@@ -2789,6 +2789,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return backorderSummary({ sku: text("sku"), policy: input.policy === "continue" ? "continue" : "deny", days: input.days === undefined ? null : Number(input.days) });
     case "post_to_slack":
       return `Post to the store's Slack channel: "${text("message")}"`;
+    // The price as it is now and its change in percent are put in by the server (`platformPriceApprovalWords()`).
+    case "set_platform_price":
+      return `Change a price of Kaizena Flow's (${text("target")}) to ${text("price")} ${text("currency")} a ${input.interval === "year" ? "year" : "month"}. Accounts paying today keep their price. Why: ${text("reasons")}`;
     case "set_referral_program": {
       const parts = [
         input.enabled === true ? "switch the referral program on" : input.enabled === false ? "switch the referral program off" : "",

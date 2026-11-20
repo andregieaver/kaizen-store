@@ -49,6 +49,7 @@ import {
 } from "./autopilot-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import { extensionOffersTool } from "./extension-offers";
+import { platformPriceGateNeeded, platformPricingFacts, preflightPlatformPrice, setPlatformPriceTool } from "./price-tuning";
 import { planReminderStats } from "./plan-reminders";
 import { ensureBillingEvents } from "./referral-billing";
 import { getReferralSettings, listReferrers, referralTotals, referrerOverview, REFERRALS_TAG, saveReferralSettings } from "./referrals";
@@ -608,6 +609,9 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   explain_ab_test: (ctx: ManagerContext, input: PlatformToolInput<"explain_ab_test">) => explainAbTest(ctx.account, input),
   get_referral_program: getReferralProgram,
   set_referral_program: setReferralProgram,
+  // The AI's price tuning (D854): facts counted in code, one price changed as far as Platform → Plans allows.
+  platform_pricing_facts: (_ctx: ManagerContext, input: PlatformToolInput<"platform_pricing_facts">) => platformPricingFacts(input),
+  set_platform_price: (ctx: ManagerContext, input: PlatformToolInput<"set_platform_price">) => setPlatformPriceTool(ctx, input),
   platform_overview: platformOverview,
   support_overview: platformSupportOverviewTool,
   list_access_requests: listRequests,
@@ -641,12 +645,15 @@ const SITE_CHANGES = new Set(["make_form", "change_form", "place_form", "build_p
 
 /** Whether a platform tool's call needs the admin's yes: a site tool asks its own rule (a menu only while shown), the rest always. */
 export async function platformGateNeeded(name: string, raw: unknown): Promise<boolean> {
+  // A price changes without a yes only within the range the platform owner set (D854).
+  if (name === "set_platform_price") return platformPriceGateNeeded(raw);
   return SITE_CHANGES.has(name) ? platformSiteGateNeeded(name, raw) : true;
 }
 
 /** Checks a gated platform call before it is kept for a yes, so the admin is never asked to approve what could not be done. */
 export async function preflightPlatformTool(ctx: ManagerContext, name: string, raw: unknown): Promise<void> {
   if (!ctx.account.platformAdmin) return fail("Only platform admins can do this.");
+  if (name === "set_platform_price") return preflightPlatformPrice(raw);
   if (!SITE_CHANGES.has(name)) return;
   const tool = PLATFORM_TOOLS_BY_NAME[name];
   const input = tool ? readToolInput(tool, raw) : null;

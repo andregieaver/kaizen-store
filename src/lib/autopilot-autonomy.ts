@@ -181,6 +181,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "decline_access_request",
   "set_referral_program",
   "contact_kaizen_support",
+  // Kaizena Flow's own prices (D854): their own setting on Platform → Plans decides, never the autopilot's levels.
+  "set_platform_price",
   // An extension's free trial (D852): only on the owner's own yes, never from a plan.
   "start_extension_trial",
   "start_autopilot_plan",

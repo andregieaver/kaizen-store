@@ -81,6 +81,9 @@ export function formatMoney(
   }).format(amountMinor / 10 ** minorUnitDigits(currency));
 }
 
+/** An amount as the AI's tools write it for their model (en-GB), so every tool states one amount the same way. */
+export const englishMoney = (minor: number, currency: string): string => formatMoney(minor, currency, "en-GB");
+
 /** The currencies a store can offer (D109). */
 export const OFFERABLE_CURRENCIES: readonly string[] = Object.keys(MINOR_UNIT_DIGITS);
 

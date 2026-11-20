@@ -1973,6 +1973,13 @@ export const platformSettings = commerce.table(
      */
     extensionFoundingUntil: timestamp("extension_founding_until", { withTimezone: true }),
     extensionFoundingMonths: integer("extension_founding_months").notNull().default(12),
+    /**
+     * How far the AI may tune Kaizena Flow's plan, extension and bundle prices (D748 E9 part two, D854, `src/lib/price-tuning.ts`): `off`, it
+     * changes none; `propose`, each change waits for a platform owner's yes; `auto`, it changes a price itself within
+     * `price_tuning_range_percent` of the price a person last set, and asks beyond it.
+     */
+    priceTuning: text("price_tuning").notNull().default("off"),
+    priceTuningRangePercent: integer("price_tuning_range_percent").notNull().default(20),
     /** Reminders to store owners who started paying for a plan and did not finish (D33). */
     planReminders: boolean("plan_reminders").notNull().default(false),
     /** Kaizen's own header and footer (D42): logo and menus. Shape: `PlatformNavigation` in lib/navigation. */
@@ -2042,6 +2049,8 @@ export const platformSettings = commerce.table(
   (t) => [
     check("platform_settings_briefing", sql`${t.briefing} in ('off', 'daily', 'weekly')`),
     check("platform_settings_founding_months", sql`${t.extensionFoundingMonths} between 1 and 36`),
+    check("platform_settings_price_tuning", sql`${t.priceTuning} in ('off', 'propose', 'auto')`),
+    check("platform_settings_price_tuning_range", sql`${t.priceTuningRangePercent} between 1 and 50`),
     check("platform_settings_single_row", sql`${t.id}`),
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
@@ -2361,6 +2370,40 @@ export const extensionOffers = commerce.table(
     declinedAt: timestamp("declined_at", { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.organisationId, t.extensionId] }), index("extension_offers_extension_idx").on(t.extensionId)],
+).enableRLS();
+
+/**
+ * Every price of Kaizena Flow's the AI changed (D748 E9 part two, D854): a plan's, an extension size's or a bundle's, in one currency and
+ * interval, with the reasons it gave and whether it ran on its own (`auto`, within the range) or on a platform owner's yes (`approved`).
+ * `anchor_minor` is the price a person last set, which the range is measured from (`anchorFor()` in `src/lib/price-tuning.ts`).
+ */
+export const platformPriceChanges = commerce.table(
+  "platform_price_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id").references(() => plans.id, { onDelete: "cascade" }),
+    sizeId: uuid("size_id").references(() => extensionSizes.id, { onDelete: "cascade" }),
+    bundleId: uuid("bundle_id").references(() => extensionBundles.id, { onDelete: "cascade" }),
+    currency: char("currency", { length: 3 }).notNull(),
+    interval: text("interval").notNull(),
+    fromMinor: money("from_minor"),
+    toMinor: money("to_minor"),
+    anchorMinor: money("anchor_minor"),
+    reasons: text("reasons").notNull(),
+    decided: text("decided").notNull(),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("platform_price_changes_one_target", sql`num_nonnulls(${t.planId}, ${t.sizeId}, ${t.bundleId}) = 1`),
+    check("platform_price_changes_interval", sql`${t.interval} in ('month', 'year')`),
+    check("platform_price_changes_decided", sql`${t.decided} in ('auto', 'approved')`),
+    check("platform_price_changes_amounts", sql`${t.fromMinor} >= 0 and ${t.toMinor} >= 0 and ${t.anchorMinor} >= 0`),
+    index("platform_price_changes_plan_idx").on(t.planId, t.currency, t.interval, t.createdAt),
+    index("platform_price_changes_size_idx").on(t.sizeId, t.currency, t.interval, t.createdAt),
+    index("platform_price_changes_bundle_idx").on(t.bundleId, t.currency, t.interval, t.createdAt),
+    index("platform_price_changes_account_idx").on(t.accountId),
+  ],
 ).enableRLS();
 
 /**
