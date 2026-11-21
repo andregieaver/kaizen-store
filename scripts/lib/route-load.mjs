@@ -19,6 +19,13 @@ export const ENTRIES = {
   "store-layout": "src/app/s/[store]/[market]/layout.tsx",
   "store-home": "src/app/s/[store]/[market]/(shop)/page.tsx",
   "store-product": "src/app/s/[store]/[market]/(shop)/p/[handle]/page.tsx",
+  // The pages that show products and the pages that pay (bloat review step 2.47). The walk follows static imports only: the order
+  // writer that the cart's actions, express-start.ts and checkout-terms.ts load with import() is not followed, which is the point.
+  "store-category": "src/app/s/[store]/[market]/(shop)/category/[slug]/page.tsx",
+  "store-search": "src/app/s/[store]/[market]/(shop)/search/page.tsx",
+  "store-cart": "src/app/s/[store]/[market]/(shop)/cart/page.tsx",
+  "store-checkout": "src/app/s/[store]/[market]/(shop)/checkout/page.tsx",
+  "store-account": "src/app/s/[store]/[market]/(shop)/account/page.tsx",
   "admin-store-layout": "src/app/admin/(gated)/[store]/layout.tsx",
   "admin-orders": "src/app/admin/(gated)/[store]/orders/page.tsx",
   "platform-admin-layout": "src/app/admin/(gated)/platform/layout.tsx",
@@ -92,6 +99,13 @@ const STORE_LIST = [
   "playwright-core",
 ];
 /**
+ * A page that only shows products (the product page, a category, the search) loads none of the order writer, the Stripe client, the
+ * ledger, staff alerts or billing (bloat review step 2.47): they are loaded with import() inside the action that places an order and in
+ * the functions that write. The cart, the checkout and the account place and show orders, so they may reach them.
+ */
+const ORDER_WRITER = ["src/server/checkout.ts", "src/server/stripe.ts", "src/server/ledger.ts", "src/server/staff-alerts.ts", "src/server/billing.ts"];
+const SHOWS_PRODUCTS_LIST = [...STORE_LIST, ...ORDER_WRITER];
+/**
  * A store is read without the Stripe SDK and without the page model (bloat review step 2.22): which payment modes Kaizena Flow has
  * comes from `src/server/stripe-keys.ts`, and a theme's part styles from `src/lib/part-styles.ts`, a leaf that imports no block
  * schema; so `src/server/stores.ts` and the beacons, which read a store, never reach `src/server/stripe.ts` or the file of the
@@ -114,7 +128,12 @@ export const FORBIDDEN = {
   "shop-tiles": BEACON_LIST,
   "store-layout": STORE_LIST,
   "store-home": STORE_LIST,
-  "store-product": STORE_LIST,
+  "store-product": SHOWS_PRODUCTS_LIST,
+  "store-category": SHOWS_PRODUCTS_LIST,
+  "store-search": SHOWS_PRODUCTS_LIST,
+  "store-cart": STORE_LIST,
+  "store-checkout": STORE_LIST,
+  "store-account": STORE_LIST,
   "admin-store-layout": ADMIN_LIST,
   "admin-orders": ADMIN_LIST,
   "platform-admin-layout": ADMIN_LIST,

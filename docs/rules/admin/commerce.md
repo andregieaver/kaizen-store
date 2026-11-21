@@ -592,7 +592,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 - **Express checkout and wallets (wave 10 unit J, D373, `src/lib/express-checkout.ts`, `src/server/express-checkout.ts`)**: the express area on a
   product page and in the cart (`ExpressArea`) is a button until pressed; the press is only `expressCheckoutAction()` (a product page's variant put
-  in the cart by `addToCart()`), then `startExpress()`: `expressFits()` (goods sent by post, bought once), `deliveryReady()`, and the order and
+  in the cart by `addToCart()`), then `startExpress()` (`src/server/express-start.ts`): `expressFits()` (goods sent by post, bought once), `deliveryReady()`, and the order and
   session made by `startCheckout()`, never another path; Stripe's element (`express-panel.tsx`) loads only then and confirms after the checkout
   page's steps. It is offered only where `expressOn()` says; Klarna's line (`KlarnaMessage`) only where `klarnaMessaging()` says. Each web
   address's wallets are `stripe_accounts.wallet_domains`, written only by `checkWalletDomains()` (Payments page, owners). A new place that offers
@@ -602,6 +602,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   carry the quote mode (Request a quote, D431) and back in stock.
   A writer of payment, checkout-field, quote, back-in-stock, price-break or scheme settings calls `refreshBuyFacts()` after its write has
   committed, and the platform's checkout look `refreshBuyPlatform()` (`buy-writers.scan.test.ts`).
+  A file a product page imports never imports `src/server/checkout.ts` statically (bloat review step 2.47): the actions that place an
+  order load it with import(), and `route-load.graph.test.ts` holds it for the product page, a category and the search.
 
 ## Payment providers (wave 4 unit E, D292, `docs/wave-4-payments.md` 7, `src/lib/payment-providers.ts`, `src/server/payment-providers/`,…
 
