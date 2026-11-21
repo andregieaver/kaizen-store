@@ -871,6 +871,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D866 | **A publish refreshes its own page; list facts refresh the site** | 2026-11-21 | [text](decisions/D866.md) |
 | D867 | **Admin catalogues are imported only by their area modules** | 2026-11-21 | [text](decisions/D867.md) |
 | D868 | **Split tests in broadcasts and flows, judged by the A/B engine (email plan M2.5)** | 2026-11-21 | [text](decisions/D868.md) |
+| D869 | **Schemas live apart from their helpers; zod loads where a screen runs one** | 2026-11-21 | [text](decisions/D869.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
