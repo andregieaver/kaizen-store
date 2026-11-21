@@ -20,7 +20,6 @@ import { perRequest } from "@/server/request-memo";
 import { requestCartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
 import { buyerFacts } from "@/server/company-locations";
-import { termsForBasket } from "@/server/payment-terms";
 import { termsDisplayFor } from "@/server/checkout-terms";
 import { termsTemplate } from "@/lib/checkout-terms";
 import { dayWords, TERMS_DAYS } from "@/lib/payment-terms";
@@ -66,9 +65,10 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   const saved = (business && !cart.company) || asksPayer ? customer : null;
   // Goods bought once only: no booking, subscription, venue part or host's listing (`placeOrder()` checks the same under the company's lock).
   const goodsOnly = summary.balance === 0 && cart.lines.every((line) => !line.plan && !line.booking && !line.hostId && !line.payment);
+  // Loaded only for a signed-in business buyer: the module of orders on terms is not on a page that shows products (bloat review step 2.47).
   const termsOffer =
     businessOn && customer && !summary.blocked
-      ? await termsForBasket(store.id, customer.id, { goodsOnly, totalMinor: summary.total, currency: cart.currency })
+      ? await (await import("@/server/payment-terms")).termsForBasket(store.id, customer.id, { goodsOnly, totalMinor: summary.total, currency: cart.currency })
       : null;
   // No payment page follows an order on terms: the store's terms of sale (D158) are shown here instead, as the checkout shows them.
   const termsDisplay = termsOffer?.ok || summary.giftCards.coverAll || summary.atVenueOnly ? await termsDisplayFor(store, market) : null;
