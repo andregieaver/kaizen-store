@@ -1,15 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  canWrite,
-  cleanWritten,
-  fieldsFor,
-  plainText,
-  productFacts,
-  writingMessages,
-  writtenFindings,
-  type ProductFacts,
-} from "./product-writing";
+import { canWrite, cleanWritten, fieldsFor, plainText, writingMessages, writtenFindings, type ProductFacts } from "./product-writing";
+import { productFacts } from "./product-writing-schema";
 
 const facts: ProductFacts = productFacts.parse({
   kind: "goods",

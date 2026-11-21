@@ -5,7 +5,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 import { closeDb, db } from "@/db/client";
 import { aiFormValues } from "@/lib/ai-provider";
-import { productFacts, writeRequest, writtenFindings } from "@/lib/product-writing";
+import { writtenFindings } from "@/lib/product-writing";
+import { productFacts, writeRequest } from "@/lib/product-writing-schema";
 
 type Row = Record<string, unknown>;
 

@@ -1,7 +1,6 @@
 {
   "zodReach": [
     "components/admin/affiliate-settings-form.tsx",
-    "components/admin/ai-writer.tsx",
     "components/admin/animation-fields.tsx",
     "components/admin/automation/rule-editor.tsx",
     "components/admin/backdrop-fields.tsx",
