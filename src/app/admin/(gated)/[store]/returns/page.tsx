@@ -8,7 +8,7 @@ import { QueueSkeleton } from "@/components/admin/returns/skeletons";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { LIST_PAGE_SIZE, listPage } from "@/lib/list-page";
 import { exchangeFilterOf, queueHref } from "@/lib/return-admin";
-import { returnQueueFilter } from "@/lib/return-input";
+import { returnQueueFilter } from "@/lib/return-input-schema";
 import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { RETURNS_WORDS } from "@/lib/admin-words/returns";
 import { requirePermission } from "@/server/permissions";

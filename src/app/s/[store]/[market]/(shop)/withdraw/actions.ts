@@ -1,7 +1,7 @@
 "use server";
 
 import { cleanExchangeWish } from "@/lib/exchange-input-browser";
-import { withdrawalStart } from "@/lib/return-input";
+import { withdrawalStart } from "@/lib/return-input-schema";
 import {
   declaredLines,
   emptyForm,

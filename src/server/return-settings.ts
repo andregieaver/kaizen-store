@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { DEFAULT_RETURN_SETTINGS, type ReturnAddress, type ReturnSettings } from "@/lib/withdrawal";
-import { returnSettingsInput } from "@/lib/return-input";
+import { returnSettingsInput } from "@/lib/return-input-schema";
 import { cleanTranslations, translationProblems, type InstructionTranslations } from "@/lib/return-instructions";
 import { isReturnService } from "@/lib/return-services";
 import { carrierInfo, isCarrierId, type CarrierId } from "@/lib/shipping-carriers";

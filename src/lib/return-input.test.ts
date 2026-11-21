@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { defaultReturnSettingsInput, firstProblem } from "./return-input";
 import {
   approveReturn,
   closeReturn,
   declineReturn,
-  defaultReturnSettingsInput,
-  firstProblem,
   inspectReturn,
   refundReturn,
   returnQueueFilter,
@@ -13,7 +12,7 @@ import {
   returnSettingsInput,
   withdrawalConfirm,
   withdrawalStart,
-} from "./return-input";
+} from "./return-input-schema";
 
 const id = "6f1c1b2e-3d4a-4b5c-8d9e-0a1b2c3d4e5f";
 const id2 = "7f1c1b2e-3d4a-4b5c-8d9e-0a1b2c3d4e5f";

@@ -37,7 +37,6 @@
     "components/admin/product-editor.tsx",
     "components/admin/product-question-fields.tsx",
     "components/admin/replicate-panel.tsx",
-    "components/admin/returns/step-forms.tsx",
     "components/admin/rich-text-editor.tsx",
     "components/admin/row-resize.tsx",
     "components/admin/save-template-dialog.tsx",

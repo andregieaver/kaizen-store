@@ -2,7 +2,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { returnQueueFilter } from "@/lib/return-input";
+import { returnQueueFilter } from "@/lib/return-input-schema";
 import { returnsEn } from "@/lib/admin-messages/returns.en";
 import { kitEn } from "@/lib/admin-messages/kit.en";
 

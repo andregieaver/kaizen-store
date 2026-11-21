@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { registerWithdrawal as registerSchema, returnRequest, withdrawalConfirm, withdrawalStart } from "@/lib/return-input";
+import { registerWithdrawal as registerSchema, returnRequest, withdrawalConfirm, withdrawalStart } from "@/lib/return-input-schema";
 import { noonOf, dayIn } from "@/lib/work-dates";
 import { readReturnTo } from "@/lib/drop-shipping";
 import { refundDeadline, sendBackDay, serviceShare } from "@/lib/withdrawal";

@@ -4,6 +4,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import type { ReturnQueueFilter } from "@/lib/return-input";
 import {
   approveReturn as approveSchema,
   cancelReturn as cancelSchema,
@@ -15,8 +16,7 @@ import {
   returnInstructions as instructionsSchema,
   returnNote as noteSchema,
   returnStep as stepSchema,
-  type ReturnQueueFilter,
-} from "@/lib/return-input";
+} from "@/lib/return-input-schema";
 import { storeZoneOf } from "@/lib/dates";
 import { adjustmentOf } from "@/lib/credit-allocation";
 import { labelDeduction, LABEL_PROBLEMS } from "@/lib/return-label";
