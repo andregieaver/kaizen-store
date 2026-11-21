@@ -7,7 +7,6 @@ import { GIFT_CARDS_PER_CART, looksLikeGiftCode } from "@/lib/gift-cards";
 
 import { readCartId, type Shop } from "./cart";
 import { hashGiftCode } from "./gift-card-codes";
-import { storePaymentMode } from "./host-payments";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -44,6 +43,8 @@ export type AddGiftCardOutcome =
 
 /** The store's mode now, as a test card must match (a test card is spent only in test mode, and a real one only for real). */
 async function testModeNow(storeId: string): Promise<boolean> {
+  // host-payments.ts imports the Stripe client; the cart's summary, which a product page draws, loads it only here (bloat review step 2.47).
+  const { storePaymentMode } = await import("./host-payments");
   return (await storePaymentMode(storeId)) === "test";
 }
 
