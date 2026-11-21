@@ -23,7 +23,6 @@ import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 
 import { readCartId } from "./cart";
-import { getOpenCheckout } from "./checkout";
 import { log } from "./log";
 import { publishedPageById, type PublishedPage } from "./page-reads";
 import { resolveShop } from "./shop";
@@ -178,6 +177,7 @@ export async function recordTermsAcceptance(storeSlug: string, marketParam: stri
   const shop = await resolveShop(storeSlug, marketParam);
   if (!shop) return { ok: false, problem: "no_checkout" };
   const cartId = await readCartId({ storeId: shop.store.id, market: shop.market });
+  const { getOpenCheckout } = await import("./checkout");
   const open = cartId ? await getOpenCheckout(shop.store.id, cartId) : null;
   if (!open) return { ok: false, problem: "no_checkout" };
   return recordTermsForOrder(shop.store, shop.market, open.orderId);
