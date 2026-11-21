@@ -254,7 +254,7 @@ or 200 ms gets a step in the plan.
 
 **The admin's client modules are walked like the visitor's (step 1.4).** `src/components/admin/admin-bundle.scan.test.ts` walks every
 `"use client"` module of the admin through its static imports: the four gated layouts' client parts reach no zod, no Supabase client
-and no area's catalogue, and the modules that reach zod (ZOD_REACH, `admin-bundle.baseline.json`: 145 today) only shrink. A static
+and no area's catalogue, and each module that reaches zod is named in ZOD_ALLOWED with the schema it runs (step 2.46: 61). A static
 walk does not follow `import()`, so a part loaded on a press may be large. Catalogue files hold text only
 (`src/lib/admin-messages/imports.scan.test.ts`, 36 value imports of code in 14 files at the start).
 

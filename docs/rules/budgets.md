@@ -23,7 +23,7 @@ A number rises only where its row says so, with a decision.
 | src/lib/admin-strings.baseline.json | src/lib/admin-strings.scan.test.ts | UPDATE_ADMIN_STRINGS=1 pnpm exec vitest run src/lib/admin-strings.scan.test.ts | English written into admin markup, per file |
 | src/lib/permissions.baseline.json | src/lib/permissions.scan.test.ts and src/lib/permissions.matrix.test.ts | never rewritten (the oracle from before roles; scripts/permission-baseline.mjs made it once) | what each admin entry point asked for before roles |
 | src/lib/docs-budget.baseline.json | src/lib/docs-budget.scan.test.ts | node scripts/docs-ratchet.mjs | the written rules (see The written rules below) |
-| src/components/admin/admin-bundle.baseline.json | src/components/admin/admin-bundle.scan.test.ts | WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts | admin client modules that reach zod (a new one fails; a rewrite is the deliberate step) |
+| none (ZOD_ALLOWED in src/components/admin/admin-bundle.scan.test.ts, each with the schema it runs) | src/components/admin/admin-bundle.scan.test.ts | a module is added by hand with the schema it runs, only for a screen that runs one in the browser | admin client modules that reach zod: a closed list (61 at step 2.46, 143 before); zod in the first scripts of 60 routes (132 before) |
 | none (ALLOWED_LEAVES in src/lib/admin-messages/imports.scan.test.ts, each with its reason) | src/lib/admin-messages/imports.scan.test.ts | a leaf is added by hand with its reason, only for a module that imports nothing but types and other leaves | a catalogue file's value imports: other catalogue files and the leaves only, 0 imports of code (36 in 14 files before step 2.50); the walk from it reaches no zod, component or server file |
 | src/lib/message-keys.baseline.json | src/lib/message-keys.scan.test.ts | WRITE_MESSAGE_KEYS_BASELINE=1 pnpm exec vitest run src/lib/message-keys.scan.test.ts | interface keys that no code names and no matched table covers |
 | none (KEPT, KEPT_ZONELESS and their ceilings, in src/lib/admin-dates.scan.test.ts) | src/lib/admin-dates.scan.test.ts | lower a count and its ceiling by hand once a case is gone (the test fails while a list is higher than the code) | admin code (src/app/admin, src/components/admin): a literal Europe/Oslo, 0; dates cut from a UTC string kept with a reason, 11 in 8 files (D786); dates formatted without a zone, 2 (browser only: Saved at, RestoreBar), from 42 (D812) |
@@ -100,7 +100,9 @@ Steps of the bloat review write their sentence under a heading of their own belo
 
 ### Where the words and the scripts may go (step 1.4)
 
-- src/components/admin/admin-bundle.scan.test.ts: the frame reaches no zod, Supabase client or catalogue; ZOD_REACH only shrinks.
+- src/components/admin/admin-bundle.scan.test.ts: the frame reaches no zod, Supabase client or catalogue; a client module that reaches zod is
+  named in ZOD_ALLOWED with the schema it runs (step 2.46). In src/lib a zod schema lives in a `<name>-schema.ts` file beside its helpers,
+  and the helper file imports it only as a type, so a screen that reads a helper or a constant loads no zod.
 - src/components/admin/admin-bundle.scan.test.ts (step 2.29): no admin client module reaches lib/i18n or a storefront language (lib/messages/{en,nb,sv,da}.ts), with no exception list; words come from the server or from useSiteWords().
 - src/lib/admin-text-reach.scan.test.ts: the admin's words are not imported outside the admin; no module holds a table of every area
   (more than 40 area modules), and the median admin entry reaches at most 30 areas and 1.31 MB of catalogues; its ADMIN_REACH figures

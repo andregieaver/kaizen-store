@@ -1,10 +1,7 @@
-import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { PACKAGES, SRC, chain, directive, files, read, reach, rel, resolve, specifiersOf } from "@/test/import-walk";
-
-import baseline from "./admin-bundle.baseline.json";
 
 /**
  * The admin's browser scripts under the import walk (bloat review step 1.4, `docs/performance.md`, `docs/rules/budgets.md`), as the
@@ -13,17 +10,15 @@ import baseline from "./admin-bundle.baseline.json";
  * press may be large, and `server-only` files and server action files are not walked into (a reference in the browser, not its code).
  *   1. The frame: the client parts the four gated layouts draw reach no zod, no Supabase client and no area's catalogue (only `common`
  *      and `sign-in`). FRAME_EXCEPTIONS starts empty (step 0.9 took them off).
- *   2. zod: the client modules that reach zod are listed in `admin-bundle.baseline.json` (`zodReach`); a new one fails. Move the
- *      schema to a `-schema.ts` file beside the helper, or read the helper from a module without zod. Rewrite the list, once a module
- *      has stopped (or when growth is accepted on purpose, shown in the diff), with
- *      `WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts`.
+ *   2. zod: the closed list ZOD_ALLOWED names each client module that may reach zod, with the schema it runs and why (bloat review
+ *      step 2.46). A module that reaches zod and is not a key fails, and so does a key that no longer reaches it. A schema lives in a
+ *      `-schema.ts` file beside its helpers in src/lib, and a helper file imports its schema file only as a type; a screen that runs a
+ *      schema is named here with it. The builder's, content's and themes' modules reach zod through the page model (code review 3.1).
  * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below, step 2.29's rule 5, step 2.30's (the dialogs) rule 6.
  * 4. The full Supabase client loads on the press (step 2.31): no client module reaches `@supabase/supabase-js`, `@supabase/ssr` (both
  *    named `@supabase` by the walk) or `lib/supabase/client.ts` by a static import. The session is kept by `lib/supabase/auth-client.ts`
  *    (loaded with `import()` by `session.tsx`), and an upload loads the client inside its handler (`lib/supabase/signed-upload.ts`).
  */
-const WRITE = process.env.WRITE_ADMIN_BUNDLE_BASELINE === "1";
-
 const FRAME_LAYOUTS = [
   "app/admin/(gated)/layout.tsx",
   "app/admin/(gated)/[store]/layout.tsx",
@@ -93,6 +88,72 @@ function frameOffences(planted?: Map<string, string[]>): string[] {
 const ends = (line: string) => `${line.split(" -> ")[0]} -> ${line.split(" -> ").at(-1)}`;
 
 const zodReach = () => clientsReaching("zod");
+
+/** Every admin client module that may reach zod (`rel()` names), with the schema it runs and why. Closed: a new one is named here or cut. */
+const ZOD_ALLOWED: Record<string, string> = {
+  "components/admin/affiliate-settings-form.tsx": "readAffiliateForm: runs affiliateSettingsInput on the referral settings form",
+  "components/admin/animation-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/automation/rule-editor.tsx": "orderRuleInput: checks an order rule before the save",
+  "components/admin/backdrop-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/block-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/bonus-settings-form.tsx": "readBonusForm: runs bonusSettingsInput on the bonus settings form",
+  "components/admin/builder-rails.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/content-type-editor.tsx": "content-types.ts: a content type's and an entry's schemas, on the page model; page-model work, code review 3.1",
+  "components/admin/custom-items-editor.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/drafts/draft-editor.tsx": "draftInput: checks the draft order in the editor before the save",
+  "components/admin/drafts/draft-screen.tsx": "draws draft-editor.tsx, which runs draftInput on the draft order",
+  "components/admin/dual-page-editor.tsx": "saved-parts.ts: checks a saved row, column or part against the page model; page-model work, code review 3.1",
+  "components/admin/entry-editor.tsx": "content-types.ts: a content type's and an entry's schemas, on the page model; page-model work, code review 3.1",
+  "components/admin/find-replace-dialog.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/forms/form-editor.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/gradient-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/header-stage-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/image-size-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/look-versions-dialog.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/markup-input.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/menu-hover-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/modal-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/modal-preview.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/motion-canvas.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/motion-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/page-builder-fields.tsx": "content-types.ts: a content type's and an entry's schemas, on the page model; page-model work, code review 3.1",
+  "components/admin/page-builder-icons.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/page-builder.tsx": "saved-parts.ts: checks a saved row, column or part against the page model; page-model work, code review 3.1",
+  "components/admin/page-editor.tsx": "plan-features.ts, through the builder's plan offer; page-model work, code review 3.1",
+  "components/admin/page-issues-panel.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/page-studio-view.tsx": "menuLinkSchema (replicate-grid.ts): reads a replicated grid's links; page-model work, code review 3.1",
+  "components/admin/page-studio.tsx": "page-ai.ts: reads the model's page against the page model; page-model work, code review 3.1",
+  "components/admin/page-versions-dialog.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/product-editor.tsx": "draws terms.tsx, whose term-rules-fields.tsx runs termRulesSchema on a collection's rules",
+  "components/admin/product-question-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/replicate-panel.tsx": "menuLinkSchema (replicate-grid.ts): reads a replicated grid's links; page-model work, code review 3.1",
+  "components/admin/rich-text-editor.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/row-resize.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/save-template-dialog.tsx": "page-layout.ts: checks a layout against the page model; page-model work, code review 3.1",
+  "components/admin/saved-layout-dialog.tsx": "saved-parts.ts: checks a saved row, column or part against the page model; page-model work, code review 3.1",
+  "components/admin/store-translator.tsx": "page-translate-ai.ts: reads a translated page against the page model; page-model work, code review 3.1",
+  "components/admin/templates-apply.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/templates-lists.ts": "page-layout.ts: checks a layout against the page model; page-model work, code review 3.1",
+  "components/admin/templates-modal.tsx": "page-layout.ts: checks a layout against the page model; page-model work, code review 3.1",
+  "components/admin/templates-preview.tsx": "page-layout.ts: checks a layout against the page model; page-model work, code review 3.1",
+  "components/admin/templates-sharing.tsx": "page-layout.ts: checks a layout against the page model; page-model work, code review 3.1",
+  "components/admin/templates-tab.tsx": "page-layout.ts: checks a layout against the page model; page-model work, code review 3.1",
+  "components/admin/term-rules-fields.tsx": "termRulesSchema (term-rules-fields.tsx): checks a collection's rules before the save",
+  "components/admin/terms.tsx": "draws term-rules-fields.tsx, which runs termRulesSchema on a collection's rules",
+  "components/admin/theme-editor.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/typography-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/work/assignment-form.tsx": "work-ui-schema.ts: runs a Work form through work-input-schema.ts before the save",
+  "components/admin/work/client-actions.tsx": "draws client-form.tsx, which runs clientPayload (work-ui-schema.ts) before the save",
+  "components/admin/work/client-form.tsx": "work-ui-schema.ts: runs a Work form through work-input-schema.ts before the save",
+  "components/admin/work/invoice-draft-editor.tsx": "readDraft (work-invoice-ui-schema.ts): runs invoiceInput on the draft invoice before the save",
+  "components/admin/work/log-time-form.tsx": "work-ui-schema.ts: runs a Work form through work-input-schema.ts before the save",
+  "components/admin/work/quick-timer.tsx": "draws log-time-form.tsx, which runs timePayload (work-ui-schema.ts) before the save",
+  "components/admin/work/recurring-controls.tsx": "draws recurring-form.tsx, which runs recurringPayload (work-recurring-ui.ts)",
+  "components/admin/work/recurring-form.tsx": "recurringPayload (work-recurring-ui.ts): runs recurringInvoiceInput on the recurring form",
+  "components/admin/work/tasks-panel.tsx": "work-ui-schema.ts: runs a Work form through work-input-schema.ts before the save",
+  "components/admin/work/time-panel.tsx": "draws log-time-form.tsx, which runs timePayload (work-ui-schema.ts) before the save",
+
+};
 
 /**
  * 3. Catalogues (bloat review step 2.26): no admin client module reaches an area's catalogue file (`src/lib/admin-messages/{area}.{en,nb}.ts`)
@@ -172,13 +233,7 @@ function directDialogImports(text: string): string[] {
     );
 }
 
-describe.runIf(WRITE)("the baseline writer", () => {
-  it("writes the baseline", () => {
-    writeFileSync(join(SRC, "components/admin/admin-bundle.baseline.json"), JSON.stringify({ zodReach: zodReach() }, null, 2) + "\n");
-  });
-});
-
-describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", () => {
+describe("the admin's browser scripts (bloat review step 1.4)", () => {
   it("finds the client modules", () => {
     const names = CLIENTS.map(rel);
     expect(names.length).toBeGreaterThan(300);
@@ -192,15 +247,13 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     expect(FRAME_EXCEPTIONS.filter((pair) => !live.has(pair)), "take the pair off FRAME_EXCEPTIONS").toEqual([]);
   });
 
-  it("no client module reaches zod that is not on the list, and the list only shrinks", () => {
+  it("every client module that reaches zod is named in ZOD_ALLOWED with the schema it runs", () => {
     const now = zodReach();
-    const known = new Set(baseline.zodReach);
     expect(
-      now.filter((name) => !known.has(name)),
-      "Move the schema to a -schema.ts file beside the helper, or read the helper from a module without zod; if the chain cannot be cut now, add it on purpose with WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts, so it shows in the diff.",
+      now.filter((name) => !(name in ZOD_ALLOWED)),
+      "Move the schema to a -schema.ts file beside the helper (the helper imports it only as a type), or add the module to ZOD_ALLOWED with the schema it runs.",
     ).toEqual([]);
-    const gone = baseline.zodReach.filter((name) => !now.includes(name));
-    expect(gone, "These no longer reach zod: take them off with WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts").toEqual([]);
+    expect(Object.keys(ZOD_ALLOWED).filter((name) => !now.includes(name)), "These no longer reach zod: take them off ZOD_ALLOWED.").toEqual([]);
   });
 
   it("no client module reaches an area's catalogue or an English twin", () => {
@@ -273,9 +326,9 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     expect(directDialogImports('import { PageIssuesPanel } from "./page-issues-panel";')).toHaveLength(0);
   });
 
-  it("would notice: the product editor reaches zod exactly when it is on the list", () => {
+  it("would notice: the product editor reaches zod exactly when it is named in ZOD_ALLOWED", () => {
     const editor = "components/admin/product-editor.tsx";
     const reaches = [...reach(join(SRC, editor)).keys()].includes("zod");
-    expect(baseline.zodReach.includes(editor)).toBe(reaches);
+    expect(editor in ZOD_ALLOWED).toBe(reaches);
   });
 });
