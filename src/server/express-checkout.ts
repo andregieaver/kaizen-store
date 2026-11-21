@@ -21,15 +21,13 @@ import { audit } from "./auth";
 import { paymentsOnOf, providerOf, refreshBuyFacts, type BuyFacts } from "./buy-facts";
 import { getBuyer } from "./b2b";
 import { listCheckoutFields } from "./checkout-rules";
-import { ensurePaymentDomain, getCheckoutUi } from "./connect";
 import { getCustomer } from "./customers";
 import { termsDisplayFor } from "./checkout-terms";
 import { findFont } from "./fonts";
 import { log } from "./log";
 import { getCheckoutInfo } from "./orders";
 import { methodChoices, methodStates } from "./payment-methods";
-import { getCheckoutAccount } from "./settings";
-import { platformPublishableKey, platformStripe } from "./stripe";
+import { platformPublishableKey } from "./stripe-keys";
 
 type Row = Record<string, unknown>;
 
@@ -41,6 +39,10 @@ type Row = Record<string, unknown>;
  * session's client secret handed to the browser that owns the cart, which then draws Stripe's Express Checkout Element over it. The wallet's
  * address and the delivery reach the order through `applySession()` as for any payment. The Payments page reads `walletDomains()`, kept by
  * `checkWalletDomains()`.
+ *
+ * The product page and the cart import this file to draw the area, so its top imports no writer and no Stripe client (bloat review step
+ * 2.47): the publishable key comes from `./stripe-keys`; `./connect` and `./settings` (which import the Stripe client) are loaded with
+ * import() in the live reads that need them (the facts' branch reads neither) and in `checkWalletDomains()`.
  */
 
 /**
@@ -64,6 +66,7 @@ export async function expressOn(store: Store, market: Market, facts?: BuyFacts):
       !facts.checkoutFields
     );
   }
+  const { getCheckoutUi } = await import("./connect");
   const [ui, info, customer, buyer, fields] = await Promise.all([
     getCheckoutUi(),
     getCheckoutInfo(store.id, market.code),
@@ -125,6 +128,7 @@ export async function klarnaMessaging(store: Store, market: Market, facts?: BuyF
     const key = platformPublishableKey(facts.activeMode);
     return key ? { publishableKey: key, stripeAccount: facts.accountId } : null;
   }
+  const [{ getCheckoutUi }, { getCheckoutAccount }] = await Promise.all([import("./connect"), import("./settings")]);
   const [ui, info, account, choices] = await Promise.all([getCheckoutUi(), getCheckoutInfo(store.id, market.code), getCheckoutAccount(store.id), methodChoices(store.id)]);
   if (ui !== "custom" || !info.paymentsOn || info.provider !== "stripe" || !account?.accountId) return null;
   if (!methodOn(choices, market.code, "klarna")) return null;
@@ -161,6 +165,7 @@ export async function checkWalletDomains(storeId: string, storeSlug: string, mod
   const [row] = await db().execute<Row>(sql`
     select account_id from commerce.stripe_accounts where store_id = ${storeId}::uuid and mode = ${mode}
   `);
+  const [{ platformStripe }, { ensurePaymentDomain }] = await Promise.all([import("./stripe"), import("./connect")]);
   const stripe = platformStripe(mode);
   if (!row?.account_id || !stripe) return { ok: false, problem: "no_account" };
   const account = String(row.account_id);
