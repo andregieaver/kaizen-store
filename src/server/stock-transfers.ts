@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { allIn, documentState, receiptInput, receiptPlan, transferInput, type DocumentState, type TransferStatus } from "@/lib/stock-documents";
+import { allIn, documentState, receiptPlan, type DocumentState, type TransferStatus } from "@/lib/stock-documents";
+import { receiptInput, transferInput } from "@/lib/stock-documents-schema";
 
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";

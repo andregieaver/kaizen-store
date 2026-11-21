@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { allIn, documentState, linesFromCsv, purchaseOrderInput, receiptPlan, transferInput, unitCostMinor, unitsToCome } from "./stock-documents";
+import { allIn, documentState, linesFromCsv, receiptPlan, unitCostMinor, unitsToCome } from "./stock-documents";
+import { purchaseOrderInput, transferInput } from "./stock-documents-schema";
 
 const A = "00000000-0000-4000-8000-00000000000a";
 const B = "00000000-0000-4000-8000-00000000000b";

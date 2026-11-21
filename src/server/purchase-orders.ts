@@ -7,16 +7,8 @@ import { db } from "@/db/client";
 import { convertMinor } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 import { formatPriceInput } from "@/lib/product-input";
-import {
-  allIn,
-  documentState,
-  purchaseOrderInput,
-  receiptInput,
-  receiptPlan,
-  unitCostMinor,
-  type DocumentState,
-  type PurchaseOrderStatus,
-} from "@/lib/stock-documents";
+import { allIn, documentState, receiptPlan, unitCostMinor, type DocumentState, type PurchaseOrderStatus } from "@/lib/stock-documents";
+import { purchaseOrderInput, receiptInput } from "@/lib/stock-documents-schema";
 
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
