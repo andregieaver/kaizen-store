@@ -867,6 +867,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D862 | **Contract editor: side by side or stacked, and a draft saved as a template** | 2026-11-20 | [text](decisions/D862.md) |
 | D863 | **Each working store page loads its own parts** | 2026-11-20 | [text](decisions/D863.md) |
 | D864 | **The admin shell and the visit beacons list fewer server references** | 2026-11-20 | [text](decisions/D864.md) |
+| D865 | **A lead score for business customers, in code with each point's reason (email plan M2.8)** | 2026-11-21 | [text](decisions/D865.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
