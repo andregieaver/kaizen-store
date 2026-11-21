@@ -172,7 +172,7 @@ commit as the fix.
 | 2.11 | Give the storefront a stylesheet of its own | SC-5, CS-1, BN-12, GAP-styles-s5 | M | review | 1.21, 1.23, 1.3, 0.35, 0.34, 0.12 | Open | |
 | 2.12 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | review | 2.10, 2.2 | Done | D861, live 20 Nov: /products 128,622 to 97,856 B, each tile once per copy; 0 list queries unfiltered. |
 | 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | Done | 19 Nov, 4cc84650, D779: product page 12 to 1 statements; buy facts one cached read. |
-| 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28, 1.9 | In progress | Local, 7 commits: page:{om-oss} on 3 of 267 entries, pages:{store} on all; alt texts 1 refresh in 3 runs; pages-tag refreshes 43 to 40. |
+| 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28, 1.9 | In progress | D866, live 20 Nov: a body publish refreshes its own page; list facts or a date grid, the site. Prod: refresh counts. |
 | 2.15 | Let tagged reads live until their tag is refreshed | SD-8, CA-10 | M | strong | 2.14, 1.11, 1.25 | Open | |
 | 2.16 | Keep a page's title and flags in columns | DS-4, PM-6 | M | review | 0.24, 0.23 | Done | 18 Nov, 64e5b620, D775: title, titles by language and remembered modal in generated columns. |
 | 2.17 | Let page lists, pickers and grids open no document | AD-14, PM-5, GAP-page-model-1, GAP-page-model-s1 | M | strong | 2.16, 0.24, 1.9, 0.19 | In progress | 18 Nov, 13522625, D778: lists 100 a page from columns, grids from SQL; a week's statistics to read. |
@@ -208,7 +208,7 @@ commit as the fix.
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
 | 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Done | 19 Nov, 0e649cc0, D782: +2 statements a line, history-free, warm triggers under 2.9 ms; no gates. |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
-| 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | In progress | Local 20 Nov: c1-c3 done, importers 218 to 0 (3 context files); median 4 areas/238 KB. Not met: orders 10,676 KB (12,068) vs 6.5 MB. |
+| 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | In progress | D867, live 20 Nov: only area modules and 3 context files import catalogues; store layout 8 to 4 files. Orders 10.7 MB. |
 
 **Phase 3: One of each**
 
