@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { sameEmail } from "./email-address";
 
 /**
@@ -117,27 +116,6 @@ export const erasedEmailKey = (requestId: string): string => `privacy.erased:${r
 // ---------------------------------------------------------------------------
 // What the staff forms send (shared by the browser and the server).
 // ---------------------------------------------------------------------------
-
-const text = (max: number) => z.string().trim().max(max);
-
-/** Logging a request that arrived by email, post or phone. `receivedOn` is the day it arrived (not in the future). */
-export const logRequestInput = z.object({
-  kind: z.enum(PRIVACY_KINDS, "Choose export or erasure."),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .max(254)
-    .pipe(z.email("Enter the email address the person wrote from.")),
-  receivedOn: z.iso.date("Enter the date the request was received."),
-  note: text(1000).default(""),
-});
-
-export const extendInput = z.object({ reason: text(1000).min(1, "Say why the request is extended.") });
-export const refuseInput = z.object({
-  reason: z.enum(REFUSAL_REASONS, "Choose a reason."),
-  note: text(1000).default(""),
-});
 
 /** The confirmation a staff erasure asks for: the subject's own email typed again, or the word ERASE for a subject with none. */
 export function erasureConfirmed(typed: string, subjectEmail: string | null): boolean {

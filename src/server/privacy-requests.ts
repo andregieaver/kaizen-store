@@ -7,16 +7,13 @@ import { renderEmail } from "@/lib/email-layout";
 import {
   daysLeft,
   effectiveDue,
-  extendInput,
   extensionLimit,
   extensionProblem,
   EXTENSION_PROBLEM_TEXT,
   isOverdue,
-  logRequestInput,
   privacyDeadline,
   receivedInstant,
   receivedProblem,
-  refuseInput,
   reminderDue,
   reminderKey,
   type PrivacyChannel,
@@ -26,6 +23,7 @@ import {
   type RefusalReason,
   type RequestClock,
 } from "@/lib/privacy-request";
+import { extendInput, logRequestInput, refuseInput } from "@/lib/privacy-request-schema";
 import { dueReminderEmail } from "@/lib/privacy-emails";
 import { extensionNoticeEmail, privacyLanguage, refusalNoticeEmail } from "@/lib/privacy-text";
 import { siteUrl } from "@/lib/site";

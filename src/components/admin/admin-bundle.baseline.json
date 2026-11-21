@@ -37,8 +37,6 @@
     "components/admin/page-studio-view.tsx",
     "components/admin/page-studio.tsx",
     "components/admin/page-versions-dialog.tsx",
-    "components/admin/privacy/request-actions.tsx",
-    "components/admin/privacy/request-form.tsx",
     "components/admin/product-editor.tsx",
     "components/admin/product-question-fields.tsx",
     "components/admin/reminder-editor.tsx",

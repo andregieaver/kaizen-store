@@ -8,20 +8,18 @@ import {
   effectiveDue,
   erasedEmailKey,
   erasureConfirmed,
-  extendInput,
   extensionLimit,
   extensionProblem,
   isFresh,
   isOverdue,
-  logRequestInput,
   privacyDeadline,
   receivedInstant,
   receivedProblem,
-  refuseInput,
   reminderDue,
   reminderKey,
   type RequestClock,
 } from "./privacy-request";
+import { extendInput, logRequestInput, refuseInput } from "./privacy-request-schema";
 
 const at = (iso: string) => new Date(iso);
 
