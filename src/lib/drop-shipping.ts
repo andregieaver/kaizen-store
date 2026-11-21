@@ -3,8 +3,6 @@
  * around it. Pure; `src/server/suppliers.ts` is the only writer and applies these rules again.
  */
 
-import { z } from "zod";
-
 import { DOCUMENT_LANGUAGES, type DocumentLanguage } from "./invoice-text";
 
 /** Suppliers that drop-ship for one store. */
@@ -52,36 +50,6 @@ export const countryName = (code: string): string => REGIONS.of(code) ?? code;
 
 /** Whether a supplier's parcels come from outside the EU (flagged to the owner: customs, import VAT and a longer wait). */
 export const shipsFromOutsideEu = (country: string): boolean => !EU_COUNTRIES.has(country.toUpperCase());
-
-const trimmed = (max: number, words: string) => z.string().trim().max(max, words);
-
-export const supplierInput = z.object({
-  name: z.string().trim().min(1, "Give the supplier a name.").max(120, "A name is at most 120 characters."),
-  orderEmail: z.string().trim().toLowerCase().max(254, "Check the email address.").regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "Check the email address."),
-  shipsFrom: z.string().trim().toUpperCase().refine(isCountryCode, "Choose the country it ships from."),
-  orderLanguage: z.enum(ORDER_LANGUAGES as [DocumentLanguage, ...DocumentLanguage[]]).default("en"),
-  dispatchDays: z.coerce.number().int("Whole days.").min(1, "Between 1 and 30 days.").max(30, "Between 1 and 30 days.").default(2),
-  orderMethod: z.enum(ORDER_METHODS).default("email"),
-  /** Where returns of its goods go (D562): all five parts, so a carrier can make the label, or none for the store's own address. */
-  returnName: trimmed(120, "A name is at most 120 characters.").default(""),
-  returnStreet: trimmed(200, "A street is at most 200 characters.").default(""),
-  returnPostalCode: trimmed(20, "A postal code is at most 20 characters.").default(""),
-  returnCity: trimmed(100, "A city is at most 100 characters.").default(""),
-  returnCountry: z.string().trim().toUpperCase().default(""),
-  orderNote: trimmed(500, "A note is at most 500 characters.").default(""),
-  /** Its stock is kept topped up (D553): for a supplier that always has the goods. */
-  alwaysAvailable: z.union([z.boolean(), z.literal("on"), z.literal("")]).transform((v) => v === true || v === "on").default(false),
-})
-  .superRefine((v, ctx) => {
-    const parts = [v.returnName, v.returnStreet, v.returnPostalCode, v.returnCity, v.returnCountry];
-    if (parts.every((p) => p === "")) return;
-    if (parts.some((p) => p === "")) ctx.addIssue({ code: "custom", path: ["returnStreet"], message: "Fill in the whole return address, or leave all of it empty." });
-    else if (!isCountryCode(v.returnCountry)) ctx.addIssue({ code: "custom", path: ["returnCountry"], message: "Choose the return address's country." });
-  })
-  .transform(({ returnName, returnStreet, returnPostalCode, returnCity, returnCountry, ...rest }) => ({
-    ...rest,
-    returnTo: returnStreet ? { name: returnName, street: returnStreet, postalCode: returnPostalCode, city: returnCity, country: returnCountry } : null,
-  }));
 
 /** A supplier's return address as kept (D562), or null unless every part is there. */
 export function readReturnTo(value: unknown): { name: string; street: string; postalCode: string; city: string; country: string } | null {

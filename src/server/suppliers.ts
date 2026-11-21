@@ -11,10 +11,10 @@ import {
   SUPPLIER_PRIORITY_BASE,
   readReturnTo,
   shipsFromOutsideEu,
-  supplierInput,
   supplierLocationName,
   type OrderMethod,
 } from "@/lib/drop-shipping";
+import { supplierInput } from "@/lib/drop-shipping-schema";
 import type { DocumentLanguage } from "@/lib/invoice-text";
 import type { ReturnAddress } from "@/lib/withdrawal";
 import { SUPPLIER_KEY_PREFIX } from "@/lib/supplier-orders";

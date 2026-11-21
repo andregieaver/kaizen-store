@@ -22,7 +22,6 @@
     "components/admin/gradient-fields.tsx",
     "components/admin/header-stage-fields.tsx",
     "components/admin/image-size-fields.tsx",
-    "components/admin/inventory/suppliers-view.tsx",
     "components/admin/look-versions-dialog.tsx",
     "components/admin/markup-input.tsx",
     "components/admin/menu-hover-fields.tsx",
