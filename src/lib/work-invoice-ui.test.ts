@@ -23,7 +23,6 @@ import {
   problemHref,
   quantityField,
   readCreditLines,
-  readDraft,
   readFxRate,
   readQuantity,
   readRow,
@@ -35,6 +34,7 @@ import {
   type DraftHeaderValues,
   type LineRow,
 } from "./work-invoice-ui";
+import { readDraft } from "./work-invoice-ui-schema";
 import type { VatContext } from "./work-vat";
 
 const CLIENT = "6f1c0f37-5f39-4d0e-9d55-7f0d0f6a1001";

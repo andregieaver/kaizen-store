@@ -25,13 +25,13 @@ import {
   previewRows,
   problemCount,
   quantityField,
-  readDraft,
   readQuantity,
   rowFromLine,
   sameRows,
   type DraftHeaderValues,
   type LineRow,
 } from "@/lib/work-invoice-ui";
+import { readDraft } from "@/lib/work-invoice-ui-schema";
 import { liveMinutes } from "@/lib/work-timer-ui";
 import { VAT_TREATMENT_LABELS, type VatContext } from "@/lib/work-vat";
 import type { InvoiceDetail, InvoiceReadiness } from "@/server/work-invoices";
