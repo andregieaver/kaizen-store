@@ -9,9 +9,9 @@ import {
   phoneCountry,
   smsBody,
   smsParts,
-  smsSettingsInput,
   withinCap,
 } from "./sms";
+import { smsSettingsInput } from "./sms-schema";
 
 describe("phone numbers (D565)", () => {
   it("are made E.164 from what people type, in their own country or with its code", () => {

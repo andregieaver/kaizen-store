@@ -23,15 +23,14 @@ import {
   normalisePhone,
   phoneCountry,
   smsBody,
-  smsCampaignInput,
   smsParts,
-  smsSettingsInput,
   withinCap,
   type SmsCampaignStatus,
   type SmsMessageStatus,
   type SmsStopSource,
   type SmsSubscriberStatus,
 } from "@/lib/sms";
+import { smsCampaignInput, smsSettingsInput } from "@/lib/sms-schema";
 
 import { audit, type Membership } from "./auth";
 import { log } from "./log";
