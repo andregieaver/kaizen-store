@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_STYLE, PANEL_WIDTH, readStyle, styleProblem, widgetCss, widgetStyleSchema } from "./support-widget-style";
+import { PANEL_WIDTH, widgetCss } from "./support-widget-style";
+import { DEFAULT_STYLE, readStyle, styleProblem, widgetStyleSchema } from "./support-widget-style-schema";
 
 describe("a chat widget's own look (D582)", () => {
   it("is the store's own chat until something is chosen", () => {

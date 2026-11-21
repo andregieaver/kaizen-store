@@ -47,8 +47,6 @@
     "components/admin/save-template-dialog.tsx",
     "components/admin/saved-layout-dialog.tsx",
     "components/admin/store-translator.tsx",
-    "components/admin/support/widgets/widget-editor.tsx",
-    "components/admin/support/widgets/widget-preview.tsx",
     "components/admin/templates-apply.tsx",
     "components/admin/templates-lists.ts",
     "components/admin/templates-modal.tsx",

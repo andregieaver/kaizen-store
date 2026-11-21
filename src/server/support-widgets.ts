@@ -23,7 +23,8 @@ import {
   type CheckProblem,
 } from "@/lib/support-embed";
 import { CRAWL_PROBLEMS, type CrawlProblem } from "@/lib/site-crawl";
-import { readStyle, styleProblem, widgetStyleSchema, type WidgetStyle } from "@/lib/support-widget-style";
+import type { WidgetStyle } from "@/lib/support-widget-style";
+import { readStyle, styleProblem, widgetStyleSchema } from "@/lib/support-widget-style-schema";
 
 import { audit } from "./auth";
 import { findFont, installFonts } from "./fonts";
