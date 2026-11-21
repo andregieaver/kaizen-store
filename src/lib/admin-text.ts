@@ -73,6 +73,7 @@ import type { SchedulesMessages } from "./admin-messages/schedules.en";
 import type { OauthMessages } from "./admin-messages/oauth.en";
 import type { SandboxMessages } from "./admin-messages/sandbox.en";
 import type { HouseAutopilotMessages } from "./admin-messages/house-autopilot.en";
+import type { LeadScoreMessages } from "./admin-messages/lead-score.en";
 import type { KitMessages } from "./admin-messages/kit.en";
 
 /**
@@ -159,6 +160,7 @@ export type AdminAreaMessages = {
   oauth: OauthMessages;
   sandbox: SandboxMessages;
   houseAutopilot: HouseAutopilotMessages;
+  leadScore: LeadScoreMessages;
   /** The admin kit's own words (code review 1.12, D818): `Pager` and `ListSearch`, drawn on the server. */
   kit: KitMessages;
   /** Cuts (bloat review step 2.27, `cut()` in `src/lib/admin-area.ts`, each a module in `src/lib/admin-words`): some groups of an area, the same objects, for screens whose parts read only those. */
@@ -208,7 +210,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "privacyOfficer", "flows", "automatic", "houseAutopilot", "kit"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "kit"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;

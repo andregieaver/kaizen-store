@@ -28,6 +28,8 @@ import { activityViews, newActivityValues } from "@/components/admin/activities/
 import { activitiesOf } from "@/server/activities";
 import { activityActions, activityTeam } from "../../deals/activity-actions-of";
 import { listDeals } from "@/server/deals";
+import { customerLeadScore } from "@/server/lead-score";
+import { leadLevel } from "@/lib/lead-score";
 import { TIMELINE_KINDS, askedKind } from "@/lib/customer-timeline";
 import { exportProblemOf } from "@/lib/privacy-admin";
 import { ORDER_STATUS_SIGNAL } from "@/lib/order-status";
@@ -48,7 +50,7 @@ import { notesOf, staffFormValues } from "@/server/customer-staff";
 import { readTimeline } from "@/server/customer-timeline";
 import { privacyCard } from "@/server/privacy-admin";
 import { tagsOf } from "@/server/segments";
-import { AdminLink, CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
+import { AdminLink, CARD_CLASS, Chip, EmptyState, PageHeader } from "@/components/admin/ui";
 import { DotChip, Pictures } from "@/components/admin/home/home-parts";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
@@ -63,6 +65,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
+import { LEAD_SCORE_WORDS } from "@/lib/admin-words/lead-score";
 import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
 import { PRIVACY_WORDS } from "@/lib/admin-words/privacy";
@@ -90,6 +93,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const lang = adminLangOf(member.account.adminLocale);
   const all = CUSTOMERS_WORDS[lang];
   const words = all.customer;
+  const leadWords = LEAD_SCORE_WORDS[lang];
   const statuses = COMMON_WORDS[lang].orderStatus;
   const query = await searchParams;
   const exportParam = query.export;
@@ -138,7 +142,11 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const locale = store.markets[0]?.locale ?? "nb-NO";
   // Deals (S2, D464): the person's, while Deals is on.
   const salesOn = dealsOn(store) && customer.customerId !== null;
-  const deals = salesOn && customer.customerId ? await listDeals(store, { customerId: customer.customerId }) : [];
+  const [deals, lead] = await Promise.all([
+    salesOn && customer.customerId ? listDeals(store, { customerId: customer.customerId }) : Promise.resolve([]),
+    // A business customer's lead score (email plan M2.8, D865): null for one who buys for no company.
+    customer.customerId ? customerLeadScore(store.id, { customerId: customer.customerId, email: customer.email }, salesOn) : Promise.resolve(null),
+  ]);
   const dealWords = DEALS_WORDS[lang];
   const [activities, team] =
     salesOn && customer.customerId
@@ -430,6 +438,26 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
         </div>
 
         <div className="flex flex-col gap-6">
+          {lead && (
+            <section aria-labelledby="lead" className={`${card} text-sm`} data-lead-score={lead.score}>
+              <h2 id="lead" className="mb-1 text-title text-ink">{leadWords.title}</h2>
+              <p className="text-body-strong text-ink">
+                {fillWords(leadWords.score, { n: lead.score })} · {leadWords.levels[leadLevel(lead.score)]}
+              </p>
+              {lead.points.length === 0 ? (
+                <EmptyState compact title={leadWords.none} className="mt-2" />
+              ) : (
+                <ul className="mt-2 flex flex-col gap-1">
+                  {lead.points.map((p) => (
+                    <li key={p.reason} className="flex justify-between gap-3">
+                      <span>{countWords(p.count, leadWords.reasons[p.reason])}</span>
+                      <span className="shrink-0 tabular-nums text-muted">+{p.points}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
           <section aria-labelledby="contact" className={`${card} text-sm`}>
             <h2 id="contact" className="mb-2 text-title text-ink">{words.contact}</h2>
             <a href={`mailto:${customer.email}`} className="break-all underline">
