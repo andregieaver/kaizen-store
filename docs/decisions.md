@@ -869,6 +869,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D864 | **The admin shell and the visit beacons list fewer server references** | 2026-11-20 | [text](decisions/D864.md) |
 | D865 | **A lead score for business customers, in code with each point's reason (email plan M2.8)** | 2026-11-21 | [text](decisions/D865.md) |
 | D866 | **A publish refreshes its own page; list facts refresh the site** | 2026-11-21 | [text](decisions/D866.md) |
+| D867 | **Admin catalogues are imported only by their area modules** | 2026-11-21 | [text](decisions/D867.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
