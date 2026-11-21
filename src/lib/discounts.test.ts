@@ -11,10 +11,10 @@ import {
   reaches,
   normalizeCode,
   platformDiscountSummary,
-  storeDiscountInput,
   type DiscountLine,
   type StoreDiscount,
 } from "./discounts";
+import { storeDiscountInput } from "./discounts-schema";
 
 const base: StoreDiscount = {
   id: "d1",

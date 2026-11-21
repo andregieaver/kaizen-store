@@ -16,17 +16,16 @@ import {
   type CodeClass,
   type StackCandidate,
   type StackRefusal,
-  generateCodesInput,
   generatedCode,
   availability,
   limitedToSome,
   normalizeCode,
   type AppliedDiscount,
   type DiscountLine,
-  storeDiscountInput,
   type DiscountProblem,
   type StoreDiscount,
 } from "@/lib/discounts";
+import { generateCodesInput, storeDiscountInput } from "@/lib/discounts-schema";
 import { localInstant } from "@/lib/follow-ups";
 import { shown, type Market } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";

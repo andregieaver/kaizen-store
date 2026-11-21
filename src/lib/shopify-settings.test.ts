@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { storeDiscountInput } from "./discounts";
+import { storeDiscountInput } from "./discounts-schema";
 import { amountOf, giftCardOf, countriesOf, discountInputOf, discountOf, fontFamilyOf, hexOf, lookFromAnswer, lookOf, shippingOf, type DiscountLine } from "./shopify-settings";
 
 const ALL = { __typename: "DiscountBuyerSelectionAll" };

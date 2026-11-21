@@ -6,7 +6,8 @@ import Stripe from "stripe";
 import { db } from "@/db/client";
 import { randomBytes } from "node:crypto";
 
-import { normalizeCode, platformDiscountInput, type PlatformDiscount } from "@/lib/discounts";
+import { normalizeCode, type PlatformDiscount } from "@/lib/discounts";
+import { platformDiscountInput } from "@/lib/discounts-schema";
 import { campaignCode, campaignFor, campaignRuns, campaignsMeet, type PlanCampaign } from "@/lib/plan-campaigns";
 import { parsePrice } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";

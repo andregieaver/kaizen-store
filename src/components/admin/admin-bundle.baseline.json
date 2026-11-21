@@ -19,7 +19,6 @@
     "components/admin/entry-editor.tsx",
     "components/admin/find-replace-dialog.tsx",
     "components/admin/forms/form-editor.tsx",
-    "components/admin/generated-codes.tsx",
     "components/admin/gradient-fields.tsx",
     "components/admin/header-stage-fields.tsx",
     "components/admin/image-size-fields.tsx",
