@@ -204,7 +204,7 @@ commit as the fix.
 | 2.43 | Add a related test run for the push | TC-6, GAP-build-s4 | S | review | 0.38, 0.39, 1.20, 2.42 | Open | |
 | 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | In progress | 19 Nov, 9e6e0502, D789: db tests share a worker (150 to 108 s); components stay isolated; CI's unit ceiling to set. |
 | 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
-| 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | In progress | Local 21 Nov: zod in 60 routes (132); list closed, 61 modules, 41 the builder's (code review 3.1); product editor 1,118,175 B. |
+| 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | In progress | D869, live 21 Nov: zod routes 132 to 60, closed list of 61 modules; Work pages -150 KB. Product editor 1.118 MB (1.1 not met). |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
 | 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Done | 19 Nov, 0e649cc0, D782: +2 statements a line, history-free, warm triggers under 2.9 ms; no gates. |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
@@ -758,12 +758,12 @@ Each area's measures, today's values, the targets, how each is measured and the 
 
 Updated as steps land; last on 20 November 2026. A grade rises only for fixes seen working in production. On 20 November 87 of
 the 156 steps are done, 26 in progress and 43 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
-under way. No area is a D any more: 10 are a C and 3 a B.
+under way. No area is a D any more: 9 are a C and 4 a B.
 
 | Area | 12 Nov | Now | Steps done | What moved it, or what the next grade waits on |
 |---|---|---|---|---|
 | What a shopper's browser gets | C | C | 22 of 30 | Store pages static, layout sent once, links with a policy, a listing fetches ahead and draws its grid once, each working page loads its own parts; B after 2.11 and 2.45. |
-| What an owner's browser gets | D | C | 19 of 29 | Supabase, zod and the builder's English off every screen; the builder 2.79 to 1.83 MB; an untouched tab asks 6 times an hour, not 60. B after 2.46. |
+| What an owner's browser gets | D | B | 19 of 29 | Large causes gone: Supabase, zod and the builder's English off plain screens; editors and dialogs on demand; words handed cut; every route under a budget. A when the builder (1.83 MB) and the product editor (1.12 MB) reach 1.8 and 1.1. |
 | What the server loads and asks | D | C | 32 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons reach no cached read; the reference manifest 11.95 to 9.88 MB. B after 2.47, 2.19, 2.14 and 2.15. |
 | Scheduled work | D | C | 15 of 24 | The scheduler's log pruned, statements per run held, a watchdog every 15 minutes. Further with 1.26 and phase 3's one tick. |
 | The database | C | B | 23 of 34 | Its phase 0 and 1 steps are live: statements per page and run held, lists read 100 rows a page. A after 2.19 and phase 3. |
