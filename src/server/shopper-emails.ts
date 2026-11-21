@@ -44,7 +44,7 @@ import { withdrawalInfoBlocks, withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
 import { knowStoreAddress, type Store } from "./stores";
 import { col, typedRow } from "./typed-rows";
-import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
+import type { SubscriptionChange, SubscriptionView } from "./subscriptions";
 
 type Row = Record<string, unknown>;
 
@@ -315,7 +315,9 @@ export async function sendOrderConfirmation(
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
-  const subscription = order.subscriptionId ? await getSubscriptionForOrder(storeId, orderId) : null;
+  // subscriptions.ts imports the Stripe client: loaded for a subscription's order only, so the files that import this one for its
+  // other senders (a product's questions, the delivery choices) do not reach it from a page that shows products (bloat review step 2.47).
+  const subscription = order.subscriptionId ? await (await import("./subscriptions")).getSubscriptionForOrder(storeId, orderId) : null;
   const renewal = subscription !== null && subscription.number !== order.number;
   const kind = renewal ? "subscription.renewed" : "order.confirmation";
   // Required (D238 4.1): always on, so this never stops it; asked like every catalogue sender.
