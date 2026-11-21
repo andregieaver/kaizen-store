@@ -18,6 +18,7 @@ import { limitsReachedCount } from "./usage";
 import { usageRows } from "./ai-usage";
 import { queueCounts, queueFiguresOf } from "./attention";
 import type { Account } from "./auth";
+import { pgUuidArray } from "./pg-arrays";
 import { col, typedRows } from "./typed-rows";
 import { OWED_LINE, OWED_UNITS } from "./analytics-sql";
 import { invoiceAttention } from "./invoices";
@@ -51,12 +52,31 @@ const idsWith = (rows: Row[], key: PermissionKey) =>
 
 const idList = (ids: string[]) => sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
 
+/** The folded counts of orders' work, one row per store where the member may read orders (bloat review step 2.32). */
+const ORDER_COUNTS = z.object({
+  store_id: col.uuid,
+  draft_n: col.int,
+  draft_oldest: col.timestampOrNull,
+  draft_expiring: col.int,
+  partly_n: col.int,
+  partly_oldest: col.timestampOrNull,
+  change_n: col.int,
+  change_expiring: col.int,
+  hand_pickup: col.int,
+  hand_oldest_pickup: col.timestampOrNull,
+  hand_local: col.int,
+  terms_overdue: col.int,
+  owed_n: col.int,
+});
+
 /**
  * The bird's-eye view of every store an account works in (D107): status,
  * plan, payments, the last 7 days' sales against the 7 before, orders waiting
  * to be sent, stock running out, Work's attention items for the stores that use it, and the latest orders (`onlyStore`: one
- * store's, for its own overview). A handful of queries
- * for all stores together, counted here in code (D94), never per store.
+ * store's, for its own overview). One statement for the stores, then one wave for everything else, for all stores together and counted
+ * here in code (D94): the counts that share a key set are one statement (the orders' six, bloat review step 2.32), and the queues of
+ * `queueCounts()` are one statement too. Per store are read only
+ * the threshold watch of stores with an open book and the plan's limits (kept a minute), both started in the same wave.
  *
  * What a member sees follows what they may open (wave 1, 1f review): a collaborator whose time has run out is not a member of the store
  * at all (`expires_at`, whether or not the daily job has marked it), and a figure is counted only for a store where the member holds
@@ -71,7 +91,9 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
            exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready,
            -- The paid extensions the store's account has now (D748): their items are asked only of those stores.
            commerce.extension_on(s.id, 'work') as work_ext, commerce.extension_on(s.id, 'deals') as deals_ext,
-           commerce.extension_on(s.id, 'support_desk') as support_ext, commerce.extension_on(s.id, 'email_automation') as email_ext
+           commerce.extension_on(s.id, 'support_desk') as support_ext, commerce.extension_on(s.id, 'email_automation') as email_ext,
+           -- An open book (at most one per store, ledger_books_open_key): only such a store is asked for its threshold watch (D514).
+           exists (select 1 from commerce.ledger_books lb where lb.store_id = s.id and lb.closed_on is null) as has_books
     from commerce.store_members m
     -- Store templates (D175) are the platform's work, not the account's stores.
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.starter and not s.sandbox and not s.workspace
@@ -114,7 +136,25 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   // Flows losing readers (M3.8) are Email automation's (D748): asked only where the account has it, for those who may read marketing.
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows, booksRows, requestRows, queues] = await Promise.all([
+  // Reviews (D301 G3) are asked only when a store the member may read products of has the feature on.
+  const reviewIds = storeRows.filter((r) => productSet.has(String(r.id)) && featureOn(((r.features ?? []) as unknown[]).map(String), "reviews")).map((r) => String(r.id));
+  // The threshold watch (D514), where the member may read the books and the store has an open book: each threshold near or just passed, in
+  // their language. Started in the same wave as the counts.
+  const booksReaders = new Set(idsWith(storeRows.filter((r) => r.work_ext === true), "books:read"));
+  const lang = adminLangOf(account.adminLocale);
+  const watchWords = BOOKS_WORDS[lang].watch;
+  const turnoverWatches = Promise.all(
+    storeRows
+      .filter((r) => booksReaders.has(String(r.id)) && r.has_books === true)
+      .map(async (r) => {
+        const watch = await turnoverWatch(String(r.id), todayIn(new Date(), String(r.time_zone ?? PLATFORM_TIME_ZONE))).catch(() => null);
+        return [String(r.id), (watch?.watches ?? []).map((w) => watchText(w, watchWords, ADMIN_LANG_FACTS[lang].locale))] as const;
+      }),
+  );
+  // Limits of the plan used up (D314), where the member may read the plan; nothing is read for a store whose plan sets none, and the count
+  // is kept a minute (`limitsReachedCount()`).
+  const limitsReached = Promise.all([...billingIds].map(async (id) => [id, await limitsReachedCount(id).catch(() => 0)] as const));
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, orderCounts, supportRows, reviewRows, booksRows, requestRows, queues, turnoverRows, limitsRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -188,76 +228,80 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     taxReturnsAttention(ownerIds),
     // Privacy requests past their one-month clock or due this week (D162, wave 1g): counts only.
     privacyAttention(customerIds),
-    // Draft orders sent and not yet paid (D173): counts for the stores where the member may read orders, never a customer.
-    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select d.store_id, count(*)::int as waiting, min(d.sent_at) as oldest,
-        count(*) filter (where d.expires_at is not null and d.expires_at <= now() + make_interval(days => ${DRAFT_EXPIRING_DAYS}))::int as expiring
-      from commerce.draft_orders d
-      where d.store_id in (${idList(orderIds)}) and d.status = 'sent'
-      group by d.store_id
-    `),
-    // Orders partly sent (D174, docs/analytics.md "Order changes and parcels"): paid, not copied, with a parcel and units still to send
-    // (`commerce.order_fulfilment()`, the order page's own state), and when the oldest one's first parcel left. Counts only.
-    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select o.store_id, count(*)::int as n, min(fs.first_at) as oldest
-      from commerce.orders o
-      cross join lateral (select min(s.created_at) as first_at from commerce.shipments s where s.store_id = o.store_id and s.order_id = o.id and s.undone_at is null) fs
-      where o.store_id in (${idList(orderIds)}) and o.status = 'paid' and o.copied_from is null and fs.first_at is not null
-        and commerce.order_fulfilment(o.id) = 'partly_sent'
-      group by o.store_id
-    `),
-    // Order changes waiting for the customer's payment (D174), and those whose pay link ends within EDIT_EXPIRING_DAYS. Counts only.
-    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select e.store_id, count(*)::int as waiting,
-        count(*) filter (where e.expires_at is not null and e.expires_at <= now() + make_interval(days => ${EDIT_EXPIRING_DAYS}))::int as expiring
-      from commerce.order_edits e
-      join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
-      where e.store_id in (${idList(orderIds)}) and e.status = 'awaiting_payment'
-      group by e.store_id
-    `),
+    // The counts of orders' work (bloat review step 2.32): one statement for the stores where the member may read orders, a lateral per
+    // figure, each with its read's own FROM, joins and WHERE (the store filter is `s.id`, the key set itself). Counts only, never a customer:
+    // draft orders sent and not yet paid (D173); orders partly sent (D174, docs/analytics.md "Order changes and parcels": paid, not copied,
+    // with a parcel and units still to send, `commerce.order_fulfilment()`, and when the oldest one's first parcel left); order changes
+    // waiting for the customer's payment (D174) and those whose pay link ends within EDIT_EXPIRING_DAYS; orders the store hands over itself
+    // (D237: the Orders page's *To hand over*, paid pickup orders, and *Local deliveries*, paid or taken out and not delivered, archived and
+    // copied orders left out); invoices on payment terms past their due day (D293), not yet paid; and order changes whose refund failed and
+    // still owe the customer (D392, `EDIT_REFUND_OWED_SQL`, the order page's figure).
+    orderIds.length === 0
+      ? none<z.output<typeof ORDER_COUNTS>>()
+      : typedRows(
+          ORDER_COUNTS,
+          sql`
+            select s.id as store_id, d.draft_n, d.draft_oldest, d.draft_expiring, p.partly_n, p.partly_oldest, c.change_n, c.change_expiring,
+              h.hand_pickup, h.hand_oldest_pickup, h.hand_local, t.terms_overdue, r.owed_n
+            from unnest(${pgUuidArray(orderIds)}::uuid[]) as s(id)
+            left join lateral (
+              select count(*)::int as draft_n, min(d.sent_at) as draft_oldest,
+                count(*) filter (where d.expires_at is not null and d.expires_at <= now() + make_interval(days => ${DRAFT_EXPIRING_DAYS}))::int as draft_expiring
+              from commerce.draft_orders d
+              where d.store_id = s.id and d.status = 'sent'
+            ) d on true
+            left join lateral (
+              select count(*)::int as partly_n, min(fs.first_at) as partly_oldest
+              from commerce.orders o
+              cross join lateral (select min(s2.created_at) as first_at from commerce.shipments s2 where s2.store_id = o.store_id and s2.order_id = o.id and s2.undone_at is null) fs
+              where o.store_id = s.id and o.status = 'paid' and o.copied_from is null and fs.first_at is not null
+                and commerce.order_fulfilment(o.id) = 'partly_sent'
+            ) p on true
+            left join lateral (
+              select count(*)::int as change_n,
+                count(*) filter (where e.expires_at is not null and e.expires_at <= now() + make_interval(days => ${EDIT_EXPIRING_DAYS}))::int as change_expiring
+              from commerce.order_edits e
+              join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
+              where e.store_id = s.id and e.status = 'awaiting_payment'
+            ) c on true
+            left join lateral (
+              select
+                count(*) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent')))::int as hand_pickup,
+                min(o.placed_at) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent'))) as hand_oldest_pickup,
+                count(*) filter (where o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null)::int as hand_local
+              from commerce.orders o
+              where o.store_id = s.id and o.copied_from is null and o.archived_at is null and o.delivery_method in ('pickup', 'local')
+                and o.status in ('paid', 'fulfilled')
+            ) h on true
+            left join lateral (
+              select count(*)::int as terms_overdue
+              from commerce.order_payment_terms t
+              join commerce.orders o on o.store_id = t.store_id and o.id = t.order_id and o.copied_from is null
+              where t.store_id = s.id and t.paid_at is null and o.status in ('paid', 'fulfilled') and o.balance_minor > 0
+                and t.due_on < commerce.store_day(t.store_id, now())
+            ) t on true
+            left join lateral (
+              select count(*)::int as owed_n
+              from commerce.order_edits e
+              join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
+              where e.store_id = s.id and e.status = 'applied' and e.difference_minor < 0
+                and exists (select 1 from commerce.order_events ev where ev.store_id = e.store_id and ev.order_id = e.order_id and ev.type = 'order.edit_refund_failed')
+                and ${EDIT_REFUND_OWED_SQL} > 0
+            ) r on true
+          `,
+        ),
     supportIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select c.store_id, count(*)::int as waiting
       from commerce.support_conversations c
       where c.store_id in (${idList(supportIds)}) and c.status = 'open' and c.handler = 'queue'
       group by c.store_id
     `),
-    // Orders the store hands over itself (D237): the Orders page's *To hand over* (paid pickup orders) and *Local deliveries* (paid or taken out, not
-    // delivered), archived and copied orders left out as the views leave them out. Counts only.
-    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select o.store_id,
-        count(*) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent')))::int as pickup,
-        min(o.placed_at) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent'))) as oldest_pickup,
-        count(*) filter (where o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null)::int as local
-      from commerce.orders o
-      where o.store_id in (${idList(orderIds)}) and o.copied_from is null and o.archived_at is null and o.delivery_method in ('pickup', 'local')
-        and o.status in ('paid', 'fulfilled')
-      group by o.store_id
-    `),
-    // Invoices on payment terms past their due day (D293), not yet paid: counts only, never a customer or a company.
-    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select t.store_id, count(*)::int as overdue
-      from commerce.order_payment_terms t
-      join commerce.orders o on o.store_id = t.store_id and o.id = t.order_id and o.copied_from is null
-      where t.store_id in (${idList(orderIds)}) and t.paid_at is null and o.status in ('paid', 'fulfilled') and o.balance_minor > 0
-        and t.due_on < commerce.store_day(t.store_id, now())
-      group by t.store_id
-    `),
     // Reviews waiting to be checked (D301 G3), where the feature is on and the member may read products: a count only, never an author.
-    productIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+    reviewIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select r.store_id, count(*)::int as waiting
       from commerce.product_reviews r
-      where r.store_id in (${idList(productIds)}) and r.status = 'pending' and commerce.feature_on(r.store_id, 'reviews')
+      where r.store_id in (${idList(reviewIds)}) and r.status = 'pending' and commerce.feature_on(r.store_id, 'reviews')
       group by r.store_id
-    `),
-    // Order changes whose refund failed and still owe the customer (D392, `EDIT_REFUND_OWED_SQL`, the order page's figure): a count only.
-    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select e.store_id, count(*)::int as n
-      from commerce.order_edits e
-      join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
-      where e.store_id in (${idList(orderIds)}) and e.status = 'applied' and e.difference_minor < 0
-        and exists (select 1 from commerce.order_events ev where ev.store_id = e.store_id and ev.order_id = e.order_id and ev.type = 'order.edit_refund_failed')
-        and ${EDIT_REFUND_OWED_SQL} > 0
-      group by e.store_id
     `),
     // The store's own books (D478): documents that differ from Tripletex while their entry stands, documents waiting more than a week, and
     // bills overdue or falling due within the week (D492).
@@ -290,7 +334,17 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       { disputes: orderIds, decisions: ownerIds, leads: salesCustomerIds, activities: salesCustomerIds, comments: idsWith(storeRows, "website:read"), questions: supportIds, flows: idsWith(storeRows.filter((r) => r.email_ext === true), "marketing:read") },
       account.id,
     ),
+    turnoverWatches,
+    limitsReached,
   ]);
+
+  // The six Maps of the folded counts, as their own statements gave them: a store's row only where it had something to count.
+  const draftRows = orderCounts.filter((r) => r.draft_n > 0).map((r) => ({ store_id: r.store_id, waiting: r.draft_n, oldest: r.draft_oldest, expiring: r.draft_expiring }));
+  const partlyRows = orderCounts.filter((r) => r.partly_n > 0).map((r) => ({ store_id: r.store_id, n: r.partly_n, oldest: r.partly_oldest }));
+  const changeRows = orderCounts.filter((r) => r.change_n > 0).map((r) => ({ store_id: r.store_id, waiting: r.change_n, expiring: r.change_expiring }));
+  const handRows = orderCounts.map((r) => ({ store_id: r.store_id, pickup: r.hand_pickup, oldest_pickup: r.hand_oldest_pickup, local: r.hand_local }));
+  const termsRows = orderCounts.map((r) => ({ store_id: r.store_id, overdue: r.terms_overdue }));
+  const owedEditRows = orderCounts.filter((r) => r.owed_n > 0).map((r) => ({ store_id: r.store_id, n: r.owed_n }));
 
   const salesBy = new Map<string, SalesFigure[]>();
   for (const r of salesRows) {
@@ -318,24 +372,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         { differ: Number(r.differ), waiting: Number(r.waiting), billsOverdue: Number(r.bills_overdue), billsDue: Number(r.bills_due) },
       ]),
   );
-  // The threshold watch (D514), where the member may read the books: each threshold near or just passed, in their language.
-  const booksReaders = new Set(idsWith(storeRows.filter((r) => r.work_ext === true), "books:read"));
-  const lang = adminLangOf(account.adminLocale);
-  const watchWords = BOOKS_WORDS[lang].watch;
-  const turnoverBy = new Map(
-    (
-      await Promise.all(
-        storeRows
-          .filter((r) => booksReaders.has(String(r.id)))
-          .map(async (r) => {
-            const watch = await turnoverWatch(String(r.id), todayIn(new Date(), String(r.time_zone ?? PLATFORM_TIME_ZONE))).catch(() => null);
-            return [String(r.id), (watch?.watches ?? []).map((w) => watchText(w, watchWords, ADMIN_LANG_FACTS[lang].locale))] as const;
-          }),
-      )
-    ).filter(([, texts]) => texts.length > 0),
-  );
-  // Limits of the plan used up (D314), where the member may read the plan; nothing is read for a store whose plan sets none.
-  const limitsBy = new Map(await Promise.all([...billingIds].map(async (id) => [id, await limitsReachedCount(id).catch(() => 0)] as const)));
+  const turnoverBy = new Map(turnoverRows.filter(([, texts]) => texts.length > 0));
+  const limitsBy = new Map(limitsRows);
 
   const stores: StoreFigures[] = storeRows.map((r) => {
     const id = String(r.id);

@@ -193,7 +193,6 @@ const KNOWN_READS: Partial<Record<Stop, Record<string, string>>> = {
   ownerHome: {
     booking_resources: "2.32 (getSetupProgress() counts staff and rooms with Appointments and Stays off)",
     order_payment_terms: "2.32 (controlCenter() counts payment terms due with Sell to businesses off)",
-    product_reviews: "2.32 (controlCenter() counts reviews to check with Product reviews off)",
   },
   adminOrders: { store_currencies: "4.4 (the orders list reads the currencies' rates for its totals, src/server/order-list.ts)" },
 };

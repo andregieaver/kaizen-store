@@ -103,10 +103,21 @@ async function leadRows(storeId: string, email: string | null = null) {
  * `LEADS_MAX`, as the inbox lists. Stores with none are left out.
  */
 export async function leadCounts(storeIds: readonly string[]): Promise<Map<string, number>> {
-  if (storeIds.length === 0) return new Map();
-  const rows = await typedRows(
-    z.object({ store_id: col.uuid, leads: col.int }),
-    sql`
+  const read = leadCountsRead(storeIds);
+  return read ? read.figures(await typedRows(read.schema, read.query)) : new Map();
+}
+
+const LEAD_COUNT = z.object({ store_id: col.uuid, leads: col.int });
+
+/**
+ * `leadCounts()`'s statement and how its rows become the figures, so `queueCounts()` (`src/server/attention.ts`) can send it together with
+ * the other queues' in one statement (bloat review step 2.32); null when there is no store to ask.
+ */
+export function leadCountsRead(storeIds: readonly string[]) {
+  if (storeIds.length === 0) return null;
+  return {
+    schema: LEAD_COUNT,
+    query: sql`
       with src as (${leadSources(uuidList(storeIds))})
       select src.store_id, least(count(distinct src.email), ${LEADS_MAX})::int as leads
         from src
@@ -114,8 +125,8 @@ export async function leadCounts(storeIds: readonly string[]): Promise<Map<strin
          and not exists (select 1 from commerce.lead_decisions ld where ld.store_id = src.store_id and ld.email = src.email and ld.decided_at >= src.at)
        group by src.store_id
     `,
-  );
-  return new Map(rows.filter((r) => r.leads > 0).map((r) => [r.store_id, r.leads]));
+    figures: (rows: z.output<typeof LEAD_COUNT>[]) => new Map(rows.filter((r) => r.leads > 0).map((r) => [r.store_id, r.leads])),
+  };
 }
 
 /** The most requests a lead event names. */

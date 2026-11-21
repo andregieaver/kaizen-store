@@ -429,6 +429,23 @@ describe("the queues of ecosystem plan E2.1 (D713)", () => {
     expect(view.aiDecisions).toBe(page.calls.length + page.questions.length);
   });
 
+  it("counts every queue in one statement, with the figures each counter gave alone (bloat review step 2.32)", async () => {
+    const { queueCounts } = await import("./attention");
+    const { countStatements } = await import("@/db/statement-count");
+    const ids = [qStore];
+    const { result, count } = await countStatements(() => queueCounts({ disputes: ids, decisions: ids, leads: ids, activities: ids, comments: ids, questions: ids, flows: ids }, owner.id));
+    expect(count).toBe(1);
+    // The figures the five statements gave before the fold, for this store's seed (the cases above and below hold the same through Home).
+    expect(result.disputes.get(qStore)).toEqual({ waiting: 1, dueBy: expect.any(String), only: { orderId, disputeId } });
+    expect(result.decisions.get(qStore)).toBe(3);
+    expect(result.leads.get(qStore)).toBe(1);
+    expect(result.activities.get(qStore)).toEqual({ overdue: 1, today: 1 });
+    expect(result.comments.get(qStore)).toBe(2);
+    expect([result.questions.size, result.flows.size, result.paused.size]).toEqual([0, 0, 0]);
+    // No store to ask: nothing is sent.
+    expect((await countStatements(() => queueCounts({ disputes: [], decisions: [], leads: [], activities: [], comments: [] }, owner.id))).count).toBe(0);
+  });
+
   it("says them on Home with the page that acts, the dispute first and urgent, with its days left", async () => {
     const items = attentionFor((await center.controlCenter(owner, slug)).stores, undefined, homeEn.attention);
     expect(items[0]).toMatchObject({ kind: "disputes", urgent: true, href: `/admin/${slug}/orders/${orderId}/dispute/${disputeId}`, action: "Answer" });
@@ -486,4 +503,230 @@ describe("the queues of ecosystem plan E2.1 (D713)", () => {
     expect(briefingAttention(facts, "en")).toEqual(attention.en);
     expect(briefingAttention(facts, "nb")).toEqual(attention.nb);
   }, 60_000);
+});
+
+describe("the orders' counts in one statement (bloat review step 2.32)", () => {
+  // Store A has one of each counted thing, store B none; its owner holds both, and a member of A reads products but not orders.
+  const slugA = `center-fold-a-${run}`;
+  const slugB = `center-fold-b-${run}`;
+  let owner: Account;
+  let reader: Account;
+  let storeA: string;
+  let storeB: string;
+  let line = 0;
+
+  const makeStore = async (slug: string) => {
+    const email = `${slug}@example.com`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${email}, 'Siri', 'Fold') returning id`);
+    const [made] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Fold', null) as id`);
+    const [acc] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${email}`);
+    return { id: String(made.id), account: { id: String(acc.id), email: String(acc.email), name: "Siri", platformAdmin: false } as Account };
+  };
+
+  /** An order of store A with one physical line; `extra` sets its state for the count it stands for. */
+  const orderA = async (label: string, extra: { status?: string; delivery?: "ship" | "pickup" | "local"; total?: number; balance?: number; quantity?: number } = {}) => {
+    const total = extra.total ?? 10_000;
+    const [o] = await db().execute<Row>(sql`
+      insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, tax_minor, total_minor,
+        balance_minor, billing_address, shipping_address, delivery_method, pickup_location_id)
+      values (${storeA}::uuid, ${`${run}-fold-${label}`}, 'NO', 'NOK', 'nb-NO', 'x@example.com', ${extra.status ?? "paid"}, ${total}, 0, 0, ${total},
+        ${extra.balance ?? 0}, '{}'::jsonb, ${JSON.stringify({ name: "Ane", line1: "Gata 1", postalCode: "0150", city: "Oslo", country: "NO" })}::jsonb,
+        ${extra.delivery ?? "ship"}, ${extra.delivery === "pickup" ? sql`gen_random_uuid()` : sql`null`})
+      returning id`);
+    const [v] = await db().execute<Row>(sql`
+      select v.id, v.sku from commerce.product_variants v join commerce.products p on p.id = v.product_id
+      where v.store_id = ${storeA}::uuid and v.active and v.delivery = 'physical' and p.status = 'active' order by v.sku limit 1`);
+    line += 1;
+    await db().execute(sql`
+      insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code)
+      values (${storeA}::uuid, ${String(o.id)}::uuid, ${String(v.id)}::uuid, ${String(v.sku)}, ${`Kopp ${line}`}, ${extra.quantity ?? 1}, ${total / (extra.quantity ?? 1)}, ${total}, 0, 0.25, 'txcd_99999999')`);
+    return String(o.id);
+  };
+
+  /** The six statements controlCenter() sent before the fold, word for word but for the store list: the figures the fold must give. */
+  async function oldFigures(ids: string[]) {
+    const idList = sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
+    const { DRAFT_EXPIRING_DAYS, EDIT_EXPIRING_DAYS } = await import("@/lib/control-center");
+    const { EDIT_REFUND_OWED_SQL } = await import("./edit-refund-owed");
+    const iso = (v: unknown) => (v == null ? null : new Date(String(v instanceof Date ? v.toISOString() : v)).toISOString());
+    const by = <T>(rows: Row[], f: (r: Row) => T) => Object.fromEntries(rows.map((r) => [String(r.store_id), f(r)]));
+    return {
+      drafts: by(
+        await db().execute<Row>(sql`
+          select d.store_id, count(*)::int as waiting, min(d.sent_at) as oldest,
+            count(*) filter (where d.expires_at is not null and d.expires_at <= now() + make_interval(days => ${DRAFT_EXPIRING_DAYS}))::int as expiring
+          from commerce.draft_orders d
+          where d.store_id in (${idList}) and d.status = 'sent'
+          group by d.store_id`),
+        (r) => ({ waiting: Number(r.waiting), oldestSentAt: iso(r.oldest), expiringSoon: Number(r.expiring) }),
+      ),
+      partlySent: by(
+        await db().execute<Row>(sql`
+          select o.store_id, count(*)::int as n, min(fs.first_at) as oldest
+          from commerce.orders o
+          cross join lateral (select min(s.created_at) as first_at from commerce.shipments s where s.store_id = o.store_id and s.order_id = o.id and s.undone_at is null) fs
+          where o.store_id in (${idList}) and o.status = 'paid' and o.copied_from is null and fs.first_at is not null
+            and commerce.order_fulfilment(o.id) = 'partly_sent'
+          group by o.store_id`),
+        (r) => ({ orders: Number(r.n), oldestFirstParcelAt: iso(r.oldest) }),
+      ),
+      orderChanges: by(
+        await db().execute<Row>(sql`
+          select e.store_id, count(*)::int as waiting,
+            count(*) filter (where e.expires_at is not null and e.expires_at <= now() + make_interval(days => ${EDIT_EXPIRING_DAYS}))::int as expiring
+          from commerce.order_edits e
+          join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
+          where e.store_id in (${idList}) and e.status = 'awaiting_payment'
+          group by e.store_id`),
+        (r) => ({ waiting: Number(r.waiting), expiringSoon: Number(r.expiring) }),
+      ),
+      handOver: by(
+        (
+          await db().execute<Row>(sql`
+            select o.store_id,
+              count(*) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent')))::int as pickup,
+              min(o.placed_at) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent'))) as oldest_pickup,
+              count(*) filter (where o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null)::int as local
+            from commerce.orders o
+            where o.store_id in (${idList}) and o.copied_from is null and o.archived_at is null and o.delivery_method in ('pickup', 'local')
+              and o.status in ('paid', 'fulfilled')
+            group by o.store_id`)
+        ).filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0),
+        (r) => ({ pickup: Number(r.pickup), oldestPickupAt: iso(r.oldest_pickup), local: Number(r.local) }),
+      ),
+      termsOverdue: by(
+        (
+          await db().execute<Row>(sql`
+            select t.store_id, count(*)::int as overdue
+            from commerce.order_payment_terms t
+            join commerce.orders o on o.store_id = t.store_id and o.id = t.order_id and o.copied_from is null
+            where t.store_id in (${idList}) and t.paid_at is null and o.status in ('paid', 'fulfilled') and o.balance_minor > 0
+              and t.due_on < commerce.store_day(t.store_id, now())
+            group by t.store_id`)
+        ).filter((r) => Number(r.overdue) > 0),
+        (r) => Number(r.overdue),
+      ),
+      editRefundsOwed: by(
+        await db().execute<Row>(sql`
+          select e.store_id, count(*)::int as n
+          from commerce.order_edits e
+          join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
+          where e.store_id in (${idList}) and e.status = 'applied' and e.difference_minor < 0
+            and exists (select 1 from commerce.order_events ev where ev.store_id = e.store_id and ev.order_id = e.order_id and ev.type = 'order.edit_refund_failed')
+            and ${EDIT_REFUND_OWED_SQL} > 0
+          group by e.store_id`),
+        (r) => Number(r.n),
+      ),
+    };
+  }
+
+  beforeAll(async () => {
+    const a = await makeStore(slugA);
+    storeA = a.id;
+    owner = a.account;
+    storeB = (await makeStore(slugB)).id;
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${storeB}::uuid, ${owner.id}::uuid, 'owner')`);
+    const [acc] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`center-fold-reader-${run}@example.com`}, 'Reader') returning id, email`);
+    const [role] = await db().execute<Row>(sql`insert into commerce.store_roles (store_id, name, permissions) values (${storeA}::uuid, 'Products', array['products:read']::text[]) returning id`);
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role, role_id) values (${storeA}::uuid, ${String(acc.id)}::uuid, 'admin', ${String(role.id)}::uuid)`);
+    reader = { id: String(acc.id), email: String(acc.email), name: "Reader", platformAdmin: false };
+
+    // A draft order sent and not paid, its pay link ending tomorrow (D173).
+    const draftOrder = await orderA("draft", { status: "pending_payment" });
+    // A draft is made open and then sent (its own rules, `draft_orders_rules()`).
+    const [draft] = await db().execute<Row>(sql`
+      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale) values (${storeA}::uuid, ${`D-${Date.now()}`}, 'NO', 'no', 'NOK', 'nb-NO')
+      returning id`);
+    await db().execute(sql`
+      update commerce.draft_orders set status = 'sent', order_id = ${draftOrder}::uuid, sent_at = now() - interval '1 day', expires_at = now() + interval '1 day',
+        pay_token_hash = ${`hash-d-${run}`}
+      where id = ${String(draft.id)}::uuid`);
+    // A paid order of two units, one sent in a parcel and one still to send (D174); a parcel names its lines (`shipment_has_lines()`).
+    const partly = await orderA("partly", { quantity: 2 });
+    await db().transaction(async (tx) => {
+      const [parcel] = await tx.execute<Row>(sql`insert into commerce.shipments (store_id, order_id) values (${storeA}::uuid, ${partly}::uuid) returning id`);
+      await tx.execute(sql`
+        insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+        select ${storeA}::uuid, ${String(parcel.id)}::uuid, ol.id, 1 from commerce.order_lines ol where ol.order_id = ${partly}::uuid`);
+    });
+    // An order change waiting for the customer's payment, its link ending in a week (D174).
+    const changed = await orderA("change");
+    await db().execute(sql`
+      insert into commerce.order_edits (store_id, order_id, seq, status, reason, notify, restock, currency, base, total_before, total_after, subtotal_delta,
+        shipping_before, shipping_after, discount_delta, tax_delta, difference_minor, made_by, pay_token_hash, expires_at)
+      values (${storeA}::uuid, ${changed}::uuid, 1, 'awaiting_payment', 'customer_request', false, false, 'NOK', '{}'::jsonb, 10000, 12000, 2000, 0, 0, 0, 0, 2000,
+        ${owner.id}::uuid, ${randomBytes(32).toString("base64url")}, now() + interval '7 days')`);
+    // A paid pickup order to hand over (D237).
+    await orderA("pickup", { delivery: "pickup" });
+    // An invoice on payment terms past its due day, not paid (D293).
+    // Terms are given to a company's order while it is placed (`order_payment_terms_rules()`); the order is then paid for in part.
+    const terms = await orderA("terms", { status: "pending_payment" });
+    const [company] = await db().execute<Row>(sql`insert into commerce.customer_companies (store_id, name, payment_terms) values (${storeA}::uuid, 'Firma AS', 'net_15') returning id`);
+    await db().execute(sql`
+      insert into commerce.order_payment_terms (order_id, store_id, company_id, terms, due_on)
+      values (${terms}::uuid, ${storeA}::uuid, ${String(company.id)}::uuid, 'net_15', current_date - 3)`);
+    await db().execute(sql`update commerce.orders set status = 'paid', balance_minor = 10000 where id = ${terms}::uuid`);
+    // An order change whose refund failed and still owes the customer (D392): applied with its refund of the difference on its way (the
+    // change and its refund name each other, checked at commit, `order_edits_settled()`), then the bank reports the refund failed.
+    const owed = await orderA("owed");
+    const [payment] = await db().execute<Row>(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+      values (${storeA}::uuid, ${owed}::uuid, 'stripe', ${`cs_${run}_fold_owed`}, 10000, 'NOK', 'captured') returning id`);
+    const editId = await db().transaction(async (tx) => {
+      const [edit] = await tx.execute<Row>(sql`
+        insert into commerce.order_edits (store_id, order_id, seq, status, reason, notify, restock, currency, base, total_before, total_after, subtotal_delta,
+          shipping_before, shipping_after, discount_delta, tax_delta, difference_minor, made_by, applied_at)
+        values (${storeA}::uuid, ${owed}::uuid, 1, 'applied', 'out_of_stock', false, false, 'NOK', '{}'::jsonb, 10000, 7000, -3000, 0, 0, 0, 0, -3000,
+          ${owner.id}::uuid, now() - interval '2 days')
+        returning id`);
+      const [refund] = await tx.execute<Row>(sql`
+        insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, order_edit_id)
+        values (${storeA}::uuid, ${String(payment.id)}::uuid, 3000, 'requested_by_customer', ${`re_${run}_fold`}, ${String(edit.id)}::uuid) returning id`);
+      await tx.execute(sql`update commerce.order_edits set refund_id = ${String(refund.id)}::uuid where id = ${String(edit.id)}::uuid`);
+      return String(edit.id);
+    });
+    await db().execute(sql`update commerce.refunds set status = 'failed' where order_edit_id = ${editId}::uuid`);
+    await db().execute(sql`
+      insert into commerce.order_events (store_id, order_id, type, actor, data)
+      values (${storeA}::uuid, ${owed}::uuid, 'order.edit_refund_failed', 'system', ${JSON.stringify({ edit: editId })}::jsonb)`);
+  });
+
+  it("gives each count of the store that has them, and none of the store without, as the six statements before it did", async () => {
+    const view = await center.controlCenter(owner);
+    const a = view.stores.find((s) => s.slug === slugA)!;
+    const b = view.stores.find((s) => s.slug === slugB)!;
+    expect(a.drafts).toMatchObject({ waiting: 1, expiringSoon: 1 });
+    expect(a.drafts?.oldestSentAt).toEqual(expect.any(String));
+    expect(a.partlySent).toMatchObject({ orders: 1 });
+    expect(a.partlySent?.oldestFirstParcelAt).toEqual(expect.any(String));
+    expect(a.orderChanges).toEqual({ waiting: 1, expiringSoon: 0 });
+    expect(a.handOver).toMatchObject({ pickup: 1, local: 0 });
+    expect(a.handOver?.oldestPickupAt).toEqual(expect.any(String));
+    expect(a.termsOverdue).toBe(1);
+    expect(a.editRefundsOwed).toBe(1);
+    // The store with nothing gives what a store with no row gave: no figure at all.
+    for (const key of ["drafts", "partlySent", "orderChanges", "handOver", "termsOverdue", "editRefundsOwed"] as const) expect(b[key]).toBeUndefined();
+
+    // The old statements' own figures, for both stores, are the fold's.
+    const old = await oldFigures([storeA, storeB]);
+    const folded = (key: keyof typeof old) => Object.fromEntries([[storeA, a], [storeB, b]].filter(([, s]) => (s as typeof a)[key] !== undefined).map(([id, s]) => [id, (s as typeof a)[key]]));
+    for (const key of Object.keys(old) as (keyof typeof old)[]) expect(folded(key), key).toEqual(old[key]);
+  });
+
+  it("leaves every orders figure out for a member who may not read orders, and names it in hides", async () => {
+    const [view] = (await center.controlCenter(reader, slugA)).stores;
+    for (const key of ["drafts", "partlySent", "orderChanges", "handOver", "termsOverdue", "editRefundsOwed"] as const) expect(view[key]).toBeUndefined();
+    expect(view.hides).toContain("sales");
+  });
+
+  it("reads one store's figures in 16 statements or fewer, in at most 2 waves", async () => {
+    const { countStatements, waves } = await import("@/db/statement-count");
+    // The first call warms what is kept per instance (the plan's limits); the second is the one counted.
+    await center.controlCenter(owner, slugA);
+    const { statements, count } = await countStatements(() => center.controlCenter(owner, slugA));
+    // The brief set 14 on 12 November; five reads came after it (the books, the support requests and the three queues, now one statement
+    // since this step), so the bound is the figure measured with the fold: 16 statements in 2 waves (26 in 3 before the step).
+    expect(count).toBeLessThanOrEqual(16);
+    expect(waves(statements)).toBeLessThanOrEqual(2);
+  });
 });
