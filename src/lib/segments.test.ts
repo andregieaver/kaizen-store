@@ -309,7 +309,8 @@ describe("the AI manager's segment tools (E3.6)", () => {
 
 describe("lead score (M2.8, D865)", () => {
   it("holds a business customer at or above the score, never someone with none or where it was not read, and says it in words", async () => {
-    const { holds, segmentNeeds, segmentRulesSchema } = await import("./segments");
+    const { holds, segmentNeeds } = await import("./segments");
+    const { segmentRulesSchema } = await import("./segments-schema");
     expect(holds({ kind: "leadScore", min: 25 }, person({ leadScore: 30 }), today)).toBe(true);
     expect(holds({ kind: "leadScore", min: 25 }, person({ leadScore: 25 }), today)).toBe(true);
     expect(holds({ kind: "leadScore", min: 25 }, person({ leadScore: 20 }), today)).toBe(false);
