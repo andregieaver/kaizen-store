@@ -95,8 +95,11 @@ The overview is an operational bird's-eye view of every store the owner owns:
 4. **Latest orders** across all stores.
 
 Everything on it is counted in code from the stores' own data (D94):
-`controlCenter()` in `src/server/control-center.ts` reads all the stores in a
-handful of queries, and `src/lib/control-center.ts` decides what needs
+`controlCenter()` in `src/server/control-center.ts` reads all the stores in one
+statement and everything else in one wave after it, one statement per set of
+stores a figure is counted for (16 statements in 2 waves for one store's Home,
+held in `control-center.int.test.ts`; bloat review step 2.32), and
+`src/lib/control-center.ts` decides what needs
 attention (`attentionFor()`), adds sales per currency (never across
 currencies) and words the change on the week before. "The last 7 days" are the
 7 days up to now, against the 7 before.

@@ -70,8 +70,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   current. Never pass `payment_method_types`: stores choose methods in their
   own Stripe Dashboard. In test mode the owner does nothing: `ensureTestAccount()`
   creates the store's test account with Stripe's test values (decision D20),
-  in the background from the store admin layout, on the Payments page, or at
-  checkout.
+  in the background from the store admin layout (once per server instance while
+  the account is active, `needsTestAccountCheck()`; the payment methods likewise,
+  `needsMethodsCheck()`), on the Payments page, or at checkout.
 
 ## Withdrawals and returns (D153, `docs/returns.md`, `/s/{store}/{market}/withdraw`, `/admin/{store}/returns`)
 

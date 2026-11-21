@@ -19,7 +19,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `group` follows the section; Website and Settings open on pages of cards) and `src/lib/owner-nav.ts` (Home, Stores, Work,
   Account); pages use the whole width, so no `max-w-*xl` on a page's root. The owner's overview is `controlCenter()`
   (`src/server/control-center.ts`, pure
-  parts in `src/lib/control-center.ts`); the platform's is `platformOverview()`.
+  parts in `src/lib/control-center.ts`: one statement for the stores, then one wave with one statement per key set, 16 statements in
+  2 waves for one store, held in `control-center.int.test.ts`); the platform's is `platformOverview()`.
   What needs attention is one source (ecosystem plan E2.1, D713): every item of `attentionFor()` has a kind (`ATTENTION_KINDS`),
   and the queues E2.1 added (disputes, the AI manager's decisions, leads, the day's activities, blog comments) are counted per store in
   SQL in `src/server/attention.ts`, which `controlCenter()` calls with the member's gates and the briefing reads through
