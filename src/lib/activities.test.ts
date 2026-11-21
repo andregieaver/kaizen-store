@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { activityWhen, cleanActivityInput, dueFields, nextActivity, todayList, todayWindow } from "./activities";
+import { activityWhen, dueFields, nextActivity, todayList, todayWindow } from "./activities";
+import { cleanActivityInput } from "./activities-schema";
 
 const OSLO = "Europe/Oslo";
 const DEAL = "00000000-0000-4000-8000-0000000000d1";

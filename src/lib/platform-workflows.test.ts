@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { PLATFORM_EVENTS } from "./platform-integrations";
-import { isPlatformWorkflowTrigger, PLATFORM_WORKFLOWS, platformActionsFor, platformSubjectOf, platformWorkflowInputSchema } from "./platform-workflows";
-import { STORE_WORKFLOWS, workflowInputSchema, workflowMatches, workflowProblems } from "./workflows";
+import { isPlatformWorkflowTrigger, PLATFORM_WORKFLOWS, platformActionsFor, platformSubjectOf } from "./platform-workflows";
+import { platformWorkflowInputSchema } from "./platform-workflows-schema";
+import { STORE_WORKFLOWS, workflowMatches, workflowProblems } from "./workflows";
+import { workflowInputSchema } from "./workflows-schema";
 
 const input = (over: Record<string, unknown> = {}) => ({
   name: "Big plans",

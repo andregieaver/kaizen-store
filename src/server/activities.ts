@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { cleanActivityInput, todayWindow, type ActivityInput, type ActivityKind, type ActivityProblem } from "@/lib/activities";
+import { todayWindow, type ActivityInput, type ActivityKind, type ActivityProblem } from "@/lib/activities";
+import { cleanActivityInput } from "@/lib/activities-schema";
 
 import { audit, type Membership } from "./auth";
 import { log } from "./log";

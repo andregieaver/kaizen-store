@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { ACTIVITY_KINDS } from "./activities";
 import { EVENTS, type IntegrationEvent } from "./integrations";
 import { LEAD_KINDS } from "./leads";
@@ -361,48 +359,8 @@ export const STORE_WORKFLOWS: WorkflowKit = {
   actionsFor: (trigger) => (isWorkflowTrigger(trigger) ? actionsFor(trigger) : []),
 };
 
-const tag = z.string().trim().min(1).max(40);
-const text = (max: number) => z.string().trim().min(1).max(max);
-
-/** Every action but the hold, which only `order.paid` takes (`actionsFor()`). */
-const DRAFT_ACTIONS = [
-  z.object({ kind: z.literal("tag_order"), tag }),
-  z.object({ kind: z.literal("note_order"), text: text(1000) }),
-  z.object({ kind: z.literal("tag_customer"), tag }),
-  z.object({ kind: z.literal("email_staff"), subject: text(120), text: text(2000) }),
-  z.object({ kind: z.literal("post_slack"), text: text(2000) }),
-  z.object({ kind: z.literal("send_request"), endpointId: z.uuid() }),
-  z.object({ kind: z.literal("ask_ai_manager"), question: text(400) }),
-] as const;
-
-export const workflowActionSchema = z.discriminatedUnion("kind", [...DRAFT_ACTIONS, z.object({ kind: z.literal("hold_order"), reason: text(200) })]);
-
 /** A condition's value: up to 2000 characters, room for a rule's list of products (E3.3). */
-const VALUE_MAX = 2000;
-
-type SchemaParts = { actions: z.ZodType<WorkflowAction>; operators: readonly [Operator, ...Operator[]]; valueMax: number };
-
-/** A workflow's shape, its trigger one of a kit's. */
-export const workflowSchemaFor = (
-  kit: Pick<WorkflowKit, "isTrigger">,
-  parts: SchemaParts = { actions: workflowActionSchema, operators: OPERATORS, valueMax: VALUE_MAX },
-) => z.object({
-  name: z.string().trim().min(1).max(80),
-  trigger: z.string().refine(kit.isTrigger, "Choose what starts the workflow."),
-  schedule: z
-    .object({
-      every: z.enum(["day", "week"]),
-      at: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time is HH:MM."),
-      weekday: z.int().min(1).max(7).nullable().default(null),
-    })
-    .nullable()
-    .default(null),
-  conditions: z.array(z.object({ field: z.string(), op: z.enum(parts.operators), value: z.string().trim().max(parts.valueMax) })).max(CONDITIONS_MAX).default([]),
-  actions: z.array(parts.actions).min(1, "Add at least one action.").max(ACTIONS_MAX),
-});
-
-export const workflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS);
-
+export const VALUE_MAX = 2000;
 
 /** What is wrong with a workflow beyond its shape: a field the trigger does not have, an action it cannot take, a schedule where none belongs. */
 export function workflowProblems(input: AnyWorkflowInput, kit: WorkflowKit = STORE_WORKFLOWS): string[] {

@@ -15,7 +15,6 @@ import {
   RUNS_PER_HOUR,
   scheduleDue,
   segmentsNamed,
-  workflowInputSchema,
   workflowMatches,
   workflowProblems,
   WORKFLOWS_MAX,
@@ -26,6 +25,7 @@ import {
   type WorkflowSchedule,
   type WorkflowTrigger,
 } from "@/lib/workflows";
+import { workflowInputSchema } from "@/lib/workflows-schema";
 
 import { audit, type Membership } from "./auth";
 import { sendEmail } from "./email";

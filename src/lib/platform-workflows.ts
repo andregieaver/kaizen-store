@@ -1,5 +1,5 @@
 import { PLATFORM_EVENTS, type PlatformEvent } from "./platform-integrations";
-import { workflowSchemaFor, type WorkflowActionKind, type WorkflowField, type WorkflowKit } from "./workflows";
+import type { WorkflowActionKind, WorkflowField, WorkflowKit } from "./workflows";
 
 /**
  * Workflows on Kaizena Flow's own events (C4 step 3 of `docs/platform-parity-plan.md`, D516): the store's workflows (D356) for the platform.
@@ -64,4 +64,3 @@ export const PLATFORM_WORKFLOWS: WorkflowKit = {
   actionsFor: (trigger) => (isPlatformWorkflowTrigger(trigger) ? platformActionsFor(trigger) : []),
 };
 
-export const platformWorkflowInputSchema = workflowSchemaFor(PLATFORM_WORKFLOWS);

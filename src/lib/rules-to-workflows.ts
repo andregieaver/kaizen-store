@@ -1,6 +1,7 @@
 import { minorUnitDigits } from "./money";
 import type { OrderRule, RuleAction, RuleCondition, RuleFacts } from "./order-rules";
-import { workflowInputSchema, workflowProblems, type WorkflowAction, type WorkflowCondition, type WorkflowInput } from "./workflows";
+import { workflowProblems, type WorkflowAction, type WorkflowCondition, type WorkflowInput } from "./workflows";
+import { workflowInputSchema } from "./workflows-schema";
 
 /**
  * Order rules folded into workflows (ecosystem plan E3.3, D718; the wave-9 plan's intent, `docs/wave-9-platform.md` C): what a rule knew about a

@@ -68,7 +68,7 @@ import {
 } from "./site-tools";
 import { inputSummary, ownWordsSummary, plainText } from "./approval-summaries";
 import { draftStoreInput } from "./store-drafts";
-import { workflowInputSchema } from "./workflows";
+import { workflowInputSchema } from "./workflows-schema";
 import { purchaseInput } from "./purchase-input";
 
 

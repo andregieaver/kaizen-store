@@ -11,11 +11,11 @@ import {
   SEGMENT_FIELD,
   segmentsNamed,
   valuesAt,
-  workflowInputSchema,
   workflowMatches,
   workflowProblems,
   type WorkflowInput,
 } from "./workflows";
+import { workflowInputSchema } from "./workflows-schema";
 
 /** Workflows (D356): fields, conditions, actions by trigger and schedules, pure. */
 const order = { order: { number: "1001", total: 1249.5, currency: "NOK", market: "NO", lines: [{ sku: "MUG", quantity: 2 }, { sku: "TOTE", quantity: 1 }], shipping_address: { country: "NO" } } };

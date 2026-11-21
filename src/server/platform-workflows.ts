@@ -6,7 +6,8 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { renderEmail } from "@/lib/email-layout";
-import { PLATFORM_WORKFLOWS, platformWorkflowInputSchema, type PlatformWorkflowTrigger } from "@/lib/platform-workflows";
+import { PLATFORM_WORKFLOWS, type PlatformWorkflowTrigger } from "@/lib/platform-workflows";
+import { platformWorkflowInputSchema } from "@/lib/platform-workflows-schema";
 import { siteUrl } from "@/lib/site";
 import {
   RUNS_PER_HOUR,

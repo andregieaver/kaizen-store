@@ -80,7 +80,6 @@
     "components/admin/work/recurring-controls.tsx",
     "components/admin/work/recurring-form.tsx",
     "components/admin/work/tasks-panel.tsx",
-    "components/admin/work/time-panel.tsx",
-    "components/admin/workflows.tsx"
+    "components/admin/work/time-panel.tsx"
   ]
 }
