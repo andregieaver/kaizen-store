@@ -3,6 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
+import { z } from "zod";
+
 import { db, readDb } from "@/db/client";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 
@@ -11,6 +13,7 @@ import { siteTests, siteVersionContent, type SiteTest } from "./experiments-read
 import { withPageAlts } from "./media-alts";
 import { pageTag, pagesTag } from "@/lib/cache-tags";
 import { refreshStoreById } from "./stores";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -43,6 +46,30 @@ export async function siteLayoutFor(storeId: string | null, type: SiteLayoutType
   const content = row ? parsePageContent(row.published) : null;
   if (!row || !content) return null;
   const [layout] = await withPageAlts([{ id: String(row.id), content }]);
+  return layout;
+}
+
+/**
+ * A page's own header (`PageContent.header`, 21 November 2026): one of the owner's headers by id, as last published; null when it is not
+ * the owner's, not a header or not published, and the page shows the site's header.
+ */
+export async function headerLayoutById(storeId: string | null, id: string): Promise<SiteLayout | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(storeId));
+  cacheTag(pageTag(id));
+  const row = await typedRow(
+    z.object({ id: col.uuid, published: z.unknown() }),
+    sql`
+      select p.id, p.published from commerce.pages p
+       where p.id = ${id}::uuid and p.type = 'header' and p.published_at is not null
+         and ${storeId === null ? sql`p.store_id is null` : sql`p.store_id = ${storeId}::uuid`}
+    `,
+    readDb(),
+  );
+  const content = row ? parsePageContent(row.published) : null;
+  if (!row || !content) return null;
+  const [layout] = await withPageAlts([{ id: row.id, content }]);
   return layout;
 }
 

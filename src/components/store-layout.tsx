@@ -285,6 +285,27 @@ function ShopTools({ store, market }: Props) {
   );
 }
 
+/**
+ * What shoppers are told above the header: a store template (D175) says only that it is one, a preview that takes no orders; a store
+ * not yet open, one that cannot take payment yet, or one taking test payments says so. A website (D178 step 5) takes no payments, so
+ * nothing is said about them. Drawn by the site's header, and by a page's own header in its place.
+ */
+export function storeNotice(store: Store, market: Market): string | null {
+  const m = t(market.lang);
+  if (store.starter) return m.starterNotice;
+  const selling = featureOn(store, "shop");
+  return (
+    [
+      // A workspace (D748 E7) is never set up as a shop: its emails' pages (a contract, an invoice) say nothing of opening.
+      !(store.setupCompletedAt || store.isTemplate || store.workspace) && m.previewNotice,
+      selling && !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
+      selling && store.paymentsOn && store.paymentsTest && m.testNotice,
+    ]
+      .filter(Boolean)
+      .join(" ") || null
+  );
+}
+
 export function StoreHeader({ store, market, notice }: Props & { notice: string | null }) {
   const m = t(market.lang);
   const header = storeMenu(store, store.headerMenuId);

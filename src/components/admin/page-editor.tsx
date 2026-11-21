@@ -1052,6 +1052,15 @@ export function PageEditor({
               )}
             </section>
             </PhoneRow>
+            {context.type === "page" && context.headers && context.headers.choices.length > 0 && (
+              <PhoneRow
+                title={ew.pageHeader}
+                sub={context.headers.choices.find((choice) => choice.id === content.header)?.title ?? ew.pageHeaderSite}
+                {...prow}
+              >
+                <PageHeaderField headers={context.headers} value={content.header} onChange={(header) => change({ header })} />
+              </PhoneRow>
+            )}
             </>
             )}
             {translating && view.thumbnail && (
@@ -1606,6 +1615,42 @@ function useCountryName(): (code: string) => string {
  * The countries a store's page or article is for (D338): every country, as most pages are, or some, ticked. Homer leaves it; Lisa ticks.
  * Ticking none is not a choice (the page would be nowhere): the last one stays until another is ticked or Every country is chosen.
  */
+/** A page's *Header* (`PageContent.header`), for the special pages: the site's (following it), or one of the site's headers. */
+function PageHeaderField({
+  headers,
+  value,
+  onChange,
+}: {
+  headers: NonNullable<PageOwnerContext["headers"]>;
+  value: string | undefined;
+  onChange: (header: string | undefined) => void;
+}) {
+  const ew = useAdminText("builder").editor;
+  const id = useId();
+  const option = "flex items-center gap-3 text-sm font-medium";
+  const radio = "size-4 shrink-0 accent-current";
+  return (
+    <section aria-labelledby={`${id}-heading`} className={card}>
+      <h2 id={`${id}-heading`} className="text-title text-ink">
+        {ew.pageHeader}
+      </h2>
+      <fieldset className="flex flex-col gap-3" aria-describedby={`${id}-hint`}>
+        <legend className="sr-only">{ew.pageHeader}</legend>
+        {[{ id: undefined, title: ew.pageHeaderSite, published: true }, ...headers.choices].map((choice) => (
+          <label key={choice.id ?? ""} className={option}>
+            <input type="radio" name={`${id}-header`} checked={value === choice.id} onChange={() => onChange(choice.id)} className={radio} />
+            {choice.title}
+            {!choice.published && <span className={hint}>{ew.pageHeaderDraft}</span>}
+          </label>
+        ))}
+      </fieldset>
+      <p id={`${id}-hint`} className={hint}>
+        {ew.pageHeaderHint}
+      </p>
+    </section>
+  );
+}
+
 function CountriesField({ countries, value, onChange }: { countries: readonly string[]; value: string[] | undefined; onChange: (markets: string[] | undefined) => void }) {
   const ew = useAdminText("builder").editor;
   const name = useCountryName();

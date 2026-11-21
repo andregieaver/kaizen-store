@@ -52,6 +52,7 @@ export async function RolePage({
   return (
     <>
       <StorePageArticle
+        shop={{ store, market }}
         content={content}
         place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route: route && { ...route, holds } }}
         editable={!route && market.locale === store.localization.locales[0]}

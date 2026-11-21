@@ -240,6 +240,11 @@ export async function pageTitles(
   return rows.map((row) => ({ id: row.id, slug: row.slug, title: row.title, live: row.live, publishedAt: row.published_at }));
 }
 
+/** The owner's headers (D80) for a page's *Header* (`PageContent.header`, 21 November 2026): each one's id, name and whether it is published. */
+export async function headerChoices(owner: PageOwner): Promise<{ id: string; title: string; published: boolean }[]> {
+  return (await pageTitles(owner, "header")).map(({ id, title, live }) => ({ id, title, published: live }));
+}
+
 export async function getPageForEdit(owner: PageOwner, id: string, type: PageType = "page"): Promise<EditablePage | null> {
   const [row] = await db().execute<Row>(sql`
     select id, slug, draft, published, published_at, updated_at from commerce.pages
@@ -373,7 +378,7 @@ export async function savePage(
   // Texts in the owner's other languages (D55); Kaizen's pages are in English only.
   const translated = cleanTranslations(parsed.data, (await ownerLanguages(owner)).slice(1));
   if (!translated.ok) return { ok: false, problems: translated.problems };
-  const { author, blogId, authorId, ...rest } = translated.content;
+  const { author, blogId, authorId, header, ...rest } = translated.content;
   // An article's blog and author (D341): only the store's own; one that is not (another store's, or deleted meanwhile) is left out.
   const refs: { blogId?: string; authorId?: string } = type === "article" ? await ownBlogRefs(owner, blogId, authorId) : {};
   let content: PageContent = {
@@ -398,6 +403,8 @@ export async function savePage(
     markets: owner !== null && (type === "page" || type === "article") ? ownMarkets(parsed.data.markets, await storeCountries(owner)) : undefined,
     ...(refs.blogId ? { blogId: refs.blogId } : {}),
     ...(refs.authorId ? { authorId: refs.authorId } : {}),
+    // A page's own header (21 November 2026): only one of the owner's headers; any other is left out and the site's shows.
+    ...(type === "page" && header && (await isOwnHeader(owner, header)) ? { header } : {}),
   };
   // Who sees a part (D179 phase 4): only the store's own groups, companies, products and categories stay in its conditions.
   const { keepOwnRuleIds } = await import("./visibility");
@@ -544,6 +551,12 @@ async function publishScope(
   if (!sameListFacts(listFacts(before), listFacts(content))) return "site";
   if (type === "page" && (await hasPageGridByDate(owner))) return "site";
   return "page";
+}
+
+/** Whether a header (a page of type `header`) is the owner's own: a page's *Header* may only be one of them. */
+async function isOwnHeader(owner: PageOwner, id: string): Promise<boolean> {
+  const row = await typedRow(z.object({ id: col.uuid }), sql`select p.id from commerce.pages p where p.id = ${id}::uuid and p.type = 'header' and ${owned(owner, sql`p.store_id`)}`);
+  return row !== null;
 }
 
 /** An article's blog and author ids (D341), each kept only when it is one of the store's own; Kaizena Flow's articles have neither. */

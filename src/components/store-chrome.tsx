@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 
 import type { HeaderStageLook } from "@/lib/header-stages";
@@ -85,6 +86,21 @@ export function HeaderOverlayMark() {
   return null;
 }
 
+/**
+ * Rendered by a page with a header of its own (`PageContent.header`, 21 November 2026): marks the document while the page is shown, so the
+ * site's header gives way to the page's (globals.css). As with `HeaderOverlayMark`, Next keeps pages visited in the document, hidden, so
+ * the mark follows the page actually shown; before scripts run, the page's own header (`data-page-header`) does.
+ */
+export function PageHeaderMark() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-page-header-live", "");
+    root.setAttribute("data-page-header-on", "");
+    return () => root.removeAttribute("data-page-header-on");
+  }, []);
+  return null;
+}
+
 const slide = "transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none";
 
 /**
@@ -102,10 +118,13 @@ export function HidingHeader({
   children,
   overlay,
   themeColor = true,
+  pageOwn = false,
 }: {
   children: ReactNode;
   overlay?: HeaderStageLook;
   themeColor?: boolean;
+  /** A page's own header (`PageContent.header`), drawn by the page: the site's header gives way to it (`PageHeaderMark`). */
+  pageOwn?: boolean;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   useHeaderThemeColor(wrap, themeColor);
@@ -118,6 +137,7 @@ export function HidingHeader({
       onFocus={onFocus}
       data-header-wrap={overlay ? "" : undefined}
       data-hiding-header
+      data-page-header={pageOwn ? "" : undefined}
       data-at-top={overlay && atTop ? "" : undefined}
       {...overlay?.attrs}
       style={overlay && Object.keys(overlay.style).length > 0 ? (overlay.style as CSSProperties) : undefined}
@@ -132,6 +152,49 @@ export function HidingHeader({
 const noSubscribe = () => () => {};
 const useInBrowser = () => useSyncExternalStore(noSubscribe, () => true, () => false);
 
+/** Where the phone's menu buttons are that the bottom bar takes its look from: the site's header, or a page's own (never a bar's). */
+function headerMenuButton(): HTMLElement | null {
+  const buttons = Array.from(document.querySelectorAll<HTMLElement>("[data-open-menu]")).filter(
+    (button) => !button.closest("[data-default-bar], [data-product-bar], #store-menu"),
+  );
+  // A header hidden on this page (one of its own in its place) has its buttons out of the layout.
+  return buttons.find((button) => button.getClientRects().length > 0) ?? buttons[0] ?? null;
+}
+
+/** The data attributes of a menu button that say how the menu opens from it (`menuLookAttrs()`, `data-menu-look`, `data-menu-nav`). */
+const OPENER_DATA = ["menuType", "menuSide", "menuLook", "menuNav"] as const;
+
+/**
+ * The bottom bar dressed as the phone's slide-out menu is (D30, 21 November 2026): the menu takes its look from the header's menu
+ * button (its background, its colour set and frosted glass, `DrawerLook`), so the bar copies that same background behind its links,
+ * takes the same colour set and blur, and its own Menu button opens the menu as the header's does (the same kind, edge, background
+ * and menu). A header with no look of its own leaves the bar as it was: the theme's background. Worked out in the browser after the
+ * page is drawn, so the cached page stays the same; again after each navigation, as a page may bring a header of its own.
+ */
+function useMenuLookForBar(ready: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const backgroundRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const [look, setLook] = useState({ own: false, surface: "", blur: 0 });
+  useEffect(() => {
+    const bar = ref.current;
+    if (!bar) return;
+    const opener = headerMenuButton();
+    for (const button of Array.from(bar.querySelectorAll<HTMLElement>("[data-open-menu]"))) {
+      for (const key of OPENER_DATA) {
+        const value = opener?.dataset[key];
+        if (value) button.dataset[key] = value;
+        else delete button.dataset[key];
+      }
+    }
+    const holder = opener?.dataset.menuLook ? document.getElementById(opener.dataset.menuLook) : null;
+    backgroundRef.current?.replaceChildren(...(holder ? Array.from((holder.cloneNode(true) as HTMLElement).childNodes) : []));
+    // Copied once the page is drawn: the background a header carries for its menu is only in the document then.
+    setLook({ own: Boolean(holder), surface: holder?.dataset.menuSurface ?? "", blur: Number(holder?.dataset.menuBlur) || 0 });
+  }, [pathname, ready]);
+  return [ref, backgroundRef, look] as const;
+}
+
 /**
  * The bar along the bottom of a phone's screen; slides down out of view
  * while scrolling up, when the header comes back, so only one shows. A product's bar is drawn in the product's own part, deep in the page,
@@ -143,14 +206,20 @@ export function HidingBottomBar({ children, product = false }: { children: React
   const { focused, onFocus } = useFocusShows();
   const inBrowser = useInBrowser();
   const hidden = direction === "up" && !atTop && !focused;
+  // A product's bar is drawn again at the end of the body once hydrated, so its look is copied again there.
+  const [barRef, backgroundRef, look] = useMenuLookForBar(inBrowser);
   const bar = (
     <div
+      ref={barRef}
       onFocus={onFocus}
       {...(product ? { "data-product-bar": "" } : { "data-default-bar": "" })}
-      className={`fixed inset-x-0 bottom-0 ${product ? "z-40" : "z-30"} border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden ${slide} ${
-        hidden ? "translate-y-full" : "translate-y-0"
-      }`}
+      data-bar-look={look.own ? "" : undefined}
+      style={look.blur > 0 ? { backdropFilter: `blur(${look.blur}px)`, WebkitBackdropFilter: `blur(${look.blur}px)` } : undefined}
+      className={`fixed inset-x-0 bottom-0 isolate ${product ? "z-40" : "z-30"} border-t border-border pb-[env(safe-area-inset-bottom)] md:hidden ${
+        look.blur > 0 ? "" : look.own ? "bg-background" : "bg-background/95 backdrop-blur"
+      } ${look.surface} ${slide} ${hidden ? "translate-y-full" : "translate-y-0"}`}
     >
+      <div ref={backgroundRef} aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
       {children}
     </div>
   );

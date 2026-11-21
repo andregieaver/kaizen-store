@@ -78,6 +78,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
     return (
       <>
         <StorePageArticle
+          shop={{ store, market }}
           content={localizePage(page.content, market.locale)}
           place={{ pageId: page.id, owner: store.id, market: market.slug, archive: true, listing: { query: searchParams, path } }}
           editable={market.locale === store.localization.locales[0]}

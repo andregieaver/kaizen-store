@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle, pageRoomClass } from "@/components/page-article";
 import { PageEditLink } from "@/components/page-edit-link";
-import { HeaderOverlayMark } from "@/components/store-chrome";
+import { CustomCss } from "@/components/custom-css";
+import { KaizenSiteHeader } from "@/components/site-parts";
+import { HeaderOverlayMark, PageHeaderMark } from "@/components/store-chrome";
 import { pageExcerpt } from "@/lib/page-content";
 import { headerOverlays } from "@/lib/site-layout";
 import type { PageContent } from "@/lib/page-content";
@@ -15,7 +17,8 @@ import { pageJsonLd } from "@/lib/structured-data";
 import type { ThemeStorePart } from "@/lib/theme-store-parts";
 import type { PublishedPage } from "@/server/page-reads";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
-import { siteLayoutFor } from "@/server/site-layouts";
+import { getPlatformChrome } from "@/server/platform-navigation";
+import { headerLayoutById, siteLayoutFor } from "@/server/site-layouts";
 
 /**
  * One of Kaizen's published pages as the site shows it (D42): at its own address, or, chosen for a place of its own
@@ -82,11 +85,23 @@ export async function PlatformPageView({
 }) {
   const c = inPlatformLang(page.content, lang);
   const origin = siteUrl();
-  // Kaizen's header may lie over its pages (D80), over a front page's first row too.
-  const header = await siteLayoutFor(null, "header");
+  // Kaizen's header may lie over its pages (D80), over a front page's first row too. A page with a header of its own (`PageContent.header`,
+  // the special pages' *Header*) draws it above itself, and the site's gives way to it (`PageHeaderMark`), as on a store's page.
+  const [site, chosen] = await Promise.all([siteLayoutFor(null, "header"), page.content.header ? headerLayoutById(null, page.content.header) : null]);
+  const own = chosen && chosen.id !== site?.id ? chosen : null;
+  const header = own ?? site;
   const over = headerOverlays(header?.content.overlay, { front, categories: c.categories, tags: c.tags, rows: c.rows });
+  const chrome = own ? await getPlatformChrome() : null;
   return (
-    // Room above the first row where it draws no box; none under the last, so the page meets the footer.
+    <>
+    {own && chrome && (
+      <>
+        <PageHeaderMark />
+        <CustomCss css={own.content.css} name={`header-${own.id}`} />
+        <KaizenSiteHeader chrome={chrome} layout={own} lang={lang} pageOwn />
+      </>
+    )}
+    {/* Room above the first row where it draws no box; none under the last, so the page meets the footer. */}
     <main id="main" className={`w-full flex-1 ${pageRoomClass(c, "pt-10", "")}`} data-header-overlay={over ? "" : undefined}>
       {over && <HeaderOverlayMark />}
       {jsonLd && (
@@ -105,5 +120,6 @@ export async function PlatformPageView({
       <PageArticle content={c} place={{ pageId: page.id, owner: null, query, lang, ...(themeSlug && { themeSlug, themeParts }), ...(inThemeStore && { inThemeStore }) }} editable={lang === "en"} />
       <PageEditLink pageId={page.id} textEditable={lang === "en"} />
     </main>
+    </>
   );
 }

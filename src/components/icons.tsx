@@ -19,6 +19,12 @@ const PATHS = {
   grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
   box: "M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm-8 4.5l8 4.5 8-4.5M12 12v9",
   sliders: "M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4",
+  // Staff's tools on the live site, on phones (the pencil's menu, `StaffDock`).
+  pencil: "M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4",
+  back: "M19 12H5m6-6l-6 6 6 6",
+  code: "M8 7l-5 5 5 5m8-10l5 5-5 5",
+  text: "M5 7V5h14v2M12 5v14m-3 0h6",
+  layout: "M4 4h16v16H4zM4 9h16M9 9v11",
 } as const;
 
 export type IconName = keyof typeof PATHS;

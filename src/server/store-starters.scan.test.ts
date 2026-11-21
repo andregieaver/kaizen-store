@@ -18,6 +18,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/app/admin/(gated)/[store]/settings/seo/page.tsx": "real",
   "src/app/s/[store]/(chooser)/layout.tsx": "real",
   "src/app/s/[store]/[market]/layout.tsx": "real",
+  // What shoppers are told above the header (`storeNotice()`): a store not yet set up, which a template never is, is a preview.
+  "src/components/store-layout.tsx": "real",
   "src/db/health.ts": "template",
   "src/db/schema.ts": "both",
   // The agents' safety eval plays its cases on the template store (PSI 2026-10-24, AST-09).
@@ -185,6 +187,7 @@ const SANDBOX_KEPT: Record<string, string> = {
   "src/app/admin/(gated)/[store]/settings/design/share/page.tsx": ADMIN_ONLY,
   "src/app/s/[store]/(chooser)/layout.tsx": "A sandbox never finishes setting up, so its storefront is never indexed.",
   "src/app/s/[store]/[market]/layout.tsx": "A sandbox never finishes setting up, so its storefront is never indexed.",
+  "src/components/store-layout.tsx": "A sandbox never finishes setting up, so its storefront says it is a preview.",
   "src/server/account-erasure.ts": "An account's own erasure: the sandbox account is never erased.",
   "src/server/automations.ts": NOT_OPEN,
   "src/server/buy-facts.ts": NOT_OPEN,
