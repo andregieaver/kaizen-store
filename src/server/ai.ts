@@ -6,7 +6,6 @@ import { connection } from "next/server";
 
 import { db, readDb } from "@/db/client";
 import {
-  aiProviderInput,
   apiBaseUrl,
   checkBaseUrl,
   embeddingSpace,
@@ -17,6 +16,7 @@ import {
   type AiProviderId,
   type ImageQuality,
 } from "@/lib/ai-provider";
+import { aiProviderInput } from "@/lib/ai-provider-schema";
 import { estimateTokens, readTokens, type AiKind, type AiFeature, type UsageAmounts } from "@/lib/ai-usage";
 import { cosineSimilarity } from "@/lib/vectors";
 import { toolData } from "@/lib/prompt-safety";

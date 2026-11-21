@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { aiFormValues, aiProviderInput, apiBaseUrl, checkBaseUrl, embeddingSpace, keyHint, isGptImage, pictureEditModel } from "./ai-provider";
+import { aiFormValues, apiBaseUrl, checkBaseUrl, embeddingSpace, keyHint, isGptImage, pictureEditModel } from "./ai-provider";
+import { aiProviderInput } from "./ai-provider-schema";
 import { cosineSimilarity } from "./vectors";
 
 const valid = {

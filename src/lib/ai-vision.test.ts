@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { AI_PROVIDERS, aiProviderInput } from "./ai-provider";
+import { AI_PROVIDERS } from "./ai-provider";
+import { aiProviderInput } from "./ai-provider-schema";
 import { pictureLine, suggestedVision, visionAnswerRight, visionChallenge, visionModelOf, visionRefusalMessage } from "./ai-vision";
 
 describe("the picture check", () => {
