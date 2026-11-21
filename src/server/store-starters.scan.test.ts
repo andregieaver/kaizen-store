@@ -206,7 +206,6 @@ const SANDBOX_KEPT: Record<string, string> = {
   "src/server/store-trial.ts": "Makes private only a store that finished setting up and is public, which a sandbox never is.",
   "src/server/support-kaizen.ts": MEMBERS,
   "src/server/store-mcp.ts": MEMBERS,
-  "src/server/support-desk.ts": MEMBERS,
   "src/server/work-owner.ts": MEMBERS,
 };
 

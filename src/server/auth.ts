@@ -279,26 +279,66 @@ export async function requirePlatformReader(): Promise<Account> {
   return account;
 }
 
-/** The stores an account works in, by name. */
+const MEMBERSHIP = z.object({
+  id: col.uuid,
+  slug: col.text,
+  name: col.text,
+  status: col.text,
+  starter: col.bool,
+  sandbox: col.bool,
+  workspace: col.bool,
+  /** A store template's working store (D175): a starter with its `store_starters` row. */
+  working_starter: col.bool,
+  time_zone: col.text,
+  modules: z.array(z.string()),
+  work_extension: col.bool,
+  support_extension: col.bool,
+  role: z.enum(["owner", "admin"]),
+  kind: col.text,
+  role_id: col.uuid.nullable(),
+  permissions: z.array(z.string()).nullable(),
+});
+
+/** One of an account's memberships as `membershipsOf()` reads it: the store's facts and the member's role, by store name. */
+export type MembershipRow = z.output<typeof MEMBERSHIP>;
+
+const membershipRows = cache(
+  async (accountId: string): Promise<MembershipRow[]> =>
+    typedRows(
+      MEMBERSHIP,
+      sql`
+        select s.id, s.slug, s.name, s.status, s.starter, s.sandbox, s.workspace,
+          exists (select 1 from commerce.store_starters st where st.store_id = s.id) as working_starter,
+          s.time_zone, s.modules, commerce.extension_on(s.id, 'work') as work_extension, commerce.extension_on(s.id, 'support_desk') as support_extension,
+          m.role::text as role, m.kind, m.role_id, r.permissions
+        from commerce.store_members m
+        join commerce.stores s on s.id = m.store_id
+        left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
+        where m.account_id = ${accountId}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
+        order by lower(s.name), s.slug
+      `,
+    ),
+);
+
+/**
+ * Every store an account is a member of now (not disabled, not expired), read once per request (bloat review step 2.32): the store
+ * switcher, the owner's level, the combined support inbox and the books' clients each filter it by their own rule (`listStores()`,
+ * `ownerDesks()`, `booksMemberships()`). Only the list of stores is kept for the request; what a member may do in one store is still read
+ * each time (`memberRow()`).
+ */
+export const membershipsOf = (account: Pick<Account, "id">): Promise<MembershipRow[]> => membershipRows(account.id);
+
+/** The stores an account works in, by name: not closed, and never a store template (D175), a sandbox or a workspace (D748 E7). */
 export async function listStores(account: Account): Promise<StoreSummary[]> {
-  const rows = await db().execute<Row>(sql`
-    select s.slug, s.name, m.role, ('work' = any(s.modules) and commerce.extension_on(s.id, 'work')) as work_on,
-      commerce.extension_on(s.id, 'work') as work_extension
-    from commerce.store_members m
-    join commerce.stores s on s.id = m.store_id
-    where m.account_id = ${account.id}::uuid and m.disabled_at is null
-      and (m.expires_at is null or m.expires_at > now())
-      -- Store templates (D175) are the platform's work, reached from its Store templates page; a workspace (D748 E7) is no store.
-      and s.status <> 'closed' and not s.starter and not s.sandbox and not s.workspace
-    order by lower(s.name), s.slug
-  `);
-  return rows.map((row) => ({
-    slug: String(row.slug),
-    name: String(row.name),
-    role: row.role as Role,
-    workOn: Boolean(row.work_on),
-    workExtension: Boolean(row.work_extension),
-  }));
+  return (await membershipsOf(account))
+    .filter((m) => m.status !== "closed" && !m.starter && !m.sandbox && !m.workspace)
+    .map((m) => ({
+      slug: m.slug,
+      name: m.name,
+      role: m.role,
+      workOn: m.modules.includes("work") && m.work_extension,
+      workExtension: m.work_extension,
+    }));
 }
 
 /**

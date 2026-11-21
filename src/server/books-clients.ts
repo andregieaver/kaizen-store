@@ -8,9 +8,9 @@ import { todayIn } from "@/lib/analytics-period";
 import { sortClients, vatToReport, type ClientFacts } from "@/lib/books-clients";
 import { can } from "@/lib/permissions";
 
-import type { Account } from "./auth";
+import { membershipsOf, type Account } from "./auth";
 import { openBookOf } from "./ledger";
-import { col, typedRow, typedRows } from "./typed-rows";
+import { col, typedRow } from "./typed-rows";
 import { ourVatReturn } from "./vat-return";
 
 /**
@@ -18,30 +18,12 @@ import { ourVatReturn } from "./vat-return";
  * in a role such as the accountant's), with what its books need from them. Read for Your account → Books; counts only, never a document.
  */
 
-const MEMBER = z.object({
-  id: col.uuid,
-  slug: col.text,
-  name: col.text,
-  time_zone: col.text,
-  role: z.enum(["owner", "admin"]),
-  kind: col.text,
-  role_id: col.uuid.nullable(),
-  permissions: z.array(z.string()).nullable(),
-});
-
-/** The stores whose books the person may read, as their membership holds them. */
+/** The stores whose books the person may read, as their membership holds them (`membershipsOf()`, read once per request). */
 async function booksMemberships(account: Pick<Account, "id">) {
-  const rows = await typedRows(
-    MEMBER,
-    sql`select s.id, s.slug, s.name, s.time_zone, m.role::text as role, m.kind, m.role_id, r.permissions
-          from commerce.store_members m
-          join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.starter and not s.sandbox
-            -- The books are part of Work, a paid extension (D748): a client whose account does not have it has no books here.
-            and commerce.extension_on(s.id, 'work')
-          left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
-         where m.account_id = ${account.id}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
-         order by lower(s.name), s.slug`,
-  );
+  // Open stores, never a store template or a sandbox, whose account has Work (D748): the books are part of it.
+  const rows = (await membershipsOf(account))
+    .filter((m) => m.status !== "closed" && !m.starter && !m.sandbox && m.work_extension)
+    .map((m) => ({ id: m.id, slug: m.slug, name: m.name, time_zone: m.time_zone, role: m.role, kind: m.kind, role_id: m.role_id, permissions: m.permissions }));
   return rows
     .map((r) => {
       const holder = { role: r.role, kind: r.kind === "collaborator" ? ("collaborator" as const) : ("staff" as const), permissions: r.role_id ? (r.permissions ?? []) : null };

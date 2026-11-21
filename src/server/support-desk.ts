@@ -1,12 +1,9 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
-
-import { db } from "@/db/client";
 import { can, type Access, type PermissionHolder } from "@/lib/permissions";
 import { allowedWhenNotOpen } from "@/lib/store-closure";
 
-import { getAccount, platformCan, requirePlatformReader, type Account, type Membership } from "./auth";
+import { getAccount, membershipsOf, platformCan, requirePlatformReader, type Account, type Membership } from "./auth";
 import type { ChatSite } from "./chat-agent";
 import { checkPermission } from "./permissions";
 
@@ -123,25 +120,17 @@ export async function checkKaizenDesk(access: "read" | "write" = "write"): Promi
   return account ? { desk: make(null), store: null, account, canWrite: platformCan(account, "support"), holder: null } : null;
 }
 
-type Row = Record<string, unknown>;
-
 /**
  * The desks of every store where the account may read support (`support:read` by its role there, in a store that is open or not,
  * never one the platform keeps for itself), for the owner's combined inbox (2.8), by store name. Each says whether the account
  * may answer there; actions check `support:write` per store again (`checkStoreDesk()`).
  */
 export async function ownerDesks(account: Account): Promise<StaffDesk[]> {
-  const rows = await db().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.status, m.role, m.kind, m.role_id, r.permissions as role_permissions
-    from commerce.store_members m
-    join commerce.stores s on s.id = m.store_id
-      and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
-      -- The combined inbox holds only the desks of stores whose account has the AI support desk (D748).
-      and commerce.extension_on(s.id, 'support_desk')
-    left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
-    where m.account_id = ${account.id}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
-    order by lower(s.name), s.slug
-  `);
+  // The account's memberships, read once per request (`membershipsOf()`): a store template's own stores only when it is a working starter,
+  // and only stores whose account has the AI support desk (D748), which the combined inbox holds. Closed stores stay in.
+  const rows = (await membershipsOf(account))
+    .filter((m) => (!m.starter || m.working_starter) && m.support_extension)
+    .map((m) => ({ id: m.id, slug: m.slug, name: m.name, status: m.status, role: m.role, kind: m.kind, role_id: m.role_id, role_permissions: m.permissions }));
   const desks: StaffDesk[] = [];
   for (const row of rows) {
     const who = {
