@@ -457,7 +457,7 @@ export async function expressCheckoutAction(
   const cartId = await readCartId({ storeId: shop.store.id, market: shop.market });
   if (!cartId) return problem("empty");
   const header = (await headers()).get("origin");
-  const { startExpress } = await import("@/server/express-checkout");
+  const { startExpress } = await import("@/server/express-start");
   const started = await startExpress(shop, cartId, header ? new URL(header).origin : siteUrl(), m.shipping);
   if (!started.ok) {
     refresh();

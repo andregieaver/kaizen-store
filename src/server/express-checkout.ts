@@ -4,14 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { signInRequired } from "@/lib/customer-accounts";
-import {
-  expressFits,
-  klarnaMessagingFits,
-  registrableHost,
-  walletDomainOf,
-  type ExpressProblem,
-  type WalletDomain,
-} from "@/lib/express-checkout";
+import { klarnaMessagingFits, registrableHost, walletDomainOf, type WalletDomain } from "@/lib/express-checkout";
 import type { ExpressSetup } from "@/components/express-area";
 import { checkoutAppearanceFor } from "@/lib/checkout-look";
 import { termsTemplate } from "@/lib/checkout-terms";
@@ -27,13 +20,10 @@ import type { Store } from "./stores";
 import { audit } from "./auth";
 import { paymentsOnOf, providerOf, refreshBuyFacts, type BuyFacts } from "./buy-facts";
 import { getBuyer } from "./b2b";
-import { getCart } from "./cart";
 import { listCheckoutFields } from "./checkout-rules";
-import { getOpenCheckout, startCheckout, type CheckoutProblem } from "./checkout";
 import { ensurePaymentDomain, getCheckoutUi } from "./connect";
 import { getCustomer } from "./customers";
 import { termsDisplayFor } from "./checkout-terms";
-import { deliveryReady } from "./delivery-options";
 import { findFont } from "./fonts";
 import { log } from "./log";
 import { getCheckoutInfo } from "./orders";
@@ -45,8 +35,9 @@ type Row = Record<string, unknown>;
 
 /**
  * Express checkout and wallets (wave 10 unit J, D373; the rules in `src/lib/express-checkout.ts`). The express area on a product page and in
- * the cart is drawn only where `expressOn()` says so, and pressing it goes through `startExpress()`: the same `startCheckout()` the cart's
- * button calls (the order placed, stock held, the Checkout Session made on the store's account with the delivery the cart holds), and the
+ * the cart is drawn only where `expressOn()` says so, and pressing it goes through `startExpress()` (`src/server/express-start.ts`, which
+ * only the press loads): the same `startCheckout()` the cart's button calls (the order placed, stock held, the Checkout Session made on the
+ * store's account with the delivery the cart holds), and the
  * session's client secret handed to the browser that owns the cart, which then draws Stripe's Express Checkout Element over it. The wallet's
  * address and the delivery reach the order through `applySession()` as for any payment. The Payments page reads `walletDomains()`, kept by
  * `checkWalletDomains()`.
@@ -117,47 +108,6 @@ export async function expressAreaFor(store: Store, market: Market, m: Messages, 
     },
     terms: display ? { display, template: termsTemplate(m.terms, display), newTab: m.terms.newTab } : null,
     look: checkoutAppearanceFor(theme, bodyFont ? fontStack(bodyFont.family, bodyFont.category) : null),
-  };
-}
-
-/** What pressing the area gives the browser: Stripe's keys for the session, or why not. */
-export type ExpressStart =
-  | { ok: true; publishableKey: string; stripeAccount: string; clientSecret: string; orderId: string; sessionId: string; lines: number }
-  | { ok: false; problem: CheckoutProblem | ExpressProblem };
-
-/**
- * The press: the basket checked for what an express payment can pay (`expressFits()`), its delivery settled without a postal code the wallet
- * would only give later (`deliveryReady()`; the checkout page asks one), then the order placed and the session opened by `startCheckout()`,
- * exactly as the cart's button does, and the open checkout read back for its client secret. Only the cart's own browser gets here (the
- * cart is the caller's cookie), as on the checkout page.
- */
-export async function startExpress(
-  shop: { store: Store; market: Market },
-  cartId: string,
-  origin: string,
-  shippingLabel: string,
-): Promise<ExpressStart> {
-  const { store, market } = shop;
-  const cartShop = { storeId: store.id, market };
-  const customerId = (await getCustomer(store.id))?.id ?? null;
-  const cart = await getCart(cartShop, { customerId });
-  if (!expressFits(cart.lines)) return { ok: false, problem: cart.lines.length === 0 ? "empty" : "not_here" };
-  const ready = await deliveryReady(cartShop, cartId, customerId);
-  if (!ready.ok) return { ok: false, problem: "delivery" };
-  const started = await startCheckout({ storeId: store.id, storeSlug: store.slug, market }, cartId, origin, shippingLabel, {}, { customerId });
-  if (!started.ok) return { ok: false, problem: started.problem };
-  const open = await getOpenCheckout(store.id, cartId);
-  const publishableKey = open ? platformPublishableKey(open.mode) : null;
-  // Kaizena Flow's own checkout page is off (Stripe's hosted page): `expressOn()` offered nothing, so this is a change made meanwhile.
-  if (!open || !publishableKey || open.expired) return { ok: false, problem: "payment_error" };
-  return {
-    ok: true,
-    publishableKey,
-    stripeAccount: open.accountId,
-    clientSecret: open.clientSecret,
-    orderId: open.orderId,
-    sessionId: open.sessionId,
-    lines: cart.lines.length,
   };
 }
 

@@ -82,7 +82,8 @@ const { changeLine, readCartId } = await import("./cart");
 const { chooseDelivery } = await import("./delivery-options");
 const { getShopperOrder } = await import("./orders");
 const { getStore } = await import("./stores");
-const { checkWalletDomains, expressOn, klarnaMessaging, startExpress, walletDomains } = await import("./express-checkout");
+const { checkWalletDomains, expressOn, klarnaMessaging, walletDomains } = await import("./express-checkout");
+const { startExpress } = await import("./express-start");
 const { saveMethodChoices } = await import("./payment-methods");
 const { buyFacts } = await import("./buy-facts");
 
