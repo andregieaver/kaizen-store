@@ -9,7 +9,6 @@ import { db } from "@/db/client";
 import {
   draftBlocks,
   fillContract,
-  parseBlocks,
   type BlocksProblem,
   type ContractBlock,
   type ContractFacts,
@@ -18,6 +17,7 @@ import {
   type FillProblem,
   type SnapshotSigner,
 } from "@/lib/contract-fields";
+import { parseBlocks } from "@/lib/contract-fields-schema";
 import { starterTemplate } from "@/lib/contract-templates";
 import { dateIn } from "@/lib/dates";
 import { normaliseEmail } from "@/lib/email-address";

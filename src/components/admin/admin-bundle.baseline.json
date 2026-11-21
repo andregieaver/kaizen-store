@@ -10,7 +10,6 @@
     "components/admin/builder-rails.tsx",
     "components/admin/content-type-editor.tsx",
     "components/admin/custom-items-editor.tsx",
-    "components/admin/deals/contract-editor.tsx",
     "components/admin/drafts/draft-editor.tsx",
     "components/admin/drafts/draft-screen.tsx",
     "components/admin/dual-page-editor.tsx",

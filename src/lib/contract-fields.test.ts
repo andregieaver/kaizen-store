@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { CONTRACT_FIELDS, draftBlocks, fieldsIn, fillContract, parseBlocks, type ContractBlock, type ContractFacts } from "./contract-fields";
+import { CONTRACT_FIELDS, draftBlocks, fieldsIn, fillContract, type ContractBlock, type ContractFacts } from "./contract-fields";
+import { parseBlocks } from "./contract-fields-schema";
 
 const blocks: ContractBlock[] = [
   { type: "heading", text: "Avtale med {company.name}" },

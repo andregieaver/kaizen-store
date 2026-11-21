@@ -1,7 +1,8 @@
-import { z } from "zod";
-
-import { CONTRACT_FIELDS, contractDoc, contractDocText, fillContractDoc, type ContractField } from "./contract-rich";
+import { CONTRACT_FIELDS, fillContractDoc, type ContractField } from "./contract-rich";
 import type { RichTextDoc } from "./rich-text-doc";
+import type { ContractBlock } from "./contract-fields-schema";
+
+export type { ContractBlock } from "./contract-fields-schema";
 
 /**
  * Contracts for deals (D695, `docs/contracts.md`), pure: what a template's or a draft's block may be, the closed list of fields a block may
@@ -17,69 +18,12 @@ export const CONTRACT_HEADING_MAX = 200;
 export const CONTRACT_BLOCKS_MAX = 200;
 
 export { CONTRACT_FIELDS, type ContractField } from "./contract-rich";
-const isField = (key: string): key is ContractField => (CONTRACT_FIELDS as readonly string[]).includes(key);
+export const isField = (key: string): key is ContractField => (CONTRACT_FIELDS as readonly string[]).includes(key);
 
 /** `{customer.name}`: a field's key in braces, letters, dots and underscores. */
 const FIELD = /\{([a-z_]+\.[a-z_]+)\}/g;
 
-const words = (max: number) => z.string().max(max);
-const clauseId = z.string().regex(/^[a-z0-9_-]{1,40}$/);
-/** A block's words formatted, cut to what a contract takes (`contractDoc()`). */
-const formatted = z
-  .custom<RichTextDoc>((value) => contractDoc(value).ok)
-  .transform((value) => {
-    const cleaned = contractDoc(value);
-    return cleaned.ok ? cleaned.doc : { type: "doc" as const, content: [] };
-  });
-
-const heading = z.object({ type: z.literal("heading"), text: words(CONTRACT_HEADING_MAX) });
-const paragraph = z.object({ type: z.literal("paragraph"), text: words(CONTRACT_TEXT_MAX), doc: formatted.optional() });
-/** A clause Lisa may leave out of a contract (`optional`), in a draft `included` or not. */
-const clause = z.object({
-  type: z.literal("clause"),
-  id: clauseId,
-  title: words(CONTRACT_HEADING_MAX),
-  text: words(CONTRACT_TEXT_MAX),
-  doc: formatted.optional(),
-  optional: z.boolean().default(false),
-  included: z.boolean().default(true),
-});
-/** The linked quote's lines, as a table: fields only, the quote itself is never what is signed (the owner, 16 November 2026). */
-const quoteLines = z.object({ type: z.literal("quote_lines") });
-/** Where the signatures go: one box per signer, filled in when they sign. */
-const signatures = z.object({ type: z.literal("signatures") });
-
-export const contractBlock = z.discriminatedUnion("type", [heading, paragraph, clause, quoteLines, signatures]);
-export type ContractBlock = z.infer<typeof contractBlock>;
-export const contractBlocks = z.array(contractBlock).max(CONTRACT_BLOCKS_MAX);
-
 export type BlocksProblem = { kind: "shape"; at: number | null } | { kind: "unknown_field"; key: string } | { kind: "clause_twice"; id: string };
-
-/** Blocks as stored or typed, checked: their shape, fields only from the list, each clause's id once. */
-export function parseBlocks(raw: unknown): { ok: true; blocks: ContractBlock[] } | { ok: false; problems: BlocksProblem[] } {
-  const parsed = contractBlocks.safeParse(raw);
-  if (!parsed.success) {
-    const at = parsed.error.issues[0]?.path[0];
-    return { ok: false, problems: [{ kind: "shape", at: typeof at === "number" ? at : null }] };
-  }
-  // A formatted block's text is its document's words, whatever was sent beside it.
-  for (const [at, block] of parsed.data.entries()) {
-    if ((block.type !== "paragraph" && block.type !== "clause") || !block.doc) continue;
-    block.text = contractDocText(block.doc);
-    if (block.text.length > CONTRACT_TEXT_MAX) return { ok: false, problems: [{ kind: "shape", at }] };
-  }
-  const problems: BlocksProblem[] = [];
-  const unknown = new Set<string>();
-  for (const key of fieldsIn(parsed.data, { all: true })) if (!isField(key)) unknown.add(key);
-  for (const key of unknown) problems.push({ kind: "unknown_field", key });
-  const ids = new Set<string>();
-  for (const block of parsed.data) {
-    if (block.type !== "clause") continue;
-    if (ids.has(block.id)) problems.push({ kind: "clause_twice", id: block.id });
-    ids.add(block.id);
-  }
-  return problems.length ? { ok: false, problems } : { ok: true, blocks: parsed.data };
-}
 
 const textsOf = (block: ContractBlock): string[] =>
   block.type === "heading" || block.type === "paragraph" ? [block.text] : block.type === "clause" ? [block.title, block.text] : [];

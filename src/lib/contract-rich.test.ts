@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { fillContract, parseBlocks, type ContractBlock } from "./contract-fields";
+import { fillContract, type ContractBlock } from "./contract-fields";
+import { parseBlocks } from "./contract-fields-schema";
 import { contractDoc, contractDocText, docFromText, fillContractDoc } from "./contract-rich";
 import type { RichTextDoc } from "./rich-text-doc";
 
