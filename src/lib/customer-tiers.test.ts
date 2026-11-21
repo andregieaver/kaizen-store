@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { companyInput, companyPercent, discountNote, discountParts, memberDiscount, memberLineOff, parseInviteEmails, percentText, tierInput } from "./customer-tiers";
+import { companyPercent, discountNote, discountParts, memberDiscount, memberLineOff, percentText } from "./customer-tiers";
+import { companyInput, parseInviteEmails, tierInput } from "./customer-tiers-schema";
 
 describe("discount groups and company accounts (D108)", () => {
   it("reads a group's and a company's settings, with whole percentages", () => {

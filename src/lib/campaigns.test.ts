@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   applyCampaigns,
   bxgyOff,
-  campaignInput,
   campaignStatus,
   describeCampaign,
   memberOffAfterCampaign,
@@ -15,6 +14,7 @@ import {
   type Campaign,
   type CampaignLine,
 } from "./campaigns";
+import { campaignInput } from "./campaigns-schema";
 import { discountsEn } from "@/lib/admin-messages/discounts.en";
 
 let n = 0;

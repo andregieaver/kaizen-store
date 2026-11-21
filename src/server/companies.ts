@@ -6,7 +6,6 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
-  companyInput,
   companyPercent,
   INVITE_DAYS,
   INVITES_PER_DAY,
@@ -14,6 +13,7 @@ import {
   type InviteProblem,
   type InviteStatus,
 } from "@/lib/customer-tiers";
+import { companyInput } from "@/lib/customer-tiers-schema";
 import { isPaymentTerms, type PaymentTerms } from "@/lib/payment-terms";
 
 import { fillWords } from "@/lib/admin-fill";

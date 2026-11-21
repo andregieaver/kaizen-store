@@ -10,7 +10,6 @@
     "components/admin/bonus-settings-form.tsx",
     "components/admin/broadcast-editor.tsx",
     "components/admin/builder-rails.tsx",
-    "components/admin/campaign-editor.tsx",
     "components/admin/content-type-editor.tsx",
     "components/admin/custom-items-editor.tsx",
     "components/admin/deals/contract-editor.tsx",

@@ -7,7 +7,8 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { CustomersMessages } from "@/lib/admin-messages/customers.en";
 import { fillWords } from "@/lib/admin-fill";
 import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
-import { memberDiscount, tierInput, type MemberDiscount, type TierInput } from "@/lib/customer-tiers";
+import { memberDiscount, type MemberDiscount, type TierInput } from "@/lib/customer-tiers";
+import { tierInput } from "@/lib/customer-tiers-schema";
 
 import { audit, type Membership } from "./auth";
 import { preRegisterCustomer } from "./customers";

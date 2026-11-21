@@ -3,15 +3,8 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import {
-  applyCampaigns,
-  campaignInput,
-  campaignRunning,
-  runsIn,
-  type Campaign,
-  type CampaignLine,
-  type CampaignResult,
-} from "@/lib/campaigns";
+import { applyCampaigns, campaignRunning, runsIn, type Campaign, type CampaignLine, type CampaignResult } from "@/lib/campaigns";
+import { campaignInput } from "@/lib/campaigns-schema";
 import { shown, type Market } from "@/lib/markets";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { parsePrice } from "@/lib/product-input";

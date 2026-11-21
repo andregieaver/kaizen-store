@@ -5,7 +5,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { INVITES_PER_BATCH, parseInviteEmails } from "@/lib/customer-tiers";
+import { INVITES_PER_BATCH } from "@/lib/customer-tiers";
+import { parseInviteEmails } from "@/lib/customer-tiers-schema";
 import { t } from "@/lib/i18n";
 import { companyOf, createInvites, removeMember, revokeInvite } from "@/server/companies";
 import { getCustomer } from "@/server/customers";
