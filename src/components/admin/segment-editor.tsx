@@ -428,6 +428,14 @@ function ConditionFields({
           )}
         </>
       );
+    case "leadScore":
+      return (
+        <>
+          <span className="text-body text-ink-2">{ed.leadScoreAtLeast}</span>
+          {number(c.min, (min) => onChange({ ...c, min: Math.min(100, Math.max(1, min)) }), w.kinds.leadScore)}
+          <span className="text-body text-ink-2">{ed.leadScoreOf}</span>
+        </>
+      );
     case "review":
       return (
         <>

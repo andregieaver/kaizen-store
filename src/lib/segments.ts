@@ -73,6 +73,8 @@ export type Person = {
   fields?: Record<string, string[]>;
   /** When a signed-in customer last looked at each of the products the rules name (M2.4), while views are kept (D691), by product id. */
   viewedProducts?: Record<string, string>;
+  /** A business customer's lead score out of 100 (M2.8, D865, `leadScore()`); null for someone who buys for no company. */
+  leadScore?: number | null;
 };
 
 /** How long presses are kept, as `CLICK_DAYS` in `email-clicks.ts` (which this browser-side module cannot import: it signs with node:crypto). */
@@ -123,6 +125,8 @@ const MORE_CONDITIONS = [
   z.object({ kind: z.literal("viewed"), has: z.boolean(), products: z.array(z.uuid()).min(1, CHOOSE_SOME).max(PRODUCTS_PER_CONDITION), days: days.optional() }),
   // A customer's field marked for marketing (M2.4), by the field's id: what it says, or whether it is filled in.
   z.object({ kind: z.literal("field"), field: z.string().min(1, CHOOSE_SOME).max(80), op: z.enum(["is", "isNot", "filled", "empty"]), value: z.string().trim().max(200).optional() }),
+  // A business customer's lead score (M2.8, D865): at least this many points out of 100.
+  z.object({ kind: z.literal("leadScore"), min: z.number().int().min(1).max(100) }),
 ] as const;
 
 export const conditionSchema = z.discriminatedUnion("kind", [...FIRST_CONDITIONS, ...MORE_CONDITIONS]);
@@ -236,6 +240,8 @@ export function holds(c: Condition, p: Person, today: Date): boolean {
       const hit = values.includes((c.value ?? "").trim().toLowerCase());
       return c.op === "is" ? hit : !hit;
     }
+    case "leadScore":
+      return typeof p.leadScore === "number" && p.leadScore >= c.min;
   }
 }
 
@@ -264,6 +270,7 @@ export type SegmentNeeds = {
   fields: string[];
   /** The product ids "looked at" conditions name, each once. */
   viewed: string[];
+  leads: boolean;
 };
 
 export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
@@ -287,6 +294,7 @@ export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
     clicks: kinds.has("clicked"),
     fields: [...new Set(conditions.flatMap((c) => (c.kind === "field" ? [c.field] : [])))],
     viewed: [...new Set(conditions.flatMap((c) => (c.kind === "viewed" ? c.products : [])))],
+    leads: kinds.has("leadScore"),
   };
 }
 
@@ -399,6 +407,8 @@ export function describeCondition(c: Condition, ctx: DescribeContext): string {
       const template = { is: w.fieldIs, isNot: w.fieldIsNot, filled: w.fieldFilled, empty: w.fieldEmpty }[c.op];
       return fillWords(template, { field, value: c.value ?? "" });
     }
+    case "leadScore":
+      return fillWords(w.leadScoreAtLeast, { n: c.min });
   }
 }
 
@@ -471,6 +481,8 @@ export function newCondition(kind: ConditionKind): Condition {
       return { kind, has: true, products: [], days: 7 };
     case "field":
       return { kind, field: "", op: "filled" };
+    case "leadScore":
+      return { kind, min: 25 };
   }
 }
 
@@ -497,6 +509,7 @@ export const CONDITION_KIND_WORDS: Record<ConditionKind, string> = {
   clicked: "Email engagement",
   field: "Customer field",
   viewed: "Looked at a product",
+  leadScore: "Lead score",
 };
 
 /**
@@ -508,14 +521,14 @@ export const CONDITION_GROUPS: readonly { id: "bought" | "orders" | "who" | "rea
   { id: "orders", kinds: ["orders", "spent", "lastOrder", "firstOrder", "rfm"] },
   { id: "who", kinds: ["country", "language", "group", "company", "account", "tag", "field"] },
   { id: "reach", kinds: ["consent", "clicked", "sms"] },
-  { id: "talks", kinds: ["deal", "support", "review"] },
+  { id: "talks", kinds: ["deal", "leadScore", "support", "review"] },
 ];
 
 /** What a store has switched on or set up, for which conditions the rule builder offers (a condition behind a feature only while it is on). */
 /** A customer's field marked for marketing (M2.4), as the rule builder offers it: its id, label, type and choices. */
 export type SegmentField = { id: string; label: string; type: string; choices: { key: string; label: string }[] };
 
-export type ConditionOffer = { rfmReady: boolean; deals: boolean; reviews: boolean; subscriptions: boolean; sms: boolean; fields?: boolean; views?: boolean };
+export type ConditionOffer = { rfmReady: boolean; deals: boolean; reviews: boolean; subscriptions: boolean; sms: boolean; fields?: boolean; views?: boolean; leads?: boolean };
 
 export function conditionOffered(kind: ConditionKind, offer: ConditionOffer): boolean {
   switch (kind) {
@@ -533,6 +546,8 @@ export function conditionOffered(kind: ConditionKind, offer: ConditionOffer): bo
       return offer.fields === true;
     case "viewed":
       return offer.views === true;
+    case "leadScore":
+      return offer.leads === true;
     default:
       return true;
   }

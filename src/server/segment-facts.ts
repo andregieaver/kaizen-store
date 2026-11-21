@@ -8,6 +8,7 @@ import { MARKETING_FIELD_TYPES } from "@/lib/custom-fields";
 import type { Person, SegmentField, SegmentNeeds } from "@/lib/segments";
 
 import { PAID } from "./analytics-sql";
+import { leadScoresByEmail } from "./lead-score";
 import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -20,7 +21,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * conditions hold for nobody then. People are keyed as the reader keys them: the account's address, else the row's own, in lower case.
  */
 
-export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms" | "lastClickAt" | "fields" | "viewedProducts">;
+export type SegmentFacts = Pick<Person, "boughtProducts" | "boughtCategories" | "deals" | "support" | "reviews" | "subscriptions" | "sms" | "lastClickAt" | "fields" | "viewedProducts" | "leadScore">;
 
 /** Which families were read (a person missing from one has none of it), and each person's facts by address. */
 export type ReadFacts = { read: Set<keyof SegmentFacts>; byEmail: Map<string, SegmentFacts> };
@@ -273,7 +274,7 @@ async function featuresOn(storeId: string) {
 
 /** Whether the rules ask for any of these facts at all (most segments do not, and read nothing more). */
 export const needsFacts = (needs: SegmentNeeds) =>
-  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms || needs.clicks || needs.fields.length > 0 || needs.viewed.length > 0;
+  needs.products.length > 0 || needs.categories.length > 0 || needs.deals || needs.support || needs.reviews || needs.subscriptions || needs.sms || needs.clicks || needs.fields.length > 0 || needs.viewed.length > 0 || needs.leads;
 
 /** Reads the families `needs` asks for (`only`: the JSON list of addresses asked for, or null for everyone). */
 export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, only: string | null): Promise<ReadFacts> {
@@ -350,6 +351,12 @@ export async function readSegmentFacts(storeId: string, needs: SegmentNeeds, onl
       of(r.email).lastClickAt = r.at;
     });
   }
+  if (needs.leads) {
+    // A business customer's lead score (M2.8, D865), read and worked out as on their page (`leadScoresByEmail()`).
+    job("leadScore", leadScoresByEmail(storeId, asked(sql`lower(c.email)`, only)), (r) => {
+      of(r.email).leadScore = r.score;
+    });
+  }
   await Promise.all(jobs);
   return { read, byEmail };
 }
@@ -369,5 +376,6 @@ export function applySegmentFacts(people: Person[], { read, byEmail }: ReadFacts
     if (read.has("lastClickAt")) p.lastClickAt = facts.lastClickAt ?? null;
     if (read.has("fields")) p.fields = facts.fields ?? {};
     if (read.has("viewedProducts")) p.viewedProducts = facts.viewedProducts ?? {};
+    if (read.has("leadScore")) p.leadScore = facts.leadScore ?? null;
   }
 }

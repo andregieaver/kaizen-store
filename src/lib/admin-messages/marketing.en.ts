@@ -192,6 +192,8 @@ export const marketingEn = {
     supportBad: "rated a support conversation bad",
     clickedWithin: "pressed a link in your emails in the last",
     clickedNever: "has not pressed a link in your emails",
+    leadScoreAtLeast: "has a lead score of at least",
+    leadScoreOf: "of 100",
     fieldIs: "says",
     fieldIsNot: "does not say",
     fieldFilled: "is filled in",
@@ -236,6 +238,7 @@ export const marketingEn = {
     clicked: "Email engagement",
     field: "Customer field",
     viewed: "Looked at a product",
+    leadScore: "Lead score",
   },
   describe: { ...SEGMENT_DESCRIBE },
   subscribers: {

@@ -3,37 +3,37 @@
     "shop|none": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 156596,
+      "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172244
+      "totalChars": 172399
     },
     "shop|orders": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 156596,
+      "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172244
+      "totalChars": 172399
     },
     "shop|products": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 156596,
+      "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172244
+      "totalChars": 172399
     },
     "shop|customers": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 156596,
+      "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172244
+      "totalChars": 172399
     },
     "shop|marketing": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 159066,
+      "toolChars": 159221,
       "alwaysSentChars": 36543,
-      "totalChars": 174714
+      "totalChars": 174869
     },
     "shop|analytics": {
       "promptChars": 15648,
@@ -52,16 +52,16 @@
     "shop|bookings": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 156596,
+      "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172244
+      "totalChars": 172399
     },
     "shop|support": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 155550,
+      "toolChars": 155705,
       "alwaysSentChars": 36483,
-      "totalChars": 171198
+      "totalChars": 171353
     },
     "shop|settings": {
       "promptChars": 15648,
@@ -73,23 +73,23 @@
     "shop|billing": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 155026,
+      "toolChars": 155181,
       "alwaysSentChars": 36483,
-      "totalChars": 170674
+      "totalChars": 170829
     },
     "shop|staff": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 155788,
+      "toolChars": 155943,
       "alwaysSentChars": 36487,
-      "totalChars": 171436
+      "totalChars": 171591
     },
     "shop|books": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 156596,
+      "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172244
+      "totalChars": 172399
     },
     "all|none": {
       "promptChars": 16538,
@@ -115,16 +115,16 @@
     "all|customers": {
       "promptChars": 16538,
       "toolCount": 128,
-      "toolChars": 157620,
+      "toolChars": 157775,
       "alwaysSentChars": 36572,
-      "totalChars": 174158
+      "totalChars": 174313
     },
     "all|marketing": {
       "promptChars": 16538,
       "toolCount": 128,
-      "toolChars": 159158,
+      "toolChars": 159313,
       "alwaysSentChars": 36573,
-      "totalChars": 175696
+      "totalChars": 175851
     },
     "all|analytics": {
       "promptChars": 16538,
@@ -238,7 +238,7 @@
   "largeTools": {
     "change_dns": 2505,
     "change_form": 2925,
-    "count_segment": 6499,
+    "count_segment": 6654,
     "create_campaign": 3424,
     "create_field_group": 2649,
     "create_product": 11336,
@@ -257,7 +257,7 @@
     "save_checkout_question": 3062,
     "save_content_type": 2597,
     "save_menu": 3762,
-    "save_segment": 6101,
+    "save_segment": 6256,
     "save_shipping_method": 3706,
     "update_category": 4425,
     "update_product": 11939
@@ -312,7 +312,7 @@
     "connect_domain": 845,
     "contact_kaizen_support": 979,
     "copy_ad": 685,
-    "count_segment": 6499,
+    "count_segment": 6654,
     "create_campaign": 3424,
     "create_discount": 1236,
     "create_draft_order": 1909,
@@ -582,7 +582,7 @@
     "save_research_note": 1028,
     "save_search_rule": 2284,
     "save_search_synonym": 1629,
-    "save_segment": 6101,
+    "save_segment": 6256,
     "save_shipping_method": 3706,
     "save_skill": 1039,
     "schedule_article": 1111,

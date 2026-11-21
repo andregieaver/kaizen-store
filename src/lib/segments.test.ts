@@ -261,7 +261,7 @@ describe("what the people reader reads for some rules (E3.6)", () => {
       { match: "all", conditions: [{ kind: "bought", has: true, products: [MUG, TEA] }, { kind: "deal", status: "open" }] },
       { match: "any", conditions: [{ kind: "bought", has: false, products: [MUG] }, { kind: "boughtCategory", has: true, categories: [SHOES] }, { kind: "rfm", groups: ["VIP"] }] },
     ]);
-    expect(needs).toEqual({ rfm: true, products: [MUG, TEA], categories: [SHOES], deals: true, support: false, reviews: false, subscriptions: false, sms: false, clicks: false, fields: [], viewed: [] });
+    expect(needs).toEqual({ rfm: true, products: [MUG, TEA], categories: [SHOES], deals: true, support: false, reviews: false, subscriptions: false, sms: false, clicks: false, fields: [], viewed: [], leads: false });
     expect(segmentNeeds([{ match: "all", conditions: [{ kind: "orders", op: "atLeast", value: 1 }] }])).toEqual({
       rfm: false,
       products: [],
@@ -274,6 +274,7 @@ describe("what the people reader reads for some rules (E3.6)", () => {
       clicks: false,
       fields: [],
       viewed: [],
+      leads: false,
     });
   });
 });
@@ -289,7 +290,7 @@ describe("the rule builder's list of conditions (E3.6)", () => {
 
   it("offers a condition behind a feature only while it is on", () => {
     const off = { rfmReady: false, deals: false, reviews: false, subscriptions: false, sms: false };
-    expect(CONDITION_GROUPS.flatMap((g) => g.kinds).filter((k) => !conditionOffered(k, off)).sort()).toEqual(["deal", "field", "review", "rfm", "sms", "subscription", "viewed"]);
+    expect(CONDITION_GROUPS.flatMap((g) => g.kinds).filter((k) => !conditionOffered(k, off)).sort()).toEqual(["deal", "field", "leadScore", "review", "rfm", "sms", "subscription", "viewed"]);
     expect(conditionOffered("deal", { ...off, deals: true })).toBe(true);
     expect(conditionOffered("field", { ...off, fields: true })).toBe(true);
     expect(conditionOffered("bought", off)).toBe(true);
@@ -305,6 +306,20 @@ describe("the AI manager's segment tools (E3.6)", () => {
       expect([kind, input.safeParse({ rules: { match: "all", conditions: [c.kind === "bought" ? { ...c, products: [MUG] } : c.kind === "boughtCategory" ? { ...c, categories: [MUG] } : c] } }).success]).toEqual([kind, true]);
     }
     expect(input.safeParse({ rules: { match: "all", conditions: [{ kind: "lastOrder", op: "within" }] } }).success).toBe(false);
+  });
+});
+
+describe("lead score (M2.8, D865)", () => {
+  it("holds a business customer at or above the score, never someone with none or where it was not read, and says it in words", async () => {
+    const { holds, segmentNeeds, segmentRulesSchema } = await import("./segments");
+    expect(holds({ kind: "leadScore", min: 25 }, person({ leadScore: 30 }), today)).toBe(true);
+    expect(holds({ kind: "leadScore", min: 25 }, person({ leadScore: 25 }), today)).toBe(true);
+    expect(holds({ kind: "leadScore", min: 25 }, person({ leadScore: 20 }), today)).toBe(false);
+    expect(holds({ kind: "leadScore", min: 1 }, person({ leadScore: null }), today)).toBe(false);
+    expect(holds({ kind: "leadScore", min: 1 }, person(), today)).toBe(false);
+    expect(segmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "leadScore", min: 101 }] }).success).toBe(false);
+    expect(segmentNeeds([{ match: "all", conditions: [{ kind: "leadScore", min: 10 }] }]).leads).toBe(true);
+    expect(describeCondition({ kind: "leadScore", min: 60 }, ctx)).toBe("Has a lead score of 60 or more");
   });
 });
 

@@ -42,6 +42,8 @@ export async function editorChoices(store: Store, lang: AdminLang = "en") {
     fields: fields.length > 0,
     // Product views are kept only while a browse email runs (D691), so "looked at" is offered only then (M2.4).
     views,
+    // A lead score is a business customer's (D865), so "lead score" is offered while the store sells to businesses.
+    leads: featureOn(store, "business"),
   };
   return {
     currency,

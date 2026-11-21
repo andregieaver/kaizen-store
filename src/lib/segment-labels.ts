@@ -65,6 +65,7 @@ export const SEGMENT_DESCRIBE = {
   fieldIsNot: "{field} does not say {value}",
   fieldFilled: "{field} is filled in",
   fieldEmpty: "{field} is empty",
+  leadScoreAtLeast: "Has a lead score of {n} or more",
   stars: { one: "{n} star", many: "{n} stars" },
   reviewAny: "Wrote a review",
   reviewAtMost: "Wrote a review of at most {stars}",

@@ -99,7 +99,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 | M2.5 | Split tests in broadcasts and flows (was E4.5) | L | Open | Subject, words, send time or a branch, judged by D148's engine with unsubscribes and complaints as guardrails; a broadcast's winner goes to the rest |
 | M2.6 | Personal fields with a fallback (M0.1 c) | S | Done 2026-11-20: first name, company; staff fields stay out (D120) | First name, company and fields marked for email; a field without a fallback is refused; the preview shows the worst case; `findClaims()` and the checks of M3.6 run on the drawn text |
 | M2.7 | Texts in flows | S | Open | After the 46elks account is tried for real (the parity row `customers.sms-marketing`) |
-| M2.8 | Engagement and scores | M | Part: engagement in words; sunset recipe 2026-11-20; lead score on a business customer's page 2026-11-21 (D865); in segments next | A sunset recipe (no click for 180 days: one last email, then paused, never deleted); an engagement level in words; a lead score for business customers from visits, quotes, emails and deals, worked out in code with each point's reason shown |
+| M2.8 | Engagement and scores | M | Done 2026-11-21: engagement in words; sunset recipe; lead score on a business customer's page and in segments (D865) | A sunset recipe (no click for 180 days: one last email, then paused, never deleted); an engagement level in words; a lead score for business customers from visits, quotes, emails and deals, worked out in code with each point's reason shown |
 
 ## Phase 3: ahead on ease (built with phase 2's screens, not after)
 

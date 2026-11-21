@@ -146,7 +146,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   every marketing email to them (broadcasts and automations), never a transactional one.
 - **The lead score (M2.8, D865)**: a business customer's score is only `leadScore()` (`src/lib/lead-score.ts`, pure, each point with its
   reason), its facts only `customerLeadScore()` (one statement: quotes not declined in 90 days, open deals while Deals is on, presses by
-  address, product views kept); a customer with no company name or company account has none. A model never sets or explains a score.
+  address, product views kept), the page through `customerLeadScore()` and segments through `leadScoresByEmail()`; a customer with no company
+  name or company account has none. A model never sets or explains a score.
 
 ## Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`, `src/server/segments.ts`)
 

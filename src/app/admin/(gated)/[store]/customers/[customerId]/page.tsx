@@ -145,7 +145,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const [deals, lead] = await Promise.all([
     salesOn && customer.customerId ? listDeals(store, { customerId: customer.customerId }) : Promise.resolve([]),
     // A business customer's lead score (email plan M2.8, D865): null for one who buys for no company.
-    customer.customerId ? customerLeadScore(store.id, { customerId: customer.customerId, email: customer.email }, salesOn) : Promise.resolve(null),
+    customer.customerId ? customerLeadScore(store.id, customer.customerId, salesOn) : Promise.resolve(null),
   ]);
   const dealWords = DEALS_WORDS[lang];
   const [activities, team] =
