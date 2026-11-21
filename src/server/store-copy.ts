@@ -9,8 +9,6 @@ import { cutPassages } from "@/lib/knowledge";
 import { slugProblem, suggestSlug } from "@/lib/slug";
 import {
   COPY_PHASES,
-  storeCopyInput,
-  storeCopyOptions,
   type CopyChoices,
   type CopyPhase,
   type CopySelection,
@@ -19,6 +17,7 @@ import {
   type StoreCopyResult,
   type StoreCopySummary,
 } from "@/lib/store-copy";
+import { storeCopyInput, storeCopyOptions } from "@/lib/store-copy-schema";
 
 import { audit, type Account } from "./auth";
 import { log } from "./log";
