@@ -32,9 +32,9 @@ import { attributionOf } from "@/lib/recommendations";
 import { parseAttribution } from "@/lib/recommendations-schema";
 import { askedFields, setCartAnswers } from "@/server/checkout-rules";
 import { recordTermsForOrder } from "@/server/checkout-terms";
-import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
+import type { CheckoutConsent, CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
-import { expressOn, startExpress } from "@/server/express-checkout";
+import { expressOn } from "@/server/express-checkout";
 import { setCartCompanyPurchase } from "@/server/company-locations";
 
 import { applyCreditsForm } from "./bonus";
@@ -231,6 +231,7 @@ export async function checkoutAction(
 
   const header = (await headers()).get("origin");
   const origin = header ? new URL(header).origin : siteUrl();
+  const { startCheckout } = await import("@/server/checkout");
   const result = await startCheckout(
     { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
     cartId,
@@ -456,6 +457,7 @@ export async function expressCheckoutAction(
   const cartId = await readCartId({ storeId: shop.store.id, market: shop.market });
   if (!cartId) return problem("empty");
   const header = (await headers()).get("origin");
+  const { startExpress } = await import("@/server/express-checkout");
   const started = await startExpress(shop, cartId, header ? new URL(header).origin : siteUrl(), m.shipping);
   if (!started.ok) {
     refresh();
