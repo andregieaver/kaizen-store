@@ -192,7 +192,7 @@ commit as the fix.
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | In progress | D801: idle home 953,731 to 812,820 B (800,000 held at today's); orders 798,324. Owner: a tab past the hour. |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
 | 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | 19 Nov, 00d7bddd, D781: mirror set at sign-in and for all; commit 2 waits for the owner. |
-| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | In progress | 19 Nov, c30c7d23, D783: untouched tab 60 to 6 asks an hour; a day's statistics to read. |
+| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | Done | 19 Nov, c30c7d23, D783: untouched tab 60 to 6 asks an hour; production 21 Nov: 275 counts in 27 h across all tabs, 0.03-0.08 ms each. |
 | 2.35 | Answer a store's own domain without a deployment | SF-13 | L | strong | 2.20, 1.8, 1.29 | Open | |
 | 2.36 | Send the AI manager a lean default round | AI-1, AI-9, AI-11, FT-4, AI-6, GAP-ai-s1, GAP-ai-2 | M | strong | 1.19, 0.5, 0.11 | Open | |
 | 2.37 | Slim the tool schemas, so no first round is over 56,000 characters | AI-8 | M | strong | 1.19, 2.36 | Open | |
@@ -756,21 +756,21 @@ Each area's measures, today's values, the targets, how each is measured and the 
 
 ### Where the grades stand now
 
-Updated as steps land; last on 20 November 2026. A grade rises only for fixes seen working in production. On 20 November 87 of
-the 156 steps are done, 26 in progress and 43 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
+Updated as steps land; last on 21 November 2026. A grade rises only for fixes seen working in production. On 21 November 88 of
+the 156 steps are done, 27 in progress and 41 open: phase 0 is done, phase 1 waits on a few readings and owner checks, phase 2 is
 under way. No area is a D any more: 9 are a C and 4 a B.
 
 | Area | 12 Nov | Now | Steps done | What moved it, or what the next grade waits on |
 |---|---|---|---|---|
 | What a shopper's browser gets | C | C | 22 of 30 | Store pages static, layout sent once, links with a policy, a listing fetches ahead and draws its grid once, each working page loads its own parts; B after 2.11 and 2.45. |
-| What an owner's browser gets | D | B | 19 of 29 | Large causes gone: Supabase, zod and the builder's English off plain screens; editors and dialogs on demand; words handed cut; every route under a budget. A when the builder (1.83 MB) and the product editor (1.12 MB) reach 1.8 and 1.1. |
-| What the server loads and asks | D | C | 32 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons reach no cached read; the reference manifest 11.95 to 9.88 MB. B after 2.47, 2.19, 2.14 and 2.15. |
+| What an owner's browser gets | D | B | 20 of 29 | Large causes gone: Supabase, zod and the builder's English off plain screens; editors and dialogs on demand; words handed cut; every route under a budget. A when the builder (1.83 MB) and the product editor (1.12 MB) reach 1.8 and 1.1. |
+| What the server loads and asks | D | C | 33 of 56 | The import cycle cut; proxy, page and store readers are leaves; beacons reach no cached read; the reference manifest 11.95 to 9.88 MB. B after 2.47, 2.19, 2.14 and 2.15. |
 | Scheduled work | D | C | 15 of 24 | The scheduler's log pruned, statements per run held, a watchdog every 15 minutes. Further with 1.26 and phase 3's one tick. |
 | The database | C | B | 23 of 34 | Its phase 0 and 1 steps are live: statements per page and run held, lists read 100 rows a page. A after 2.19 and phase 3. |
 | The page builder's model and a built page | C | C | 19 of 27 | Layout sent once, a listing drawn and read once, a recommending grid without the page model. B after 2.14 and 2.15. |
 | Styles | C | C | 6 of 12 | A after 1.23's reading, 2.11 and 2.49. |
 | Interface text | C | B | 18 of 24 | Step 2.25 live: each admin page reaches the words of about 4 areas (213 KB), not all 77 (4 MB). A after 2.50 and 2.27's last sites. |
-| AI calls | C | C | 9 of 16 | Waits on the owner's eval run (1.19), then 2.36 to 2.39. |
+| AI calls | C | C | 10 of 16 | Waits on the owner's eval run (1.19), then 2.36 to 2.39. |
 | The product's surface | C | C | 14 of 25 | B after 2.32 and 2.36 to 2.38. |
 | The code itself | C | C | 22 of 37 | B once 1.20's ceilings are set; then phase 3. |
 | Tests, CI and the build | D | C | 4 of 13 | Every check timed, the build reports its peak (6.8 GB). B after 1.20, 1.21, 2.42 and 2.44. |
