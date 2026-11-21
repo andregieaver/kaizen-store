@@ -9,11 +9,11 @@ import {
   buildReminderEmail,
   defaultPlanSteps,
   defaultPlanText,
-  reminderStepInput,
   type ReminderLine,
   type ReminderStep,
   type ReminderText,
 } from "@/lib/cart-reminders";
+import { reminderStepInput } from "@/lib/cart-reminders-schema";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";

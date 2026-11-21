@@ -36,7 +36,6 @@
     "components/admin/page-versions-dialog.tsx",
     "components/admin/product-editor.tsx",
     "components/admin/product-question-fields.tsx",
-    "components/admin/reminder-editor.tsx",
     "components/admin/replicate-panel.tsx",
     "components/admin/returns/step-forms.tsx",
     "components/admin/rich-text-editor.tsx",

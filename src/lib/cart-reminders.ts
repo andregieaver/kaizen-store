@@ -1,7 +1,7 @@
-import { z } from "zod";
-
 import type { EmailBlock, EmailContent } from "./email-layout";
 import { formatMoney, type PriceDecimals } from "./money";
+
+export type { ReminderStepInput } from "./cart-reminders-schema";
 
 /**
  * Reminders about carts left at checkout (D33). The texts, their checks
@@ -289,23 +289,3 @@ export function describeDelay(minutes: number, words: DelayWords = DELAY_WORDS):
   return n(words.minutes, minutes);
 }
 
-const text = z.object({
-  subject: z.string().trim().min(1, "Give each language a subject.").max(150),
-  heading: z.string().trim().min(1, "Give each language a heading.").max(150),
-  body: z.string().trim().min(1, "Give each language a message.").max(3000),
-  button: z.string().trim().min(1, "Give each language a button text.").max(60),
-});
-
-/** A reminder as the admin sends it. */
-export const reminderStepInput = z.object({
-  delayMinutes: z.coerce
-    .number()
-    .int()
-    .min(MIN_DELAY_MINUTES, "Wait at least 30 minutes: the shopper may still be paying.")
-    .max(MAX_DELAY_MINUTES, "Send it within 30 days."),
-  active: z.boolean().default(true),
-  discountCodeId: z.uuid().nullable().default(null),
-  content: z.record(z.string(), text),
-});
-
-export type ReminderStepInput = z.input<typeof reminderStepInput>;

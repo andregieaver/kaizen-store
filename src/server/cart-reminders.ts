@@ -9,11 +9,11 @@ import {
   buildReminderEmail,
   defaultSteps,
   defaultText,
-  reminderStepInput,
   type ReminderLine,
   type ReminderStep,
   type ReminderText,
 } from "@/lib/cart-reminders";
+import { reminderStepInput } from "@/lib/cart-reminders-schema";
 import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import type { Market } from "@/lib/markets";
