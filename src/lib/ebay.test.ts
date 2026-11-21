@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { ebayAmount, ebaySettingsInput, inventoryItemBody, minorOfEbay, ordersFilter, readEbayOrder } from "./ebay";
+import { ebayAmount, inventoryItemBody, minorOfEbay, ordersFilter, readEbayOrder } from "./ebay";
+import { ebaySettingsInput } from "./ebay-schema";
 
 describe("eBay's pure parts (D555)", () => {
   it("turns minor units into eBay's decimal strings and back without floating point", () => {

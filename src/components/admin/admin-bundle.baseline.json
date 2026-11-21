@@ -16,7 +16,6 @@
     "components/admin/drafts/draft-editor.tsx",
     "components/admin/drafts/draft-screen.tsx",
     "components/admin/dual-page-editor.tsx",
-    "components/admin/ebay-parts.tsx",
     "components/admin/entry-editor.tsx",
     "components/admin/find-replace-dialog.tsx",
     "components/admin/forms/form-editor.tsx",

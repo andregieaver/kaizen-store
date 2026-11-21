@@ -10,8 +10,6 @@ import {
   EBAY_SCOPES,
   EBAY_TOKEN,
   ebayAuthorizeUrl,
-  ebayOrderSchema,
-  ebaySettingsInput,
   inventoryItemBody,
   offerBody,
   ordersFilter,
@@ -20,6 +18,7 @@ import {
   type EbaySettings,
   type ListingSource,
 } from "@/lib/ebay";
+import { ebayOrderSchema, ebaySettingsInput } from "@/lib/ebay-schema";
 import { ebayApp } from "@/lib/env";
 import { openFikenState, randomToken, sealFikenState } from "@/lib/fiken";
 import { decryptSecret, encryptSecret, parseKey } from "@/lib/secret-box";
