@@ -41,7 +41,6 @@ import { findProductPart } from "./product-questions";
 import { offeredTo } from "./product-conditions";
 import { emailContext, emailFooter } from "./shopper-emails";
 import { resolveSellingShop } from "./shop";
-import { sendQuoteRequestedAlert } from "./staff-alerts";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { uuidList } from "./sql-arrays";
@@ -247,7 +246,7 @@ async function cartLines(storeId: string, market: Market, customerId: string | n
 /** The staff's alert and push, and the shopper's receipt: each logged on failure, none undoing the request. */
 async function afterRequest(storeId: string, draftId: string) {
   try {
-    await sendQuoteRequestedAlert(storeId, draftId);
+    await (await import("./staff-alerts")).sendQuoteRequestedAlert(storeId, draftId);
   } catch (error) {
     log("error", "quote.alert_failed", { storeId, draftId }, error);
   }
