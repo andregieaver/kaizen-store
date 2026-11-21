@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { brandInput, uniqueWords } from "./brand";
+import { uniqueWords } from "./brand";
+import { brandInput } from "./brand-schema";
 import { designedTheme, designLookInput, mix, onAccent, readableOn } from "./brand-design";
 import { contrastRatio, templateSettings, THEME_TEMPLATE_KEYS, themeWarnings } from "./theme";
 

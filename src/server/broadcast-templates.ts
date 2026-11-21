@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { isBroadcastTemplateKey, OWN_TEMPLATES_MAX, templateContent, withProducts } from "@/lib/broadcast-templates";
-import { broadcastContentSchema, type BroadcastContent } from "@/lib/broadcasts";
+import type { BroadcastContent } from "@/lib/broadcasts";
+import { broadcastContentSchema } from "@/lib/broadcasts-schema";
 
 import { audit } from "./auth";
 import { listGridProducts } from "./catalog";

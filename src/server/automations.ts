@@ -27,7 +27,8 @@ import {
   type ProductPick,
   type PickKind,
 } from "@/lib/automations";
-import { broadcastContentSchema, sendProblems, type BroadcastContent } from "@/lib/broadcasts";
+import { sendProblems, type BroadcastContent } from "@/lib/broadcasts";
+import { broadcastContentSchema } from "@/lib/broadcasts-schema";
 
 import { refreshBuyFacts } from "./buy-facts";
 import { limitFor, usageNow } from "./limits";

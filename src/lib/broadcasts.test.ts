@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  broadcastInput,
   buildBroadcastEmail,
   isBroadcastAddress,
   keepHanded,
@@ -9,12 +8,12 @@ import {
   linkKey,
   linksOf,
   linkTarget,
-  parseSuggestion,
   sendProblems,
   suggestionBlocks,
   suggestionClaims,
   type BroadcastContent,
 } from "./broadcasts";
+import { broadcastInput, parseSuggestion } from "./broadcasts-schema";
 import { renderEmail } from "./email-layout";
 
 const content: BroadcastContent = {
@@ -189,7 +188,8 @@ describe("the store's own facts in an email (D352)", () => {
 
 describe("subject lines to choose from (M3.7)", () => {
   it("reads three different subjects within the limit, never the current one", async () => {
-    const { parseSubjects, SUBJECT_MAX } = await import("./broadcasts");
+    const { SUBJECT_MAX } = await import("./broadcasts");
+    const { parseSubjects } = await import("./broadcasts-schema");
     const answer = '```json\n{"subjects": ["Hei igjen", " hei  igjen ", "Nytt fra oss", "' + "x".repeat(SUBJECT_MAX + 1) + '", "Takk", "Mer"]}\n```';
     expect(parseSubjects(answer, "Takk")).toEqual(["Hei igjen", "Nytt fra oss", "Mer"]);
     expect(parseSubjects("no json here")).toEqual([]);
@@ -199,7 +199,8 @@ describe("subject lines to choose from (M3.7)", () => {
 
 describe("an email's words rewritten in place (M3.7)", () => {
   it("puts each new text back in its block, keeping pictures, products and a button's address", async () => {
-    const { rewritableTexts, rewrittenContent } = await import("./broadcasts");
+    const { rewritableTexts } = await import("./broadcasts");
+    const { rewrittenContent } = await import("./broadcasts-schema");
     const content = {
       subject: "Hei",
       preview: "",

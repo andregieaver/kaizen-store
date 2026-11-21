@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { AUTOMATION_STARTERS, starterContent } from "./automation-starters";
 import { DELAY_RANGES, LIFECYCLE_KINDS } from "./automation-kinds";
 import { automationInput } from "./automations";
-import { broadcastContentSchema, sendProblems } from "./broadcasts";
+import { sendProblems } from "./broadcasts";
+import { broadcastContentSchema } from "./broadcasts-schema";
 import { findClaims } from "./claims";
 import { isRequestAddress } from "./stock-request-check";
 

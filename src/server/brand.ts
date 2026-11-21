@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { brandInput, EMPTY_BRAND, uniqueWords, type Brand } from "@/lib/brand";
+import { EMPTY_BRAND, uniqueWords, type Brand } from "@/lib/brand";
+import { brandInput } from "@/lib/brand-schema";
 import { findClaims } from "@/lib/claims";
 
 import { audit } from "./auth";

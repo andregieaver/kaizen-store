@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { AUTOMATION_KINDS, PICK_KINDS, type PickKind } from "./automation-kinds";
 import type { AddedBlock } from "./flow-blocks";
-import { broadcastContentSchema, type BroadcastBlock, type BroadcastContent } from "./broadcasts";
+import type { BroadcastBlock, BroadcastContent } from "./broadcasts";
+import { broadcastContentSchema } from "./broadcasts-schema";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "./flow-triggers";
 
 /**

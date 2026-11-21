@@ -28,7 +28,7 @@ import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASON
 import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { addThemeInput, listThemesInput, makeThemeLiveInput, tryThemeInput } from "./design-tools";
-import { brandInput } from "./brand";
+import { brandInput } from "./brand-schema";
 import { brandMarksInput } from "./brand-marks";
 import { designLookInput } from "./brand-design";
 import { compareOptionsInput, listResearchNotesInput, readWebPageInput, saveResearchNoteInput, searchWebInput } from "./research";

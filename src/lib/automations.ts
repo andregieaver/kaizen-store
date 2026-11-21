@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import { DELAY_RANGES, FOLLOW_UP_DAYS, type AutomationKind, type LifecycleKind } from "./automation-kinds";
-import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
+import type { BroadcastContent } from "./broadcasts";
+import { broadcastContentSchema } from "./broadcasts-schema";
 
 export * from "./automation-kinds";
 

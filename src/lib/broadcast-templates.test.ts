@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { BROADCAST_TEMPLATE_KEYS, BROADCAST_TEMPLATES, isBroadcastTemplateKey, templateContent, withProducts } from "./broadcast-templates";
-import { broadcastContentSchema, sendProblems } from "./broadcasts";
+import { sendProblems } from "./broadcasts";
+import { broadcastContentSchema } from "./broadcasts-schema";
 import { findClaims } from "./claims";
 
 /** The templates a broadcast starts from (D368): hand-written in four languages, no claim, and each can be sent as it is. */
