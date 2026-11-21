@@ -52,7 +52,6 @@
     "components/admin/row-resize.tsx",
     "components/admin/save-template-dialog.tsx",
     "components/admin/saved-layout-dialog.tsx",
-    "components/admin/segment-editor.tsx",
     "components/admin/store-copy-progress.tsx",
     "components/admin/store-copy-wizard.tsx",
     "components/admin/store-translator.tsx",

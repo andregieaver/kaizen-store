@@ -6,7 +6,8 @@ import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
 import { marketingProblem } from "@/lib/marketing-words";
-import { SEGMENT_STARTERS, segmentRulesSchema, type SegmentCount } from "@/lib/segments";
+import { SEGMENT_STARTERS, type SegmentCount } from "@/lib/segments";
+import { segmentRulesSchema } from "@/lib/segments-schema";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, requirePermission } from "@/server/permissions";

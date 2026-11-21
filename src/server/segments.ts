@@ -15,15 +15,14 @@ import {
   matches,
   SEGMENT_CAP,
   SEGMENT_SAMPLE,
-  segmentInput,
   segmentNeeds,
-  segmentRulesSchema,
   TAGS_PER_PERSON,
   type DescribeContext,
   type Person,
   type SegmentCount,
   type SegmentRules,
 } from "@/lib/segments";
+import { segmentInput, segmentRulesSchema } from "@/lib/segments-schema";
 
 import { audit } from "./auth";
 import { rfmGroups } from "./analytics-customers-data";

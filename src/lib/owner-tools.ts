@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // The segment tools take the conditions frozen before ecosystem plan E3.6 (D718): their schema and eval stay as recorded until the release step.
-import { segmentRulesSchema } from "./segments";
+import { segmentRulesSchema } from "./segments-schema";
 
 import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";

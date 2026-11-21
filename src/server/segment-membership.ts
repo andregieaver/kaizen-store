@@ -3,7 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { matches, segmentRulesSchema, type SegmentRules } from "@/lib/segments";
+import { matches, type SegmentRules } from "@/lib/segments";
+import { segmentRulesSchema } from "@/lib/segments-schema";
 
 import { listSegments, segmentPeople, type SegmentStore } from "./segments";
 import { currentStore } from "./stores";

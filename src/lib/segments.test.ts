@@ -7,7 +7,6 @@ import {
   CONDITION_GROUPS,
   CONDITION_KIND_WORDS,
   conditionOffered,
-  conditionSchema,
   CONDITIONS_MAX,
   countSegment,
   describeCondition,
@@ -16,13 +15,12 @@ import {
   matches,
   newCondition,
   SEGMENT_STARTERS,
-  segmentInput,
   segmentNeeds,
-  segmentRulesSchema,
   type Condition,
   type ConditionKind,
   type Person,
 } from "./segments";
+import { conditionSchema, segmentInput, segmentRulesSchema } from "./segments-schema";
 
 const today = new Date("2026-10-20T12:00:00Z");
 const daysAgo = (n: number) => new Date(today.getTime() - n * 86_400_000).toISOString();
@@ -334,7 +332,8 @@ describe("email engagement (M2.4)", () => {
   });
 
   it("keeps the days it says in step with the clicks kept, asks for days only with within, and reads clicks only when asked", async () => {
-    const { SEGMENT_CLICK_DAYS, segmentRulesSchema, segmentNeeds } = await import("./segments");
+    const { SEGMENT_CLICK_DAYS, segmentNeeds } = await import("./segments");
+    const { segmentRulesSchema } = await import("./segments-schema");
     const { CLICK_DAYS } = await import("./email-clicks");
     expect(SEGMENT_CLICK_DAYS).toBe(CLICK_DAYS);
     expect(segmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "clicked", op: "within" }] }).success).toBe(false);
@@ -346,7 +345,8 @@ describe("email engagement (M2.4)", () => {
 
 describe("customer fields marked for marketing (M2.4)", () => {
   it("hold on what a field says, or whether it is filled in, and for nobody where fields were not read", async () => {
-    const { holds, segmentNeeds, segmentRulesSchema } = await import("./segments");
+    const { holds, segmentNeeds } = await import("./segments");
+    const { segmentRulesSchema } = await import("./segments-schema");
     const p = person({ fields: { tier: ["gold"], note: [] } });
     expect(holds({ kind: "field", field: "tier", op: "is", value: "Gold" }, p, today)).toBe(true);
     expect(holds({ kind: "field", field: "tier", op: "isNot", value: "gold" }, p, today)).toBe(false);

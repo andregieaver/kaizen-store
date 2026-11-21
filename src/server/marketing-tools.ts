@@ -15,7 +15,8 @@ import { parseAmount } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import type { PermissionHolder } from "@/lib/permissions";
-import { describeRules, segmentRulesSchema } from "@/lib/segments";
+import { describeRules } from "@/lib/segments";
+import { segmentRulesSchema } from "@/lib/segments-schema";
 import { SMS_PARTS_MAX, smsParts } from "@/lib/sms";
 import { plainText } from "@/lib/approval-summaries";
 
