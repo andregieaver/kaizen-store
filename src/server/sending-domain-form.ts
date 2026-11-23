@@ -4,14 +4,14 @@ import type { FormState } from "@/components/admin/action-form";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 
 import type { Account } from "./auth";
-import { addSendingDomain, checkSendingDomain, removeSendingDomain, setFromLocal } from "./sending-domains";
+import { addSendingDomain, checkSendingDomain, removeSendingDomain, setFromLocal, type SendingOwner } from "./sending-domains";
 
 /**
- * The sending domain card's form for a store, or for Kaizena Flow with no store (D727): the caller has checked the person may change the
- * store's settings (`settings:write`) or the platform's (`settings`), and passes the card's words in the person's language; a refusal Resend
+ * The sending domain card's form for a store, for an account (D874), or for Kaizena Flow with no store (D727): the caller has checked the
+ * person may change the store's settings (`settings:write`), owns the account, or may change the platform's (`settings`), and passes the card's words in the person's language; a refusal Resend
  * or the server gives in English is shown in theirs when known.
  */
-export async function sendingDomainForm(account: Account, storeId: string | null, form: FormData, w: NotificationsMessages["sendingDomain"]): Promise<FormState> {
+export async function sendingDomainForm(account: Account, storeId: SendingOwner, form: FormData, w: NotificationsMessages["sendingDomain"]): Promise<FormState> {
   const refused = (problems: string[]): FormState => ({ status: "error", messages: problems.map((p) => w.problems[p] ?? p) });
   const intent = String(form.get("intent") ?? "");
   if (intent === "add") {

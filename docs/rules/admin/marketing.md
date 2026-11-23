@@ -187,7 +187,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 - **Broadcasts (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5, `src/lib/broadcasts.ts`, `src/server/broadcasts.ts`)**: a
   broadcast is written per language from `broadcastContentSchema`'s blocks (a picture only from the store's own media library, as
-  JPEG, PNG or GIF; social links, M4.1, up to `SOCIAL_MAX` profiles, each through `socialHref()` and left out when it is no address; columns, M4.1, two or three cells side by side that stack on a phone, a cell's button tracked by its own key `nb-NO.3-1` and its picture checked like any other) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
+  JPEG, PNG or GIF; social links, M4.1, up to `SOCIAL_MAX` profiles, each through `socialHref()` and left out when it is no address; columns, M4.1, two or three cells side by side that stack on a phone, a cell's button tracked by its own key `nb-NO.3-1` and its picture checked like any other; a block saved by name for later in `email_saved_blocks`, D875, at most 50) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
   `segmentPeople()`/`matches()`), frozen into `broadcast_recipients` when the send starts (`startBroadcast()`); the database moves
   its status only as `broadcasts_rules()` allows and fixes its words once sending. Emails go only through `runBroadcasts()` (the
   every-minute `/api/cron/broadcasts` and `after()` the press): one `email_messages` row per recipient under
@@ -215,6 +215,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `daily.sending-domains` asks Resend again about pending and failed domains, and about verified ones each week, so one that breaks goes
   back to the shared address. The card sits on Settings, Notifications (`settings:write`) and on Platform, Emails (`settings`). Adding a
   domain needs Resend's key to have full access; a sending-only key is refused in plain words.
+- **The account's own sending domain (D874)**: a row with `organisation_id` (a row is a store's, an account's or Kaizena Flow's own;
+  `SendingOwner` in `src/server/sending-domains.ts`). Every store of the account without its own sends from it, order emails and marketing
+  alike (`senderFor()`, `marketingRoute()`: the store's own first, then the account's, then the shared address). It is set on Your domains
+  by the account's owner only (`ownedAccount()`); a store's card says when it sends from the account's address.
 - **Marketing email through Amazon SES (D872, `src/server/ses.ts`, `src/lib/ses.ts`, `/api/ses/events`)**: with `AWS_SES_*` set, a
   store's broadcasts and flows (`SES_KINDS`) go through SES in the EU (`marketingRoute()`: its own domain once SES verified it, else
   Resend's way; the shared address through SES only when it is on Kaizena Flow's own domain and SES verified that). Order, account and

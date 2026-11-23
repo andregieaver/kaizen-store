@@ -30,6 +30,11 @@ export const SOCIAL_MAX = 8;
 /** Cells in a columns block, and the words of one (M4.1). */
 export const CELLS_MAX = 3;
 export const CELL_TEXT_MAX = 600;
+/** A store's saved blocks (M4.1), and the length of one's name. */
+export const SAVED_BLOCKS_MAX = 50;
+export const SAVED_BLOCK_NAME_MAX = 80;
+/** One of a store's saved blocks, as the editor lists it. */
+export type SavedBlock = { id: string; name: string; block: BroadcastBlock };
 /** Recipients are deleted this long after a send ended, their figures kept on the broadcast (5.6). */
 export const RECIPIENTS_KEEP_DAYS = 90;
 

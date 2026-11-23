@@ -34,6 +34,7 @@ export function SendingDomainCard({
   action,
   display,
   timeZone,
+  leads,
 }: {
   domain: SendingDomainView | null;
   /** The store's own domain, filled in for a new one. */
@@ -44,10 +45,12 @@ export function SendingDomainCard({
   display: string;
   /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own: when the domain was checked, on that clock (D812). */
   timeZone: string;
+  /** Other words for the lead without a domain and once verified: an account's own (D874), or a store sending from its account's. */
+  leads?: { shared?: string; verified?: string };
 }) {
   if (!domain) {
     return (
-      <Card title={w.title} description={w.leadShared}>
+      <Card title={w.title} description={leads?.shared ?? w.leadShared}>
         {action ? (
           <ActionForm action={action} successMessage={w.done.added} className="flex flex-col gap-3">
             <div className="flex flex-wrap items-end gap-2">
@@ -79,7 +82,7 @@ export function SendingDomainCard({
 
   const title =
     domain.status === "verified" ? fillWords(w.verified, { from: domain.from }) : fillWords(domain.status === "failed" ? w.failed : w.pending, { domain: domain.domain });
-  const lead = domain.status === "verified" ? w.verifiedLead : domain.status === "failed" ? w.failedLead : domain.recordsWritten ? w.pendingWritten : w.pendingCopy;
+  const lead = domain.status === "verified" ? (leads?.verified ?? w.verifiedLead) : domain.status === "failed" ? w.failedLead : domain.recordsWritten ? w.pendingWritten : w.pendingCopy;
   const checked = domain.checkedAt ? fillWords(w.checkedAt, { at: adminDate(timeZone, domain.checkedAt, "dayTime", display) }) : null;
   const showRecords = domain.status !== "verified" && domain.records.length > 0;
   return (

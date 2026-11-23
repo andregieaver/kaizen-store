@@ -179,6 +179,7 @@
     "src/db/schema.ts#emailClicks",
     "src/db/schema.ts#emailFiling",
     "src/db/schema.ts#emailOptOuts",
+    "src/db/schema.ts#emailSavedBlocks",
     "src/db/schema.ts#emailTemplates",
     "src/db/schema.ts#eventCursors",
     "src/db/schema.ts#eventLog",

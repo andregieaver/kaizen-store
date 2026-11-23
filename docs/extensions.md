@@ -513,7 +513,8 @@ and order emails keep sending; use beyond the support desk's and the people allo
 1. **SES for marketing mail (D872, built 23 November 2026).** Broadcasts and flows go through Amazon SES in Ireland once the sender's domain
    is verified there, order emails stay on Resend; each sending domain is also an identity at SES with its own records; SES's events come
    back through SNS to `/api/ses/events` and count for the sending guard. Off until `AWS_SES_*` is set in Vercel.
-2. **The account's sending domain**: one domain for the account, used by each of its stores without its own; a workspace sends from it.
+2. **The account's sending domain (D874, built 23 November 2026).** One domain for the account, on Your domains for its owner, used by each
+   of its stores without its own, a workspace included; a store's own still comes first.
 3. **The send allowance**: marketing emails and contacts counted per account against the size it has; told at 80 %, and at the limit new
    broadcasts wait with one button to move up.
 
@@ -554,6 +555,9 @@ and order emails keep sending; use beyond the support desk's and the people allo
   applied by CI 20 November 2026 with the first green run after it (runs 1821 to 1823; held back from runs 1814 to 1820: the sign-up page's
   plain read broke the prerender, fixed in 84851fe0 and 7a0f2371, then D862's contracts spec, ci-red #36). Production runs 275a6922 with
   the sign-up's bundles live and E9's eval fix (e447911c). Advisors: INFO only, nothing new on the column; no new warning.
+- E10 part one (SES for marketing mail, D872): `20261123102718_youthful_starhawk` (`sending_domains.ses_status`, `ses_records`,
+  `ses_problem`), applied by CI 23 November 2026 at 11:43 UTC (run 1861, commit 632df0cf). In production: no sending domain kept yet and no
+  `AWS_SES_*` set, so all mail still goes through Resend. Advisors: INFO only, nothing new on the table; no new warning.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 

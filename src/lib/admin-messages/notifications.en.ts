@@ -1221,6 +1221,13 @@ export const notificationsEn = {
     checkedAt: "Last checked {at}.",
     readOnly: "Only someone who can change settings can set this up.",
     noAccess: "You can't change this store's settings.",
+    /** The account's own (D874), on Your domains. */
+    account: {
+      lead: "Your account's emails go from Kaizena Flow's address with your business's name on them. Add your domain once, and everything your account sends goes from it, unless a store has a domain of its own.",
+      verifiedLead: "Everything your account sends goes from this address, each store with its own name, unless a store has a domain of its own. If the records stop working, the emails go from Kaizena Flow's address again until they are fixed.",
+    },
+    /** A store without its own, sending from its account's (D874). */
+    inherited: "Your emails go from {from}, your account's address, with your store's name on them. Add a domain here to give this store its own.",
     /** Platform → Emails: which way newsletters and flows go (D872). */
     bulk: {
       ses: "Newsletters and flows go through Amazon SES in {region} once a sender's domain is verified there, at about a tenth of the price; order emails stay on Resend.",
@@ -1244,6 +1251,8 @@ export const notificationsEn = {
       "This domain is already set up for sending somewhere else. Remove it there first.": "This domain is already set up for sending somewhere else. Remove it there first.",
       "Resend's answer couldn't be read. Try again in a moment.": "Resend's answer couldn't be read. Try again in a moment.",
       "This store has no sending domain.": "This store has no sending domain.",
+      "This account already has a sending domain. Remove it first to use another.": "This account already has a sending domain. Remove it first to use another.",
+      "This account has no sending domain.": "This account has no sending domain.",
       "Remove this domain and add it again.": "Remove this domain and add it again.",
       "Resend no longer has this domain. Remove it and add it again.": "Resend no longer has this domain. Remove it and add it again.",
     } as Record<string, string>,

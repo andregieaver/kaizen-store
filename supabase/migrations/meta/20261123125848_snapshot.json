@@ -1,6 +1,6 @@
 {
-  "id": "5d950c89-c241-40c6-b125-4c494922df10",
-  "prevId": "d718ac65-37cb-4654-8a6e-1b67bfb95b26",
+  "id": "bceb89a5-6cc9-4ac9-bfe6-a4d3d0b60b54",
+  "prevId": "d06157aa-295d-4c0f-8fd1-c964bcaf8d5a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -33443,6 +33443,141 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "commerce.email_saved_blocks": {
+      "name": "email_saved_blocks",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "block": {
+          "name": "block",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "email_saved_blocks_list_idx": {
+          "name": "email_saved_blocks_list_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "email_saved_blocks_created_by_idx": {
+          "name": "email_saved_blocks_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "email_saved_blocks_store_id_stores_id_fk": {
+          "name": "email_saved_blocks_store_id_stores_id_fk",
+          "tableFrom": "email_saved_blocks",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "email_saved_blocks_created_by_accounts_id_fk": {
+          "name": "email_saved_blocks_created_by_accounts_id_fk",
+          "tableFrom": "email_saved_blocks",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "email_saved_blocks_store_id_key": {
+          "name": "email_saved_blocks_store_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "email_saved_blocks_name": {
+          "name": "email_saved_blocks_name",
+          "value": "length(\"commerce\".\"email_saved_blocks\".\"name\") between 1 and 80"
+        },
+        "email_saved_blocks_block": {
+          "name": "email_saved_blocks_block",
+          "value": "jsonb_typeof(\"commerce\".\"email_saved_blocks\".\"block\") = 'object'"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.email_templates": {
       "name": "email_templates",
@@ -77158,6 +77293,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "domain": {
           "name": "domain",
           "type": "text",
@@ -77258,6 +77399,21 @@
         }
       },
       "indexes": {
+        "sending_domains_organisation_idx": {
+          "name": "sending_domains_organisation_idx",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "sending_domains_created_by_idx": {
           "name": "sending_domains_created_by_idx",
           "columns": [
@@ -77289,6 +77445,20 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
+        "sending_domains_organisation_id_organisations_id_fk": {
+          "name": "sending_domains_organisation_id_organisations_id_fk",
+          "tableFrom": "sending_domains",
+          "tableTo": "organisations",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "sending_domains_created_by_accounts_id_fk": {
           "name": "sending_domains_created_by_accounts_id_fk",
           "tableFrom": "sending_domains",
@@ -77312,10 +77482,22 @@
           "columns": [
             "store_id"
           ]
+        },
+        "sending_domains_owner_key": {
+          "name": "sending_domains_owner_key",
+          "nullsNotDistinct": true,
+          "columns": [
+            "store_id",
+            "organisation_id"
+          ]
         }
       },
       "policies": {},
       "checkConstraints": {
+        "sending_domains_one_owner": {
+          "name": "sending_domains_one_owner",
+          "value": "\"commerce\".\"sending_domains\".\"store_id\" is null or \"commerce\".\"sending_domains\".\"organisation_id\" is null"
+        },
         "sending_domains_ses_status": {
           "name": "sending_domains_ses_status",
           "value": "\"commerce\".\"sending_domains\".\"ses_status\" in ('none', 'pending', 'verified', 'failed')"

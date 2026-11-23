@@ -18,6 +18,10 @@ import { dnsAuto, dnsHistory, storeZones, zoneRecords } from "@/server/domain-dn
 import { accountHolder } from "@/server/domain-holder";
 import { domainsPublic, registrationHolder, renewalOffer, storeDomainPurchases } from "@/server/domain-purchases";
 import { storeRegistrations } from "@/server/domain-registrations";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { SendingDomainCard } from "@/components/admin/sending-domain-card";
+import { ownedAccount } from "@/server/privacy-officers";
+import { getSendingDomain, sendingDomainView } from "@/server/sending-domains";
 
 import {
   accountApplyDnsAction,
@@ -25,6 +29,7 @@ import {
   accountDnsAutoAction,
   accountRenewAction,
   accountRenewalAction,
+  accountSendingDomainAction,
   accountUndoDnsAction,
   askHolderAction,
   confirmHolderAction,
@@ -141,6 +146,9 @@ export default async function YourDomainsPage() {
       </Card>
       {held.some((d) => d.zoneId) && <HolderAssistant words={words.assistant} ask={askHolderAction} confirm={confirmHolderAction} />}
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
+        <AccountSending account={account} lang={lang} suggested={held[0]?.apex ?? null} />
+      </Suspense>
+      <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <Registrations account={account} lang={lang} />
       </Suspense>
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
@@ -231,5 +239,27 @@ async function KeptDns({ account, lang }: { account: Account; lang: AdminLang })
         ),
       )}
     </>
+  );
+}
+
+/**
+ * *Send from your own address* for the whole account (D874): its owner adds the domain once and every store of the account without its own
+ * sends from it, a standalone account's included; the domain the account holds is filled in. Shown only to the account's owner.
+ */
+async function AccountSending({ account, lang, suggested }: { account: Account; lang: AdminLang; suggested: string | null }) {
+  const organisation = await ownedAccount(account.id);
+  if (!organisation) return null;
+  const sending = await getSendingDomain({ organisationId: organisation.id });
+  const w = NOTIFICATIONS_WORDS[lang].sendingDomain;
+  return (
+    <SendingDomainCard
+      domain={sending && sendingDomainView(sending)}
+      suggested={suggested}
+      words={w}
+      action={accountSendingDomainAction}
+      display={ADMIN_LANG_FACTS[lang].tag}
+      timeZone={PLATFORM_TIME_ZONE}
+      leads={{ shared: w.account.lead, verified: w.account.verifiedLead }}
+    />
   );
 }

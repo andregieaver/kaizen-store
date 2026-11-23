@@ -1478,6 +1478,13 @@ export const notificationsNb: NotificationsMessages = {
     checkedAt: "Sist sjekket {at}.",
     readOnly: "Bare den som kan endre innstillinger, kan sette opp dette.",
     noAccess: "Du kan ikke endre innstillingene til denne butikken.",
+    /** The account's own (D874), on Your domains. */
+    account: {
+      lead: "Kontoens e-poster går fra Kaizena Flows adresse med bedriftens navn på. Legg til domenet ditt én gang, så går alt kontoen sender fra det, med mindre en butikk har sitt eget domene.",
+      verifiedLead: "Alt kontoen sender går fra denne adressen, hver butikk med sitt eget navn, med mindre en butikk har sitt eget domene. Hvis postene slutter å virke, går e-postene fra Kaizena Flows adresse igjen til de er rettet.",
+    },
+    /** A store without its own, sending from its account's (D874). */
+    inherited: "E-postene dine går fra {from}, kontoens adresse, med butikkens navn på. Legg til et domene her for å gi denne butikken sitt eget.",
     /** Platform → Emails: which way newsletters and flows go (D872). */
     bulk: {
       ses: "Nyhetsbrev og flyter går gjennom Amazon SES i {region} når avsenderens domene er bekreftet der, til omtrent en tidel av prisen; ordre-e-poster går fortsatt gjennom Resend.",
@@ -1500,6 +1507,8 @@ export const notificationsNb: NotificationsMessages = {
       "This domain is already set up for sending somewhere else. Remove it there first.": "Dette domenet er allerede satt opp for utsending et annet sted. Fjern det der først.",
       "Resend's answer couldn't be read. Try again in a moment.": "Svaret fra Resend kunne ikke leses. Prøv igjen om et øyeblikk.",
       "This store has no sending domain.": "Butikken har ikke noe avsenderdomene.",
+      "This account already has a sending domain. Remove it first to use another.": "Kontoen har allerede et avsenderdomene. Fjern det først for å bruke et annet.",
+      "This account has no sending domain.": "Kontoen har ikke noe avsenderdomene.",
       "Remove this domain and add it again.": "Fjern dette domenet og legg det til på nytt.",
       "Resend no longer has this domain. Remove it and add it again.": "Resend har ikke dette domenet lenger. Fjern det og legg det til på nytt.",
     },
