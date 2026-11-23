@@ -216,6 +216,44 @@ describe("social links (M4.1)", () => {
   });
 });
 
+describe("columns (M4.1)", () => {
+  const cell = (heading: string, buttonUrl = "") => ({ image: null, alt: "", heading, text: "Hei {first_name|der}", buttonText: buttonUrl ? "Se mer" : "", buttonUrl });
+  const lang = { subject: "s", preview: "", blocks: [{ type: "heading" as const, text: "Topp" }, { type: "columns" as const, cells: [cell("Ull", "/c/ull"), cell("Lin")] }] };
+
+  it("takes two or three cells, each with something in it and a button with both its words and address", () => {
+    const ok = (blocks: unknown[]) => broadcastInput.safeParse({ title: "x", audience: "everyone", segmentId: null, content: { "nb-NO": { subject: "s", preview: "", blocks } } }).success;
+    expect(ok(lang.blocks)).toBe(true);
+    expect(ok([{ type: "columns", cells: [cell("Ull")] }])).toBe(false);
+    expect(ok([{ type: "columns", cells: [cell("a"), cell("b"), cell("c"), cell("d")] }])).toBe(false);
+    expect(ok([{ type: "columns", cells: [cell("a"), { ...cell(""), text: "" }] }])).toBe(false);
+    expect(ok([{ type: "columns", cells: [cell("a"), { ...cell("b"), buttonText: "Se" }] }])).toBe(false);
+  });
+
+  it("draws the cells side by side, tracks each button by its own key and finds its target", () => {
+    const email = renderEmail(
+      buildBroadcastEmail({ content: lang, locale: "nb-NO", footer: [], unsubscribe: { text: "", linkText: "", url: "" }, resolve: (u) => u, link: (k, t) => `https://kf.example/c/${k}?to=${t}` }),
+    );
+    expect(email.html).toContain("max-width:256px");
+    expect(email.html).toContain('href="https://kf.example/c/nb-NO.1-0?to=/c/ull"');
+    expect(email.html).toContain("Lin");
+    expect(email.text).toContain("Se mer: https://kf.example/c/nb-NO.1-0?to=/c/ull");
+    const content: BroadcastContent = { "nb-NO": lang };
+    expect(linkTarget(content, "nb-NO.1-0")).toBe("/c/ull");
+    expect(linkTarget(content, "nb-NO.1-1")).toBeNull();
+    expect(linkTarget(content, "nb-NO.1")).toBeNull();
+    expect(linkTarget(content, "nb-NO.0-0")).toBeNull();
+    expect(linksOf(content).map((l) => l.key)).toEqual(["nb-NO.1-0"]);
+  });
+
+  it("fills and checks personal fields in a column", async () => {
+    const { personalizeContent, contentTexts } = await import("./personal-fields");
+    expect(contentTexts(lang)).toContain("Hei {first_name|der}");
+    const filled = personalizeContent(lang, { name: "Kari Nordmann", company: "" });
+    const columns = filled.blocks[1];
+    expect(columns.type === "columns" && columns.cells[0].text).toBe("Hei Kari");
+  });
+});
+
 describe("subject lines to choose from (M3.7)", () => {
   it("reads three different subjects within the limit, never the current one", async () => {
     const { SUBJECT_MAX } = await import("./broadcasts");

@@ -23,6 +23,7 @@ import { compressPicture, extensionOf } from "@/lib/image-compress";
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Button, CARD_CLASS } from "./ui";
 import { Select } from "./ui/field";
+import { ColumnsFields, emptyCell } from "./broadcast-columns";
 
 type Problem = { ok: false; problem: string };
 
@@ -50,8 +51,8 @@ const field = "min-h-10 w-full rounded-md border border-line bg-card px-3";
 /** A split test as the editor holds it (M2.5, D868): version B's subject and preview per language, the share and the hours. */
 type BroadcastTestDraft = { b: Record<string, { subject: string; preview: string }>; share: number; hours: number };
 
-type Addable = "heading" | "paragraph" | "button" | "image" | "divider" | "social";
-const ADD: Addable[] = ["heading", "paragraph", "button", "image", "divider", "social"];
+type Addable = "heading" | "paragraph" | "button" | "image" | "columns" | "divider" | "social";
+const ADD: Addable[] = ["heading", "paragraph", "button", "image", "columns", "divider", "social"];
 
 function newBlock(type: Addable): BroadcastBlock {
   switch (type) {
@@ -67,6 +68,8 @@ function newBlock(type: Addable): BroadcastBlock {
       return { type };
     case "social":
       return { type, links: [{ network: "instagram", url: "" }] };
+    case "columns":
+      return { type, cells: [emptyCell(), emptyCell()] };
   }
 }
 
@@ -542,6 +545,16 @@ function BlockFields({
       );
     case "divider":
       return <hr className="border-line" />;
+    case "columns":
+      return (
+        <ColumnsFields
+          block={block}
+          index={index}
+          field={field}
+          onChange={onChange}
+          picture={(has, onUploaded) => <PictureUpload storeSlug={storeSlug} upload={upload} onUploaded={onUploaded} has={has} />}
+        />
+      );
     case "social": {
       // The store's profiles (M4.1): a network and its address per row; drawn in the email as one row of their names.
       const set = (links: typeof block.links) => onChange({ ...block, links });

@@ -26,6 +26,8 @@ export type EmailBlock =
   | { type: "divider" }
   /** A quiet row of links, such as the store's social profiles (M4.1): each its name, joined by dots. */
   | { type: "links"; items: { text: string; url: string }[] }
+  /** Two or three cells side by side (M4.1), each its picture, heading, words and button; on a narrow screen they stack. */
+  | { type: "columns"; cells: EmailCell[] }
   /**
    * The AI assistant's signature under its answer by email (D332): the closing, its picture, name and occupation, and the site's logo as a
    * link to the site. Pictures are full addresses; either may be missing.
@@ -38,6 +40,40 @@ export type EmailBlock =
       avatar: string | null;
       logo: { url: string; width: number; height: number; alt: string; href: string } | null;
     };
+
+/** A cell of a columns block: any of a picture, a heading, words and a button; the picture links where the button does. */
+export type EmailCell = {
+  image: { url: string; alt: string } | null;
+  heading: string;
+  text: string;
+  button: { text: string; url: string } | null;
+};
+
+/** The width of the email's content, in pixels: the card's 560 less its padding. */
+const CONTENT_WIDTH = 512;
+
+/**
+ * Cells side by side as inline blocks of a fixed most width, so mail apps that read no media queries still stack them on a phone (the
+ * "fluid hybrid" way); each cell's own table keeps its padding.
+ */
+function cellsHtml(cells: EmailCell[], look: EmailLook): string {
+  const width = Math.floor(CONTENT_WIDTH / cells.length);
+  const cell = (c: EmailCell) => {
+    const picture = c.image
+      ? `<img src="${escapeHtml(c.image.url)}" alt="${escapeHtml(c.image.alt)}" width="${width - 16}" style="display:block;width:100%;height:auto;border:0;border-radius:8px;margin:0 0 12px">`
+      : "";
+    const parts = [
+      c.image && c.button ? `<a href="${escapeHtml(c.button.url)}">${picture}</a>` : picture,
+      c.heading ? `<h2 style="margin:0 0 8px;font-size:18px;line-height:1.3;color:#171717">${escapeHtml(c.heading)}</h2>` : "",
+      c.text ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.5;color:#171717">${escapeHtml(c.text).replace(/\n/g, "<br>")}</p>` : "",
+      c.button
+        ? `<p style="margin:0"><a href="${escapeHtml(c.button.url)}" style="display:inline-block;background:${look.accent};color:${look.onAccent};text-decoration:none;font-weight:600;font-size:15px;padding:10px 18px;border-radius:${look.radius}">${escapeHtml(c.button.text)}</a></p>`
+        : "",
+    ].join("");
+    return `<div class="kf-cell" style="display:inline-block;width:100%;max-width:${width}px;vertical-align:top;text-align:left"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr><td style="padding:0 16px 16px 0;font-family:${FONT}">${parts}</td></tr></table></div>`;
+  };
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border-collapse:collapse"><tr><td style="font-size:0;text-align:left;padding:0">${cells.map(cell).join("")}</td></tr></table>`;
+}
 
 /** A row of a list of lines: a product with its picture (a full address), or a total. */
 export type EmailLine = {
@@ -95,6 +131,8 @@ function blockHtml(block: EmailBlock, look: EmailLook = DEFAULT_EMAIL_LOOK): str
       return `<p style="margin:8px 0 16px;font-size:14px;line-height:1.6;color:#525252">${block.items
         .map((item) => `<a href="${escapeHtml(item.url)}" style="color:#171717;text-decoration:underline">${escapeHtml(item.text)}</a>`)
         .join(" &middot; ")}</p>`;
+    case "columns":
+      return cellsHtml(block.cells, look);
     case "image": {
       const picture = `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:8px">`;
       return `<p style="margin:0 0 16px">${block.href ? `<a href="${escapeHtml(block.href)}">${picture}</a>` : picture}</p>`;
@@ -151,6 +189,10 @@ function blockText(block: EmailBlock): string {
       return "----";
     case "links":
       return block.items.map((item) => `${item.text}: ${item.url}`).join("\n");
+    case "columns":
+      return block.cells
+        .map((c) => [c.image?.alt && `[${c.image.alt}]`, c.heading, c.text, c.button && `${c.button.text}: ${c.button.url}`].filter(Boolean).join("\n"))
+        .join("\n\n");
     case "image":
       return [block.alt && `[${block.alt}]`, block.href].filter(Boolean).join(" ");
     case "lines":
@@ -167,7 +209,7 @@ function blockText(block: EmailBlock): string {
 export function renderEmail(content: EmailContent): RenderedEmail {
   const html = `<!doctype html>
 <html lang="${escapeHtml(content.lang)}">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${escapeHtml(content.subject)}</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><style>@media (max-width:540px){.kf-cell{max-width:100%!important}}</style><title>${escapeHtml(content.subject)}</title></head>
 <body style="margin:0;padding:0;background:#f5f5f4;font-family:${FONT}">
 <span style="display:none;max-height:0;overflow:hidden">${escapeHtml(content.preview)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f4"><tr><td align="center" style="padding:24px 12px">

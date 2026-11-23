@@ -14,6 +14,8 @@ import {
   SUBJECT_CHOICES,
   SOCIAL_MAX,
   SUBJECT_MAX,
+  CELL_TEXT_MAX,
+  CELLS_MAX,
   isBroadcastAddress,
   rewritableTexts,
 } from "./broadcasts";
@@ -25,6 +27,23 @@ import {
 
 const address = z.string().trim().refine(isBroadcastAddress, "Write a full address starting with https://, or a path of your store such as /products.");
 const words = (max: number, what: string) => z.string().trim().min(1, `${what} is empty.`).max(max, `${what} is longer than ${max} characters.`);
+
+/**
+ * A cell of a columns block (M4.1): any of a picture (from the store's media library, as a picture block), a heading, words and a button;
+ * the button's words and address go together, and a cell has something in it.
+ */
+const cellSchema = z
+  .object({
+    image: z.string().trim().url("Choose a picture.").max(ADDRESS_MAX).nullable().default(null),
+    alt: z.string().trim().max(ALT_MAX, `A picture's description is longer than ${ALT_MAX} characters.`).default(""),
+    heading: z.string().trim().max(HEADING_MAX, `A heading is longer than ${HEADING_MAX} characters.`).default(""),
+    text: z.string().trim().max(CELL_TEXT_MAX, `A column's words are longer than ${CELL_TEXT_MAX} characters.`).default(""),
+    buttonText: z.string().trim().max(BUTTON_MAX, `A button's words are longer than ${BUTTON_MAX} characters.`).default(""),
+    buttonUrl: z.union([z.literal(""), address]).default(""),
+  })
+  .refine((c) => Boolean(c.image || c.heading || c.text || c.buttonText), "A column is empty.")
+  .refine((c) => Boolean(c.buttonText) === Boolean(c.buttonUrl), "A column's button needs both its words and its address.");
+export type BroadcastCell = z.infer<typeof cellSchema>;
 
 export const broadcastBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("heading"), text: words(HEADING_MAX, "A heading") }),
@@ -55,6 +74,8 @@ export const broadcastBlockSchema = z.discriminatedUnion("type", [
       .min(1, "Add at least one profile.")
       .max(SOCIAL_MAX, `At most ${SOCIAL_MAX} profiles.`),
   }),
+  // Two or three cells side by side (M4.1), stacked on a phone.
+  z.object({ type: z.literal("columns"), cells: z.array(cellSchema).min(2, "Columns need at least two.").max(CELLS_MAX, `At most ${CELLS_MAX} columns.`) }),
 ]);
 export type BroadcastBlock = z.infer<typeof broadcastBlockSchema>;
 

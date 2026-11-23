@@ -43,18 +43,37 @@ export function personalize(text: string, facts: PersonalFacts | null): string {
 
 type Texts = { subject: string; preview: string; blocks: readonly { type: string }[] };
 
-/** One language's words with every field filled (subject, preview, headings, words and buttons); other blocks as they are. */
+/** A columns block's cells (M4.1), whose heading, words and button's words take fields too. */
+type Cell = { heading: string; text: string; buttonText: string };
+const cellsOf = (b: { type: string }): Cell[] | null => (b.type === "columns" && "cells" in b && Array.isArray(b.cells) ? (b.cells as Cell[]) : null);
+const textOf = (b: { type: string }): string | null => ("text" in b && typeof (b as { text?: unknown }).text === "string" ? (b as { text: string }).text : null);
+
+/** One language's words with every field filled (subject, preview, headings, words and buttons, in columns too); other blocks as they are. */
 export function personalizeContent<T extends Texts>(content: T, facts: PersonalFacts | null): T {
   const fill = (text: string) => personalize(text, facts);
   return {
     ...content,
     subject: fill(content.subject),
     preview: fill(content.preview),
-    blocks: content.blocks.map((b) => ("text" in b && typeof (b as { text?: unknown }).text === "string" ? { ...b, text: fill((b as { text: string }).text) } : b)),
+    blocks: content.blocks.map((b) => {
+      const cells = cellsOf(b);
+      if (cells) return { ...b, cells: cells.map((c) => ({ ...c, heading: fill(c.heading), text: fill(c.text), buttonText: fill(c.buttonText) })) };
+      const text = textOf(b);
+      return text === null ? b : { ...b, text: fill(text) };
+    }),
   };
 }
 
-/** Every text of one language's words, for the checks: the subject, the preview, and each block's words. */
+/** Every text of one language's words, for the checks: the subject, the preview, and each block's words (a column's each). */
 export function contentTexts(content: Texts): string[] {
-  return [content.subject, content.preview, ...content.blocks.flatMap((b) => ("text" in b && typeof (b as { text?: unknown }).text === "string" ? [(b as { text: string }).text] : []))];
+  return [
+    content.subject,
+    content.preview,
+    ...content.blocks.flatMap((b) => {
+      const cells = cellsOf(b);
+      if (cells) return cells.flatMap((c) => [c.heading, c.text, c.buttonText]);
+      const text = textOf(b);
+      return text === null ? [] : [text];
+    }),
+  ];
 }

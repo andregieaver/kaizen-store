@@ -27,6 +27,9 @@ export const ALT_MAX = 200;
 export const ADDRESS_MAX = 500;
 /** Profiles in a social links block (M4.1). */
 export const SOCIAL_MAX = 8;
+/** Cells in a columns block, and the words of one (M4.1). */
+export const CELLS_MAX = 3;
+export const CELL_TEXT_MAX = 600;
 /** Recipients are deleted this long after a send ended, their figures kept on the broadcast (5.6). */
 export const RECIPIENTS_KEEP_DAYS = 90;
 
@@ -82,18 +85,20 @@ export function sendProblems(content: BroadcastContent, main: string): string[] 
   return problems;
 }
 
-/** A link's key in the click address: the language and the block's place (`nb-NO.3`). */
-export const linkKey = (locale: string, index: number) => `${locale}.${index}`;
+/** A link's key in the click address: the language and the block's place (`nb-NO.3`), and a column's place in it (`nb-NO.3-1`). */
+export const linkKey = (locale: string, index: number, cell?: number) => `${locale}.${index}${cell === undefined ? "" : `-${cell}`}`;
 
 /** The address of the link with this key in the content, or null: the click route redirects only to what the store wrote. */
 export function linkTarget(content: BroadcastContent, key: string): string | null {
   const dot = key.lastIndexOf(".");
   if (dot < 1) return null;
   const locale = key.slice(0, dot);
-  const index = Number(key.slice(dot + 1));
-  if (!Number.isInteger(index) || index < 0) return null;
-  const block = content[locale]?.blocks[index];
+  const place = /^(\d{1,3})(?:-(\d))?$/.exec(key.slice(dot + 1));
+  if (!place) return null;
+  const block = content[locale]?.blocks[Number(place[1])];
   if (!block) return null;
+  if (block.type === "columns") return place[2] === undefined ? null : block.cells[Number(place[2])]?.buttonUrl || null;
+  if (place[2] !== undefined) return null;
   if (block.type === "button") return block.url;
   if (block.type === "image") return block.href ?? null;
   if (block.type === "product") return productPath(block.handle);
@@ -111,6 +116,10 @@ export function linksOf(content: BroadcastContent): { key: string; locale: strin
       if (block.type === "button") out.push({ key: linkKey(locale, index), locale, label: block.text, url: block.url });
       if (block.type === "image" && block.href) out.push({ key: linkKey(locale, index), locale, label: block.alt || "Picture", url: block.href });
       if (block.type === "product") out.push({ key: linkKey(locale, index), locale, label: block.label || block.handle, url: productPath(block.handle) });
+      if (block.type === "columns")
+        block.cells.forEach((c, cell) => {
+          if (c.buttonUrl) out.push({ key: linkKey(locale, index, cell), locale, label: c.buttonText, url: c.buttonUrl });
+        });
     });
   }
   return out;
@@ -188,6 +197,18 @@ export function buildBroadcastEmail(input: BuildInput): EmailContent {
       }
       case "divider":
         return [{ type: "divider" }];
+      case "columns":
+        return [
+          {
+            type: "columns",
+            cells: block.cells.map((c, cell) => ({
+              image: c.image ? { url: c.image, alt: c.alt } : null,
+              heading: c.heading,
+              text: c.text,
+              button: c.buttonUrl ? { text: c.buttonText, url: input.link(linkKey(input.locale, index, cell), input.resolve(c.buttonUrl)) } : null,
+            })),
+          },
+        ];
       case "social": {
         // Each profile by its network's name, to the address the owner typed (`socialHref()`); one that is not an address is left out.
         const items = block.links.flatMap((l) => {
