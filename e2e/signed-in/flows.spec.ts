@@ -283,3 +283,23 @@ test("sell more to buyers shows products picked for each reader, chosen per emai
   await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
   await page.screenshot({ path: "test-results/flow-picks.png", fullPage: true });
 });
+
+test("on the canvas, a wait-until and a tag are added, and the story says the wait (M2.1)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
+  await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
+  const board = page.locator("[data-flow-board]");
+  const saved = board.getByRole("status");
+  const no = board.locator("[data-board-branch=else]").first();
+  await no.locator("[data-board-place]").first().getByRole("button", { name: "Add" }).click();
+  await no.getByRole("group", { name: "Add" }).getByRole("button", { name: "Tag them" }).click();
+  await expect(saved).toHaveText("Saved. The flow is off until you test it again.");
+  await expect(board.locator("[data-board-card=tag]")).toHaveCount(1);
+  await no.locator("[data-board-place]").first().getByRole("button", { name: "Add" }).click();
+  await no.getByRole("group", { name: "Add" }).getByRole("button", { name: "Wait until" }).click();
+  await expect(board.locator("[data-board-card=until]")).toHaveCount(1);
+  await board.locator("[data-board-card=until]").click();
+  await page.locator("[data-board-panel]").getByRole("button", { name: /once they press a link/ }).click();
+  await expect(page.locator("[data-flow-story]")).toContainText("once they press a link, or 3 days later");
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT, fullPage: true });
+});
