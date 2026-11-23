@@ -44,12 +44,18 @@ orders), and the counted figures with the engine's interval.
 
 | Slice | What | Migration |
 |---|---|---|
-| 1 | Broadcast versions: `content.versions` (subject and words per version, at most 2), the share, the wait and the goal; `broadcast_recipients.version` and the `held` status; the hash; the send claims the tested share only; the line Homer reads. | `broadcast_tests` |
-| 2 | The call: a job after the wait counts presses (or orders), unsubscribes and complaints per version, calls with the engine, sends the rest the winner (or the first on no clear difference) and keeps the figures on the broadcast; the sentence on its page; an audit row. | none |
+| 1 | Broadcast versions: version B's subject and preview (`broadcasts.test`), the share and the wait; `broadcast_recipients.version` and the `held` status; the hash; the send claims the tested share only; the line Homer reads. | `productive_reaper`, `broadcast_test_rules` |
+| 2 | The call: after the wait, presses, unsubscribes and complaints per version, called with the engine; the rest get the winner (or A on no clear difference) and the figures stay on the broadcast; the sentence on its page; an audit row. Orders as a goal and B's own words come later. | none |
 | 3 | *Test these* on the AI's three subject lines (M3.7); the AI manager's broadcast tools take a second subject (contract bump). | none |
 | 4 | Flows: the `split` step on the canvas and in the story, the branch kept on the run, the report per branch, *Keep this way*. | `flow_split` |
 | 5 | The autopilot suggests a test where a broadcast or flow step has enough readers (M3.9's last part). | none |
 
 ## Built
 
-Nothing yet.
+- **Slices 1 and 2, 23 November 2026.** *Try another subject* in a broadcast's editor writes subject B (and its preview) per language;
+  the line under it says the share, the readers and when the rest get the winner, or how many more readers a test needs. `startBroadcast()`
+  refuses a test below the floor (`testTooSmall()`), splits the tested share by `md5(broadcast || subscriber)` order, alternating A and B,
+  and holds the rest (`held`, a new recipient status the database lets become only `queued` or `skipped`; a version once given never
+  changes). `callDueTests()`, in every broadcast run, calls each test whose hours are over with `callBroadcastTest()` (presses, and
+  readers who left as the guardrail, by the engine's interval rule) once, keeps the result on the broadcast (`test_result`) and queues the
+  held readers with the winner. The sent broadcast's page says the call in one sentence. Goal: presses only; orders and B's own words wait.

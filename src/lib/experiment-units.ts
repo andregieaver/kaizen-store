@@ -9,12 +9,14 @@ import { MIN_PER_ARM, type Rate } from "./experiment-stats";
  * tests keep their own logs (`search_queries`, `recommendation_events`); only the counting of them is shared.
  */
 
-export type Unit = "visitor" | "search" | "tab";
+/** `recipient`: a reader of a broadcast's split test (email plan M2.5, D868), by their subscriber, on the broadcast's own rows. */
+export type Unit = "visitor" | "search" | "tab" | "recipient";
 
 export const UNITS: Record<Unit, { one: string; many: string; /** The least of them each arm needs before a difference is read at all. */ floor: number }> = {
   visitor: { one: "visitor", many: "visitors", floor: MIN_PER_ARM },
   search: { one: "search", many: "searches", floor: MIN_PER_ARM },
   tab: { one: "tab", many: "tabs", floor: 100 },
+  recipient: { one: "reader", many: "readers", floor: MIN_PER_ARM },
 };
 
 /** How a difference is called clear: the engine's 95 % interval, or the recommendations test's two-proportion test (p under 0.05), each fixed before any result was in. */

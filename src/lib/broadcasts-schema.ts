@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { BROADCAST_AUDIENCES } from "./broadcast-status";
+import { TEST_HOURS, TEST_SHARE } from "./broadcast-test-sizes";
 import {
   ADDRESS_MAX,
   ALT_MAX,
@@ -57,12 +58,30 @@ export type LanguageContent = z.infer<typeof languageContentSchema>;
 export const broadcastContentSchema = z.record(z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/), languageContentSchema);
 export type BroadcastContent = z.infer<typeof broadcastContentSchema>;
 
+/**
+ * A broadcast's split test (email plan M2.5, D868): version B's subject and preview per language (its words and links are A's), the share
+ * of the audience tested and the hours before the call (`src/lib/broadcast-tests.ts`).
+ */
+export const broadcastTestSchema = z.object({
+  b: z.record(
+    z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/),
+    z.object({
+      subject: z.string().trim().min(1, "Version B's subject is empty.").max(SUBJECT_MAX, `A subject is longer than ${SUBJECT_MAX} characters.`),
+      preview: z.string().trim().max(PREVIEW_MAX, `The preview line is longer than ${PREVIEW_MAX} characters.`).default(""),
+    }),
+  ),
+  share: z.number().int().min(TEST_SHARE.min).max(TEST_SHARE.max).default(TEST_SHARE.start),
+  hours: z.number().int().min(TEST_HOURS.min).max(TEST_HOURS.max).default(TEST_HOURS.start),
+});
+export type BroadcastTest = z.infer<typeof broadcastTestSchema>;
+
 export const broadcastInput = z
   .object({
     title: z.string().trim().min(1, "Give it a name.").max(80, "The name is longer than 80 characters."),
     audience: z.enum(BROADCAST_AUDIENCES),
     segmentId: z.uuid().nullable(),
     content: broadcastContentSchema,
+    test: broadcastTestSchema.nullable().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.audience === "segment" && !value.segmentId) ctx.addIssue({ code: "custom", message: "Choose a segment.", path: ["segmentId"] });

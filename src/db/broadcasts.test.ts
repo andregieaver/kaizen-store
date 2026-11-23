@@ -96,6 +96,19 @@ describe("broadcast recipients", () => {
     await rejects("update commerce.broadcast_recipients set status = 'queued' where broadcast_id = $1", [id], /sent cannot become queued/);
   });
 
+  it("hold a split test's untested reader until the call, then queue them with the winner, and keep a version once given (M2.5, D868)", async () => {
+    const id = await draft();
+    await start(id);
+    const insert = "insert into commerce.broadcast_recipients (store_id, broadcast_id, subscriber_id, email, locale) values ($1, $2, $3, 'kari@example.com', 'nb-NO')";
+    await db.query(insert, [store, id, subscriber]);
+    await rejects("update commerce.broadcast_recipients set version = 'c' where broadcast_id = $1", [id], /broadcast_recipients_version/);
+    await db.query("update commerce.broadcast_recipients set status = 'held' where broadcast_id = $1", [id]);
+    await rejects("update commerce.broadcast_recipients set status = 'sent', sent_at = now() where broadcast_id = $1", [id], /held cannot become sent/);
+    await db.query("update commerce.broadcast_recipients set status = 'queued', version = 'b' where broadcast_id = $1", [id]);
+    await rejects("update commerce.broadcast_recipients set version = 'a' where broadcast_id = $1", [id], /keeps the version/);
+    await rejects("update commerce.broadcasts set test = '[]'::jsonb where id = $1", [id], /broadcasts_test/);
+  });
+
   it("go with their subscriber, and clicks keep only a link and a count", async () => {
     const id = await draft();
     const gone = await scalar<string>(

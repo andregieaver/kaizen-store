@@ -26,7 +26,8 @@ import {
   type BroadcastStatus,
   type BroadcastSuggestion,
 } from "@/lib/broadcasts";
-import { broadcastContentSchema, broadcastInput, parseSubjects, rewrittenContent, parseSuggestion } from "@/lib/broadcasts-schema";
+import { broadcastContentSchema, broadcastInput, broadcastTestSchema, parseSubjects, rewrittenContent, parseSuggestion, type BroadcastTest } from "@/lib/broadcasts-schema";
+import { audienceNeeded, callBroadcastTest, testedOf, type BroadcastTestResult, type VersionFigures } from "@/lib/broadcast-tests";
 import { roomLeft } from "@/lib/limits";
 import { limitRefusal } from "@/lib/usage-format";
 import { LIMIT_REFUSALS } from "@/lib/usage-labels";
@@ -94,6 +95,10 @@ export type Broadcast = {
   finishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Its split test (M2.5, D868), null for none; the call once made. */
+  test: BroadcastTest | null;
+  testCalledAt: string | null;
+  testResult: BroadcastTestResult | null;
 };
 
 function toBroadcast(row: Row): Broadcast {
@@ -114,11 +119,14 @@ function toBroadcast(row: Row): Broadcast {
     finishedAt: iso(row.finished_at),
     createdAt: iso(row.created_at)!,
     updatedAt: iso(row.updated_at)!,
+    test: row.test ? (broadcastTestSchema.safeParse(row.test).data ?? null) : null,
+    testCalledAt: iso(row.test_called_at),
+    testResult: row.test_result ? (row.test_result as BroadcastTestResult) : null,
   };
 }
 
 const COLUMNS = sql`b.id, b.title, b.audience, b.segment_id, g.title as segment_name, b.content, b.status, b.scheduled_for, b.schedule_problem,
-  b.audience_words, b.recipient_count, b.started_at, b.finished_at, b.created_at, b.updated_at`;
+  b.audience_words, b.recipient_count, b.started_at, b.finished_at, b.created_at, b.updated_at, b.test, b.test_called_at, b.test_result`;
 
 export async function listBroadcasts(storeId: string): Promise<Broadcast[]> {
   const rows = await db().execute<Row>(sql`
@@ -146,6 +154,9 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
   const value = parsed.data;
   const kept = new Set(store.localization.keptLocales);
   const content = Object.fromEntries(Object.entries(value.content).filter(([locale]) => kept.has(locale)));
+  // A split test's version B (M2.5, D868) in the languages the broadcast is written in; none left, no test.
+  const b = value.test ? Object.fromEntries(Object.entries(value.test.b).filter(([locale]) => locale in content)) : {};
+  const test = value.test && Object.keys(b).length > 0 ? JSON.stringify({ ...value.test, b }) : null;
   const picture = await emailPictureProblem(store.id, content);
   if (picture) return { ok: false, problem: picture };
   const segmentId = value.audience === "segment" ? value.segmentId : null;
@@ -155,7 +166,7 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
     if (id) {
       const rows = await db().execute<Row>(sql`
         update commerce.broadcasts set title = ${value.title}, audience = ${value.audience}, segment_id = ${segmentId}::uuid,
-          content = ${JSON.stringify(content)}::jsonb
+          content = ${JSON.stringify(content)}::jsonb, test = ${test}::jsonb
         where store_id = ${store.id}::uuid and id = ${id}::uuid and status in ('draft', 'scheduled')
         returning id
       `);
@@ -163,8 +174,8 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
       savedId = id;
     } else {
       const [row] = await db().execute<Row>(sql`
-        insert into commerce.broadcasts (store_id, title, audience, segment_id, content, created_by)
-        values (${store.id}::uuid, ${value.title}, ${value.audience}, ${segmentId}::uuid, ${JSON.stringify(content)}::jsonb, ${accountId}::uuid)
+        insert into commerce.broadcasts (store_id, title, audience, segment_id, content, test, created_by)
+        values (${store.id}::uuid, ${value.title}, ${value.audience}, ${segmentId}::uuid, ${JSON.stringify(content)}::jsonb, ${test}::jsonb, ${accountId}::uuid)
         returning id
       `);
       savedId = String(row.id);
@@ -308,13 +319,28 @@ async function readiness(store: EmailStore, broadcast: Broadcast): Promise<strin
   if (closed) return closed;
   const problems = sendProblems(broadcast.content, store.localization.locales[0]);
   if (problems.length > 0) return problems[0];
+  // A split test (M2.5, D868) needs version B's subject in every language the broadcast is written in.
+  if (broadcast.test && Object.keys(broadcast.content).some((locale) => !broadcast.test?.b[locale]?.subject)) return TEST_NOT_WRITTEN;
   return null;
+}
+
+export const TEST_NOT_WRITTEN = "Write version B's subject in every language of the email, or remove the test.";
+
+/** Why a test cannot run on this audience: each version would get fewer than the engine needs to tell them apart. */
+export function testTooSmall(audience: number, share: number): string {
+  return `A test needs at least ${audienceNeeded(share).toLocaleString("en-GB")} readers at ${share} %, and this goes to ${audience.toLocaleString("en-GB")}. Remove the test or test a larger share.`;
 }
 
 /** Nobody would get it: the start is rolled back. */
 class Nobody extends Error {}
 /** A send larger than the marketing emails left this month (D314). */
 class OverLimit extends Error {}
+/** A split test on an audience too small to read (M2.5). */
+class TooFewToTest extends Error {
+  constructor(readonly people: number) {
+    super("too few to test");
+  }
+}
 
 /**
  * Starts a send: freezes the addresses that are `subscribed` now (the audience's) as its recipients, in one transaction under the broadcast's lock,
@@ -356,11 +382,28 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
     `);
     if (inserted.length === 0) throw new Nobody();
     if (inserted.length > room) throw new OverLimit();
+    // A split test (M2.5, D868): the tested share, in an order no one chooses (a hash of the broadcast and the reader), alternates A and B,
+    // so the two versions differ by one reader at most; the rest are held for the winner.
+    if (broadcast.test) {
+      if (inserted.length < audienceNeeded(broadcast.test.share)) throw new TooFewToTest(inserted.length);
+      const tested = testedOf(inserted.length, broadcast.test.share);
+      await tx.execute(sql`
+        with ranked as (
+          select subscriber_id, row_number() over (order by md5(broadcast_id::text || subscriber_id::text)) as n
+            from commerce.broadcast_recipients where broadcast_id = ${id}::uuid
+        )
+        update commerce.broadcast_recipients r
+           set version = case when ranked.n <= ${tested} then (case when ranked.n % 2 = 1 then 'a' else 'b' end) end,
+               status = case when ranked.n <= ${tested} then 'queued' else 'held' end
+          from ranked where r.broadcast_id = ${id}::uuid and r.subscriber_id = ranked.subscriber_id
+      `);
+    }
     await tx.execute(sql`update commerce.broadcasts set recipient_count = ${inserted.length} where id = ${id}::uuid`);
     return { ok: true as const, recipients: inserted.length };
   }).catch((error: unknown) => {
     if (error instanceof Nobody) return { ok: false as const, problem: "Nobody on your list wants your emails yet, so nobody would get it." };
     if (error instanceof OverLimit && allowed !== null) return { ok: false as const, problem: limitRefusal("marketing_emails_month", allowed, LIMIT_REFUSALS) };
+    if (error instanceof TooFewToTest && broadcast.test) return { ok: false as const, problem: testTooSmall(error.people, broadcast.test.share) };
     throw error;
   });
   if (result.ok) await audit(accountId, storeId, "broadcast.started", { title: broadcast.title, recipients: result.recipients }, { target: { type: "broadcast", id: id } });
@@ -407,7 +450,7 @@ export async function stopBroadcast(storeId: string, accountId: string | null, i
     if (rows.length === 0) return null;
     await tx.execute(sql`
       update commerce.broadcast_recipients set status = 'skipped', skip_reason = 'stopped'
-      where broadcast_id = ${id}::uuid and status = 'queued'
+      where broadcast_id = ${id}::uuid and status in ('queued', 'held')
     `);
     return String(rows[0].title);
   });
@@ -442,6 +485,8 @@ type Claimed = {
   /** The reader's name and company for personal fields (M2.6): theirs on the list, else their account's. */
   name: string;
   company: string;
+  /** Their version in a split test (M2.5): `b` gets version B's subject and preview; null or `a`, the broadcast's own. */
+  version: string | null;
 };
 
 /**
@@ -454,6 +499,7 @@ export async function runBroadcasts(options: { only?: string; deadline?: number;
   try {
     if (!options.only) await startDue(result);
     if (!options.only) await stopClosed(result);
+    if (!options.only) await callDueTests();
     let claimed = 0;
     const stores = new Map<string, EmailStore | null>();
     const broadcasts = new Map<string, Broadcast | null>();
@@ -520,7 +566,7 @@ async function claim(only: string | null, limit: number): Promise<Claimed[]> {
     from picked, commerce.marketing_subscribers s
     where r.broadcast_id = picked.broadcast_id and r.subscriber_id = picked.subscriber_id
       and s.store_id = r.store_id and s.id = r.subscriber_id
-    returning r.store_id, r.broadcast_id, r.subscriber_id, r.email, r.locale, r.market_code, s.status, s.token,
+    returning r.store_id, r.broadcast_id, r.subscriber_id, r.email, r.locale, r.market_code, s.status, s.token, r.version,
       coalesce(nullif(s.name, ''), (select c.name from commerce.customers c where c.store_id = s.store_id and c.id = s.customer_id), '') as person_name,
       coalesce((select c.company_name from commerce.customers c where c.store_id = s.store_id and c.id = s.customer_id), '') as company
   `);
@@ -535,6 +581,7 @@ async function claim(only: string | null, limit: number): Promise<Claimed[]> {
     token: String(row.token),
     name: String(row.person_name ?? ""),
     company: String(row.company ?? ""),
+    version: row.version ? String(row.version) : null,
   }));
 }
 
@@ -602,7 +649,7 @@ async function sendBatch(
     if (!broadcasts.has(r.broadcastId)) broadcasts.set(r.broadcastId, await getBroadcast(r.storeId, r.broadcastId));
     const store = stores.get(r.storeId);
     const broadcast = broadcasts.get(r.broadcastId);
-    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId), r.subscriberId, { name: r.name, company: r.company }) : null;
+    const email = store && broadcast ? emailFor(store, versionOf(broadcast, r.version), r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId), r.subscriberId, { name: r.name, company: r.company }) : null;
     if (!store || !email) {
       await markRecipient(r, "failed", null);
       result.failed += 1;
@@ -694,12 +741,96 @@ async function finishDone(only: string | null): Promise<number> {
     with done as (
       update commerce.broadcasts b set status = 'sent', finished_at = now()
       where b.status = 'sending' ${only ? sql`and b.id = ${only}::uuid` : sql``}
-        and not exists (select 1 from commerce.broadcast_recipients r where r.broadcast_id = b.id and r.status = 'queued')
+        and not exists (select 1 from commerce.broadcast_recipients r where r.broadcast_id = b.id and r.status in ('queued', 'held'))
       returning b.id, b.store_id
     )
     select done.id, commerce.queue_integration_event(done.store_id, 'broadcast.sent', done.id) from done
   `);
   return rows.length;
+}
+
+// ---------------------------------------------------------------------------
+// Split tests (email plan M2.5, D868, `docs/split-tests.md`)
+// ---------------------------------------------------------------------------
+
+/** The broadcast as a version's reader gets it: version B takes B's subject and preview in each language; its words and links are A's. */
+function versionOf(broadcast: Broadcast, version: string | null): Broadcast {
+  if (version !== "b" || !broadcast.test) return broadcast;
+  const b = broadcast.test.b;
+  const content = Object.fromEntries(
+    Object.entries(broadcast.content).map(([locale, words]) => [locale, b[locale] ? { ...words, subject: b[locale].subject, preview: b[locale].preview } : words]),
+  );
+  return { ...broadcast, content };
+}
+
+/** What each version's readers did so far: sent it, pressed a link in it, and left the list or marked it as spam since the send began. */
+async function versionFigures(storeId: string, id: string): Promise<{ a: VersionFigures; b: VersionFigures }> {
+  const rows = await typedRows(
+    z.object({ version: z.enum(["a", "b"]), sent: col.int, pressed: col.int, left: col.int }),
+    sql`
+      select r.version,
+        count(*) filter (where r.status = 'sent')::int as sent,
+        count(*) filter (where r.status = 'sent' and exists (
+          select 1 from commerce.email_clicks c where c.store_id = r.store_id and c.broadcast_id = r.broadcast_id and c.subscriber_id = r.subscriber_id))::int as pressed,
+        count(*) filter (where r.status = 'sent' and (e.status = 'complained' or (s.status = 'unsubscribed' and s.unsubscribed_at >= b.started_at)))::int as left
+      from commerce.broadcast_recipients r
+      join commerce.broadcasts b on b.store_id = r.store_id and b.id = r.broadcast_id
+      left join commerce.email_messages e on e.id = r.email_message_id
+      left join commerce.marketing_subscribers s on s.store_id = r.store_id and s.id = r.subscriber_id
+      where r.store_id = ${storeId}::uuid and r.broadcast_id = ${id}::uuid and r.version is not null
+      group by r.version
+    `,
+  );
+  const none: VersionFigures = { sent: 0, pressed: 0, left: 0 };
+  const of = (v: "a" | "b") => {
+    const row = rows.find((x) => x.version === v);
+    return row ? { sent: row.sent, pressed: row.pressed, left: row.left } : none;
+  };
+  return { a: of("a"), b: of("b") };
+}
+
+/**
+ * Calls each split test whose wait is over (M2.5, D868): the engine decides from what each version's readers did (`callBroadcastTest()`),
+ * the figures and winner are kept on the broadcast, and the held readers are queued with the winning version. Once per test: the
+ * statement that marks it called is the one that may release them. Never throws.
+ */
+export async function callDueTests(now = new Date()): Promise<number> {
+  const due = await typedRows(
+    z.object({ id: col.uuid, store_id: col.uuid, title: col.text }),
+    sql`
+      select id, store_id, title from commerce.broadcasts
+       where status = 'sending' and test is not null and test_called_at is null
+         and started_at + make_interval(hours => coalesce((test->>'hours')::int, 4)) <= ${now.toISOString()}::timestamptz
+       order by started_at limit 20
+    `,
+  );
+  let called = 0;
+  for (const row of due) {
+    try {
+      const figures = await versionFigures(row.store_id, row.id);
+      const result = callBroadcastTest(figures.a, figures.b);
+      const released = await db().transaction(async (tx) => {
+        const marked = await tx.execute(sql`
+          update commerce.broadcasts set test_called_at = now(), test_result = ${JSON.stringify(result)}::jsonb
+           where store_id = ${row.store_id}::uuid and id = ${row.id}::uuid and test_called_at is null and status = 'sending'
+          returning id
+        `);
+        if (marked.length === 0) return null;
+        const held = await tx.execute(sql`
+          update commerce.broadcast_recipients set status = 'queued', version = ${result.winner}
+           where broadcast_id = ${row.id}::uuid and status = 'held'
+          returning subscriber_id
+        `);
+        return held.length;
+      });
+      if (released === null) continue;
+      called += 1;
+      await audit(null, row.store_id, "broadcast.test_called", { title: row.title, winner: result.winner, call: result.call, rest: released }, { target: { type: "broadcast", id: row.id } });
+    } catch (error) {
+      log("error", "broadcasts.test_call_failed", { storeId: row.store_id, broadcastId: row.id }, error);
+    }
+  }
+  return called;
 }
 
 // ---------------------------------------------------------------------------
@@ -748,7 +879,7 @@ export type BroadcastReport = {
 async function countRecipients(storeId: string, id: string): Promise<BroadcastCounts & { logged: number }> {
   const [row] = await db().execute<Row>(sql`
     select count(*)::int as recipients,
-      count(*) filter (where r.status = 'queued')::int as queued,
+      count(*) filter (where r.status in ('queued', 'held'))::int as queued,
       count(*) filter (where r.status = 'skipped')::int as skipped,
       count(*) filter (where r.status = 'failed' or (r.status = 'sent' and e.status = 'failed'))::int as failed,
       count(*) filter (where r.status = 'sent' and e.status in ('sent', 'delivered', 'bounced', 'complained'))::int as sent,

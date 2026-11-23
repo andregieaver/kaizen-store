@@ -10,6 +10,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { checkWords, contentChecks } from "@/lib/flow-checks";
 import { marketingProblem } from "@/lib/marketing-words";
 import { formatMoney } from "@/lib/money";
+import { testedOf } from "@/lib/broadcast-test-sizes";
 import { areaTexts } from "@/lib/admin-area";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
@@ -136,7 +137,7 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
               <BroadcastEditor
                 storeSlug={store.slug}
                 broadcastId={broadcast.id}
-                initial={{ title: broadcast.title, audience: broadcast.audience, segmentId: broadcast.segmentId, content: broadcast.content }}
+                initial={{ title: broadcast.title, audience: broadcast.audience, segmentId: broadcast.segmentId, content: broadcast.content, test: broadcast.test }}
                 {...choices}
                 save={saveBroadcastAction}
                 count={audienceCountAction}
@@ -157,6 +158,28 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
   const report = await broadcastReport(store.id, broadcast);
   const c = report.counts;
   const n = (v: number) => v.toLocaleString(numbers);
+  // A split test (M2.5, D868): while it waits, when the rest get the winner; once called, the engine's call in one sentence.
+  const splitLine = () => {
+    const t = broadcast.test;
+    if (!t) return "";
+    const main = store.localization.locales[0] ?? Object.keys(broadcast.content)[0] ?? "";
+    const a = broadcast.content[main]?.subject ?? "";
+    const b = t.b[main]?.subject ?? "";
+    const ws = wb.splitTest;
+    const r = broadcast.testResult;
+    if (!r) {
+      const at = broadcast.startedAt ? new Date(new Date(broadcast.startedAt).getTime() + t.hours * 3_600_000).toISOString() : null;
+      const tested = broadcast.recipientCount === null ? 0 : testedOf(broadcast.recipientCount, t.share);
+      return fillWords(ws.waiting, { a, b, time: at ? date(at) : "", rest: n((broadcast.recipientCount ?? 0) - tested) });
+    }
+    const rest = n(Math.max(0, c.recipients - r.a.sent - r.b.sent));
+    const [win, lose] = r.winner === "b" ? [r.b, r.a] : [r.a, r.b];
+    const winner = r.winner === "b" ? b : a;
+    if (r.call === "a" || r.call === "b") return fillWords(ws.won, { winner, wp: n(win.pressed), ws: n(win.sent), lp: n(lose.pressed), ls: n(lose.sent), rest });
+    if (r.call === "guard") return fillWords(ws.guard, { winner, la: n(r.a.left), lb: n(r.b.left), rest });
+    if (r.call === "even") return fillWords(ws.even, { a, pa: n(r.a.pressed), sa: n(r.a.sent), pb: n(r.b.pressed), sb: n(r.b.sent), rest });
+    return fillWords(r.call === "few" ? ws.few : ws.broken, { a, rest });
+  };
   const money = (minor: Record<string, number>) =>
     Object.entries(minor)
       .map(([currency, amount]) => formatMoney(amount, currency, numbers))
@@ -186,6 +209,7 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
           ) : undefined
         }
       />
+      {broadcast.test && <Card title={wb.splitTest.title} compact><p className="text-body text-ink" data-split-result>{splitLine()}</p></Card>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <KpiTile label={wb.wentTo} value={n(c.recipients)} context={c.queued > 0 ? fillWords(wb.stillToSend, { n: n(c.queued) }) : undefined} />
         <KpiTile label={wb.sent} value={n(c.sent)} context={c.logged > 0 ? fillWords(wb.keptOnly, { n: n(c.logged) }) : undefined} />

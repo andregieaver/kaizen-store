@@ -17658,6 +17658,14 @@ export const broadcasts = commerce.table(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     /** The report's figures, frozen when the recipients were pruned. */
     counts: jsonb("counts"),
+    /**
+     * A split test (email plan M2.5, D868, `docs/split-tests.md`): version B's subject and preview per language, the share tested and the
+     * hours to wait (`broadcastTestSchema`); null for none. Version A is the broadcast's own content.
+     */
+    test: jsonb("test"),
+    /** When the test was called, and its figures and winner (`BroadcastTestResult`); null until then. */
+    testCalledAt: timestamp("test_called_at", { withTimezone: true }),
+    testResult: jsonb("test_result"),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -17673,6 +17681,7 @@ export const broadcasts = commerce.table(
     check("broadcasts_audience", sql`${t.audience} in (${sqlList(BROADCAST_AUDIENCES)})`),
     check("broadcasts_status", sql`${t.status} in (${sqlList(BROADCAST_STATUSES)})`),
     check("broadcasts_content", sql`jsonb_typeof(${t.content}) = 'object'`),
+    check("broadcasts_test", sql`${t.test} is null or jsonb_typeof(${t.test}) = 'object'`),
   ],
 );
 
@@ -17719,6 +17728,8 @@ export const broadcastRecipients = commerce.table(
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     emailMessageId: uuid("email_message_id").references(() => emailMessages.id, { onDelete: "set null" }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
+    /** Their version in a split test (M2.5, D868): `a` (the broadcast's own) or `b`; null for a broadcast without a test, or held until called. */
+    version: text("version"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -17739,6 +17750,7 @@ export const broadcastRecipients = commerce.table(
     check("broadcast_recipients_status", sql`${t.status} in (${sqlList(RECIPIENT_STATUSES)})`),
     check("broadcast_recipients_skip", sql`${t.skipReason} is null or ${t.skipReason} in ('unsubscribed', 'stopped', 'cap', 'spacing')`),
     check("broadcast_recipients_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254`),
+    check("broadcast_recipients_version", sql`${t.version} is null or ${t.version} in ('a', 'b')`),
   ],
 );
 

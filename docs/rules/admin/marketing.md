@@ -144,6 +144,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - **The sunset (M2.8, `docs/flows.md`)**: a person is paused only by `pauseSunsetRuns()` (a sunset flow's run ended with no press since it
   began) and woken only by a kept press (`email-clicks.ts`); a paused person stays subscribed and is never deleted, and `suppressed()` holds
   every marketing email to them (broadcasts and automations), never a transactional one.
+- **Split tests (M2.5, D868, `docs/split-tests.md`)**: a broadcast's test is only `broadcasts.test` (version B's subject and preview, share,
+  hours); readers are split only by `startBroadcast()` (refused below `audienceNeeded()`) and released only by `callDueTests()`, which calls
+  with `callBroadcastTest()` (the A/B engine's `callRates()`, readers who left as the guardrail) once. A model never picks the winner.
 - **The lead score (M2.8, D865)**: a business customer's score is only `leadScore()` (`src/lib/lead-score.ts`, pure, each point with its
   reason), its facts only `customerLeadScore()` (one statement: quotes not declined in 90 days, open deals while Deals is on, presses by
   address, product views kept), the page through `customerLeadScore()` and segments through `leadScoresByEmail()`; a customer with no company

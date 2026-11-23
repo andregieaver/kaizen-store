@@ -14,6 +14,7 @@ import {
   type LanguageContent,
 } from "@/lib/broadcasts";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { audienceNeeded, testedOf, TEST_HOURS, TEST_SHARE } from "@/lib/broadcast-test-sizes";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { compressPicture, extensionOf } from "@/lib/image-compress";
 
@@ -25,7 +26,7 @@ type Problem = { ok: false; problem: string };
 type Props = {
   storeSlug: string;
   broadcastId: string | null;
-  initial: { title: string; audience: BroadcastAudience; segmentId: string | null; content: BroadcastContent };
+  initial: { title: string; audience: BroadcastAudience; segmentId: string | null; content: BroadcastContent; test?: BroadcastTestDraft | null };
   /** The store's languages, main first. */
   locales: { code: string; name: string }[];
   segments: { id: string; name: string }[];
@@ -40,6 +41,9 @@ type Props = {
 };
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3";
+
+/** A split test as the editor holds it (M2.5, D868): version B's subject and preview per language, the share and the hours. */
+type BroadcastTestDraft = { b: Record<string, { subject: string; preview: string }>; share: number; hours: number };
 
 type Addable = "heading" | "paragraph" | "button" | "image" | "divider";
 const ADD: Addable[] = ["heading", "paragraph", "button", "image", "divider"];
@@ -74,6 +78,8 @@ export function BroadcastEditor(props: Props) {
   const we = w.email;
   const numbers = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const [people, setPeople] = useState<string>(w.common.counting);
+  const [peopleCount, setPeopleCount] = useState<number | null>(null);
+  const [test, setTest] = useState<BroadcastTestDraft | null>(props.initial.test ?? null);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, startSave] = useTransition();
@@ -84,8 +90,11 @@ export function BroadcastEditor(props: Props) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       count(storeSlug, audience, audience === "segment" ? segmentId : null).then(
-        (r) => setPeople(r.ok ? fillWords(we.goesTo, { people: countWords(r.people, w.common.people, { n: r.people.toLocaleString(numbers) }) }) : r.problem),
-        () => setPeople(w.common.countFailed),
+        (r) => {
+          setPeople(r.ok ? fillWords(we.goesTo, { people: countWords(r.people, w.common.people, { n: r.people.toLocaleString(numbers) }) }) : r.problem);
+          setPeopleCount(r.ok ? r.people : null);
+        },
+        () => (setPeople(w.common.countFailed), setPeopleCount(null)),
       );
     }, 300);
     return () => {
@@ -99,7 +108,7 @@ export function BroadcastEditor(props: Props) {
       setProblem(null);
       // A language left empty is not kept.
       const written = Object.fromEntries(Object.entries(content).filter(([, c]) => c.subject.trim() || c.preview.trim() || c.blocks.length > 0));
-      const result = await props.save(storeSlug, props.broadcastId, { title, audience, segmentId: audience === "segment" ? segmentId : null, content: written });
+      const result = await props.save(storeSlug, props.broadcastId, { title, audience, segmentId: audience === "segment" ? segmentId : null, content: written, test });
       if (result && !result.ok) setProblem(result.problem);
       else setSaved(true);
     });
@@ -154,6 +163,17 @@ export function BroadcastEditor(props: Props) {
         segmentId={audience === "segment" ? segmentId : null}
       />
 
+      <SplitTestFields
+        test={test}
+        content={content}
+        locales={props.locales}
+        people={peopleCount}
+        onChange={(next) => {
+          setSaved(false);
+          setTest(next);
+        }}
+      />
+
       {problem && (
         <p role="alert" className="text-body text-danger-text">
           {problem}
@@ -170,6 +190,99 @@ export function BroadcastEditor(props: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A broadcast's split test (email plan M2.5, D868, `docs/split-tests.md`): Homer presses *Try another subject* and writes subject B; one
+ * line says what happens with his own numbers. Lisa's share and hours are under *Customise*. The engine chooses the winner after the wait.
+ */
+function SplitTestFields(props: {
+  test: BroadcastTestDraft | null;
+  content: BroadcastContent;
+  locales: { code: string; name: string }[];
+  people: number | null;
+  onChange: (test: BroadcastTestDraft | null) => void;
+}) {
+  const w = useAdminText("marketing");
+  const wt = w.email.test;
+  const numbers = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const { test } = props;
+  const written = props.locales.filter((l) => props.content[l.code]?.subject?.trim());
+  if (!test) {
+    return (
+      <div>
+        <Button onClick={() => props.onChange({ b: {}, share: TEST_SHARE.start, hours: TEST_HOURS.start })} disabled={written.length === 0}>
+          {wt.add}
+        </Button>
+      </div>
+    );
+  }
+  const n = (x: number) => x.toLocaleString(numbers);
+  const hours = countWords(test.hours, wt.hours);
+  const needed = audienceNeeded(test.share);
+  const tested = props.people === null ? 0 : testedOf(props.people, test.share);
+  const line =
+    props.people === null
+      ? fillWords(wt.planLater, { share: test.share, hours })
+      : props.people < needed
+        ? fillWords(wt.tooFew, { needed: n(needed), share: test.share, people: n(props.people) })
+        : fillWords(wt.plan, { share: test.share, people: n(props.people), tested: n(tested), hours, rest: n(props.people - tested) });
+  const setB = (locale: string, part: { subject?: string; preview?: string }) =>
+    props.onChange({ ...test, b: { ...test.b, [locale]: { ...(test.b[locale] ?? { subject: "", preview: "" }), ...part } } });
+  return (
+    <section aria-label={wt.title} className={`${CARD_CLASS} flex flex-col gap-3 p-4`} data-split-test>
+      <h3 className="text-body-strong text-ink">{wt.title}</h3>
+      {written.map((l) => (
+        <div key={l.code} className="flex flex-col gap-2">
+          {written.length > 1 && <span className="text-caption text-muted">{l.name}</span>}
+          <span className="text-caption text-muted">{fillWords(wt.yours, { subject: props.content[l.code]?.subject ?? "" })}</span>
+          <label className="flex flex-col gap-1 text-body text-ink">
+            {wt.subjectB}
+            <input value={test.b[l.code]?.subject ?? ""} maxLength={150} onChange={(e) => setB(l.code, { subject: e.target.value })} className={field} />
+          </label>
+          <label className="flex flex-col gap-1 text-body text-ink">
+            {wt.previewB}
+            <input value={test.b[l.code]?.preview ?? ""} maxLength={200} onChange={(e) => setB(l.code, { preview: e.target.value })} className={field} />
+          </label>
+        </div>
+      ))}
+      <p role="status" aria-live="polite" className="text-body text-ink-2" data-split-plan>
+        {line}
+      </p>
+      <details>
+        <summary className="cursor-pointer text-body text-ink-2">{wt.customise}</summary>
+        <div className="mt-2 flex flex-wrap gap-4">
+          <label className="flex flex-col gap-1 text-body text-ink">
+            {wt.share}
+            <input
+              type="number"
+              min={TEST_SHARE.min}
+              max={TEST_SHARE.max}
+              value={test.share}
+              onChange={(e) => props.onChange({ ...test, share: Math.min(TEST_SHARE.max, Math.max(TEST_SHARE.min, Number(e.target.value) || TEST_SHARE.start)) })}
+              className={`${field} w-28`}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-body text-ink">
+            {wt.wait}
+            <input
+              type="number"
+              min={TEST_HOURS.min}
+              max={TEST_HOURS.max}
+              value={test.hours}
+              onChange={(e) => props.onChange({ ...test, hours: Math.min(TEST_HOURS.max, Math.max(TEST_HOURS.min, Number(e.target.value) || TEST_HOURS.start)) })}
+              className={`${field} w-28`}
+            />
+          </label>
+        </div>
+      </details>
+      <div>
+        <Button kind="quiet" onClick={() => props.onChange(null)}>
+          {wt.remove}
+        </Button>
+      </div>
+    </section>
   );
 }
 

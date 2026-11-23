@@ -6,5 +6,6 @@ export type BroadcastStatus = (typeof BROADCAST_STATUSES)[number];
 export const BROADCAST_AUDIENCES = ["everyone", "segment"] as const;
 export type BroadcastAudience = (typeof BROADCAST_AUDIENCES)[number];
 
-export const RECIPIENT_STATUSES = ["queued", "sent", "failed", "skipped"] as const;
+/** `held`: a reader outside a split test's tested share (M2.5, D868), sent the winning version once the test is called. */
+export const RECIPIENT_STATUSES = ["queued", "sent", "failed", "skipped", "held"] as const;
 export type RecipientStatus = (typeof RECIPIENT_STATUSES)[number];
