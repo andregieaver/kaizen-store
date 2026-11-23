@@ -14,6 +14,7 @@ import { marketUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
 import { emailFactsFor } from "./broadcast-facts";
+import { cleanEmailHtml } from "./email-html";
 import { emailFooter, type EmailStore } from "./shopper-emails";
 
 /**
@@ -72,6 +73,7 @@ export function marketingEmail(input: {
       unsubscribe: { text: input.moved ? m.news.movedReason(store.name) : m.news.emailReason(store.name), linkText: m.news.unsubscribe, url: `${base}/unsubscribe/${token ?? "test"}` },
       resolve: resolverFor(store, marketSlug),
       link: (key, target) => (input.link ? input.link(key, target, marketSlug) : target),
+      html: cleanEmailHtml,
     }),
     look: input.look,
   });
@@ -89,7 +91,9 @@ export function factsForEmail(store: EmailStore, content: BroadcastContent, loca
 
 /** The pictures of the content that are not the store's own JPEG, PNG or GIF in its media library (5.1). */
 export async function emailPictureProblem(storeId: string, content: BroadcastContent): Promise<string | null> {
-  const urls = [...new Set(Object.values(content).flatMap((c) => c.blocks.flatMap((b) => (b.type === "image" ? [b.url] : b.type === "columns" ? b.cells.flatMap((cell) => (cell.image ? [cell.image] : [])) : []))))];
+  const urls = [...new Set(Object.values(content).flatMap((c) => c.blocks.flatMap((b) =>
+        b.type === "image" ? [b.url] : b.type === "columns" ? b.cells.flatMap((cell) => (cell.image ? [cell.image] : [])) : b.type === "html" ? cleanEmailHtml(b.html).pictures : [],
+      )))];
   if (urls.length === 0) return null;
   const rows = await db().execute<Record<string, unknown>>(sql`
     select url, content_type from commerce.media where store_id = ${storeId}::uuid and url in (select jsonb_array_elements_text(${JSON.stringify(urls)}::jsonb))

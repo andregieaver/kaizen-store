@@ -26,6 +26,7 @@ import { Button, CARD_CLASS } from "./ui";
 import { Select } from "./ui/field";
 import { ColumnsFields, emptyCell } from "./broadcast-columns";
 import { KeepBlock, SavedBlockList, type SavedBlocksProps } from "./broadcast-saved-blocks";
+import { HtmlFields, type CleanHtml } from "./broadcast-html";
 
 type Problem = { ok: false; problem: string };
 
@@ -46,6 +47,7 @@ type Props = {
   savedBlocks?: SavedBlock[];
   saveBlock?: SavedBlocksProps["save"];
   deleteBlock?: SavedBlocksProps["remove"];
+  cleanHtml?: CleanHtml;
   /** The store's products and running campaigns to put in (D352); none, the finder is not offered. */
   facts?: FindFacts;
   /** Three subject lines for a split test's version B (M2.5 slice 3), while the store has AI. */
@@ -57,7 +59,7 @@ const field = "min-h-10 w-full rounded-md border border-line bg-card px-3";
 /** A split test as the editor holds it (M2.5, D868): version B's subject and preview per language, the share and the hours. */
 type BroadcastTestDraft = { b: Record<string, { subject: string; preview: string }>; share: number; hours: number };
 
-type Addable = "heading" | "paragraph" | "button" | "image" | "columns" | "divider" | "social";
+type Addable = "heading" | "paragraph" | "button" | "image" | "columns" | "divider" | "social" | "html";
 const ADD: Addable[] = ["heading", "paragraph", "button", "image", "columns", "divider", "social"];
 
 function newBlock(type: Addable): BroadcastBlock {
@@ -76,6 +78,8 @@ function newBlock(type: Addable): BroadcastBlock {
       return { type, links: [{ network: "instagram", url: "" }] };
     case "columns":
       return { type, cells: [emptyCell(), emptyCell()] };
+    case "html":
+      return { type, html: "" };
   }
 }
 
@@ -178,6 +182,7 @@ export function BroadcastEditor(props: Props) {
         upload={props.upload}
         facts={props.facts}
         segmentId={audience === "segment" ? segmentId : null}
+        cleanHtml={props.cleanHtml}
         saved={props.saveBlock && props.deleteBlock ? { list: props.savedBlocks ?? [], save: props.saveBlock, remove: props.deleteBlock } : undefined}
       />
 
@@ -391,6 +396,8 @@ export function EmailContentFields(props: {
   segmentId?: string | null;
   /** The store's saved blocks and their actions (M4.1); none, no saving. */
   saved?: SavedBlocksProps;
+  /** Cleans an own HTML block for its preview (M4.1); none, and no HTML block is offered. */
+  cleanHtml?: CleanHtml;
 }) {
   const { storeSlug, content } = props;
   const [kept, setKept] = useState(props.saved?.list ?? []);
@@ -464,7 +471,7 @@ export function EmailContentFields(props: {
                   </Button>
                 </span>
               </div>
-              <BlockFields block={block} index={i} onChange={(b) => setBlock(i, b)} storeSlug={storeSlug} upload={props.upload} />
+              <BlockFields block={block} index={i} onChange={(b) => setBlock(i, b)} storeSlug={storeSlug} upload={props.upload} clean={props.cleanHtml} />
               {props.saved && (
                 <div className="flex justify-end">
                   <KeepBlock block={block} kind={we.blocks[block.type]} storeSlug={storeSlug} save={props.saved.save} onSaved={setKept} />
@@ -482,6 +489,16 @@ export function EmailContentFields(props: {
                 {we.blocks[type]}
               </Button>
             ))}
+            {props.cleanHtml && (
+              <details className="w-full">
+                <summary className="cursor-pointer text-caption text-ink-2">{we.moreBlocks}</summary>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button size="dense" onClick={() => setCurrent({ ...current, blocks: [...current.blocks, newBlock("html")] })}>
+                    {we.blocks.html}
+                  </Button>
+                </div>
+              </details>
+            )}
           </div>
         )}
         {current.blocks.length < BLOCKS_MAX && props.saved && (
@@ -508,12 +525,14 @@ function BlockFields({
   onChange,
   storeSlug,
   upload,
+  clean,
 }: {
   block: BroadcastBlock;
   index: number;
   onChange: (b: BroadcastBlock) => void;
   storeSlug: string;
   upload: Props["upload"];
+  clean?: CleanHtml;
 }) {
   const id = (name: string) => `block-${index}-${name}`;
   const we = useAdminText("marketing").email;
@@ -569,6 +588,8 @@ function BlockFields({
       );
     case "divider":
       return <hr className="border-line" />;
+    case "html":
+      return clean ? <HtmlFields html={block.html} storeSlug={storeSlug} field={field} clean={clean} onChange={(html) => onChange({ ...block, html })} /> : null;
     case "columns":
       return (
         <ColumnsFields

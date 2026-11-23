@@ -26,6 +26,8 @@ export type EmailBlock =
   | { type: "divider" }
   /** A quiet row of links, such as the store's social profiles (M4.1): each its name, joined by dots. */
   | { type: "links"; items: { text: string; url: string }[] }
+  /** The owner's own HTML (M4.1), already cleaned by the server (`cleanEmailHtml()`): drawn as it is, with its text version. Only `buildBroadcastEmail()` makes one. */
+  | { type: "html"; html: string; text: string }
   /** Two or three cells side by side (M4.1), each its picture, heading, words and button; on a narrow screen they stack. */
   | { type: "columns"; cells: EmailCell[] }
   /**
@@ -133,6 +135,8 @@ function blockHtml(block: EmailBlock, look: EmailLook = DEFAULT_EMAIL_LOOK): str
         .join(" &middot; ")}</p>`;
     case "columns":
       return cellsHtml(block.cells, look);
+    case "html":
+      return `<div style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#171717">${block.html}</div>`;
     case "image": {
       const picture = `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:8px">`;
       return `<p style="margin:0 0 16px">${block.href ? `<a href="${escapeHtml(block.href)}">${picture}</a>` : picture}</p>`;
@@ -189,6 +193,8 @@ function blockText(block: EmailBlock): string {
       return "----";
     case "links":
       return block.items.map((item) => `${item.text}: ${item.url}`).join("\n");
+    case "html":
+      return block.text;
     case "columns":
       return block.cells
         .map((c) => [c.image?.alt && `[${c.image.alt}]`, c.heading, c.text, c.button && `${c.button.text}: ${c.button.url}`].filter(Boolean).join("\n"))

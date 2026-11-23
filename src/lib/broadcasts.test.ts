@@ -216,6 +216,20 @@ describe("social links (M4.1)", () => {
   });
 });
 
+describe("an own HTML block (M4.1)", () => {
+  const lang = { subject: "s", preview: "", blocks: [{ type: "html" as const, html: "<p>Hei<script>x</script></p>" }] };
+  const base = { content: lang, locale: "nb-NO", footer: [], unsubscribe: { text: "", linkText: "", url: "" }, resolve: (u: string) => u, link: (_k: string, t: string) => t };
+
+  it("is never sent as written: without the server's cleaner it is left out, with it the cleaned HTML and its text go in", () => {
+    expect(buildBroadcastEmail(base).blocks).toEqual([]);
+    const email = renderEmail(buildBroadcastEmail({ ...base, html: () => ({ html: "<p>Hei</p>", text: "Hei" }) }));
+    expect(email.html).toContain("<p>Hei</p>");
+    expect(email.html).not.toContain("script");
+    expect(email.text).toContain("Hei");
+    expect(broadcastInput.safeParse({ title: "x", audience: "everyone", segmentId: null, content: { "nb-NO": { ...lang, blocks: [{ type: "html", html: " " }] } } }).success).toBe(false);
+  });
+});
+
 describe("columns (M4.1)", () => {
   const cell = (heading: string, buttonUrl = "") => ({ image: null, alt: "", heading, text: "Hei {first_name|der}", buttonText: buttonUrl ? "Se mer" : "", buttonUrl });
   const lang = { subject: "s", preview: "", blocks: [{ type: "heading" as const, text: "Topp" }, { type: "columns" as const, cells: [cell("Ull", "/c/ull"), cell("Lin")] }] };

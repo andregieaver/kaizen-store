@@ -431,6 +431,12 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
             // eslint-disable-next-line @next/next/no-img-element -- the email's own picture, as the reader's mail app shows it.
             inner = <img src={block.url} alt={block.alt} className="max-h-40 w-auto rounded" />;
           else if (block.type === "divider") inner = <hr className="border-line" />;
+          else if (block.type === "html")
+            inner = (
+              <p className="rounded border border-dashed border-line px-3 py-2 font-mono text-caption text-muted" data-in-place-fact="html">
+                {block.html.slice(0, 80)}
+              </p>
+            );
           else if (block.type === "columns")
             inner = (
               <div className="grid grid-cols-2 gap-2 text-sm text-ink-2" data-in-place-fact="columns">
