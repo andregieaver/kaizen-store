@@ -876,6 +876,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D871 | **A form's own report: views counted per form and day (email plan M4.3)** | 2026-11-23 | [text](decisions/D871.md) |
 | D872 | **Marketing email through Amazon SES in Ireland, off until its keys are set (D748 E10 part one)** | 2026-11-23 | [text](decisions/D872.md) |
 | D873 | **Say where you are: every admin page header names its section from its address, and the menu marks only the longest match** | 2026-11-23 | [text](decisions/D873.md) |
+| D874 | **The account's own sending domain, for every store of the account without its own (D748 E10 part two)** | 2026-11-23 | [text](decisions/D874.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
