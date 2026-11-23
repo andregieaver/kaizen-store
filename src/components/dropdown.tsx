@@ -48,7 +48,7 @@ export function Dropdown({
   size?: "normal" | "compact";
   /** Open the list across the nearest positioned parent (the bar on phones), not just under the dropdown. */
   spanParent?: boolean;
-  /** More classes on the closed box: a form's field look (D878, `form-look.css`). */
+  /** More classes on the closed box: a form's field look (D878, `form-look-css.ts`). */
   boxClassName?: string;
 }) {
   const id = useId();

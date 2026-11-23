@@ -1,9 +1,10 @@
-/*
- * A page's form fields (D878, `src/lib/form-field-style.ts`): drawn by `SiteForm` with `.kf-*` classes, from the data attributes and
- * `--kf-*` custom properties its form carries. A property an owner did not set falls back to the theme's (its colours and the corners
- * every form had), so a form left as it was looks as it did. Not in a layer, so it wins over the Tailwind utilities that shared parts
- * (the dropdown) still carry; every rule is scoped to `.kf-fields`.
+/**
+ * A page's form fields drawn in the owner's style (D878, `src/lib/form-field-style.ts`): the `.kf-*` classes `SiteForm` gives its fields,
+ * read from the data attributes and `--kf-*` custom properties of its form. Not in the site's stylesheet: a page that draws a styled form
+ * carries it once (`FormLookStyle`, a `<style>` React hoists and keeps once per page), so the stylesheet budgets of pages without one do not
+ * pay for it. Every property not set falls back to the theme's; every rule is scoped to `.kf-fields`.
  */
+export const FORM_LOOK_CSS = `
 .kf-fields,
 .kf-fields .kf-grid {
   gap: var(--kf-gap, 1rem);
@@ -59,7 +60,6 @@
   accent-color: var(--kf-focus);
 }
 
-/* Animated labels: the label rests where the placeholder would be and, once the field has focus or a value, moves above it, smaller. */
 .kf-fields[data-kf-labels="animated"] .kf-box {
   position: relative;
   margin-top: calc(var(--kf-moved, 11px) * 1.3 + var(--kf-lift, 6px));
@@ -87,7 +87,7 @@
 .kf-fields[data-kf-look="underline"] .kf-float {
   left: var(--kf-px, 0);
 }
-.kf-fields .kf-box[data-tall] .kf-float {
+.kf-fields .kf-box:has(textarea) .kf-float {
   top: calc(var(--kf-bw, 1px) + var(--kf-py, 0.5rem));
   transform: none;
 }
@@ -131,7 +131,6 @@
 .kf-fields[data-kf-case="switch"] .kf-box:is(:focus-within, [data-moved]) .kf-float > .kf-rg {
   text-transform: uppercase;
 }
-/* The placeholder gives way to the resting label, and shows once the label has moved unless the owner hid it. */
 .kf-fields[data-kf-labels="animated"] .kf-box .kf-ctl::placeholder {
   color: transparent;
 }
@@ -139,7 +138,6 @@
   color: var(--kf-ph, color-mix(in srgb, currentColor 50%, transparent));
   transition: color 0.15s calc(var(--kf-dur, 220ms) * 0.6);
 }
-/* An empty dropdown's "Choose…" gives way to the resting label too. */
 .kf-fields .kf-box:not([data-moved], :focus-within) .kf-drop > span {
   visibility: hidden;
 }
@@ -149,3 +147,4 @@
     transition-duration: 1ms;
   }
 }
+`.replace(/\s+/g, " ").trim();

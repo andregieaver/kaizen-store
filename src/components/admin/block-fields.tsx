@@ -2879,7 +2879,7 @@ function FormLookFields({
   );
 }
 
-/** What each field number shows while the theme's is used: what the site draws then (`form-look.css`). */
+/** What each field number shows while the theme's is used: what the site draws then (`form-look-css.ts`). */
 const THEME_FIELD_NUMBERS: Record<FieldNumber, number> = { borderWidth: 1, radius: 6, padY: 0, padX: 12, gap: 16, textSize: 16 };
 const MOTION_UNITS: Record<MotionNumber, string> = { duration: "ms", movedSize: "px", spacing: "em", lift: "px" };
 

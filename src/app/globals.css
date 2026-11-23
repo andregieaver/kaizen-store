@@ -15,7 +15,6 @@
 @source not "../lib/admin-messages";
 @source not "../db";
 @import "./motion.css";
-@import "./form-look.css";
 
 /*
  * Light and dark (D99): a choice on <html data-color-mode>, else the

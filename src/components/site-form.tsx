@@ -18,7 +18,7 @@ import {
 import { browserText as t } from "@/lib/browser-text";
 import type { BrowserMessages as Messages } from "@/lib/browser-text";
 import type { FormField } from "@/lib/page-content";
-import { ALWAYS_MOVED_KINDS, FLOATING_KINDS, fieldStyleAttrs, type FieldStyle } from "@/lib/form-field-style";
+import type { FieldLookAttrs, FieldStyle } from "@/lib/form-field-style";
 import { daysAfter, todayInZone } from "@/lib/questions";
 
 import { Dropdown } from "./dropdown";
@@ -26,8 +26,9 @@ import { Inline } from "./inline-text";
 import { buttonLook } from "./button-look";
 import { usePageLanguage } from "./page-language";
 
-/** A field's box: its look is `form-look.css`'s, from the form's field style (D878). */
-const input = "kf-ctl";
+/** A field's box: the theme's look, or the owner's field style where the form has one (`kf-ctl`, D878, `form-look-css.ts`). */
+const input = "kf-ctl min-h-11 w-full rounded-md border border-border bg-background px-3 text-base";
+
 const labelClass = "flex flex-col gap-1 text-sm font-medium";
 
 type Values = Record<string, string | boolean>;
@@ -58,6 +59,7 @@ export function SiteForm({
   extra,
   market,
   payNote,
+  look: fieldLook,
 }: {
   form: PublicForm;
   store: string | null;
@@ -71,6 +73,8 @@ export function SiteForm({
   market?: string;
   /** What is paid after sending and its price, in the page's language (F6c): shown above the button. */
   payNote?: string;
+  /** The form's field style as `fieldStyleAttrs()` made it on the server (D878), so the browser carries no code for it. */
+  look?: FieldLookAttrs;
 }) {
   const pageLang = usePageLanguage();
   const m = t(lang ?? pageLang);
@@ -177,9 +181,8 @@ export function SiteForm({
   }
 
   const look = buttonLook(form.button, form.button?.fullWidth);
-  // The fields' look and how their labels show (D878): attributes and custom properties `form-look.css` reads.
-  const fieldLook = fieldStyleAttrs(form.fieldStyle);
-  const labels = form.fieldStyle?.labels;
+  // How the labels show (D878); the fields' look is the attributes and custom properties `look` holds.
+  const labels = fieldLook?.labels;
   const sending = state.kind === "sending";
   const button = (
     <button type="submit" disabled={sending} aria-disabled={preview || undefined} className={`${look.className} disabled:opacity-60`} style={look.style}>
@@ -194,7 +197,7 @@ export function SiteForm({
           {notice}
         </p>
       )}
-      <form noValidate onSubmit={submit} className="kf-fields flex flex-col" {...fieldLook.data} style={fieldLook.vars}>
+      <form noValidate onSubmit={submit} className="kf-fields flex flex-col gap-4" {...fieldLook?.data} style={fieldLook?.vars}>
         {/* People never see this field; robots fill it in. */}
         <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
           <label>
@@ -206,7 +209,7 @@ export function SiteForm({
           <NewsletterFields form={form} m={m} values={values} errors={errors} set={set} button={button} labels={labels} />
         ) : (
           // The questions asked given the answers so far (D705 F3); half-width ones side by side on a wider screen.
-          <div className="kf-grid grid sm:grid-cols-2">
+          <div className="kf-grid grid gap-4 sm:grid-cols-2">
             {askedQuestions(form.fields, values).map((field) => (
               <div key={field.id} className={field.width === "half" ? "min-w-0" : "min-w-0 sm:col-span-2"}>
                 {field.kind === "file" ? (
@@ -316,23 +319,21 @@ function Field({
   const id = useId();
   const label = fieldLabel(field, m);
   const text = typeof value === "string" ? value : "";
-  // Hidden where the placeholder names the field (D878), for screen readers still; animated where it has a box to rest in.
+  // Hidden where the placeholder names the field (D878), for screen readers still; animated where the field draws it (every kind that
+  // reaches the box below has one). The capitals it turns to are a second copy, cross-faded in and read once, as the label.
   const hideLabel = hiddenByForm || (labels === "placeholder" && Boolean(field.placeholder));
-  const floats = labels === "animated" && !hideLabel && label !== "" && FLOATING_KINDS.has(field.kind);
+  const floats = labels === "animated" && !hideLabel && label !== "";
   const spoken = field.required ? label : `${label} (${m.form.optional})`;
-  const float = (props: { htmlFor?: string }) => {
-    const Tag = props.htmlFor ? "label" : "span";
-    return (
-      <Tag {...(props.htmlFor ? { htmlFor: props.htmlFor } : { "aria-hidden": true })} className="kf-float">
-        <span className="kf-rg">{spoken}</span>
-        {/* The capitals the label turns to as it moves, cross-faded in; read once, as the label. */}
-        <span className="kf-up" aria-hidden>
-          {spoken}
-        </span>
-      </Tag>
-    );
-  };
-  const boxProps = { className: "kf-box", "data-moved": text !== "" || ALWAYS_MOVED_KINDS.has(field.kind) ? "" : undefined };
+  const words = floats && (
+    <>
+      <span className="kf-rg">{spoken}</span>
+      <span className="kf-up" aria-hidden>
+        {spoken}
+      </span>
+    </>
+  );
+  const box = floats ? "kf-box" : "contents";
+  const moved = text || field.kind === "date" ? "" : undefined;
   const described = error ? `${id}-error` : undefined;
   const errorLine = error && (
     <span id={`${id}-error`} className="text-sm font-normal text-red-700 dark:text-red-400">
@@ -383,26 +384,21 @@ function Field({
   if (field.kind === "select") {
     return (
       <div className="flex flex-col gap-1" data-field={field.id} tabIndex={-1}>
-        {(() => {
-          const dropdown = (
-            <Dropdown
-              label={spoken}
-              hideLabel={hideLabel || floats}
-              options={[{ value: "", label: field.placeholder || m.form.choose }, ...(field.options ?? []).map((option, index) => ({ value: String(index), label: option }))]}
-              value={text}
-              onChange={(next) => set(field.id, next)}
-              boxClassName="kf-ctl kf-drop"
-            />
-          );
-          return floats ? (
-            <div {...boxProps}>
-              {float({})}
-              {dropdown}
-            </div>
-          ) : (
-            dropdown
-          );
-        })()}
+        <div className={box} data-moved={moved}>
+          {floats && (
+            <span aria-hidden className="kf-float">
+              {words}
+            </span>
+          )}
+          <Dropdown
+            label={spoken}
+            hideLabel={hideLabel || floats}
+            options={[{ value: "", label: field.placeholder || m.form.choose }, ...(field.options ?? []).map((option, index) => ({ value: String(index), label: option }))]}
+            value={text}
+            onChange={(next) => set(field.id, next)}
+            boxClassName="kf-ctl kf-drop"
+          />
+        </div>
         {helpLine}
         {errorLine}
       </div>
@@ -418,36 +414,34 @@ function Field({
     "aria-required": field.required || undefined,
     "data-field": field.id,
   } as const;
-  const control =
-    field.kind === "textarea" ? (
-      <textarea {...common} rows={5} maxLength={5000} onChange={(event) => set(field.id, event.target.value)} className={input} />
-    ) : (
-      <input
-        {...common}
-        type={INPUT_TYPE[field.kind] ?? "text"}
-        autoComplete={AUTOCOMPLETE[field.kind]}
-        maxLength={field.kind === "number" || field.kind === "date" ? undefined : field.kind === "email" ? 254 : 300}
-        {...boundsOfInput(field)}
-        onChange={(event) => set(field.id, event.target.value)}
-        className={input}
-      />
-    );
   return (
     <div className={labelClass}>
-      {floats ? (
-        <div {...boxProps} data-tall={field.kind === "textarea" ? "" : undefined}>
-          {float({ htmlFor: id })}
-          {control}
-        </div>
-      ) : (
-        <>
-          <label htmlFor={id} className={hideLabel ? "sr-only" : "kf-label"}>
-            {label}
-            {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
-          </label>
-          {control}
-        </>
+      {!floats && (
+        <label htmlFor={id} className={hideLabel ? "sr-only" : "kf-label"}>
+          {label}
+          {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
+        </label>
       )}
+      <div className={box} data-moved={moved}>
+        {floats && (
+          <label htmlFor={id} className="kf-float">
+            {words}
+          </label>
+        )}
+        {field.kind === "textarea" ? (
+          <textarea {...common} rows={5} maxLength={5000} onChange={(event) => set(field.id, event.target.value)} className={`${input} py-2`} />
+        ) : (
+          <input
+            {...common}
+            type={INPUT_TYPE[field.kind] ?? "text"}
+            autoComplete={AUTOCOMPLETE[field.kind]}
+            maxLength={field.kind === "number" || field.kind === "date" ? undefined : field.kind === "email" ? 254 : 300}
+            {...boundsOfInput(field)}
+            onChange={(event) => set(field.id, event.target.value)}
+            className={input}
+          />
+        )}
+      </div>
       {helpLine}
       {errorLine}
     </div>

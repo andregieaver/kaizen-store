@@ -24,6 +24,8 @@ import { inlinePlain } from "@/lib/inline-text";
 import { FontLinks } from "@/components/font-links";
 import { PageBlockView } from "@/components/page-block";
 import { SiteForm } from "@/components/site-form";
+import { fieldStyleAttrs } from "@/lib/form-field-style";
+import { FormLookStyle } from "./lazy/form-look";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
 import { ColumnDividers, RowWidthHandles } from "./row-resize";
@@ -3381,7 +3383,8 @@ function BlockItem({
                 {w.canvas.formNoRecipients}
               </p>
             )}
-            <SiteForm form={publicForm(block)} store={null} lang={actions.lang} preview />
+            {block.fieldStyle && <FormLookStyle />}
+            <SiteForm form={publicForm(block)} store={null} lang={actions.lang} preview look={block.fieldStyle && fieldStyleAttrs(block.fieldStyle)} />
           </div>
         ) : block.type === "form" ? (
           <FormStandIn block={block} lang={actions.lang} empty={emptyWords(w, block.type)} />
@@ -5720,11 +5723,12 @@ function FormStandIn({ block, lang, empty }: { block: FormBlock; lang: string | 
   const picked = block.formId ? forms?.list.find((f) => f.id === block.formId) : undefined;
   if (!picked) return <p className="rounded-md bg-surface p-3 text-sm text-muted">{block.formId ? w.gone : empty}</p>;
   const note = picked.status === "archived" ? w.archived : picked.takesAnswers ? null : w.cannotDeliver;
-  const look = picked.preview.type === "newsletter" ? { ...picked.preview, layout: block.layout, button: block.button, fieldStyle: block.fieldStyle } : { ...picked.preview, button: block.button, fieldStyle: block.fieldStyle };
+  const look = picked.preview.type === "newsletter" ? { ...picked.preview, layout: block.layout, button: block.button } : { ...picked.preview, button: block.button };
   return (
     <div className="flex flex-col gap-2" data-form-standin={picked.id}>
       {note && <p className="rounded-md bg-surface p-3 text-sm text-muted">{note}</p>}
-      <SiteForm form={look} store={null} lang={lang} preview />
+      {block.fieldStyle && <FormLookStyle />}
+      <SiteForm form={look} store={null} lang={lang} preview look={block.fieldStyle && fieldStyleAttrs(block.fieldStyle)} />
     </div>
   );
 }

@@ -81,7 +81,9 @@ const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
   "/s/demo/no/checkout": 694_000,
   "/s/demo/no/account": 650_000,
   "/s/demo/no/wishlist": 646_000,
-  "/s/demo/no/order/6f1c0b9e-1111-2222-3333-444444444444": 650_000,
+  // Raised by 1,000 on 23 November 2026 (D878): the form's own labels (hidden or animated) add about 620 bytes to every page that can
+  // draw a form, and the order page had 7 bytes left; its look is worked out on the server and its stylesheet comes only with a styled form.
+  "/s/demo/no/order/6f1c0b9e-1111-2222-3333-444444444444": 651_000,
   "/s/demo/no/cookies": 644_000,
   "/": 633_000,
   "/sign-up": 652_000,

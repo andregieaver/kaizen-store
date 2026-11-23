@@ -43,7 +43,7 @@ describe("a form's field style (D878)", () => {
   });
 
   it("draws no motion unless the labels are animated", () => {
-    expect(fieldStyleAttrs({ labels: "placeholder", motion: { duration: 400 } })).toEqual({ data: { "data-kf-labels": "placeholder" }, vars: {} });
+    expect(fieldStyleAttrs({ labels: "placeholder", motion: { duration: 400 } })).toEqual({ data: { "data-kf-labels": "placeholder" }, vars: {}, labels: "placeholder" });
   });
 
   it("stores only what differs from the defaults", () => {

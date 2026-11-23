@@ -25,11 +25,14 @@ export function publicForm(block: EmailFormBlock | NewsletterBlock): PublicForm 
     delete form.recipients;
     delete form.incentive;
     delete form.tags;
+    // Its field style reaches the browser as `fieldStyleAttrs()` made it (D878), not twice.
+    delete form.fieldStyle;
     return form;
   }
   const form: PublicEmailForm & { recipients?: string[]; subject?: string } = { ...block };
   delete form.recipients;
   delete form.subject;
+  delete form.fieldStyle;
   return form;
 }
 

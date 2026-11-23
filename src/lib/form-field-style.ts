@@ -4,7 +4,7 @@
  * sizes, and the animated labels' motion. Pure and free of zod, so the site's form reads it; the schema is in `form-field-style-schema.ts`.
  * Only what an owner changed is stored: a setting left out is the theme's (colours, corners) or the default below.
  *
- * The site draws it with `src/app/form-look.css`, from the data attributes and custom properties `fieldStyleAttrs()` gives the form.
+ * The site draws it with `FORM_LOOK_CSS` (`form-look-css.ts`), from the data attributes and custom properties `fieldStyleAttrs()` gives the form.
  */
 
 /** Where a question's words are: above the field (the default, left out), hidden where a placeholder is set, or animated. */
@@ -89,14 +89,17 @@ export type FieldStyle = {
   motion?: LabelMotion;
 };
 
+/** What `SiteForm` is handed (D878): the attributes and custom properties of its form, and how its labels show. */
+export type FieldLookAttrs = { data: Record<string, string>; vars: Record<string, string>; labels?: FieldStyle["labels"] };
+
 const COLOR_VARS = { background: "--kf-bg", text: "--kf-ink", border: "--kf-line", focus: "--kf-focus", label: "--kf-label", placeholder: "--kf-ph" } as const;
 const PIXEL_VARS = { borderWidth: "--kf-bw", radius: "--kf-radius", padY: "--kf-py", padX: "--kf-px", gap: "--kf-gap", textSize: "--kf-size" } as const;
 
 /**
- * What the form's element carries for `form-look.css`: data attributes for the choices and custom properties for the values an owner set
+ * What the form's element carries for `FORM_LOOK_CSS`: data attributes for the choices and custom properties for the values an owner set
  * (the stylesheet falls back to the theme's and the defaults). Nothing at all for a form left as it was.
  */
-export function fieldStyleAttrs(style: FieldStyle | undefined): { data: Record<string, string>; vars: Record<string, string> } {
+export function fieldStyleAttrs(style: FieldStyle | undefined): FieldLookAttrs {
   const data: Record<string, string> = {};
   const vars: Record<string, string> = {};
   if (!style) return { data, vars };
@@ -125,7 +128,7 @@ export function fieldStyleAttrs(style: FieldStyle | undefined): { data: Record<s
     if (motion.spacing !== undefined) vars["--kf-track"] = `${motion.spacing}em`;
     if (motion.lift !== undefined) vars["--kf-lift"] = `${motion.lift}px`;
   }
-  return { data, vars };
+  return { data, vars, ...(style.labels ? { labels: style.labels } : {}) };
 }
 
 /** A style with what equals the default left out, and nothing when nothing is left: what the editor stores. */
@@ -145,8 +148,3 @@ export function trimFieldStyle(style: FieldStyle): FieldStyle | undefined {
   return Object.keys(out).length ? (out as FieldStyle) : undefined;
 }
 
-/** The kinds of question whose label can rest inside the field: those with a box to rest in (a tick, choices and a file have none). */
-export const FLOATING_KINDS = new Set(["text", "name", "email", "phone", "number", "date", "textarea", "select"]);
-
-/** Kinds whose field always shows its own hint (a date's dd.mm.yyyy): an animated label rests above it from the start. */
-export const ALWAYS_MOVED_KINDS = new Set(["date"]);

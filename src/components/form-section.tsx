@@ -3,11 +3,13 @@ import { publicForm } from "@/lib/forms";
 import type { EmailFormBlock, FormBlock, NewsletterBlock } from "@/lib/page-content";
 import type { GridPlace } from "@/server/content-grid";
 import { t } from "@/lib/i18n";
+import { fieldStyleAttrs } from "@/lib/form-field-style";
 import { formPaymentOffer } from "@/server/form-payments";
 import { siteForm } from "@/server/form-site";
 import { storeSlugOf } from "@/server/menus";
 import { getOpenStore } from "@/server/stores";
 
+import { FormLookStyle } from "./form-look-style";
 import { SiteForm } from "./site-form";
 import { marketIn } from "@/server/shop";
 
@@ -26,7 +28,17 @@ export async function FormSection({ block, place }: { block: EmailFormBlock | Ne
     const market = store ? marketIn(store, place.market) : undefined;
     if (market) lang = market.lang;
   }
-  if (block.type !== "form") return <SiteForm form={publicForm(block)} store={place.owner} lang={lang} />;
+  // The owner's field style (D878): its attributes worked out here, its stylesheet sent only with a form that has one.
+  const look = block.fieldStyle ? fieldStyleAttrs(block.fieldStyle) : undefined;
+  const styled = look && <FormLookStyle />;
+  if (block.type !== "form") {
+    return (
+      <>
+        {styled}
+        <SiteForm form={publicForm(block)} store={place.owner} lang={lang} look={look} />
+      </>
+    );
+  }
   const form = block.formId ? await siteForm(place.owner, block.formId) : null;
   if (!form || !formTakesAnswers(form)) return null;
   // A form with a payment (D738 F6c) says what is paid and its price in this market, worded here so visitors' scripts carry no more words.
@@ -46,12 +58,14 @@ export async function FormSection({ block, place }: { block: EmailFormBlock | Ne
         className="pointer-events-none absolute size-px opacity-0"
       />
       <SiteForm
-        form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout, fieldStyle: block.fieldStyle }))}
+        form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout }))}
         store={place.owner}
         lang={lang}
         market={place.market}
         payNote={offer ? t(lang).form.payNote(offer.title, offer.price) : undefined}
+        look={look}
       />
+      {styled}
     </div>
   );
 }
