@@ -6,7 +6,8 @@ export { MiniBar, ShareBar, ScoreBar, fillWidth } from "./bars";
 export { InsightPanel } from "./insight";
 export { List, ListRow, RowActions, RowAmount, RowDate, RowFact, RowId, RowLead, RowText } from "./list";
 export { PageHeader } from "./page-header";
-export { FocusFrame, FocusHeading } from "./focus-frame";
+// `FocusHeading` is read from its file by the pages before sign-in, which take nothing from this index (D873).
+export { FocusFrame } from "./focus-frame";
 export { AdminLink, type AdminLinkProps } from "./link";
 // The kit of code review step 1.12 (D818): fields, the empty state, a list's pager and search. Its client part, `ConfirmButton`, is
 // imported from "./confirm-button" itself, never through here: this index is reached by the server code of nearly every admin route,

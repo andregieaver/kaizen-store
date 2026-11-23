@@ -13,8 +13,9 @@ import { ConfirmButton, splitQuestion } from "./confirm-button";
 import { fieldClass, TextArea, type FieldControl } from "./field";
 import { pageAddress } from "./pager";
 import ConfirmDialog from "./confirm-dialog";
+import { FocusHeading } from "./focus-frame";
 import { reach } from "../../../../scripts/lib/import-walk.mjs";
-import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, EmptyState, Field, fillWidth, FocusFrame, FocusHeading, InsightPanel, KpiTile, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, Select, ShareBar, TextInput, TrendChip } from "./index";
+import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, EmptyState, Field, fillWidth, FocusFrame, InsightPanel, KpiTile, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, Select, ShareBar, TextInput, TrendChip } from "./index";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 
