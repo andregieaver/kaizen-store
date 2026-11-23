@@ -40,13 +40,40 @@ import type { DnsHostApi } from "./vercel-dns";
  *
  * While Amazon SES is set up (D872), each domain is also an identity there, with its own records written beside Resend's; once SES has
  * verified it, the store's broadcasts and flows go out through SES (`marketingRoute()`), and order emails stay on Resend.
+ *
+ * An account may have its own too (D874, `{ organisationId }`): every store of the account without its own sends from it, a workspace
+ * included. A store's own comes first, then its account's, then the shared address.
  */
+
+/** Whose sending domain (D874): a store's (its id), an account's (`{ organisationId }`), or Kaizena Flow's own (null). */
+export type SendingOwner = string | null | { organisationId: string };
+
+const storeOf = (owner: SendingOwner): string | null => (typeof owner === "string" ? owner : null);
+const accountOf = (owner: SendingOwner): string | null => (owner !== null && typeof owner === "object" ? owner.organisationId : null);
+/** The account part of an owner's row: its account's, or none (a store's row and Kaizena Flow's own have none). */
+const accountPart = (owner: SendingOwner) => {
+  const account = accountOf(owner);
+  return account ? sql`organisation_id = ${account}::uuid` : sql`organisation_id is null`;
+};
+/** The owner a kept row belongs to. */
+const ownerOfRow = (r: { store_id: string | null; organisation_id: string | null }): SendingOwner =>
+  r.store_id ?? (r.organisation_id ? { organisationId: r.organisation_id } : null);
+/** "store" or "account", for the words that name what has no domain. */
+const whose = (owner: SendingOwner) => (accountOf(owner) ? "account" : "store");
+/** The refusals, by whose domain it is; each written out, as the card's catalogue knows them by their English. */
+const TAKEN = {
+  store: "This store already has a sending domain. Remove it first to use another.",
+  account: "This account already has a sending domain. Remove it first to use another.",
+} as const;
+const NONE = { store: "This store has no sending domain.", account: "This account has no sending domain." } as const;
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] };
 
 export type SendingDomain = {
   id: string;
   storeId: string | null;
+  /** The account's own (D874); null for a store's and Kaizena Flow's own. */
+  organisationId: string | null;
   domain: string;
   fromLocal: string;
   /** The address the store's emails go from once verified. */
@@ -73,6 +100,7 @@ const RESEND = "https://api.resend.com";
 const row = z.object({
   id: col.uuid,
   store_id: col.textOrNull,
+  organisation_id: col.textOrNull,
   domain: col.text,
   from_local: col.text,
   provider_id: col.textOrNull,
@@ -91,6 +119,7 @@ type Row = z.output<typeof row>;
 const toDomain = (r: Row): SendingDomain => ({
   id: r.id,
   storeId: r.store_id,
+  organisationId: r.organisation_id,
   domain: r.domain,
   fromLocal: r.from_local,
   from: senderAddress(r.from_local, r.domain),
@@ -105,14 +134,24 @@ const toDomain = (r: Row): SendingDomain => ({
   sesProblem: r.ses_problem,
 });
 
-async function readRow(storeId: string | null): Promise<Row | null> {
-  return typedRow(row, sql`select * from commerce.sending_domains where ${owned(storeId)}`);
+async function readRow(owner: SendingOwner): Promise<Row | null> {
+  return typedRow(row, sql`select * from commerce.sending_domains where ${owned(storeOf(owner))} and ${accountPart(owner)}`);
 }
 
-/** The store's sending domain (Kaizena Flow's own for null), or null when it sends from the shared address only. */
-export async function getSendingDomain(storeId: string | null): Promise<SendingDomain | null> {
-  const r = await readRow(storeId);
+/** The store's sending domain (an account's for `{ organisationId }`, Kaizena Flow's own for null), or null when it has none. */
+export async function getSendingDomain(owner: SendingOwner): Promise<SendingDomain | null> {
+  const r = await readRow(owner);
   return r ? toDomain(r) : null;
+}
+
+/** The account's verified address a store without its own sends from (D874), for the store's card; null when there is none. */
+export async function accountSender(storeId: string): Promise<string | null> {
+  const r = await typedRow(
+    z.object({ domain: col.text, from_local: col.text }),
+    sql`select domain, from_local from commerce.sending_domains
+         where status = 'verified' and organisation_id = (select organisation_id from commerce.stores where id = ${storeId}::uuid)`,
+  );
+  return r ? senderAddress(r.from_local, r.domain) : null;
 }
 
 /**
@@ -132,12 +171,19 @@ export function sendingDomainView(d: SendingDomain) {
   };
 }
 
-/** The address a store's emails go from, when its own domain is verified; null to use the shared address. Never throws. */
+/**
+ * The address a store's emails go from: its own domain's while verified, else its account's (D874); null to use the shared address. Never
+ * throws.
+ */
 export async function senderFor(storeId: string | null): Promise<string | null> {
   try {
     const r = await typedRow(
       z.object({ domain: col.text, from_local: col.text }),
-      sql`select domain, from_local from commerce.sending_domains where ${owned(storeId)} and status = 'verified'`,
+      sql`select domain, from_local from commerce.sending_domains
+           where status = 'verified' and (
+             (${owned(storeId)} and organisation_id is null)
+             ${storeId ? sql`or organisation_id = (select organisation_id from commerce.stores where id = ${storeId}::uuid)` : sql``})
+           order by store_id nulls last limit 1`,
     );
     return r ? senderAddress(r.from_local, r.domain) : null;
   } catch (error) {
@@ -157,14 +203,21 @@ export type MarketingRoute = { via: "ses" | "resend"; from: string | null };
 export async function marketingRoute(storeId: string | null, shared: string | null = emailSettings()?.from ?? null, ses: boolean = sesSettings() !== null): Promise<MarketingRoute> {
   try {
     const rows = await typedRows(
-      z.object({ mine: col.bool, domain: col.text, from_local: col.text, status: col.text, ses_status: col.text }),
-      sql`select coalesce(${owned(storeId)}, false) as mine, domain, from_local, status, ses_status
-           from commerce.sending_domains where ${owned(storeId)} or store_id is null`,
+      z.object({ level: z.enum(["store", "account", "platform"]), domain: col.text, from_local: col.text, status: col.text, ses_status: col.text }),
+      sql`select case when store_id is not null then 'store' when organisation_id is not null then 'account' else 'platform' end as level,
+                 domain, from_local, status, ses_status
+           from commerce.sending_domains
+           where (store_id is null and organisation_id is null)
+             ${storeId ? sql`or ${owned(storeId)} or organisation_id = (select organisation_id from commerce.stores where id = ${storeId}::uuid)` : sql``}`,
     );
-    const own = rows.find((r) => r.mine);
-    if (own && ses && own.ses_status === "verified") return { via: "ses", from: senderAddress(own.from_local, own.domain) };
-    if (own && own.status === "verified") return { via: "resend", from: senderAddress(own.from_local, own.domain) };
-    const platform = rows.find((r) => !r.mine) ?? (storeId === null ? own : undefined);
+    // The store's own first, then its account's (D874); Kaizena Flow's own is its own when there is no store.
+    const order = storeId ? (["store", "account"] as const) : (["platform"] as const);
+    for (const level of order) {
+      const own = rows.find((r) => r.level === level);
+      if (own && ses && own.ses_status === "verified") return { via: "ses", from: senderAddress(own.from_local, own.domain) };
+      if (own && own.status === "verified") return { via: "resend", from: senderAddress(own.from_local, own.domain) };
+    }
+    const platform = rows.find((r) => r.level === "platform");
     const sharedDomain = shared?.split("@")[1]?.toLowerCase();
     if (ses && platform && sharedDomain === platform.domain && platform.ses_status === "verified") return { via: "ses", from: null };
     return { via: "resend", from: null };
@@ -201,13 +254,28 @@ function refusal(call: Extract<Call, { ok: false }>): string {
   return `Resend refused it: ${call.message}`;
 }
 
+/** The store whose zone Kaizena Flow keeps for the domain: the store's own, or for an account's (D874) the store of the account that has it. */
+async function zoneStore(owner: SendingOwner, apex: string): Promise<string | null> {
+  if (typeof owner === "string") return owner;
+  const account = accountOf(owner);
+  if (!account) return null;
+  const r = await typedRow(
+    z.object({ store_id: col.uuid }),
+    sql`select z.store_id from commerce.dns_zones z join commerce.stores s on s.id = z.store_id
+         where s.organisation_id = ${account}::uuid and z.apex = ${apex} order by z.store_id limit 1`,
+  );
+  return r?.store_id ?? null;
+}
+
 /**
  * Writes Resend's records into the store's zone when Kaizena Flow keeps it, leaving out what the zone already has. Answers whether the
  * zone now has them all; false (with nothing changed) when we do not keep the zone or a step failed, so the owner copies them instead.
  */
-async function writeRecords(actor: Account | null, storeId: string | null, domain: string, records: readonly SendingRecord[], host?: DnsHostApi): Promise<boolean> {
-  if (!storeId || records.length === 0) return false;
+async function writeRecords(actor: Account | null, owner: SendingOwner, domain: string, records: readonly SendingRecord[], host?: DnsHostApi): Promise<boolean> {
+  if (records.length === 0) return false;
   const apex = apexOf(domain);
+  const storeId = await zoneStore(owner, apex);
+  if (!storeId) return false;
   const zone = await storeZone(storeId, apex);
   if (!zone || zone.status !== "active") return false;
   const live = await zoneRecords(storeId, apex, { host });
@@ -233,12 +301,13 @@ async function syncSes(actor: Account | null, current: Row, ses: SesEnv, deps: S
     const status = identity ? sesStatusOf(identity) : current.ses_status;
     const records = identity ? sesRecords(current.domain, ses.region, identity) : keptRecords(current.ses_records);
     const problem = call.ok ? (identity ? null : "Amazon SES's answer couldn't be read.") : call.problem;
-    if (identity && status !== "verified") await writeRecords(actor, current.store_id, current.domain, records, deps.host).catch(() => false);
+    const owner = ownerOfRow(current);
+    if (identity && status !== "verified") await writeRecords(actor, owner, current.domain, records, deps.host).catch(() => false);
     await db().execute(sql`
       update commerce.sending_domains set ses_status = ${status}, ses_records = ${JSON.stringify(records)}::jsonb, ses_problem = ${problem}, updated_at = now()
-      where id = ${current.id}::uuid and ${owned(current.store_id)}`);
+      where id = ${current.id}::uuid and ${owned(current.store_id)} and ${accountPart(owner)}`);
     if (status !== current.ses_status) {
-      await audit(actor?.id ?? null, current.store_id, "store.sending_domain_ses_status", { domain: current.domain, from: current.ses_status, to: status });
+      await audit(actor?.id ?? null, current.store_id, "store.sending_domain_ses_status", { domain: current.domain, from: current.ses_status, to: status, account: current.organisation_id });
     }
   } catch (error) {
     log("error", "sending_domains.ses_sync_failed", { storeId: current.store_id }, error);
@@ -251,7 +320,7 @@ async function syncSes(actor: Account | null, current: Row, ses: SesEnv, deps: S
  */
 export async function addSendingDomain(
   actor: Account,
-  storeId: string | null,
+  owner: SendingOwner,
   input: { domain: string; fromLocal?: string },
   deps: SendingDeps = {},
 ): Promise<Result<{ domain: SendingDomain }>> {
@@ -262,7 +331,10 @@ export async function addSendingDomain(
     ...(fromLocal ? [] : ["The part before the @ can use letters, numbers, dots, dashes and underscores."]),
   ];
   if (!domain || !fromLocal) return { ok: false, problems };
-  if (await readRow(storeId)) return { ok: false, problems: ["This store already has a sending domain. Remove it first to use another."] };
+  const taken = TAKEN[whose(owner)];
+  if (await readRow(owner)) return { ok: false, problems: [taken] };
+  const storeId = storeOf(owner);
+  const organisationId = accountOf(owner);
   const settings = deps.settings === undefined ? emailSettings() : deps.settings;
   if (!settings) return { ok: false, problems: ["Kaizena Flow's email isn't set up yet."] };
   const fetcher = deps.fetcher ?? fetch;
@@ -277,37 +349,37 @@ export async function addSendingDomain(
     inserted = await typedRow(
       row,
       sql`
-        insert into commerce.sending_domains (store_id, domain, from_local, provider_id, status, records, verified_at, created_by)
-        values (${storeId}::uuid, ${domain}, ${fromLocal}, ${answer.id}, ${answer.status}, ${JSON.stringify(answer.records)}::jsonb,
+        insert into commerce.sending_domains (store_id, organisation_id, domain, from_local, provider_id, status, records, verified_at, created_by)
+        values (${storeId}::uuid, ${organisationId}::uuid, ${domain}, ${fromLocal}, ${answer.id}, ${answer.status}, ${JSON.stringify(answer.records)}::jsonb,
           ${answer.status === "verified" ? sql`now()` : null}, ${actor.id}::uuid)
-        on conflict (store_id) do nothing
+        on conflict (store_id, organisation_id) do nothing
         returning *
       `,
     );
   } catch (error) {
     inserted = null;
-    log("error", "sending_domains.insert_failed", { storeId }, error);
+    log("error", "sending_domains.insert_failed", { storeId, organisationId }, error);
   }
   if (!inserted) {
     // Two presses at once, or a write that failed: Resend's copy is let go so a later try starts clean.
     await resend(settings, `/domains/${encodeURIComponent(answer.id)}`, { method: "DELETE" }, fetcher);
-    return { ok: false, problems: ["This store already has a sending domain. Remove it first to use another."] };
+    return { ok: false, problems: [taken] };
   }
 
-  const written = await writeRecords(actor, storeId, domain, answer.records, deps.host).catch((error) => {
+  const written = await writeRecords(actor, owner, domain, answer.records, deps.host).catch((error) => {
     log("warn", "sending_domains.records_write_threw", { storeId }, error);
     return false;
   });
   if (written) {
-    await db().execute(sql`update commerce.sending_domains set records_written = true, updated_at = now() where id = ${inserted.id}::uuid and ${owned(storeId)}`);
+    await db().execute(sql`update commerce.sending_domains set records_written = true, updated_at = now() where id = ${inserted.id}::uuid and ${owned(storeId)} and ${accountPart(owner)}`);
     // Resend looks at once, so a zone we keep usually verifies within minutes.
     await resend(settings, `/domains/${encodeURIComponent(answer.id)}/verify`, { method: "POST" }, fetcher);
   }
   // Amazon SES too, while it is set up (D872): the broadcasts and flows go through it once it has verified the domain.
   const ses = deps.ses === undefined ? sesSettings() : deps.ses;
   if (ses) await syncSes(actor, inserted, ses, deps);
-  await audit(actor.id, storeId, "store.sending_domain_added", { domain, from: senderAddress(fromLocal, domain), recordsWritten: written });
-  const domainNow = await getSendingDomain(storeId);
+  await audit(actor.id, storeId, "store.sending_domain_added", { domain, from: senderAddress(fromLocal, domain), recordsWritten: written, account: organisationId });
+  const domainNow = await getSendingDomain(owner);
   return domainNow ? { ok: true, domain: domainNow } : { ok: false, problems: ["The domain was added but couldn't be read back."] };
 }
 
@@ -316,9 +388,10 @@ export async function addSendingDomain(
  * the records' own states and when it was checked are kept; a domain that becomes verified starts sending from its own address at once,
  * and one that stops being verified goes back to the shared address.
  */
-export async function checkSendingDomain(actor: Account | null, storeId: string | null, deps: SendingDeps = {}): Promise<Result<{ domain: SendingDomain }>> {
-  const current = await readRow(storeId);
-  if (!current) return { ok: false, problems: ["This store has no sending domain."] };
+export async function checkSendingDomain(actor: Account | null, owner: SendingOwner, deps: SendingDeps = {}): Promise<Result<{ domain: SendingDomain }>> {
+  const current = await readRow(owner);
+  if (!current) return { ok: false, problems: [NONE[whose(owner)]] };
+  const storeId = storeOf(owner);
   const settings = deps.settings === undefined ? emailSettings() : deps.settings;
   if (!settings) return { ok: false, problems: ["Kaizena Flow's email isn't set up yet."] };
   const fetcher = deps.fetcher ?? fetch;
@@ -328,7 +401,7 @@ export async function checkSendingDomain(actor: Account | null, storeId: string 
   let records = keptRecords(current.records);
   let written = current.records_written;
   if (!written) {
-    written = await writeRecords(actor, storeId, current.domain, records, deps.host).catch(() => false);
+    written = await writeRecords(actor, owner, current.domain, records, deps.host).catch(() => false);
   }
   if (current.status !== "verified") await resend(settings, `/domains/${id}/verify`, { method: "POST" }, fetcher);
   const read = await resend(settings, `/domains/${id}`, { method: "GET" }, fetcher);
@@ -351,26 +424,27 @@ export async function checkSendingDomain(actor: Account | null, storeId: string 
       checked_at = now(),
       verified_at = ${status === "verified" ? sql`coalesce(verified_at, now())` : null},
       updated_at = now()
-    where id = ${current.id}::uuid and ${owned(storeId)}
+    where id = ${current.id}::uuid and ${owned(storeId)} and ${accountPart(owner)}
   `);
   if (status !== current.status) {
-    await audit(actor?.id ?? null, storeId, "store.sending_domain_status", { domain: current.domain, from: current.status, to: status });
+    await audit(actor?.id ?? null, storeId, "store.sending_domain_status", { domain: current.domain, from: current.status, to: status, account: current.organisation_id });
   }
   const ses = deps.ses === undefined ? sesSettings() : deps.ses;
   if (ses) await syncSes(actor, current, ses, deps);
-  const domainNow = await getSendingDomain(storeId);
+  const domainNow = await getSendingDomain(owner);
   return domainNow ? { ok: true, domain: domainNow } : { ok: false, problems: ["The domain couldn't be read back."] };
 }
 
 /** Changes the part before the @ (`news`, `hello`, …); the domain stays as it is verified. */
-export async function setFromLocal(actor: Account, storeId: string | null, input: string): Promise<Result<{ domain: SendingDomain }>> {
+export async function setFromLocal(actor: Account, owner: SendingOwner, input: string): Promise<Result<{ domain: SendingDomain }>> {
   const fromLocal = cleanFromLocal(input);
   if (!fromLocal) return { ok: false, problems: ["The part before the @ can use letters, numbers, dots, dashes and underscores."] };
-  const current = await readRow(storeId);
-  if (!current) return { ok: false, problems: ["This store has no sending domain."] };
-  await db().execute(sql`update commerce.sending_domains set from_local = ${fromLocal}, updated_at = now() where id = ${current.id}::uuid and ${owned(storeId)}`);
-  await audit(actor.id, storeId, "store.sending_domain_address", { from: senderAddress(current.from_local, current.domain), to: senderAddress(fromLocal, current.domain) });
-  const domainNow = await getSendingDomain(storeId);
+  const current = await readRow(owner);
+  if (!current) return { ok: false, problems: [NONE[whose(owner)]] };
+  const storeId = storeOf(owner);
+  await db().execute(sql`update commerce.sending_domains set from_local = ${fromLocal}, updated_at = now() where id = ${current.id}::uuid and ${owned(storeId)} and ${accountPart(owner)}`);
+  await audit(actor.id, storeId, "store.sending_domain_address", { from: senderAddress(current.from_local, current.domain), to: senderAddress(fromLocal, current.domain), account: current.organisation_id });
+  const domainNow = await getSendingDomain(owner);
   return domainNow ? { ok: true, domain: domainNow } : { ok: false, problems: ["The domain couldn't be read back."] };
 }
 
@@ -378,9 +452,10 @@ export async function setFromLocal(actor: Account, storeId: string | null, input
  * Stops sending from the store's own domain: Resend lets it go and the row is deleted, so emails go from the shared address at once. The
  * DNS records stay where they are (the owner's zone is theirs to tidy; harmless if left).
  */
-export async function removeSendingDomain(actor: Account, storeId: string | null, deps: SendingDeps = {}): Promise<Result> {
-  const current = await readRow(storeId);
+export async function removeSendingDomain(actor: Account, owner: SendingOwner, deps: SendingDeps = {}): Promise<Result> {
+  const current = await readRow(owner);
   if (!current) return { ok: true };
+  const storeId = storeOf(owner);
   const settings = deps.settings === undefined ? emailSettings() : deps.settings;
   if (settings && current.provider_id) {
     const gone = await resend(settings, `/domains/${encodeURIComponent(current.provider_id)}`, { method: "DELETE" }, deps.fetcher ?? fetch);
@@ -388,8 +463,8 @@ export async function removeSendingDomain(actor: Account, storeId: string | null
   }
   const ses = deps.ses === undefined ? sesSettings() : deps.ses;
   if (ses && current.ses_status !== "none") await deleteSesIdentity(ses, current.domain, deps.fetcher ?? fetch);
-  await db().execute(sql`delete from commerce.sending_domains where id = ${current.id}::uuid and ${owned(storeId)}`);
-  await audit(actor.id, storeId, "store.sending_domain_removed", { domain: current.domain });
+  await db().execute(sql`delete from commerce.sending_domains where id = ${current.id}::uuid and ${owned(storeId)} and ${accountPart(owner)}`);
+  await audit(actor.id, storeId, "store.sending_domain_removed", { domain: current.domain, account: current.organisation_id });
   return { ok: true };
 }
 
@@ -403,9 +478,9 @@ export const RECHECK_BATCH = 50;
 export async function recheckSendingDomains(deps: SendingDeps = {}): Promise<{ checked: number; verified: number; failed: number }> {
   const ses = deps.ses === undefined ? sesSettings() : deps.ses;
   const due = await typedRows(
-    z.object({ store_id: col.textOrNull }),
+    z.object({ store_id: col.textOrNull, organisation_id: col.textOrNull }),
     sql`
-      select store_id from commerce.sending_domains
+      select store_id, organisation_id from commerce.sending_domains
       where status <> 'verified' or checked_at is null or checked_at < now() - interval '7 days'
         ${ses ? sql`or ses_status <> 'verified'` : sql``}
       order by checked_at nulls first
@@ -415,7 +490,7 @@ export async function recheckSendingDomains(deps: SendingDeps = {}): Promise<{ c
   const counts = { checked: 0, verified: 0, failed: 0 };
   for (const d of due) {
     try {
-      const result = await checkSendingDomain(null, d.store_id, { ...deps, ses });
+      const result = await checkSendingDomain(null, ownerOfRow(d), { ...deps, ses });
       counts.checked += 1;
       if (result.ok && result.domain.status === "verified") counts.verified += 1;
     } catch (error) {

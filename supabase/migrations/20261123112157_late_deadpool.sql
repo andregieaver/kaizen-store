@@ -1,0 +1,5 @@
+ALTER TABLE "commerce"."sending_domains" ADD COLUMN "organisation_id" uuid;--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD CONSTRAINT "sending_domains_organisation_id_organisations_id_fk" FOREIGN KEY ("organisation_id") REFERENCES "commerce"."organisations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "sending_domains_organisation_idx" ON "commerce"."sending_domains" USING btree ("organisation_id");--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD CONSTRAINT "sending_domains_owner_key" UNIQUE NULLS NOT DISTINCT("store_id","organisation_id");--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD CONSTRAINT "sending_domains_one_owner" CHECK ("commerce"."sending_domains"."store_id" is null or "commerce"."sending_domains"."organisation_id" is null);

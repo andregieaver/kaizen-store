@@ -19,6 +19,9 @@ import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange } from "@/s
 import { accountHolder } from "@/server/domain-holder";
 import { chargeDomainPurchases, renewDomainNow, setDomainRenewal } from "@/server/domain-purchases";
 import { draftChanges, type DnsDraft } from "@/server/dns-draft";
+import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { ownedAccount } from "@/server/privacy-officers";
+import { sendingDomainForm } from "@/server/sending-domain-form";
 
 /**
  * *Your domains* (D317): everything here acts as the signed-in account, on the domains it holds; a domain another account holds is simply
@@ -154,4 +157,18 @@ export async function confirmHolderAction(token: string): Promise<FormState> {
   const result = await confirmHolderProposal(account, String(token ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   return done([fillWords(words.assistant.confirmed, { domain: result.domain })]);
+}
+
+/**
+ * The account's own sending domain (D874): only the account's owner sets it, for every store of the account without its own. Another
+ * person gets the card's refusal.
+ */
+export async function accountSendingDomainAction(_state: FormState, form: FormData): Promise<FormState> {
+  const account = await requireAccount();
+  const w = NOTIFICATIONS_WORDS[adminLangOf(account.adminLocale)].sendingDomain;
+  const organisation = await ownedAccount(account.id);
+  if (!organisation) return { status: "error", messages: [w.noAccess] };
+  const answer = await sendingDomainForm(account, { organisationId: organisation.id }, form, w);
+  if (answer.status === "ok") refresh();
+  return answer;
 }

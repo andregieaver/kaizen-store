@@ -288,3 +288,63 @@ describe("Amazon SES beside Resend for marketing email (D872)", () => {
     await sending.removeSendingDomain(owner, null, { fetcher: both.fetcher, settings, ses: sesEnv });
   });
 });
+
+describe("an account's own sending domain (D874)", () => {
+  const accountApex = `acct-${run}.shop`;
+  let organisationId: string;
+  let strangerStore: string;
+
+  beforeAll(async () => {
+    const [store] = await db().execute<Row>(sql`select organisation_id from commerce.stores where id = ${otherStoreId}::uuid`);
+    organisationId = String(store.organisation_id);
+    await db().execute(sql`insert into commerce.dns_zones (store_id, apex) values (${otherStoreId}::uuid, ${accountApex})`);
+    // A store of someone else's account.
+    const [acc] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`stranger-${run}@example.com`}, 'Ola', false) returning id, email`);
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${String(acc.email)}, 'Ola', ${`stranger-${run}`}) returning id`);
+    const [{ id }] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`stranger-${run}`}, ${`stranger-${run}`}, null) as id`);
+    strangerStore = String(id);
+  });
+
+  it("sends every store of the account without its own from the account's address, and a store's own comes first", async () => {
+    const both = fakeBoth();
+    const dns = fakeHost([]);
+    const acct = { organisationId };
+    const added = await sending.addSendingDomain(owner, acct, { domain: accountApex }, { fetcher: both.fetcher, settings, ses: null, host: dns.host });
+    if (!added.ok) throw new Error(added.problems.join());
+    expect(added.domain).toMatchObject({ organisationId, storeId: null, recordsWritten: true });
+    // Its records went into the zone a store of the account keeps.
+    expect(dns.records.map((r) => `${r.type} ${r.name}`).sort()).toEqual(["MX send", "TXT resend._domainkey", "TXT send"]);
+    expect(await sending.addSendingDomain(owner, acct, { domain: `again-${run}.shop` }, { fetcher: both.fetcher, settings, ses: null })).toEqual({
+      ok: false,
+      problems: ["This account already has a sending domain. Remove it first to use another."],
+    });
+
+    await sending.checkSendingDomain(null, acct, { fetcher: both.fetcher, settings, ses: null, host: dns.host });
+    expect((await sending.getSendingDomain(acct))?.status).toBe("verified");
+    // The stores of the account without their own: the account's address, for order emails and marketing alike.
+    expect(await sending.senderFor(sesStoreOf())).toBe(`news@${accountApex}`);
+    expect(await sending.accountSender(otherStoreId)).toBe(`news@${accountApex}`);
+    expect(await sending.marketingRoute(sesStoreOf(), settings.from, false)).toEqual({ via: "resend", from: `news@${accountApex}` });
+    // A store with its own verified domain keeps it.
+    expect(await sending.senderFor(otherStoreId)).toBe(`news@elsewhere-${run}.no`);
+    expect(await sending.marketingRoute(otherStoreId, settings.from, false)).toEqual({ via: "resend", from: `news@elsewhere-${run}.no` });
+    // Another account's store, and Kaizena Flow's own, never.
+    expect(await sending.senderFor(strangerStore)).toBeNull();
+    expect(await sending.senderFor(null)).toBeNull();
+    expect(await sending.getSendingDomain(null)).toBeNull();
+
+    expect(await sending.removeSendingDomain(owner, acct, { fetcher: both.fetcher, settings, ses: null })).toEqual({ ok: true });
+    expect(await sending.senderFor(sesStoreOf())).toBeNull();
+  });
+
+  it("refuses a row that is both a store's and an account's", async () => {
+    await expect(
+      db().execute(sql`insert into commerce.sending_domains (store_id, organisation_id, domain) values (${storeId}::uuid, ${organisationId}::uuid, ${`both-${run}.no`})`),
+    ).rejects.toThrow();
+  });
+});
+
+/** The store the SES tests made: it has no domain of its own by now. */
+function sesStoreOf(): string {
+  return storeId;
+}

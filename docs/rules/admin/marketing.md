@@ -215,6 +215,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `daily.sending-domains` asks Resend again about pending and failed domains, and about verified ones each week, so one that breaks goes
   back to the shared address. The card sits on Settings, Notifications (`settings:write`) and on Platform, Emails (`settings`). Adding a
   domain needs Resend's key to have full access; a sending-only key is refused in plain words.
+- **The account's own sending domain (D874)**: a row with `organisation_id` (a row is a store's, an account's or Kaizena Flow's own;
+  `SendingOwner` in `src/server/sending-domains.ts`). Every store of the account without its own sends from it, order emails and marketing
+  alike (`senderFor()`, `marketingRoute()`: the store's own first, then the account's, then the shared address). It is set on Your domains
+  by the account's owner only (`ownedAccount()`); a store's card says when it sends from the account's address.
 - **Marketing email through Amazon SES (D872, `src/server/ses.ts`, `src/lib/ses.ts`, `/api/ses/events`)**: with `AWS_SES_*` set, a
   store's broadcasts and flows (`SES_KINDS`) go through SES in the EU (`marketingRoute()`: its own domain once SES verified it, else
   Resend's way; the shared address through SES only when it is on Kaizena Flow's own domain and SES verified that). Order, account and

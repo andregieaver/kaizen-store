@@ -1,6 +1,6 @@
 {
-  "id": "5d950c89-c241-40c6-b125-4c494922df10",
-  "prevId": "d718ac65-37cb-4654-8a6e-1b67bfb95b26",
+  "id": "d06157aa-295d-4c0f-8fd1-c964bcaf8d5a",
+  "prevId": "5d950c89-c241-40c6-b125-4c494922df10",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -77158,6 +77158,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "domain": {
           "name": "domain",
           "type": "text",
@@ -77258,6 +77264,21 @@
         }
       },
       "indexes": {
+        "sending_domains_organisation_idx": {
+          "name": "sending_domains_organisation_idx",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "sending_domains_created_by_idx": {
           "name": "sending_domains_created_by_idx",
           "columns": [
@@ -77289,6 +77310,20 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
+        "sending_domains_organisation_id_organisations_id_fk": {
+          "name": "sending_domains_organisation_id_organisations_id_fk",
+          "tableFrom": "sending_domains",
+          "tableTo": "organisations",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "sending_domains_created_by_accounts_id_fk": {
           "name": "sending_domains_created_by_accounts_id_fk",
           "tableFrom": "sending_domains",
@@ -77312,10 +77347,22 @@
           "columns": [
             "store_id"
           ]
+        },
+        "sending_domains_owner_key": {
+          "name": "sending_domains_owner_key",
+          "nullsNotDistinct": true,
+          "columns": [
+            "store_id",
+            "organisation_id"
+          ]
         }
       },
       "policies": {},
       "checkConstraints": {
+        "sending_domains_one_owner": {
+          "name": "sending_domains_one_owner",
+          "value": "\"commerce\".\"sending_domains\".\"store_id\" is null or \"commerce\".\"sending_domains\".\"organisation_id\" is null"
+        },
         "sending_domains_ses_status": {
           "name": "sending_domains_ses_status",
           "value": "\"commerce\".\"sending_domains\".\"ses_status\" in ('none', 'pending', 'verified', 'failed')"

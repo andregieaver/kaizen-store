@@ -5825,8 +5825,13 @@ export const sendingDomains = commerce.table(
   "sending_domains",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** Null for Kaizena Flow's own. */
+    /** Null for Kaizena Flow's own and for an account's. */
     storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /**
+     * An account's own (D874): every store of the account without its own sends from it. Null for a store's and for Kaizena Flow's own; a row
+     * is one of the three.
+     */
+    organisationId: uuid("organisation_id").references(() => organisations.id, { onDelete: "cascade" }),
     /** The registrable domain or a subdomain of it, lower case, without a trailing dot. */
     domain: text("domain").notNull(),
     /** The part before the @ (`news`, `hello`, `butikk`, …). */
@@ -5856,7 +5861,11 @@ export const sendingDomains = commerce.table(
     updatedAt: updatedAt(),
   },
   (t) => [
+    // One per store, per account and Kaizena Flow's own (D874). The older one per store goes once the code that names it has been replaced.
     unique("sending_domains_store_key").on(t.storeId).nullsNotDistinct(),
+    unique("sending_domains_owner_key").on(t.storeId, t.organisationId).nullsNotDistinct(),
+    check("sending_domains_one_owner", sql`${t.storeId} is null or ${t.organisationId} is null`),
+    index("sending_domains_organisation_idx").on(t.organisationId),
     check("sending_domains_ses_status", sql`${t.sesStatus} in ('none', 'pending', 'verified', 'failed')`),
     check("sending_domains_ses_records", sql`jsonb_typeof(${t.sesRecords}) = 'array' and jsonb_array_length(${t.sesRecords}) <= 10`),
     check("sending_domains_ses_problem", sql`${t.sesProblem} is null or char_length(${t.sesProblem}) between 1 and 500`),

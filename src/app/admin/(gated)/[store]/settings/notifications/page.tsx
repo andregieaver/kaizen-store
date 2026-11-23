@@ -15,7 +15,7 @@ import { listNotifications } from "@/server/notifications";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStoreDomains } from "@/server/domains";
 import { listPickupPlaces } from "@/server/pickup";
-import { getSendingDomain, sendingDomainView } from "@/server/sending-domains";
+import { accountSender, getSendingDomain, sendingDomainView } from "@/server/sending-domains";
 
 import { sendingDomainAction, switchNotificationAction } from "./actions";
 
@@ -33,12 +33,14 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
   const lang = adminLangOf(member.account.adminLocale);
   const words = NOTIFICATIONS_WORDS[lang];
   const w = words.emails;
-  const [items, places, areas, sending, domains] = await Promise.all([
+  const [items, places, areas, sending, domains, inherited] = await Promise.all([
     listNotifications(store.id),
     listPickupPlaces(store.id),
     listLocalAreas(store.id),
     getSendingDomain(store.id),
     listStoreDomains(store.id),
+    // Without its own, the store sends from its account's address while that is verified (D874).
+    accountSender(store.id),
   ]);
   // The store's own domain is filled in for a new sending domain (D727): the primary one, else the first active.
   const ownDomain = (domains.find((d) => d.isPrimary && d.status === "active") ?? domains.find((d) => d.status === "active"))?.hostname ?? null;
@@ -49,7 +51,9 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
   const sd = words.sendingDomain;
   // The phone's line for the sending address (round 41, D737): where emails go from now.
   const sendingLine = !view
-    ? w.phone.shared
+    ? inherited
+      ? fillWords(sd.verified, { from: inherited })
+      : w.phone.shared
     : view.status === "verified"
       ? fillWords(sd.verified, { from: view.from })
       : fillWords(view.status === "failed" ? sd.failed : sd.pending, { domain: view.domain });
@@ -76,6 +80,7 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
             action={canWrite ? sendingDomainAction.bind(null, store.slug) : null}
             display={ADMIN_LANG_FACTS[lang].tag}
             timeZone={store.timeZone}
+            leads={inherited ? { shared: fillWords(sd.inherited, { from: inherited }) } : undefined}
           />
         </PhoneRow>
       </PhoneRows>
