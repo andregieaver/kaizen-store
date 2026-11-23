@@ -8,6 +8,7 @@ import { emailSettings, listEmails } from "@/server/email";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { getSendingDomain, sendingDomainView } from "@/server/sending-domains";
 import { pausedStores } from "@/server/sending-guard";
+import { sesSettings } from "@/server/ses";
 import { SendingDomainCard } from "@/components/admin/sending-domain-card";
 
 import { platformSendingDomainAction } from "./actions";
@@ -31,6 +32,9 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
   const w = PLATFORM_WORDS[lang].emails;
   const [emails, settings, sending, paused] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings()), getSendingDomain(null), pausedStores()]);
   const webhook = emailEventsSetup() === "ok";
+  // Amazon SES for newsletters and flows (D872), set up or not.
+  const ses = sesSettings();
+  const wb = NOTIFICATIONS_WORDS[lang].sendingDomain.bulk;
   // Round 16 (D650): a sentence of what went, the setup a fold, chips for what to show, and the emails by day.
   const asked = (await searchParams).show;
   const show = isEmailShow(asked) ? asked : "all";
@@ -69,6 +73,21 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
                 <span className="font-mono text-xs">{"https://kaizenaflow.com/api/resend/webhook"}</span>
                 {w.noWebhookEnd} <span className="font-mono text-xs">{"RESEND_WEBHOOK_SECRET"}</span>.
               </p>
+            )}
+            {ses ? (
+              <>
+                <p>{fillWords(wb.ses, { region: ses.region })}</p>
+                {!ses.topicArn && <p className="text-muted">{fillWords(wb.noEvents, { url: "https://kaizenaflow.com/api/ses/events", name: "AWS_SES_EVENTS_TOPIC_ARN" })}</p>}
+              </>
+            ) : (
+              <div className="flex flex-col gap-1 text-muted">
+                <p>{wb.resend}</p>
+                <ul className="list-disc pl-5 font-mono text-xs">
+                  {["AWS_SES_ACCESS_KEY_ID", "AWS_SES_SECRET_ACCESS_KEY", "AWS_SES_CONFIGURATION_SET", "AWS_SES_EVENTS_TOPIC_ARN"].map((name) => (
+                    <li key={name}>{name}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
       </Card>

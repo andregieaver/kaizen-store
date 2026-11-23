@@ -1,6 +1,6 @@
 {
-  "id": "d718ac65-37cb-4654-8a6e-1b67bfb95b26",
-  "prevId": "81dc25e4-3fe3-48ac-94ba-97e5ada9887d",
+  "id": "5d950c89-c241-40c6-b125-4c494922df10",
+  "prevId": "d718ac65-37cb-4654-8a6e-1b67bfb95b26",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -77216,6 +77216,26 @@
           "primaryKey": false,
           "notNull": false
         },
+        "ses_status": {
+          "name": "ses_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "ses_records": {
+          "name": "ses_records",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "ses_problem": {
+          "name": "ses_problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -77296,6 +77316,18 @@
       },
       "policies": {},
       "checkConstraints": {
+        "sending_domains_ses_status": {
+          "name": "sending_domains_ses_status",
+          "value": "\"commerce\".\"sending_domains\".\"ses_status\" in ('none', 'pending', 'verified', 'failed')"
+        },
+        "sending_domains_ses_records": {
+          "name": "sending_domains_ses_records",
+          "value": "jsonb_typeof(\"commerce\".\"sending_domains\".\"ses_records\") = 'array' and jsonb_array_length(\"commerce\".\"sending_domains\".\"ses_records\") <= 10"
+        },
+        "sending_domains_ses_problem": {
+          "name": "sending_domains_ses_problem",
+          "value": "\"commerce\".\"sending_domains\".\"ses_problem\" is null or char_length(\"commerce\".\"sending_domains\".\"ses_problem\") between 1 and 500"
+        },
         "sending_domains_domain": {
           "name": "sending_domains_domain",
           "value": "\"commerce\".\"sending_domains\".\"domain\" ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$' and char_length(\"commerce\".\"sending_domains\".\"domain\") <= 253"

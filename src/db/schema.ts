@@ -5843,12 +5843,23 @@ export const sendingDomains = commerce.table(
     problem: text("problem"),
     checkedAt: timestamp("checked_at", { withTimezone: true }),
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    /**
+     * The domain at Amazon SES (D872), which sends its broadcasts and flows once `verified`: `none` (SES is not set up, or not asked yet),
+     * `pending`, `verified`, `failed`. Its records (`ses_records`, three DKIM CNAMEs and the MAIL FROM's MX and SPF on `ses.`) are kept apart
+     * from Resend's, which Resend's own check rewrites.
+     */
+    sesStatus: text("ses_status").notNull().default("none"),
+    sesRecords: jsonb("ses_records").notNull().default(sql`'[]'::jsonb`),
+    sesProblem: text("ses_problem"),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("sending_domains_store_key").on(t.storeId).nullsNotDistinct(),
+    check("sending_domains_ses_status", sql`${t.sesStatus} in ('none', 'pending', 'verified', 'failed')`),
+    check("sending_domains_ses_records", sql`jsonb_typeof(${t.sesRecords}) = 'array' and jsonb_array_length(${t.sesRecords}) <= 10`),
+    check("sending_domains_ses_problem", sql`${t.sesProblem} is null or char_length(${t.sesProblem}) between 1 and 500`),
     index("sending_domains_created_by_idx").on(t.createdBy),
     check("sending_domains_domain", sql`${t.domain} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$' and char_length(${t.domain}) <= 253`),
     check("sending_domains_from_local", sql`${t.fromLocal} ~ '^[a-z0-9]([a-z0-9._-]{0,38}[a-z0-9])?$'`),

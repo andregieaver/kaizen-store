@@ -10,8 +10,12 @@ import type { RenderedEmail } from "@/lib/email-layout";
 import { emailSettings, type EmailSettings } from "@/lib/email-settings";
 import { emailClassOf } from "@/lib/personal-data";
 import { isReservedAddress, RESERVED_NOTE } from "@/lib/reserved-address";
+import type { SesEnv } from "@/lib/env";
+import { SES_KINDS } from "@/lib/ses";
 
-import { senderFor } from "./sending-domains";
+import { log } from "./log";
+import { marketingRoute, senderFor } from "./sending-domains";
+import { deliverSes, deliverSesMany, sesSettings, type SesMessage } from "./ses";
 import { deskReplyTo } from "./support-reply-to";
 import { col, typedRow } from "./typed-rows";
 
@@ -165,6 +169,53 @@ export async function deliverBatch(
   return one;
 }
 
+/** One kept email as SES takes it (D872). */
+function sesMessage(settings: EmailSettings, message: ResendMessage): SesMessage {
+  return {
+    fromName: senderName(message.fromName),
+    fromAddress: message.fromAddress || settings.from,
+    to: message.to,
+    replyTo: message.replyTo ?? null,
+    subject: message.email.subject,
+    html: message.email.html,
+    text: message.email.text,
+    headers: message.headers,
+    kind: message.kind,
+    storeId: message.storeId,
+  };
+}
+
+/** Whether SES's answer asks for Resend instead: refused outright (not busy, not down, not maybe sent). */
+const sesRefused = (delivery: Delivery) => !delivery.ok && !/^(429|5\d\d)|^uncertain/.test(delivery.error);
+
+/** A marketing email SES refused outright (its domain unverified since the last check, the SES account held): sent through Resend instead. */
+async function throughResend(settings: EmailSettings, id: string, message: ResendMessage, fetcher: typeof fetch): Promise<Delivery> {
+  log("warn", "email.ses_refused", { kind: message.kind, storeId: message.storeId });
+  return deliver(settings, `${id}-resend`, { ...message, fromAddress: await senderFor(message.storeId) }, fetcher);
+}
+
+/** A kept marketing email to send, and how its store's marketing goes (`marketingRoute()`). */
+export type MarketingItem = { id: string; message: ResendMessage; via: "ses" | "resend" };
+
+/**
+ * Broadcasts' emails (D297, D872): those of stores whose marketing goes through SES are sent there, a few at a time, and the rest through
+ * Resend's batch; one result per email, in order. An email SES refuses outright goes through Resend instead.
+ */
+export async function deliverMarketingBatch(settings: EmailSettings, ses: SesEnv | null, items: readonly MarketingItem[], fetcher: typeof fetch = fetch): Promise<Delivery[]> {
+  const out: Delivery[] = new Array(items.length);
+  const viaSes = ses ? items.map((item, i) => ({ item, i })).filter(({ item }) => item.via === "ses") : [];
+  const viaResend = items.map((item, i) => ({ item, i })).filter(({ item }) => !ses || item.via !== "ses");
+  if (ses && viaSes.length > 0) {
+    const sent = await deliverSesMany(ses, viaSes.map(({ item }) => sesMessage(settings, item.message)), fetcher);
+    for (const [k, { item, i }] of viaSes.entries()) out[i] = sesRefused(sent[k]) ? await throughResend(settings, item.id, item.message, fetcher) : sent[k];
+  }
+  if (viaResend.length > 0) {
+    const sent = await deliverBatch(settings, viaResend.map(({ item }) => ({ id: item.id, message: item.message })), fetcher);
+    for (const [k, { i }] of viaResend.entries()) out[i] = sent[k];
+  }
+  return out;
+}
+
 /** A display name safe in an email header: no quotes, line breaks or angle brackets. */
 export function senderName(name: string): string {
   return name.replace(/["\r\n<>\\]/g, "").trim().slice(0, 60) || "Kaizena Flow";
@@ -303,9 +354,19 @@ export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
   }
   // A reply to an email about an order goes to the support desk when it takes them (E1.4); asked only for an email that is sent.
   const desk = message.replyToDesk && message.storeId ? await deskReplyTo(message.storeId).catch(() => null) : null;
-  // The store's own address while its domain is verified (D727); the shared one otherwise.
-  const fromAddress = await senderFor(message.storeId);
-  const delivery = await deliver(settings, id, { ...message, ...(desk && { replyTo: desk }), fromAddress });
+  // A store's marketing email through Amazon SES while it is set up and the sender's domain verified there (D872); every other email, and
+  // marketing without SES, through Resend from the store's own address while its domain is verified (D727), the shared one otherwise.
+  const ses = SES_KINDS.includes(message.kind) ? sesSettings() : null;
+  const route = ses ? await marketingRoute(message.storeId, settings.from, true) : null;
+  const fromAddress = route ? route.from : await senderFor(message.storeId);
+  const outgoing: ResendMessage = { ...message, ...(desk && { replyTo: desk }), fromAddress };
+  let delivery: Delivery;
+  if (ses && route?.via === "ses") {
+    delivery = await deliverSes(ses, sesMessage(settings, outgoing));
+    if (sesRefused(delivery)) delivery = await throughResend(settings, id, outgoing, fetch);
+  } else {
+    delivery = await deliver(settings, id, outgoing);
+  }
   if (delivery.ok) {
     await db().execute(sql`
       update commerce.email_messages set status = 'sent', provider_reference = ${delivery.id}, sent_at = now(), error = null

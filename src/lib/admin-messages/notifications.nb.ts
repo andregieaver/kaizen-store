@@ -1478,6 +1478,12 @@ export const notificationsNb: NotificationsMessages = {
     checkedAt: "Sist sjekket {at}.",
     readOnly: "Bare den som kan endre innstillinger, kan sette opp dette.",
     noAccess: "Du kan ikke endre innstillingene til denne butikken.",
+    /** Platform → Emails: which way newsletters and flows go (D872). */
+    bulk: {
+      ses: "Nyhetsbrev og flyter går gjennom Amazon SES i {region} når avsenderens domene er bekreftet der, til omtrent en tidel av prisen; ordre-e-poster går fortsatt gjennom Resend.",
+      resend: "Nyhetsbrev og flyter går også gjennom Resend. For å sende dem gjennom Amazon SES i Irland til omtrent en tidel av prisen legger du inn disse i Vercel:",
+      noEvents: "Returer og søppelpostmerkinger fra SES meldes ikke tilbake ennå: abonner {url} over HTTPS på SNS-emnet konfigurasjonssettet sender hendelsene sine til, og legg emnets ARN inn i Vercel som {name}.",
+    },
     done: {
       added: "Lagt til. Vi ber Resend se etter postene.",
       checked: "Sjekket.",

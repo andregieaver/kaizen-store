@@ -215,6 +215,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `daily.sending-domains` asks Resend again about pending and failed domains, and about verified ones each week, so one that breaks goes
   back to the shared address. The card sits on Settings, Notifications (`settings:write`) and on Platform, Emails (`settings`). Adding a
   domain needs Resend's key to have full access; a sending-only key is refused in plain words.
+- **Marketing email through Amazon SES (D872, `src/server/ses.ts`, `src/lib/ses.ts`, `/api/ses/events`)**: with `AWS_SES_*` set, a
+  store's broadcasts and flows (`SES_KINDS`) go through SES in the EU (`marketingRoute()`: its own domain once SES verified it, else
+  Resend's way; the shared address through SES only when it is on Kaizena Flow's own domain and SES verified that). Order, account and
+  staff emails never do. Each sending domain is also an SES identity (Easy DKIM, MAIL FROM on `ses.`), its records in `ses_records`
+  beside Resend's, written and checked the same way. An SES call that broke off is never repeated (`UNCERTAIN`); an outright refusal goes
+  through Resend. SES's events come only from `AWS_SES_EVENTS_TOPIC_ARN`, signed by SNS, and are recorded by `applyEmailEvent()`.
 
 ## Flows (D767, `docs/flows.md`, `src/lib/flows.ts` pure, `src/server/flows.ts`, `/admin/{store}/flows`)
 

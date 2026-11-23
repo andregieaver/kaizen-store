@@ -48,7 +48,7 @@ import { audit } from "./auth";
 import { brandOf } from "./brand";
 import { campaignFacts, emailMarket, findProductFacts } from "./broadcast-facts";
 import { listTiers } from "./customer-tiers";
-import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
+import { BATCH_MAX, deliverMarketingBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
 import { getContactPolicy, recentContacts } from "./contact-policy";
 import { clickRef, emailClicksPrune, keepClick } from "./email-clicks";
 import { recordFlowClick } from "./flows";
@@ -59,7 +59,8 @@ import { col, typedRow, typedRows } from "./typed-rows";
 import { emailLookOf } from "./email-look";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
-import { senderFor } from "./sending-domains";
+import { marketingRoute, type MarketingRoute } from "./sending-domains";
+import { sesSettings } from "./ses";
 import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
@@ -726,13 +727,17 @@ async function sendBatch(
     }
     return;
   }
-  // Each store's own address while its domain is verified (D727); a batch may hold several stores' broadcasts.
-  const fromAddresses = new Map<string, string | null>();
-  for (const item of toSend) if (!fromAddresses.has(item.r.storeId)) fromAddresses.set(item.r.storeId, await senderFor(item.r.storeId));
-  const deliveries: Delivery[] = await deliverBatch(
+  // Each store's own address while its domain is verified (D727), through SES while it is set up and has verified the sender (D872); a
+  // batch may hold several stores' broadcasts.
+  const ses = sesSettings();
+  const routes = new Map<string, MarketingRoute>();
+  for (const item of toSend) if (!routes.has(item.r.storeId)) routes.set(item.r.storeId, await marketingRoute(item.r.storeId, settings.from, ses !== null));
+  const deliveries: Delivery[] = await deliverMarketingBatch(
     settings,
+    ses,
     toSend.map((item) => ({
       id: item.id,
+      via: routes.get(item.r.storeId)?.via ?? "resend",
       message: {
         storeId: item.r.storeId,
         kind: "marketing.broadcast",
@@ -741,7 +746,7 @@ async function sendBatch(
         fromName: item.store.name,
         replyTo: item.store.details.contactEmail ?? null,
         headers: item.email.headers,
-        fromAddress: fromAddresses.get(item.r.storeId) ?? null,
+        fromAddress: routes.get(item.r.storeId)?.from ?? null,
       },
     })),
     fetcher,

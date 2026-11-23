@@ -506,6 +506,17 @@ with its reasons and anchor, and the Plans page lists the latest. The eval plays
 (`platform-request-asks-prices`). The store side is the autopilot's catalogue level, largest price change and lowest margin (D309, D605),
 through `commerce.set_price`. Allowances, trial and grace lengths and founding offers stay the platform owner's to set on the Extensions page.
 
+**E10, planned in three parts (23 November 2026).** The owner's answers: a store's own sending domain stays in every plan (it sends the
+order emails too; open question 5 settled); over the send allowance or the contact limit the account is asked to move up a size, and flows
+and order emails keep sending; use beyond the support desk's and the people allowances is billed as used, with a cap the owner may set (E11).
+
+1. **SES for marketing mail (D872, built 23 November 2026).** Broadcasts and flows go through Amazon SES in Ireland once the sender's domain
+   is verified there, order emails stay on Resend; each sending domain is also an identity at SES with its own records; SES's events come
+   back through SNS to `/api/ses/events` and count for the sending guard. Off until `AWS_SES_*` is set in Vercel.
+2. **The account's sending domain**: one domain for the account, used by each of its stores without its own; a workspace sends from it.
+3. **The send allowance**: marketing emails and contacts counted per account against the size it has; told at 80 %, and at the limit new
+   broadcasts wait with one button to move up.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
@@ -555,5 +566,4 @@ Settled by the owner when the step that needs it starts:
 3. Yearly extension prices mid-period: prorated to the account's renewal date (proposed).
 4. How long read-only data is kept for an account that never comes back: while the account lives (proposed), then the usual
    closing rules (D171, D377).
-5. A store's own sending domain (D727) also sends its order emails, so it is kept in the core for now (E3 left its card in place); the
-   spec put it with Email automation. Confirm which.
+5. ~~A store's own sending domain: core or Email automation?~~ Settled 23 November 2026: every plan (it sends the order emails too).

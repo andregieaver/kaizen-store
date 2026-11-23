@@ -181,3 +181,110 @@ describe("a store's own sending domain (D727)", () => {
     await expect(db().execute(sql`insert into commerce.sending_domains (store_id, domain, from_local) values (null, ${`x-${run}.no`}, '.bad')`)).rejects.toThrow();
   });
 });
+
+/** Resend and Amazon SES in memory together: SES verifies a domain once `ses.verified` is set. */
+function fakeBoth() {
+  const resend = fakeResend({ verifyAfter: 0 });
+  const ses = { verified: false, failed: false, identities: new Set<string>(), calls: [] as string[] };
+  const tokens = ["aaaaaaaaaaaaaaaa1111111111111111", "bbbbbbbbbbbbbbbb2222222222222222", "cccccccccccccccc3333333333333333"];
+  const fetcher = (async (url: string | URL, init?: RequestInit) => {
+    const u = String(url);
+    if (!u.startsWith("https://email.eu-west-1.amazonaws.com")) return resend.fetcher(url, init);
+    const path = u.replace("https://email.eu-west-1.amazonaws.com", "");
+    const method = init?.method ?? "GET";
+    ses.calls.push(`${method} ${path}`);
+    const json = (status: number, value: unknown, headers: Record<string, string> = {}) => new Response(JSON.stringify(value), { status, headers });
+    const name = decodeURIComponent(path.split("/")[4] ?? "");
+    if (method === "POST" && path === "/v2/email/identities") {
+      ses.identities.add(String(JSON.parse(String(init?.body)).EmailIdentity));
+      return json(200, { IdentityType: "DOMAIN", VerifiedForSendingStatus: false, DkimAttributes: { Status: "PENDING", Tokens: tokens } });
+    }
+    if (method === "PUT") return json(200, {});
+    if (method === "DELETE") {
+      ses.identities.delete(name);
+      return json(200, {});
+    }
+    if (!ses.identities.has(name)) return json(404, { message: "not found" }, { "x-amzn-errortype": "NotFoundException:" });
+    const status = ses.failed ? "FAILED" : ses.verified ? "SUCCESS" : "PENDING";
+    return json(200, { VerifiedForSendingStatus: ses.verified, DkimAttributes: { Status: status, Tokens: tokens }, MailFromAttributes: { MailFromDomainStatus: status } });
+  }) as typeof fetch;
+  return { fetcher, ses, resend };
+}
+
+describe("Amazon SES beside Resend for marketing email (D872)", () => {
+  const sesEnv = { accessKeyId: "AKIAEXAMPLEEXAMPLE12", secretAccessKey: "secretsecretsecretsecret", region: "eu-west-1", configurationSet: null, topicArn: null };
+  let sesStore: string;
+  const sesApex = `ses-${run}.shop`;
+
+  beforeAll(async () => {
+    sesStore = await makeStore(`ses-${run}`);
+    await db().execute(sql`insert into commerce.dns_zones (store_id, apex) values (${sesStore}::uuid, ${sesApex})`);
+  });
+
+  it("makes the domain an identity at SES too, writes SES's records beside Resend's, and sends marketing through SES once SES has verified it", async () => {
+    const dns = fakeHost([]);
+    const both = fakeBoth();
+    const deps = { fetcher: both.fetcher, settings, ses: sesEnv, host: dns.host };
+    const added = await sending.addSendingDomain(owner, sesStore, { domain: sesApex }, deps);
+    if (!added.ok) throw new Error(added.problems.join());
+    expect(both.ses.calls.slice(0, 3)).toEqual(["POST /v2/email/identities", `PUT /v2/email/identities/${sesApex}/mail-from`, `GET /v2/email/identities/${sesApex}`]);
+    expect(added.domain.sesStatus).toBe("pending");
+    expect(added.domain.sesRecords).toHaveLength(5);
+    expect(dns.records.map((r) => `${r.type} ${r.name}`).sort()).toEqual([
+      "CNAME aaaaaaaaaaaaaaaa1111111111111111._domainkey",
+      "CNAME bbbbbbbbbbbbbbbb2222222222222222._domainkey",
+      "CNAME cccccccccccccccc3333333333333333._domainkey",
+      "MX send",
+      "MX ses",
+      "TXT resend._domainkey",
+      "TXT send",
+      "TXT ses",
+    ]);
+    // One list for the owner: Resend's three, then SES's five.
+    expect(sending.sendingDomainView(added.domain).records).toHaveLength(8);
+
+    // Resend verified, SES still waiting: marketing from the store's own address through Resend.
+    await sending.checkSendingDomain(owner, sesStore, deps);
+    expect(await sending.marketingRoute(sesStore, settings.from, true)).toEqual({ via: "resend", from: `news@${sesApex}` });
+    both.ses.verified = true;
+    const checked = await sending.checkSendingDomain(owner, sesStore, deps);
+    expect(checked.ok && checked.domain.sesStatus).toBe("verified");
+    expect(await sending.marketingRoute(sesStore, settings.from, true)).toEqual({ via: "ses", from: `news@${sesApex}` });
+    // Without SES set up, Resend as before; order emails never ask (`senderFor()`).
+    expect(await sending.marketingRoute(sesStore, settings.from, false)).toEqual({ via: "resend", from: `news@${sesApex}` });
+    expect(await sending.senderFor(sesStore)).toBe(`news@${sesApex}`);
+
+    expect(await sending.removeSendingDomain(owner, sesStore, deps)).toEqual({ ok: true });
+    expect(both.ses.identities.has(sesApex)).toBe(false);
+  });
+
+  it("makes the identity again after SES gave up on its records", async () => {
+    const both = fakeBoth();
+    const deps = { fetcher: both.fetcher, settings, ses: sesEnv, host: fakeHost([]).host };
+    const added = await sending.addSendingDomain(owner, sesStore, { domain: sesApex }, deps);
+    if (!added.ok) throw new Error(added.problems.join());
+    both.ses.failed = true;
+    await sending.checkSendingDomain(owner, sesStore, deps);
+    expect((await sending.getSendingDomain(sesStore))?.sesStatus).toBe("failed");
+    both.ses.failed = false;
+    both.ses.calls.length = 0;
+    await sending.checkSendingDomain(owner, sesStore, deps);
+    expect(both.ses.calls[0]).toBe(`DELETE /v2/email/identities/${sesApex}`);
+    expect(both.ses.calls[1]).toBe("POST /v2/email/identities");
+    expect((await sending.getSendingDomain(sesStore))?.sesStatus).toBe("pending");
+    await sending.removeSendingDomain(owner, sesStore, deps);
+  });
+
+  it("sends a store without its own domain through SES from the shared address, once Kaizena Flow's own domain is verified there", async () => {
+    const both = fakeBoth();
+    both.ses.verified = true;
+    const shared = `butikk@platform-ses-${run}.com`;
+    const added = await sending.addSendingDomain(owner, null, { domain: `platform-ses-${run}.com` }, { fetcher: both.fetcher, settings, ses: sesEnv });
+    if (!added.ok) throw new Error(added.problems.join());
+    expect(added.domain.sesStatus).toBe("verified");
+    expect(await sending.marketingRoute(sesStore, shared, true)).toEqual({ via: "ses", from: null });
+    // The shared address on another domain: Resend.
+    expect(await sending.marketingRoute(sesStore, "butikk@elsewhere.com", true)).toEqual({ via: "resend", from: null });
+    await sending.removeSendingDomain(owner, null, { fetcher: both.fetcher, settings, ses: sesEnv });
+  });
+});

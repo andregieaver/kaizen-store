@@ -1221,6 +1221,12 @@ export const notificationsEn = {
     checkedAt: "Last checked {at}.",
     readOnly: "Only someone who can change settings can set this up.",
     noAccess: "You can't change this store's settings.",
+    /** Platform → Emails: which way newsletters and flows go (D872). */
+    bulk: {
+      ses: "Newsletters and flows go through Amazon SES in {region} once a sender's domain is verified there, at about a tenth of the price; order emails stay on Resend.",
+      resend: "Newsletters and flows go through Resend too. To send them through Amazon SES in Ireland at about a tenth of the price, add these in Vercel:",
+      noEvents: "SES's bounces and spam reports are not reported back yet: subscribe {url} over HTTPS to the SNS topic the configuration set sends its events to, and put the topic's ARN in Vercel as {name}.",
+    },
     done: {
       added: "Added. We'll tell Resend to look for the records.",
       checked: "Checked.",

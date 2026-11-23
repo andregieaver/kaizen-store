@@ -1,0 +1,6 @@
+ALTER TABLE "commerce"."sending_domains" ADD COLUMN "ses_status" text DEFAULT 'none' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD COLUMN "ses_records" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD COLUMN "ses_problem" text;--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD CONSTRAINT "sending_domains_ses_status" CHECK ("commerce"."sending_domains"."ses_status" in ('none', 'pending', 'verified', 'failed'));--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD CONSTRAINT "sending_domains_ses_records" CHECK (jsonb_typeof("commerce"."sending_domains"."ses_records") = 'array' and jsonb_array_length("commerce"."sending_domains"."ses_records") <= 10);--> statement-breakpoint
+ALTER TABLE "commerce"."sending_domains" ADD CONSTRAINT "sending_domains_ses_problem" CHECK ("commerce"."sending_domains"."ses_problem" is null or char_length("commerce"."sending_domains"."ses_problem") between 1 and 500);

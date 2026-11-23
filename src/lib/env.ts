@@ -207,3 +207,34 @@ export function ebayApp(
   if (!/^[A-Za-z0-9._-]{4,200}$/.test(ruName)) throw new Error("EBAY_RU_NAME must be the RuName eBay gave the app's return address.");
   return { clientId, clientSecret, ruName };
 }
+
+export type SesEnv = { accessKeyId: string; secretAccessKey: string; region: string; configurationSet: string | null; topicArn: string | null };
+
+/**
+ * Amazon SES for bulk marketing email (D748 section 10, D872): an IAM user's access key with SES's sending and identity rights, the region
+ * (Ireland unless told otherwise, and always inside the EU), the configuration set whose events go to SNS, and the SNS topic those events
+ * come from (`/api/ses/events` takes no other). Null without both keys: marketing email goes through Resend, as before.
+ */
+export function sesEnv(
+  source: Record<string, string | undefined> = {
+    AWS_SES_ACCESS_KEY_ID: process.env.AWS_SES_ACCESS_KEY_ID,
+    AWS_SES_SECRET_ACCESS_KEY: process.env.AWS_SES_SECRET_ACCESS_KEY,
+    AWS_SES_REGION: process.env.AWS_SES_REGION,
+    AWS_SES_CONFIGURATION_SET: process.env.AWS_SES_CONFIGURATION_SET,
+    AWS_SES_EVENTS_TOPIC_ARN: process.env.AWS_SES_EVENTS_TOPIC_ARN,
+  },
+): SesEnv | null {
+  const accessKeyId = source.AWS_SES_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = source.AWS_SES_SECRET_ACCESS_KEY?.trim();
+  if (!accessKeyId || !secretAccessKey) return null;
+  if (!/^(AKIA|ASIA)[A-Z0-9]{12,124}$/.test(accessKeyId)) throw new Error("AWS_SES_ACCESS_KEY_ID must be an AWS access key id (AKIA…).");
+  if (secretAccessKey.length < 20 || secretAccessKey.length > 128 || /\s/.test(secretAccessKey)) throw new Error("AWS_SES_SECRET_ACCESS_KEY must be the secret of that access key.");
+  const region = source.AWS_SES_REGION?.trim() || "eu-west-1";
+  // Mail is made and sent inside the EU (CLAUDE.md): an SES region outside it is refused.
+  if (!/^eu-(west|central|north|south)-[1-9]$/.test(region)) throw new Error("AWS_SES_REGION must be an SES region inside the EU, such as eu-west-1.");
+  const configurationSet = source.AWS_SES_CONFIGURATION_SET?.trim() || null;
+  if (configurationSet && !/^[A-Za-z0-9_-]{1,64}$/.test(configurationSet)) throw new Error("AWS_SES_CONFIGURATION_SET must be the name of an SES configuration set.");
+  const topicArn = source.AWS_SES_EVENTS_TOPIC_ARN?.trim() || null;
+  if (topicArn && !/^arn:aws:sns:eu-[a-z]+-\d:\d{12}:[A-Za-z0-9_-]{1,256}$/.test(topicArn)) throw new Error("AWS_SES_EVENTS_TOPIC_ARN must be the ARN of an SNS topic inside the EU.");
+  return { accessKeyId, secretAccessKey, region, configurationSet, topicArn };
+}
