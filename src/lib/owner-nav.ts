@@ -83,6 +83,28 @@ export function ownerTabs(who: OwnerWho, counts: { support?: number } = {}): (Li
   ];
 }
 
+/** Someone shown every tab of the level: the section a page is in is the same for everyone, whatever each person is shown. */
+export const OWNER_EVERY_TAB: OwnerWho = { owner: true, work: true, support: true, books: true, domains: true };
+let marking: ReturnType<typeof ownerTabs> | undefined;
+
+/**
+ * The section a page after `/admin` is in: the label of the tab the frame marks on it, by its rule (`currentIndex()`, D873: the tab whose
+ * address the page is deepest inside, an exact tab's own address for itself only). The admin map's groups (D881), so a page's section in
+ * the map is the word above its title; `page-names.test.ts` holds the two equal. Home for the control center; undefined in no tab.
+ */
+export function ownerSectionOf(path: string): string | undefined {
+  marking ??= ownerTabs(OWNER_EVERY_TAB);
+  const at = `${OWNER_BASE}${path}`;
+  let found: string | undefined;
+  let depth = -1;
+  for (const tab of marking) {
+    for (const [address, below] of [[tab.href, !tab.exact] as const, ...(tab.also ?? []).map((a) => [a, true] as const)]) {
+      if (address.length > depth && (at === address || (below && at.startsWith(`${address}/`)))) [found, depth] = [tab.label, address.length];
+    }
+  }
+  return found;
+}
+
 /** The sidebar of each section: none but Account's (for owners), which holds the pages that concern the person and their stores. */
 export function ownerAreas(who: OwnerWho): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
   return [

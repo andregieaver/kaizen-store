@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { USAGE_METRICS } from "@/lib/usage-labels";
 import { formatLimit, formatUsage } from "@/lib/usage-format";
 import { safeClientName } from "@/lib/oauth";
-import { ADMIN_PAGES, findPages, pageHref, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
+import { ADMIN_PAGES, findPages, pageHref, pageName, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { PAGES_WORDS } from "@/lib/admin-words/pages";
 import { groupUsage, summarizeUsage, withOwner } from "@/lib/ai-usage";
 import { ASSISTANT_SKILLS } from "@/lib/assistant-skills";
@@ -138,7 +138,7 @@ function describe(ctx: ManagerContext, page: (typeof ADMIN_PAGES)[number]) {
   const params = pageParams(page).filter((name) => !(name === "store" && ctx.store));
   return {
     id: page.id,
-    title: page.title,
+    title: pageName(page),
     group: page.group,
     what: page.what,
     ...(page.tasks && { can_do: page.tasks }),
@@ -155,11 +155,11 @@ async function findAdminPage(ctx: ManagerContext, { question }: ManagerToolInput
 async function openAdminPage(ctx: ManagerContext, { page: id, params }: ManagerToolInput<"open_admin_page">) {
   const page = ADMIN_PAGES.find((p) => p.id === id && (p.area === area(ctx) || p.area === "account"));
   if (!page) return fail(`There is no page "${id}". Use find_admin_page.`);
-  if (!pageOffered(page, ctx.flags)) return fail(`${page.title} is not available here${page.needs === "owner" ? ": it is for owners" : ": its feature is off (Features)"}.`);
+  if (!pageOffered(page, ctx.flags)) return fail(`${pageName(page)} is not available here${page.needs === "owner" ? ": it is for owners" : ": its feature is off (Features)"}.`);
   const href = pageHref(page, params, ctx.store?.slug);
-  if (!href) return fail(`${page.title} needs ${pageParams(page).join(", ")}: look it up first.`);
-  ctx.navigate(href, page.title);
-  return { opened: href, title: page.title, note: "The page is opening for them. Say what to do there in a line or two." };
+  if (!href) return fail(`${pageName(page)} needs ${pageParams(page).join(", ")}: look it up first.`);
+  ctx.navigate(href, pageName(page));
+  return { opened: href, title: pageName(page), note: "The page is opening for them. Say what to do there in a line or two." };
 }
 
 async function useSkill(ctx: ManagerContext, { skill }: ManagerToolInput<"use_skill">) {

@@ -70,6 +70,18 @@ describe("the section above a page's title", () => {
     }
   });
 
+  it.each(["en", "nb"] as const)("says above every page's title its section in the admin map, at all three levels (D881, %s)", (lang) => {
+    const level = { store: [STORE, menus(lang).store], platform: [PLATFORM_BASE, menus(lang).platform], account: [OWNER_BASE, menus(lang).owner] } as const;
+    const wrong: string[] = [];
+    for (const page of ADMIN_PAGES) {
+      const [base, menu] = level[page.area];
+      const want = page.group === "Home" ? undefined : navWord(lang, page.group);
+      const got = eyebrow(header(`${base}${filled(page.path)}`, menu));
+      if (got !== want) wrong.push(`${page.area}:${page.id}: ${got} (${want})`);
+    }
+    expect(wrong).toEqual([]);
+  });
+
   it("names the owner's level's section: Account, Stores, Work; none on the control center", () => {
     const menu = menus("nb").owner;
     expect(eyebrow(header(`${OWNER_BASE}/account/appearance`, menu))).toBe("Konto");

@@ -280,3 +280,19 @@ export function platformAreas(): PlatformPlace[] {
 export function platformNav(counts: Partial<Record<PlatformSection["key"], number>> = {}): { tabs: PlatformTab[]; areas: PlatformPlace[] } {
   return { tabs: platformTabs(counts), areas: platformAreas() };
 }
+
+/**
+ * The section a page after the platform's address is in, by the rule the frame marks its tab by (`currentIndex()`, D873): the one whose
+ * address the page is deepest inside, a page of cards on its own address only; undefined for Home's pages (Home and the AI manager). The
+ * admin map's groups (D881), so a page's section in the map is the word above its title; `page-names.test.ts` holds the two equal.
+ */
+export function platformSectionOf(path: string): PlatformSection | undefined {
+  let found: PlatformSection | undefined;
+  let depth = -1;
+  const consider = (section: PlatformSection | undefined, address: string, below: boolean) => {
+    if (address.length > depth && (path === address || (below && path.startsWith(`${address}/`)))) [found, depth] = [section, address.length];
+  };
+  for (const home of PLATFORM_HOME_PATHS) consider(undefined, home.path, true);
+  for (const section of PLATFORM_SECTIONS) for (const address of platformSectionPaths(section)) consider(section, address, !(section.hub && address === section.start));
+  return found;
+}

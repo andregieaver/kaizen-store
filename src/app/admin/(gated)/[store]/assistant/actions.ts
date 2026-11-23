@@ -63,21 +63,21 @@ export async function assistantHearAction(storeSlug: string, form: FormData) {
 
 /**
  * The name of the admin page the owner is on, for the chat's first suggestion: the admin map stays on the server (bloat review step 0.11).
- * It reads no store data and writes nothing; a path that does not start with /admin is refused. A Norwegian account gets the page's Norwegian title.
+ * It reads no store data and writes nothing; a path that does not start with /admin is refused. Named as the menu names it (D881), in the account's language.
  */
 export async function pageHereAction(storeSlug: string, pathname: string): Promise<string | null> {
   const member = await requireOwner(storeSlug);
   if (typeof pathname !== "string" || pathname.length > 300 || !pathname.startsWith("/admin")) return null;
-  const [{ matchPath }, { PAGES_NB }, { adminLangOf }] = await Promise.all([
+  const [{ matchPath }, { pageNameIn }, { adminLangOf }] = await Promise.all([
     import("@/lib/admin-map"),
-    import("@/lib/admin-messages/pages.nb"),
+    import("@/lib/admin-words/pages"),
     import("@/lib/admin-lang"),
   ]);
   const here = matchPath(pathname);
   const page =
     here && here.page.id !== "assistant" && (here.page.area === "store" || here.page.area === "account") ? here.page : null;
   if (!page) return null;
-  return adminLangOf(member.account.adminLocale) === "nb" ? (PAGES_NB[`${page.area}:${page.id}`]?.title ?? page.title) : page.title;
+  return pageNameIn(adminLangOf(member.account.adminLocale), page);
 }
 
 /** A skill the owner saves, changes or shares (D350), from the Skills tab or *Save as skill*. */

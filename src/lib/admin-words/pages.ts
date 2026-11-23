@@ -5,6 +5,17 @@
  * none of it.
  */
 import type { AdminLang } from "../admin-lang";
+import type { AdminPage } from "../admin-map";
 import { PAGES_NB } from "../admin-messages/pages.nb";
 
 export const PAGES_WORDS: Record<Exclude<AdminLang, "en">, typeof PAGES_NB> = { nb: PAGES_NB };
+
+/**
+ * A page's name in the admin's language, as the menu says it (D881): in English its menu word, or its title where it is not in the menu
+ * (`pageName()`); in Norwegian its title here, which for a page in the menu is the menu's Norwegian word (`admin-pages-nb.test.ts`). What
+ * the page finder, the AI manager's first suggestion and the docs show.
+ */
+export function pageNameIn(lang: AdminLang, page: Pick<AdminPage, "area" | "id" | "title" | "navLabel">): string {
+  const english = page.navLabel ?? page.title;
+  return lang === "en" ? english : (PAGES_WORDS[lang][`${page.area}:${page.id}`]?.title ?? english);
+}

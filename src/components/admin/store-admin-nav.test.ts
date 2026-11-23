@@ -199,6 +199,21 @@ describe("one link marked in each list (D873)", () => {
     expect(tabsAt(`${PLATFORM_BASE}/support/stores`, tabs, areas)).toEqual(["Support"]);
   });
 
+  it("marks on every page of the admin map the tab its group names, at all three levels (D881)", () => {
+    const frames: Record<AdminArea, { base: string; tabs: NavItem[]; areas: NavArea[] }> = {
+      store: { base: storeBase, tabs: store.tabs, areas: store.areas },
+      platform: { base: PLATFORM_BASE, tabs: platformTabs(), areas: platformAreas() },
+      account: { base: OWNER_BASE, tabs: ownerTabs(who), areas: ownerAreas(who) },
+    };
+    const wrong: string[] = [];
+    for (const page of ADMIN_PAGES) {
+      const { base, tabs, areas } = frames[page.area];
+      const got = tabsAt(`${base}${filled(page.path)}`, tabs, areas);
+      if (got.join() !== page.group) wrong.push(`${page.area}:${page.id} ${page.path}: ${got.join() || "none"} (${page.group})`);
+    }
+    expect(wrong).toEqual([]);
+  });
+
   it("marks one section of the owner's level: Work, Support and Books are not also Account's", () => {
     const tabs = ownerTabs(who);
     const areas = ownerAreas(who);

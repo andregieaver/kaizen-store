@@ -6,8 +6,10 @@
  */
 
 import type { ExtensionId } from "./extensions";
+import { ACCOUNT_ITEMS, OWNER_BASE, OWNER_EVERY_TAB, ownerSectionOf, ownerTabs } from "./owner-nav";
+import { PLATFORM_SECTIONS, platformItemsOf, platformSectionOf } from "./platform-nav";
 import { requirementMet, type FeatureId, type FeatureRequirement } from "./store-features";
-import { CUSTOMERS_FEATURE, sectionOf } from "./store-nav";
+import { CUSTOMERS_FEATURE, STORE_SECTIONS, sectionOf } from "./store-nav";
 
 export type AdminArea = "store" | "platform" | "account";
 
@@ -20,9 +22,15 @@ export type AdminPage = {
   area: AdminArea;
   /** After the area's base (`/admin/{store}`, `/admin/platform` or `/admin`), with `[param]`s; "" is the base itself. */
   path: string;
+  /** The page's name: the menu's word where the page is in the menu (`navLabel`), or a fuller name the names test lists with its reason. */
   title: string;
-  /** Where it sits in the admin's navigation. */
+  /**
+   * The section it is in, from the navigation (D881): the label of the tab the frame marks on its address (`sectionOf()`,
+   * `platformSectionOf()`, `ownerSectionOf()`), Home for Home's pages. Never written by hand.
+   */
   group: string;
+  /** The menu's word for it, from the navigation (D881): the label of its sidebar item or of the tab that opens it; none for a page not in the menu. */
+  navLabel?: string;
   /** What the page is for, in a sentence. */
   what: string;
   /** What can be done there, for guiding. */
@@ -36,73 +44,44 @@ export type AdminPage = {
   extension?: ExtensionId;
 };
 
-const store = (id: string, path: string, title: string, group: string, what: string, extra: Partial<AdminPage> = {}): AdminPage => ({
-  id,
-  area: "store",
-  path,
-  title,
-  group,
-  what,
-  ...extra,
-});
-const platform = (id: string, path: string, title: string, group: string, what: string, extra: Partial<AdminPage> = {}): AdminPage => ({
-  id,
-  area: "platform",
-  path,
-  title,
-  group,
-  what,
-  ...extra,
-});
-const account = (id: string, path: string, title: string, what: string, extra: Partial<AdminPage> = {}): AdminPage => ({
-  id,
-  area: "account",
-  path,
-  title,
-  group: "Account",
-  what,
-  ...extra,
-});
+/** A page as written here: its section and its menu word are the navigation's, added below (`placed()`, D881). */
+type MapEntry = Omit<AdminPage, "group" | "navLabel">;
+type Extra = Partial<Omit<MapEntry, "id" | "area" | "path" | "title" | "what">>;
+
+const store = (id: string, path: string, title: string, what: string, extra: Extra = {}): MapEntry => ({ id, area: "store", path, title, what, ...extra });
+const platform = (id: string, path: string, title: string, what: string, extra: Extra = {}): MapEntry => ({ id, area: "platform", path, title, what, ...extra });
+const account = (id: string, path: string, title: string, what: string, extra: Extra = {}): MapEntry => ({ id, area: "account", path, title, what, ...extra });
 
 /**
- * Work (D123) is the owner's: an account-level page in the group Work, offered when a store of the
+ * Work (D123) is the owner's: an account-level page under the Work tab, offered when a store of the
  * person's has Work on. The overview and the settings, where it is switched on, are always offered.
  */
-const work = (id: string, path: string, title: string, what: string, extra: Partial<AdminPage> = {}): AdminPage => ({
-  id,
-  area: "account",
-  path,
-  title,
-  group: "Work",
-  what,
-  needs: "work",
-  ...extra,
-});
+const work = (id: string, path: string, title: string, what: string, extra: Extra = {}): MapEntry => ({ id, area: "account", path, title, what, needs: "work", ...extra });
 
-const PAGES: readonly AdminPage[] = [
+const PAGES: readonly MapEntry[] = [
   // Store: main sections --------------------------------------------------------------
-  store("overview", "", "Home", "Home", "The store's start page: the setup checklist until the store is ready, then its state at a glance.", {
+  store("overview", "", "Home", "The store's start page: the setup checklist until the store is ready, then its state at a glance.", {
     tasks: ["See what is left before launch", "Jump to the next setup step"],
     keywords: ["home", "dashboard", "start", "checklist"],
   }),
-  store("setup", "/setup", "Setup", "Main", "The setup wizard, resuming at the first unfinished step.", { keywords: ["wizard", "onboarding", "launch"] }),
-  store("dream-factory", "/dream-factory", "Dream Factory", "Website", "The Dream Factory (D409): the owner describes the store and the AI builds it while it is private, step by step (brief, research, setup, brand, products, website, legal pages, rehearsal), each checked by code; the owner gives the business details, says yes to the brief, pays, chooses a plan and opens the store. On a store that exists, open or not, the owner says what to change instead (the look, pages, products): the AI prepares it as drafts, and nothing a visitor sees changes until the owner presses Make it live.", {
+  store("setup", "/setup", "Setup", "The setup wizard, resuming at the first unfinished step.", { keywords: ["wizard", "onboarding", "launch"] }),
+  store("dream-factory", "/dream-factory", "Dream Factory", "The Dream Factory (D409): the owner describes the store and the AI builds it while it is private, step by step (brief, research, setup, brand, products, website, legal pages, rehearsal), each checked by code; the owner gives the business details, says yes to the brief, pays, chooses a plan and opens the store. On a store that exists, open or not, the owner says what to change instead (the look, pages, products): the AI prepares it as drafts, and nothing a visitor sees changes until the owner presses Make it live.", {
     needs: "owner",
     keywords: ["dream factory", "build my store", "ai store", "from a description", "automatic setup", "launch", "change my store", "redesign", "rework"],
   }),
-  store("setup.step", "/setup/[step]", "Setup step", "Main", "One step of the setup wizard: what the store will sell, details, countries, bookings, payments, products or launch (the steps follow the store's features).", {
+  store("setup.step", "/setup/[step]", "Setup step", "One step of the setup wizard: what the store will sell, details, countries, bookings, payments, products or launch (the steps follow the store's features).", {
     keywords: ["wizard", "onboarding"],
   }),
-  store("assistant", "/assistant", "AI manager", "Main", "The AI store manager's full page: conversations, and what it has learned about you.", {
+  store("assistant", "/assistant", "AI manager", "The AI store manager's full page: conversations, and what it has learned about you.", {
     needs: "owner",
     keywords: ["assistant", "ai", "chat", "memory"],
   }),
-  store("assistant.autopilot", "/assistant/autopilot", "Autopilot", "Main", "The work the AI manager does on its own (D309): Decisions (changes waiting for your yes, the plans' questions, what only you can do), Plans (each step, its status and result; start, pause, resume, stop), Goals (progress from the store's own figures) and Settings (on or off, how far it may go per area, its limits, and the AI wallet: the owner's Airwallex, the cards' monthly limit and each purchase). ?tab= opens a tab.", {
+  store("assistant.autopilot", "/assistant/autopilot", "Autopilot", "The work the AI manager does on its own (D309): Decisions (changes waiting for your yes, the plans' questions, what only you can do), Plans (each step, its status and result; start, pause, resume, stop), Goals (progress from the store's own figures) and Settings (on or off, how far it may go per area, its limits, and the AI wallet: the owner's Airwallex, the cards' monthly limit and each purchase). ?tab= opens a tab.", {
     needs: "owner",
     keywords: ["autopilot", "plans", "goals", "decisions", "autonomy", "approvals"],
     tasks: ["See what waits for my yes", "Answer a plan's question", "Start or pause a plan", "Set how far the autopilot may go (?tab=settings)"],
   }),
-  store("orders", "/orders", "Orders", "Main", "Every order, newest first, with a search (order number, email, name, product title or SKU, tag, tracking number), filters (payment, fulfilment, status, tag, market, source, gifts, a date range, archived) kept in the address, saved views, a column choice, and bulk actions on ticked orders: add or remove tags, archive, mark as sent, print packing slips or a pick list. Partly sent orders and changes waiting for the customer's payment are fulfilment filters.", {
+  store("orders", "/orders", "Orders", "Every order, newest first, with a search (order number, email, name, product title or SKU, tag, tracking number), filters (payment, fulfilment, status, tag, market, source, gifts, a date range, archived) kept in the address, saved views, a column choice, and bulk actions on ticked orders: add or remove tags, archive, mark as sent, print packing slips or a pick list. Partly sent orders and changes waiting for the customer's payment are fulfilment filters.", {
     tasks: [
       "Find an order (?q=)",
       "See what is waiting to be sent (?show=to-send)",
@@ -120,302 +99,302 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["sales", "purchases", "to send", "shipping", "search orders", "filter orders", "saved view", "tag", "archive", "bulk", "mass edit", "select orders", "gift orders", "staff-made", "ordrer", "søk"],
     feature: "shop",
   }),
-  store("order", "/orders/[orderId]", "Order", "Main", "Everything about one order: lines, payment, sending in parcels (choose the items and quantities of each parcel, with its own tracking, email and packing slip), refunds, cancelling, changing its items after purchase (or why it cannot be changed, and a change waiting for the customer's payment), contact, notes, history and emails.", {
+  store("order", "/orders/[orderId]", "Order", "Everything about one order: lines, payment, sending in parcels (choose the items and quantities of each parcel, with its own tracking, email and packing slip), refunds, cancelling, changing its items after purchase (or why it cannot be changed, and a change waiting for the customer's payment), contact, notes, history and emails.", {
     tasks: ["Mark it sent with tracking", "Send part of it now and the rest later", "Email a parcel's tracking again", "Refund all or part and restock", "Cancel it", "Change its items", "Send a change's pay link again, or cancel the change", "Correct the address", "Add a note", "Resend the confirmation", "Mark a pickup order ready for pickup", "Mark it collected", "Mark it out for local delivery"],
     keywords: ["refund", "tracking", "ship", "cancel order", "partial fulfilment", "partly sent", "split shipment", "parcel", "edit order", "change order", "ready for pickup", "collected", "local delivery", "out for delivery"],
     feature: "shop",
   }),
-  store("order.edit", "/orders/[orderId]/edit", "Edit order", "Main", "Changes a paid order that is not sent yet: lower a quantity, take an item off, add products (at the market's price or one you type) and change the shipping, with the reason. Items kept keep their price and discounts. The summary is worked out by the checkout's own rules: a lower total is refunded at once, a higher one is paid by the customer through a pay link (or recorded as paid outside Kaizena Flow) before the order changes. The order keeps its number; an invoiced order gets a credit note and an additional invoice.", {
+  store("order.edit", "/orders/[orderId]/edit", "Edit order", "Changes a paid order that is not sent yet: lower a quantity, take an item off, add products (at the market's price or one you type) and change the shipping, with the reason. Items kept keep their price and discounts. The summary is worked out by the checkout's own rules: a lower total is refunded at once, a higher one is paid by the customer through a pay link (or recorded as paid outside Kaizena Flow) before the order changes. The order keeps its number; an invoiced order gets a credit note and an additional invoice.", {
     tasks: ["Take an item off an order", "Lower a quantity", "Add a product to a paid order", "Change the shipping price", "Send the customer a pay link for a higher total", "Record a change as paid outside Kaizena Flow"],
     keywords: ["edit order", "change order", "modify order", "add item", "remove item", "order edit", "endre ordre", "swap item"],
     feature: "shop",
   }),
-  store("orders.export", "/orders/export", "Export orders", "Main", "Downloads orders as a CSV file for your bookkeeping: one row for each order line (or each order), with the VAT of each line and of the shipping, discounts, refunds, payment, the amounts in the order's currency and the store's, and copied history and hosts' orders marked. The owner's only, because it can hold personal data; the file is made without contact details unless you choose them, and is never emailed.", {
+  store("orders.export", "/orders/export", "Export orders", "Downloads orders as a CSV file for your bookkeeping: one row for each order line (or each order), with the VAT of each line and of the shipping, discounts, refunds, payment, the amounts in the order's currency and the store's, and copied history and hosts' orders marked. The owner's only, because it can hold personal data; the file is made without contact details unless you choose them, and is never emailed.", {
     needs: "owner",
     tasks: ["Export the orders of a period", "Export some orders by their numbers", "Include the buyer's email and address", "Download a finished export"],
     keywords: ["export orders", "csv", "orders spreadsheet", "accountant", "bookkeeping", "download orders", "excel", "eksporter ordre"],
     feature: "shop",
   }),
-  store("orders.history-import", "/orders/history-import", "Import order history", "Main", "Brings the orders of another shop in from Shopify's order export, as history: each order is numbered C- and its old name, keeps the file's amounts in its own currency, and is never paid, refunded, sent, emailed, invoiced or counted in sales. An order is tied to a customer only when the store has one with its email; an order already imported is left as it is. Check the file first, then import it. The owner's only.", {
+  store("orders.history-import", "/orders/history-import", "Import order history", "Brings the orders of another shop in from Shopify's order export, as history: each order is numbered C- and its old name, keeps the file's amounts in its own currency, and is never paid, refunded, sent, emailed, invoiced or counted in sales. An order is tied to a customer only when the store has one with its email; an order already imported is left as it is. Check the file first, then import it. The owner's only.", {
     needs: "owner",
     tasks: ["Import orders from Shopify", "Bring order history from another shop", "See what an order history import would do"],
     keywords: ["import orders", "order history", "shopify orders", "migrate orders", "csv", "importer ordre", "ordrehistorikk"],
     feature: "shop",
   }),
-  store("orders.history-import.job", "/orders/history-import/[jobId]", "Order history import", "Main", "One order history import: the file, what the check found order by order, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: "shop" }),
-  store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices: what is still to send (all of it, marked already sent, when nothing is left), or one parcel's items (?shipment=) with a line when more follows; for a gift order it also prints the buyer's gift message.", {
+  store("orders.history-import.job", "/orders/history-import/[jobId]", "Order history import", "One order history import: the file, what the check found order by order, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: "shop" }),
+  store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "A printable packing slip for one order, without prices: what is still to send (all of it, marked already sent, when nothing is left), or one parcel's items (?shipment=) with a line when more follows; for a gift order it also prints the buyer's gift message.", {
     keywords: ["print", "slip", "pack", "gift receipt", "gift slip"],
     feature: "shop",
   }),
-  store("orders.packing-slips", "/orders/packing-slips", "Packing slips", "Main", "Packing slips for several orders in one document, each order on its own page and in its own language, without prices, each with what is still to send (a partly sent order its remainder). Orders already sent, withdrawn, with nothing to ship and copied history are left out, with the reason.", {
+  store("orders.packing-slips", "/orders/packing-slips", "Packing slips", "Packing slips for several orders in one document, each order on its own page and in its own language, without prices, each with what is still to send (a partly sent order its remainder). Orders already sent, withdrawn, with nothing to ship and copied history are left out, with the reason.", {
     keywords: ["print packing slips", "bulk print", "print many", "pick", "gift slip"],
     tasks: ["Print the slips of the orders you ticked"],
     feature: "shop",
   }),
-  store("orders.pick-list", "/orders/pick-list", "Pick list", "Main", "What to take off the shelves for the ticked orders (at most 100): the units still to send summed by product, variant and SKU with the number of orders, or listed order by order. Downloads, services, units already sent and units withdrawn before sending are left out, and orders that cannot be picked are listed with the reason. No prices, names or addresses.", {
+  store("orders.pick-list", "/orders/pick-list", "Pick list", "What to take off the shelves for the ticked orders (at most 100): the units still to send summed by product, variant and SKU with the number of orders, or listed order by order. Downloads, services, units already sent and units withdrawn before sending are left out, and orders that cannot be picked are listed with the reason. No prices, names or addresses.", {
     tasks: ["Print a pick list of the ticked orders", "Pick by product or by order", "Sort by SKU, title or quantity"],
     keywords: ["pick list", "picking list", "picklist", "warehouse", "pick", "plukkliste"],
     feature: "shop",
   }),
-  store("orders.labels", "/orders/labels", "Labels", "Main", "The carrier labels Book labels made on the orders page, one after another to print: each fetched from its carrier with your agreement when it is shown, never kept. Parcels undone since are left out.", {
+  store("orders.labels", "/orders/labels", "Labels", "The carrier labels Book labels made on the orders page, one after another to print: each fetched from its carrier with your agreement when it is shown, never kept. Parcels undone since are left out.", {
     tasks: ["Print the labels of the orders you booked together"],
     keywords: ["labels", "shipping labels", "print labels", "bulk labels", "book labels", "bring", "helthjem", "porterbuddy", "instabox", "ups", "dhl", "dhl paket", "postnord", "nshift", "etiketter"],
     feature: "shop",
   }),
-  store("orders.drafts", "/orders/drafts", "Draft orders", "Main", "Draft orders: orders you make for a customer, newest first, with what each is worth and where it stands (open, sent, paid, expired). A draft holds no stock until it is sent as a pay link.", {
+  store("orders.drafts", "/orders/drafts", "Draft orders", "Draft orders: orders you make for a customer, newest first, with what each is worth and where it stands (open, sent, paid, expired). A draft holds no stock until it is sent as a pay link.", {
     tasks: ["Make a draft order", "See drafts waiting for payment (?status=sent)", "Open a draft"],
     keywords: ["draft", "quote", "manual order", "phone order", "payment link", "pay link", "invoice a customer", "create order", "utkast"],
     feature: "shop",
   }),
-  store("orders.draft.new", "/orders/drafts/new", "New draft order", "Main", "Starts a draft order in a market (the country, language and currency it is priced in).", {
+  store("orders.draft.new", "/orders/drafts/new", "New draft order", "Starts a draft order in a market (the country, language and currency it is priced in).", {
     keywords: ["new draft", "create order", "manual order"],
     feature: "shop",
   }),
-  store("orders.draft", "/orders/drafts/[draftId]", "Draft order", "Main", "One draft order: the customer, lines (products and custom items, with a custom price), a discount the buyer sees, shipping, notes and tags, and the summary with VAT worked out by the checkout's own rules. Send it to the customer as a pay link or make a link to share, reopen a sent draft, or record that it was paid outside Kaizena Flow (bank transfer, cash).", {
+  store("orders.draft", "/orders/drafts/[draftId]", "Draft order", "One draft order: the customer, lines (products and custom items, with a custom price), a discount the buyer sees, shipping, notes and tags, and the summary with VAT worked out by the checkout's own rules. Send it to the customer as a pay link or make a link to share, reopen a sent draft, or record that it was paid outside Kaizena Flow (bank transfer, cash).", {
     tasks: ["Add products and custom items", "Give a discount or a custom price", "Send the pay link", "Make a link to share", "Reopen a sent draft", "Record a payment taken outside Kaizena Flow"],
     keywords: ["pay link", "payment link", "send invoice", "mark as paid", "paid outside", "bank transfer", "cash", "custom item", "custom price", "staff discount"],
     feature: "shop",
   }),
-  store("order.terms", "/orders/[orderId]/terms/[role]", "Terms as shown", "Main", "One of the texts an order was placed under (the terms or the privacy statement), as the shopper was shown it: the kept copy, its version and when it was accepted.", {
+  store("order.terms", "/orders/[orderId]/terms/[role]", "Terms as shown", "One of the texts an order was placed under (the terms or the privacy statement), as the shopper was shown it: the kept copy, its version and when it was accepted.", {
     keywords: ["terms accepted", "terms snapshot", "privacy statement", "what the customer agreed to"],
     feature: "shop",
   }),
-  store("order.dispute", "/orders/[orderId]/dispute/[disputeId]", "Answer the dispute", "Main", "The chargeback assistant (D417): a Stripe dispute's evidence drafted from the order (who bought, where it went, how it was delivered, the terms accepted, refunds and the customer's messages), for you to read, change and send to Stripe with a tick that it is true.", {
+  store("order.dispute", "/orders/[orderId]/dispute/[disputeId]", "Answer the dispute", "The chargeback assistant (D417): a Stripe dispute's evidence drafted from the order (who bought, where it went, how it was delivered, the terms accepted, refunds and the customer's messages), for you to read, change and send to Stripe with a tick that it is true.", {
     tasks: ["Read and change the drafted evidence", "Save a draft", "Send the evidence to Stripe"],
     keywords: ["chargeback", "dispute", "evidence", "bank", "fraud claim", "tilbakeføring"],
     feature: "shop",
   }),
-  store("returns", "/returns", "Returns", "Main", "Customers' withdrawals from a purchase (the legal right to change their mind) and return requests inside the store's own window: a queue with what is overdue, to approve, to receive and to refund.", {
+  store("returns", "/returns", "Returns", "Customers' withdrawals from a purchase (the legal right to change their mind) and return requests inside the store's own window: a queue with what is overdue, to approve, to receive and to refund.", {
     tasks: ["See what is past its refund deadline (?overdue=1)", "See return requests to answer (?status=requested)", "Search by return, order, name or email (?q=)", "Open a return and work it to a refund"],
     keywords: ["return", "withdrawal", "withdraw", "right of withdrawal", "angrerett", "refund deadline", "send back", "14 days", "return request", "RMA"],
     feature: "shop",
   }),
-  store("return", "/returns/[returnId]", "Return", "Main", "One withdrawal or return: the customer's statement and its acknowledgement, the lines, approving or declining, instructions, receiving, inspecting for diminished value, the refund with its working, and closing.", {
+  store("return", "/returns/[returnId]", "Return", "One withdrawal or return: the customer's statement and its acknowledgement, the lines, approving or declining, instructions, receiving, inspecting for diminished value, the refund with its working, and closing.", {
     tasks: ["Approve or decline a return request", "Set return instructions and address", "Mark the goods in transit or received", "Inspect the goods and set a deduction", "Refund with the working shown", "Send the acknowledgement again", "Close or cancel"],
     keywords: ["refund", "inspect", "restock", "acknowledgement", "withdrawal statement", "deduction", "diminished value"],
     feature: "shop",
   }),
-  store("invoices", "/invoices", "Invoices", "Main", "The store's invoices and credit notes (one for every paid order and every refund that succeeds, numbered in the store's own series): search by number, order or email, view, print or download the PDF, the orders still waiting for an invoice and why, and a CSV for the accountant.", {
+  store("invoices", "/invoices", "Invoices", "The store's invoices and credit notes (one for every paid order and every refund that succeeds, numbered in the store's own series): search by number, order or email, view, print or download the PDF, the orders still waiting for an invoice and why, and a CSV for the accountant.", {
     tasks: ["Find an invoice or credit note (?q=)", "See what is waiting for an invoice (?tab=waiting)", "Check again after fixing the business details", "Download a CSV for the accountant", "Open or download an invoice's PDF"],
     keywords: ["invoice", "faktura", "credit note", "kreditnota", "kreditfaktura", "receipt", "pdf", "accountant", "bookkeeper", "vat invoice", "invoice number", "waiting for an invoice"],
     feature: "shop",
   }),
-  store("subscriptions", "/subscriptions", "Subscriptions", "Main", "Shoppers' subscriptions to products bought on a schedule.", {
+  store("subscriptions", "/subscriptions", "Subscriptions", "Shoppers' subscriptions to products bought on a schedule.", {
     keywords: ["recurring", "renewals"], feature: "subscriptions" }),
-  store("subscription", "/subscriptions/[subscriptionId]", "Subscription", "Main", "One subscription: what it holds, its renewals, and pausing, skipping, changing or cancelling it.", {
+  store("subscription", "/subscriptions/[subscriptionId]", "Subscription", "One subscription: what it holds, its renewals, and pausing, skipping, changing or cancelling it.", {
     tasks: ["Pause or skip", "Change contents", "Cancel now or at period end"], feature: "subscriptions" }),
-  store("products", "/products", "Products", "Main", "Every product with its status, price and stock, and the products that still need their content for the price per kg or litre (unit price).", {
+  store("products", "/products", "Products", "Every product with its status, price and stock, and the products that still need their content for the price per kg or litre (unit price).", {
     tasks: ["Find a product", "Add a product", "Archive products", "Find products that need content for the unit price"],
     keywords: ["catalogue", "items", "inventory", "stock", "unit price", "price per kg", "price per litre", "enhetspris"],
     feature: "shop",
   }),
-  store("product.new", "/products/new", "New product", "Main", "Adds a product: texts per language, pictures, variants, prices per country, stock, delivery and product safety details.", {
+  store("product.new", "/products/new", "New product", "Adds a product: texts per language, pictures, variants, prices per country, stock, delivery and product safety details.", {
     keywords: ["create product", "add item"],
     feature: "shop",
   }),
-  store("product", "/products/[productId]", "Product", "Main", "The product editor: texts, pictures, variants, prices, content per variant (unit price), stock, purchase options, SEO and AI writing help.", {
+  store("product", "/products/[productId]", "Product", "The product editor: texts, pictures, variants, prices, content per variant (unit price), stock, purchase options, SEO and AI writing help.", {
     tasks: ["Change price or stock", "Edit texts and pictures", "Add purchase options (subscriptions)", "Let the AI suggest texts", "Archive or publish", "Give a variant its content (g, kg, ml, l, m) for the price per kg or litre"],
     keywords: ["price", "stock", "variant", "edit product", "unit price", "price per kg", "price per litre", "content", "sold by measure", "enhetspris"],
     feature: "shop",
   }),
-  store("product.categories", "/products/categories", "Product categories and tags", "Main", "Categories (nested) and tags for products, used in menus, filters and layouts; a category can require a price per kg or litre (unit price) of its products.", {
+  store("product.categories", "/products/categories", "Product categories and tags", "Categories (nested) and tags for products, used in menus, filters and layouts; a category can require a price per kg or litre (unit price) of its products.", {
     keywords: ["taxonomy", "collections", "unit price", "price per kg", "requires unit price"],
     feature: "shop",
   }),
-  store("products.export", "/products/export", "Export products", "Main", "Downloads the store's products as a CSV file: one row for each variant, with texts in every language, options, prices for each country, stock, cost, product safety details, categories, tags and pictures. A small store gets the file at once, a large one a job with a Download button. The file reads back into Kaizena Flow as it is.", {
+  store("products.export", "/products/export", "Export products", "Downloads the store's products as a CSV file: one row for each variant, with texts in every language, options, prices for each country, stock, cost, product safety details, categories, tags and pictures. A small store gets the file at once, a large one a job with a Download button. The file reads back into Kaizena Flow as it is.", {
     tasks: ["Export all products, a status, or a category or tag", "Choose the Excel (Nordic) or the standard file format", "Download a finished export", "See what the file does not carry"],
     keywords: ["export products", "csv", "download products", "spreadsheet", "excel", "backup", "product file", "eksporter produkter"],
     feature: "shop",
   }),
-  store("products.claims", "/products/claims", "Environmental claims", "Main", "Lists every vague environmental claim (eco-friendly, sustainable, climate neutral, carbon offset) in the store's live products, published pages and articles, with the words around it and a link to edit it. EU law (the Empowering Consumers Directive) bans such claims since 27 September 2026 unless proven, and claims that rest on offsetting outright. Read-only.", {
+  store("products.claims", "/products/claims", "Environmental claims", "Lists every vague environmental claim (eco-friendly, sustainable, climate neutral, carbon offset) in the store's live products, published pages and articles, with the words around it and a link to edit it. EU law (the Empowering Consumers Directive) bans such claims since 27 September 2026 unless proven, and claims that rest on offsetting outright. Read-only.", {
     tasks: ["Find vague green claims on my site", "Check my product texts for greenwashing", "See which pages say eco-friendly"],
     keywords: ["green claims", "greenwashing", "eco-friendly", "sustainable", "climate neutral", "ecgt", "miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig"],
     feature: "shop",
   }),
-  store("products.listing", "/products/[productId]/listing", "Shown together", "Main", "A product's combined listing: this product and others shown as one, chosen by a shared option such as colour, each keeping its own page, price, stock and reviews. Start one with what tells them apart and this product's value, add others with theirs and an optional colour dot, or take one out.", {
+  store("products.listing", "/products/[productId]/listing", "Shown together", "A product's combined listing: this product and others shown as one, chosen by a shared option such as colour, each keeping its own page, price, stock and reviews. Start one with what tells them apart and this product's value, add others with theirs and an optional colour dot, or take one out.", {
     tasks: ["Show these shirts as one product with colours", "Combine products into one listing"],
     keywords: ["combined listing", "product group", "colour variants as products", "siblings", "swatches", "samlet visning"],
   }),
-  store("products.passport", "/products/[productId]/passport", "Product passport", "Main", "A product's Digital Product Passport: its materials with their recycled share, care, repair and spare parts, end of life, origin, substances of concern, durability, certifications, carbon footprint and documents, saved as a draft or published at a lasting address, with the QR code to print on the product. The identifiers, manufacturer and responsible person come from the product.", {
+  store("products.passport", "/products/[productId]/passport", "Product passport", "A product's Digital Product Passport: its materials with their recycled share, care, repair and spare parts, end of life, origin, substances of concern, durability, certifications, carbon footprint and documents, saved as a draft or published at a lasting address, with the QR code to print on the product. The identifiers, manufacturer and responsible person come from the product.", {
     tasks: ["Make a product passport", "Get the QR code for a product's passport", "Publish a product passport"],
     keywords: ["digital product passport", "dpp", "espr", "product passport", "qr code", "materials", "recycled", "repair", "produktpass"],
     feature: "shop",
   }),
-  store("products.import", "/products/import", "Import products", "Main", "Brings products in from a CSV file: Kaizena Flow's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
+  store("products.import", "/products/import", "Import products", "Brings products in from a CSV file: Kaizena Flow's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
     tasks: ["Upload a product file", "Import a Shopify product file", "Continue an open import", "See the recent imports"],
     keywords: ["import products", "csv", "upload products", "shopify", "migrate", "bulk add", "product file", "importer produkter"],
     feature: "shop",
   }),
-  store("products.import.job", "/products/import/[jobId]", "Product import", "Main", "One product import: its options, the check's findings row by row, the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
+  store("products.import.job", "/products/import/[jobId]", "Product import", "One product import: its options, the check's findings row by row, the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
     tasks: ["Choose the options and check the file", "Read each row's problems", "Import after the check", "Cancel the import", "Download the problems as CSV"],
     keywords: ["dry run", "check the file", "import problems", "import result", "cancel import"],
     feature: "shop",
   }),
-  store("products.bulk", "/products/bulk", "Edit products in a grid", "Main", "Edits the variants of the products chosen in the list as a table: price for each market, SKU, stock and cost. Review every change before it is written, apply it, and undo it for seven days. Without chosen products it shows the recent bulk changes, where an undo can be made. Tick products in the list for the other bulk actions: set status, archive, categories and tags, price (a percentage or an amount) and stock.", {
+  store("products.bulk", "/products/bulk", "Edit products in a grid", "Edits the variants of the products chosen in the list as a table: price for each market, SKU, stock and cost. Review every change before it is written, apply it, and undo it for seven days. Without chosen products it shows the recent bulk changes, where an undo can be made. Tick products in the list for the other bulk actions: set status, archive, categories and tags, price (a percentage or an amount) and stock.", {
     tasks: ["Change prices for many products by a percentage or an amount", "Edit prices, SKUs, stock and cost in a grid", "Archive or publish many products", "Add many products to a category or tag", "Set stock for many products", "Undo a bulk change"],
     keywords: ["bulk edit", "bulk editing", "mass edit", "change many products", "price change", "percentage", "sale", "undo", "spreadsheet", "grid", "rediger flere produkter"],
     feature: "shop",
   }),
-  store("inventory", "/inventory", "Inventory", "Main", "Stock for each variant and stock location: on hand, held by checkouts in progress, available and owed on backorder, with counts of what is low, sold out or owed. Change a level with a reason (received, correction, count, damaged, theft or loss, promotion), review every change before it is saved, and set a variant to keep selling at zero stock or to warn at a low level. Needs the right to change products to adjust.", {
+  store("inventory", "/inventory", "Inventory", "Stock for each variant and stock location: on hand, held by checkouts in progress, available and owed on backorder, with counts of what is low, sold out or owed. Change a level with a reason (received, correction, count, damaged, theft or loss, promotion), review every change before it is saved, and set a variant to keep selling at zero stock or to warn at a low level. Needs the right to change products to adjust.", {
     tasks: ["See what is low, sold out, owed or below zero", "Adjust stock with a reason", "Count stock and set it to the counted figure", "Keep selling a variant when it is sold out (backorder) with a delivery time", "Set a low-stock level", "Find a variant by SKU, title or location"],
     keywords: ["inventory", "stock", "stock levels", "on hand", "committed", "available", "backorder", "sell when out of stock", "oversell", "low stock", "count", "recount", "adjust stock", "received", "damaged", "lager", "lagerbeholdning", "restordre"],
     feature: "shop",
   }),
-  store("gift-cards", "/gift-cards", "Gift cards", "Main", "The store's gift cards: what customers hold on them now per currency, each card with its value, what is left, whether it is active, not sent yet, spent, expired or deactivated, and how it came to be (bought with an order, or issued by staff). Search by the last four of a card, an order number or who it was for, open one for its history and the orders it paid for. Issue a card by hand (the code is shown once and can be emailed), change a card's balance with a reason, deactivate one, and set how long new cards last.", {
+  store("gift-cards", "/gift-cards", "Gift cards", "The store's gift cards: what customers hold on them now per currency, each card with its value, what is left, whether it is active, not sent yet, spent, expired or deactivated, and how it came to be (bought with an order, or issued by staff). Search by the last four of a card, an order number or who it was for, open one for its history and the orders it paid for. Issue a card by hand (the code is shown once and can be emailed), change a card's balance with a reason, deactivate one, and set how long new cards last.", {
     tasks: ["See what customers hold on gift cards", "Issue a gift card by hand", "Find a gift card by its last four", "Change a gift card's balance", "Deactivate a gift card", "Set how long gift cards last"],
     keywords: ["gift cards", "gift card", "voucher", "vouchers", "store credit", "gavekort", "presentkort", "gift card balance", "issue gift card", "expiry", "liability"],
     feature: "gift_cards",
   }),
-  store("gift-cards.new", "/gift-cards/new", "Issue a gift card", "Main", "Issue a gift card by hand: an amount in a currency the store sells in, and optionally who it is for, their email and a message. The code is shown once and emailed when an address is given. Needs the right to change products.", {
+  store("gift-cards.new", "/gift-cards/new", "Issue a gift card", "Issue a gift card by hand: an amount in a currency the store sells in, and optionally who it is for, their email and a message. The code is shown once and emailed when an address is given. Needs the right to change products.", {
     feature: "gift_cards",
   }),
-  store("gift-card", "/gift-cards/[cardId]", "Gift card", "Main", "One gift card: its value and what is left, when it expires, how it came to be, its whole history in words and the orders it paid for; change its balance with a reason or deactivate it.", {
+  store("gift-card", "/gift-cards/[cardId]", "Gift card", "One gift card: its value and what is left, when it expires, how it came to be, its whole history in words and the orders it paid for; change its balance with a reason or deactivate it.", {
     feature: "gift_cards",
   }),
-  store("reviews", "/reviews", "Reviews", "Main", "Product reviews written by buyers from what they bought and received (verified purchases) and reviews imported from elsewhere: the ones waiting to be checked first, then all by state, searched by product or words and filtered by stars. Publish a review, hide one with a reason (never because it is negative), answer it under the review, and choose whether new reviews wait for a check or are published at once.", {
+  store("reviews", "/reviews", "Reviews", "Product reviews written by buyers from what they bought and received (verified purchases) and reviews imported from elsewhere: the ones waiting to be checked first, then all by state, searched by product or words and filtered by stars. Publish a review, hide one with a reason (never because it is negative), answer it under the review, and choose whether new reviews wait for a check or are published at once.", {
     tasks: ["Check new product reviews", "Publish a review", "Hide a review", "Answer a review", "Publish reviews without checking them first"],
     keywords: ["reviews", "product reviews", "ratings", "stars", "moderation", "verified purchase", "answer review", "omtaler", "anmeldelser", "recensioner", "testimonials"],
     feature: "reviews",
   }),
-  store("reviews.import", "/reviews/import", "Import reviews", "Main", "Brings reviews written on another service in from a CSV file with the columns product_handle, rating, title, body, author, date and source (Shopify's and Judge.me's exports read as they are): each for one of your products by its handle, marked imported and never verified, published at once or waiting for a check. Check the file first, then import; every refused row is named with its line. A file imported twice adds nothing the second time. Download all published and waiting reviews as a CSV from the Reviews page.", {
+  store("reviews.import", "/reviews/import", "Import reviews", "Brings reviews written on another service in from a CSV file with the columns product_handle, rating, title, body, author, date and source (Shopify's and Judge.me's exports read as they are): each for one of your products by its handle, marked imported and never verified, published at once or waiting for a check. Check the file first, then import; every refused row is named with its line. A file imported twice adds nothing the second time. Download all published and waiting reviews as a CSV from the Reviews page.", {
     tasks: ["Import reviews from Shopify or Judge.me", "Import product reviews from a CSV file", "Export product reviews"],
     keywords: ["import reviews", "export reviews", "review csv", "judge.me", "shopify reviews", "trustpilot", "importer omtaler"],
     feature: "reviews",
   }),
-  store("inventory.history", "/inventory/history", "Stock history", "Main", "Every change of a stock level, newest first: when, which variant and location, the change and the new figure, the reason and who or what made it (a staff member, an order, a return, a file, the AI manager). Filter by SKU, location, reason and dates. Kept 24 months; a wrong change is corrected by a new one.", {
+  store("inventory.history", "/inventory/history", "Stock history", "Every change of a stock level, newest first: when, which variant and location, the change and the new figure, the reason and who or what made it (a staff member, an order, a return, a file, the AI manager). Filter by SKU, location, reason and dates. Kept 24 months; a wrong change is corrected by a new one.", {
     tasks: ["See why a stock figure changed", "Find the order or return behind a change", "Filter the history by SKU, location, reason or dates"],
     keywords: ["stock history", "inventory history", "movements", "adjustment history", "audit", "who changed the stock", "lagerhistorikk"],
     feature: "shop",
   }),
-  store("inventory.locations", "/inventory/locations", "Stock locations", "Main", "The places stock is held: add, rename and rank locations (an order's units are taken from the top location first), and, for owners, deactivate a location after seeing how many units stop being for sale, or reactivate it. A store always keeps one active location; a location is never deleted.", {
+  store("inventory.locations", "/inventory/locations", "Stock locations", "The places stock is held: add, rename and rank locations (an order's units are taken from the top location first), and, for owners, deactivate a location after seeing how many units stop being for sale, or reactivate it. A store always keeps one active location; a location is never deleted.", {
     tasks: ["Add or rename a stock location", "Change the order locations are used in", "Deactivate or reactivate a location (owner)", "See the units held at each location"],
     keywords: ["locations", "warehouse", "stock locations", "routing", "order routing", "deactivate location", "multi location", "lager", "lokasjon"],
     feature: "shop",
   }),
-  store("inventory.transfers", "/inventory/transfers", "Stock transfers", "Main", "Moves stock between the store's locations: a draft made from SKUs and units, sent (the units leave the origin, never what checkouts hold there) and counted in where it arrives, in parts. Units on their way are not for sale. Cancelling puts what was not counted in back at the origin.", {
+  store("inventory.transfers", "/inventory/transfers", "Stock transfers", "Moves stock between the store's locations: a draft made from SKUs and units, sent (the units leave the origin, never what checkouts hold there) and counted in where it arrives, in parts. Units on their way are not for sale. Cancelling puts what was not counted in back at the origin.", {
     tasks: ["Move stock from one location to another", "Send a transfer", "Count a transfer in", "Cancel a transfer"],
     keywords: ["transfer", "stock transfer", "move stock", "between locations", "warehouse transfer", "overføring", "flytt lager"],
     feature: "shop",
   }),
-  store("inventory.transfer", "/inventory/transfers/[id]", "Stock transfer", "Main", "One stock transfer: its lines, what has arrived and what is still to come, and its next step (send, count in, cancel).", {
+  store("inventory.transfer", "/inventory/transfers/[id]", "Stock transfer", "One stock transfer: its lines, what has arrived and what is still to come, and its next step (send, count in, cancel).", {
     tasks: ["Send this transfer", "Count units in", "Cancel this transfer"],
     keywords: ["transfer", "receive transfer", "count in"],
     feature: "shop",
   }),
-  store("inventory.purchase_orders", "/inventory/purchase-orders", "Purchase orders", "Main", "What the store buys from its suppliers: a draft with the supplier, the currency it bills in, where the stock arrives and each line's units and unit cost; marked as ordered, then counted in as it arrives. Each variant's cost becomes what one unit cost, converted into the store's currency, and every cost change is kept.", {
+  store("inventory.purchase_orders", "/inventory/purchase-orders", "Purchase orders", "What the store buys from its suppliers: a draft with the supplier, the currency it bills in, where the stock arrives and each line's units and unit cost; marked as ordered, then counted in as it arrives. Each variant's cost becomes what one unit cost, converted into the store's currency, and every cost change is kept.", {
     tasks: ["Record a purchase order", "Mark it as ordered", "Count a delivery in", "See what is still to come from a supplier"],
     keywords: ["purchase order", "po", "supplier", "receive stock", "goods in", "restock", "cost price", "innkjøpsordre", "leverandør", "varemottak"],
     feature: "shop",
   }),
-  store("inventory.purchase_order", "/inventory/purchase-orders/[id]", "Purchase order", "Main", "One purchase order: its lines and unit costs, what has arrived and what is still to come, and its next step (mark as ordered, count in, cancel).", {
+  store("inventory.purchase_order", "/inventory/purchase-orders/[id]", "Purchase order", "One purchase order: its lines and unit costs, what has arrived and what is still to come, and its next step (mark as ordered, count in, cancel).", {
     tasks: ["Mark this order as ordered", "Count units in", "Cancel this order"],
     keywords: ["purchase order", "receive", "count in", "supplier delivery"],
     feature: "shop",
   }),
-  store("inventory.suppliers", "/inventory/suppliers", "Suppliers", "Main", "Suppliers that send the store's products straight to its customers in the store's name (drop shipping): the list with where each ships from, the days it sends within, its products and the stock it says it has, and a short form to add one (a name, the email its orders go to and the country it ships from). The store stays the seller.", {
+  store("inventory.suppliers", "/inventory/suppliers", "Suppliers", "Suppliers that send the store's products straight to its customers in the store's name (drop shipping): the list with where each ships from, the days it sends within, its products and the stock it says it has, and a short form to add one (a name, the email its orders go to and the country it ships from). The store stays the seller.", {
     tasks: ["Add a supplier that ships for me", "See which suppliers drop-ship for me", "Find a supplier outside the EU"],
     keywords: ["drop shipping", "dropshipping", "supplier", "ships for me", "direktelevering", "leverandør"],
     feature: "shop",
   }),
-  store("inventory.supplier", "/inventory/suppliers/[id]", "Supplier", "Main", "One supplier that ships for the store: the products it sends (tick variants and mark them as sent by it, or send them yourself again), its details (order email, country, language, days to send within, how it gets orders, return address, a note on every order) and, for the owner, stopping drop shipping with it. The store's own stock always goes before the supplier's.", {
+  store("inventory.supplier", "/inventory/suppliers/[id]", "Supplier", "One supplier that ships for the store: the products it sends (tick variants and mark them as sent by it, or send them yourself again), its details (order email, country, language, days to send within, how it gets orders, return address, a note on every order) and, for the owner, stopping drop shipping with it. The store's own stock always goes before the supplier's.", {
     tasks: ["Choose the products this supplier sends", "Change the supplier's email or dispatch days", "Stop drop shipping with this supplier"],
     keywords: ["drop shipping", "supplier products", "mark as drop-shipped", "dispatch days"],
     feature: "shop",
   }),
-  store("inventory.import", "/inventory/import", "Import stock", "Main", "Sets stock from a counted CSV file: SKU, location and on hand, with an optional on-hand-was column so a row that is out of date becomes a conflict instead of undoing a sale. Upload the file, check it (a dry run that lists every row and changes nothing), then import. Never creates a variant or a location. Needs the right to change products.", {
+  store("inventory.import", "/inventory/import", "Import stock", "Sets stock from a counted CSV file: SKU, location and on hand, with an optional on-hand-was column so a row that is out of date becomes a conflict instead of undoing a sale. Upload the file, check it (a dry run that lists every row and changes nothing), then import. Never creates a variant or a location. Needs the right to change products.", {
     tasks: ["Upload a counted stock file", "Check a file before it is imported", "Import after the check", "Continue an open import"],
     keywords: ["import stock", "stock count", "csv", "inventory upload", "recount", "bulk stock", "importer lager"],
     feature: "shop",
   }),
-  store("inventory.import.job", "/inventory/import/[jobId]", "Stock import", "Main", "One stock import: the check's result row by row (the change for each SKU and location, conflicts and problems), the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
+  store("inventory.import.job", "/inventory/import/[jobId]", "Stock import", "One stock import: the check's result row by row (the change for each SKU and location, conflicts and problems), the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
     tasks: ["Read what the check found", "Import after the check", "Cancel the import", "Download the problems as CSV"],
     keywords: ["dry run", "conflict", "stock import result", "cancel import"],
     feature: "shop",
   }),
-  store("inventory.export", "/inventory/export", "Export stock", "Main", "Downloads stock as a CSV file: one row for each variant at each active location with on hand, committed, available, the policy at zero stock and the low-stock level. A small store gets the file at once, a large one a job with a Download button. Count from it and import it back.", {
+  store("inventory.export", "/inventory/export", "Export stock", "Downloads stock as a CSV file: one row for each variant at each active location with on hand, committed, available, the policy at zero stock and the low-stock level. A small store gets the file at once, a large one a job with a Download button. Count from it and import it back.", {
     tasks: ["Download the stock file", "Choose the Excel (Nordic) or the standard file format", "Download a finished export"],
     keywords: ["export stock", "stock file", "inventory csv", "download inventory", "stock count sheet", "eksporter lager"],
     feature: "shop",
   }),
-  store("product-layouts", "/product-layouts", "Product layouts", "Main", "Layouts for product pages, built in the page builder with product parts.", {
+  store("product-layouts", "/product-layouts", "Product layouts", "Layouts for product pages, built in the page builder with product parts.", {
     keywords: ["product page design", "template"],
     feature: "shop",
   }),
-  store("product-layout.new", "/product-layouts/new", "New product layout", "Main", "Starts a new product page layout.", { feature: "shop" }),
-  store("product-layout", "/product-layouts/[pageId]", "Product layout", "Main", "Builds a product layout in the page builder.", { feature: "shop" }),
-  store("product-layout.preview", "/product-layouts/[pageId]/preview", "Product layout preview", "Main", "Previews a product layout with a real product.", { feature: "shop" }),
-  store("product-layout.assign", "/product-layouts/[pageId]/assign", "Where a layout is used", "Main", "Chooses where a layout applies: the store's default, categories, tags or single products.", { feature: "shop" }),
-  store("fields", "/fields", "Custom fields", "Main", "Groups of custom fields for products, pages, articles, variants, categories and tags, the store itself, and (staff only) customers and orders (a size guide, ingredients, a warranty): where each group applies, its fields, presets, and import and export.", {
+  store("product-layout.new", "/product-layouts/new", "New product layout", "Starts a new product page layout.", { feature: "shop" }),
+  store("product-layout", "/product-layouts/[pageId]", "Product layout", "Builds a product layout in the page builder.", { feature: "shop" }),
+  store("product-layout.preview", "/product-layouts/[pageId]/preview", "Product layout preview", "Previews a product layout with a real product.", { feature: "shop" }),
+  store("product-layout.assign", "/product-layouts/[pageId]/assign", "Where a layout is used", "Chooses where a layout applies: the store's default, categories, tags or single products.", { feature: "shop" }),
+  store("fields", "/fields", "Custom fields", "Groups of custom fields for products, pages, articles, variants, categories and tags, the store itself, and (staff only) customers and orders (a size guide, ingredients, a warranty): where each group applies, its fields, presets, and import and export.", {
     tasks: ["Add a group of fields", "Start from a preset (specifications, size guide, ingredients)", "Choose which products or pages get a group", "Import or export field groups", "Switch a group off"],
     keywords: ["custom fields", "extra fields", "acf", "attributes", "specifications", "metafields", "product data"],
   }),
-  store("fields.new", "/fields/new", "New group of custom fields", "Main", "Starts a group of custom fields: its name, where it applies, its fields and a live preview of the form."),
-  store("fields.store", "/fields/store", "Store details", "Main", "The store's own custom fields (opening hours, a brand story, a contact person, a certificate): one set of values for the whole site, filled in here and placed in pages, product layouts, headers and footers.", {
+  store("fields.new", "/fields/new", "New group of custom fields", "Starts a group of custom fields: its name, where it applies, its fields and a live preview of the form."),
+  store("fields.store", "/fields/store", "Store details", "The store's own custom fields (opening hours, a brand story, a contact person, a certificate): one set of values for the whole site, filled in here and placed in pages, product layouts, headers and footers.", {
     tasks: ["Fill in the store's own custom fields", "Make a group of fields for the store"],
     keywords: ["store details", "opening hours", "brand story", "site wide fields", "global fields", "options page"],
   }),
-  store("field-group", "/fields/[groupId]", "Group of custom fields", "Main", "One group of custom fields: its fields in order with their types, conditional logic and storefront access, where it applies, a preview, and deleting it."),
-  store("pages", "/pages", "Pages", "Main", "The store's own pages (about, contact, landing pages), which can be the front page or the All products page.", {
+  store("field-group", "/fields/[groupId]", "Group of custom fields", "One group of custom fields: its fields in order with their types, conditional logic and storefront access, where it applies, a preview, and deleting it."),
+  store("pages", "/pages", "Pages", "The store's own pages (about, contact, landing pages), which can be the front page or the All products page.", {
     tasks: ["Add or edit a page", "Choose the front page", "Create a page with AI"],
     keywords: ["website", "cms", "front page", "landing"],
   }),
-  store("page.new", "/pages/new", "New page", "Main", "Starts a new page in the page builder."),
-  store("page", "/pages/[pageId]", "Page", "Main", "The page builder: rows, columns and components, translations, custom CSS, publishing.", {
+  store("page.new", "/pages/new", "New page", "Starts a new page in the page builder."),
+  store("page", "/pages/[pageId]", "Page", "The page builder: rows, columns and components, translations, custom CSS, publishing.", {
     keywords: ["builder", "edit page", "publish"],
   }),
-  store("page.preview", "/pages/[pageId]/preview", "Page preview", "Main", "Previews a page's draft as the site would show it."),
-  store("page.ai", "/pages/ai", "Create a page with AI", "Main", "The AI page studio: it interviews you, plans the sections, writes them and makes pictures.", {
+  store("page.preview", "/pages/[pageId]/preview", "Page preview", "Previews a page's draft as the site would show it."),
+  store("page.ai", "/pages/ai", "Create a page with AI", "The AI page studio: it interviews you, plans the sections, writes them and makes pictures.", {
     keywords: ["ai page", "generate page", "studio"],
   }),
-  store("page.categories", "/pages/categories", "Page categories and tags", "Main", "Categories and tags for pages."),
-  store("articles", "/articles", "Blog", "Main", "The store's blog articles.", { keywords: ["blog", "posts", "news"] }),
-  store("article.new", "/articles/new", "New article", "Main", "Starts a new blog article."),
-  store("article", "/articles/[pageId]", "Article", "Main", "Writes a blog article in the page builder."),
-  store("article.preview", "/articles/[pageId]/preview", "Article preview", "Main", "Previews an article's draft."),
-  store("article.categories", "/articles/categories", "Blog categories and tags", "Main", "Categories and tags for articles."),
-  store("blogs", "/articles/blogs", "Blogs", "Main", "The store's blogs (D341): the first at /blog and others at /blogs/{address}, each with its own name per language, articles, Atom feed, comments setting (off, held for moderation, shown at once) and the page its address shows.", {
+  store("page.categories", "/pages/categories", "Page categories and tags", "Categories and tags for pages."),
+  store("articles", "/articles", "Blog", "The store's blog articles.", { keywords: ["blog", "posts", "news"] }),
+  store("article.new", "/articles/new", "New article", "Starts a new blog article."),
+  store("article", "/articles/[pageId]", "Article", "Writes a blog article in the page builder."),
+  store("article.preview", "/articles/[pageId]/preview", "Article preview", "Previews an article's draft."),
+  store("article.categories", "/articles/categories", "Blog categories and tags", "Categories and tags for articles."),
+  store("blogs", "/articles/blogs", "Blogs", "The store's blogs (D341): the first at /blog and others at /blogs/{address}, each with its own name per language, articles, Atom feed, comments setting (off, held for moderation, shown at once) and the page its address shows.", {
     keywords: ["blogs", "several blogs", "news", "feed", "atom", "rss", "comments setting"],
     tasks: ["Add a blog", "Switch comments off on a blog", "Show comments at once", "Find a blog's feed"],
   }),
-  store("blog.authors", "/articles/authors", "Authors", "Main", "The authors of the store's articles (D341): name, picture, a few words and a link, chosen on an article, shown under it and in its structured data.", {
+  store("blog.authors", "/articles/authors", "Authors", "The authors of the store's articles (D341): name, picture, a few words and a link, chosen on an article, shown under it and in its structured data.", {
     keywords: ["authors", "writers", "byline", "author bio"],
     tasks: ["Add an author", "Give an author a picture"],
   }),
-  store("blog.comments", "/articles/comments", "Blog comments", "Main", "Visitors' comments on the store's articles (D341): those waiting, shown, refused and marked as spam, with what the spam check found; approve, refuse, mark as spam or delete.", {
+  store("blog.comments", "/articles/comments", "Blog comments", "Visitors' comments on the store's articles (D341): those waiting, shown, refused and marked as spam, with what the spam check found; approve, refuse, mark as spam or delete.", {
     keywords: ["comments", "moderation", "spam", "approve comments"],
     tasks: ["Approve a comment", "Refuse a comment", "See comments waiting"],
   }),
-  store("content", "/content", "Content", "Main", "Content types of the store's own, such as team members, questions and answers or locations, and their entries.", {
+  store("content", "/content", "Content", "Content types of the store's own, such as team members, questions and answers or locations, and their entries.", {
     tasks: ["Create a content type", "Add an entry", "Publish an entry"],
     keywords: ["content types", "entries", "metaobjects", "custom content", "team", "faq", "locations"],
   }),
-  store("content.new", "/content/new", "New content type", "Main", "Defines a new content type and its fields."),
-  store("content.type", "/content/[typeId]", "Content type entries", "Main", "The entries of one content type, in the store's order."),
-  store("content.type.settings", "/content/[typeId]/settings", "Content type settings", "Main", "A content type's name, web name, fields and whether entries have pages."),
-  store("content.entry.new", "/content/[typeId]/new", "New entry", "Main", "Writes a new entry of a content type."),
-  store("content.entry", "/content/[typeId]/[entryId]", "Entry", "Main", "Writes, publishes or deletes an entry of a content type."),
-  store("content.layout", "/content/layouts/[pageId]", "Entry page", "Main", "Designs how a content type's entries look on their own pages, in the page builder."),
-  store("content.layout.preview", "/content/layouts/[pageId]/preview", "Entry page preview", "Main", "Previews a content type's entry page with one of its entries."),
-  store("media", "/media", "Media", "Main", "The media library: every picture and video uploaded, where each is used, and alt texts in every language.", {
+  store("content.new", "/content/new", "New content type", "Defines a new content type and its fields."),
+  store("content.type", "/content/[typeId]", "Content type entries", "The entries of one content type, in the store's order."),
+  store("content.type.settings", "/content/[typeId]/settings", "Content type settings", "A content type's name, web name, fields and whether entries have pages."),
+  store("content.entry.new", "/content/[typeId]/new", "New entry", "Writes a new entry of a content type."),
+  store("content.entry", "/content/[typeId]/[entryId]", "Entry", "Writes, publishes or deletes an entry of a content type."),
+  store("content.layout", "/content/layouts/[pageId]", "Entry page", "Designs how a content type's entries look on their own pages, in the page builder."),
+  store("content.layout.preview", "/content/layouts/[pageId]/preview", "Entry page preview", "Previews a content type's entry page with one of its entries."),
+  store("media", "/media", "Media", "The media library: every picture and video uploaded, where each is used, and alt texts in every language.", {
     tasks: ["Upload pictures", "Write or generate alt texts", "See where a picture is used", "Delete unused files"],
     keywords: ["images", "pictures", "photos", "videos", "alt text"],
   }),
   // Discounts as one page (ecosystem plan E3.7, D718): Codes is its first tab, Automatic (`?tab=automatic`, the old Campaigns) its second.
-  store("discounts", "/discounts", "Discounts", "Main", "Money off for shoppers, on two tabs: Codes, the discount codes (coupons) shoppers type at checkout (percent, amount or free shipping, with limits), and Automatic (?tab=automatic), offers without a code for a time.", {
+  store("discounts", "/discounts", "Discounts", "Money off for shoppers, on two tabs: Codes, the discount codes (coupons) shoppers type at checkout (percent, amount or free shipping, with limits), and Automatic (?tab=automatic), offers without a code for a time.", {
     tasks: ["Make a discount code", "See which codes are used", "Start a sale without a code (?tab=automatic)"],
     keywords: ["coupon", "coupons", "discount code", "sale", "promotion", "discounts"],
     feature: "shop",
   }),
-  store("discount.new", "/discounts/new", "New discount code", "Main", "Creates a discount code.", { feature: "shop" }),
-  store("discount", "/discounts/[discountId]", "Discount code", "Main", "One discount code: its rules, uses, and switching it off.", { feature: "shop" }),
-  store("wishlists", "/wishlists", "Wishlists", "Main", "Shoppers' wishlists, the most wished products and how wishes turn into sales.", {
+  store("discount.new", "/discounts/new", "New discount code", "Creates a discount code.", { feature: "shop" }),
+  store("discount", "/discounts/[discountId]", "Discount code", "One discount code: its rules, uses, and switching it off.", { feature: "shop" }),
+  store("wishlists", "/wishlists", "Wishlists", "Shoppers' wishlists, the most wished products and how wishes turn into sales.", {
     keywords: ["favourites", "saved"],
     feature: "shop",
   }),
-  store("wishlist", "/wishlists/[wishlistId]", "Wishlist", "Main", "One shopper's wishlist.", { feature: "shop" }),
-  store("wishlists.activity", "/wishlists/activity", "Wishlist activity", "Main", "Wishlist items put in carts and bought.", { feature: "shop" }),
-  store("emails", "/emails", "Emails", "Main", "Every email the store sent to shoppers, and whether it went out.", { keywords: ["sent emails", "email log"], feature: "shop" }),
-  store("email", "/emails/[emailId]", "Email", "Main", "One email as the shopper got it.", { feature: "shop" }),
+  store("wishlist", "/wishlists/[wishlistId]", "Wishlist", "One shopper's wishlist.", { feature: "shop" }),
+  store("wishlists.activity", "/wishlists/activity", "Wishlist activity", "Wishlist items put in carts and bought.", { feature: "shop" }),
+  store("emails", "/emails", "Emails", "Every email the store sent to shoppers, and whether it went out.", { keywords: ["sent emails", "email log"], feature: "shop" }),
+  store("email", "/emails/[emailId]", "Email", "One email as the shopper got it.", { feature: "shop" }),
 
   // Work (D122, D123): at the owner's level, `/admin/account/work`. Every store's Work together, and one store's own
   // screens under `/s/[store]` (each store is the seller: its own numbering, VAT and bank details).
@@ -483,626 +462,626 @@ const PAGES: readonly AdminPage[] = [
   }),
 
   // Store: bookings ----------------------------------------------------------------------
-  store("bookings", "/bookings", "Calendar", "Bookings", "The week's appointments, and cancelling or marking no-shows.", {
+  store("bookings", "/bookings", "Calendar", "The week's appointments, and cancelling or marking no-shows.", {
     feature: ["appointments", "bookings"],
     keywords: ["appointments", "calendar", "schedule"],
   }),
-  store("bookings.staff", "/bookings/staff", "Staff and hours", "Bookings", "The people shoppers book, with their opening hours.", { feature: "appointments" }),
-  store("bookings.staff.new", "/bookings/staff/new", "New staff member", "Bookings", "Adds a person who can be booked.", { feature: "appointments" }),
-  store("bookings.staff.one", "/bookings/staff/[staffId]", "Staff member", "Bookings", "One bookable person: hours, services and blocks.", { feature: "appointments" }),
-  store("bookings.stays", "/bookings/stays", "Stays and rentals", "Bookings", "Two weeks of rooms and items booked, and cancelling stays or rentals.", {
+  store("bookings.staff", "/bookings/staff", "Staff and hours", "The people shoppers book, with their opening hours.", { feature: "appointments" }),
+  store("bookings.staff.new", "/bookings/staff/new", "New staff member", "Adds a person who can be booked.", { feature: "appointments" }),
+  store("bookings.staff.one", "/bookings/staff/[staffId]", "Staff member", "One bookable person: hours, services and blocks.", { feature: "appointments" }),
+  store("bookings.stays", "/bookings/stays", "Stays and rentals", "Two weeks of rooms and items booked, and cancelling stays or rentals.", {
     feature: "bookings",
     keywords: ["rooms", "rentals", "occupancy"],
   }),
-  store("bookings.units", "/bookings/units", "Rooms and items", "Bookings", "Rooms, homes and items for stays and rentals, with their calendars.", { feature: "bookings" }),
-  store("bookings.units.new", "/bookings/units/new", "New room or item", "Bookings", "Adds a room, home or item.", { feature: "bookings" }),
-  store("bookings.unit", "/bookings/units/[unitId]", "Room or item", "Bookings", "One room or item: capacity, blocks, calendar sync.", { feature: "bookings" }),
-  store("hosts", "/hosts", "Hosts", "Bookings", "Outside hosts whose stays and rentals the store lists, with their commission.", { feature: "bookings" }),
-  store("host", "/hosts/[hostId]", "Host", "Bookings", "One host: listings, payouts and commission.", { feature: "bookings" }),
-  store("hosts.dac7", "/hosts/dac7", "DAC7 report", "Bookings", "The yearly DAC7 tax report on hosts' income.", { feature: "bookings", keywords: ["tax", "dac7"] }),
+  store("bookings.units", "/bookings/units", "Rooms and items", "Rooms, homes and items for stays and rentals, with their calendars.", { feature: "bookings" }),
+  store("bookings.units.new", "/bookings/units/new", "New room or item", "Adds a room, home or item.", { feature: "bookings" }),
+  store("bookings.unit", "/bookings/units/[unitId]", "Room or item", "One room or item: capacity, blocks, calendar sync.", { feature: "bookings" }),
+  store("hosts", "/hosts", "Hosts", "Outside hosts whose stays and rentals the store lists, with their commission.", { feature: "bookings" }),
+  store("host", "/hosts/[hostId]", "Host", "One host: listings, payouts and commission.", { feature: "bookings" }),
+  store("hosts.dac7", "/hosts/dac7", "DAC7 report", "The yearly DAC7 tax report on hosts' income.", { feature: "bookings", keywords: ["tax", "dac7"] }),
 
   // Store: sales ---------------------------------------------------------------------------
   // The Automatic tab of Discounts (ecosystem plan E3.7, D718): this address leads there; the offers' own pages stay below it.
-  store("campaigns", "/campaigns", "Automatic discounts", "Sales", "The Automatic tab of Discounts: offers without a code, for a time: a percentage off, buy more and pay for fewer (3 for 2), or a free product above a basket amount, for the whole store, chosen products, categories or tags.", {
+  store("campaigns", "/campaigns", "Automatic discounts", "The Automatic tab of Discounts: offers without a code, for a time: a percentage off, buy more and pay for fewer (3 for 2), or a free product above a basket amount, for the whole store, chosen products, categories or tags.", {
     tasks: ["Start a sale", "Set up 3 for 2", "Give a free product over an amount", "Schedule an automatic discount", "Switch an automatic discount off"],
     keywords: ["sale", "offer", "promotion", "3 for 2", "bundle", "free gift", "discount", "black friday", "time-limited", "campaign", "campaigns"],
     feature: "shop",
   }),
-  store("recommendations", "/recommendations", "Recommendations", "Sales", "Product recommendations: upsells, cross-sells and complements picked for each shopper from what they look at, search for, save and put in the cart, never what they already bought, shown in a product grid that recommends (on a product page, an article, the All products page or any page) and used by the chat assistant. Switch them on, let the store's AI re-rank the best candidates, set how much dearer than a product an upsell may be, cap the AI's monthly tokens, choose which products go together, are never shown together or are never recommended, and see clicks, add-to-cart rate and revenue per visitor with and without the AI.", {
+  store("recommendations", "/recommendations", "Recommendations", "Product recommendations: upsells, cross-sells and complements picked for each shopper from what they look at, search for, save and put in the cart, never what they already bought, shown in a product grid that recommends (on a product page, an article, the All products page or any page) and used by the chat assistant. Switch them on, let the store's AI re-rank the best candidates, set how much dearer than a product an upsell may be, cap the AI's monthly tokens, choose which products go together, are never shown together or are never recommended, and see clicks, add-to-cart rate and revenue per visitor with and without the AI.", {
     tasks: ["Turn recommendations on or off", "Cap the AI's monthly use for recommendations", "Say which products go together", "Hide a product from recommendations", "See what recommendations earn"],
     keywords: ["recommendations", "recommended", "upsell", "cross-sell", "cross sell", "complementary", "you may also like", "related products", "personalised", "personalized", "ai recommendations", "suggestions", "frequently bought together"],
     feature: "shop",
   }),
-  store("experiments", "/experiments", "A/B tests", "Sales", "A/B tests of pages, a row or component of one, the store's header or footer, or a product layout: show two versions to real visitors who have accepted statistics cookies, and keep the one that gets more orders, more revenue per visitor, more people adding to the cart or reaching checkout, or more clicks on a chosen button. The list shows what is running, waiting and decided.", { extension: "ab_testing",
+  store("experiments", "/experiments", "A/B tests", "A/B tests of pages, a row or component of one, the store's header or footer, or a product layout: show two versions to real visitors who have accepted statistics cookies, and keep the one that gets more orders, more revenue per visitor, more people adding to the cart or reaching checkout, or more clicks on a chosen button. The list shows what is running, waiting and decided.", { extension: "ab_testing",
     tasks: ["Test two versions of a page", "See which version of a page sells more", "Stop a test", "Choose a winner", "Keep the original page"],
     keywords: ["a/b test", "ab test", "split test", "experiment", "test a page", "conversion", "which version", "optimise", "optimize", "winner", "variant"],
   }),
-  store("experiment.new", "/experiments/new", "New A/B test", "Sales", "Makes an A/B test of a page, or of one row, column or component of it chosen in the page builder with \"A/B test this\": what it should improve, who takes part and a guess of how long it needs. The first version is a copy of the page.", { extension: "ab_testing" }),
-  store("experiment", "/experiments/[id]", "A/B test", "Sales", "One test: change its versions, check its settings and start it now or at a time; once running, see in plain words whether a version is better, stop it, choose a winner or keep the original.", { extension: "ab_testing" }),
-  store("experiment.variants", "/experiments/variants", "Test versions", "Sales", "Goes back to the list of tests: a version is changed from its test.", { extension: "ab_testing" }),
-  store("experiment.variant", "/experiments/variants/[pageId]", "A test version", "Sales", "Changes a version of a page made for an A/B test in the page builder.", { extension: "ab_testing" }),
-  store("experiment.variant.preview", "/experiments/variants/[pageId]/preview", "Test version preview", "Sales", "Previews a version of a page made for an A/B test.", { extension: "ab_testing" }),
-  store("campaign.new", "/campaigns/new", "New automatic discount", "Sales", "Creates an automatic discount: what it gives, what it applies to, and when it runs.", { feature: "shop" }),
-  store("campaign", "/campaigns/[campaignId]", "Automatic discount", "Sales", "One automatic discount: what it gives, what it applies to, when it runs, and switching it off or deleting it.", { feature: "shop" }),
-  store("bonus", "/bonus", "Bonus credits", "Sales", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {
+  store("experiment.new", "/experiments/new", "New A/B test", "Makes an A/B test of a page, or of one row, column or component of it chosen in the page builder with \"A/B test this\": what it should improve, who takes part and a guess of how long it needs. The first version is a copy of the page.", { extension: "ab_testing" }),
+  store("experiment", "/experiments/[id]", "A/B test", "One test: change its versions, check its settings and start it now or at a time; once running, see in plain words whether a version is better, stop it, choose a winner or keep the original.", { extension: "ab_testing" }),
+  store("experiment.variants", "/experiments/variants", "Test versions", "Goes back to the list of tests: a version is changed from its test.", { extension: "ab_testing" }),
+  store("experiment.variant", "/experiments/variants/[pageId]", "A test version", "Changes a version of a page made for an A/B test in the page builder.", { extension: "ab_testing" }),
+  store("experiment.variant.preview", "/experiments/variants/[pageId]/preview", "Test version preview", "Previews a version of a page made for an A/B test.", { extension: "ab_testing" }),
+  store("campaign.new", "/campaigns/new", "New automatic discount", "Creates an automatic discount: what it gives, what it applies to, and when it runs.", { feature: "shop" }),
+  store("campaign", "/campaigns/[campaignId]", "Automatic discount", "One automatic discount: what it gives, what it applies to, when it runs, and switching it off or deleting it.", { feature: "shop" }),
+  store("bonus", "/bonus", "Bonus credits", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {
     tasks: ["Turn the bonus program on or off", "Change how much customers earn back", "Set when credits expire", "See the credits the store owes"],
     keywords: ["bonus", "credits", "loyalty", "points", "rewards", "reward customers", "returning customers", "repeat customers", "cashback", "store credit", "earn", "redeem", "reward program"], feature: "bonus" }),
-  store("affiliates", "/affiliates", "Refer a friend", "Sales", "The referral program, Refer a friend: signed-in customers share a link, a friend's first order gets a welcome discount and the customer who shared it earns bonus credits. Set the friend's discount, the reward, how many orders earn it, a monthly limit and how long a link is remembered; needs the bonus program. See the referrers and the orders that came through links, and block a referrer with a reason.", {
+  store("affiliates", "/affiliates", "Refer a friend", "The referral program, Refer a friend: signed-in customers share a link, a friend's first order gets a welcome discount and the customer who shared it earns bonus credits. Set the friend's discount, the reward, how many orders earn it, a monthly limit and how long a link is remembered; needs the bonus program. See the referrers and the orders that came through links, and block a referrer with a reason.", {
     tasks: ["Turn the referral program on or off", "Change the friend's welcome discount", "Change how much a referrer earns", "Block a referrer who abuses it", "See who referred whom"],
     keywords: ["referral", "referral program", "affiliate program", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"], feature: "referrals" }),
-  store("creators", "/creators", "Creators", "Sales", "The creator programme: people with a channel of their own apply from My account, and once approved sell the store's goods with a code and a link of their own. They earn a percentage of what their paid orders pay for goods without VAT, optionally more for some categories, in each order's own currency; refunds and cancellations take it back. Approve, decline or stop creators, set a creator's own rate, record the payouts you make and download them as a CSV.", {
+  store("creators", "/creators", "Creators", "The creator programme: people with a channel of their own apply from My account, and once approved sell the store's goods with a code and a link of their own. They earn a percentage of what their paid orders pay for goods without VAT, optionally more for some categories, in each order's own currency; refunds and cancellations take it back. Approve, decline or stop creators, set a creator's own rate, record the payouts you make and download them as a CSV.", {
     tasks: ["Turn the creator programme on or off", "Approve or decline a creator's application", "Change the commission", "Give a category its own commission", "Record a payout to a creator", "Download the payouts"],
     keywords: ["creator", "creators", "influencer", "influencers", "affiliate marketing", "commission", "content creator", "ambassador", "partner programme", "payout", "promo code"], feature: "shop" }),
-  store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"], feature: CUSTOMERS_FEATURE }),
-  store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, their place on the subscriber list (marketing_consent: subscribed, pending, unsubscribed or none), and the custom fields staff entered about them. The owner's only. The file is not a mailing list: marketing goes to the subscriber list.", {
+  store("customers", "/customers", "Customers", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"], feature: CUSTOMERS_FEATURE }),
+  store("customers.export", "/customers/export", "Export customers", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, their place on the subscriber list (marketing_consent: subscribed, pending, unsubscribed or none), and the custom fields staff entered about them. The owner's only. The file is not a mailing list: marketing goes to the subscriber list.", {
     needs: "owner",
     tasks: ["Export all customers", "Download a finished export"],
     keywords: ["export customers", "csv", "customer list", "download customers", "mailing list", "excel", "eksporter kunder"],
     feature: "shop",
   }),
-  store("customers.new", "/customers/new", "Add a customer", "Sales", "Adds a customer by hand: email, name, phone, address and company. They get an account without a password and sign in with a code sent to their email; nothing is emailed when they are added, and nobody is put on the marketing list.", {
+  store("customers.new", "/customers/new", "Add a customer", "Adds a customer by hand: email, name, phone, address and company. They get an account without a password and sign in with a code sent to their email; nothing is emailed when they are added, and nobody is put on the marketing list.", {
     tasks: ["Add a customer by hand", "Create a customer account"],
     keywords: ["new customer", "create customer", "add client", "legg til kunde", "ny kunde"],
     feature: "shop",
   }),
-  store("customers.import", "/customers/import", "Import customers", "Sales", "Brings customers in from a CSV file (Kaizena Flow's own customer file or Shopify's customer export): check the file first, then import it. A row finds its customer by email; an empty cell keeps what the store has; tags are added. An import never subscribes anyone to marketing, never sets a password and never deletes anyone. The owner's only.", {
+  store("customers.import", "/customers/import", "Import customers", "Brings customers in from a CSV file (Kaizena Flow's own customer file or Shopify's customer export): check the file first, then import it. A row finds its customer by email; an empty cell keeps what the store has; tags are added. An import never subscribes anyone to marketing, never sets a password and never deletes anyone. The owner's only.", {
     needs: "owner",
     tasks: ["Import customers from Shopify", "Import customers from a CSV file", "See what a customer import would do"],
     keywords: ["import customers", "csv", "shopify customers", "upload customers", "migrate customers", "importer kunder"],
     feature: "shop",
   }),
-  store("customers.import.job", "/customers/import/[jobId]", "Customer import", "Sales", "One customer import: the file, what the check found row by row, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: CUSTOMERS_FEATURE }),
-  store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason).", { feature: CUSTOMERS_FEATURE }),
-  store("customer.merge", "/customers/[customerId]/merge", "Merge customers", "Sales", "Folds another customer's account into this one: their orders, subscriptions, wishlists, saved addresses, tags, notes, custom field values and bonus credits move here, and the other account is deleted. Refused, before anything changes, when it would lose something (a company, subscription box lists, reviews, gift cards, the referral program, pending credits, too many addresses or tags).", {
+  store("customers.import.job", "/customers/import/[jobId]", "Customer import", "One customer import: the file, what the check found row by row, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: CUSTOMERS_FEATURE }),
+  store("customer", "/customers/[customerId]", "Customer", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason).", { feature: CUSTOMERS_FEATURE }),
+  store("customer.merge", "/customers/[customerId]/merge", "Merge customers", "Folds another customer's account into this one: their orders, subscriptions, wishlists, saved addresses, tags, notes, custom field values and bonus credits move here, and the other account is deleted. Refused, before anything changes, when it would lose something (a company, subscription box lists, reviews, gift cards, the referral program, pending credits, too many addresses or tags).", {
     tasks: ["Merge two customers", "Combine duplicate customer accounts"],
     keywords: ["merge customers", "duplicate customer", "combine accounts", "slå sammen kunder", "duplikat"],
     feature: "shop",
   }),
-  store("privacy", "/privacy", "Privacy requests", "Sales", "The log of privacy requests: people asking for a copy of the data the store holds about them, or for it to be erased (GDPR). Each has the day it was received and a one-month clock with the days left, red when overdue. Log a request that came by email, post or phone, then download the data, erase it, extend the answer once, refuse it with a reason, close it as no data held, or cancel it. Filter by open or answered (?status=answered, ?status=all).", {
+  store("privacy", "/privacy", "Privacy requests", "The log of privacy requests: people asking for a copy of the data the store holds about them, or for it to be erased (GDPR). Each has the day it was received and a one-month clock with the days left, red when overdue. Log a request that came by email, post or phone, then download the data, erase it, extend the answer once, refuse it with a reason, close it as no data held, or cancel it. Filter by open or answered (?status=answered, ?status=all).", {
     tasks: ["Log a request for a person's data", "See which privacy requests are due or overdue", "Extend or refuse a request", "Close a request as no data held", "Find a request that was answered"],
     keywords: ["data request", "subject access request", "DSAR", "GDPR", "erase", "delete customer", "anonymise", "forget me", "right to be forgotten", "personvern", "innsyn", "sletting", "export customer data", "privacy request", "one month"],
   }),
-  store("privacy.new", "/privacy/new", "Log a privacy request", "Sales", "Logging a request that arrived by email, post or phone: what the person asks for, the email they wrote from, the day it was received (the one-month clock runs from receipt) and a note.", {
+  store("privacy.new", "/privacy/new", "Log a privacy request", "Logging a request that arrived by email, post or phone: what the person asks for, the email they wrote from, the day it was received (the one-month clock runs from receipt) and a note.", {
     tasks: ["Log a request for a copy of someone's data", "Log a request to erase someone's data"],
     keywords: ["log request", "new privacy request", "data request", "DSAR", "forget me"],
   }),
-  store("privacy.request", "/privacy/[requestId]", "Privacy request", "Sales", "One privacy request: the person, the clock, and what staff may do while it is open (download the data, erase it, extend the answer once, refuse it with a reason, note that the identity is in doubt, close it as no data held, cancel it), and once answered, what was done.", {
+  store("privacy.request", "/privacy/[requestId]", "Privacy request", "One privacy request: the person, the clock, and what staff may do while it is open (download the data, erase it, extend the answer once, refuse it with a reason, note that the identity is in doubt, close it as no data held, cancel it), and once answered, what was done.", {
     tasks: ["Download a customer's data", "Erase a customer's data", "Extend the answer with a reason", "Refuse a request with a reason", "Close a request as no data held"],
     keywords: ["extend", "refuse", "identity", "no data held", "one month", "answer a data request"],
   }),
-  store("customer.erase", "/customers/[customerId]/erase", "Erase personal data", "Sales", "Erasing one customer's personal data in two steps: a read-only preview of what happens to each kind of data (deleted, made anonymous, kept restricted until the bookkeeping period ends), what else happens (subscriptions cancelled, cards detached, credits forfeited) and warnings, then the customer's email typed again to confirm. Cannot be undone; the owners are told.", {
+  store("customer.erase", "/customers/[customerId]/erase", "Erase personal data", "Erasing one customer's personal data in two steps: a read-only preview of what happens to each kind of data (deleted, made anonymous, kept restricted until the bookkeeping period ends), what else happens (subscriptions cancelled, cards detached, credits forfeited) and warnings, then the customer's email typed again to confirm. Cannot be undone; the owners are told.", {
     tasks: ["See what erasing a customer would do", "Erase a customer's personal data"],
     keywords: ["erase", "delete customer", "forget me", "anonymise", "right to be forgotten", "gdpr", "slett kunde", "personvern"],
   }),
-  store("customer-groups", "/customer-groups", "Customer groups", "Sales", "Discount groups such as Wholesale: a fixed percentage off for the customers in them.", {
+  store("customer-groups", "/customer-groups", "Customer groups", "Discount groups such as Wholesale: a fixed percentage off for the customers in them.", {
     keywords: ["wholesale", "b2b", "tier", "price list", "trade discount", "fixed discount", "customer roles"],
     tasks: ["Make a group with a fixed discount", "Put customers in a group"],
     feature: "shop",
   }),
-  store("customer-group", "/customer-groups/[groupId]", "Customer group", "Sales", "One discount group: its percentage, its customers and the companies using it.", { feature: "shop" }),
-  store("price-lists", "/price-lists", "Price lists", "Sales", "Price lists for customer groups and companies: a percentage off the market price, fixed prices per variant and currency, or both; a buyer pays the lowest their lists give.", {
+  store("customer-group", "/customer-groups/[groupId]", "Customer group", "One discount group: its percentage, its customers and the companies using it.", { feature: "shop" }),
+  store("price-lists", "/price-lists", "Price lists", "Price lists for customer groups and companies: a percentage off the market price, fixed prices per variant and currency, or both; a buyer pays the lowest their lists give.", {
     keywords: ["price list", "b2b prices", "wholesale prices", "trade prices", "customer prices", "contract prices", "net prices"],
     tasks: ["Make a price list for a customer group", "Give a company its own prices"],
     feature: "shop",
   }),
-  store("price-list", "/price-lists/[listId]", "Price list", "Sales", "One price list: its percentage, who it is for, what the percentage reaches and its fixed prices.", { feature: "shop" }),
-  store("b2b-companies", "/companies", "Companies", "Sales", "Companies that buy from the store: a discount group, a main account that invites employees, and the share of the discount employees get.", {
+  store("price-list", "/price-lists/[listId]", "Price list", "One price list: its percentage, who it is for, what the percentage reaches and its fixed prices.", { feature: "shop" }),
+  store("b2b-companies", "/companies", "Companies", "Companies that buy from the store: a discount group, a main account that invites employees, and the share of the discount employees get.", {
     keywords: ["b2b", "business customers", "employees", "company account", "invite", "wholesale"],
     tasks: ["Make a company with a main account", "Invite or remove a company's employees"], feature: "business" }),
-  store("b2b-company", "/companies/[companyId]", "Company", "Sales", "One company: settings, its accounts, invitations, and inviting or removing employees.", { feature: "business" }),
-  store("deals", "/deals", "Deals", "Sales", "The board of deals: what each customer or company may buy, in a column per stage, with Won and Lost, each column's value and the value weighted by its stage's chance.", { extension: "deals",
+  store("b2b-company", "/companies/[companyId]", "Company", "One company: settings, its accounts, invitations, and inviting or removing employees.", { feature: "business" }),
+  store("deals", "/deals", "Deals", "The board of deals: what each customer or company may buy, in a column per stage, with Won and Lost, each column's value and the value weighted by its stage's chance.", { extension: "deals",
     keywords: ["deals", "pipeline", "sales pipeline", "crm", "leads", "opportunities", "prospects", "board", "forecast"],
     tasks: ["Add a deal for a customer or company", "Move a deal to the next stage", "Mark a deal won or lost"],
     feature: "sales",
   }),
-  store("leads", "/leads", "Leads", "Sales", "The leads inbox: people who asked for something in the last 90 days (a quote, a question or a form's message, a chat, a subscription) and are not customers yet, one row a person, each request opening where it is kept. Make a deal of a lead, or dismiss it until they ask again.", { extension: "deals",
+  store("leads", "/leads", "Leads", "The leads inbox: people who asked for something in the last 90 days (a quote, a question or a form's message, a chat, a subscription) and are not customers yet, one row a person, each request opening where it is kept. Make a deal of a lead, or dismiss it until they ask again.", { extension: "deals",
     keywords: ["leads", "prospects", "enquiries", "inquiries", "follow up", "potential customers"],
     tasks: ["Make a deal of a lead", "Dismiss a lead", "Open what a lead asked for"],
     feature: "sales",
   }),
-  store("deal.new", "/deals/new", "New deal", "Sales", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { extension: "deals", feature: "sales" }),
-  store("deal", "/deals/[dealId]", "Deal", "Sales", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", { extension: "deals",
+  store("deal.new", "/deals/new", "New deal", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { extension: "deals", feature: "sales" }),
+  store("deal", "/deals/[dealId]", "Deal", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", { extension: "deals",
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
     feature: "sales",
   }),
-  store("deals.contracts", "/deals/contracts", "Contracts", "Sales", "Every contract on the store's deals (D857): its deal, customer, version and status.", { extension: "deals",
+  store("deals.contracts", "/deals/contracts", "Contracts", "Every contract on the store's deals (D857): its deal, customer, version and status.", { extension: "deals",
     keywords: ["contracts", "signed contracts", "declined contract"],
     feature: "sales",
   }),
-  store("deals.contract_templates", "/deals/contract-templates", "Contract templates", "Sales", "The store's contract templates (D695): the words a new contract starts from, in Norwegian or English.", { extension: "deals",
+  store("deals.contract_templates", "/deals/contract-templates", "Contract templates", "The store's contract templates (D695): the words a new contract starts from, in Norwegian or English.", { extension: "deals",
     tasks: ["Change the contract template", "Add a contract template"],
     keywords: ["contract template", "agreement template", "terms"],
     feature: "sales",
   }),
-  store("deals.contract_template", "/deals/contract-templates/[templateId]", "Contract template", "Sales", "One contract template (D695): its words, language, days to sign and reminders, beside how it will look.", { extension: "deals",
+  store("deals.contract_template", "/deals/contract-templates/[templateId]", "Contract template", "One contract template (D695): its words, language, days to sign and reminders, beside how it will look.", { extension: "deals",
     feature: "sales",
   }),
-  store("deal.contract", "/deals/[dealId]/contracts/[contractId]", "Contract", "Sales", "One contract on a deal (D695): a draft's words and who signs, beside how it will look filled in from the deal; a sent one's signers and its PDF.", { extension: "deals",
+  store("deal.contract", "/deals/[dealId]/contracts/[contractId]", "Contract", "One contract on a deal (D695): a draft's words and who signs, beside how it will look filled in from the deal; a sent one's signers and its PDF.", { extension: "deals",
     tasks: ["Change a contract's words", "Choose who signs a contract"],
     feature: "sales",
   }),
-  store("deals.pipelines", "/deals/pipelines", "Pipelines", "Sales", "The store's pipelines and their stages: names, order, the chance a deal in each closes, and the stage sent quotes belong in.", { extension: "deals",
+  store("deals.pipelines", "/deals/pipelines", "Pipelines", "The store's pipelines and their stages: names, order, the chance a deal in each closes, and the stage sent quotes belong in.", { extension: "deals",
     keywords: ["pipelines", "stages", "probability", "sales process"],
     feature: "sales",
   }),
-  store("deliveries", "/deliveries", "Subscription boxes", "Sales", "Delivery days, the round being packed and shoppers' subscription box lists.", {
+  store("deliveries", "/deliveries", "Subscription boxes", "Delivery days, the round being packed and shoppers' subscription box lists.", {
     feature: "boxes",
     tasks: ["Add a delivery day", "Send and charge this round's orders"],
     keywords: ["subscription box", "standing order", "weekly delivery", "grocery"],
   }),
-  store("segments", "/segments", "Segments", "Sales", "Segments: who gets a broadcast, a text message or an automation, chosen from the store's customers and subscribers by rules (orders, money spent, first and last order, customer type from analytics, country, language, customer group, company, account, tags, email consent), each counted now with how many want the store's emails.", { extension: "email_automation",
+  store("segments", "/segments", "Segments", "Segments: who gets a broadcast, a text message or an automation, chosen from the store's customers and subscribers by rules (orders, money spent, first and last order, customer type from analytics, country, language, customer group, company, account, tags, email consent), each counted now with how many want the store's emails.", { extension: "email_automation",
     keywords: ["segment", "audience", "customer list", "rfm", "vip", "win-back", "target group", "målgruppe"],
     tasks: ["Make a segment of my best customers", "See how many customers have not ordered for six months"],
   }),
-  store("broadcasts", "/broadcasts", "Broadcasts", "Sales", "Broadcasts: emails with news and offers written once in the store's languages and sent to the people on the subscriber list who want them, everyone or a segment's, once each, with an unsubscribe link. Draft, test to yourself, send now or schedule, stop, and see what happened (sent, delivered, bounced, unsubscribed, presses on links). Write with AI suggests the words.", { extension: "email_automation",
+  store("broadcasts", "/broadcasts", "Broadcasts", "Broadcasts: emails with news and offers written once in the store's languages and sent to the people on the subscriber list who want them, everyone or a segment's, once each, with an unsubscribe link. Draft, test to yourself, send now or schedule, stop, and see what happened (sent, delivered, bounced, unsubscribed, presses on links). Write with AI suggests the words.", { extension: "email_automation",
     keywords: ["newsletter", "email campaign", "email marketing", "mailing", "send email to customers", "nyhetsbrev"],
     tasks: ["Send a newsletter to everyone who wants my emails", "Email my best customers about the autumn collection"],
   }),
-  store("text-messages", "/text-messages", "Text messages", "Sales", "Text messages (SMS): offers by text to the numbers that asked for them at checkout, everyone or a segment's, each arriving in its reader's daytime and ending with a stop link; a STOP reply stops them too. The store's own 46elks account (connected by the owner), what each text message costs before it is sent and this month's cap, who gets texts, and staff stopping a number.", {
+  store("text-messages", "/text-messages", "Text messages", "Text messages (SMS): offers by text to the numbers that asked for them at checkout, everyone or a segment's, each arriving in its reader's daytime and ending with a stop link; a STOP reply stops them too. The store's own 46elks account (connected by the owner), what each text message costs before it is sent and this month's cap, who gets texts, and staff stopping a number.", {
     keywords: ["sms", "text message", "sms marketing", "texting", "46elks", "mobile marketing", "sms campaign", "tekstmelding"],
     tasks: ["Send an offer by text message", "Connect an SMS account"],
   }),
-  store("email-automations", "/automations", "Email automations", "Sales", "Email automations: emails that go by themselves once switched on, to the people on the subscriber list who want them, once each: a welcome after they join, a thank-you some days after an order is delivered, a win-back after a time without orders, and back in stock (shoppers ask on a sold-out product and get one email when it is back). Each says how many it sent in the last 30 days.", { extension: "email_automation",
+  store("email-automations", "/automations", "Email automations", "Email automations: emails that go by themselves once switched on, to the people on the subscriber list who want them, once each: a welcome after they join, a thank-you some days after an order is delivered, a win-back after a time without orders, and back in stock (shoppers ask on a sold-out product and get one email when it is back). Each says how many it sent in the last 30 days.", { extension: "email_automation",
     keywords: ["automation", "flow", "welcome email", "win-back", "winback", "back in stock", "notify me", "restock", "lifecycle email", "velkomstmail"],
     tasks: ["Send a welcome email to new subscribers", "Tell customers when a sold-out product is back"],
   }),
-  store("ads", "/ads", "Ads and conversions", "Sales", "Ads and conversions: server-side conversion events to Meta, Google Analytics 4, TikTok and Pinterest. Per platform the connection (its id and token), what it sends (standard, or enhanced with hashed email and phone), a test code, and the last seven days' sent, not sent and failed counts. Only for orders whose shopper allowed marketing cookies.", {
+  store("ads", "/ads", "Ads and conversions", "Ads and conversions: server-side conversion events to Meta, Google Analytics 4, TikTok and Pinterest. Per platform the connection (its id and token), what it sends (standard, or enhanced with hashed email and phone), a test code, and the last seven days' sent, not sent and failed counts. Only for orders whose shopper allowed marketing cookies.", {
     keywords: ["conversions api", "capi", "meta pixel", "facebook pixel", "tiktok events api", "pinterest conversions", "server-side tracking", "ad tracking", "measurement protocol"],
     tasks: ["Send purchases to Meta from the server", "Connect TikTok's Events API"],
   }),
-  store("feeds", "/feeds", "Product feeds", "Sales", "Product feeds: the store's products as Google Merchant Center, Meta, TikTok and Pinterest files at a secret address, one per country and channel, with price as shown (with VAT), stock, GTIN, brand, pictures and the flat shipping rate. Lists the products left out and why. Make a new address to stop the old one.", {
+  store("feeds", "/feeds", "Product feeds", "Product feeds: the store's products as Google Merchant Center, Meta, TikTok and Pinterest files at a secret address, one per country and channel, with price as shown (with VAT), stock, GTIN, brand, pictures and the flat shipping rate. Lists the products left out and why. Make a new address to stop the old one.", {
     keywords: ["product feed", "google shopping", "merchant center", "meta catalogue", "facebook shop", "instagram shopping", "tiktok catalog", "pinterest catalog", "xml feed", "csv feed"],
     tasks: ["Show my products on Google Shopping", "Get a catalogue feed for Meta"],
   }),
-  store("flows", "/flows", "Flows", "Sales", "Flows: emails one after another to each person from the moment something happens (they join, pay for an order, or leave their checkout), read as a story with each email drawn. Start a welcome series with one press, test it on the newest subscriber, and switch it on.", { extension: "email_automation",
+  store("flows", "/flows", "Flows", "Flows: emails one after another to each person from the moment something happens (they join, pay for an order, or leave their checkout), read as a story with each email drawn. Start a welcome series with one press, test it on the newest subscriber, and switch it on.", { extension: "email_automation",
     keywords: ["flow", "sequence", "series", "drip", "journey", "welcome series", "forløp"],
     tasks: ["Start a welcome series", "Switch on a flow"],
   }),
-  store("flow", "/flows/[flowId]", "Flow", "Sales", "One flow as a story: what starts it, each email with when it goes and on what condition, Test and Switch on.", { extension: "email_automation" }),
-  store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch.", { extension: "email_automation" }),
-  store("email-follow-up", "/automations/[kind]/follow-ups/[position]", "Second or third email", "Sales", "An email automation's second or third email: its days after the one before, its words per language, a test to yourself, and delete.", { extension: "email_automation" }),
-  store("text-message.new", "/text-messages/new", "New text message", "Sales", "Writes a new text message: its name, who gets it and its words, with what each reader gets and how many texts it takes."),
-  store("text-message", "/text-messages/[campaignId]", "Text message", "Sales", "One text message: a draft priced by 46elks against the month's cap and sent; once started, how many wait for their readers' daytime, went, arrived, failed or were not sent, and what they cost."),
-  store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says.", { extension: "email_automation" }),
-  store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links.", { extension: "email_automation" }),
-  store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change.", { extension: "email_automation" }),
-  store("segment", "/segments/[segmentId]", "Segment", "Sales", "One segment: how many people are in it, how many want the store's emails, who they are, and its rules.", { extension: "email_automation" }),
-  store("segment.rfm", "/segments/rfm/[group]", "Customers of a type", "Sales", "The customers of one type on the Customers analytics page (VIP, loyal, promising, new, at risk, lost), a page at a time, with a CSV for the owner and Save as a segment.", { extension: "email_automation" }),
-  store("subscribers", "/subscribers", "Subscribers", "Sales", "The subscriber list: people who asked for the store's emails with news and offers, from sign-up forms, checkout or My account, with the words they agreed to, when, and whether they confirmed by email. Search, see who is waiting for their link and who left, open one for their consent history, unsubscribe a person who asked, and export the list (owners).", {
+  store("flow", "/flows/[flowId]", "Flow", "One flow as a story: what starts it, each email with when it goes and on what condition, Test and Switch on.", { extension: "email_automation" }),
+  store("email-automation", "/automations/[kind]", "Email automation", "One email automation: its days, its words per language, a test to yourself, and the switch.", { extension: "email_automation" }),
+  store("email-follow-up", "/automations/[kind]/follow-ups/[position]", "Second or third email", "An email automation's second or third email: its days after the one before, its words per language, a test to yourself, and delete.", { extension: "email_automation" }),
+  store("text-message.new", "/text-messages/new", "New text message", "Writes a new text message: its name, who gets it and its words, with what each reader gets and how many texts it takes."),
+  store("text-message", "/text-messages/[campaignId]", "Text message", "One text message: a draft priced by 46elks against the month's cap and sent; once started, how many wait for their readers' daytime, went, arrived, failed or were not sent, and what they cost."),
+  store("broadcast.new", "/broadcasts/new", "New broadcast", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says.", { extension: "email_automation" }),
+  store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links.", { extension: "email_automation" }),
+  store("segment.new", "/segments/new", "New segment", "Makes a segment from a ready one or from rules, with the count as they change.", { extension: "email_automation" }),
+  store("segment", "/segments/[segmentId]", "Segment", "One segment: how many people are in it, how many want the store's emails, who they are, and its rules.", { extension: "email_automation" }),
+  store("segment.rfm", "/segments/rfm/[group]", "Customers of a type", "The customers of one type on the Customers analytics page (VIP, loyal, promising, new, at risk, lost), a page at a time, with a CSV for the owner and Save as a segment.", { extension: "email_automation" }),
+  store("subscribers", "/subscribers", "Subscribers", "The subscriber list: people who asked for the store's emails with news and offers, from sign-up forms, checkout or My account, with the words they agreed to, when, and whether they confirmed by email. Search, see who is waiting for their link and who left, open one for their consent history, unsubscribe a person who asked, and export the list (owners).", {
     keywords: ["newsletter", "mailing list", "email list", "marketing consent", "opt-in", "double opt-in", "unsubscribe", "nyhetsbrev", "abonnenter"],
     tasks: ["See who subscribed to the newsletter", "Export the subscriber list", "Unsubscribe a person"],
   }),
-  store("subscriber", "/subscribers/[subscriberId]", "Subscriber", "Sales", "One subscriber: what they agreed to, when and from where, their history, and Unsubscribe."),
-  store("cart-reminders", "/cart-reminders", "Cart reminders", "Sales", "Emails to shoppers who left their checkout, with their steps and results.", {
+  store("subscriber", "/subscribers/[subscriberId]", "Subscriber", "One subscriber: what they agreed to, when and from where, their history, and Unsubscribe."),
+  store("cart-reminders", "/cart-reminders", "Cart reminders", "Emails to shoppers who left their checkout, with their steps and results.", {
     keywords: ["abandoned cart", "recovery"],
     feature: "shop",
   }),
-  store("cart-reminder.new", "/cart-reminders/new", "New cart reminder", "Sales", "Adds a reminder step.", { feature: "shop" }),
-  store("cart-reminder", "/cart-reminders/[stepId]", "Cart reminder", "Sales", "One reminder step: when it goes, its words and any coupon.", { feature: "shop" }),
-  store("shipping", "/settings/shipping", "Shipping", "Sales", "What delivery costs in each country: the flat rate (the default, and what subscriptions, subscription boxes and draft orders pay), shipping methods with zones and profiles, the default weight for goods without one, pickup at your places, local delivery and carriers, with warnings when something cannot be served.", {
+  store("cart-reminder.new", "/cart-reminders/new", "New cart reminder", "Adds a reminder step.", { feature: "shop" }),
+  store("cart-reminder", "/cart-reminders/[stepId]", "Cart reminder", "One reminder step: when it goes, its words and any coupon.", { feature: "shop" }),
+  store("shipping", "/settings/shipping", "Shipping", "What delivery costs in each country: the flat rate (the default, and what subscriptions, subscription boxes and draft orders pay), shipping methods with zones and profiles, the default weight for goods without one, pickup at your places, local delivery and carriers, with warnings when something cannot be served.", {
     keywords: ["delivery price", "freight", "flat rate", "free shipping", "default weight", "frakt", "fraktpris"],
     tasks: ["Set the shipping price for a country", "Set the default weight per unit"],
     feature: "shop",
   }),
-  store("shipping.methods", "/settings/shipping/methods", "Shipping methods", "Sales", "A country's named ways of shipping (Standard, Express …): add, open and reorder them. Shoppers see the methods that price their basket, cheapest first; with none, the flat rate is charged.", {
+  store("shipping.methods", "/settings/shipping/methods", "Shipping methods", "A country's named ways of shipping (Standard, Express …): add, open and reorder them. Shoppers see the methods that price their basket, cheapest first; with none, the flat rate is charged.", {
     keywords: ["shipping method", "shipping rates", "express", "standard shipping", "fraktmetode"],
     tasks: ["Add a shipping method", "Change the order of shipping methods"],
     feature: "shop",
   }),
-  store("shipping.method", "/settings/shipping/methods/[methodId]", "Shipping method", "Sales", "One method: its name, transit time, free-above value and its rates per zone and profile, flat, by weight or by basket value in tiers.", {
+  store("shipping.method", "/settings/shipping/methods/[methodId]", "Shipping method", "One method: its name, transit time, free-above value and its rates per zone and profile, flat, by weight or by basket value in tiers.", {
     keywords: ["weight based shipping", "price based shipping", "rate table", "tiers", "vektbasert frakt"],
     tasks: ["Charge shipping by weight", "Charge shipping by basket value", "Give a zone its own rate", "Make a method free above an amount"],
     feature: "shop",
   }),
-  store("shipping.zones", "/settings/shipping/zones", "Shipping zones", "Sales", "Groups of postal codes and prefixes inside a country with rates of their own; codes in no zone are Rest of country. Check which zone a postal code falls in.", {
+  store("shipping.zones", "/settings/shipping/zones", "Shipping zones", "Groups of postal codes and prefixes inside a country with rates of their own; codes in no zone are Rest of country. Check which zone a postal code falls in.", {
     keywords: ["shipping zone", "postal codes", "postcode", "remote areas", "postnummer", "soner"],
     tasks: ["Add a shipping zone", "Check which zone a postal code is in"],
     feature: "shop",
   }),
-  store("shipping.profiles", "/settings/shipping/profiles", "Shipping profiles", "Sales", "Groups of products with rates of their own on each method (bulky, fragile); every other product is General. A basket with several profiles pays the sum.", {
+  store("shipping.profiles", "/settings/shipping/profiles", "Shipping profiles", "Groups of products with rates of their own on each method (bulky, fragile); every other product is General. A basket with several profiles pays the sum.", {
     keywords: ["shipping profile", "bulky goods", "shipping class", "fraktklasse"],
     tasks: ["Put products in a shipping profile", "Give bulky goods their own shipping rates"],
     feature: "shop",
   }),
-  store("shipping.pickup", "/settings/shipping/pickup", "Pickup", "Sales", "Let customers collect at your stores and pickup points: the switch per place, a price (free by default), the usual time until ready and the instructions sent in the Ready for pickup email.", {
+  store("shipping.pickup", "/settings/shipping/pickup", "Pickup", "Let customers collect at your stores and pickup points: the switch per place, a price (free by default), the usual time until ready and the instructions sent in the Ready for pickup email.", {
     keywords: ["click and collect", "pickup in store", "local pickup", "hente i butikk", "klikk og hent"],
     tasks: ["Let customers collect in your store", "Write pickup instructions"],
     feature: "shop",
   }),
-  store("shipping.local", "/settings/shipping/local", "Local delivery", "Sales", "Deliver yourself to customers nearby: areas by postal codes or a radius from a place, with a price, a minimum basket and a free-above value. Check which areas cover a postal code.", {
+  store("shipping.local", "/settings/shipping/local", "Local delivery", "Deliver yourself to customers nearby: areas by postal codes or a radius from a place, with a price, a minimum basket and a free-above value. Check which areas cover a postal code.", {
     keywords: ["local delivery", "own delivery", "delivery radius", "hjemlevering", "lokal levering"],
     tasks: ["Add a local delivery area", "Deliver within a radius of your shop"],
     feature: "shop",
   }),
-  store("returns.settings", "/settings/returns", "Return settings", "Sales", "The store's rules for returns: the return window (never under the legal 14 days), the transit allowance, who pays return shipping, when refunds are made, goods the law excludes, companies, the return address and the instructions customers get (with translations).", {
+  store("returns.settings", "/settings/returns", "Return settings", "The store's rules for returns: the return window (never under the legal 14 days), the transit allowance, who pays return shipping, when refunds are made, goods the law excludes, companies, the return address and the instructions customers get (with translations).", {
     needs: "owner",
     keywords: ["return window", "withdrawal", "return policy", "return address", "who pays return shipping", "refund when", "instructions", "angrerett"],
     tasks: ["Set the return window", "Choose who pays for return shipping", "Write the return instructions", "Translate the return instructions"],
     feature: "shop",
   }),
-  store("products.settings", "/settings/products", "Product settings", "Settings", "What a product's tile in a content grid shows besides its picture, title and price: how many are left (\"Only 3 left\") and a quantity chooser with Add to cart, both off until switched on. Each grid can say otherwise for itself in the page builder.", {
+  store("products.settings", "/settings/products", "Product settings", "What a product's tile in a content grid shows besides its picture, title and price: how many are left (\"Only 3 left\") and a quantity chooser with Add to cart, both off until switched on. Each grid can say otherwise for itself in the page builder.", {
     keywords: ["stock on tiles", "show stock", "quantity on tiles", "add to cart in grid", "buy from grid", "product tiles", "product grid", "only left"],
     tasks: ["Show the stock left on product tiles", "Let shoppers add to cart straight from a grid"],
     feature: "shop",
   }),
-  store("orders.settings", "/settings/orders", "Order settings", "Sales", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizena Flow.", {
+  store("orders.settings", "/settings/orders", "Order settings", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizena Flow.", {
     keywords: ["gift message", "gift", "auto archive", "archive orders", "pay link valid", "draft order link", "payment outside", "cash", "bank transfer", "staff may mark paid"],
     tasks: ["Turn gift messages on or off", "Archive finished orders automatically", "Set how long a draft's pay link is valid", "Let staff record payments taken outside Kaizena Flow"],
     feature: "shop",
   }),
-  store("notifications", "/settings/notifications", "Notifications", "Settings", "The emails customers get about orders and returns (D238): each one's switch (the order confirmation, the change and renewal confirmations, the withdrawal acknowledgement and the return decisions are always sent), which languages have the store's own wording, and links to edit each email and to choose who on the team gets staff alerts.", {
+  store("notifications", "/settings/notifications", "Notifications", "The emails customers get about orders and returns (D238): each one's switch (the order confirmation, the change and renewal confirmations, the withdrawal acknowledgement and the return decisions are always sent), which languages have the store's own wording, and links to edit each email and to choose who on the team gets staff alerts.", {
     keywords: ["notification", "notifications", "customer emails", "order email", "shipping confirmation", "email template", "switch off email", "out for delivery email", "delivered email", "e-post", "varsler"],
     tasks: ["Switch off an order email", "Switch on the delivered email", "See which emails have your own wording"],
     feature: "shop",
   }),
-  store("notifications.edit", "/settings/notifications/[notification]", "Edit a customer email", "Settings", "One customer email's subject, heading and text per language, with named placeholders such as {order_number}, checked for claims and web addresses before saving, a preview with a sample order, a test email to yourself and Use standard text to go back.", {
+  store("notifications.edit", "/settings/notifications/[notification]", "Edit a customer email", "One customer email's subject, heading and text per language, with named placeholders such as {order_number}, checked for claims and web addresses before saving, a preview with a sample order, a test email to yourself and Use standard text to go back.", {
     keywords: ["email template", "edit email", "email subject", "email wording", "placeholder", "preview email", "test email", "standard text"],
     tasks: ["Change the subject of the shipping email", "Write your own text in the order confirmation", "Send a test email to yourself"],
     feature: "shop",
   }),
-  store("notifications.staff", "/settings/notifications/staff", "Staff alerts", "Settings", "Who on the team is emailed about new orders, return requests, overdue refunds, low stock and automation, and a daily or weekly summary of the store's figures. Owners only.", {
+  store("notifications.staff", "/settings/notifications/staff", "Staff alerts", "Who on the team is emailed about new orders, return requests, overdue refunds, low stock and automation, and a daily or weekly summary of the store's figures. Owners only.", {
     needs: "owner",
     keywords: ["staff notification", "new order email", "order alert", "staff alert", "daily summary", "weekly summary", "who gets emails", "recipients"],
     tasks: ["Get an email for every new order", "Choose who is told of return requests", "Get a daily summary"],
     feature: "shop",
   }),
-  store("automation", "/settings/automation", "Automation", "Settings", "Rules that run when an order is paid: when the order matches conditions you choose (total, country, buyer, products, delivery, source, tags and more), tag it, tell staff or hold it so it is not sent. Each rule runs once per order and is logged.", {
+  store("automation", "/settings/automation", "Automation", "Rules that run when an order is paid: when the order matches conditions you choose (total, country, buyer, products, delivery, source, tags and more), tag it, tell staff or hold it so it is not sent. Each rule runs once per order and is logged.", {
     keywords: ["automation", "rules", "order rules", "workflow", "flow", "auto tag", "hold order", "fraud check", "notify staff"],
     tasks: ["Tag big orders automatically", "Hold orders to a country for checking", "Tell staff about orders with a product"],
     feature: "shop",
   }),
-  store("automation.new", "/settings/automation/new", "New automation rule", "Settings", "Make a rule: its name, whether all or any of its conditions must hold, the conditions and what it does (tag, notify staff, hold).", {
+  store("automation.new", "/settings/automation/new", "New automation rule", "Make a rule: its name, whether all or any of its conditions must hold, the conditions and what it does (tag, notify staff, hold).", {
     keywords: ["new rule", "add rule", "create automation"],
     feature: "shop",
   }),
-  store("automation.rule", "/settings/automation/[ruleId]", "Automation rule", "Settings", "One rule: change its conditions and actions, switch it off or delete it.", {
+  store("automation.rule", "/settings/automation/[ruleId]", "Automation rule", "One rule: change its conditions and actions, switch it off or delete it.", {
     feature: "shop",
   }),
-  store("automation.log", "/settings/automation/log", "Automation log", "Settings", "What the rules did in the last 12 months: each run's order, rule, whether it matched and what each action did or why it could not.", {
+  store("automation.log", "/settings/automation/log", "Automation log", "What the rules did in the last 12 months: each run's order, rule, whether it matched and what each action did or why it could not.", {
     keywords: ["automation log", "rule runs", "what rules did"],
     feature: "shop",
   }),
-  store("tax", "/settings/tax", "Tax settings", "Sales", "How the store charges VAT: its VAT registration and number (checked in VIES, or the Norwegian register), where goods are sent from, its OSS and IOSS registrations, and what is on or missing for reverse charge and IOSS.", {
+  store("tax", "/settings/tax", "Tax", "How the store charges VAT: its VAT registration and number (checked in VIES, or the Norwegian register), where goods are sent from, its OSS and IOSS registrations, and what is on or missing for reverse charge and IOSS.", {
     needs: "owner",
-    keywords: ["vat", "mva", "moms", "vat number", "reverse charge", "oss", "ioss", "one stop shop", "vies", "tax", "registration"],
+    keywords: ["tax settings", "vat", "mva", "moms", "vat number", "reverse charge", "oss", "ioss", "one stop shop", "vies", "tax", "registration"],
     tasks: ["Save the store's VAT number", "Check the VAT number", "Record an OSS or IOSS registration", "See what is missing for reverse charge"],
     feature: "shop",
   }),
-  store("invoices.settings", "/settings/invoices", "Invoicing settings", "Sales", "Invoicing for orders: the switch, what is missing before it can be switched on (business details, tax profile), the prefix and first number of the invoice and credit note series until the first is issued, the note printed on every document, and whether the confirmation email carries the invoice.", {
+  store("invoices.settings", "/settings/invoices", "Invoicing", "Invoicing for orders: the switch, what is missing before it can be switched on (business details, tax profile), the prefix and first number of the invoice and credit note series until the first is issued, the note printed on every document, and whether the confirmation email carries the invoice.", {
     needs: "owner",
-    keywords: ["invoice", "faktura", "invoice numbers", "numbering", "series", "prefix", "credit note", "footer note", "bank details", "invoicing off", "stripe invoice"],
+    keywords: ["invoicing settings", "invoice", "faktura", "invoice numbers", "numbering", "series", "prefix", "credit note", "footer note", "bank details", "invoicing off", "stripe invoice"],
     tasks: ["Switch invoicing on or off", "See what is missing for invoices", "Set the invoice number prefix and first number", "Write the note printed on every invoice"],
     feature: "shop",
   }),
-  store("producer-responsibility", "/settings/producer-responsibility", "Producer responsibility", "Settings", "Producer responsibility (D342): the store's registrations per scheme (packaging, electrical and electronic equipment, batteries, textiles, furniture, tyres) and country, with number, authority, valid from and to and whether the number shows on product pages, or why none is needed there; and the products not sold in a country because a scheme they are under has no valid registration there, from the day after the last one ends.", {
+  store("producer-responsibility", "/settings/producer-responsibility", "Producer responsibility", "Producer responsibility (D342): the store's registrations per scheme (packaging, electrical and electronic equipment, batteries, textiles, furniture, tyres) and country, with number, authority, valid from and to and whether the number shows on product pages, or why none is needed there; and the products not sold in a country because a scheme they are under has no valid registration there, from the day after the last one ends.", {
     keywords: ["producer responsibility", "epr", "extended producer responsibility", "packaging", "weee", "batteries", "recycling", "registration number", "lucid", "produsentansvar", "emballasje", "returordning", "not sold"],
     tasks: ["Add a producer registration", "See what is not sold for want of a registration", "Record that no registration is needed in a country", "Show a registration number on product pages"],
     feature: "shop",
   }),
-  store("private-mode", "/settings/private", "Private mode", "Settings", "Private mode (D339): whether the store is private (visitors see only its landing page, built in the page builder, until they enter the password), the password, signing every visitor out, the landing page, and Preview the store for staff. A new store is private until it opens; orders already placed keep their pages.", {
+  store("private-mode", "/settings/private", "Private mode", "Private mode (D339): whether the store is private (visitors see only its landing page, built in the page builder, until they enter the password), the password, signing every visitor out, the landing page, and Preview the store for staff. A new store is private until it opens; orders already placed keep their pages.", {
     keywords: ["private mode", "password", "password page", "coming soon", "pre-launch", "hide store", "landing page", "privat modus", "passord", "åpner snart", "skjul butikken"],
     tasks: ["Make the store private", "Set a password for visitors", "Open the store to everyone", "Preview the store as staff"],
   }),
-  store("customs", "/settings/customs", "Duties and import VAT", "Settings", "Duties and import VAT (D343): for each country the store's goods cross a customs border into, who pays duties and import VAT (DAP: the recipient pays the carrier on delivery, the default; DDP: collected at checkout), whether the store collects that country's VAT at checkout under its scheme (VOEC), how many products lack an HS code, and whether the platform's rates table covers the country.", {
+  store("customs", "/settings/customs", "Duties and import VAT", "Duties and import VAT (D343): for each country the store's goods cross a customs border into, who pays duties and import VAT (DAP: the recipient pays the carrier on delivery, the default; DDP: collected at checkout), whether the store collects that country's VAT at checkout under its scheme (VOEC), how many products lack an HS code, and whether the platform's rates table covers the country.", {
     keywords: ["duties", "duty", "import vat", "ddp", "dap", "delivered duty paid", "landed cost", "hs code", "tariff", "toll", "tollavgift", "voec", "export", "border"],
     tasks: ["Collect duties at checkout for a country", "Let the carrier collect duties on delivery", "See which products have no HS code"],
     feature: "shop",
   }),
-  store("payments", "/settings/payments", "Payments", "Sales", "Stripe: the store's accounts in test and live, going live, and invoices for orders.", {
+  store("payments", "/settings/payments", "Payments", "Stripe: the store's accounts in test and live, going live, and invoices for orders.", {
     needs: "owner",
     keywords: ["stripe", "card", "go live", "payouts"],
     feature: "shop",
   }),
 
   // Store: analytics (D152) ------------------------------------------------------------------
-  store("analytics", "/analytics", "Analytics", "Analytics", "The store's cockpit: revenue, profit, orders, conversion, basket size, customers and refunds against the previous period and last year, the funnel, best sellers, channels, target progress and what needs doing today.", {
+  store("analytics", "/analytics", "Analytics", "The store's cockpit: revenue, profit, orders, conversion, basket size, customers and refunds against the previous period and last year, the funnel, best sellers, channels, target progress and what needs doing today.", {
     keywords: ["dashboard", "kpi", "revenue", "sales", "profit", "conversion", "statistics", "report", "performance"],
     tasks: ["See how the store is doing", "Find out why sales changed", "See what needs doing today"],
     feature: "shop",
   }),
-  store("analytics.finance", "/analytics/finance", "Finance", "Analytics", "From gross sales to net revenue, contribution profit and estimated operating profit: discounts, refunds, VAT, cost of goods, payment and platform fees, shipping and marketing.", {
+  store("analytics.finance", "/analytics/finance", "Finance", "From gross sales to net revenue, contribution profit and estimated operating profit: discounts, refunds, VAT, cost of goods, payment and platform fees, shipping and marketing.", {
     keywords: ["profit", "margin", "cogs", "fees", "vat", "net sales", "contribution"],
     feature: "shop",
   }),
-  store("analytics.payouts", "/analytics/payouts", "Payouts", "Analytics", "Each Stripe payout to the bank with its date, amount and Stripe's fees, the payments, refunds and disputes it settles with their orders, a flag where it does not add up or holds money not tied to an order, and a CSV.", {
+  store("analytics.payouts", "/analytics/payouts", "Payouts", "Each Stripe payout to the bank with its date, amount and Stripe's fees, the payments, refunds and disputes it settles with their orders, a flag where it does not add up or holds money not tied to an order, and a CSV.", {
     keywords: ["payout", "bank", "transfer", "settlement", "reconciliation", "stripe fees", "balance"],
     feature: "shop",
   }),
-  store("analytics.payout", "/analytics/payouts/[payout]", "A payout", "Analytics", "One Stripe payout: each payment, refund, dispute and fee in it with the order it is for, and whether it adds up.", { feature: "shop" }),
-  store("analytics.tax", "/analytics/tax", "VAT, OSS and IOSS reports", "Analytics", "VAT by delivery country, rate and basis made from your invoices and credit notes, the quarterly OSS and monthly IOSS return data in euro at the ECB rate, how they reconcile with Finance and your orders, and CSV files for your accountant. Your own figures, never a tax return.", {
+  store("analytics.payout", "/analytics/payouts/[payout]", "A payout", "One Stripe payout: each payment, refund, dispute and fee in it with the order it is for, and whether it adds up.", { feature: "shop" }),
+  store("analytics.tax", "/analytics/tax", "VAT, OSS and IOSS reports", "VAT by delivery country, rate and basis made from your invoices and credit notes, the quarterly OSS and monthly IOSS return data in euro at the ECB rate, how they reconcile with Finance and your orders, and CSV files for your accountant. Your own figures, never a tax return.", {
     keywords: ["vat", "moms", "mva", "oss", "ioss", "one stop shop", "return", "rate", "country", "accountant", "reconciliation", "tax report", "ecb", "euro"],
     feature: "shop",
   }),
-  store("analytics.customers", "/analytics/customers", "Customer analytics", "Analytics", "New against returning customers, repeat purchase rate, purchase frequency, lifetime value, customer segments (RFM) and cohort retention.", {
+  store("analytics.customers", "/analytics/customers", "Customer analytics", "New against returning customers, repeat purchase rate, purchase frequency, lifetime value, customer segments (RFM) and cohort retention.", {
     keywords: ["ltv", "retention", "cohort", "rfm", "repeat", "loyal", "churn"],
     feature: "shop",
   }),
-  store("analytics.products", "/analytics/products", "Product analytics", "Analytics", "Revenue, units, margin, refund rate and share of revenue and profit for each product.", {
+  store("analytics.products", "/analytics/products", "Product analytics", "Revenue, units, margin, refund rate and share of revenue and profit for each product.", {
     keywords: ["best sellers", "top products", "margin", "pareto"],
     feature: "shop",
   }),
-  store("analytics.inventory", "/analytics/inventory", "Inventory analytics", "Analytics", "Stock on hand and its value, sales velocity, days of stock left, products about to run out and dead stock.", {
+  store("analytics.inventory", "/analytics/inventory", "Inventory analytics", "Stock on hand and its value, sales velocity, days of stock left, products about to run out and dead stock.", {
     keywords: ["stock", "stockout", "velocity", "turnover", "dead stock", "reorder"],
     feature: "shop",
   }),
-  store("analytics.marketing", "/analytics/marketing", "Marketing analytics", "Analytics", "Channels with sessions, orders, revenue, conversion, cost to win a customer and return on ad spend; ad spend entry; discounts and coupons.", {
+  store("analytics.marketing", "/analytics/marketing", "Marketing analytics", "Channels with sessions, orders, revenue, conversion, cost to win a customer and return on ad spend; ad spend entry; discounts and coupons.", {
     keywords: ["cac", "roas", "ads", "channels", "campaign", "spend", "discounts", "coupons"],
     tasks: ["Enter this month's ad spend", "See which channel earns the most"],
     feature: "shop",
   }),
-  store("analytics.sales", "/analytics/sales", "Sales analytics", "Analytics", "From the deals (S6, D520): when the open deals may close and their value weighted by stage, how deals move from stage to stage, what each person won and lost, and how long a deal takes to win.", { extension: "deals",
-    keywords: ["sales forecast", "pipeline report", "win rate", "conversion", "deals"], feature: "sales" }),
-  store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
+  store("analytics.sales", "/analytics/sales", "Sales", "From the deals (S6, D520): when the open deals may close and their value weighted by stage, how deals move from stage to stage, what each person won and lost, and how long a deal takes to win.", { extension: "deals",
+    keywords: ["sales analytics", "sales forecast", "pipeline report", "win rate", "conversion", "deals"], feature: "sales" }),
+  store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
     keywords: ["mrr", "arr", "churn", "recurring"], feature: "subscriptions" }),
-  store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
-    keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "busiest hours", "refunds", "return rate", "returns analytics", "return reasons"],
+  store("analytics.traffic", "/analytics/traffic", "Traffic", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
+    keywords: ["traffic analytics", "visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "busiest hours", "refunds", "return rate", "returns analytics", "return reasons"],
   }),
-  store("analytics.reports", "/analytics/reports", "Reports", "Analytics", "Reports an owner builds and saves from a fixed list of figures (revenue, gross sales, discounts, refunds, orders, units sold, average order value, customers, gross profit, VAT) cut by day, week, month or quarter, product, variant and SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method or new and returning customers, with filters, a comparison, a chart and a CSV; ten ready reports to start from.", {
+  store("analytics.reports", "/analytics/reports", "Reports", "Reports an owner builds and saves from a fixed list of figures (revenue, gross sales, discounts, refunds, orders, units sold, average order value, customers, gross profit, VAT) cut by day, week, month or quarter, product, variant and SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method or new and returning customers, with filters, a comparison, a chart and a CSV; ten ready reports to start from.", {
     keywords: ["report", "custom report", "report builder", "saved report", "sales by product", "sales by variant", "sku", "sales by category", "sales by country", "sales by currency", "payment method", "shopifyql", "export"],
     tasks: ["See sales by variant or SKU", "See sales by category", "Build and save a report", "Download a report as CSV"],
     feature: "shop",
   }),
-  store("analytics.report", "/analytics/reports/view", "A report", "Analytics", "One report: a ready one, a saved one or a new one, with its builder, its table, the totals and a CSV.", { feature: "shop" }),
-  store("analytics.live", "/analytics/live", "Live", "Analytics", "What is happening in the store now, read again every 10 seconds while the page is open: visitors in the last five minutes and their countries (while visits are counted), today's visits, paid orders and revenue so far, carts changed in the last 30 minutes and checkouts waiting for payment.", {
+  store("analytics.report", "/analytics/reports/view", "A report", "One report: a ready one, a saved one or a new one, with its builder, its table, the totals and a CSV.", { feature: "shop" }),
+  store("analytics.live", "/analytics/live", "Live", "What is happening in the store now, read again every 10 seconds while the page is open: visitors in the last five minutes and their countries (while visits are counted), today's visits, paid orders and revenue so far, carts changed in the last 30 minutes and checkouts waiting for payment.", {
     keywords: ["live view", "real time", "right now", "active visitors", "online now", "today", "carts", "checkouts"],
     tasks: ["See who is in the store now", "See today's sales so far"],
     feature: "shop",
   }),
-  store("analytics.speed", "/analytics/speed", "Speed", "Analytics", "How fast the store's pages load for its visitors, measured in their browsers while visits are counted: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over 28 days, for the front page, product, category, list and other pages on phones and computers, rated as Google does, with what to fix and what cannot be measured.", {
+  store("analytics.speed", "/analytics/speed", "Speed", "How fast the store's pages load for its visitors, measured in their browsers while visits are counted: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over 28 days, for the front page, product, category, list and other pages on phones and computers, rated as Google does, with what to fix and what cannot be measured.", {
     keywords: ["speed", "performance", "page speed", "core web vitals", "lcp", "inp", "cls", "ttfb", "slow", "lighthouse", "pagespeed"],
     tasks: ["See how fast the store's pages load", "Find out why a page is slow"],
   }),
-  store("analytics.heatmaps", "/analytics/heatmaps", "Heatmaps", "Analytics", "Where visitors click, how far down they scroll and how long each part of a page is on screen, per page and device, from visitors who allowed statistics while heatmaps are on: the pages where visitors get stuck (dead and rage clicks), the most viewed pages, and each page's map drawn over a picture of it.", {
+  store("analytics.heatmaps", "/analytics/heatmaps", "Heatmaps", "Where visitors click, how far down they scroll and how long each part of a page is on screen, per page and device, from visitors who allowed statistics while heatmaps are on: the pages where visitors get stuck (dead and rage clicks), the most viewed pages, and each page's map drawn over a picture of it.", {
     keywords: ["heatmap", "click map", "scroll map", "attention", "rage clicks", "dead clicks"],
     tasks: ["See where visitors get stuck", "See how far down a page visitors scroll"],
   }),
-  store("analytics.recordings", "/analytics/recordings", "Recordings", "Analytics", "Recordings of visits to the store's pages, for visitors who allow them, while the owner has them on: the most frustrated first (rage and dead clicks) or the newest, by device, page, period and A/B version, kept 30 days. The owner's alone.", {
+  store("analytics.recordings", "/analytics/recordings", "Recordings", "Recordings of visits to the store's pages, for visitors who allow them, while the owner has them on: the most frustrated first (rage and dead clicks) or the newest, by device, page, period and A/B version, kept 30 days. The owner's alone.", {
     needs: "owner",
     keywords: ["session replay", "recordings", "replay", "watch visits", "screen recording"],
     tasks: ["Watch how visitors use a page", "See visits where visitors got stuck"],
   }),
-  store("analytics.recording", "/analytics/recordings/[id]", "Recording", "Analytics", "One recording of a visit, played back with its pages and frustrated clicks on a timeline; it can be deleted. The owner's alone.", {
+  store("analytics.recording", "/analytics/recordings/[id]", "Recording", "One recording of a visit, played back with its pages and frustrated clicks on a timeline; it can be deleted. The owner's alone.", {
     needs: "owner",
     keywords: ["watch recording"],
   }),
-  store("analytics.settings", "/analytics/settings", "Analytics settings", "Analytics", "Cost of goods, payment fee and shipping cost estimates, fixed costs, customer lifetime, monthly revenue targets, and whether visits are counted.", {
+  store("analytics.settings", "/analytics/settings", "Analytics settings", "Cost of goods, payment fee and shipping cost estimates, fixed costs, customer lifetime, monthly revenue targets, and whether visits are counted.", {
     needs: "owner",
     keywords: ["cost", "cogs", "fees", "target", "goal", "visit counting"],
     tasks: ["Set this month's revenue target", "Turn visit counting on or off", "Apply costs to earlier orders"],
   }),
 
-  store("marketing", "/marketing", "Marketing", "Marketing", "What brings people back and what it did in the last 30 days, ready plays to switch on (an email after a purchase, cart reminders, a first offer), the list, and every marketing tool by name.", {
+  store("marketing", "/marketing", "Marketing", "What brings people back and what it did in the last 30 days, ready plays to switch on (an email after a purchase, cart reminders, a first offer), the list, and every marketing tool by name.", {
     keywords: ["bring back", "repeat customers", "email", "offer", "promotion", "results"],
     tasks: ["See what marketing is running", "Set up an email after a purchase", "Set up cart reminders", "Start a first offer"],
   }),
-  store("website", "/website", "Website", "Website", "The store's website at a glance: a card for each of its pages, blog, media, menus, headers, footers, design and translations.", {
+  store("website", "/website", "Website", "The store's website at a glance: a card for each of its pages, blog, media, menus, headers, footers, design and translations.", {
     keywords: ["site", "storefront", "content"],
   }),
-  store("settings", "/settings", "Settings", "Settings", "The store's settings at a glance: a card for each page, under Store, Selling, Site, Tools and Account.", {
+  store("settings", "/settings", "Settings", "The store's settings at a glance: a card for each page, under Store, Selling, Site, Tools and Account.", {
     keywords: ["configure", "setup", "options"],
   }),
 
   // Store: store settings --------------------------------------------------------------------
-  store("countries", "/settings/countries", "Countries", "Store", "The countries the store sells to and its own country (the business's country when it sells there, else the first); with Several countries off, the one country it sells in, the others kept with their prices and settings.", {
+  store("countries", "/settings/countries", "Countries", "The countries the store sells to and its own country (the business's country when it sells there, else the first); with Several countries off, the one country it sells in, the others kept with their prices and settings.", {
     keywords: ["markets", "country", "sell abroad", "international", "home country", "several countries"],
     tasks: ["Sell in another country", "Stop selling to a country"],
   }),
-  store("localization", "/settings/localization", "Languages and currencies", "Store", "The languages and currencies the store offers, each country's language, and the rates amounts are converted at.", {
+  store("localization", "/settings/localization", "Languages and currencies", "The languages and currencies the store offers, each country's language, and the rates amounts are converted at.", {
     keywords: ["translate", "euro", "exchange rate", "multilingual", "language", "currency", "ECB"],
   }),
-  store("translate", "/translate", "Translate the store", "Store", "Translate products, menus, pages and articles into another language with AI, reading and keeping each text before it is saved.", {
+  store("translate", "/translate", "Translate the store", "Translate products, menus, pages and articles into another language with AI, reading and keeping each text before it is saved.", {
     feature: ["languages", "countries"],
     keywords: ["translation", "language", "AI", "multilingual", "products", "legal"],
     tasks: ["Translate the store into English", "Find what is not translated yet"],
   }),
-  store("search", "/search", "Search", "Store", "What shoppers searched for in the last 30 days, and searches that found nothing.", {
+  store("search", "/search", "Search", "What shoppers searched for in the last 30 days, and searches that found nothing.", {
     keywords: ["site search", "queries"],
     feature: "shop",
   }),
-  store("chat", "/chat", "Chat assistant", "Store", "The storefront chat assistant that helps shoppers first, and its knowledge base.", {
+  store("chat", "/chat", "Chat assistant", "The storefront chat assistant that helps shoppers first, and its knowledge base.", {
     keywords: ["customer chat", "chatbot", "knowledge", "chat agent"],
   }),
-  store("chat.questions", "/chat/questions", "Questions your assistant couldn't answer", "Store", "What visitors asked that the chat assistant could not answer (it handed the conversation to a person because it could not help, or its knowledge had nothing on it), the most asked first. Write the answer once and it is saved in the knowledge base for the assistant to use next time, or set a question aside as not one for the assistant. Answered and set-aside questions are under ?show=answered and ?show=dismissed; each question links to the conversations it came from.", {
+  store("chat.questions", "/chat/questions", "Questions your assistant couldn't answer", "What visitors asked that the chat assistant could not answer (it handed the conversation to a person because it could not help, or its knowledge had nothing on it), the most asked first. Write the answer once and it is saved in the knowledge base for the assistant to use next time, or set a question aside as not one for the assistant. Answered and set-aside questions are under ?show=answered and ?show=dismissed; each question links to the conversations it came from.", {
     keywords: ["unanswered questions", "knowledge gaps", "faq", "what customers ask", "could not answer", "chatbot gaps"],
     tasks: ["Answer what the chat assistant could not", "See what visitors ask the chat"],
   }),
-  store("support", "/support", "Support inbox", "Store", "Every conversation with the store's customers, live: who is waiting for a person, who is talking to the chat assistant, and what was said. Open one to read it as it happens.", { extension: "support_desk",
-    keywords: ["inbox", "live chat", "customer service", "helpdesk", "conversations", "tickets"],
+  store("support", "/support", "Inbox", "Every conversation with the store's customers, live: who is waiting for a person, who is talking to the chat assistant, and what was said. Open one to read it as it happens.", { extension: "support_desk",
+    keywords: ["support inbox", "inbox", "live chat", "customer service", "helpdesk", "conversations", "tickets"],
     tasks: ["See who is waiting", "Read a conversation with the chat assistant", "Set yourself online or away"],
   }),
-  store("support.requests", "/support/requests", "Support requests", "Store", "What the store's chat assistant could not do itself and passed to your team: a refund, cancelling a paid order, changing an address, an exception or anything else, with the conversation, the order and the customer. Do the work on the order page, then mark it done or decline it with a note; the customer is told in the chat and by email when away. Decided requests are under ?show=decided.", { extension: "support_desk",
-    keywords: ["requests", "refund request", "cancel order", "change address", "exception", "support"],
+  store("support.requests", "/support/requests", "Requests", "What the store's chat assistant could not do itself and passed to your team: a refund, cancelling a paid order, changing an address, an exception or anything else, with the conversation, the order and the customer. Do the work on the order page, then mark it done or decline it with a note; the customer is told in the chat and by email when away. Decided requests are under ?show=decided.", { extension: "support_desk",
+    keywords: ["support requests", "requests", "refund request", "cancel order", "change address", "exception", "support"],
     tasks: ["Decide a request the chat assistant passed on", "See decided requests"],
   }),
-  store("support.reports", "/support/reports", "Support reports", "Store", "Figures for the store's support desk over a period: conversations started, the share the AI handled alone and the share it resolved (its own judgement), the hand-over rate and why, time to a person's first answer (median and slowest tenth), missed conversations, time to the end, ratings, tone at the end, topics, requests and the partner's drafts. Per desk, never per person; rates and medians from 10 conversations.", { extension: "support_desk",
+  store("support.reports", "/support/reports", "Support reports", "Figures for the store's support desk over a period: conversations started, the share the AI handled alone and the share it resolved (its own judgement), the hand-over rate and why, time to a person's first answer (median and slowest tenth), missed conversations, time to the end, ratings, tone at the end, topics, requests and the partner's drafts. Per desk, never per person; rates and medians from 10 conversations.", { extension: "support_desk",
     keywords: ["support report", "response time", "first response", "csat", "handover rate", "missed chats", "deflection"],
     tasks: ["See how long customers wait for an answer", "See how many chats the AI handles alone"],
   }),
-  store("support.replies", "/support/replies", "Saved replies", "Store", "The support desk's saved replies: texts with a title and a /shortcut, optionally for one language, that your team puts in an answer by typing / in the inbox's composer. {customer_first_name}, {agent_first_name} and {store} are filled in for the conversation.", { extension: "support_desk",
+  store("support.replies", "/support/replies", "Saved replies", "The support desk's saved replies: texts with a title and a /shortcut, optionally for one language, that your team puts in an answer by typing / in the inbox's composer. {customer_first_name}, {agent_first_name} and {store} are filled in for the conversation.", { extension: "support_desk",
     keywords: ["saved replies", "canned responses", "macros", "templates", "shortcuts", "support"],
     tasks: ["Add a saved reply", "Change a saved reply's text"],
   }),
-  store("support.widgets", "/support/widgets", "Website chat", "Store", "The store's chat on the owner's other websites (D582): chat widgets, each with its own look (button colour, background, text colour, corners, side, the button's words, panel width, font, greeting, own CSS) and language, and a tag to paste on one or several websites. A website shows the chat once its tag is found on its front page or in its DNS. Conversations come to the support inbox; there the chat answers from the knowledge base only.", { extension: "support_desk",
+  store("support.widgets", "/support/widgets", "Website chat", "The store's chat on the owner's other websites (D582): chat widgets, each with its own look (button colour, background, text colour, corners, side, the button's words, panel width, font, greeting, own CSS) and language, and a tag to paste on one or several websites. A website shows the chat once its tag is found on its front page or in its DNS. Conversations come to the support inbox; there the chat answers from the knowledge base only.", { extension: "support_desk",
     keywords: ["chat widget", "embed chat", "website chat", "live chat on my site", "wordpress chat", "chat script", "chat tag"],
     tasks: ["Put the chat on another website", "Style the chat to match a website", "Add a website to a chat widget"],
   }),
-  store("support.widget", "/support/widgets/[id]", "Chat widget", "Store", "One chat widget for the owner's websites (D582): its look with a live preview, its tag, its websites and whether each shows the chat, and deleting it.", { extension: "support_desk",
+  store("support.widget", "/support/widgets/[id]", "Chat widget", "One chat widget for the owner's websites (D582): its look with a live preview, its tag, its websites and whether each shows the chat, and deleting it.", { extension: "support_desk",
     keywords: ["chat widget", "widget style", "chat colour", "chat tag"],
   }),
-  store("support.settings", "/support/settings", "Support settings", "Store", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", { extension: "support_desk",
+  store("support.settings", "/support/settings", "Support settings", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", { extension: "support_desk",
     keywords: ["support mode", "live chat", "people only", "opening hours", "email follow-up", "transcripts", "handover"],
     tasks: ["Let people answer the chat", "Answer customers with the AI first", "Set support opening hours", "Turn email answers on or off"],
   }),
-  store("seo", "/settings/seo", "SEO & Reach", "Store", "How search engines, social sharing and AI crawlers see the store, per country.", {
+  store("seo", "/settings/seo", "SEO & Reach", "How search engines, social sharing and AI crawlers see the store, per country.", {
     keywords: ["google", "meta description", "crawlers"],
   }),
-  store("forms", "/forms", "Forms", "Store", "The store's forms (D705): contact forms and newsletter sign-ups, each made once from a ready-made start and placed on any page with the Form component. Change what a form asks and who it emails, read and export what visitors sent, archive or delete a form. Needs the right to change the website; the responses need the right to read customers.", {
+  store("forms", "/forms", "Forms", "The store's forms (D705): contact forms and newsletter sign-ups, each made once from a ready-made start and placed on any page with the Form component. Change what a form asks and who it emails, read and export what visitors sent, archive or delete a form. Needs the right to change the website; the responses need the right to read customers.", {
     tasks: ["Make a contact form", "Make a newsletter sign-up", "Read form responses", "Export form responses", "Change who a form emails", "Archive a form"],
     keywords: ["form", "contact form", "skjema", "kontaktskjema", "newsletter", "sign-up", "responses", "submissions", "quote request", "booking enquiry"],
   }),
-  store("forms.form", "/forms/[formId]", "A form", "Store", "One form: its questions, who it emails, how long it keeps responses, and its responses."),
-  store("forms.responses", "/forms/responses/[formId]", "Form responses", "Store", "What visitors sent with one of the store's forms: open, archive, delete or reply to a response, and export them as CSV. Needs the right to read customers."),
-  store("forms.new", "/forms/new", "New form", "Store", "Start a form from a template: Kaizena Flow's (contact, quote request, booking enquiry, call me back, feedback, event registration, newsletter), the store's own or the marketplace's, or a blank one. A form can keep a campaign from the page's address, take a picture or PDF, and ask for a payment for one of the store's products."),
-  store("menus", "/menus", "Menus", "Store", "The store's menus: links to pages, products, categories and more, nested and ordered.", {
+  store("forms.form", "/forms/[formId]", "A form", "One form: its questions, who it emails, how long it keeps responses, and its responses."),
+  store("forms.responses", "/forms/responses/[formId]", "Form responses", "What visitors sent with one of the store's forms: open, archive, delete or reply to a response, and export them as CSV. Needs the right to read customers."),
+  store("forms.new", "/forms/new", "New form", "Start a form from a template: Kaizena Flow's (contact, quote request, booking enquiry, call me back, feedback, event registration, newsletter), the store's own or the marketplace's, or a blank one. A form can keep a campaign from the page's address, take a picture or PDF, and ask for a payment for one of the store's products."),
+  store("menus", "/menus", "Menus", "The store's menus: links to pages, products, categories and more, nested and ordered.", {
     keywords: ["navigation", "links"],
   }),
-  store("redirects", "/redirects", "Redirects", "Store", "Redirects send shoppers and search engines from an address that moved to its new one, in every country and language. Kaizena Flow makes one itself when a product's, category's or tag's address changes; here you add, edit, delete and search your own (a path to a path on the store, permanent), and see how often each was used. Needs the right to change the website.", {
+  store("redirects", "/redirects", "Redirects", "Redirects send shoppers and search engines from an address that moved to its new one, in every country and language. Kaizena Flow makes one itself when a product's, category's or tag's address changes; here you add, edit, delete and search your own (a path to a path on the store, permanent), and see how often each was used. Needs the right to change the website.", {
     tasks: ["Redirect an old address to a new one", "Search the redirects", "Delete a redirect", "See which redirects are used", "Import or export redirects"],
     keywords: ["301", "404", "broken link", "moved page", "omdiriger", "redirect", "old url", "change handle", "permalink"],
   }),
-  store("redirects.import", "/redirects/import", "Import redirects", "Store", "Brings redirects in from a CSV file with the columns Redirect from and Redirect to (Shopify's file reads as it is). Upload, choose what happens when an address already has a redirect, check (a dry run that lists every line's problem: loops, chains, duplicates, addresses that are live pages, other websites), then import. Never deletes a redirect. Needs the right to change the website.", {
+  store("redirects.import", "/redirects/import", "Import redirects", "Brings redirects in from a CSV file with the columns Redirect from and Redirect to (Shopify's file reads as it is). Upload, choose what happens when an address already has a redirect, check (a dry run that lists every line's problem: loops, chains, duplicates, addresses that are live pages, other websites), then import. Never deletes a redirect. Needs the right to change the website.", {
     tasks: ["Upload a redirect file", "Import a Shopify redirect file", "Continue an open import", "See the recent imports"],
     keywords: ["import redirects", "csv", "upload redirects", "shopify", "migrate", "bulk redirects", "301 file", "importer omdirigeringer"],
   }),
-  store("redirects.import.job", "/redirects/import/[jobId]", "Redirect import", "Store", "One redirect import: its option, the check's findings line by line, the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
+  store("redirects.import.job", "/redirects/import/[jobId]", "Redirect import", "One redirect import: its option, the check's findings line by line, the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
     tasks: ["Choose the option and check the file", "Read each line's problems", "Import after the check", "Cancel the import", "Download the problems as CSV"],
     keywords: ["dry run", "check the file", "import problems", "import result", "cancel import"],
   }),
-  store("redirects.export", "/redirects/export", "Export redirects", "Store", "Downloads the store's redirects as a CSV file with the columns Redirect from and Redirect to: your own (the default) or all, the automatic ones too. A small store gets the file at once, a large one a job with a Download button. The file reads back in as it is.", {
+  store("redirects.export", "/redirects/export", "Export redirects", "Downloads the store's redirects as a CSV file with the columns Redirect from and Redirect to: your own (the default) or all, the automatic ones too. A small store gets the file at once, a large one a job with a Download button. The file reads back in as it is.", {
     tasks: ["Export the manual redirects", "Export all redirects", "Choose the Excel (Nordic) or the standard file format", "Download a finished export"],
     keywords: ["export redirects", "csv", "download redirects", "backup", "eksporter omdirigeringer"],
   }),
-  store("redirects.404s", "/redirects/404s", "Pages not found", "Store", "A report of the addresses shoppers and search engines asked for that the store did not have, the most asked first, for the last 7, 30 or 90 days, with a one-click redirect to a suggested page. Counts are at least what happened. No visitor is identified.", {
+  store("redirects.404s", "/redirects/404s", "Pages not found", "A report of the addresses shoppers and search engines asked for that the store did not have, the most asked first, for the last 7, 30 or 90 days, with a one-click redirect to a suggested page. Counts are at least what happened. No visitor is identified.", {
     tasks: ["See the most asked-for missing addresses", "Redirect a missing address", "Hide an address", "Download the report"],
     keywords: ["404", "not found", "broken links", "missing pages", "dead links", "404 report", "fix broken links", "side ikke funnet"],
   }),
-  store("settings.moving", "/settings/moving", "Moving in", "Store", "For a store moving from Shopify: type any address of the Shopify shop and press Connect Shopify; Shopify asks the owner to let Kaizena Flow read the shop (read only, nothing changes there). Once connected: Here's your shop (what it holds), Copy my shop and Bring it over (each part read, checked and saved through the store's own imports), Who makes your products? (once per brand), Ready to move? and Move my shop (now or at a time), pointing the shop's own address here, the 14 days after with You can close Shopify now, and under Details what to bring, each part row by row and Undo this copy. Disconnect at any time. The owner's only.", {
+  store("settings.moving", "/settings/moving", "Moving in", "For a store moving from Shopify: type any address of the Shopify shop and press Connect Shopify; Shopify asks the owner to let Kaizena Flow read the shop (read only, nothing changes there). Once connected: Here's your shop (what it holds), Copy my shop and Bring it over (each part read, checked and saved through the store's own imports), Who makes your products? (once per brand), Ready to move? and Move my shop (now or at a time), pointing the shop's own address here, the 14 days after with You can close Shopify now, and under Details what to bring, each part row by row and Undo this copy. Disconnect at any time. The owner's only.", {
     tasks: ["Connect a Shopify shop", "Move from Shopify", "Check the Shopify shop's old links", "Disconnect Shopify"],
     keywords: ["shopify", "migrate", "move from shopify", "import shop", "switch platform", "flytte", "flytt inn", "koble til shopify"],
     needs: "owner",
   }),
-  store("redirects.old-shop", "/redirects/old-shop", "Your old shop's links", "Store", "For a store moving from Shopify or another shop: type the old shop's address and its sitemap is read (never its pages), then the page says how many of its old links lead somewhere here, fixes every one whose product, collection, page or post is here under the same name in one press, and suggests targets for the rest. Its counts stand beside this store's. Needs the right to change the website.", {
+  store("redirects.old-shop", "/redirects/old-shop", "Your old shop's links", "For a store moving from Shopify or another shop: type the old shop's address and its sitemap is read (never its pages), then the page says how many of its old links lead somewhere here, fixes every one whose product, collection, page or post is here under the same name in one press, and suggests targets for the rest. Its counts stand beside this store's. Needs the right to change the website.", {
     tasks: ["Check the old shop's links", "Fix the old links in one press", "Compare the old shop with this one", "Check again after an import"],
     keywords: ["moving", "migrate", "shopify", "old shop", "old links", "sitemap", "seo", "move from shopify", "gammel butikk", "flytte"],
   }),
-  store("navigation", "/settings/navigation", "Header and footer", "Store", "Logos, site icon and which menus the standard header and footer show; the business details the footer shows are under Company.", {
+  store("navigation", "/settings/navigation", "Header and footer", "Logos, site icon and which menus the standard header and footer show; the business details the footer shows are under Company.", {
     keywords: ["logo", "favicon"],
   }),
-  store("headers", "/headers", "Headers", "Store", "Custom headers built in the page builder."),
-  store("header.new", "/headers/new", "New header", "Store", "Starts a custom header."),
-  store("header", "/headers/[pageId]", "Header", "Store", "Builds a custom header."),
-  store("header.preview", "/headers/[pageId]/preview", "Header preview", "Store", "Previews a custom header."),
-  store("footers", "/footers", "Footers", "Store", "Custom footers built in the page builder."),
-  store("footer.new", "/footers/new", "New footer", "Store", "Starts a custom footer."),
-  store("footer", "/footers/[pageId]", "Footer", "Store", "Builds a custom footer."),
-  store("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Store", "Previews a custom footer."),
-  store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark; and the themes installed, each a whole look (theme, header, footer, product page and CSS) to switch to and back.", {
+  store("headers", "/headers", "Headers", "Custom headers built in the page builder."),
+  store("header.new", "/headers/new", "New header", "Starts a custom header."),
+  store("header", "/headers/[pageId]", "Header", "Builds a custom header."),
+  store("header.preview", "/headers/[pageId]/preview", "Header preview", "Previews a custom header."),
+  store("footers", "/footers", "Footers", "Custom footers built in the page builder."),
+  store("footer.new", "/footers/new", "New footer", "Starts a custom footer."),
+  store("footer", "/footers/[pageId]", "Footer", "Builds a custom footer."),
+  store("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Previews a custom footer."),
+  store("design", "/settings/design", "Design", "The store's theme: colours, fonts, buttons, cards, light and dark; and the themes installed, each a whole look (theme, header, footer, product page and CSS) to switch to and back.", {
     keywords: ["theme", "colours", "fonts", "look", "design profile", "design template"],
   }),
-  store("design.theme", "/settings/design/themes/[install]", "Customise theme", "Store", "One installed theme that is not live: its preview on the store's own pages, what switching to it changes (layouts, section styles, settings that stay the owner's own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the store switches.", {
+  store("design.theme", "/settings/design/themes/[install]", "Customise theme", "One installed theme that is not live: its preview on the store's own pages, what switching to it changes (layouts, section styles, settings that stay the owner's own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the store switches.", {
     keywords: ["preview theme", "try a theme", "what changes", "customise theme", "installed theme"],
   }),
-  store("design.share", "/settings/design/share", "Share this look as a theme", "Store", "Sends the store's live look (theme settings, header, footer, product page and CSS, never its words, products or pages) to Kaizena Flow to review as a theme for other stores, free in the theme store once approved; or, for a theme you made, as its next version with what's new. Followed under Your themes.", {
+  store("design.share", "/settings/design/share", "Share this look as a theme", "Sends the store's live look (theme settings, header, footer, product page and CSS, never its words, products or pages) to Kaizena Flow to review as a theme for other stores, free in the theme store once approved; or, for a theme you made, as its next version with what's new. Followed under Your themes.", {
     keywords: ["share theme", "submit theme", "sell theme", "theme designer", "publish my look", "theme update"],
     tasks: ["Share my store's look as a theme", "Send an update of my theme"],
   }),
-  store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizena Flow plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and subscription boxes run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
+  store("close", "/settings/close", "Close store", "Closes the store: stops sales, ends the Kaizena Flow plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and subscription boxes run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
     needs: "owner",
     keywords: ["close store", "delete store", "archive store", "shut down", "stop selling", "reopen store", "suspend"],
     tasks: ["Close the store", "See what stops me closing the store", "Reopen a closed store"],
   }),
-  store("domains", "/settings/domains", "Domains", "Store", "The store's addresses and its own domain.", { keywords: ["url", "custom domain"] }),
-  store("domain.move-in", "/settings/domains/move-in", "Bring a domain here", "Store", "Bringing a domain the store has elsewhere to Kaizena Flow: its DNS (the records found and copied, checked, then the nameservers changed, with the move followed until it arrives) and its registration (a transfer with the code from the current registrar, paid first and refunded if it fails).", {
+  store("domains", "/settings/domains", "Domains", "The store's addresses and its own domain.", { keywords: ["url", "custom domain"] }),
+  store("domain.move-in", "/settings/domains/move-in", "Bring a domain here", "Bringing a domain the store has elsewhere to Kaizena Flow: its DNS (the records found and copied, checked, then the nameservers changed, with the move followed until it arrives) and its registration (a transfer with the code from the current registrar, paid first and refunded if it fails).", {
     keywords: ["transfer in", "move domain here", "auth code", "epp code", "nameservers", "zone file", "import dns"],
     needs: "owner",
   }),
-  store("domain.move", "/settings/domains/move/[domain]", "Move a domain", "Store", "Moving one of the store's domains away, step by step: download its DNS records, check a new DNS provider and switch to it (with a way back for 30 days), get the transfer code for another registrar, or stop using it in the store.", {
+  store("domain.move", "/settings/domains/move/[domain]", "Move a domain", "Moving one of the store's domains away, step by step: download its DNS records, check a new DNS provider and switch to it (with a way back for 30 days), get the transfer code for another registrar, or stop using it in the store.", {
     keywords: ["transfer domain", "auth code", "epp code", "transfer code", "nameservers", "zone file", "export dns", "leave"],
     needs: "owner",
   }),
-  store("company", "/settings/company", "Company", "Store", "The legal business, contact details, office hours and places (shops, pickup points).", {
+  store("company", "/settings/company", "Company", "The legal business, contact details, office hours and places (shops, pickup points).", {
     keywords: ["business details", "address", "vat number"],
   }),
-  store("company.place.new", "/settings/company/places/new", "New place", "Store", "Adds a shop or pickup point."),
-  store("company.place", "/settings/company/places/[placeId]", "Place", "Store", "One shop or pickup point."),
-  store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing; and the shipping carriers (Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket and nShift), each connected with the store's own agreement.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
-  store("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Store", "Sends signed events to the owner's own HTTPS endpoints: topics, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
-  store("integration", "/integrations/[provider]", "Integration", "Store", "Connects one integration, chooses its events, tests it, and shows recent sends."),
-  store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Store", "Connects the store's own agreement with Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket or nShift: its details, a check that the carrier accepts them, and what the carrier then does for the store.", {
+  store("company.place.new", "/settings/company/places/new", "New place", "Adds a shop or pickup point."),
+  store("company.place", "/settings/company/places/[placeId]", "Place", "One shop or pickup point."),
+  store("integrations", "/integrations", "Integrations", "Zapier, Make and Slack, and how their sends are doing; and the shipping carriers (Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket and nShift), each connected with the store's own agreement.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
+  store("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Sends signed events to the owner's own HTTPS endpoints: topics, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
+  store("integration", "/integrations/[provider]", "Integration", "Connects one integration, chooses its events, tests it, and shows recent sends."),
+  store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Connects the store's own agreement with Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket or nShift: its details, a check that the carrier accepts them, and what the carrier then does for the store.", {
     keywords: ["posten", "bring", "postnord", "porterbuddy", "helthjem", "instabox", "ups", "dhl", "dhl paket", "nshift", "unifaun", "carrier", "freight", "labels", "tracking"],
     feature: "shop",
   }),
-  store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
-  store("integrations.instagram", "/integrations/instagram", "Instagram", "Store", "Connects the store's Instagram professional account, whose own posts Instagram feed components show on its pages, narrowed by hashtags.", {
+  store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Shows the store's Google rating and reviews on its pages."),
+  store("integrations.instagram", "/integrations/instagram", "Instagram", "Connects the store's Instagram professional account, whose own posts Instagram feed components show on its pages, narrowed by hashtags.", {
     keywords: ["instagram", "instagram feed", "hashtag", "social feed", "photos from instagram"],
     tasks: ["Connect the store's Instagram account", "See the latest posts read from Instagram", "Disconnect Instagram"],
   }),
-  store("integrations.tripletex", "/integrations/tripletex", "Tripletex", "Store", "Connects the store's Tripletex company with one pasted token and books its invoices and credit notes there; where they are booked, what needs the owner, Try again.", {
+  store("integrations.tripletex", "/integrations/tripletex", "Tripletex", "Connects the store's Tripletex company with one pasted token and books its invoices and credit notes there; where they are booked, what needs the owner, Try again.", {
     keywords: ["tripletex", "accounting", "bookkeeping", "regnskap", "bokføring", "vouchers", "bilag", "accountant"],
   }),
-  store("books", "/settings/books", "Books", "Store", "The store's own books (D478): opened from a day by the owner; every invoice, credit note and Work payment posted to them as it happens, on the same accounts as Tripletex; what waits and why; the trial balance, profit and loss, balance sheet and VAT by code of any days; locking the books through a day.", { extension: "work",
+  store("books", "/settings/books", "Books", "The store's own books (D478): opened from a day by the owner; every invoice, credit note and Work payment posted to them as it happens, on the same accounts as Tripletex; what waits and why; the trial balance, profit and loss, balance sheet and VAT by code of any days; locking the books through a day.", { extension: "work",
     keywords: ["books", "ledger", "accounting", "bookkeeping", "regnskap", "hovedbok", "saldobalanse", "trial balance", "bilag", "lock period", "profit and loss", "resultatregnskap", "balance sheet", "balanse", "VAT report", "mva"],
     tasks: ["See the profit and loss", "See the balance sheet", "See VAT by code for a term"],
   }),
-  store("books.vat", "/settings/books/vat/[term]", "VAT return", "Store", "A term's VAT return from the store's own books (D496): the lines Skatteetaten's form asks for, the VAT to pay or get back, the due day, the return as Skatteetaten's XML to download, and with Tripletex connected the same term worked out from Tripletex's postings and compared code by code. The owner chooses two-month or yearly terms.", { extension: "work",
+  store("books.vat", "/settings/books/vat/[term]", "VAT return", "A term's VAT return from the store's own books (D496): the lines Skatteetaten's form asks for, the VAT to pay or get back, the due day, the return as Skatteetaten's XML to download, and with Tripletex connected the same term worked out from Tripletex's postings and compared code by code. The owner chooses two-month or yearly terms.", { extension: "work",
     keywords: ["vat return", "mva-melding", "mva melding", "merverdiavgift", "vat", "mva", "termin", "skatteetaten", "altinn", "vat to pay"],
     tasks: ["See what VAT to pay this term", "Download the VAT return for Skatteetaten", "Compare the VAT return with Tripletex"],
   }),
-  store("integrations.ebay", "/integrations/ebay", "eBay", "Store", "Sells the store's products on eBay's European marketplaces: connect the eBay seller account on eBay's own page, give the policies, location and category eBay needs, tick the products to list (at the store's price in the marketplace's currency, with its own stock), and handle eBay's orders here, marking each sent with its tracking, which goes back to eBay.", {
+  store("integrations.ebay", "/integrations/ebay", "eBay", "Sells the store's products on eBay's European marketplaces: connect the eBay seller account on eBay's own page, give the policies, location and category eBay needs, tick the products to list (at the store's price in the marketplace's currency, with its own stock), and handle eBay's orders here, marking each sent with its tracking, which goes back to eBay.", {
     tasks: ["Connect eBay", "List products on eBay", "Mark an eBay order as sent"],
     keywords: ["ebay", "marketplace", "sales channel", "sell on ebay", "markedsplass", "salgskanal"],
     feature: "shop",
   }),
-  store("integrations.fiken", "/integrations/fiken", "Fiken", "Store", "Connects the store's Fiken company through Fiken's own page and books its invoices and credit notes there as sales; where they are booked, what needs the owner, Try again.", {
+  store("integrations.fiken", "/integrations/fiken", "Fiken", "Connects the store's Fiken company through Fiken's own page and books its invoices and credit notes there as sales; where they are booked, what needs the owner, Try again.", {
     keywords: ["fiken", "accounting", "bookkeeping", "regnskap", "bokføring", "annet salg", "bilag", "accountant"],
   }),
-  store("prices", "/settings/prices", "Prices and quantity", "Store", "How shoppers see prices and choose a quantity (D429, D430): whether whole amounts show ,00 (always, or hidden on whole amounts; never rounded), per country; short words before and after a product's price, per language, which a product can override; and the quantity chooser on product pages (− and + buttons, a number box or none), which a product layout's Buy component can override.", {
+  store("prices", "/settings/prices", "Prices and quantity", "How shoppers see prices and choose a quantity (D429, D430): whether whole amounts show ,00 (always, or hidden on whole amounts; never rounded), per country; short words before and after a product's price, per language, which a product can override; and the quantity chooser on product pages (− and + buttons, a number box or none), which a product layout's Buy component can override.", {
     keywords: ["decimals", ",00", "øre", "cents", "price format", "prefix", "suffix", "from only", "per piece", "quantity", "plus minus", "stepper", "antall"],
     tasks: ["Hide ,00 on whole prices", "Write words before or after prices", "Choose how shoppers pick a quantity"],
     feature: "shop",
   }),
-  store("checkout-rules", "/settings/checkout", "Checkout rules", "Store", "Checkout rules and questions (D357): rules on the basket (country, value, weight, products, categories, tags, customer groups) that hide or rename a delivery option, leave payment methods out or stop the order with the owner's words, applied by the cart and checkout alike and listed with the times one was left out; and questions the checkout asks, kept on the order.", {
+  store("checkout-rules", "/settings/checkout", "Checkout rules", "Checkout rules and questions (D357): rules on the basket (country, value, weight, products, categories, tags, customer groups) that hide or rename a delivery option, leave payment methods out or stop the order with the owner's words, applied by the cart and checkout alike and listed with the times one was left out; and questions the checkout asks, kept on the order.", {
     keywords: ["checkout", "rules", "hide shipping", "payment methods", "questions", "custom fields", "order notes", "functions"],
     feature: "shop",
   }),
-  store("staging", "/staging", "Staging", "Website", "Staging (D358): a set of page drafts, a theme installed but not live and staged menu changes, each compared with what visitors see (what changed in a page, the areas a look differs in), made live together through the builder's Publish, the theme switch and the menu saver; the last set's outcome.", {
+  store("staging", "/staging", "Staging", "Staging (D358): a set of page drafts, a theme installed but not live and staged menu changes, each compared with what visitors see (what changed in a page, the areas a look differs in), made live together through the builder's Publish, the theme switch and the menu saver; the last set's outcome.", {
     keywords: ["staging", "release", "publish together", "compare", "versions", "preview", "launch"],
   }),
-  store("automatic", "/settings/automatic", "Automatic", "Settings", "Everything in the store that runs by itself, in plain lines with when each last did: what happens, in order, when an order is paid (the confirmation email, workflows, rules not moved yet, the staff's email and devices, endpoints and services), and every workflow, email automation, cart reminder, review request, staff email, endpoint, service and the autopilot's reacting that is on, each linked to where it is changed; the details, and what is off, behind a disclosure.", {
+  store("automatic", "/settings/automatic", "Automatic", "Everything in the store that runs by itself, in plain lines with when each last did: what happens, in order, when an order is paid (the confirmation email, workflows, rules not moved yet, the staff's email and devices, endpoints and services), and every workflow, email automation, cart reminder, review request, staff email, endpoint, service and the autopilot's reacting that is on, each linked to where it is changed; the details, and what is off, behind a disclosure.", {
     keywords: ["automatic", "automation", "what runs", "by itself", "order paid", "overview", "workflows", "alerts"],
     tasks: ["See what happens when an order is paid", "See everything that runs by itself"],
   }),
-  store("workflows", "/settings/workflows", "Workflows", "Store", "Workflows (D356): a trigger (an event of the store or a schedule), conditions on its fields and actions (tag the order or customer, email staff, post to Slack, send to an own endpoint, ask the AI manager), saved off, tested on the latest event, then switched on; each one's recent runs.", {
+  store("workflows", "/settings/workflows", "Workflows", "Workflows (D356): a trigger (an event of the store or a schedule), conditions on its fields and actions (tag the order or customer, email staff, post to Slack, send to an own endpoint, ask the AI manager), saved off, tested on the latest event, then switched on; each one's recent runs.", {
     keywords: ["workflow", "automation", "flow", "trigger", "schedule", "rules"],
   }),
-  store("api", "/settings/api", "Apps and API", "Store", "Tokens for the Admin API (D355): make one with the scopes it needs (shown once), see when each was last used, revoke one. The API's routes, scopes and limits are listed on the page.", {
+  store("api", "/settings/api", "Apps and API", "Tokens for the Admin API (D355): make one with the scopes it needs (shown once), see when each was last used, revoke one. The API's routes, scopes and limits are listed on the page.", {
     needs: "owner",
     keywords: ["api", "tokens", "developers", "warehouse", "3pl", "accounting", "integration"],
   }),
-  store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizena Flow's.", { keywords: ["model", "provider", "openai"] }),
-  store("features", "/settings/features", "Features", "Store", "Switches the online shop and the store's features on or off (D178): subscriptions, subscription boxes, appointments, stays and rentals, several countries, languages and currencies, selling to businesses, the bonus and referral programs; what is in use, what blocks switching it off, and the store's time zone and appointment reminder. Every member sees it; only owners switch. (Work is switched on under Work, at the owner's level.)", {
+  store("ai", "/settings/ai", "AI", "The store's own AI provider and models, or Kaizena Flow's.", { keywords: ["model", "provider", "openai"] }),
+  store("features", "/settings/features", "Features", "Switches the online shop and the store's features on or off (D178): subscriptions, subscription boxes, appointments, stays and rentals, several countries, languages and currencies, selling to businesses, the bonus and referral programs; what is in use, what blocks switching it off, and the store's time zone and appointment reminder. Every member sees it; only owners switch. (Work is switched on under Work, at the owner's level.)", {
     tasks: ["Switch the online shop off to run a website only", "Switch a feature on or off", "Set the store's time zone"],
     keywords: ["modules", "features", "switch on", "switch off", "online shop", "website only", "bookings", "subscription boxes", "time zone", "loyalty", "bonus program", "referral program", "sell to businesses", "b2b", "several languages", "several currencies", "several countries"],
   }),
-  store("cookies", "/settings/cookies", "Cookies and tracking", "Store", "The cookie scan, tracking tools, the consent banner and the store's own code.", {
+  store("cookies", "/settings/cookies", "Cookies and tracking", "The cookie scan, tracking tools, the consent banner and the store's own code.", {
     keywords: ["gdpr", "consent", "pixel", "analytics"],
   }),
 
   // Store: account ---------------------------------------------------------------------------
-  store("billing", "/billing", "Billing", "Account", "The store's Kaizena Flow plan, the fee per sale, and Kaizena Flow's invoices.", {
+  store("billing", "/billing", "Billing", "The store's Kaizena Flow plan, the fee per sale, and Kaizena Flow's invoices.", {
     needs: "owner",
     keywords: ["plan", "subscription to kaizen", "invoice", "fee"],
   }),
-  store("staff", "/staff", "Team", "Account", "The store's members: their roles, collaborators with an end date, who has two-step sign-in, and whether the store requires it.", {
+  store("staff", "/staff", "Team", "The store's members: their roles, collaborators with an end date, who has two-step sign-in, and whether the store requires it.", {
     needs: "owner",
     tasks: ["Invite someone as staff or as a collaborator with an end date", "Change a member's role", "Remove access", "Require two-step sign-in of everyone"],
     keywords: ["users", "roles", "invite", "collaborator", "agency", "two-step", "2fa", "two factor", "authenticator", "permissions"],
   }),
-  store("staff.roles", "/staff/roles", "Roles", "Account", "The store's roles: what each can see and change, per area. Orders, Products, Marketing, Content, Analytics, Support agent and Read-only to start from.", {
+  store("staff.roles", "/staff/roles", "Roles", "The store's roles: what each can see and change, per area. Orders, Products, Marketing, Content, Analytics, Support agent and Read-only to start from.", {
     needs: "owner",
     tasks: ["Make a role", "Choose what a role can view or change", "Delete a role nobody holds"],
     keywords: ["permissions", "access", "staff roles", "who can", "read only"],
   }),
-  store("activity", "/activity", "Change log", "Account", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings. Filter by person, area, action and period; owners can download it as CSV.", {
+  store("activity", "/activity", "Change log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings. Filter by person, area, action and period; owners can download it as CSV.", {
     tasks: ["See who changed a price", "Filter by person or area", "Download the log as CSV (owners)"],
     keywords: ["audit", "audit log", "activity log", "history", "who did", "changes", "log"],
   }),
-  store("legal", "/settings/legal", "Legal pages", "Selling", "Starter drafts of the terms of sale, privacy statement, returns and shipping policies, withdrawal information and imprint, written from the store's own details in Norwegian, Swedish, Danish or English; which published page each role has; and what checkout says about the terms (a link, a tick box or nothing).", {
+  store("legal", "/settings/legal", "Legal pages", "Starter drafts of the terms of sale, privacy statement, returns and shipping policies, withdrawal information and imprint, written from the store's own details in Norwegian, Swedish, Danish or English; which published page each role has; and what checkout says about the terms (a link, a tick box or nothing).", {
     needs: "owner",
     tasks: ["Make a starter draft", "Choose the published page for terms, privacy and the rest", "Choose link, tick box or nothing at checkout"],
     keywords: ["terms", "terms and conditions", "privacy", "privacy policy", "imprint", "policies", "gdpr", "shipping policy", "returns policy", "checkbox", "accept", "vilkår", "personvern"],
   }),
-  store("accessibility", "/settings/accessibility", "Accessibility", "Site", "What has been assessed against the accessibility requirements (status, who assessed and when), known issues, and a draft accessibility statement made from it and from what the site itself knows.", {
+  store("accessibility", "/settings/accessibility", "Accessibility", "What has been assessed against the accessibility requirements (status, who assessed and when), known issues, and a draft accessibility statement made from it and from what the site itself knows.", {
     needs: "owner",
     tasks: ["Record an assessment", "Make a draft accessibility statement"],
     keywords: ["wcag", "eaa", "accessibility statement", "tilgjengelighet", "contrast", "screen reader"],
@@ -1217,267 +1196,295 @@ const PAGES: readonly AdminPage[] = [
   }),
 
   // Platform ---------------------------------------------------------------------------------
-  platform("website", "/website", "Website", "Kaizena Flow site", "Kaizena Flow's own website: pages, blog, media, templates, menus, header, footer and fonts, each a card.", { keywords: ["site"] }),
-  platform("settings", "/settings", "Settings", "Platform", "Kaizena Flow's own settings: header and footer, search, SEO, cookies, Google reviews, Stripe, AI, chat agent, emails and languages, each a card.", { keywords: ["configuration"] }),
-  platform("overview", "", "Home", "Platform", "The operator's first look: requests waiting, stores by state, plans, failed emails and AI use.", {
+  platform("website", "/website", "Website", "Kaizena Flow's own website: pages, blog, media, templates, menus, header, footer and fonts, each a card.", { keywords: ["site"] }),
+  platform("settings", "/settings", "Settings", "Kaizena Flow's own settings: header and footer, search, SEO, cookies, Google reviews, Stripe, AI, chat agent, emails and languages, each a card.", { keywords: ["configuration"] }),
+  platform("overview", "", "Home", "The operator's first look: requests waiting, stores by state, plans, failed emails and AI use.", {
     keywords: ["dashboard", "home", "attention", "status"],
   }),
-  platform("support", "/support", "Support inbox", "Support", "Kaizena Flow's own support desk: conversations with visitors of Kaizena Flow's site and owners asking Kaizena Flow, live.", {
-    keywords: ["inbox", "live chat", "helpdesk", "conversations"],
+  platform("support", "/support", "Inbox", "Kaizena Flow's own support desk: conversations with visitors of Kaizena Flow's site and owners asking Kaizena Flow, live.", {
+    keywords: ["support inbox", "inbox", "live chat", "helpdesk", "conversations"],
   }),
-  platform("support.reports", "/support/reports", "Support reports", "Support", "Figures for Kaizena Flow's own support desk over a period: conversations, the AI alone, hand-overs, waiting times, ratings, tone and topics.", {
+  platform("support.reports", "/support/reports", "Support reports", "Figures for Kaizena Flow's own support desk over a period: conversations, the AI alone, hand-overs, waiting times, ratings, tone and topics.", {
     keywords: ["support report", "response time", "kaizen support"],
   }),
-  platform("support.stores", "/support/stores", "Stores' support", "Support", "Each store's support desk in figures over a period: mode, waiting now, conversations, the AI alone, hand-overs, first answer, missed and ratings. Counts and rates only, never a conversation.", {
+  platform("support.stores", "/support/stores", "Stores' support", "Each store's support desk in figures over a period: mode, waiting now, conversations, the AI alone, hand-overs, first answer, missed and ratings. Counts and rates only, never a conversation.", {
     keywords: ["stores support", "support totals", "support per store"],
   }),
-  platform("support.replies", "/support/replies", "Saved replies", "Support", "Kaizena Flow's support desk's saved replies: texts with a /shortcut that Kaizena Flow's people put in an answer from the inbox, with {customer_first_name}, {agent_first_name} and {store} filled in.", {
+  platform("support.replies", "/support/replies", "Saved replies", "Kaizena Flow's support desk's saved replies: texts with a /shortcut that Kaizena Flow's people put in an answer from the inbox, with {customer_first_name}, {agent_first_name} and {store} filled in.", {
     keywords: ["saved replies", "canned responses", "macros"],
   }),
-  platform("support.widgets", "/support/widgets", "Website chat", "Support", "Kaizena Flow's own chat on its other websites (D582): chat widgets, each with its own look and a tag to paste on its websites; a website shows the chat once its tag is found.", {
+  platform("support.widgets", "/support/widgets", "Website chat", "Kaizena Flow's own chat on its other websites (D582): chat widgets, each with its own look and a tag to paste on its websites; a website shows the chat once its tag is found.", {
     keywords: ["chat widget", "embed chat", "website chat"],
   }),
-  platform("support.widget", "/support/widgets/[id]", "Chat widget", "Support", "One of Kaizena Flow's chat widgets (D582): its look with a live preview, its tag and its websites.", {
+  platform("support.widget", "/support/widgets/[id]", "Chat widget", "One of Kaizena Flow's chat widgets (D582): its look with a live preview, its tag and its websites.", {
     keywords: ["chat widget", "widget style"],
   }),
-  platform("support.settings", "/support/settings", "Support settings", "Support", "Who answers Kaizena Flow's visitors in the chat (the assistant alone, the AI first, or people only), email follow-up, opening hours, when quiet conversations end, when platform admins are emailed and how long transcripts are kept.", {
+  platform("support.settings", "/support/settings", "Support settings", "Who answers Kaizena Flow's visitors in the chat (the assistant alone, the AI first, or people only), email follow-up, opening hours, when quiet conversations end, when platform admins are emailed and how long transcripts are kept.", {
     keywords: ["support mode", "live chat", "opening hours", "email follow-up"],
   }),
-  platform("requests", "/requests", "Access requests", "Platform", "People asking to open a store: approving creates it and emails a sign-in link.", {
+  platform("requests", "/requests", "Access requests", "People asking to open a store: approving creates it and emails a sign-in link.", {
     keywords: ["sign-ups", "waiting list", "approve"],
   }),
-  platform("customers", "/customers", "Customers", "Platform", "Store owners with their stores, plans and invoices."),
-  platform("customer", "/customers/[accountId]", "Customer", "Platform", "One store owner: stores, plans, invoices and emails."),
-  platform("stores", "/stores", "Stores", "Platform", "Every store with its plan, subscription and fee."),
-  platform("themes", "/themes", "Themes", "Platform", "Kaizena Flow's themes (D241, D273, D275), a section of its own beneath Website (D285): a whole look (theme, header, footer, product page layout and CSS, never brand) with up to five presets and its own content, the content a new store starts with. Add and update Kaizena Flow's own themes, make one from a store or from scratch, publish, unpublish, archive, restore or delete it, order them and preview it; make demo stores (D277), live stores wearing a theme; set up the starting content and make its pictures; build the theme store's own pages (the list and a theme's page) in the page builder. Any store applies one from its Design settings and people creating a store choose one.", {
+  platform("customers", "/customers", "Customers", "Store owners with their stores, plans and invoices."),
+  platform("customer", "/customers/[accountId]", "Customer", "One store owner: stores, plans, invoices and emails."),
+  platform("stores", "/stores", "Stores", "Every store with its plan, subscription and fee."),
+  platform("themes", "/themes", "Themes", "Kaizena Flow's themes (D241, D273, D275), a section of its own beneath Website (D285): a whole look (theme, header, footer, product page layout and CSS, never brand) with up to five presets and its own content, the content a new store starts with. Add and update Kaizena Flow's own themes, make one from a store or from scratch, publish, unpublish, archive, restore or delete it, order them and preview it; make demo stores (D277), live stores wearing a theme; set up the starting content and make its pictures; build the theme store's own pages (the list and a theme's page) in the page builder. Any store applies one from its Design settings and people creating a store choose one.", {
     tasks: ["Make a theme from a store", "Make a theme from scratch", "Publish a theme", "Preview a theme", "Archive a theme", "Make a demo store", "Set up the starting content", "Make the starting content's pictures", "Build the theme store's pages"],
     keywords: ["design profile", "look", "theme preset", "style", "skin", "demo store", "store template", "content pack", "starter"],
   }),
-  platform("theme-store-page", "/themes/pages/[pageId]", "Theme store page", "Platform", "One of the theme store's own pages in the page builder (D285): the list of themes at /themes, or the page every theme has at /themes/{theme}, built around the theme store's components (the themes, a theme's preview, See it live, highlights, pictures, what you get, details) with words and sections of your own. A draft until published; Unpublish shows the standard page again.", {
+  platform("theme-store-page", "/themes/pages/[pageId]", "Theme store page", "One of the theme store's own pages in the page builder (D285): the list of themes at /themes, or the page every theme has at /themes/{theme}, built around the theme store's components (the themes, a theme's preview, See it live, highlights, pictures, what you get, details) with words and sections of your own. A draft until published; Unpublish shows the standard page again.", {
     tasks: ["Edit the theme store's page", "Edit a theme's page"],
     keywords: ["theme store", "themes page", "theme page", "theme detail page"],
   }),
-  platform("theme-store-page.preview", "/themes/pages/[pageId]/preview", "Theme store page preview", "Platform", "Previews a theme store page's draft; a theme's page with the first theme, or the one ?theme= names."),
-  platform("theme", "/themes/[presetId]", "Theme", "Platform", "One theme's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), its photographs, its theme store listing, previews of the published look and the draft, and starting its look again from a store.", {
+  platform("theme-store-page.preview", "/themes/pages/[pageId]/preview", "Theme store page preview", "Previews a theme store page's draft; a theme's page with the first theme, or the one ?theme= names."),
+  platform("theme", "/themes/[presetId]", "Theme", "One theme's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), its photographs, its theme store listing, previews of the published look and the draft, and starting its look again from a store.", {
     tasks: ["Preview a theme", "List a theme in the theme store"],
     keywords: ["showcase", "listing"],
   }),
-  platform("theme.submissions", "/themes/submissions", "Theme submissions", "Platform", "The review queue of themes from outside (D344): looks stores shared as new themes or as updates of their own, open ones oldest first, decided ones under Decided.", {
+  platform("theme.submissions", "/themes/submissions", "Theme submissions", "The review queue of themes from outside (D344): looks stores shared as new themes or as updates of their own, open ones oldest first, decided ones under Decided.", {
     tasks: ["Review a shared theme", "See the themes stores shared"],
     keywords: ["submissions", "review queue", "theme review", "outside themes", "designers", "marketplace"],
   }),
-  platform("theme.submission", "/themes/submissions/[submissionId]", "Theme submission", "Platform", "One look shared as a theme (D344): what was sent and by whom; Review makes it a draft theme to preview and check on its own pages (an update: its theme's draft), Approve and publish puts it in the theme store (an update: its next version, offered to the stores that use it), Not accepted tells its author why."),
-  platform("theme.content", "/themes/[presetId]/content", "Theme content", "Platform", "A theme's own content (D275): the pages, products and pictures its preview and photographs show and new stores started from it begin with; edited in its store admin, its pictures made, published with the theme, or replaced with a copy of other content.", {
+  platform("theme.submission", "/themes/submissions/[submissionId]", "Theme submission", "One look shared as a theme (D344): what was sent and by whom; Review makes it a draft theme to preview and check on its own pages (an update: its theme's draft), Approve and publish puts it in the theme store (an update: its next version, offered to the stores that use it), Not accepted tells its author why."),
+  platform("theme.content", "/themes/[presetId]/content", "Theme content", "A theme's own content (D275): the pages, products and pictures its preview and photographs show and new stores started from it begin with; edited in its store admin, its pictures made, published with the theme, or replaced with a copy of other content.", {
     tasks: ["Edit a theme's content", "Make a theme's pictures", "Give a theme content"],
     keywords: ["demo store", "demo content", "sample content", "content pack", "starter"],
   }),
-  platform("theme.settings", "/themes/[presetId]/theme", "Theme settings", "Platform", "A theme's settings: colours, fonts, headings, buttons, corners, layout, product cards, light and dark, in the theme editor; saved as the theme's draft.", {
+  platform("theme.settings", "/themes/[presetId]/theme", "Theme settings", "A theme's settings: colours, fonts, headings, buttons, corners, layout, product cards, light and dark, in the theme editor; saved as the theme's draft.", {
     keywords: ["colours", "fonts", "buttons", "corners", "dark mode"],
   }),
-  platform("theme.presets", "/themes/[presetId]/presets", "Theme presets", "Platform", "A theme's presets: its own look and up to five ready-made designs over it for different kinds of stores (colours, fonts, buttons, section styles), added, renamed, ordered, removed and previewed; part of the theme's draft until it is published.", {
+  platform("theme.presets", "/themes/[presetId]/presets", "Theme presets", "A theme's presets: its own look and up to five ready-made designs over it for different kinds of stores (colours, fonts, buttons, section styles), added, renamed, ordered, removed and previewed; part of the theme's draft until it is published.", {
     tasks: ["Add a preset to a theme", "Preview a theme's preset"],
     keywords: ["preset", "variation", "style", "design for a trade"],
   }),
-  platform("theme.preset", "/themes/[presetId]/presets/[key]", "Theme preset", "Platform", "One of a theme's presets: its name and its look in the theme editor, saved into the theme's draft."),
-  platform("theme.header", "/themes/[presetId]/header", "Theme header", "Platform", "A theme's header: the standard one, or its own built in the page builder; saved as the theme's draft."),
-  platform("theme.footer", "/themes/[presetId]/footer", "Theme footer", "Platform", "A theme's footer: the standard one, or its own built in the page builder; saved as the theme's draft."),
-  platform("theme.product-layout", "/themes/[presetId]/product-layout", "Theme product page", "Platform", "A theme's product page layout: the standard one, or its own built in the page builder; saved as the theme's draft."),
-  platform("theme.css", "/themes/[presetId]/css", "Theme CSS", "Platform", "A theme's own CSS for every page, checked when saved; part of the theme's draft."),
-  platform("theme.demo-store", "/themes/demo-stores/[starterId]", "Demo store", "Platform", "One demo store (D277), a live store wearing a theme: publish it live as it stands or take it down, its trade and picture for See it live, open its admin to customise it, and Publish this look… as a new theme, a preset of the theme it wears or that theme's next version. Or one set of starting content (D275): publish it (its store is kept as a copy new stores are made from), unpublish, archive or restore it, delete it while nothing used it, preview it, and choose the features a new store starts with switched on.", {
+  platform("theme.preset", "/themes/[presetId]/presets/[key]", "Theme preset", "One of a theme's presets: its name and its look in the theme editor, saved into the theme's draft."),
+  platform("theme.header", "/themes/[presetId]/header", "Theme header", "A theme's header: the standard one, or its own built in the page builder; saved as the theme's draft."),
+  platform("theme.footer", "/themes/[presetId]/footer", "Theme footer", "A theme's footer: the standard one, or its own built in the page builder; saved as the theme's draft."),
+  platform("theme.product-layout", "/themes/[presetId]/product-layout", "Theme product page", "A theme's product page layout: the standard one, or its own built in the page builder; saved as the theme's draft."),
+  platform("theme.css", "/themes/[presetId]/css", "Theme CSS", "A theme's own CSS for every page, checked when saved; part of the theme's draft."),
+  platform("theme.demo-store", "/themes/demo-stores/[starterId]", "Demo store", "One demo store (D277), a live store wearing a theme: publish it live as it stands or take it down, its trade and picture for See it live, open its admin to customise it, and Publish this look… as a new theme, a preset of the theme it wears or that theme's next version. Or one set of starting content (D275): publish it (its store is kept as a copy new stores are made from), unpublish, archive or restore it, delete it while nothing used it, preview it, and choose the features a new store starts with switched on.", {
     tasks: ["Publish a demo store", "Preview a demo store", "Edit a demo store's products and pages", "Make a theme from a demo store", "Add a demo store's look as a preset"],
     keywords: ["store template", "content pack", "starter", "demo content", "see it live", "publish this look"],
   }),
-  platform("theme.demo-store.new", "/themes/demo-stores/new", "New demo store", "Platform", "Make a demo store (D277): its name, its address, the theme or preset it wears and the starting content it is copied from; it opens in its own store admin to customise.", {
+  platform("theme.demo-store.new", "/themes/demo-stores/new", "New demo store", "Make a demo store (D277): its name, its address, the theme or preset it wears and the starting content it is copied from; it opens in its own store admin to customise.", {
     tasks: ["Make a demo store"],
     keywords: ["demo store", "live store", "showcase", "see it live"],
   }),
-  platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a theme to it."),
-  platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
-  platform("plans", "/plans", "Plans", "Platform", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
-  platform("plan-limits", "/plans/limits", "Limits", "Platform", "What each plan includes, in a table with the plans as columns: storage, products, staff, domains, marketing emails, AI and traffic, and the default for stores without a plan. Traffic only warns.", {
+  platform("store", "/stores/[store]", "Store", "One store's plan: start, change or cancel it, its fee and discount; apply a theme to it."),
+  platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "One of a store's plan invoices."),
+  platform("plans", "/plans", "Plans", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
+  platform("plan-limits", "/plans/limits", "Limits", "What each plan includes, in a table with the plans as columns: storage, products, staff, domains, marketing emails, AI and traffic, and the default for stores without a plan. Traffic only warns.", {
     keywords: ["limits", "quota", "plan limits", "storage", "bandwidth", "traffic", "allowance", "default limits"],
     tasks: ["Set what each plan includes", "Set the default for stores without a plan"],
   }),
-  platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
+  platform("plan-features", "/plans/features", "Plan features", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
     keywords: ["compare plans", "features", "what is included", "tiers"],
   }),
-  platform("plan-extensions", "/plans/extensions", "Extensions", "Platform", "The paid extensions (D748): each one's words and whether it is also sold without a store, its sizes with what they include and their prices in every currency, the bundles, and what each plan includes at no extra cost.", {
+  platform("plan-extensions", "/plans/extensions", "Extensions", "The paid extensions (D748): each one's words and whether it is also sold without a store, its sizes with what they include and their prices in every currency, the bundles, and what each plan includes at no extra cost.", {
     keywords: ["extensions", "add-ons", "addons", "bundles", "a/b testing", "support desk", "email automation", "work", "deals", "pricing"],
   }),
-  platform("plan-accounts", "/plans/accounts", "Accounts", "Platform", "Each account's billing (D748 E4): store by store or one plan for all its stores, and for one still billed store by store what the move to one plan does (the plan it keeps, the plans that end with credit, the money a month before and after), with a button to move it.", {
+  platform("plan-accounts", "/plans/accounts", "Accounts", "Each account's billing (D748 E4): store by store or one plan for all its stores, and for one still billed store by store what the move to one plan does (the plan it keeps, the plans that end with credit, the money a month before and after), with a button to move it.", {
     keywords: ["accounts", "organisations", "account billing", "one plan", "move"],
   }),
-  platform("plan-analytics", "/plans/analytics", "Plan analytics", "Platform", "What the stores' plans earn every month in live and test payments, how that moved (started, upgraded, downgraded, paused, resumed, cancelled), the way from an application to a paying store, and each plan's stores; what Kaizena Flow sold by month with its VAT, its own Stripe payouts, and the books that hold its money.", {
+  platform("plan-analytics", "/plans/analytics", "Plan analytics", "What the stores' plans earn every month in live and test payments, how that moved (started, upgraded, downgraded, paused, resumed, cancelled), the way from an application to a paying store, and each plan's stores; what Kaizena Flow sold by month with its VAT, its own Stripe payouts, and the books that hold its money.", {
     keywords: ["mrr", "monthly recurring revenue", "churn", "revenue", "funnel", "conversion", "trials", "sales", "vat", "payouts", "books"],
   }),
-  platform("plan-payout", "/plans/analytics/payouts/[payoutId]", "Payout", "Platform", "One of Kaizena Flow's own Stripe payouts: what it carried line by line, the sale and store each line was for, Stripe's fees, and whether it adds up."),
-  platform("discounts", "/discounts", "Discounts", "Platform", "Discount codes for stores' plans."),
-  platform("discount", "/discounts/[discountId]", "Discount", "Platform", "One plan discount code."),
-  platform("plan-reminders", "/plan-reminders", "Plan reminders", "Platform", "Emails to owners who left a plan checkout."),
-  platform("plan-reminder.new", "/plan-reminders/new", "New plan reminder", "Platform", "Adds a plan reminder step."),
-  platform("plan-reminder", "/plan-reminders/[stepId]", "Plan reminder", "Platform", "One plan reminder step."),
-  platform("referrals", "/referrals", "Referrals", "Platform", "Kaizena Flow's referral program: whether it is on, the commission, months, pending days and cookie days; the referrers with block, unblock and credit adjustments; the referred stores with void; and totals per currency.", {
+  platform("plan-payout", "/plans/analytics/payouts/[payoutId]", "Payout", "One of Kaizena Flow's own Stripe payouts: what it carried line by line, the sale and store each line was for, Stripe's fees, and whether it adds up."),
+  platform("discounts", "/discounts", "Discounts", "Discount codes for stores' plans."),
+  platform("discount", "/discounts/[discountId]", "Discount", "One plan discount code."),
+  platform("plan-reminders", "/plan-reminders", "Reminders", "Emails to owners who left a plan checkout.", { keywords: ["plan reminders", "abandoned plan checkout"] }),
+  platform("plan-reminder.new", "/plan-reminders/new", "New plan reminder", "Adds a plan reminder step."),
+  platform("plan-reminder", "/plan-reminders/[stepId]", "Plan reminder", "One plan reminder step."),
+  platform("referrals", "/referrals", "Referrals", "Kaizena Flow's referral program: whether it is on, the commission, months, pending days and cookie days; the referrers with block, unblock and credit adjustments; the referred stores with void; and totals per currency.", {
     keywords: ["referral", "refer", "affiliate", "commission", "invite", "credit", "referrer"],
     tasks: ["Switch the referral program on or off and set its terms", "Block or unblock a referrer", "Void a referral", "Add or remove a referrer's credit with a reason"],
   }),
-  platform("team", "/team", "Platform team", "Platform", "Who runs Kaizena Flow: every platform admin with whether two-step sign-in is set up, adding one by email (their account, or a new one) after a fresh sign-in, and removing one (never oneself, never the last).", {
-    keywords: ["platform admins", "staff", "operators", "add admin", "remove admin", "team"],
+  platform("team", "/team", "Team", "Who runs Kaizena Flow: every platform admin with whether two-step sign-in is set up, adding one by email (their account, or a new one) after a fresh sign-in, and removing one (never oneself, never the last).", {
+    keywords: ["platform team", "platform admins", "staff", "operators", "add admin", "remove admin", "team"],
   }),
-  platform("stripe", "/stripe", "Stripe", "Platform", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
-  platform("pages", "/pages", "Pages", "Kaizena Flow site", "Kaizena Flow's own website pages."),
-  platform("page.new", "/pages/new", "New page", "Kaizena Flow site", "Starts a Kaizena Flow page."),
-  platform("page", "/pages/[pageId]", "Page", "Kaizena Flow site", "Builds a Kaizena Flow page."),
-  platform("page.preview", "/pages/[pageId]/preview", "Page preview", "Kaizena Flow site", "Previews a Kaizena Flow page."),
-  platform("page.ai", "/pages/ai", "Create a page with AI", "Kaizena Flow site", "The AI page studio for Kaizena Flow's site."),
-  platform("page.categories", "/pages/categories", "Page categories and tags", "Kaizena Flow site", "Categories and tags for Kaizena Flow's pages."),
-  platform("articles", "/articles", "Blog", "Kaizena Flow site", "Kaizena Flow's blog."),
-  platform("article.new", "/articles/new", "New article", "Kaizena Flow site", "Starts a Kaizena Flow article."),
-  platform("article", "/articles/[pageId]", "Article", "Kaizena Flow site", "Writes a Kaizena Flow article."),
-  platform("article.preview", "/articles/[pageId]/preview", "Article preview", "Kaizena Flow site", "Previews a Kaizena Flow article."),
-  platform("article.categories", "/articles/categories", "Blog categories and tags", "Kaizena Flow site", "Categories and tags for Kaizena Flow's articles."),
-  platform("content", "/content", "Content", "Kaizena Flow site", "Kaizena Flow's own content types and their entries (D326)."),
-  platform("content.new", "/content/new", "New content type", "Kaizena Flow site", "Defines a new content type of Kaizena Flow's own site."),
-  platform("content.type", "/content/[typeId]", "Content type entries", "Kaizena Flow site", "The entries of one of Kaizena Flow's content types."),
-  platform("content.type.settings", "/content/[typeId]/settings", "Content type settings", "Kaizena Flow site", "A content type's name, web name, fields and pages."),
-  platform("content.entry.new", "/content/[typeId]/new", "New entry", "Kaizena Flow site", "Writes a new entry of one of Kaizena Flow's content types."),
-  platform("content.entry", "/content/[typeId]/[entryId]", "Entry", "Kaizena Flow site", "Writes, publishes or deletes an entry of Kaizena Flow's own site."),
-  platform("headers", "/headers", "Headers", "Kaizena Flow site", "Kaizena Flow's custom headers."),
-  platform("header.new", "/headers/new", "New header", "Kaizena Flow site", "Starts a Kaizena Flow header."),
-  platform("header", "/headers/[pageId]", "Header", "Kaizena Flow site", "Builds a Kaizena Flow header."),
-  platform("header.preview", "/headers/[pageId]/preview", "Header preview", "Kaizena Flow site", "Previews a Kaizena Flow header."),
-  platform("footers", "/footers", "Footers", "Kaizena Flow site", "Kaizena Flow's custom footers."),
-  platform("footer.new", "/footers/new", "New footer", "Kaizena Flow site", "Starts a Kaizena Flow footer."),
-  platform("footer", "/footers/[pageId]", "Footer", "Kaizena Flow site", "Builds a Kaizena Flow footer."),
-  platform("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Kaizena Flow site", "Previews a Kaizena Flow footer."),
-  platform("media", "/media", "Media", "Kaizena Flow site", "Kaizena Flow's media library."),
-  platform("templates", "/templates", "Templates", "Kaizena Flow site", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.", {
+  platform("stripe", "/stripe", "Stripe", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
+  platform("pages", "/pages", "Pages", "Kaizena Flow's own website pages."),
+  platform("page.new", "/pages/new", "New page", "Starts a Kaizena Flow page."),
+  platform("page", "/pages/[pageId]", "Page", "Builds a Kaizena Flow page."),
+  platform("page.preview", "/pages/[pageId]/preview", "Page preview", "Previews a Kaizena Flow page."),
+  platform("page.ai", "/pages/ai", "Create a page with AI", "The AI page studio for Kaizena Flow's site."),
+  platform("page.categories", "/pages/categories", "Page categories and tags", "Categories and tags for Kaizena Flow's pages."),
+  platform("articles", "/articles", "Blog", "Kaizena Flow's blog."),
+  platform("article.new", "/articles/new", "New article", "Starts a Kaizena Flow article."),
+  platform("article", "/articles/[pageId]", "Article", "Writes a Kaizena Flow article."),
+  platform("article.preview", "/articles/[pageId]/preview", "Article preview", "Previews a Kaizena Flow article."),
+  platform("article.categories", "/articles/categories", "Blog categories and tags", "Categories and tags for Kaizena Flow's articles."),
+  platform("content", "/content", "Content", "Kaizena Flow's own content types and their entries (D326)."),
+  platform("content.new", "/content/new", "New content type", "Defines a new content type of Kaizena Flow's own site."),
+  platform("content.type", "/content/[typeId]", "Content type entries", "The entries of one of Kaizena Flow's content types."),
+  platform("content.type.settings", "/content/[typeId]/settings", "Content type settings", "A content type's name, web name, fields and pages."),
+  platform("content.entry.new", "/content/[typeId]/new", "New entry", "Writes a new entry of one of Kaizena Flow's content types."),
+  platform("content.entry", "/content/[typeId]/[entryId]", "Entry", "Writes, publishes or deletes an entry of Kaizena Flow's own site."),
+  platform("headers", "/headers", "Headers", "Kaizena Flow's custom headers."),
+  platform("header.new", "/headers/new", "New header", "Starts a Kaizena Flow header."),
+  platform("header", "/headers/[pageId]", "Header", "Builds a Kaizena Flow header."),
+  platform("header.preview", "/headers/[pageId]/preview", "Header preview", "Previews a Kaizena Flow header."),
+  platform("footers", "/footers", "Footers", "Kaizena Flow's custom footers."),
+  platform("footer.new", "/footers/new", "New footer", "Starts a Kaizena Flow footer."),
+  platform("footer", "/footers/[pageId]", "Footer", "Builds a Kaizena Flow footer."),
+  platform("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Previews a Kaizena Flow footer."),
+  platform("media", "/media", "Media", "Kaizena Flow's media library."),
+  platform("templates", "/templates", "Templates", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.", {
     keywords: ["marketplace", "saved parts", "moderation"],
   }),
-  platform("menus", "/menus", "Menus", "Kaizena Flow site", "Kaizena Flow's menus."),
-  platform("forms", "/forms", "Forms", "Kaizena Flow site", "Kaizena Flow's own forms (D705): contact forms and newsletter sign-ups for its pages, and what visitors sent with them.", {
+  platform("menus", "/menus", "Menus", "Kaizena Flow's menus."),
+  platform("forms", "/forms", "Forms", "Kaizena Flow's own forms (D705): contact forms and newsletter sign-ups for its pages, and what visitors sent with them.", {
     keywords: ["form", "contact form", "newsletter", "responses"],
   }),
-  platform("forms.form", "/forms/[formId]", "A form", "Kaizena Flow site", "One of Kaizena Flow's forms and its responses."),
-  platform("forms.responses", "/forms/responses/[formId]", "Form responses", "Kaizena Flow site", "What visitors sent with one of Kaizena Flow's forms, and their export."),
-  platform("forms.new", "/forms/new", "New form", "Kaizena Flow site", "Start one of Kaizena Flow's forms from a template, or a blank one."),
-  platform("navigation", "/navigation", "Header and footer", "Kaizena Flow site", "Kaizena Flow's logos, icon, business details and menus."),
-  platform("fonts", "/fonts", "Fonts", "Kaizena Flow site", "Kaizena Flow's self-hosted fonts."),
-  platform("site_themes", "/site-design", "Design", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {
+  platform("forms.form", "/forms/[formId]", "A form", "One of Kaizena Flow's forms and its responses."),
+  platform("forms.responses", "/forms/responses/[formId]", "Form responses", "What visitors sent with one of Kaizena Flow's forms, and their export."),
+  platform("forms.new", "/forms/new", "New form", "Start one of Kaizena Flow's forms from a template, or a blank one."),
+  platform("navigation", "/navigation", "Header and footer", "Kaizena Flow's logos, icon, business details and menus."),
+  platform("fonts", "/fonts", "Fonts", "Kaizena Flow's self-hosted fonts."),
+  platform("site_themes", "/site-design", "Design", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {
     keywords: ["theme", "look", "switch theme", "design", "kaizena site look"],
   }),
-  platform("site_themes.theme", "/site-design/[install]", "Customise theme", "Kaizena Flow site", "One theme installed on Kaizena Flow's own site that is not live: its preview on Kaizena Flow's own pages, what switching to it changes (header, footer, section styles, settings that stay its own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the site switches.", {
+  platform("site_themes.theme", "/site-design/[install]", "Customise theme", "One theme installed on Kaizena Flow's own site that is not live: its preview on Kaizena Flow's own pages, what switching to it changes (header, footer, section styles, settings that stay its own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the site switches.", {
     keywords: ["preview theme", "try a theme", "what changes", "customise theme", "kaizena site theme"],
   }),
-  platform("seo", "/seo", "Search", "Kaizena Flow site", "How search engines and AI crawlers see Kaizena Flow's site."),
-  platform("cookies", "/cookies", "Cookies", "Kaizena Flow site", "Kaizena Flow's cookies, tracking and consents."),
-  platform("emails", "/emails", "Emails", "Platform", "Every email Kaizena Flow and the stores sent, and email setup."),
-  platform("email", "/emails/[emailId]", "Email", "Platform", "One email."),
-  platform("ai", "/ai", "AI", "Platform", "Kaizena Flow's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
-  platform("status", "/status", "Status page", "Platform", "The public status page: each part's checks, incidents to post and update, and how many subscribe.", {
+  platform("seo", "/seo", "SEO", "How search engines and AI crawlers see Kaizena Flow's site.", { keywords: ["search", "search engines", "crawlers"] }),
+  platform("cookies", "/cookies", "Cookies", "Kaizena Flow's cookies, tracking and consents."),
+  platform("emails", "/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup."),
+  platform("email", "/emails/[emailId]", "Email", "One email."),
+  platform("ai", "/ai", "AI", "Kaizena Flow's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
+  platform("status", "/status", "Status page", "The public status page: each part's checks, incidents to post and update, and how many subscribe.", {
     keywords: ["status", "incident", "outage", "uptime", "downtime", "maintenance"],
     tasks: ["Post an incident", "Update or resolve an incident", "See the latest checks"],
   }),
-  platform("docs.feedback", "/docs/feedback", "Docs feedback", "Kaizena Flow site", "What readers said under each page of the docs (D442): whether it helped, counted by page with the least helpful first, and the answers newest first by page, by yes or no and with a sentence; a sentence that names someone is removed here, its yes or no kept.", {
+  platform("docs.feedback", "/docs/feedback", "Docs feedback", "What readers said under each page of the docs (D442): whether it helped, counted by page with the least helpful first, and the answers newest first by page, by yes or no and with a sentence; a sentence that names someone is removed here, its yes or no kept.", {
     keywords: ["docs", "documentation", "helpful", "feedback", "articles"],
     tasks: ["See which docs pages did not help", "Read what readers wrote", "Remove a sentence that names someone"],
   }),
-  platform("docs.guide", "/docs/guide", "Docs guide", "Kaizena Flow site", "The AI guide on the docs (D444), which answers readers from the docs alone: whether it answers, its name, picture, greeting in English and Norwegian and daily limit, and under Customise its occupation, picture frame and guidance.", {
+  platform("docs.guide", "/docs/guide", "Docs guide", "The AI guide on the docs (D444), which answers readers from the docs alone: whether it answers, its name, picture, greeting in English and Norwegian and daily limit, and under Customise its occupation, picture frame and guidance.", {
     keywords: ["docs", "documentation", "guide", "ai", "chat", "assistant", "developers"],
     tasks: ["Switch the docs guide on or off", "Name the guide and choose its picture and greeting", "Set how many messages a day it answers"],
   }),
-  platform("oauth", "/oauth", "AI assistants and apps", "Platform", "Every client of Kaizena Flow's authorization server (D439): the AI assistants and apps people connected to their stores, with how many people use each, its host, and Verify and Block; blocking ends every connection it has.", {
+  platform("oauth", "/oauth", "AI assistants and apps", "Every client of Kaizena Flow's authorization server (D439): the AI assistants and apps people connected to their stores, with how many people use each, its host, and Verify and Block; blocking ends every connection it has.", {
     keywords: ["oauth", "clients", "mcp", "ai assistants", "apps", "verify", "block", "authorization server"],
     tasks: ["Verify an AI assistant or app", "Block an AI assistant or app"],
   }),
-  platform("apps", "/apps", "App listings", "Platform", "Apps for many stores that ask to be listed in the app directory (D441): each with what it does, its developer, its addresses and what it asks for, approved with a note or declined with the reason, which the developer is emailed.", {
+  platform("apps", "/apps", "App listings", "Apps for many stores that ask to be listed in the app directory (D441): each with what it does, its developer, its addresses and what it asks for, approved with a note or declined with the reason, which the developer is emailed.", {
     keywords: ["apps", "app directory", "listing", "review", "approve app", "decline app", "developers"],
     tasks: ["Review an app's listing", "Approve or decline an app for the directory"],
   }),
-  platform("reports", "/reports", "Content notices", "Platform", "Notices of illegal content people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
+  platform("reports", "/reports", "Content notices", "Notices of illegal content people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],
     tasks: ["Decide a notice of illegal content", "See decided notices"],
   }),
-  platform("challenges", "/challenges", "100-day challenge", "Platform", "Every store the autopilot runs alone in the 100-day challenge: its phase and day, what holds it up, what waits on its owner and how long, its AI cost this month against the challenge's budget, what people did by class, and the three ratios since Day 1 (margin, profit per krone of marketing, revenue per visitor); setting, changing and ending a store's challenge.", {
+  platform("challenges", "/challenges", "100-day challenge", "Every store the autopilot runs alone in the 100-day challenge: its phase and day, what holds it up, what waits on its owner and how long, its AI cost this month against the challenge's budget, what people did by class, and the three ratios since Day 1 (margin, profit per krone of marketing, revenue per visitor); setting, changing and ending a store's challenge.", {
     keywords: ["challenge", "100 days", "autopilot", "scoreboard", "interventions", "stalls", "ratios"],
     tasks: ["Set the challenge on a store", "See what holds a challenge store up", "See the challenge ratios", "End a store's challenge"],
   }),
-  platform("challenge", "/challenges/[storeId]", "Scoreboard", "Platform", "One challenge store's scoreboard: the clone against the original on one definition (net sales, contribution, marketing, visits and the three ratios with who is ahead), the 80 % ad-money rule, and the original's signed P&L periods with the form to add one.", {
+  platform("challenge", "/challenges/[storeId]", "Scoreboard", "One challenge store's scoreboard: the clone against the original on one definition (net sales, contribution, marketing, visits and the three ratios with who is ahead), the 80 % ad-money rule, and the original's signed P&L periods with the form to add one.", {
     keywords: ["scoreboard", "referee", "original", "p&l", "winner", "ratios"],
   }),
-  platform("capacity", "/capacity", "Usage and limits", "Platform", "What every store used this month against its limits (storage, products, staff, domains, visits, emails and AI), the database at a glance, and a CSV.", {
+  platform("capacity", "/capacity", "Usage and limits", "What every store used this month against its limits (storage, products, staff, domains, visits, emails and AI), the database at a glance, and a CSV.", {
     keywords: ["usage", "limits", "quota", "storage", "bandwidth", "traffic", "capacity", "load", "database"],
     tasks: ["See every store's usage this month", "Find the stores closest to their limits", "Download the month as CSV"],
   }),
-  platform("ai.usage", "/ai/usage", "AI usage", "Platform", "What every store, store owner account and Kaizena Flow itself used of the AI, per provider and model.", {
+  platform("ai.usage", "/ai/usage", "AI usage", "What every store, store owner account and Kaizena Flow itself used of the AI, per provider and model.", {
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "provider", "model"],
     tasks: ["See total usage per provider and model", "See usage per store owner account and per store", "Choose the period"],
   }),
-  platform("ai.dream", "/ai/dream/[runId]", "Dream Factory run", "Platform", "A test run of the Dream Factory watched as its owner sees it (D419): the progress, every step with its minutes, a sketch of the store's front page filling in, what was just made and what was made so far. Opened from a test run's line on AI; read only.", {
+  platform("ai.dream", "/ai/dream/[runId]", "Dream Factory run", "A test run of the Dream Factory watched as its owner sees it (D419): the progress, every step with its minutes, a sketch of the store's front page filling in, what was just made and what was made so far. Opened from a test run's line on AI; read only.", {
     keywords: ["dream factory", "drill", "test run", "watch", "build"],
   }),
-  platform("languages", "/languages", "Languages", "Platform", "The languages stores can offer, chosen from the world's, and where each one's interface text stands.", {
+  platform("languages", "/languages", "Languages", "The languages stores can offer, chosen from the world's, and where each one's interface text stands.", {
     keywords: ["translate", "locale", "multilingual", "add a language", "world languages"],
     tasks: ["Add a language", "Switch a language off"],
   }),
-  platform("language", "/languages/[lang]", "Translate a language", "Platform", "One language's interface text: translate it with AI, read it, edit it and mark it reviewed.", {
+  platform("language", "/languages/[lang]", "Translate a language", "One language's interface text: translate it with AI, read it, edit it and mark it reviewed.", {
     keywords: ["interface text", "review", "translation"],
   }),
-  platform("domains", "/domains", "Domains", "Platform", "Domains stores buy through Kaizena Flow (D315): the margin, floor and rounding of prices per currency, opening buying for a store, every registration with its expiry, and purchases that failed or wait.", {
+  platform("domains", "/domains", "Domains", "Domains stores buy through Kaizena Flow (D315): the margin, floor and rounding of prices per currency, opening buying for a store, every registration with its expiry, and purchases that failed or wait.", {
     keywords: ["domain", "registrar", "dns", "buy domain", "domain prices", "renewal"],
   }),
-  platform("ai.prices", "/ai/prices", "AI prices", "Platform", "What each AI model costs per million tokens in US dollars: set a price, see earlier ones, and the models used without a price. The usage pages show cost from these.", {
+  platform("ai.prices", "/ai/prices", "AI prices", "What each AI model costs per million tokens in US dollars: set a price, see earlier ones, and the models used without a price. The usage pages show cost from these.", {
     keywords: ["cost", "price", "dollars", "model"],
   }),
-  platform("chat", "/chat", "Chat assistant", "Support", "Kaizena Flow's public site chat assistant and its knowledge base."),
-  platform("chat.questions", "/chat/questions", "Questions the assistant couldn't answer", "Support", "What visitors of Kaizena Flow's site, owners asking Kaizena Flow and its website chats asked that its chat assistant could not answer, the most asked first: answer each once into Kaizena Flow's knowledge base, or set it aside. The docs guide's questions are on Docs feedback.", {
+  platform("chat", "/chat", "Chat assistant", "Kaizena Flow's public site chat assistant and its knowledge base."),
+  platform("chat.questions", "/chat/questions", "Questions the assistant couldn't answer", "What visitors of Kaizena Flow's site, owners asking Kaizena Flow and its website chats asked that its chat assistant could not answer, the most asked first: answer each once into Kaizena Flow's knowledge base, or set it aside. The docs guide's questions are on Docs feedback.", {
     keywords: ["unanswered questions", "knowledge gaps", "faq", "could not answer"],
   }),
-  platform("integrations", "/integrations", "Integrations", "Platform", "Kaizena Flow's own integrations (D465): Zapier, Make and Slack for the platform's events (a store asked for, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content), and how their sends are doing.", {
+  platform("integrations", "/integrations", "Integrations", "Kaizena Flow's own integrations (D465): Zapier, Make and Slack for the platform's events (a store asked for, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content), and how their sends are doing.", {
     keywords: ["zapier", "make", "slack", "webhooks", "notifications"],
   }),
-  platform("integrations.api", "/integrations/api", "API", "Platform", "Kaizena Flow's own read-only API (D518): tokens a platform owner makes with the scopes chosen (stores, plans, requests, figures), shown once and revoked, and its routes.", { keywords: ["api", "tokens", "developers", "integration"] }),
-  platform("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Platform", "Sends Kaizena Flow's events, signed, to its own HTTPS endpoints (D515): the events, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
-  platform("workflows", "/workflows", "Workflows", "Platform", "Kaizena Flow's workflows (D516): a trigger (a platform event, such as a store requested or a plan started, or a schedule in Oslo's time), conditions on its fields and actions (email the platform's owners, post in its Slack, send to its own endpoint), saved off, tested on the latest event, then switched on; each one's recent runs.", { keywords: ["workflows", "automation", "rules", "triggers"] }),
-  platform("integration", "/integrations/[provider]", "Integration", "Platform", "Connects one of Kaizena Flow's integrations with the service's webhook address, chooses its platform events, tests it, and shows recent sends."),
-  platform("google-reviews", "/google-reviews", "Google reviews", "Kaizena Flow site", "Kaizena Flow's own Google reviews for testimonials."),
-  platform("instagram", "/instagram", "Instagram", "Kaizena Flow site", "Kaizena Flow's own Instagram account, whose posts the Instagram feeds on its own pages show."),
-  platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
+  platform("integrations.api", "/integrations/api", "API", "Kaizena Flow's own read-only API (D518): tokens a platform owner makes with the scopes chosen (stores, plans, requests, figures), shown once and revoked, and its routes.", { keywords: ["api", "tokens", "developers", "integration"] }),
+  platform("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Sends Kaizena Flow's events, signed, to its own HTTPS endpoints (D515): the events, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
+  platform("workflows", "/workflows", "Workflows", "Kaizena Flow's workflows (D516): a trigger (a platform event, such as a store requested or a plan started, or a schedule in Oslo's time), conditions on its fields and actions (email the platform's owners, post in its Slack, send to its own endpoint), saved off, tested on the latest event, then switched on; each one's recent runs.", { keywords: ["workflows", "automation", "rules", "triggers"] }),
+  platform("integration", "/integrations/[provider]", "Integration", "Connects one of Kaizena Flow's integrations with the service's webhook address, chooses its platform events, tests it, and shows recent sends."),
+  platform("google-reviews", "/google-reviews", "Google reviews", "Kaizena Flow's own Google reviews for testimonials."),
+  platform("instagram", "/instagram", "Instagram", "Kaizena Flow's own Instagram account, whose posts the Instagram feeds on its own pages show."),
+  platform("experiments", "/experiments", "A/B tests", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
     keywords: ["experiment", "a/b", "test", "split", "guardrail"],
   }),
-  platform("retention", "/retention", "Data retention", "Platform", "How long each kind of personal data is kept (bookkeeping periods per country, and the policy periods for emails, carts, sign-in codes and more): each period's source and how much of it was read, whether a person has reviewed it, a form that starts a new period (never an edit in place), how many tables the register of personal data holds, and the daily job's last results.", {
+  platform("retention", "/retention", "Data retention", "How long each kind of personal data is kept (bookkeeping periods per country, and the policy periods for emails, carts, sign-in codes and more): each period's source and how much of it was read, whether a person has reviewed it, a form that starts a new period (never an edit in place), how many tables the register of personal data holds, and the daily job's last results.", {
     keywords: ["gdpr", "retention", "keep data", "how long", "bookkeeping", "regnskap", "storage limitation", "anonymise", "register of personal data", "accountant review"],
     tasks: ["Mark a retention period as reviewed", "Change how long a kind of data is kept", "See what the daily job removed", "See which periods nobody has reviewed"],
   }),
-  platform("processing", "/processing", "Record of processing", "Platform", "What Kaizena Flow does with personal data, purpose by purpose, as GDPR Art. 30 asks: each purpose's lawful basis and why, who decides it (the store or Kaizena Flow), whose data it is, how long it is kept and which tables hold it, drawn from the register of personal data; the bases a lawyer should look at first are marked.", {
+  platform("processing", "/processing", "Record of processing", "What Kaizena Flow does with personal data, purpose by purpose, as GDPR Art. 30 asks: each purpose's lawful basis and why, who decides it (the store or Kaizena Flow), whose data it is, how long it is kept and which tables hold it, drawn from the register of personal data; the bases a lawyer should look at first are marked.", {
     keywords: ["gdpr", "article 30", "art. 30", "record of processing", "ropa", "behandlingsprotokoll", "lawful basis", "purpose", "controller", "processor"],
     tasks: ["See the record of processing", "See the lawful basis of each purpose", "See which purposes need a lawyer's review"],
   }),
-  platform("vat", "/vat", "VAT rates", "Platform", "VAT rates for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
+  platform("vat", "/vat", "VAT rates", "VAT rates for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
     keywords: ["tax", "rates", "reduced rate", "mva", "moms", "category", "shipping vat", "verify", "oss", "ioss"],
     tasks: ["Set a country's rate for a category", "Mark a rate verified", "Add a VAT category", "Set how shipping is taxed in a country"],
   }),
-  platform("duty-rates", "/duty-rates", "Duty rates", "Platform", "The platform's duty rates (D343): per destination country (or the EU) and HS heading, the duty rate, an origin's preference, the duty and VAT-at-sale thresholds per consignment or item, a fixed duty per sub-heading, the import VAT rate where it differs, whether shipping counts, the dates a row applies, its source and whether a person verified it.", {
+  platform("duty-rates", "/duty-rates", "Duty rates", "The platform's duty rates (D343): per destination country (or the EU) and HS heading, the duty rate, an origin's preference, the duty and VAT-at-sale thresholds per consignment or item, a fixed duty per sub-heading, the import VAT rate where it differs, whether shipping counts, the dates a row applies, its source and whether a person verified it.", {
     keywords: ["customs", "duties", "duty rates", "tariff", "hs code", "de minimis", "threshold", "import vat", "toll", "tollsatser", "verify"],
     tasks: ["Add a duty rate", "Mark a duty rate verified", "Change a country's threshold"],
   }),
-  platform("vat.country", "/vat/[country]", "VAT by country", "Platform", "One country's VAT: the rate of every category with its full history, the way shipping is taxed there and a form to set a rate."),
-  platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),
-  platform("activity", "/activity", "Change log", "Platform", "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets, approvals. Filter by person and period.", {
+  platform("vat.country", "/vat/[country]", "VAT by country", "One country's VAT: the rate of every category with its full history, the way shipping is taxed there and a form to set a rate."),
+  platform("search-test", "/search-test", "Search test", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),
+  platform("activity", "/activity", "Change log", "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets, approvals. Filter by person and period.", {
     keywords: ["audit", "audit log", "activity log", "history", "who did", "two-step", "security events"],
   }),
-  platform("assistant", "/assistant", "AI manager", "Platform", "The platform's AI manager: conversations and what it has learned about you.", {
+  platform("assistant", "/assistant", "AI manager", "The platform's AI manager: conversations and what it has learned about you.", {
     keywords: ["assistant", "ai", "memory"],
   }),
-  platform("assistant.autopilot", "/assistant/autopilot", "Autopilot", "Platform", "The work the platform's AI manager does on its own for Kaizena Flow's site (D309): decisions waiting for you, plans, goals and how far it may go. ?tab= opens a tab.", {
+  platform("assistant.autopilot", "/assistant/autopilot", "Autopilot", "The work the platform's AI manager does on its own for Kaizena Flow's site (D309): decisions waiting for you, plans, goals and how far it may go. ?tab= opens a tab.", {
     keywords: ["autopilot", "plans", "goals", "decisions", "autonomy"],
   }),
 ];
 
+/** The label of each level's Home tab, the group of Home's pages (`storeTabs()`, `platformTabs()`, `ownerTabs()`). */
+const HOME = "Home";
+const PLATFORM_ITEMS = PLATFORM_SECTIONS.flatMap(platformItemsOf);
+const OWNER_TABS = ownerTabs(OWNER_EVERY_TAB);
+
 /**
- * The pages with the store's navigation sections as their groups (D147): where a page sits is the section its address is in
- * (`src/lib/store-nav.ts`), so the AI manager's guidance follows the tabs people see.
+ * Where a page sits, from the navigation at all three levels (code review step 1.19, D881): its group is the section the frame marks on its
+ * address, and its menu word the label of the sidebar item at its address, or of the tab that opens it there. Nothing of it is written by
+ * hand, so the AI manager, the page finder and the docs say what the menu says.
  */
-export const ADMIN_PAGES: readonly AdminPage[] = PAGES.map((page) => (page.area === "store" ? { ...page, group: sectionOf(page.path)?.label ?? "Home" } : page));
+function placed(page: MapEntry): AdminPage {
+  let group: string;
+  let navLabel: string | undefined;
+  if (page.area === "store") {
+    const section = sectionOf(page.path);
+    group = section?.label ?? HOME;
+    const item = section?.groups.flatMap((g) => g.items).find((i) => i.path === page.path);
+    navLabel = item?.label ?? (section?.start === page.path ? section.label : page.path === "" ? HOME : undefined);
+  } else if (page.area === "platform") {
+    const section = platformSectionOf(page.path);
+    group = section?.label ?? HOME;
+    navLabel = PLATFORM_ITEMS.find((i) => i.path === page.path)?.label ?? (section?.start === page.path ? section.label : page.path === "" ? HOME : undefined);
+  } else {
+    group = ownerSectionOf(page.path) ?? HOME;
+    navLabel = ACCOUNT_ITEMS.find((i) => i.path === page.path)?.label ?? OWNER_TABS.find((t) => t.href === `${OWNER_BASE}${page.path}`)?.label;
+  }
+  return { ...page, group, ...(navLabel !== undefined && { navLabel }) };
+}
+
+export const ADMIN_PAGES: readonly AdminPage[] = PAGES.map(placed);
+
+/** A page's name as the menu says it (D881): its menu word where it is in the menu, else its title. What the finder, the AI and the docs call it. */
+export const pageName = (page: Pick<AdminPage, "title" | "navLabel">): string => page.navLabel ?? page.title;
 
 export const ADMIN_PAGES_BY_ID: Record<string, AdminPage> = Object.fromEntries(ADMIN_PAGES.map((page) => [`${page.area}:${page.id}`, page]));
 
@@ -1549,7 +1556,8 @@ export function findPages(area: AdminArea, query: string, norwegian: PagesNorweg
   const asked = words(query);
   if (asked.length === 0) return [];
   const scored = pagesFor(area, flags).map((page) => {
-    const title = words(page.title);
+    // Its menu word counts as its title (D881), and a fuller title as well.
+    const title = words(page.navLabel && page.navLabel !== page.title ? `${page.navLabel} ${page.title}` : page.title);
     const keywords = (page.keywords ?? []).flatMap(words);
     // Its Norwegian title and words too (D312 A2), so a person asking in Norwegian finds it; only words of four letters or more, so a short
     // English word ("for", "som") does not match a Norwegian one.
@@ -1628,7 +1636,7 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   "platform:chat.questions",
 ]);
 
-/** The map as the AI reads it: every page without params, one line each, by group. */
+/** The map as the AI reads it: every page without params, by the menu's sections, each by the menu's word (D881). */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {
   const pages = pagesFor(area, flags).filter(
     (page) =>
@@ -1638,7 +1646,14 @@ export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}):
   );
   const groups = new Map<string, AdminPage[]>();
   for (const page of pages) groups.set(page.group, [...(groups.get(page.group) ?? []), page]);
+  // In the menu's order: Home, then the tabs; the owner's Work last.
+  const order = [HOME, ...(area === "store" ? STORE_SECTIONS : PLATFORM_SECTIONS).map((s) => s.label)];
+  const rank = (group: string) => (order.includes(group) ? order.indexOf(group) : order.length);
   return [...groups.entries()]
-    .map(([group, list]) => `${group}: ${list.map((page) => `${page.title} [${page.id}]`).join("; ")}`)
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([group, list]) =>
+      // A section that is one page of its own name (the platform's Stores) is named once.
+      list.length === 1 && pageName(list[0]) === group ? `${group} [${list[0].id}]` : `${group}: ${list.map((page) => `${pageName(page)} [${page.id}]`).join("; ")}`,
+    )
     .join("\n");
 }
