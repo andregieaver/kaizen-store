@@ -2,7 +2,9 @@
 
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { ButtonLink, Card, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { ButtonLink } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
+import { List, ListRow, RowActions, RowLead } from "@/components/admin/ui/list";
 
 import { fillWords } from "@/lib/admin-fill";
 

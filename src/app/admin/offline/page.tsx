@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { ButtonLink, FocusFrame } from "@/components/admin/ui";
+import { ButtonLink } from "@/components/admin/ui/button";
+import { FocusFrame } from "@/components/admin/ui/focus-frame";
 import { SHELL_WORDS } from "@/lib/admin-words/shell";
 
 export const metadata: Metadata = { title: "Offline" };

@@ -11,7 +11,7 @@ import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { platformRoleOf } from "@/lib/platform-access";
-import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
+import { PLATFORM_BASE, platformAreas, platformTabs } from "@/lib/platform-nav";
 import { areaTexts } from "@/lib/admin-area";
 import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
 import { SHELL_WORDS } from "@/lib/admin-words/shell";
@@ -41,23 +41,8 @@ const INBOX = String.raw`^/admin/platform/support$`;
 
 const base = PLATFORM_BASE;
 
-/**
- * The platform's sections (D144), each with its own sidebar or none: Home, Stores, Themes (D285), Customers and Requests need none.
- * Every page of the level is in exactly one area, by its address, which also marks the section's tab.
- */
-const website = sectionPrefixes("/website", WEBSITE_ITEMS);
-const planPages = sectionPrefixes(null, PLAN_ITEMS);
-const settings = sectionPrefixes("/settings", SETTINGS_ITEMS);
-const supportPages = sectionPrefixes(null, SUPPORT_ITEMS);
-
-const areas: NavArea[] = [
-  { prefixes: [], exact: [base], groups: [] },
-  { prefixes: website, groups: [{ heading: "Website", items: withBase(WEBSITE_ITEMS) }] },
-  { prefixes: [`${base}/themes`, `${base}/stores`, `${base}/customers`, `${base}/requests`, `${base}/assistant`], groups: [] },
-  { prefixes: planPages, groups: [{ heading: "Plans", items: withBase(PLAN_ITEMS) }] },
-  { prefixes: supportPages, groups: [{ heading: "Support", items: withBase(SUPPORT_ITEMS) }] },
-  { prefixes: settings, groups: [{ heading: "Settings", items: withBase(SETTINGS_ITEMS) }] },
-];
+/** The platform's sections (D144) and their sidebars, by address (`platformAreas()`, beside the tabs in `platform-nav.ts`). */
+const areas: NavArea[] = platformAreas();
 
 /**
  * Kaizen's own admin (D107), in the same shell as a store's: the level

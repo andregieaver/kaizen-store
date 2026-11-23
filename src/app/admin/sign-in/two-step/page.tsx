@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
-import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui/focus-frame";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import type { AdminLang } from "@/lib/admin-lang";
 import { safeNext } from "@/lib/password";

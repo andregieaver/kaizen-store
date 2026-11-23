@@ -215,7 +215,7 @@ export function RailHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <h2 className="text-xs tracking-wide text-muted uppercase text-title text-ink">{label}</h2>
+      <h2 className="text-eyebrow text-muted uppercase">{label}</h2>
       <FoldButton side={side} label={label} controls={controls} onFold={onFold} />
     </div>
   );

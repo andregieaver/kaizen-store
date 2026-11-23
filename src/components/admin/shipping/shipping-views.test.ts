@@ -13,7 +13,9 @@ import { MethodEditor } from "./method-editor";
 import { MethodsListView, ratesSummary } from "./methods-list";
 import { PickupView, type PickupPlace } from "./pickup-view";
 import { ProfilesView } from "./profiles-view";
-import { deliverySentence, ShippingHubView, warningWords } from "./shipping-hub";
+import { warningWords } from "@/lib/shipping-warning-words";
+
+import { deliverySentence, ShippingHubView } from "./shipping-hub";
 import { MarketTabs, chosenMarket } from "./shipping-parts";
 import { ZonesView } from "./zones-view";
 

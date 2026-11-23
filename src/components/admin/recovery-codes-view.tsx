@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
 import { formatCodes } from "@/lib/recovery-codes";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 
 import { useSignInText } from "./sign-in-text";
 

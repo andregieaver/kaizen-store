@@ -142,7 +142,7 @@ export const sectionPrefixes = (hub: string | null, items: SectionItem[]) => [..
 export const withBase = (items: SectionItem[]) =>
   items.map((i) => ({ href: `${PLATFORM_BASE}${i.path}`, label: i.label, icon: i.icon, ...(i.exact && { exact: true as const }) }));
 
-type Tab = { href: string; label: string; icon: NavIconName; exact?: boolean; also?: string[]; badge?: number; foot?: boolean };
+type Tab = { href: string; label: string; icon: NavIconName; exact?: boolean; also?: string[]; badge?: number; foot?: boolean; home?: true };
 
 /**
  * The platform's sections as tabs, or as the rail's tiles (D219): Home, then each section with the addresses inside it, and Settings at
@@ -151,7 +151,8 @@ type Tab = { href: string; label: string; icon: NavIconName; exact?: boolean; al
 export function platformTabs(counts: { requests?: number; support?: number } = {}): Tab[] {
   const base = PLATFORM_BASE;
   return [
-    { href: base, label: "Home", exact: true, icon: "home" },
+    // Home is no section: its pages' headers name none (`home`, D873).
+    { href: base, label: "Home", exact: true, icon: "home", home: true },
     { href: `${base}/website`, label: PLATFORM_HUB_TITLES.website, icon: "monitor", also: sectionPrefixes("/website", WEBSITE_ITEMS) },
     // Themes (D285): a section of its own beneath Website, with no sidebar; the theme store's pages are edited from its page.
     { href: `${base}/themes`, label: "Themes", icon: "palette" },
@@ -162,5 +163,24 @@ export function platformTabs(counts: { requests?: number; support?: number } = {
     { href: `${base}/requests`, label: "Access requests", icon: "bell", ...(counts.requests ? { badge: counts.requests } : {}) },
     { href: `${base}/support`, label: "Support", icon: "chat", also: sectionPrefixes(null, SUPPORT_ITEMS), ...(counts.support ? { badge: counts.support } : {}) },
     { href: `${base}/settings`, label: PLATFORM_HUB_TITLES.settings, icon: "cog", also: sectionPrefixes("/settings", SETTINGS_ITEMS), foot: true },
+  ];
+}
+
+type Area = { prefixes: string[]; exact?: string[]; groups: { heading: string; items: ReturnType<typeof withBase> }[] };
+
+/**
+ * The platform's sections (D144), each with its own sidebar or none: Home, Stores, Themes (D285), Customers and Requests need none. Every
+ * page of the level is in exactly one area, by its address, which also marks the section's tab. Here rather than in the layout so the test
+ * that no address marks two links reads what the frame draws (D873); step 1.18 gives the platform one structure. A function, so a browser
+ * part that reads this file for its areas (the role notice) carries none of it.
+ */
+export function platformAreas(): Area[] {
+  return [
+    { prefixes: [], exact: [PLATFORM_BASE], groups: [] },
+    { prefixes: sectionPrefixes("/website", WEBSITE_ITEMS), groups: [{ heading: "Website", items: withBase(WEBSITE_ITEMS) }] },
+    { prefixes: ["/themes", "/stores", "/customers", "/requests", "/assistant"].map((p) => `${PLATFORM_BASE}${p}`), groups: [] },
+    { prefixes: sectionPrefixes(null, PLAN_ITEMS), groups: [{ heading: "Plans", items: withBase(PLAN_ITEMS) }] },
+    { prefixes: sectionPrefixes(null, SUPPORT_ITEMS), groups: [{ heading: "Support", items: withBase(SUPPORT_ITEMS) }] },
+    { prefixes: sectionPrefixes("/settings", SETTINGS_ITEMS), groups: [{ heading: "Settings", items: withBase(SETTINGS_ITEMS) }] },
   ];
 }

@@ -32,6 +32,24 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - The menu is built by `storeNav()` once per shell render; `permissionOfPath()` is memoised by path and access,
   never by anything of the member.
 
+## Say where you are: the section above the title, one link marked (code review 2.2, D873, `src/lib/nav-current.ts`)
+
+- A page passes no `eyebrow` to `PageHeader`: its section's word is drawn from the address (`SectionEyebrow`, the label of the tab the
+  rail marks, from the tabs and sidebars `AdminFrame` hands down in `NavHereProvider`, in the menu's own words). None on Home's pages,
+  where the title or the way back says that word, in a sample header (`as="p"`) or outside the frame; a page's own `eyebrow` wins, `false` for none.
+  A level's Home tab carries `home`. A server component is never told its address: no `headers()` read for it.
+- Each list of the menu (the tabs and rail, a section's sidebar, the phone menu's sections and, apart, its pages) marks one link, the one
+  whose address the page is deepest inside (`currentIndex()`, the rule of `sectionOf()`); a page shows the sidebar of the section it is
+  deepest inside (`placeIndex()`). No special case per page: `store-admin-nav.test.ts` walks every address of the three levels (menus and
+  `ADMIN_PAGES`) and fails on a second mark. The platform's sidebars are `platformAreas()`, beside its tabs.
+- A menu's group heading is `text-eyebrow text-muted uppercase`; a count beside a link is read out in the shell's words
+  (`frame.waiting`), never fixed English.
+- The level switcher keeps the page when switching store: its link asks the other store's Home (`?keep=`, `switchHref()`), which opens
+  that page when it is in the admin map with no record in its address, is not Home's, and is offered to the person there (`keptPage()`),
+  else redirects to itself.
+- The kit's index brings every piece into a client bundle that imports it: a client part takes the pieces from their files (the boundaries
+  and the pages before sign-in too); no route outside the signed-in admin and the builder's sandbox reaches the index (`ui.test.ts`).
+
 ## The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)
 
 - The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`): admin pages are written in the colour

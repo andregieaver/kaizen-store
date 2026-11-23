@@ -1,5 +1,5 @@
 /**
- * The Shipping hub's warnings in English (bloat review step 2.50): beside `warningWords()` in `components/admin/shipping/shipping-hub.tsx`, so the
+ * The Shipping hub's warnings in English (bloat review step 2.50): beside `warningWords()` in `lib/shipping-warning-words.ts`, so the
  * AI manager's shipping tool says them without the shipping catalogue, and the catalogue (`admin-messages/shipping.en.ts`) spreads them from here.
  * Imports nothing.
  */

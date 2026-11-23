@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { idle, type FormState } from "./action-form";
-import { Button, ButtonLink } from "./ui";
+import { Button, ButtonLink } from "./ui/button";
 import { fillWords } from "@/lib/admin-fill";
 import { useAdminText } from "./admin-text";
 
