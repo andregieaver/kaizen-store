@@ -163,3 +163,21 @@ test("a broadcast takes columns side by side (M4.1)", async ({ page }) => {
     await sql.end();
   }
 });
+
+test("a block is saved for later and added again to the next broadcast (M4.1)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/broadcasts/new`);
+  await page.getByRole("button", { name: "Social links", exact: true }).click();
+  await page.locator("[data-social-block]").getByLabel("Address").fill("instagram.com/kaizena");
+  await page.getByRole("button", { name: "Save for later" }).click();
+  await page.getByLabel("Name for this block").fill(`Følg oss ${RUN}`);
+  await page.getByRole("button", { name: "Save the block" }).click();
+  const saved = page.locator("[data-saved-blocks]");
+  await expect(saved.getByRole("button", { name: `Følg oss ${RUN}`, exact: true })).toBeVisible();
+
+  await page.goto(`/admin/${STORE}/broadcasts/new`);
+  await page.locator("[data-saved-blocks]").getByRole("button", { name: `Følg oss ${RUN}`, exact: true }).click();
+  await expect(page.locator("[data-social-block]").getByLabel("Address")).toHaveValue("instagram.com/kaizena");
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-saved.png"), fullPage: true });
+  await page.locator("[data-saved-blocks]").getByRole("button", { name: `Delete Følg oss ${RUN}` }).click();
+  await expect(page.locator("[data-saved-blocks]")).toHaveCount(0);
+});

@@ -17,7 +17,7 @@ import { getAssurance } from "@/server/auth";
 import { getStore } from "@/server/stores";
 
 import { finishEnrolmentAction, leaveTwoStepAction, startEnrolmentAction } from "../actions";
-import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui/focus-frame";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */

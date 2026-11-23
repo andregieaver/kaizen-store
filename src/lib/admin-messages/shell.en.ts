@@ -13,6 +13,8 @@ export const shellEn = {
     allPages: "All pages",
     sections: "Sections",
     thisSection: "This section",
+    /** A count beside a section or a page in the menu, read out (D873): Support's conversations waiting for a person. */
+    waiting: "{count} waiting",
     loading: "Loading …",
     checkingSession: "Checking your session …",
     skipToContent: "Skip to content",

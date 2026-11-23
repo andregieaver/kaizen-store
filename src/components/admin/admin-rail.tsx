@@ -5,6 +5,7 @@ import { AdminLink } from "./ui/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import { RAIL_NAMES_EVENT, railNamesShown, setRailNames } from "@/lib/admin-rail";
 
 import { useAdminText } from "./admin-text";
@@ -32,16 +33,17 @@ function useRailNames(): boolean {
  * `<html>` before the page is drawn (`railNamesScript()`), which the classes follow; a workspace's narrow rail keeps to its icons.
  */
 export function AdminRail({ items, home, label, collapseOn, areas }: { items: NavItem[]; home: { href: string; label: string }; label: string; collapseOn?: string; areas?: NavArea[] }) {
-  const isCurrent = useIsCurrent(areas);
+  const isCurrent = useIsCurrent(items, areas);
   const path = usePathname();
   const named = useRailNames();
-  const w = useAdminText("shell").rail;
+  const shell = useAdminText("shell");
+  const w = shell.rail;
   const collapsed = Boolean(collapseOn) && new RegExp(collapseOn as string).test(path);
   const main = items.filter((item) => !item.foot);
   const foot = items.filter((item) => item.foot);
   const tile = (item: NavItem) => {
     const current = isCurrent(item);
-    const waiting = item.badge ? `, ${item.badge} waiting` : "";
+    const waiting = item.badge ? `, ${fillWords(shell.frame.waiting, { count: item.badge })}` : "";
     return (
       <li key={item.href}>
         <AdminLink

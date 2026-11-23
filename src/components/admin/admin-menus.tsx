@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
+import { switchHref } from "@/lib/store-switch";
 import { useAdminText } from "./admin-text";
 
 /**
@@ -80,7 +81,8 @@ function Chevron() {
 /**
  * Where you are, and a way to any other level: the control center (owners),
  * each store, the platform (Kaizen's team), and the account. The current
- * level and store are marked.
+ * level and store are marked. From a store's page, another store opens on the
+ * same page when it has it for the person, else on its Home (`switchHref()`, D873).
  */
 export function AdminSwitcher({
   level,
@@ -107,8 +109,11 @@ export function AdminSwitcher({
   platform: { waiting: number } | null;
 }) {
   const { open, toggle, box, button } = useMenu();
+  const pathname = usePathname();
   const w = useAdminText("shell").switcher;
   const shown = stores.slice(0, 12);
+  // Another store keeps the page you are on where it can (D873); the store you are in is a way back to its own Home.
+  const storeHref = (slug: string) => switchHref(pathname, level === "store" ? currentSlug : undefined, slug);
   return (
     <div ref={box} className="relative min-w-0">
       <button
@@ -140,7 +145,7 @@ export function AdminSwitcher({
               {shown.map((s) => {
                 const here = level === "store" && s.slug === currentSlug;
                 return (
-                  <AdminLink key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
+                  <AdminLink key={s.slug} role="menuitem" href={storeHref(s.slug)} aria-current={here ? "page" : undefined} className={item}>
                     <span className="truncate">{s.name}</span>
                     {s.suspended && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">{w.suspended}</span>}
                     {s.role === "admin" && <span className="ml-auto text-xs text-muted">{w.staff}</span>}
@@ -160,7 +165,7 @@ export function AdminSwitcher({
               {workspaces.map((s) => {
                 const here = level === "store" && s.slug === currentSlug;
                 return (
-                  <AdminLink key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
+                  <AdminLink key={s.slug} role="menuitem" href={storeHref(s.slug)} aria-current={here ? "page" : undefined} className={item}>
                     <span className="truncate">{s.name}</span>
                     <Here on={here} />
                   </AdminLink>

@@ -15,7 +15,10 @@ import { DuplicateButton } from "./duplicate-button";
 import { PhoneMore } from "./phone-more";
 import { PHONE_MORE_HIDDEN } from "./phone-more-class";
 import { ScheduleChipView } from "./pages-table";
-import { AdminLink, buttonClass, CARD_CLASS, Chip } from "@/components/admin/ui";
+import { buttonClass } from "@/components/admin/ui/button";
+import { CARD_CLASS } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
+import { AdminLink } from "@/components/admin/ui/link";
 
 /** How many pages a phone shows before Show all (round 33, D707). */
 const PHONE_FIRST = 10;

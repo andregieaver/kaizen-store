@@ -27,6 +27,8 @@ import { demoTotal, demoWords } from "@/lib/demo-content";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { storeHomeReads } from "@/server/admin-screens";
+import { KEEP_PARAM } from "@/lib/store-switch";
+import { keptPageFor } from "@/server/store-switch";
 import { demoContent } from "@/server/demo-content";
 import { latestDreamRun } from "@/server/dream-factory";
 import { platformModes } from "@/server/stripe";
@@ -59,6 +61,10 @@ async function DemoSection({ storeId, storeSlug, locale, words }: { storeId: str
 export default async function AdminOverview({ params, searchParams }: Props) {
   const current = await requireMemberAny((await params).store);
   const { account, store } = current;
+  // Switched here from another store's page (D873, `switchHref()`): that page here when the person can open it and it is no record, else Home
+  // at its own address. Read before anything of Home's, so the hop costs one membership read.
+  const kept = (await searchParams)[KEEP_PARAM];
+  if (kept !== undefined) redirect(keptPageFor(current, kept) ?? `/admin/${store.slug}`);
   // A standalone account's workspace (D748 E7) has no store to set up: its Home is its extensions, the AI manager and Add to your account.
   if (store.workspace) return <WorkspaceHome store={store} owner={memberCan(current, "owner")} words={HOME_WORDS[adminLangOf(account.adminLocale)].workspace} now={new Date()} />;
   // A new owner's first stop is the setup wizard.

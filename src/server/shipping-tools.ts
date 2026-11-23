@@ -2,10 +2,10 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
-import { warningWords } from "@/components/admin/shipping/shipping-hub";
 import { db } from "@/db/client";
 import { readDelivery } from "@/lib/delivery-options";
 import { SHIPPING_WARNING_WORDS } from "@/lib/shipping-warning-labels";
+import { warningWords } from "@/lib/shipping-warning-words";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import { groupHandovers, readyWords, shapeArea, shapeMethod, shapeZone, weightWords, type HandoverOrder } from "@/lib/shipping-tools";

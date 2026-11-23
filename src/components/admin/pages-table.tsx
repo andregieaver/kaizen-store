@@ -10,7 +10,10 @@ import type { ScheduleChip } from "@/lib/page-schedules";
 import { useAdminLang, useAdminText } from "./admin-text";
 
 import { DuplicateButton } from "./duplicate-button";
-import { buttonClass, ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { buttonClass, ButtonLink } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
+import { List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui/list";
 
 
 /** Where a page is on the site: its own address, or the place's it was chosen for (empty where the place has none, such as the 404 page). */

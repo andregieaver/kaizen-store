@@ -4,7 +4,9 @@ import type { SiteLayoutType } from "@/server/site-layouts";
 import type { PageSummary } from "@/server/pages";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
-import { Card, CARD_CLASS, Chip, List, ListRow, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
+import { List, ListRow, RowLead } from "@/components/admin/ui/list";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 

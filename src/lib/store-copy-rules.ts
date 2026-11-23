@@ -180,6 +180,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   ad_accounts: never("A store's ad account and its token (D585) are its owner's; a copy connects its own."),
   ad_conversions: never("What the original's orders sent to ad platforms (D303 I2)."),
   broadcasts: never("A store's broadcasts are sent to its own list (D297); a copy starts without them."),
+  email_saved_blocks: never("A store's saved email blocks (M4.1) are its staff's working parts; a copy starts without them."),
   broadcast_templates: never("A store's own broadcast templates (D368) are its staff's working words; a copy starts with the hand-written ones only."),
   broadcast_recipients: never("The addresses a broadcast went to (D297): people's data."),
   broadcast_link_clicks: never("A sent broadcast's counts (D297)."),

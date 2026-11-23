@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import type { ShippingWarning } from "@/lib/shipping-methods";
+import { warningWords } from "@/lib/shipping-warning-words";
 import { DotChip } from "@/components/admin/home/home-parts";
 import { AdminLink, Card, CARD_CLASS, Chip } from "@/components/admin/ui";
 
@@ -38,19 +39,6 @@ export type ShippingHubProps = {
   /** The hub's words in the admin's language (D312 A8). */
   words: ShippingMessages["hub"];
 };
-
-/** A warning in words, naming the country (the AI manager's shipping tool reads it in English). */
-export function warningWords(warning: ShippingWarning, marketName: (code: string) => string, words: ShippingMessages["hub"]["warnings"]): string {
-  const w = words;
-  switch (warning.code) {
-    case "no_flat_with_methods":
-    case "zones_without_rest":
-    case "subscriptions_need_flat":
-      return fillWords(w[warning.code], { market: marketName(warning.marketCode) });
-    case "default_weight_used":
-      return countWords(warning.variants, w.default_weight_used);
-  }
-}
 
 /** The page's sentence: what a shopper pays for delivery, its first part the one to read ("Shoppers in Norway pay 99 kr for delivery"). */
 export function deliverySentence(prices: HubPrice[], words: ShippingMessages["hub"]): { lead: string; rest: string } {
