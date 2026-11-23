@@ -17,8 +17,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   and permission areas are derived from it (`platformNav()`, `platformNavAreas()`), so the layout lists none by hand. A new platform page
   goes in one section's items, under an item's or a section's address, or in Home's (`PLATFORM_HOME_PATHS`), and in `ADMIN_PAGES`;
   `platform-nav.test.ts` fails on a page folder in none. The shell takes them as `areas` (`NavArea`) with `wide`. The store (D147) and the owner's level are built the same way: `src/lib/store-nav.ts` (Orders, Products, Customers,
-  Marketing, Website, Bookings, Settings; a new store page goes in one section's items, or Home's, and in `ADMIN_PAGES`, whose
-  `group` follows the section; Website and Settings open on pages of cards) and `src/lib/owner-nav.ts` (Home, Stores, Work,
+  Marketing, Website, Bookings, Settings; a new store page goes in one section's items, or Home's, and in `ADMIN_PAGES` (D881);
+  Website and Settings open on pages of cards) and `src/lib/owner-nav.ts` (Home, Stores, Work,
   Account); pages use the whole width, so no `max-w-*xl` on a page's root. The owner's overview is `controlCenter()`
   (`src/server/control-center.ts`, pure
   parts in `src/lib/control-center.ts`: one statement for the stores, then one wave with one statement per key set, 16 statements in
@@ -51,6 +51,21 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   else redirects to itself.
 - The kit's index brings every piece into a client bundle that imports it: a client part takes the pieces from their files (the boundaries
   and the pages before sign-in too); no route outside the signed-in admin and the builder's sandbox reaches the index (`ui.test.ts`).
+
+## One source for a page's name: the admin map takes it from the menu (code review 1.19, D881, `src/lib/page-names.test.ts`)
+
+- An `ADMIN_PAGES` entry never names its section: its `group` is the section whose tab the frame marks on its address (`sectionOf()`,
+  `platformSectionOf()`, `ownerSectionOf()`), Home for Home's pages, and a page in the menu carries the menu's word as `navLabel`
+  (its sidebar item's label, or the tab that opens it). A page's title is the menu's word; a fuller title stays only where
+  `page-names.test.ts` lists it with its reason (`FULLER_TITLES`). Renaming a page is renaming its menu item: the map, the AI and the
+  docs follow. A new page in a sidebar needs no group or label of its own in the map.
+- Whatever names a page to a person or to the AI says the menu's word: `pageName()` in English, `pageNameIn()` in the account's
+  language (for a page in the menu its title in `pages.nb.ts` is the menu's Norwegian word, `admin-pages-nb.test.ts`). The page
+  finder, the AI manager's map (`adminMapText()`, in the menu's order), its page tools and first suggestion, Kaizena Flow support's
+  page links, the docs guide and the docs' *In the admin* line (section › page) read them, never `title` alone.
+- The tests: every menu page's word, section and title, the frame's mark on every map page equal to its group, each platform group
+  one of its tabs (`page-names.test.ts`); the rendered tabs and the word above the title equal the group at all three levels
+  (`store-admin-nav.test.ts`, `section-eyebrow.test.ts`).
 
 ## The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)
 

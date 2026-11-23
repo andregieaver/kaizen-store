@@ -9,7 +9,7 @@
 
 import type { AdminLang } from "./admin-lang";
 import { findPages, pageHref, pageParams, type SiteFlags } from "./admin-map";
-import { PAGES_WORDS } from "./admin-words/pages";
+import { PAGES_WORDS, pageNameIn } from "./admin-words/pages";
 import type { FinderItem } from "./finder-groups";
 
 // The answer's shape and its pure helpers live in `finder-groups.ts`, which the browser imports without the admin map.
@@ -31,8 +31,8 @@ export function finderResults(
     if (pageParams(page).length > 0) continue;
     const href = pageHref(page, {}, storeSlug);
     if (!href) continue;
-    const nb = lang === "nb" ? PAGES_WORDS.nb[`${page.area}:${page.id}`] : undefined;
-    items.push({ title: nb?.title ?? page.title, group: page.group, what: page.what, href });
+    // The menu's word and section (D881); the caller puts the section in the person's language.
+    items.push({ title: pageNameIn(lang, page), group: page.group, what: page.what, href });
     if (items.length === limit) break;
   }
   return items;

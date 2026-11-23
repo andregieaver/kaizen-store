@@ -7,7 +7,6 @@
  */
 
 import type { NavIconName } from "@/components/admin/nav-icons";
-import { HOUSE_SLUG } from "@/lib/house-routing";
 
 import type { PlatformArea, PlatformNavArea } from "./platform-access";
 
@@ -67,8 +66,9 @@ export const PLATFORM_SECTIONS: PlatformSection[] = [
           item("/templates", "Templates", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.", "layout-template", "website"),
           item("/menus", "Menus", "Lists of links for Kaizena Flow's header, footer and pages.", "menu", "website"),
           item("/forms", "Forms", "Kaizena Flow's contact forms and newsletter sign-ups to place on any page, and what visitors sent with them.", "clipboard-list", "website"),
-          item("/headers", "Header", "Headers built from components; choose the one Kaizena Flow's site shows.", "panel-top", "website"),
-          item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows.", "panel-bottom", "website"),
+          // Headers and Footers, as the pages, their tab titles and a store's menu name them (D881; the menu said Header and Footer).
+          item("/headers", "Headers", "Headers built from components; choose the one Kaizena Flow's site shows.", "panel-top", "website"),
+          item("/footers", "Footers", "Footers built from components; choose the one Kaizena Flow's site shows.", "panel-bottom", "website"),
           item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use.", "type", "website"),
           item("/site-design", "Design", "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back.", "palette", "website"),
           item("/docs/feedback", "Docs feedback", "What readers said under each page of the docs: whether it helped, and the sentence some add.", "message-square", "website"),
@@ -188,21 +188,6 @@ export const PLATFORM_SECTIONS: PlatformSection[] = [
  */
 export const PLATFORM_HOME_PATHS: readonly PlatformNavArea[] = [{ path: "/assistant", area: "settings" }];
 
-/** Kaizena Flow's own store (D466): made by its migration at this address, never moved (`HOUSE_SLUG`). */
-export const HOUSE_STORE_SLUG = HOUSE_SLUG;
-
-/**
- * Kaizena Flow's own store as the first card of the Website hub (D466): a store's admin of its own, where its customers, subscribers and
- * email are kept and its site moves step by step. A card only, outside the sidebar: it leads to another level.
- */
-export const HOUSE_STORE_CARD = {
-  path: "",
-  href: `/admin/${HOUSE_STORE_SLUG}`,
-  label: "Kaizena Flow's store",
-  description: "Kaizena Flow's own store, with every page a store's admin has: its customers, subscribers, email and, step by step, its site.",
-  icon: "store" as NavIconName,
-};
-
 /** A section's pages, in its sidebar's order. */
 export const platformItemsOf = (section: Pick<PlatformSection, "groups">): PlatformItem[] => section.groups.flatMap((g) => g.items);
 
@@ -294,4 +279,20 @@ export function platformAreas(): PlatformPlace[] {
 /** The tabs (with their counts) and the sidebars from one reading of the sections, as `storeNav()` gives a store's layout. */
 export function platformNav(counts: Partial<Record<PlatformSection["key"], number>> = {}): { tabs: PlatformTab[]; areas: PlatformPlace[] } {
   return { tabs: platformTabs(counts), areas: platformAreas() };
+}
+
+/**
+ * The section a page after the platform's address is in, by the rule the frame marks its tab by (`currentIndex()`, D873): the one whose
+ * address the page is deepest inside, a page of cards on its own address only; undefined for Home's pages (Home and the AI manager). The
+ * admin map's groups (D881), so a page's section in the map is the word above its title; `page-names.test.ts` holds the two equal.
+ */
+export function platformSectionOf(path: string): PlatformSection | undefined {
+  let found: PlatformSection | undefined;
+  let depth = -1;
+  const consider = (section: PlatformSection | undefined, address: string, below: boolean) => {
+    if (address.length > depth && (path === address || (below && path.startsWith(`${address}/`)))) [found, depth] = [section, address.length];
+  };
+  for (const home of PLATFORM_HOME_PATHS) consider(undefined, home.path, true);
+  for (const section of PLATFORM_SECTIONS) for (const address of platformSectionPaths(section)) consider(section, address, !(section.hub && address === section.start));
+  return found;
 }

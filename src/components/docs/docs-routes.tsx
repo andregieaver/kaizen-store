@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { fillWords } from "@/lib/admin-fill";
-import { PAGES_WORDS } from "@/lib/admin-words/pages";
+import { navWord } from "@/lib/admin-nav-words";
+import { pageNameIn } from "@/lib/admin-words/pages";
 import { matchPath } from "@/lib/admin-map";
 import {
   DOC_TRACKS,
@@ -361,10 +362,15 @@ function MarkdownLink({ href, words }: { href: string; words: DocsWords }) {
   );
 }
 
-/** Where in the admin a page happens, as the admin map names it (in Norwegian where the map has its name). */
+/**
+ * Where in the admin a page happens, in the menu's words (D881): a page of a section's sidebar as the section and its menu word
+ * (Settings › Tax), any other page by its name; in Norwegian where the menu and the map have it.
+ */
 function adminTitle(path: string, lang: DocLang): string | null {
   const found = matchPath(path);
   if (!found) return null;
-  if (lang === "nb") return PAGES_WORDS.nb[`${found.page.area}:${found.page.id}`]?.title ?? found.page.title;
-  return found.page.title;
+  const { page } = found;
+  const name = pageNameIn(lang, page);
+  const inSection = page.navLabel !== undefined && page.group !== "Home" && page.navLabel !== page.group;
+  return inSection ? `${navWord(lang, page.group)} › ${name}` : name;
 }

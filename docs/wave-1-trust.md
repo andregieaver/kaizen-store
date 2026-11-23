@@ -870,7 +870,7 @@ edited by one area only. All paths are in `/home/user/kaizen-trust` (the worktre
 | File | What |
 |---|---|
 | `src/server/auth.ts` | `getAccount()` fail-closed, `getSessionAccount()`, `getMembership()` with role, kind, expiry and permissions, `requireMember` kept as internal; `audit()` gains its optional fifth argument (the 224 callers are untouched) |
-| `src/server/permissions.ts` | `requirePermission`, `checkPermission`, `requireOwnerRole`, `requireMemberAny`, `GUARDS`, `DELEGATED_GUARDS` |
+| `src/server/permissions.ts` | `requirePermission`, `checkPermission`, `requireOwnerRole`, `requireMemberAny`; `GUARDS` and `DELEGATED_GUARDS` are read from `src/lib/permission-guards.ts` (D881) |
 | `src/server/two-step.ts` | enrol (start, verify), challenge, recovery-code use (admin client), regenerate, remove, platform reset, the failure counter, `assuranceOfSession()` (claims + one `getUser()` for `aal1`), the mirror update |
 | `src/server/recovery-codes.ts` | generation, HMAC, single-use claim |
 | `src/server/security-emails.ts`, `src/lib/security-emails.ts` | the English emails (recovery code used, two-step removed or reset); pure text in `lib`, sending in `server` through `sendEmail()` with an idempotency key `security.{event}:{account}:{at}` |

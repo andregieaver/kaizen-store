@@ -77,7 +77,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.16 | Unsaved work survives | FB5 | M | Done | 19 Nov 2026, 45b40b6d, 27683588, D787: one leave guard in eight editors; drafts in the builder and product editor; see Notes below |
 | 1.17 | Free a page's permission from its place in the menu | FN2 | M | Done | 20 Nov 2026, this change, D851: each store and platform nav item names its `area`; `areaOfPath()` and `platformAreaOfPath()` read it; moving any item changes no key (scan tests); see Notes below |
 | 1.18 | One structure for the platform's navigation | FN9 | M | Done | 23 Nov 2026, d2e5020f6, D877: `PLATFORM_SECTIONS`; tabs, sidebars, hubs and areas derived from it, the layout lists none; every page folder in a section (a test); see Notes below |
-| 1.19 | One source for a page's name | FN8 | M | Open | |
+| 1.19 | One source for a page's name | FN8 | M | Done | 23 Nov 2026, c897bc045, D881: group and navLabel from the nav at all three levels; 10 titles take the menu's word, 5 fuller ones listed; page-names.test.ts; see Notes below |
 | 1.20 | Dates shoppers see | FS12 | M | Done | 19 Nov 2026, c8a55b08, D796: `dateIn()`/`calendarDate()`/`storeZoneOf()` in `src/lib/dates.ts`; `dates.scan.test.ts`; see Notes below |
 
 **Phase 2: Structure**
@@ -196,6 +196,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 20 November 2026: step 1.17 done (D851, finding FN2): every store and platform nav item names its permission area; `areaOfPath()` and `platformAreaOfPath()` read it, never the section; the scan tests move each item and find every key unchanged, and hold `platformCan()` to its folder too. The audit's phase 2 (step 2.4) and the Money section (2.5) may start.
 - 23 November 2026: step 2.2 done (D873, findings FN7, FN6 and FN12): every `PageHeader` names its section above the title, at the store, the platform and the owner's level, in the admin's language; each list of the menu marks one link (a walk of every address holds it, and found the owner's level marking two tabs and the platform's rail none on 12 deeper pages); one heading style; the badge's words; the store switcher keeps the page.
 - 23 November 2026: step 1.18 done (D877, finding FN9): the platform's navigation is one structure, `PLATFORM_SECTIONS`; its tabs and counts, sidebars, pages of cards and every page's area are derived from it, the layout lists none; the AI manager is Home's and every page folder is in a section (a test); 782 addresses, relative and whole, answer the same area before and after.
+- 23 November 2026: step 1.19 done (D881, finding FN8): the admin map takes each page's section and menu word from the navigation at all three levels; ten titles take the menu's word, five fuller ones are listed with their reasons, the platform's menu says Headers and Footers; the page finder, the AI manager and the docs name pages as the menu does.
 
 **Notes on the steps**
 
@@ -458,6 +459,21 @@ area in the browser (D851), so each of the 122 platform routes' first scripts gr
 home's document fell 1,189. Render modes unchanged. Done when met: `P/layout.tsx` lists no area by hand, and `platform-nav.test.ts`
 puts each of the 136 page and route folders in a section or Home.
 
+**Step 1.19.** 23 Nov 2026, D881: `ADMIN_PAGES` writes no group or menu word. `placed()` (`src/lib/admin-map.ts`) gives each page the
+section whose tab the frame marks on its address (`sectionOf()`, `platformSectionOf()`, `ownerSectionOf()`; Home for Home's pages)
+and, for a page in the menu, the menu's word as `navLabel`; the builders lost their group argument (406 calls). The review's 31
+differences (18 store, 13 platform) were 16 by now, D718 having renamed the menu to the map's words; the platform's menu now says
+Headers and Footers, ten titles take the menu's word, and five fuller titles stay, listed in `page-names.test.ts` with the reason,
+their menu words flagged for the owner (Overview, VAT, Editor, Stores, Home read well only in their sidebar). Readers say the menu's
+word through `pageName()` and `pageNameIn()`: the finder, the AI manager's map (in menu order) and page tools, its panel's first
+suggestion, Kaizena Flow support, the docs guide and the docs' *In the admin* line (section › page). Done when met:
+`page-names.test.ts` finds no menu page whose name or section in the map differs from the menu and puts every platform page in one of
+its tabs; the frame's mark and the word above the title equal each page's group at all three levels. For step 2.3: groups inside the
+platform's Settings are sidebar headings, not sections, so the map's groups stay its tabs; for step 4.3: the map has nothing of its own
+left to generate. The manager's prompt changed (a16e4595284f): the agents' eval is to be recorded again. Bytes: the platform's 122 routes +2 each
+(the two menu words), the other 480 unchanged; render modes unchanged. To keep two server entries in their room, the guards' unused
+re-export left `src/server/permissions.ts` and the house store's card left `platform-nav.ts` (`src/lib/house-store.ts`).
+
 **Step 1.20.** 19 Nov 2026, D796: `src/lib/dates.ts` gives D786's formatter neutral names for code outside the admin
 (`dateIn(where, instant, style, locale)`, `calendarDate(day, style, locale)`) and `storeZoneOf(row.time_zone)` for an untyped row.
 Articles, blog comments, article grids, campaign notices, the subscription and order pages (terms, bonus, downloads, parcels,
@@ -615,7 +631,7 @@ that decide how cheaply the admin's map can change; section 4.3 points back to t
 | FF4 | 2 | Cart and checkout, the two pages that cannot be cached and decide a sale, read their data one query after another (up to eight awaits each). | `F/cart/cart-contents.tsx:95-195`; `F/checkout/checkout-section.tsx:68-74, 109-116` | One `Promise.all` for the reads that depend only on store, cart and customer; bonus and gift cards together; start codes, delivery and the payment form before awaiting them. | S |
 | FF10 | 2 | The product card query (45 lines) is written twice, and a few files carry whole screens: `product-parts.tsx` 1,289 lines, `chat-widget.tsx` 1,109, `cart-contents.tsx` 968. | `catalog.ts:191-237` against `:525-560`; `src/components/product-parts.tsx:105-446, 927-1205` | One `summarySelect` fragment and row mapper. Split `cart-contents.tsx` into a loader and its parts; move the booking parts and `VariantsWithStock` out of `product-parts.tsx`. | M |
 | FS10 | 2 | 14 admin page files over 340 lines read, decide and draw everything in one server component (the order page: 1,071 lines, 13 awaits). They cannot stream in parts or be shared with the platform's twin screens. | `S/orders/[orderId]/page.tsx`; `S/settings/moving/page.tsx` (27 awaits); `S/customers/[customerId]/page.tsx` | A soft ceiling of about 250 lines: the page checks permission and lays out; each card is an async server component that reads its own data in Suspense, as Home does (`S/page.tsx:116-161`). | L |
-| FN8 | 2 | Three hand-kept lists name each page (the menu, `ADMIN_PAGES`, the page's header) and disagree on 30 pages: the assistant says *Support inbox* where the menu says *Inbox*. The platform's map groups no longer match its tabs. | `src/lib/admin-map.ts:1325`; `src/lib/store-nav.ts`, `platform-nav.ts` (compared by script) | The nav item is the source for a page's menu label and section; `ADMIN_PAGES` takes `group` and a `navLabel` from it at all three levels; delete the dead group arguments. | M |
+| FN8 | 2 | Three hand-kept lists name each page (the menu, `ADMIN_PAGES`, the page's header) and disagree on 30 pages: the assistant says *Support inbox* where the menu says *Inbox*. The platform's map groups no longer match its tabs. | `src/lib/admin-map.ts:1325`; `src/lib/store-nav.ts`, `platform-nav.ts` (compared by script) | The nav item is the source for a page's menu label and section; `ADMIN_PAGES` takes `group` and a `navLabel` from it at all three levels; delete the dead group arguments. *Built: step 1.19, D881.* | M |
 | FN9 | 2 | The platform's navigation is put together in three places (four item arrays, a hand-listed tab list, areas rebuilt in the layout) and read a fourth time for permissions. Some static platform routes are in no list. | `src/lib/platform-nav.ts:18-68, 118-132`; `P/layout.tsx:44-56`; `platform-access.ts:68-77` | `PLATFORM_SECTIONS` in the shape of `StoreSection`, from which tabs, areas and `platformAreaOfPath()` are derived; the platform's own test "puts every page folder in a section". *Built: step 1.18, D877.* | M |
 | FN11 | 2 | `docs/admin-navigation.md` describes a much smaller admin: no Analytics or Support for stores, Marketing with 6 pages (the code has 14), no Themes or Support for the platform. `CLAUDE.md` sends every contributor there. | `docs/admin-navigation.md:59-67, 82, 127-133` | A script beside `scripts/parity.mjs` that writes the three tables between markers, with a check mode in CI. *Audit N14, phase 4: not built.* | S |
 | FH5 | 2 | `CLAUDE.md` costs about 10,000 tokens in every session, and 28 of its 301 index lines are cut mid-sentence, hiding the paths. | `CLAUDE.md` (418 lines, 39.5 KB) | Reduce the Storefront and Admin sections to the six area files (the per-rule index moves to the top of each, where `rules-index.test.ts` checks it); break Conventions into short bullets. | S |

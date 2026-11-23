@@ -9,7 +9,7 @@ import { assistantLanguageLines } from "@/lib/assistant-lang";
 
 import { db } from "@/db/client";
 import { storeExtensionsOn } from "@/lib/extensions";
-import { adminMapText, matchPath, pageParams, type SiteFlags } from "@/lib/admin-map";
+import { adminMapText, matchPath, pageName, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { skillsText } from "@/lib/assistant-skills";
 import { toolKey } from "@/lib/owner-tool-permissions";
 import { areaOfPath } from "@/lib/permissions";
@@ -398,7 +398,7 @@ export function whereText(p: Principal, path: string | null | undefined): string
     .map((name) => `${name} ${params[name]}`)
     .join(", ");
   return [
-    `They are on ${page.title} [${page.id}]${known ? ` (${known})` : ""}: ${page.what}`,
+    `They are on ${pageName(page)} [${page.id}]${known ? ` (${known})` : ""}: ${page.what}`,
     ...(page.tasks?.length ? [`There they can: ${page.tasks.join("; ")}.`] : []),
   ].join("\n");
 }

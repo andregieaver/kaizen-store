@@ -434,11 +434,11 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
 
   // Tax, invoicing and payments
   "store:tax": {
-    title: "Innstillinger for merverdiavgift",
+    title: "Avgift",
     keywords: ["merverdiavgift", "mva", "avgift", "organisasjonsnummer", "omvendt avgiftsplikt", "oss", "ioss", "vies"],
   },
   "store:invoices.settings": {
-    title: "Innstillinger for fakturering",
+    title: "Fakturering",
     keywords: ["fakturering", "faktura", "fakturanummer", "nummerering", "serie", "prefiks", "kreditnota", "bankopplysninger"],
   },
   "store:producer-responsibility": {
@@ -460,7 +460,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
 
   // Analytics
   "store:analytics": {
-    title: "Analyse",
+    title: "Oversikt",
     keywords: ["analyse", "statistikk", "omsetning", "salg", "fortjeneste", "konvertering", "rapport", "nøkkeltall"],
   },
   "store:analytics.finance": {
@@ -473,8 +473,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   },
   "store:analytics.payout": { title: "En utbetaling", keywords: ["utbetaling", "oppgjør", "posteringer", "gebyr", "tilbakeføring"] },
   "store:analytics.tax": {
-    title: "Rapporter for mva., OSS og IOSS",
-    keywords: ["mva", "merverdiavgift", "oss", "ioss", "mva-melding", "sats", "regnskapsfører", "avstemming"],
+    title: "Merverdiavgift",
+    keywords: ["mva-rapport", "mva", "merverdiavgift", "oss", "ioss", "mva-melding", "sats", "regnskapsfører", "avstemming"],
   },
   "store:analytics.customers": {
     title: "Kundeanalyse",
@@ -489,13 +489,13 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Markedsføringsanalyse",
     keywords: ["markedsføringsanalyse", "kanaler", "annonser", "kampanje", "annonsekostnad", "roas", "rabatter", "rabattkoder"],
   },
-  "store:analytics.sales": { title: "Salgsanalyse", keywords: ["salgsprognose", "salgsløp", "vinnerrate", "konvertering", "avtaler"] },
+  "store:analytics.sales": { title: "Salg", keywords: ["salgsanalyse", "salgsprognose", "salgsløp", "vinnerrate", "konvertering", "avtaler"] },
   "store:analytics.subscriptions": {
     title: "Abonnementsanalyse",
     keywords: ["abonnementsanalyse", "abonnement", "mrr", "frafall", "gjentakende inntekt"],
   },
   "store:analytics.traffic": {
-    title: "Trafikkanalyse",
+    title: "Trafikk",
     keywords: ["trafikk", "trafikkanalyse", "besøkende", "økter", "trakt", "enhet", "mobil", "returrate"],
   },
   "store:analytics.reports": {
@@ -548,11 +548,11 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:chat": { title: "Chatassistent", keywords: ["chatassistent", "kundechat", "chatbot", "kunnskapsbase", "chat"] },
   "store:chat.questions": { title: "Spørsmål assistenten ikke kunne svare på", keywords: ["ubesvarte spørsmål", "spørsmål", "kunnskapsbase", "chatassistent", "svar"] },
   "store:support": {
-    title: "Innboks for kundestøtte",
+    title: "Innboks",
     keywords: ["kundestøtte", "innboks", "livechat", "kundeservice", "samtaler", "henvendelser", "support"],
   },
   "store:support.requests": {
-    title: "Forespørsler til kundestøtte",
+    title: "Forespørsler",
     keywords: ["forespørsler", "forespørsel om tilbakebetaling", "kansellere bestilling", "endre adresse", "unntak", "kundestøtte"],
   },
   "store:support.reports": {
@@ -684,7 +684,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
 
   // The owner's level
   "account:stores": {
-    title: "Kontrollsenter",
+    title: "Hjem",
     keywords: ["kontrollsenter", "oversikt", "dashbord", "hjem", "alle butikkene mine", "trenger oppmerksomhet"],
   },
   "account:stores.all": { title: "Butikker", keywords: ["butikker", "nettbutikker", "mine butikker", "ny butikk", "dupliser butikk"] },
@@ -775,7 +775,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:settings": { title: "Innstillinger", keywords: ["innstillinger", "konfigurasjon", "oppsett"] },
   "platform:overview": { title: "Hjem", keywords: ["hjem", "oversikt", "dashbord", "trenger oppmerksomhet", "status"] },
   "platform:support": {
-    title: "Innboks for kundestøtte",
+    title: "Innboks",
     keywords: ["kundestøtte", "innboks", "livechat", "kundeservice", "samtaler", "henvendelser"],
   },
   "platform:support.reports": {
@@ -783,7 +783,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["kundestøtterapport", "svartid", "kundestøtte", "rapport"],
   },
   "platform:support.stores": {
-    title: "Butikkenes kundestøtte",
+    title: "Butikker",
     keywords: ["butikkenes kundestøtte", "kundestøtte per butikk", "totaler", "kundestøtte"],
   },
   "platform:support.replies": { title: "Lagrede svar", keywords: ["lagrede svar", "ferdige svar", "maler", "snarveier"] },
@@ -836,7 +836,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:theme.demo-store.new": { title: "Ny demobutikk", keywords: ["ny demobutikk", "demobutikk", "live butikk", "utstilling"] },
   "platform:store": { title: "Butikk", keywords: ["butikk", "plan", "gebyr", "rabatt", "bruk tema"] },
   "platform:store.invoice": { title: "Faktura for plan", keywords: ["faktura", "planfaktura", "plan", "betaling"] },
-  "platform:plans": { title: "Abonnementer", keywords: ["planer", "priser", "prisnivåer", "abonnement"] },
+  "platform:plans": { title: "Redigering", keywords: ["planer", "priser", "prisnivåer", "abonnement"] },
   "platform:plan-features": {
     title: "Funksjoner i planene",
     keywords: ["sammenlign planer", "funksjoner", "hva er inkludert", "prisnivåer"],
@@ -854,10 +854,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["mrr", "månedlige inntekter", "frafall", "inntekter", "trakt", "konvertering", "prøveperioder", "salg", "mva", "utbetalinger", "regnskap"],
   },
   "platform:plan-payout": { title: "Utbetaling", keywords: ["utbetaling", "stripe", "gebyrer", "salg", "avstemming"] },
-  "platform:team": { title: "Plattformteam", keywords: ["plattformadministratorer", "ansatte", "operatører", "legg til administrator", "fjern administrator", "team"] },
+  "platform:team": { title: "Team", keywords: ["plattformteam", "plattformadministratorer", "ansatte", "operatører", "legg til administrator", "fjern administrator", "team"] },
   "platform:discounts": { title: "Rabatter", keywords: ["rabatter", "rabattkoder", "rabattkode", "kupong"] },
   "platform:discount": { title: "Rabatt", keywords: ["rabatt", "rabattkode", "kupong"] },
-  "platform:plan-reminders": { title: "Påminnelser om plan", keywords: ["påminnelser", "forlatt kasse", "plan", "e-post"] },
+  "platform:plan-reminders": { title: "Påminnelser", keywords: ["påminnelser", "forlatt kasse", "plan", "e-post"] },
   "platform:plan-reminder.new": { title: "Ny påminnelse om plan", keywords: ["ny påminnelse", "påminnelse", "plan"] },
   "platform:plan-reminder": { title: "Påminnelse om plan", keywords: ["påminnelse", "plan", "e-post"] },
   "platform:referrals": {
@@ -904,7 +904,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Tilpass tema",
     keywords: ["tilpass tema", "forhåndsvis tema", "prøv et tema", "hva endres", "nettstedets tema"],
   },
-  "platform:seo": { title: "Søk", keywords: ["søk", "seo", "søkemotorer", "synlighet", "ki-søkeroboter"] },
+  "platform:seo": { title: "SEO", keywords: ["søk", "seo", "søkemotorer", "synlighet", "ki-søkeroboter"] },
   "platform:cookies": { title: "Informasjonskapsler", keywords: ["informasjonskapsler", "cookies", "sporing", "samtykke"] },
   "platform:emails": { title: "E-poster", keywords: ["e-poster", "e-post", "sendte e-poster", "e-postoppsett"] },
   "platform:email": { title: "E-post", keywords: ["e-post", "sendt e-post", "melding"] },

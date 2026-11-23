@@ -6,7 +6,7 @@
  */
 
 import { ADMIN_API, errorsOf } from "./admin-api-routes";
-import { matchPath, pageParams } from "./admin-map";
+import { matchPath, pageName as adminPageName, pageParams } from "./admin-map";
 import {
   DOCS_CHANGELOG_PATH,
   docPage,
@@ -276,9 +276,9 @@ export function adminTarget(raw: string, who: AdminVisitor | null): GuideAction 
   if (pageParams(page).some((name) => name !== "store")) return { error: "That page shows one record; open the list it is on instead, or name it in words." };
   if (page.area === "platform") {
     if (!who.platformAdmin) return { error: "That page is for Kaizena Flow's own team." };
-    return { type: "navigate", href: docsSiteHref(`/admin/platform${page.path}`), label: page.title };
+    return { type: "navigate", href: docsSiteHref(`/admin/platform${page.path}`), label: adminPageName(page) };
   }
-  if (page.area === "account") return { type: "navigate", href: docsSiteHref(`/admin${page.path}`), label: page.title };
-  if (who.stores.length !== 1) return { type: "navigate", href: docsSiteHref("/admin"), label: page.title };
-  return { type: "navigate", href: docsSiteHref(`/admin/${who.stores[0]}${page.path}`), label: page.title };
+  if (page.area === "account") return { type: "navigate", href: docsSiteHref(`/admin${page.path}`), label: adminPageName(page) };
+  if (who.stores.length !== 1) return { type: "navigate", href: docsSiteHref("/admin"), label: adminPageName(page) };
+  return { type: "navigate", href: docsSiteHref(`/admin/${who.stores[0]}${page.path}`), label: adminPageName(page) };
 }

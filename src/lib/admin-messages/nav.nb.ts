@@ -374,9 +374,7 @@ export const NAV_NB: Record<string, string> = {
   "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.":
     "Markedsplassens maler, butikkeiernes og Kaizena Flows egne: skjul en fra alle butikkers liste, eller vis den igjen.",
   "Lists of links for Kaizena Flow's header, footer and pages.": "Lister med lenker til Kaizena Flows topptekst, bunntekst og sider.",
-  Header: "Topptekst",
   "Headers built from components; choose the one Kaizena Flow's site shows.": "Topptekster bygget av komponenter; velg den Kaizena Flows nettsted viser.",
-  Footer: "Bunntekst",
   "Footers built from components; choose the one Kaizena Flow's site shows.": "Bunntekster bygget av komponenter; velg den Kaizena Flows nettsted viser.",
   Fonts: "Skrifttyper",
   "The self-hosted fonts Kaizena Flow's pages use.": "Skrifttypene Kaizena Flows sider bruker, lagret hos oss selv.",

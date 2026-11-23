@@ -23,8 +23,11 @@ describe("admin pages in Norwegian (D312 A2)", () => {
   });
 
   it("calls a page what the navigation calls it", () => {
-    const differ = ADMIN_PAGES.filter((p) => NAV_NB[p.title] && !OTHER_THAN_NAV.has(key(p)) && PAGES_NB[key(p)].title !== NAV_NB[p.title]);
-    expect(differ.map((p) => `${key(p)}: ${PAGES_NB[key(p)].title} / ${NAV_NB[p.title]}`)).toEqual([]);
+    // A page in the menu by the menu's word (D881: `pageNameIn()` shows this title), any other whose title is a menu's word by that word.
+    const want = (p: (typeof ADMIN_PAGES)[number]) => (p.navLabel !== undefined ? NAV_NB[p.navLabel] : OTHER_THAN_NAV.has(key(p)) ? undefined : NAV_NB[p.title]);
+    const differ = ADMIN_PAGES.filter((p) => want(p) !== undefined && PAGES_NB[key(p)].title !== want(p));
+    expect(differ.map((p) => `${key(p)}: ${PAGES_NB[key(p)].title} / ${want(p)}`)).toEqual([]);
+    expect(ADMIN_PAGES.filter((p) => p.navLabel !== undefined && !NAV_NB[p.navLabel]).map(key)).toEqual([]);
   });
 
   it("finds pages by Norwegian words", () => {

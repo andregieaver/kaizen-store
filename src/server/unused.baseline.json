@@ -906,6 +906,7 @@
     "src/lib/i18n-glossary.ts": "The Norwegian glossary (D312): i18n-glossary.test.ts holds every Norwegian catalogue to it and writes docs/i18n/glossary-nb.md.",
     "src/lib/legal-wording-nb.ts": "The law's own words for Norwegian legal pages (D312), kept as the checked source of the legal starters.",
     "src/lib/nav-labels.ts": "No importer on 17 Nov 2026; for the reviewer to delete.",
+    "src/lib/permission-guards.ts": "The guards permissions.scan.test.ts accepts (wave 1, 1f), pure data for it; src/server/permissions.ts no longer re-exports it, so no route carries the list (D881).",
     "src/lib/signature-themes.ts": "No importer on 17 Nov 2026; for the reviewer to delete.",
     "src/lib/store-export-scope.ts": "What the whole-store file leaves out and why (PSI DATA-05); store-export.scan.test.ts reads it.",
     "src/server/ai-round.ts": "The drawing of every agent's round that src/server/ai-round.scan.test.ts holds to its baseline (bloat review step 1.19); no route sends what it draws."

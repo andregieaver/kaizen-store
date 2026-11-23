@@ -1,6 +1,7 @@
 /**
  * The guards the scan test (`permissions.scan.test.ts`, wave 1, 1f) accepts in a store admin file, by name, and the wrappers that call one
- * themselves. Pure data so the test can read it without the server-only modules; `src/server/permissions.ts` re-exports both.
+ * themselves. Pure data so the test can read it without the server-only modules. Read it here: nothing re-exports it (D881), so a
+ * route that reaches the guards does not reach this list.
  */
 
 /** A file that reaches the member by one of these is guarded; the test checks the key against the page's area where it can. */

@@ -4,7 +4,8 @@ import { ADMIN_LANGS } from "./admin-lang";
 import { navWord } from "./admin-nav-words";
 import { levelClashes, storeClashes, type NavEntry, type SameThing } from "./nav-labels";
 import { ACCOUNT_ITEMS, OWNER_BASE, ownerTabs } from "./owner-nav";
-import { HOUSE_STORE_CARD, PLATFORM_BASE, PLATFORM_SECTIONS, platformItemsOf, platformTabs } from "./platform-nav";
+import { HOUSE_STORE_CARD } from "./house-store";
+import { PLATFORM_BASE, PLATFORM_SECTIONS, platformItemsOf, platformTabs } from "./platform-nav";
 import { STORE_SECTIONS } from "./store-nav";
 
 /**
@@ -61,6 +62,8 @@ const SAME_THING: SameThing[] = [
   { labels: ["Website chat"], why: "the level's own chat on other websites" },
   { labels: ["Support settings"], why: "the level's own support desk's settings" },
   { labels: ["Header and footer"], why: "the level's own standard header and footer" },
+  { labels: ["Headers"], why: "the level's own headers built from components" },
+  { labels: ["Footers"], why: "the level's own footers built from components" },
   { labels: ["A/B tests"], why: "A/B tests: the platform's page reads every store's" },
   { labels: ["AI"], why: "the AI provider and models: the platform's default, a store's own" },
   { labels: ["Integrations"], why: "the level's own connected services" },

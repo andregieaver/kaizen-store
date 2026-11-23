@@ -214,7 +214,8 @@ const ADMIN = join(SRC, "app/admin");
 const ADMIN_REACH = {
   medianAreas: 4,
   medianBytes: 213_137,
-  largest: { entry: "src/app/admin/try/[sandbox]/[kind]/[pageId]/page.tsx", areas: 26, bytes: 1_640_958 },
+  // 1,640,958 until D881 made the pages' Norwegian titles the menu's words (23 November 2026).
+  largest: { entry: "src/app/admin/try/[sandbox]/[kind]/[pageId]/page.tsx", areas: 26, bytes: 1_640_835 },
   platformHome: { areas: 18, bytes: 1_126_541 },
 };
 const AREAS_ROOM = 2;
