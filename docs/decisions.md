@@ -873,6 +873,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D868 | **Split tests in broadcasts and flows, judged by the A/B engine (email plan M2.5)** | 2026-11-21 | [text](decisions/D868.md) |
 | D869 | **Schemas live apart from their helpers; zod loads where a screen runs one** | 2026-11-21 | [text](decisions/D869.md) |
 | D870 | **The AI social media manager: adviser, copy and graphics, posting; a paid extension** | 2026-11-23 | [text](decisions/D870.md) |
+| D871 | **A form's own report: views counted per form and day (email plan M4.3)** | 2026-11-23 | [text](decisions/D871.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
