@@ -181,3 +181,17 @@ test("a block is saved for later and added again to the next broadcast (M4.1)", 
   await page.locator("[data-saved-blocks]").getByRole("button", { name: `Delete Følg oss ${RUN}` }).click();
   await expect(page.locator("[data-saved-blocks]")).toHaveCount(0);
 });
+
+test("an own HTML block is shown cleaned, in a frame that runs nothing (M4.1)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/broadcasts/new`);
+  await page.getByText("More blocks").click();
+  await page.getByRole("button", { name: "Your own HTML", exact: true }).click();
+  const block = page.locator("[data-html-block]");
+  await block.getByLabel("Your own HTML").fill('<table width="100%"><tr><td style="padding:16px;background-color:#eef6f0;color:#14532d"><h2>Vinterutsalg</h2><p>Alt ull 20 % ned.</p></td></tr></table><script>document.title="x"</script>');
+  await block.getByRole("button", { name: "Show how it looks" }).click();
+  const frame = block.locator("iframe");
+  await expect(frame).toHaveAttribute("sandbox", "");
+  await expect(frame).not.toHaveAttribute("srcdoc", /script/);
+  await expect(frame.contentFrame().getByText("Vinterutsalg")).toBeVisible();
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-html.png"), fullPage: true });
+});

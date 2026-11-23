@@ -30,6 +30,8 @@ export const SOCIAL_MAX = 8;
 /** Cells in a columns block, and the words of one (M4.1). */
 export const CELLS_MAX = 3;
 export const CELL_TEXT_MAX = 600;
+/** The most characters of an own HTML block (M4.1). */
+export const HTML_BLOCK_MAX = 20000;
 /** A store's saved blocks (M4.1), and the length of one's name. */
 export const SAVED_BLOCKS_MAX = 50;
 export const SAVED_BLOCK_NAME_MAX = 80;
@@ -176,6 +178,11 @@ export type BuildInput = {
   resolve: (url: string) => string;
   /** The click address for a link; a test passes the target itself. */
   link: (key: string, target: string) => string;
+  /**
+   * An own HTML block cleaned for sending (M4.1, `cleanEmailHtml()` on the server, which this file never imports so no screen loads the
+   * cleaner); none, and the block is left out, so HTML is never sent as written.
+   */
+  html?: (raw: string) => { html: string; text: string };
 };
 
 /** The email of one language, for `renderEmail()`. */
@@ -214,6 +221,10 @@ export function buildBroadcastEmail(input: BuildInput): EmailContent {
             })),
           },
         ];
+      case "html": {
+        const clean = input.html?.(block.html);
+        return clean?.html ? [{ type: "html", html: clean.html, text: clean.text }] : [];
+      }
       case "social": {
         // Each profile by its network's name, to the address the owner typed (`socialHref()`); one that is not an address is left out.
         const items = block.links.flatMap((l) => {
