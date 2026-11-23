@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -217,7 +217,8 @@ describe("a count's spoken words (D873)", () => {
   it("reads a badge in the account's language, never in fixed English", () => {
     path.current = "/admin/p";
     const tabs: NavItem[] = [{ href: "/admin/p/requests", label: "Forespørsler", badge: 3 }];
-    const nb = html(createElement(AdminTextProvider, { lang: "nb", texts: { shell: SHELL_WORDS.nb }, children: createElement(StoreTabs, { items: tabs, label: "Seksjoner" }) }));
+    const provided = { lang: "nb", texts: { shell: SHELL_WORDS.nb } } as ComponentProps<typeof AdminTextProvider>;
+    const nb = html(createElement(AdminTextProvider, provided, createElement(StoreTabs, { items: tabs, label: "Seksjoner" })));
     expect(nb).toContain('<span class="sr-only">3 venter</span>');
     expect(nb).not.toContain("waiting");
     for (const lang of ["en", "nb"] as const) expect(SHELL_WORDS[lang].frame.waiting).toContain("{count}");
