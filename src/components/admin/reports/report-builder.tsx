@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-import { Button } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
 import type { CustomReportsMessages } from "@/lib/admin-messages/custom-reports.en";
 import {
   COMPARE_KEYS,

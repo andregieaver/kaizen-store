@@ -17,7 +17,7 @@ import type { DraftVariantChoice } from "@/server/draft-orders";
 
 import { EditOutcome, OutsidePaymentForm, type OutsideInput } from "./order-edit-parts";
 import { OrderEditSummary } from "./order-edit-summary";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/drafts-words";
 

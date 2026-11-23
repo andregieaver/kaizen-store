@@ -5,7 +5,8 @@ import { useState, useTransition } from "react";
 import { CONTACT_MODES, type CheckoutContactSettings, type ContactMode } from "@/lib/checkout-contact";
 
 import { useAdminText } from "./admin-text";
-import { Button, Card } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 type Answer = { ok: true } | { ok: false; problems: string[] };
 type Save = (settings: CheckoutContactSettings) => Promise<Answer>;

@@ -11,7 +11,9 @@ import { ActionForm, SubmitButton } from "./action-form";
 import { PhoneRow, PhoneRows } from "./phone-row";
 import { RegistrantFields } from "./domain-buyer";
 import type { MoveInActions, MoveInLookShape, MoveInStartShape, TransferQuoteShape } from "./domain-types";
-import { Button, Card, Chip } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 type Said = { ok: boolean; messages: string[] } | null;

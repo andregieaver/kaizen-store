@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { Button } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { HIGHLIGHT_KINDS, HIGHLIGHT_WORDS_MAX, type HighlightKind, type HighlightWords } from "@/lib/theme-highlights";

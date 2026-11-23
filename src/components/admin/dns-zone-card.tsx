@@ -8,7 +8,9 @@ import { RECIPES, RECIPE_IDS, type RecipeId } from "@/lib/dns-recipes";
 
 import { ActionForm, SubmitButton } from "./action-form";
 import type { DnsApply, DnsCheckFn, DnsDraftShape, DnsCheckShape, DomainAction } from "./domain-types";
-import { Button, Card, Chip } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
 
 export type ZoneRecordRow = { id: string; type: string; name: string; value: string; priority: number | null; kept: boolean };
 export type ZoneHistoryRow = { id: string; summary: string; by: string; when: string; automatic: boolean; undone: boolean; isUndo: boolean };

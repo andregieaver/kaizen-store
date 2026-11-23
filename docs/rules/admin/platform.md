@@ -52,8 +52,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - The level switcher keeps the page when switching store: its link asks the other store's Home (`?keep=`, `switchHref()`), which opens
   that page when it is in the admin map with no record in its address, is not Home's, and is offered to the person there (`keptPage()`),
   else redirects to itself.
-- The kit's index brings every piece into a client bundle that imports it: a client part takes the pieces from their files (the boundaries
-  and the pages before sign-in too); no route outside the signed-in admin and the builder's sandbox reaches the index (`ui.test.ts`).
+- The kit's index brings every piece into a client bundle that imports it: a client part, and any file one reaches by static import,
+  takes the pieces from their files (`@/components/admin/ui/button`, `./ui/card`), the boundaries and the pages before sign-in too; only
+  server code imports the index, and no route outside the signed-in admin and the builder's sandbox reaches it (`ui.test.ts` holds both).
 
 ## One source for a page's name: the admin map takes it from the menu (code review 1.19, D881, `src/lib/page-names.test.ts`)
 

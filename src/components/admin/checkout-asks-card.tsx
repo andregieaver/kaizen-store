@@ -9,7 +9,8 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
 import { openCheckoutQuestion } from "./checkout-rules";
-import { Button, CARD_CLASS } from "./ui";
+import { Button } from "./ui/button";
+import { CARD_CLASS } from "./ui/card";
 
 type Answer = { ok: true } | { ok: false; problems: string[] };
 

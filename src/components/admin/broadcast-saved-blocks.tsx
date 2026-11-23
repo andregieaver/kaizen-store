@@ -6,7 +6,7 @@ import type { BroadcastBlock } from "@/lib/broadcasts-schema";
 import { SAVED_BLOCK_NAME_MAX, type SavedBlock } from "@/lib/broadcasts";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 type Problem = { ok: false; problem: string };
 type Answer = Promise<Problem | { ok: true; saved: SavedBlock[] }>;

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 type Shown = { clientId: string; secret?: string; webhookSecret?: string };
 type Answer = { ok: true; id: string; shown?: Shown } | { ok: false; problems: Record<string, string> };

@@ -6,7 +6,7 @@ import type { NotificationsMessages } from "@/lib/admin-messages/notifications.e
 import type { SendingStatus } from "@/lib/sending-domains";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
-import { Card } from "./ui";
+import { Card } from "./ui/card";
 
 /** The sending domain as the card shows it (D727): no Resend id, nothing but what the owner reads. */
 export type SendingDomainView = {

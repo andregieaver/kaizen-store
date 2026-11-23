@@ -2,7 +2,7 @@
 
 
 import type { ReplicaJob } from "@/lib/replicate";
-import { PageHeader } from "@/components/admin/ui";
+import { PageHeader } from "@/components/admin/ui/page-header";
 
 import { useAdminText } from "./admin-text";
 

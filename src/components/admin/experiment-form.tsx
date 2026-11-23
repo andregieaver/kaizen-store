@@ -10,7 +10,9 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { CHANGES, eligiblePerDay, findableChange, goalEstimate, isCountedGoal, recommendedGoal, weeksOf, type TrafficFacts } from "@/lib/experiment-traffic";
 import type { PartInfo } from "@/lib/experiment-parts";
-import { Button, Card, Chip, CARD_CLASS } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
+import { Card, CARD_CLASS } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { PhoneRow } from "./phone-row";

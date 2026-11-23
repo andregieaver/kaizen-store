@@ -6,7 +6,9 @@ import { fillWords } from "@/lib/admin-fill";
 import { APP_GATES, type AppGate } from "@/lib/custom-apps";
 
 import { useAdminText } from "./admin-text";
-import { Button, Chip, List, ListRow, RowLead } from "./ui";
+import { Button } from "./ui/button";
+import { Chip } from "./ui/chip";
+import { List, ListRow, RowLead } from "./ui/list";
 import { ConfirmButton } from "./ui/confirm-button";
 
 type Answer = { ok: true } | { ok: false; message: string };

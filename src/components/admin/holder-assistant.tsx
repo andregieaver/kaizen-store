@@ -5,7 +5,8 @@ import { useState, useTransition, type FormEvent } from "react";
 import type { DomainsMessages } from "@/lib/admin-messages/domains.en";
 
 import type { HolderActions, HolderChatMessage as Message, HolderProposalShape as Proposal } from "./domain-types";
-import { Button, Card } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 
 /**

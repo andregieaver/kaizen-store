@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { FontPicker, type InstallFont } from "@/components/admin/font-picker";
-import { Card } from "@/components/admin/ui";
+import { Card } from "@/components/admin/ui/card";
 import {
   GREETING_MAX,
   LABEL_MAX,

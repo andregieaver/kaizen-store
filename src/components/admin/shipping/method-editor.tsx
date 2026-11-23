@@ -17,7 +17,8 @@ import {
   type BlockDraft,
 } from "@/lib/shipping-method-form";
 import type { MethodRate } from "@/lib/shipping-methods";
-import { Button, CARD_CLASS } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 
 import { useAdminText } from "../admin-text";
 

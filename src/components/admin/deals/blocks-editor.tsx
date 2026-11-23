@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
 import { TextInput } from "@/components/admin/ui/field";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { CONTRACT_FIELDS } from "@/lib/contract-rich";

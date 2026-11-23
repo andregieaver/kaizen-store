@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 import { ConfirmButton } from "./ui/confirm-button";
 
 type Answer = { ok: true } | { ok: false; message: string };

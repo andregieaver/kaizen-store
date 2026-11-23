@@ -5,7 +5,7 @@ import { useId, useState, useTransition } from "react";
 import type { ArchiveActionState, TagsActionState } from "@/app/admin/(gated)/[store]/orders/ops-actions";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { TAGS_PER_ORDER, TAG_MAX_LENGTH, type Tag } from "@/lib/order-tags";
-import { Card, CARD_CLASS } from "@/components/admin/ui";
+import { Card, CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 

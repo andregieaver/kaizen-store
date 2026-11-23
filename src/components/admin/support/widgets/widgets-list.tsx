@@ -3,7 +3,8 @@
 import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { Card, Chip } from "@/components/admin/ui";
+import { Card } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
 import { countWords } from "@/lib/admin-fill";
 import type { SupportWidget } from "@/server/support-widgets";
 

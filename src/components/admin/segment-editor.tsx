@@ -24,7 +24,7 @@ import {
 import type { PreviewResult } from "@/app/admin/(gated)/[store]/segments/actions";
 
 import { useAdminLang, useAdminText } from "./admin-text";
-import { CARD_CLASS } from "./ui";
+import { CARD_CLASS } from "./ui/card";
 
 type Props = {
   storeSlug: string;

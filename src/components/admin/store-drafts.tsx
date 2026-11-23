@@ -8,7 +8,9 @@ import { fillWords } from "@/lib/admin-fill";
 import type { DraftView } from "@/server/store-drafts";
 
 import { useAdminText } from "./admin-text";
-import { Button, CARD_CLASS, Chip } from "./ui";
+import { Button } from "./ui/button";
+import { CARD_CLASS } from "./ui/card";
+import { Chip } from "./ui/chip";
 
 type Result = { ok: true; draft: DraftView | null; notes?: string[] } | { ok: false; problem: string };
 

@@ -24,7 +24,7 @@ import { Modal } from "./modal";
 import { PhoneRow, PhoneRows } from "./phone-row";
 import { MakePictureButton, PictureMakerProvider } from "./picture-maker";
 import { uploadVideoFile, type StartVideo } from "./video-upload";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 
 /** What the library can ask of its owner's server (bound to the store, or Kaizen's). */
 export type MediaActions = {

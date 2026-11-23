@@ -10,7 +10,9 @@ import { formatMoney } from "@/lib/money";
 import { ActionForm, SubmitButton } from "./action-form";
 import { RegistrantFields } from "./domain-buyer";
 import type { CheckoutActions, CheckoutBuyer, CheckoutQuote } from "./domain-types";
-import { Button, Card, Chip } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 

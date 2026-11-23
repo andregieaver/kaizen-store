@@ -7,7 +7,7 @@ import { BRIEF_MAX, BRIEF_MIN, PICTURE_SHAPES, shapeOf, type PictureShape } from
 
 import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 /** Where the site's pictures are made (D283): its builder's route, which checks who asks and keeps the picture in the media library. */
 export type PictureMaker = { endpoint: string };

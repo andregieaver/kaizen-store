@@ -16,7 +16,7 @@ import {
   type StudioMessage,
   type StudioResult,
 } from "@/lib/page-ai";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { useAdminText } from "./admin-text";
 import { useLeaveGuard } from "./leave-guard";

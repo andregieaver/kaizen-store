@@ -11,7 +11,7 @@ import type { TimeEntryItem } from "@/server/work-time";
 
 import { Badge, Problems, dangerLink, smallControl } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { EmptyState } from "@/components/admin/ui/empty-state";

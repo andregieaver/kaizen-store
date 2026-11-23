@@ -6,7 +6,10 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
 import { PhoneRow } from "./phone-row";
-import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
+import { List, ListRow, RowDate, RowLead } from "./ui/list";
 import { ConfirmButton } from "./ui/confirm-button";
 
 type Answer = { ok: true; secret?: string; message?: string } | { ok: false; message: string };

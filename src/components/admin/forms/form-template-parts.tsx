@@ -7,7 +7,9 @@ import { fillWords } from "@/lib/admin-fill";
 import { FORM_TEMPLATE_CATEGORIES, TEMPLATE_SHARING, type FormTemplateCategory, type FormTemplateItem, type TemplateMeta, type TemplateSharing } from "@/lib/form-templates";
 
 import { useAdminText } from "../admin-text";
-import { Button, Card, Chip } from "../ui";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import { Chip } from "../ui/chip";
 
 const input = "mt-1 w-full rounded-lg border border-edge bg-card px-3 py-2 text-body text-ink";
 const label = "block text-sm";

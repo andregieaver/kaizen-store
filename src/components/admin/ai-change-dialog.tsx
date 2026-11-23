@@ -6,7 +6,7 @@ import type { PageContent } from "@/lib/page-content";
 
 import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 /** Up to 1,000 characters, as the server takes (`CHANGE_DESCRIPTION_MAX`). */
 const DESCRIPTION_MAX = 1000;

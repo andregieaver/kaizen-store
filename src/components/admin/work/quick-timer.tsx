@@ -9,7 +9,7 @@ import { LogTimeForm } from "./log-time-form";
 import { useWorkTimerApi } from "./timer-context";
 import { control, primaryButton } from "./work-parts";
 import { Field } from "../ui/field";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminText } from "@/components/admin/admin-text";
 
 /**

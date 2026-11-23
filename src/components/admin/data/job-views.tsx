@@ -7,7 +7,10 @@ import { progressPercent, type JobKind, type JobPhase, type JobStatus } from "@/
 import { doneOfTotal, expiryWords, formatBytes, momentText, wholeNumber, workingWords } from "@/lib/data-admin";
 
 import { card, hint, secondary } from "./ui";
-import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
+import { List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui/list";
 
 /** What a job page draws of a job: a state with no path, no input name's folder and nothing of a person (`JobState` of `data-routes.ts`, and the job as the page read it). */
 export type JobView = {

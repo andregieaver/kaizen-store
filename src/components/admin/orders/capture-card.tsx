@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import type { OrderActionState } from "@/app/admin/(gated)/[store]/orders/actions";
-import { Card } from "@/components/admin/ui";
+import { Card } from "@/components/admin/ui/card";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { PageHeader } from "@/components/admin/ui";
+import { PageHeader } from "@/components/admin/ui/page-header";
 import { fillWords } from "@/lib/admin-fill";
 import type { FeatureGroupId, FeatureId } from "@/lib/store-features";
 import type { FeatureBlocker, FeatureRow } from "@/lib/feature-words";

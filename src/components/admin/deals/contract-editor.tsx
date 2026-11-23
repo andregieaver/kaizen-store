@@ -3,7 +3,9 @@
 import { Columns2, Rows2 } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 
-import { AdminLink, Button, Card } from "@/components/admin/ui";
+import { AdminLink } from "@/components/admin/ui/link";
+import { Button } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { fillContract, type ContractBlock, type ContractFacts, type ContractSnapshot } from "@/lib/contract-fields";
 

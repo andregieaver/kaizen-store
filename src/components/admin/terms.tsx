@@ -22,7 +22,7 @@ import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
 import { TermSeoFields, seoLanguagesOf, type TermSeoSetup } from "./term-seo-fields";
 import { TermPageFields, TermProductOrder, type TermPageDraft, type TermPageSetup } from "./term-page-fields";
 import { TermRulesFields, type TermRulesDraft } from "./term-rules-fields";
-import { Card } from "@/components/admin/ui";
+import { Card } from "@/components/admin/ui/card";
 import { PhoneRow } from "./phone-row";
 
 /**

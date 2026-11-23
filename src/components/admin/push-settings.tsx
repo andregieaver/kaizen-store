@@ -5,7 +5,9 @@ import { useEffect, useState, useSyncExternalStore, useTransition } from "react"
 import { deviceName } from "@/lib/push";
 
 import { useAdminText } from "./admin-text";
-import { Button, Card, List, ListRow, RowLead } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { List, ListRow, RowLead } from "./ui/list";
 
 type Done = { ok: true } | { ok: false; problem: string };
 type AsyncDone = Promise<Done>;

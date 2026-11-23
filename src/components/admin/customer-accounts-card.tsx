@@ -5,7 +5,8 @@ import { useState, useTransition } from "react";
 import type { AccountsMode } from "@/lib/customer-accounts";
 
 import { useAdminText } from "./admin-text";
-import { Button, Card } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 type Answer = { ok: true } | { ok: false; problems: string[] };
 type AsyncAnswer = Promise<Answer>;

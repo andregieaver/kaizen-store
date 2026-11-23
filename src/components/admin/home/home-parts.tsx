@@ -1,7 +1,8 @@
 import { ArrowRight, Check, ChevronRight, Printer } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { AdminLink, PageHeader } from "@/components/admin/ui";
+import { AdminLink } from "@/components/admin/ui/link";
+import { PageHeader } from "@/components/admin/ui/page-header";
 import { CARD_CLASS } from "@/components/admin/ui/card";
 
 /**

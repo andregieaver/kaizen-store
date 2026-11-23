@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import { groupIssues, type PageIssue } from "@/lib/page-a11y";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { countWords, fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";

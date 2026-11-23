@@ -36,7 +36,8 @@ import { plainWords, type Words } from "@/lib/words";
 import type { DeleteFormOutcome, FormUse, SaveFormOutcome } from "@/server/forms-admin";
 
 import { useAdminText } from "../admin-text";
-import { Button, Card, CARD_CLASS } from "../ui";
+import { Button } from "../ui/button";
+import { Card, CARD_CLASS } from "../ui/card";
 
 const input = "mt-1 w-full rounded-lg border border-edge bg-card px-3 py-2 text-body text-ink";
 const label = "block text-sm";

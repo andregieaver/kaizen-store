@@ -8,7 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
 import { EmailContentFields } from "./broadcast-editor";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 type Problem = { ok: false; problem: string };
 

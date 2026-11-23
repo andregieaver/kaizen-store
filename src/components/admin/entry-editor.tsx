@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
 import { useLeaveGuard } from "@/components/admin/leave-guard";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { EntityFields } from "@/components/admin/entity-fields";
 import {
   fieldFileUploader,

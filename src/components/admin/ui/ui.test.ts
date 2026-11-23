@@ -14,7 +14,7 @@ import { fieldClass, TextArea, type FieldControl } from "./field";
 import { pageAddress } from "./pager";
 import ConfirmDialog from "./confirm-dialog";
 import { FocusHeading } from "./focus-frame";
-import { reach } from "../../../../scripts/lib/import-walk.mjs";
+import { importsOf, reach, resolve, sourceFiles } from "../../../../scripts/lib/import-walk.mjs";
 import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, EmptyState, Field, fillWidth, FocusFrame, InsightPanel, KpiTile, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, Select, ShareBar, TextInput, TrendChip } from "./index";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
@@ -409,6 +409,35 @@ describe("the confirm button (code review 1.12)", () => {
     const reaching = routes.filter((file) => reach(src, file, { dynamic: true, clientLeaf: false, memo }).has(kit)).map((file) => relative(src, file));
     expect(routes.length).toBeGreaterThan(100);
     expect(reaching).toEqual([]);
+  });
+
+  it("is imported by no module of the browser's: a client part, and each file one reaches by static import, takes every piece from its own file (D873)", () => {
+    // Turbopack keeps the barrel whole, so a client part that imports the index brings every piece of the kit into its screen's first
+    // scripts, whatever it uses. Server code may keep the index (it is server-safe, above). `import()` is left out: it is a later chunk.
+    const src = join(process.cwd(), "src");
+    const kit = join(__dirname, "index.ts");
+    const edges = new Map<string, (string | null)[]>();
+    const targets = (file: string) => {
+      let found = edges.get(file);
+      if (!found) edges.set(file, (found = importsOf(readFileSync(file, "utf8"), { dynamic: false }).map((specifier) => resolve(src, file, specifier))));
+      return found;
+    };
+    const clients = sourceFiles(src).filter((file) => /^\s*["']use client["']/.test(readFileSync(file, "utf8")));
+    const from = new Map<string, string>(clients.map((file) => [file, file]));
+    const queue = [...clients];
+    while (queue.length > 0) {
+      const file = queue.pop()!;
+      for (const target of targets(file)) {
+        if (!target || from.has(target)) continue;
+        from.set(target, from.get(file)!);
+        queue.push(target);
+      }
+    }
+    const importers = [...from.keys()]
+      .filter((file) => targets(file).includes(kit))
+      .map((file) => (from.get(file) === file ? relative(src, file) : `${relative(src, file)} (reached from ${relative(src, from.get(file)!)})`));
+    expect(clients.length).toBeGreaterThan(300);
+    expect(importers).toEqual([]);
   });
 
   it("never asks with the browser's own confirm", () => {

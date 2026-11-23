@@ -6,7 +6,10 @@ import { fillWords } from "@/lib/admin-fill";
 import type { LookArea, PageDifference } from "@/lib/version-compare";
 
 import { useAdminText } from "./admin-text";
-import { Button, ButtonLink, Card, Chip, List, ListRow, RowLead } from "./ui";
+import { Button, ButtonLink } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
+import { List, ListRow, RowLead } from "./ui/list";
 import { VersionDifferences } from "./version-differences";
 
 type Done = { ok: true } | { ok: false; problem: string };

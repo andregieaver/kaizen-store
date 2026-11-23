@@ -38,7 +38,7 @@ import {
   type WizardProblem,
   type WizardState,
 } from "@/lib/store-copy-wizard";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";

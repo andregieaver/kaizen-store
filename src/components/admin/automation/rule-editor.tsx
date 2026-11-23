@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 import { ruleProblemText } from "@/lib/notification-words";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";

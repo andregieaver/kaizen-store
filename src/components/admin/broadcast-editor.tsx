@@ -22,7 +22,8 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { compressPicture, extensionOf } from "@/lib/image-compress";
 
 import { useAdminLang, useAdminText } from "./admin-text";
-import { Button, CARD_CLASS } from "./ui";
+import { Button } from "./ui/button";
+import { CARD_CLASS } from "./ui/card";
 import { Select } from "./ui/field";
 import { ColumnsFields, emptyCell } from "./broadcast-columns";
 import { KeepBlock, SavedBlockList, type SavedBlocksProps } from "./broadcast-saved-blocks";

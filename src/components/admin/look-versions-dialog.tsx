@@ -11,7 +11,7 @@ import { compareLooks, type LookArea } from "@/lib/version-compare";
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import { VersionLabel } from "./version-label";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 /**
  * Earlier looks of the store (wave 7 unit F, D340): every save of the live look in Design settings, the builder's Theme tab and its saved

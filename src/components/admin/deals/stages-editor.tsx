@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 
-import { Button } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 
 type Row = { key: string; id: string | null; name: string; probability: string; quoteStage: boolean; contractStage: boolean };

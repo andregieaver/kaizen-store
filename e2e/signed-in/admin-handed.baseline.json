@@ -15,7 +15,7 @@
     "orders": {
       "document": 188197,
       "handed": 16617,
-      "scriptByIdle": 781750,
+      "scriptByIdle": 781513,
       "named": null,
       "areas": [
         "assistantBar",
@@ -26,7 +26,7 @@
     "product": {
       "document": 236060,
       "handed": 64711,
-      "scriptByIdle": 1238644,
+      "scriptByIdle": 1228955,
       "named": 64530,
       "areas": [
         "assistantBar",
@@ -91,7 +91,7 @@
     "orders": {
       "document": 156849,
       "handed": 17180,
-      "scriptByIdle": 782433,
+      "scriptByIdle": 781513,
       "named": null,
       "areas": [
         "assistantBar",
@@ -102,7 +102,7 @@
     "product": {
       "document": 237325,
       "handed": 66737,
-      "scriptByIdle": 1238644,
+      "scriptByIdle": 1228955,
       "named": 64530,
       "areas": [
         "assistantBar",

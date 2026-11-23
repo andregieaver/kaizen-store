@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { Button, Card, Chip } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { dnsRecordFor, embedTag } from "@/lib/support-embed";
 import type { SupportWidget } from "@/server/support-widgets";

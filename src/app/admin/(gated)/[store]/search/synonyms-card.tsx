@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Card } from "@/components/admin/ui";
+import { Card } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminAreaMessages } from "@/lib/admin-text";
 import { SYNONYMS_MAX, synonymLine, type SynonymKind } from "@/lib/search-synonyms";

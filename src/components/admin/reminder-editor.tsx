@@ -10,7 +10,7 @@ import {
   type ReminderText,
 } from "@/lib/cart-reminders";
 import { renderEmail } from "@/lib/email-layout";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { PhoneRow } from "@/components/admin/phone-row";

@@ -6,7 +6,9 @@ import { TOPIC_LINE_MAX, TOPIC_NAME_MAX, topicName, type Topic, type TopicNames 
 
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
 
-import { Button, CARD_CLASS, EmptyState } from "./ui";
+import { Button } from "./ui/button";
+import { CARD_CLASS } from "./ui/card";
+import { EmptyState } from "./ui/empty-state";
 import { Field, TextInput } from "./ui/field";
 
 type Problem = { ok: false; problem: string };

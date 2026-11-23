@@ -6,7 +6,8 @@ import { fillWords } from "@/lib/admin-fill";
 import type { HomeMessages } from "@/lib/admin-messages/home.en";
 
 import { idle, type FormState } from "./action-form";
-import { Button, Card } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 /** A demo item as the card lists it: what it is, by the word the owner knows ("Product"), and its name. */
 export type DemoCardItem = { noun: string; title: string };

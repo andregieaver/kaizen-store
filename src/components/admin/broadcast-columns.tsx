@@ -6,7 +6,7 @@ import type { BroadcastBlock, BroadcastCell } from "@/lib/broadcasts-schema";
 import { CELL_TEXT_MAX, CELLS_MAX } from "@/lib/broadcasts";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 type Columns = Extract<BroadcastBlock, { type: "columns" }>;
 

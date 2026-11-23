@@ -22,7 +22,8 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { DEVICES, GOAL_WORDS, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
-import { Button, ButtonLink, Card, CARD_CLASS } from "@/components/admin/ui";
+import { Button, ButtonLink } from "@/components/admin/ui/button";
+import { Card, CARD_CLASS } from "@/components/admin/ui/card";
 import type { NextStep } from "@/lib/experiment-card";
 import { goalEstimate, type TrafficFacts } from "@/lib/experiment-traffic";
 

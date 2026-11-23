@@ -8,7 +8,7 @@ import { useState, type ReactNode } from "react";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import { Pictures } from "@/components/admin/home/home-parts";
-import { AdminLink } from "@/components/admin/ui";
+import { AdminLink } from "@/components/admin/ui/link";
 import { countWords, fillWords } from "@/lib/admin-fill";
 
 type Plural = { one: string; many: string };

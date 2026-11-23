@@ -10,7 +10,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 /** What asking for a pack's pictures, or stopping them, answers. */
 export type PackPictureResult = { ok: true } | { ok: false; problems: string[] };

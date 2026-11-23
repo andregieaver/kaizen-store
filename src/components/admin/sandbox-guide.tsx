@@ -3,7 +3,7 @@
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 
 export type GuideStep = { key: string; title: string; hint: string; href?: string; link?: string };
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { useActionState, useState } from "react";
 
-import { Button, ButtonLink } from "@/components/admin/ui";
+import { Button, ButtonLink } from "@/components/admin/ui/button";
 import type { GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
 
 import type { IssueState } from "../actions";

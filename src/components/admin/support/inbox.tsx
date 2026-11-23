@@ -24,7 +24,7 @@ import {
   runAct,
   type SupportDeskContext,
 } from "./desk-context";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 
 import { useAdminText } from "../admin-text";
 import { EmptyState } from "@/components/admin/ui/empty-state";

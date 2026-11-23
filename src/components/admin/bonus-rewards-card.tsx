@@ -7,7 +7,10 @@ import { fillWords } from "@/lib/admin-fill";
 import { REWARDS_MAX, type BonusReward, type RewardKind } from "@/lib/bonus-rewards";
 import { formatPriceInput, parsePrice } from "@/lib/product-input";
 
-import { Button, Card, Chip, List, ListRow, RowActions, RowLead } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
+import { List, ListRow, RowActions, RowLead } from "./ui/list";
 
 const FIELD = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 

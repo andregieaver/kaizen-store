@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import type { ChunkResult } from "@/server/ui-text";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";

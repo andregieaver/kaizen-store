@@ -46,7 +46,7 @@ import {
   type TargetKind,
   type Targets,
 } from "./menu-links";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 
 /** An item while edited: a key, so React keeps each item's fields as items move. */
 type Item = AnyMenuEntry & { key: string };

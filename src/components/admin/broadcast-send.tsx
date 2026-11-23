@@ -6,7 +6,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 
 import { useAdminLang, useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 type Problem = { ok: false; problem: string };
 

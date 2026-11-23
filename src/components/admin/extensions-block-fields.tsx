@@ -3,7 +3,7 @@
 import { useId } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { Select, TextInput } from "@/components/admin/ui";
+import { Select, TextInput } from "@/components/admin/ui/field";
 import { fillWords } from "@/lib/admin-fill";
 import type { ExtensionChoice } from "@/lib/extension-offer";
 import type { ExtensionsBlock } from "@/lib/page-content";

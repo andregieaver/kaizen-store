@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { Button } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
 import type { GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
 
 import type { NewCodeState } from "../actions";

@@ -6,7 +6,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { TOKEN_KINDS, type TokenKind } from "@/lib/admin-api";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 import { ConfirmButton } from "./ui/confirm-button";
 
 type Answer = { ok: true; token?: string } | { ok: false; message: string };

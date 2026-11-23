@@ -9,7 +9,9 @@ import { formatMoney } from "@/lib/money";
 
 import { ActionForm, SubmitButton } from "./action-form";
 import type { DomainAction, DomainSearch } from "./domain-types";
-import { Button, Card, Chip } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
 
 
 

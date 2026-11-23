@@ -8,7 +8,9 @@ import type { MoveStep } from "@/lib/domain-move";
 
 import { ActionForm, SubmitButton } from "./action-form";
 import type { MoveActions, SwitchCheckShape } from "./domain-types";
-import { Button, Card, Chip } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
 
 type Words = DomainsMessages["move"];
 type Said = { ok: boolean; messages: string[] } | null;

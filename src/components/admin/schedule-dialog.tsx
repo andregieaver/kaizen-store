@@ -4,7 +4,7 @@ import { CalendarClock } from "lucide-react";
 import { useEffect, useId, useState, useTransition } from "react";
 
 import { useAdminText } from "./admin-text";
-import { CARD_CLASS } from "./ui";
+import { CARD_CLASS } from "./ui/card";
 import { MoveButton, ResizeHandles, dialogStyle, focusPastMoveButton, useMovable } from "./movable";
 import { fillWords } from "@/lib/admin-fill";
 import type { PageOwnerContext, SaveDraft, ScheduleView } from "./page-context";

@@ -7,7 +7,8 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { GENERATE_MAX } from "@/lib/discounts";
 
 import { useAdminLang, useAdminText } from "./admin-text";
-import { Button, Card } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 /**
  * A code's single-use codes (D299 E1, `docs/wave-5-marketing.md` 7.1): how many there are and how many were used, a number and an

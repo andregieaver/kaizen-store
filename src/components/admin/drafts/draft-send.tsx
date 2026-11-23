@@ -8,7 +8,7 @@ import { zoneOf } from "@/lib/admin-date";
 import { cashRuleWords } from "@/lib/cash-limits";
 import { MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@/lib/draft-input";
 import { DRAFT_REFERENCE_MAX, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { cashWarningText, fillWords } from "@/lib/drafts-words";

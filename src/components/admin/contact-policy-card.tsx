@@ -5,7 +5,7 @@ import type { ContactPolicy } from "@/lib/contact-policy";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
-import { Card } from "./ui";
+import { Card } from "./ui/card";
 
 const FIELD = "min-h-10 w-24 rounded-md border border-line bg-card px-3 text-sm tabular-nums";
 

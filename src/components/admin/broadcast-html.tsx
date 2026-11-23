@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { HTML_BLOCK_MAX } from "@/lib/broadcasts";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 type Problem = { ok: false; problem: string };
 /** The server's cleaning of the HTML as it would be sent (M4.1), the store bound by the caller. */

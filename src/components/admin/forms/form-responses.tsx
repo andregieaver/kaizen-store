@@ -10,7 +10,9 @@ import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { fileSize } from "@/lib/form-files";
 import { AdminLink } from "../ui/link";
-import { Button, ButtonLink, Card, Chip } from "../ui";
+import { Button, ButtonLink } from "../ui/button";
+import { Card } from "../ui/card";
+import { Chip } from "../ui/chip";
 import { ConfirmButton } from "../ui/confirm-button";
 
 /**

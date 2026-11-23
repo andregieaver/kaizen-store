@@ -4,7 +4,7 @@ import { useId, useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 import { STAFF_ALERT_EVENTS, type StaffAlertEvent, type SummaryKind } from "@/lib/staff-alerts";
 import type { StaffAlertsView } from "@/server/staff-alerts";

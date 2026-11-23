@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useId, useMemo, useRef, useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 import { SLOT_LIMITS, templateProblems, type EmailTemplate, type TemplateProblem, type TemplateSlot } from "@/lib/email-template";
 import { notificationOf, type PlaceholderName } from "@/lib/notifications";

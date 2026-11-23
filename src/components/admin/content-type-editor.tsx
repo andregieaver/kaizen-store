@@ -11,7 +11,7 @@ import {
 import { useAdminText } from "@/components/admin/admin-text";
 import { useLeaveGuard } from "@/components/admin/leave-guard";
 import { PhoneRow } from "@/components/admin/phone-row";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 import {
   PICTURE_TYPES,

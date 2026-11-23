@@ -10,7 +10,7 @@ import { PREVIEW_DAY_CHOICES, PREVIEW_DEFAULT_DAYS, type PreviewLinkItem } from 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import type { PreviewLinkActions } from "./page-context";
-import { Button } from "./ui";
+import { Button } from "./ui/button";
 
 type Noun = "page" | "article" | "theme";
 

@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { Button, Card } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 import { parsePercentBp } from "@/lib/bulk-edit";
 import { ROUND_STEPS, stepMinor } from "@/lib/currency";

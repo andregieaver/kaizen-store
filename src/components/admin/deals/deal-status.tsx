@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { Modal } from "@/components/admin/modal";
-import { Button } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import type { DealStatus } from "@/lib/deals";
 

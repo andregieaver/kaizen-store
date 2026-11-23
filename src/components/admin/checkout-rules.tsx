@@ -11,7 +11,10 @@ import { allergenQuestion } from "@/lib/checkout-presets";
 import { CHECKOUT_FIELD_KINDS, CONDITION_KINDS, EFFECT_KINDS, hasBounds, hasOptions, movedTo, type ChecklistOption, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
 
 import { useAdminText } from "./admin-text";
-import { Button, Card, Chip, List, ListRow, RowLead } from "./ui";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Chip } from "./ui/chip";
+import { List, ListRow, RowLead } from "./ui/list";
 
 type Saved = { ok: true } | { ok: false; problems: string[] };
 type AsyncSaved = Promise<Saved>;

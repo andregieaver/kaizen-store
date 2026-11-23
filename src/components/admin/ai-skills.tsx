@@ -8,7 +8,8 @@ import { SKILL_STEPS_MAX, SKILL_TITLE_MAX, SKILL_WHEN_MAX } from "@/lib/skill-li
 import type { RemoveSkill, SaveSkill, SkillDraft } from "@/lib/saved-skills";
 
 import { useAdminText } from "./admin-text";
-import { Button, CARD_CLASS } from "./ui";
+import { Button } from "./ui/button";
+import { CARD_CLASS } from "./ui/card";
 
 export type SkillView = { id: string; key: string; title: string; when: string; steps: string; shared: boolean; mine: boolean; by: string | null };
 export type { SaveSkill, SkillDraft } from "@/lib/saved-skills";

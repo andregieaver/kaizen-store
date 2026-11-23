@@ -38,7 +38,7 @@ import { LogTimeForm } from "./log-time-form";
 import { useWorkTimerApi } from "./timer-context";
 import { TimerToggle } from "./timer-controls";
 import { Problems, errorText, primaryButton, smallButton, smallControl } from "./work-parts";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 

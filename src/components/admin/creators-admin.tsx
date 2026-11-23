@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { Button, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
+import { List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui/list";
 import { bpsToPercent, percentToBps, type CreatorPayoutRow, type CreatorProblem, type CreatorResult, type CreatorRow, type CreatorSettings, type CreatorStatus } from "@/lib/creators";
 import { formatMoney } from "@/lib/money";
 import { parsePrice } from "@/lib/product-input";
