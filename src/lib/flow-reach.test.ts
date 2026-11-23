@@ -29,3 +29,20 @@ describe("each email's reach in the dry run (M3.5)", () => {
     expect(stepReach(steps, 40, { ended: MEASURED_MIN, reached: new Map() }).get("b")).toEqual({ n: 0, how: "measured" });
   });
 });
+
+describe("reach behind a split (M2.5, D868)", () => {
+  it("is about half in each half, and at most that behind a condition inside one", () => {
+    const steps: FlowStep[] = [
+      {
+        id: "s",
+        kind: "if",
+        condition: { kind: "split" },
+        then: [{ id: "a", kind: "email", content: {} }],
+        else: [{ id: "q", kind: "if", condition: { kind: "ordered_since_entry" }, then: [{ id: "b", kind: "email", content: {} }], else: [] }],
+      },
+    ];
+    const reach = stepReach(steps, 1000, { ended: 0, reached: new Map() });
+    expect(reach.get("a")).toEqual({ n: 500, how: "all" });
+    expect(reach.get("b")).toEqual({ n: 500, how: "up_to" });
+  });
+});

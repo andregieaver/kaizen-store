@@ -504,5 +504,18 @@ describe("flows (D767)", () => {
     await fl.switchFlow(storeId, owner, saved.id, false);
     vi.unstubAllEnvs();
   });
+
+  it("reads each step's people and orders for a split's ways, nothing for a flow nobody started (M2.5)", async () => {
+    const saved = await fl.saveFlow(storeId, owner, null, {
+      name: `Split ${run}`,
+      trigger: "subscriber.subscribed",
+      steps: [{ id: "s", kind: "if", condition: { kind: "split" }, then: [email("a", "A")], else: [email("b", "B")] }],
+      goals: [],
+    });
+    if (!saved.ok) throw new Error(saved.problem);
+    const figures = await fl.flowStepFigures(storeId, saved.id);
+    expect(figures.people.size).toBe(0);
+    expect(figures.orders.size).toBe(0);
+  });
 });
 

@@ -944,6 +944,29 @@ export async function flowStepPast(storeId: string, flowId: string): Promise<{ e
  * the latest message its buyer got, D761, `orderCredit()`), the step that took the most, and who left the list on the way (runs ended as
  * stopped). The page says it in words with one suggestion (`flowSuggestion()`).
  */
+/**
+ * Each step's figures over the report's 30 days, for a split's two ways (email plan M2.5, D868): people whose way came to it (distinct
+ * runs that entered in the period) and orders credited to it (D761). Read only on a flow page whose flow splits.
+ */
+export async function flowStepFigures(storeId: string, flowId: string): Promise<{ people: Map<string, number>; orders: Map<string, number> }> {
+  const now = new Date();
+  const from = new Date(now.getTime() - REACH_DAYS * 86_400_000);
+  const [rows, credit] = await Promise.all([
+    typedRows(
+      z.object({ step_id: z.string(), n: col.int }),
+      sql`select st.step_id, count(distinct st.run_id)::int as n from commerce.flow_run_steps st
+            join commerce.flow_runs r on r.store_id = st.store_id and r.id = st.run_id
+           where st.store_id = ${storeId}::uuid and r.flow_id = ${flowId}::uuid and r.entered_at >= ${from.toISOString()}::timestamptz
+           group by st.step_id`,
+    ),
+    orderCredit(storeId, from, now),
+  ]);
+  const prefix = `flow:${flowId}:`;
+  const orders = new Map<string, number>();
+  for (const [key, c] of credit) if (key.startsWith(prefix)) orders.set(key.slice(prefix.length), (orders.get(key.slice(prefix.length)) ?? 0) + c.orders);
+  return { people: new Map(rows.map((r) => [r.step_id, r.n])), orders };
+}
+
 export async function flowReport(storeId: string, flowId: string): Promise<FlowReport> {
   const now = new Date();
   const from = new Date(now.getTime() - REACH_DAYS * 86_400_000);

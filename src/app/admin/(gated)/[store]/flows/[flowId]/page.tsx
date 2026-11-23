@@ -12,16 +12,20 @@ import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { darkPreview } from "@/lib/email-dark";
 import { stepReach } from "@/lib/flow-reach";
+import { splitFigures, splitsOf } from "@/lib/flow-split";
+import { TEST_FLOOR } from "@/lib/broadcast-test-sizes";
+import { fillWords } from "@/lib/admin-fill";
+import { FLOW_SPLITS_WORDS } from "@/lib/admin-words/flow-splits";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
-import { drawFlowEmails, flowReach, flowStepPast, flowReport, getFlow } from "@/server/flows";
+import { drawFlowEmails, flowReach, flowStepFigures, flowStepPast, flowReport, getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
 import { FlowCanvasSection } from "./flow-canvas-section";
-import { changeFlowEmailAction, changeFlowLapseAction, changeFlowWaitAction, switchFlowAction, testFlowAction } from "../actions";
+import { changeFlowEmailAction, changeFlowLapseAction, changeFlowWaitAction, keepFlowWayAction, switchFlowAction, testFlowAction } from "../actions";
 
 const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
@@ -69,11 +73,15 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
   const mayWrite = memberCan(member, "marketing:write");
   const languages = store.localization.locales.length > 0 ? store.localization.locales : ["en-GB"];
   const checks = flowChecks(flow.steps, languages[0]);
-  const [reach, report, past] = await Promise.all([
+  // A split test's ways side by side (M2.5, D868): read only when the flow splits.
+  const splits = splitsOf(flow.steps);
+  const [reach, report, past, stepFigures] = await Promise.all([
     mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays) : Promise.resolve(0),
     flowReport(store.id, flow.id),
     mayWrite ? flowStepPast(store.id, flow.id) : Promise.resolve(null),
+    splits.length > 0 ? flowStepFigures(store.id, flow.id) : Promise.resolve(null),
   ]);
+  const ws = FLOW_SPLITS_WORDS[lang];
   // Each email's reach (M3.5): from the flow's own past once it has one, else everyone who starts, or at most that inside a branch.
   const reachOf = past ? stepReach(flow.steps, reach, past) : null;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
@@ -241,6 +249,37 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
                 </li>
               ))}
             </ul>
+          </div>
+        </Card>
+      )}
+      {stepFigures && (
+        <Card compact>
+          <div className="flex flex-col gap-3" data-flow-splits>
+            <p className="text-body-strong text-ink">{ws.title}</p>
+            {splits.map((split) => {
+              const f = splitFigures(split, stepFigures.people, stepFigures.orders);
+              const n = (v: number) => v.toLocaleString(numbers);
+              const way = f.better === "then" ? ws.first : ws.second;
+              const said =
+                f.better !== null
+                  ? fillWords(ws.calls.better, { way })
+                  : f.call === "few"
+                    ? fillWords(ws.calls.few, { floor: n(TEST_FLOOR) })
+                    : f.call === "broken"
+                      ? ws.calls.broken
+                      : ws.calls.even;
+              return (
+                <div key={split.id} className="flex flex-col gap-1">
+                  <p className="text-body text-ink-2">{fillWords(ws.ways, { pa: n(f.first.people), oa: n(f.first.orders), pb: n(f.second.people), ob: n(f.second.orders) })}</p>
+                  <p className="text-body text-ink">{said}</p>
+                  {mayWrite && f.better && (
+                    <ActionForm action={keepFlowWayAction.bind(null, store.slug, flow.id, split.id, f.better)}>
+                      <SubmitButton variant="secondary">{fillWords(ws.keep, { way })}</SubmitButton>
+                    </ActionForm>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}

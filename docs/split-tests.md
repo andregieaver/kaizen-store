@@ -65,5 +65,9 @@ orders), and the counted figures with the engine's interval.
 - **Slice 4, first part, 23 November 2026.** A flow's *if* step can split: the condition `split` sends half the people the first way
   and half the other, by `splitDraw()` (a hash of the run and the step, so a person's way never changes and no one chooses it). The canvas
   offers *Split*, the story reads *for half (a test)* / *for the rest*, and the AI's flow words
-  know the halves. No migration: the run's path already keeps the way taken. Still to come: each way's figures side by side and *Keep this
-  way* (a new version without the other).
+  know the halves. No migration: the run's path already keeps the way taken. Each way's figures and *Keep this way* followed the same day (below).
+- **Slice 4, second part, 23 November 2026.** A flow page whose flow splits shows *Split tests, the last 30 days*: per split, each way's
+  people (distinct runs whose way came to any of its steps, `flowStepFigures()`, read only then) and the orders credited to its emails
+  (D761), called on orders per person by the engine (`splitFigures()`, interval rule, floor 200). When the call is clear, *Keep the first
+  (second) way* replaces the split with that way's steps (`keepWay()`, `keepFlowWayAction()`): a new version, off until tested. Each
+  email's reach in a split's half reads about half (`stepReach()`). The words are an area of their own (`flowSplits`).

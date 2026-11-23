@@ -1,5 +1,6 @@
 "use server";
 
+import { keepWay } from "@/lib/flow-split";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { redirect } from "next/navigation";
@@ -141,6 +142,11 @@ async function saveTree(
 }
 
 const KINDS = ["email", "wait", "if", "end"] as const;
+
+/** Keeps one way of a split test (M2.5, D868): the split's place takes that way's steps, the other way's go. A new version, off until tested. */
+export async function keepFlowWayAction(storeSlug: string, flowId: string, stepId: string, way: "then" | "else"): Promise<FormState> {
+  return saveTree(storeSlug, flowId, (flow) => (way === "then" || way === "else" ? keepWay(flow.steps, stepId, way) : null));
+}
 
 /** Removes one step (an `if` with both its branches). */
 export async function removeFlowStepAction(storeSlug: string, flowId: string, stepId: string): Promise<FormState> {

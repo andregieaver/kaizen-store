@@ -46,6 +46,7 @@ import { HOME_WORDS } from "@/lib/admin-words/home";
 import { HOME_DRAFTS_WORDS } from "@/lib/admin-words/home-drafts";
 import { HOUSE_AUTOPILOT_WORDS } from "@/lib/admin-words/house-autopilot";
 import { LEAD_SCORE_WORDS } from "@/lib/admin-words/lead-score";
+import { FLOW_SPLITS_WORDS } from "@/lib/admin-words/flow-splits";
 import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
 import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
@@ -193,6 +194,7 @@ export const ALL_AREA_WORDS: { [A in AdminArea]: Record<AdminLang, AdminAreaMess
   sandbox: SANDBOX_WORDS,
   houseAutopilot: HOUSE_AUTOPILOT_WORDS,
   leadScore: LEAD_SCORE_WORDS,
+  flowSplits: FLOW_SPLITS_WORDS,
   kit: KIT_WORDS,
   builderText: BUILDER_TEXT_WORDS,
   websitePick: WEBSITE_PICK_WORDS,
