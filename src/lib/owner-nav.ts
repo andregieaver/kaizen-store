@@ -70,9 +70,10 @@ export function ownerOpens(who: OwnerWho, path: string): boolean {
 }
 
 /** The tabs: Home (owners), Stores, Support (where the person may read a store's inbox, with the number waiting), Books (an accountant's clients, D512), Work (owners, or where a store has it on) and Account. */
-export function ownerTabs(who: OwnerWho, counts: { support?: number } = {}): (Link & { icon: NavIconName; also?: string[]; badge?: number; foot?: boolean })[] {
+export function ownerTabs(who: OwnerWho, counts: { support?: number } = {}): (Link & { icon: NavIconName; also?: string[]; badge?: number; foot?: boolean; home?: true })[] {
   return [
-    ...(who.owner ? [{ href: OWNER_BASE, label: "Home", exact: true, icon: "home" as const }] : []),
+    // Home is no section: its page's header names none (`home`, D873).
+    ...(who.owner ? [{ href: OWNER_BASE, label: "Home", exact: true, icon: "home" as const, home: true as const }] : []),
     { href: `${OWNER_BASE}/stores`, label: "Stores", icon: "shopping-bag" as const },
     ...(who.support ? [{ href: `${OWNER_BASE}${SUPPORT_PATH}`, label: "Support", icon: "chat" as const, ...(counts.support ? { badge: counts.support } : {}) }] : []),
     ...(who.books ? [{ href: `${OWNER_BASE}${BOOKS_PATH}`, label: "Books", icon: "book-open" as const }] : []),

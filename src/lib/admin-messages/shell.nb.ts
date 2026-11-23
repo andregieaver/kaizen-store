@@ -8,6 +8,7 @@ export const shellNb: ShellMessages = {
     allPages: "Alle sider",
     sections: "Seksjoner",
     thisSection: "Denne seksjonen",
+    waiting: "{count} venter",
     loading: "Laster …",
     checkingSession: "Sjekker økten din …",
     skipToContent: "Hopp til innhold",

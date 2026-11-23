@@ -518,7 +518,7 @@ type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; 
  * addresses its sidebar (`StoreArea`) already carries as `prefixes`: the browser looks them up there, so each address is sent once as a
  * prefix and not a second time on the tab (bloat review step 2.28).
  */
-export type StoreTab = Link & { icon: NavIconName; also?: string[]; section?: string; badge?: number; foot?: boolean };
+export type StoreTab = Link & { icon: NavIconName; also?: string[]; section?: string; badge?: number; foot?: boolean; home?: true };
 
 /** A section's sidebar, by the addresses inside it (`prefixes`; a page of cards in `exact`), keyed as its tab is (`section`, Home's `home`). */
 export type StoreArea = { section: string; prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] };
@@ -528,7 +528,8 @@ export const advancedIn = (section: Pick<StoreSection, "start">, item: Pick<Stor
 
 function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<StoreSection["key"], number>>): StoreTab[] {
   return [
-    { href: base, label: "Home", icon: "home", exact: true, also: HOME_PATHS.map((p) => `${base}${p}`) },
+    // Home is no section: its pages' headers name none (`home`, D873).
+    { href: base, label: "Home", icon: "home", exact: true, home: true, also: HOME_PATHS.map((p) => `${base}${p}`) },
     ...sections.map((s) => ({
       href: `${base}${s.start}`,
       label: s.label,

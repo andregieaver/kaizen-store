@@ -28,7 +28,7 @@ export function HubCards({ lists }: { lists: HubList[] }) {
         if (items.length === 0) return null;
         return (
           <section key={list.heading} aria-label={list.heading || undefined} className="flex flex-col gap-3">
-            {list.heading && <h2 className="text-xs tracking-wide text-muted uppercase text-title text-ink">{list.heading}</h2>}
+            {list.heading && <h2 className="text-eyebrow text-muted uppercase">{list.heading}</h2>}
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((item) => (
                 <li key={item.href}>
