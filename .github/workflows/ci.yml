@@ -60,7 +60,7 @@ jobs:
           cache: pnpm
       - run: node scripts/timed.mjs install-static -- pnpm install --frozen-lockfile
       # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: node_modules/.cache/eslint
           key: eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
@@ -404,7 +404,7 @@ jobs:
           cache: pnpm
       - run: node scripts/timed.mjs install-pending -- pnpm install --frozen-lockfile
       # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: node_modules/.cache/eslint
           key: eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
