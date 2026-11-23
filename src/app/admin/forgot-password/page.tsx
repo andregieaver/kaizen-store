@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
-import { FocusFrame } from "@/components/admin/ui";
+import { FocusFrame } from "@/components/admin/ui/focus-frame";
 import { areaTexts } from "@/lib/admin-area";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";

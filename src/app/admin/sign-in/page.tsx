@@ -14,7 +14,8 @@ import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
 import { kaizenLifeSignInOn } from "@/server/kaizen-life";
-import { buttonClass, FocusFrame } from "@/components/admin/ui";
+import { buttonClass } from "@/components/admin/ui/button";
+import { FocusFrame } from "@/components/admin/ui/focus-frame";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { signIn, signInWithKaizenLife } from "./actions";

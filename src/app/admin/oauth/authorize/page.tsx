@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { OAuthConsentForm } from "@/components/admin/oauth-consent";
-import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui/focus-frame";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ACCESS_LEVELS, clientHost, levelScopes, STORES_READ } from "@/lib/oauth";

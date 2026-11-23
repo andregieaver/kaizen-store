@@ -14,46 +14,34 @@ export type NavPlace = { section?: string; prefixes: readonly string[]; exact?: 
 export const inside = (path: string, prefix: string): boolean => path === prefix || path.startsWith(`${prefix}/`);
 
 /**
- * How deep a page is inside a link: the length of the longest of the link's addresses the page is at or below, or -1. An `exact` link's
- * own address counts for itself only; its other addresses (`also`) count for the pages below them too (D147).
+ * The item `path` is deepest inside, the first of equals, or -1: the longest of its addresses the page is at (`at`, for that address alone)
+ * or at or below (`under`).
  */
-export function depthIn(path: string, link: Pick<NavLink, "href" | "exact">, also: readonly string[] = []): number {
-  let depth = (link.exact ? path === link.href : inside(path, link.href)) ? link.href.length : -1;
-  for (const prefix of also) if (prefix.length > depth && inside(path, prefix)) depth = prefix.length;
-  return depth;
-}
-
-/** A link's other addresses: its own `also`, or, for a tab that names its section and sends none, that section's (bloat review step 2.28). */
-export function alsoOf(link: NavLink, places: readonly NavPlace[]): readonly string[] {
-  if (link.also !== undefined || link.section === undefined) return link.also ?? [];
-  return places.find((place) => place.section === link.section)?.prefixes ?? [];
-}
-
-/** Of one list of links, the one the page is deepest inside (the first of equals), or -1 where it is inside none: the one link marked. */
-export function currentIndex(path: string, links: readonly NavLink[], places: readonly NavPlace[] = []): number {
+function deepest<T>(path: string, items: readonly T[], at: (item: T) => readonly string[], under: (item: T) => readonly string[]): number {
   let found = -1;
-  let deepest = -1;
-  links.forEach((link, i) => {
-    const depth = depthIn(path, link, alsoOf(link, places));
-    if (depth > deepest) {
-      found = i;
-      deepest = depth;
-    }
+  let depth = -1;
+  items.forEach((item, i) => {
+    for (const a of at(item)) if (a.length > depth && path === a) [found, depth] = [i, a.length];
+    for (const a of under(item)) if (a.length > depth && inside(path, a)) [found, depth] = [i, a.length];
   });
   return found;
+}
+
+/**
+ * Of one list of links, the one the page is deepest inside, or -1: the one link marked. An `exact` link's own address counts for itself
+ * only, its `also` for the pages below them too (D147); a tab that names its section and sends no `also` is inside that section's
+ * addresses in `places` (bloat review step 2.28).
+ */
+export function currentIndex(path: string, links: readonly NavLink[], places: readonly NavPlace[] = []): number {
+  return deepest(
+    path,
+    links,
+    (link) => (link.exact ? [link.href] : []),
+    (link) => [...(link.exact ? [] : [link.href]), ...(link.also ?? (link.section === undefined ? [] : (places.find((p) => p.section === link.section)?.prefixes ?? [])))],
+  );
 }
 
 /** The section whose sidebar a page shows: the one whose addresses it is deepest inside (a page of cards only on itself), or -1. */
 export function placeIndex(path: string, places: readonly NavPlace[]): number {
-  let found = -1;
-  let deepest = -1;
-  places.forEach((place, i) => {
-    let depth = (place.exact ?? []).includes(path) ? path.length : -1;
-    for (const prefix of place.prefixes) if (prefix.length > depth && inside(path, prefix)) depth = prefix.length;
-    if (depth > deepest) {
-      found = i;
-      deepest = depth;
-    }
-  });
-  return found;
+  return deepest(path, places, (place) => place.exact ?? [], (place) => place.prefixes);
 }

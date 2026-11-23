@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { buttonClass } from "@/components/admin/ui";
+import { buttonClass } from "@/components/admin/ui/button";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 type Level = "read" | "propose" | "change";

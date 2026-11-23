@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
-import { Button, ButtonLink, FocusFrame } from "@/components/admin/ui";
+import { Button, ButtonLink } from "@/components/admin/ui/button";
+import { FocusFrame } from "@/components/admin/ui/focus-frame";
 import { fillWords } from "@/lib/admin-fill";
 import { BOOKINGS_WORDS } from "@/lib/admin-words/bookings";
 import { requestAdminLang } from "@/server/admin-request-lang";

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SubmitButton } from "@/components/admin/action-form";
-import { ButtonLink, FocusFrame } from "@/components/admin/ui";
+import { ButtonLink } from "@/components/admin/ui/button";
+import { FocusFrame } from "@/components/admin/ui/focus-frame";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
