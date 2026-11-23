@@ -66,8 +66,9 @@ export const PLATFORM_SECTIONS: PlatformSection[] = [
           item("/templates", "Templates", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.", "layout-template", "website"),
           item("/menus", "Menus", "Lists of links for Kaizena Flow's header, footer and pages.", "menu", "website"),
           item("/forms", "Forms", "Kaizena Flow's contact forms and newsletter sign-ups to place on any page, and what visitors sent with them.", "clipboard-list", "website"),
-          item("/headers", "Header", "Headers built from components; choose the one Kaizena Flow's site shows.", "panel-top", "website"),
-          item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows.", "panel-bottom", "website"),
+          // Headers and Footers, as the pages, their tab titles and a store's menu name them (D881; the menu said Header and Footer).
+          item("/headers", "Headers", "Headers built from components; choose the one Kaizena Flow's site shows.", "panel-top", "website"),
+          item("/footers", "Footers", "Footers built from components; choose the one Kaizena Flow's site shows.", "panel-bottom", "website"),
           item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use.", "type", "website"),
           item("/site-design", "Design", "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back.", "palette", "website"),
           item("/docs/feedback", "Docs feedback", "What readers said under each page of the docs: whether it helped, and the sentence some add.", "message-square", "website"),

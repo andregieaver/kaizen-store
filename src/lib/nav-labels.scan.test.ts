@@ -62,6 +62,8 @@ const SAME_THING: SameThing[] = [
   { labels: ["Website chat"], why: "the level's own chat on other websites" },
   { labels: ["Support settings"], why: "the level's own support desk's settings" },
   { labels: ["Header and footer"], why: "the level's own standard header and footer" },
+  { labels: ["Headers"], why: "the level's own headers built from components" },
+  { labels: ["Footers"], why: "the level's own footers built from components" },
   { labels: ["A/B tests"], why: "A/B tests: the platform's page reads every store's" },
   { labels: ["AI"], why: "the AI provider and models: the platform's default, a store's own" },
   { labels: ["Integrations"], why: "the level's own connected services" },
