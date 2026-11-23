@@ -71,4 +71,25 @@ describe("broadcast templates", () => {
     expect(await tpl.deleteOwnTemplate(storeId, owner, made.id)).toBe(true);
     expect(await tpl.listOwnTemplates(storeId)).toEqual([]);
   });
+
+  it("completes a hand-written template with the social links of the store's published footer (M4.1)", async () => {
+    expect(await tpl.siteSocialLinks(storeId)).toEqual([]);
+    const [footer] = await db().execute<Row>(sql`
+      insert into commerce.pages (store_id, type, slug, draft) values (${storeId}::uuid, 'footer', ${`footer-${run}`}, '{}'::jsonb) returning id as footer_id
+    `);
+    await db().execute(sql`update commerce.stores set footer_id = ${String(footer.footer_id)}::uuid where id = ${storeId}::uuid`);
+    const published = {
+      rows: [{ id: "r1", columns: [{ id: "c1", blocks: [{ id: "s1", type: "socialLinks", links: [
+        { id: "a", network: "instagram", href: "https://instagram.com/butikken" },
+        { id: "b", network: "facebook", href: "javascript:alert(1)" },
+        { id: "c", network: "nosuch", href: "https://example.com" },
+      ] }] }] }],
+    };
+    await db().execute(sql`update commerce.pages set published = ${JSON.stringify(published)}::jsonb, published_at = now() where id = ${String(footer.footer_id)}::uuid`);
+    expect(await tpl.siteSocialLinks(storeId)).toEqual([{ network: "instagram", url: "https://instagram.com/butikken" }]);
+    const store = (await storeById(storeId))!;
+    const started = await tpl.startingBroadcast(store, ["nb-NO"], "news");
+    expect(started["nb-NO"].blocks.map((b) => b.type)).toEqual(["heading", "paragraph", "button", "divider", "social"]);
+    expect(await tpl.siteSocialLinks(otherId)).toEqual([]);
+  });
 });

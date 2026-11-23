@@ -5720,7 +5720,7 @@ function FormStandIn({ block, lang, empty }: { block: FormBlock; lang: string | 
   const picked = block.formId ? forms?.list.find((f) => f.id === block.formId) : undefined;
   if (!picked) return <p className="rounded-md bg-surface p-3 text-sm text-muted">{block.formId ? w.gone : empty}</p>;
   const note = picked.status === "archived" ? w.archived : picked.takesAnswers ? null : w.cannotDeliver;
-  const look = picked.preview.type === "newsletter" ? { ...picked.preview, layout: block.layout, button: block.button } : { ...picked.preview, button: block.button };
+  const look = picked.preview.type === "newsletter" ? { ...picked.preview, layout: block.layout, button: block.button, fieldStyle: block.fieldStyle } : { ...picked.preview, button: block.button, fieldStyle: block.fieldStyle };
   return (
     <div className="flex flex-col gap-2" data-form-standin={picked.id}>
       {note && <p className="rounded-md bg-surface p-3 text-sm text-muted">{note}</p>}

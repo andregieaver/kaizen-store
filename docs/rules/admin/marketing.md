@@ -144,9 +144,11 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - **The sunset (M2.8, `docs/flows.md`)**: a person is paused only by `pauseSunsetRuns()` (a sunset flow's run ended with no press since it
   began) and woken only by a kept press (`email-clicks.ts`); a paused person stays subscribed and is never deleted, and `suppressed()` holds
   every marketing email to them (broadcasts and automations), never a transactional one.
-- **An email's look (M4.1)**: a marketing email's buttons take only `emailLook()` (the live theme's light accent, its text colour and the
-  buttons' corners; black and white where they contrast under 4.5 to 1), read through `emailLookOf()` (kept five minutes per store), never
-  per recipient from the database.
+- **An email's look (M4.1)**: a marketing email's look comes only from `emailLook()`: the live theme's light palette (page, card, words,
+  quiet words, lines, the accent and its text), the buttons' and cards' corners, the headings' weight and case, and the fonts named
+  before the system's. Each pair that carries words contrasts 4.5 to 1 or keeps the default, and a font name other than letters, digits,
+  spaces and hyphens keeps the system's. It is read through `emailLookOf()` (kept five minutes per store), never per recipient from the
+  database; without a look, `renderEmail()` draws as it always did, so transactional emails are unchanged.
 - **Send time per person (M4.4)**: a broadcast with `best_time` gives each recipient `send_after` only in `startBroadcast()`'s transaction
   (`setOwnHours()`: their own hour of most presses, else the store's, within `QUIET_DEFAULT`, `src/lib/send-time.ts`), and the claim
   waits for it; never with a split test (`BEST_TIME_WITH_TEST`).
@@ -191,7 +193,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   address; columns, M4.1, two or three cells side by side that stack on a phone, a cell's button tracked by its own key
   `nb-NO.3-1` and its picture checked like any other; a block saved by name for later in `email_saved_blocks`, D875, at most 50;
   own HTML under *More blocks*, D879, cleaned by `cleanEmailHtml()` each time it is sent and left out where the builder has no
-  cleaner) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
+  cleaner; a hand-written template completed by `completeTemplate()` with the store's running campaigns for an offer and its
+  published footer's social links, `siteSocialLinks()`) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
   `segmentPeople()`/`matches()`), frozen into `broadcast_recipients` when the send starts (`startBroadcast()`); the database moves
   its status only as `broadcasts_rules()` allows and fixes its words once sending. Emails go only through `runBroadcasts()` (the
   every-minute `/api/cron/broadcasts` and `after()` the press): one `email_messages` row per recipient under

@@ -28,6 +28,16 @@ import { iconToken } from "@/lib/table-icons";
 import { addColumn, addRowTo, entriesOf, moveEntry, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
 
 import { PixelRange } from "./pixel-range";
+import {
+  FIELD_NUMBERS,
+  LABEL_EASINGS,
+  MOTION_NUMBERS,
+  trimFieldStyle,
+  type FieldNumber,
+  type FieldStyle,
+  type LabelMotion,
+  type MotionNumber,
+} from "@/lib/form-field-style";
 import { Field, fieldClass as kitFieldClass, TextArea, TextInput } from "./ui/field";
 import { Check } from "./check-field";
 
@@ -2815,7 +2825,7 @@ function FormPickFields({ block, onChange }: BlockEditorProps<FormBlock>) {
 function FormBlockStyleFields({ block, onChange }: BlockEditorProps<FormBlock>) {
   const forms = useContext(FormsContext);
   const signup = forms?.list.find((f) => f.id === block.formId)?.kind === "signup";
-  return <FormLookFields signup={signup} layout={block.layout} look={block.button ?? {}} onChange={onChange} />;
+  return <FormLookFields signup={signup} layout={block.layout} look={block.button ?? {}} fieldStyle={block.fieldStyle} onChange={onChange} />;
 }
 
 function FormStyleFields({ block, onChange }: BlockEditorProps<EmailFormBlock> | BlockEditorProps<NewsletterBlock>) {
@@ -2824,22 +2834,27 @@ function FormStyleFields({ block, onChange }: BlockEditorProps<EmailFormBlock> |
       signup={block.type === "newsletter"}
       layout={block.type === "newsletter" ? block.layout : undefined}
       look={block.button ?? {}}
-      onChange={onChange as (patch: { button?: FormButton; layout?: NewsletterLayout }) => void}
+      fieldStyle={block.fieldStyle}
+      onChange={onChange as (patch: FormLookPatch) => void}
     />
   );
 }
 
-/** A form's look: a sign-up's field and button side by side or stacked, and the button's look and width. */
+type FormLookPatch = { button?: FormButton; layout?: NewsletterLayout; fieldStyle?: FieldStyle };
+
+/** A form's look: a sign-up's field and button side by side or stacked, the fields and their labels (D878), and the button's look and width. */
 function FormLookFields({
   signup,
   layout,
   look,
+  fieldStyle,
   onChange,
 }: {
   signup: boolean;
   layout: NewsletterLayout | undefined;
   look: FormButton;
-  onChange: (patch: { button?: FormButton; layout?: NewsletterLayout }) => void;
+  fieldStyle: FieldStyle | undefined;
+  onChange: (patch: FormLookPatch) => void;
 }) {
   const set = (patch: Partial<FormButton>) => {
     const next = { ...look, ...patch };
@@ -2857,9 +2872,168 @@ function FormLookFields({
           onChange={(next) => onChange({ layout: next === "inline" ? undefined : next })}
         />
       )}
+      <FieldStyleFields signup={signup} style={fieldStyle ?? {}} onChange={(next) => onChange({ fieldStyle: next })} />
       <ButtonLookFields look={look} onChange={set} />
       <Check label={all.form.fullWidth} checked={Boolean(look.fullWidth)} onChange={(fullWidth) => set({ fullWidth: fullWidth || undefined })} />
     </>
+  );
+}
+
+/** What each field number shows while the theme's is used: what the site draws then (`form-look.css`). */
+const THEME_FIELD_NUMBERS: Record<FieldNumber, number> = { borderWidth: 1, radius: 6, padY: 0, padX: 12, gap: 16, textSize: 16 };
+const MOTION_UNITS: Record<MotionNumber, string> = { duration: "ms", movedSize: "px", spacing: "em", lift: "px" };
+
+/**
+ * A form's fields and labels (D878): the labels' place and the fields' look are the two choices most owners need; Customise opens each
+ * colour and size, and the animated labels' motion. Only what differs from the theme's and the defaults is stored (`trimFieldStyle()`).
+ */
+function FieldStyleFields({ signup, style, onChange }: { signup: boolean; style: FieldStyle; onChange: (style: FieldStyle | undefined) => void }) {
+  const all = useAdminText("blocks");
+  const w = all.form.fieldWords;
+  const set = (patch: Partial<FieldStyle>) => onChange(trimFieldStyle({ ...style, ...patch }));
+  const setMotion = (patch: Partial<LabelMotion>) => set({ motion: { ...style.motion, ...patch } });
+  const mode = style.labels ?? "above";
+  const motion = style.motion ?? {};
+  const colors = { background: w.bg, text: w.ink, border: w.line, focus: w.focus, label: w.label, placeholder: w.ph } as const;
+  const numbers: Record<FieldNumber, string> = { borderWidth: w.bw, radius: all.button.corners, padY: w.padY, padX: w.padX, gap: w.gap, textSize: w.size };
+  const motionNumbers: Record<MotionNumber, string> = { duration: all.motion.speed, movedSize: w.moved, spacing: all.typo.letterSpacing, lift: w.lift };
+  const easings: Record<keyof typeof LABEL_EASINGS, string> = { smooth: w.smooth, inOut: w.inOut, bounce: w.bounce, linear: w.even };
+  return (
+    <div className="flex flex-col gap-4 border-y border-line py-4" data-field-style>
+      <p className="text-sm font-medium">{w.title}</p>
+      {/* A sign-up's email field has no label of its own to move: its words are the placeholder. */}
+      {!signup && (
+        <Choices
+          legend={w.labels}
+          options={[
+            { value: "above" as const, label: w.above },
+            { value: "placeholder" as const, label: w.hidden },
+            { value: "animated" as const, label: w.animated },
+          ]}
+          value={mode}
+          onChange={(labels) => set({ labels: labels === "above" ? undefined : labels })}
+        />
+      )}
+      <Choices
+        legend={all.social.look}
+        options={[
+          { value: "outlined" as const, label: all.lists.socialLooks.outline },
+          { value: "filled" as const, label: all.lists.socialLooks.filled },
+          { value: "underline" as const, label: all.lists.tabsLooks.underline },
+        ]}
+        value={style.look ?? "outlined"}
+        onChange={(look) => set({ look: look === "outlined" ? undefined : look })}
+      />
+      {mode === "animated" && !signup && (
+        <details className="rounded-md border border-line p-3" data-motion-settings>
+          <summary className="cursor-pointer text-sm font-medium">{w.motion}</summary>
+          <div className="mt-3 flex flex-col gap-4">
+            <Choices
+              legend={w.case}
+              options={[
+                { value: "fade" as const, label: w.fade },
+                { value: "switch" as const, label: w.swap },
+                { value: "keep" as const, label: w.keep },
+              ]}
+              value={motion.case ?? "fade"}
+              onChange={(next) => setMotion({ case: next === "fade" ? undefined : next })}
+            />
+            <Choices
+              legend={w.align}
+              options={[
+                { value: "edge" as const, label: w.edge },
+                { value: "text" as const, label: w.text },
+              ]}
+              value={motion.align ?? "edge"}
+              onChange={(next) => setMotion({ align: next === "edge" ? undefined : next })}
+            />
+            <Choices
+              legend={all.motion.easing}
+              options={(Object.keys(LABEL_EASINGS) as (keyof typeof LABEL_EASINGS)[]).map((value) => ({ value, label: easings[value] }))}
+              value={motion.easing ?? "smooth"}
+              onChange={(next) => setMotion({ easing: next === "smooth" ? undefined : next })}
+            />
+            {(Object.keys(MOTION_NUMBERS) as MotionNumber[]).map((key) => (
+              <StepField
+                key={key}
+                label={motionNumbers[key]}
+                value={motion[key] ?? MOTION_NUMBERS[key].default}
+                bounds={MOTION_NUMBERS[key]}
+                unit={MOTION_UNITS[key]}
+                onChange={(value) => setMotion({ [key]: value })}
+              />
+            ))}
+            <Check label={w.after} checked={motion.placeholder !== false} onChange={(on) => setMotion({ placeholder: on ? undefined : false })} />
+          </div>
+        </details>
+      )}
+      <details className="rounded-md border border-line p-3" data-field-settings>
+        <summary className="cursor-pointer text-sm font-medium">{w.more}</summary>
+        <div className="mt-3 flex flex-col gap-4">
+          {(Object.keys(colors) as (keyof typeof colors)[]).map((key) => (
+            <OptionalColor
+              key={key}
+              label={colors[key]}
+              hint={w.theme}
+              value={style[key]}
+              fallback={key === "background" ? "#ffffff" : key === "border" ? "#c9cfca" : key === "placeholder" ? "#8d958f" : key === "focus" ? "#2f6b55" : "#1d2320"}
+              onChange={(value) => set({ [key]: value })}
+            />
+          ))}
+          {(Object.keys(FIELD_NUMBERS) as FieldNumber[]).map((key) => (
+            <StepField
+              key={key}
+              label={numbers[key]}
+              value={style[key] ?? THEME_FIELD_NUMBERS[key]}
+              bounds={FIELD_NUMBERS[key]}
+              unit="px"
+              onChange={(value) => set({ [key]: value })}
+            />
+          ))}
+          {Object.keys(style).length > 0 && (
+            <button type="button" className="self-start text-sm underline" onClick={() => onChange(undefined)}>
+              {w.reset}
+            </button>
+          )}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+/** A number set with a slider, its value and unit beside its name (decimals too, unlike `NumberField`). */
+function StepField({
+  label,
+  value,
+  bounds,
+  unit,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  bounds: { min: number; max: number; step: number };
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span className="font-medium">{label}</span>
+        <span className="text-muted tabular-nums">
+          {value} {unit}
+        </span>
+      </div>
+      <PixelRange
+        value={value}
+        min={bounds.min}
+        max={bounds.max}
+        step={bounds.step}
+        unit={unit}
+        label={label}
+        onChange={(next) => onChange(Number(next.toFixed(2)))}
+        className="max-w-64"
+      />
+    </div>
   );
 }
 

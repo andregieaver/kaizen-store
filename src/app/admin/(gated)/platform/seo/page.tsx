@@ -12,7 +12,8 @@ import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { uploadsEnabled } from "@/server/media";
 import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 
-import { savePlatformSeoAction, uploadPlatformImageAction } from "../actions";
+import { savePlatformSeoAction } from "../actions";
+import { uploadPlatformImageAction } from "../upload-actions";
 import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { platformSiteWords } from "@/server/platform-site-words";

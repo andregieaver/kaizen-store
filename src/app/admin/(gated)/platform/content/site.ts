@@ -10,7 +10,7 @@ import { db } from "@/db/client";
 import { entryLookups } from "@/server/entry-targets";
 import { uploadsEnabled } from "@/server/media";
 
-import { uploadPlatformImageAction } from "../actions";
+import { uploadPlatformImageAction } from "../upload-actions";
 import {
   deletePlatformContentTypeAction,
   deletePlatformEntryAction,

@@ -214,7 +214,7 @@ const ADMIN = join(SRC, "app/admin");
 const ADMIN_REACH = {
   medianAreas: 4,
   medianBytes: 213_137,
-  largest: { entry: "src/app/admin/(gated)/platform/articles/[pageId]/page.tsx", areas: 24, bytes: 1_736_127 },
+  largest: { entry: "src/app/admin/try/[sandbox]/[kind]/[pageId]/page.tsx", areas: 26, bytes: 1_640_958 },
   platformHome: { areas: 18, bytes: 1_126_541 },
 };
 const AREAS_ROOM = 2;
@@ -223,11 +223,14 @@ const BYTES_ROOM = 1.15;
 const MEDIAN_AREAS_MAX = 18;
 const MEDIAN_BYTES_MAX = 900_000;
 /**
- * The largest entry, held at its figure on 20 November 2026 (step 2.50; 1.857 MB, then 1.847 MB once the AI manager's flow tools read only
- * the English flows words, email plan M2.8), a ceiling that only falls: lower it when the walk finds less. Step 2.50's target of 28 areas and 1.66 MB is not met yet in bytes: the article editor (platform/articles/[pageId]) reads the builder, reports and
- * platform areas (180, 142 and 139 KB of both languages) beside 22 more.
+ * The largest entry, held at its figure (step 2.50; 1.857 MB on 20 November 2026, 1.847 MB once the AI manager's flow tools read only the
+ * English flows words, email plan M2.8), a ceiling that only falls: lower it when the walk finds less. On 23 November (D878) Kaizena Flow's
+ * page editors stopped reaching the platform's actions for their two uploads (`platform/upload-actions.ts`), and with them self sign-up and
+ * the AI manager's words: the article editor fell from 1.85 MB and 24 areas to 1.14 MB and 15, which meets step 2.50's 1.66 MB. The largest
+ * is now the sandbox's editor (try/[sandbox]), 1.64 MB in 26 areas (its count unchanged, held by MOST_AREAS_MAX as before): its actions reach
+ * self sign-up the same way.
  */
-const LARGEST_MAX = { areas: 25, bytes: 1_847_000 };
+const LARGEST_MAX = { areas: 26, bytes: 1_641_000 };
 /** The most areas any entry reaches (26 on 20 November, under step 2.50's line of 28); it only falls. */
 const MOST_AREAS_MAX = 26;
 

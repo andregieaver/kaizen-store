@@ -58,19 +58,23 @@ own, or none:
 
 | Tab | Sidebar |
 |---|---|
-| Home (house) | None: the operator's first look |
-| Website (monitor) | Pages · Blog · Media · Templates · Menus · Header · Footer · Fonts |
+| Home (house) | None: the operator's first look; the AI manager is Home's |
+| Website (monitor) | Pages · Blog · Content · Media · Templates · Menus · Forms · Header · Footer · Fonts · Design · Docs feedback · Docs guide |
+| Themes (palette) | None |
 | Stores (shopping bag) | None |
 | Customers (people) | None |
-| Plans (credit card) | Editor · Plan features · Plan analytics · Reminders · Discounts · Referrals |
+| Plans (credit card) | Editor · Limits · Plan features · Extensions · Accounts · Plan analytics · Reminders · Discounts · Referrals |
 | Access requests (bell, with the number waiting) | None |
-| Settings (cog) | Header and footer · Search · SEO · Cookies · Google reviews · Stripe · AI · AI usage · AI prices · Chat agent · Emails · Languages |
+| Support (chat, with the number waiting) | Inbox · Support reports · Stores · Saved replies · Chat assistant · Website chat · Support settings |
+| Settings (cog) | 28 pages under one heading, from Header and footer, A/B tests and SEO to Team and Change log |
 
 Website and Settings open on a page of cards, one for each page in the sidebar. The AI manager is opened from the
-header's button, not a tab. The sections, their items and what each does are in `src/lib/platform-nav.ts`, which the
-layout, the hub pages and a test (every platform page is in a section, every sidebar item is in the admin map) share.
-A section's tab is marked for every page inside it (`NavItem.also`); the sidebar is chosen by the page's address
-(`NavArea`, `AreaSidebar`), and the phone's menu shows the tabs and the sidebar of the section being viewed.
+header's button, not a tab; its page is Home's. The sections, their items and what each does are one structure,
+`PLATFORM_SECTIONS` in `src/lib/platform-nav.ts` (D877), from which the tabs and their counts, the sidebars, the hub pages and
+every page's permission area are derived; a test fails when a platform page folder is in no section and not Home's, or a
+sidebar item is not in the admin map. A section's tab is marked for every page inside it, the deepest match (D873); the
+sidebar is chosen by the page's address (`NavArea`, `AreaSidebar`), and the phone's menu shows the tabs and the sidebar of
+the section being viewed.
 
 The home page is the operator's first look: requests waiting, stores by state,
 plans, emails that failed, AI use, each with the page to act on.

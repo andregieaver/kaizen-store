@@ -682,6 +682,7 @@ export const blocksNb: BlocksMessages = {
     choices: "Valg",
     choicesHint: "Én per linje, opptil {max}.",
     layout: "Felt og knapp",
+    fieldWords: { title: "Felt", labels: "Etiketter", above: "Over", hidden: "I plassholderen", animated: "Animerte", more: "Tilpass feltene", motion: "Tilpass animasjonen", bg: "Bakgrunn", ink: "Tekst", line: "Kant", focus: "Fokus", label: "Etiketter", ph: "Plassholder", theme: "temaets til den velges", bw: "Kantbredde", padY: "Luft over og under", padX: "Luft på sidene", gap: "Avstand mellom spørsmål", size: "Tekststørrelse", fade: "Glidende", swap: "Bytt", keep: "Behold", case: "Store bokstaver", align: "På linje med", edge: "Feltets kant", text: "Teksten", moved: "Flyttet størrelse", lift: "Avstand over", smooth: "Myk", inOut: "Inn og ut", bounce: "Sprett", even: "Jevn", after: "Plassholder etter flytting", reset: "Tilbakestill feltene" },
     fullWidth: "Knapp like bred som skjemaet",
     doubleOptIn: "Bekreft adressen først (dobbel bekreftelse)",
     doubleOptInHint: "Den besøkende får en e-post med en lenke, og påmeldingen sendes til deg først når lenken åpnes. Anbefalt: det beviser samtykket og holder ute adresser skrevet inn av andre.",

@@ -9,7 +9,7 @@ import { listPlatformMenus } from "@/server/menus";
 import { getPlatformNavigationForEdit } from "@/server/platform-navigation";
 import { PageHeader } from "@/components/admin/ui";
 
-import { uploadPlatformImageAction } from "../actions";
+import { uploadPlatformImageAction } from "../upload-actions";
 import { savePlatformNavigationAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
 import { AdminAreas } from "@/components/admin/admin-areas";

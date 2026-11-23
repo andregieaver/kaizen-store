@@ -35,7 +35,7 @@ function routesIn(dir: string): string[] {
 /** The site's own pages, which the store serves while the switch is on: the front page, a page by its slug, the blog and its lists, the cookie page. */
 const SITE_PAGES = ["[slug]", "blog", "category", "cookies", "tag", "page.tsx", "layout.tsx", "not-found.tsx"];
 /** Files of the app's root that are no route, and the store's own folder (`s` stays the platform's: it is where every store's pages are). */
-const NOT_ROUTES = ["globals.css", "motion.css", "global-error.tsx", "global-not-found.tsx", "no"];
+const NOT_ROUTES = ["globals.css", "motion.css", "form-look.css", "global-error.tsx", "global-not-found.tsx", "no"];
 
 describe("what stays the platform's on Kaizena Flow's own host (D484, plan step 5)", () => {
   it("lists every route of the app that is no page of the site", () => {

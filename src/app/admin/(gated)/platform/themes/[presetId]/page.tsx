@@ -18,7 +18,7 @@ import { themeShotStatus } from "@/server/theme-shots";
 import { planCurrencies } from "@/server/billing";
 import { stuckThemePurchases, themePrices, themePurchaseCounts } from "@/server/theme-prices";
 
-import { uploadPlatformImageAction } from "../../actions";
+import { uploadPlatformImageAction } from "../../upload-actions";
 import {
   copyStoreLookAction,
   retryThemeShotsAction,

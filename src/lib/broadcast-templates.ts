@@ -1,4 +1,5 @@
-import type { BroadcastContent, LanguageContent } from "./broadcasts";
+import { SOCIAL_MAX, type BroadcastContent, type LanguageContent } from "./broadcasts";
+import type { SocialNetwork } from "./social-links";
 
 /**
  * Templates a broadcast starts from (wave 10 unit E, D368, `docs/wave-10-must-haves.md` 4): written by hand in Norwegian, Swedish, Danish and
@@ -224,6 +225,26 @@ export function withProducts(content: BroadcastContent, products: readonly { id:
       const button = c.blocks.findIndex((b) => b.type === "button");
       const at = button < 0 ? c.blocks.length : button;
       return [locale, { ...c, blocks: [...c.blocks.slice(0, at), ...blocks, ...c.blocks.slice(at)] }];
+    }),
+  );
+}
+
+/**
+ * A template's words made a whole email (email plan M4.1): the store's running campaigns before the button where the goal is an offer, and
+ * at the foot a line and the store's own social links as its site's footer has them. Each only where the store has it, in every language.
+ */
+export function completeTemplate(
+  content: BroadcastContent,
+  facts: { campaigns: readonly { id: string; name: string }[]; social: readonly { network: SocialNetwork; url: string }[] },
+): BroadcastContent {
+  const offers = facts.campaigns.slice(0, 2).map((c) => ({ type: "campaign" as const, campaign: c.id, label: c.name.slice(0, 200) }));
+  const social = facts.social.slice(0, SOCIAL_MAX).map((l) => ({ network: l.network, url: l.url.slice(0, 500) }));
+  const foot = social.length > 0 ? [{ type: "divider" as const }, { type: "social" as const, links: social }] : [];
+  return Object.fromEntries(
+    Object.entries(content).map(([locale, c]) => {
+      const button = c.blocks.findIndex((b) => b.type === "button");
+      const at = button < 0 ? c.blocks.length : button;
+      return [locale, { ...c, blocks: [...c.blocks.slice(0, at), ...offers, ...c.blocks.slice(at), ...foot] }];
     }),
   );
 }

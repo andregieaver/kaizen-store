@@ -14,7 +14,7 @@ import { uploadsEnabled } from "@/server/media";
 import { compressibleCount, listMedia } from "@/server/media-library";
 import { PageHeader } from "@/components/admin/ui";
 
-import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../actions";
+import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../upload-actions";
 import {
   compressiblePlatformMediaAction,
   compressPlatformPictureAction,

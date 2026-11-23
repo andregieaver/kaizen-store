@@ -7,7 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { AdminAreas } from "@/components/admin/admin-areas";
 
-import { uploadPlatformImageAction } from "../actions";
+import { uploadPlatformImageAction } from "../upload-actions";
 import { addPlatformDocumentAction, deletePlatformDocumentAction, savePlatformChatAgentAction } from "./actions";
 
 export const metadata: Metadata = { title: "Chat agent" };

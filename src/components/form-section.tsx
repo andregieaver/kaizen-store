@@ -46,7 +46,7 @@ export async function FormSection({ block, place }: { block: EmailFormBlock | Ne
         className="pointer-events-none absolute size-px opacity-0"
       />
       <SiteForm
-        form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout }))}
+        form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout, fieldStyle: block.fieldStyle }))}
         store={place.owner}
         lang={lang}
         market={place.market}
