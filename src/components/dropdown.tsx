@@ -34,6 +34,7 @@ export function Dropdown({
   className = "",
   size = "normal",
   spanParent = false,
+  boxClassName = "",
 }: {
   label: string;
   /** Keep the label for screen readers only (the bar on phones). */
@@ -47,6 +48,8 @@ export function Dropdown({
   size?: "normal" | "compact";
   /** Open the list across the nearest positioned parent (the bar on phones), not just under the dropdown. */
   spanParent?: boolean;
+  /** More classes on the closed box: a form's field look (D878, `form-look.css`). */
+  boxClassName?: string;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -181,7 +184,7 @@ export function Dropdown({
         onKeyDown={onKeyDown}
         className={`rounded-button flex w-full cursor-pointer items-center border border-border bg-background text-left outline-offset-2 select-none hover:border-foreground/40 ${
           size === "compact" ? "min-h-11 gap-2 px-1.5 py-1 text-sm" : "min-h-12 gap-3 px-3 py-2"
-        }`}
+        } ${boxClassName}`}
       >
         {selected && picture(selected, thumb)}
         {size === "compact" ? (

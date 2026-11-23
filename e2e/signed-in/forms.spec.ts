@@ -266,3 +266,53 @@ test("saves a form as a template and starts a new form from it (F4)", async ({ p
   await p.locator("[data-form-save]").click();
   await expect(p.getByRole("status").first()).toHaveText("Saved.");
 });
+
+test("draws the form's fields in the owner's style, with labels that move above the field (D878)", async ({ page: p, browser }) => {
+  const sql = testDb();
+  let pageId = "";
+  try {
+    const [row] = await sql`select id from commerce.pages where store_id = ${storeId} and slug = ${slug}`;
+    pageId = String(row.id);
+  } finally {
+    await sql.end();
+  }
+  await p.goto(`/admin/${E2E_STORE}/pages/${pageId}`);
+  // A component's settings open with a double-click; the fields' look is under Design.
+  await p.locator(`[data-form-standin="${formId}"]`).dblclick();
+  await p.locator("[data-settings-panel]").getByRole("tab", { name: "Design" }).click();
+  const panel = p.locator("[data-field-style]");
+  await expect(panel).toBeVisible();
+  // Homer's two choices; the animation's own settings open a step away.
+  await panel.getByText("Animated", { exact: true }).click();
+  await panel.getByText("Filled", { exact: true }).click();
+  await panel.locator("[data-motion-settings] summary").click();
+  await expect(panel.locator("[data-motion-settings]")).toContainText("Crossfade");
+  await expect(p.locator(`[data-form-standin="${formId}"] form[data-kf-labels="animated"][data-kf-look="filled"]`)).toBeVisible();
+  await shoot(p, "18-field-style-panel");
+  await p.getByRole("button", { name: "Done" }).click();
+  await p.getByRole("button", { name: /^Publish/ }).first().click();
+  await expect(p.locator("[data-editor-bar]").getByRole("status")).toContainText(/Published/);
+
+  const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const site = await visitor.newPage();
+  await site.goto(`/s/${E2E_STORE}/${slug}`);
+  const form = site.locator('form[data-kf-labels="animated"]');
+  await expect(form).toBeVisible();
+  const field = form.getByRole("textbox", { name: /order number/i });
+  const label = form.locator(".kf-float").filter({ hasText: /^Order number/ });
+  // At rest the label is the size of the field's text, where its placeholder would be; clicked into, it moves above, smaller and in capitals.
+  await expect(label).toHaveCSS("font-size", "16px");
+  await shoot(site, "19-site-labels-resting");
+  await field.click();
+  await expect(label).toHaveCSS("font-size", "11px");
+  await expect(label.locator(".kf-up")).toHaveCSS("opacity", "1");
+  await expect(label.locator(".kf-up")).toHaveCSS("text-transform", "uppercase");
+  // It stays above once the field holds an answer.
+  await field.fill("1042");
+  await form.getByRole("textbox").first().click();
+  await expect(label).toHaveCSS("font-size", "11px");
+  // The first field's label is moving as it takes focus: let it arrive before the picture.
+  await site.waitForTimeout(400);
+  await shoot(site, "20-site-labels-moved");
+  await visitor.close();
+});

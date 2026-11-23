@@ -1702,6 +1702,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - A form's payment (F6c, `docs/forms.md` 15.3) is one of the store's products, paid only through the store's own checkout: `startFormPayment()`
   puts it in the visitor's cart and writes `form_payments` in the same transaction; never a payment outside an order, never on Kaizena Flow's forms.
 - A form template never changes a form made from it; a form on a page is archived, never deleted.
+- A form component's fields (D878) look only as its `fieldStyle` says, drawn by `src/app/form-look.css` from `fieldStyleAttrs()`; anything
+  unset is the theme's, so an unstyled form looks as before. A hidden or animated label stays the field's label for screen readers.
 - A saved form's views (M4.3, D871) are only `commerce.form_view_counts`, a counter per form and day, written only by `recordFormSeen()`
   from the lazy one-pixel image `FormSection` draws beside a saved form (`/api/forms/seen`, no script, cookie or storage; robots and privacy
   signals not counted), never client code on the form's path (first-scripts budgets); the forms

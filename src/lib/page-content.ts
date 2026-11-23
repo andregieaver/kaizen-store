@@ -21,6 +21,8 @@ import { MENU_SIDES, MENU_TYPES, type MenuSide, type MenuType } from "./menu-dra
 import { backgroundHueSchema, backgroundLayersSchema } from "./background-layers-schema";
 import { type CarouselSettings } from "./carousel-settings";
 import { carouselSettingsSchema } from "./carousel-settings-schema";
+import { type FieldStyle } from "./form-field-style";
+import { fieldStyleSchema } from "./form-field-style-schema";
 export * from "./rich-text-doc";
 import { cleanRichText, isLinkAddress, richTextIsEmpty, richTextPlain, type RichTextDoc } from "./rich-text-doc";
 export { RESERVED_STORE_PAGE_SLUGS, RESERVED_ARTICLE_SLUGS } from "./reserved-slugs";
@@ -1755,6 +1757,8 @@ export type EmailFormBlock = PartBase & {
     /** A tick box the visitor must tick to send, such as agreeing to how their message is used. */
     consent?: string;
     button?: FormButton;
+    /** How its fields and labels look (D878). */
+    fieldStyle?: FieldStyle;
   };
 
 export const NEWSLETTER_LAYOUTS = { inline: "Side by side", stacked: "One under another" } as const;
@@ -1842,6 +1846,8 @@ export type NewsletterBlock = PartBase & {
     confirm?: boolean;
     layout?: NewsletterLayout;
     button?: FormButton;
+    /** How its fields look (D878); its email field's words stay inside it. */
+    fieldStyle?: FieldStyle;
     /** A discount with single-use codes (D304 J3): each confirmed address is emailed one code, once. The store's own only. */
     incentive?: string;
     /** Customer tags put on each confirmed address (D304 J3), at most `SIGNUP_TAGS_MAX`. */
@@ -1861,6 +1867,8 @@ export type FormBlock = PartBase & {
   button?: FormButton;
   /** A sign-up's email field and button side by side (the default) or one under another. */
   layout?: NewsletterLayout;
+  /** How its fields and labels look (D878). */
+  fieldStyle?: FieldStyle;
 };
 
 /** Tags a sign-up form puts on an address (D304 J3). */
@@ -3521,6 +3529,7 @@ const emailFormBlock = z.object({
   successMessage: formText("the thank-you message").default(""),
   consent: formText("the tick box's words").optional(),
   button: formButton,
+  fieldStyle: fieldStyleSchema.optional(),
   ...partBase,
 });
 
@@ -3529,6 +3538,7 @@ const formBlock = z.object({
   type: z.literal("form"),
   formId: z.uuid("Choose one of your forms.").nullable().default(null),
   button: formButton,
+  fieldStyle: fieldStyleSchema.optional(),
   layout: z.enum(Object.keys(NEWSLETTER_LAYOUTS) as [NewsletterLayout, ...NewsletterLayout[]]).optional(),
   ...partBase,
 });
@@ -3596,6 +3606,7 @@ const newsletterBlock = z.object({
   confirm: z.boolean().optional(),
   layout: z.enum(Object.keys(NEWSLETTER_LAYOUTS) as [NewsletterLayout, ...NewsletterLayout[]]).optional(),
   button: formButton,
+  fieldStyle: fieldStyleSchema.optional(),
   incentive: z.string().uuid().optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(SIGNUP_TAGS_MAX).optional(),
   ...partBase,

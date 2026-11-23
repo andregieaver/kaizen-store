@@ -688,6 +688,7 @@ export const blocksEn = {
     choices: "Choices",
     choicesHint: "One per line, up to {max}.",
     layout: "Field and button",
+    fieldWords: { title: "Fields", labels: "Labels", above: "Above", hidden: "In the placeholder", animated: "Animated", more: "Customise fields", motion: "Customise the animation", bg: "Background", ink: "Text", line: "Border", focus: "Focus", label: "Labels", ph: "Placeholder", theme: "the theme's until set", bw: "Border width", padY: "Padding, top and bottom", padX: "Padding, sides", gap: "Space between questions", size: "Text size", fade: "Crossfade", swap: "Switch", keep: "Keep case", case: "Capitals", align: "Lines up with", edge: "Field's edge", text: "Its text", moved: "Moved size", lift: "Space above", smooth: "Smooth", inOut: "In and out", bounce: "Bounce", even: "Even", after: "Placeholder once moved", reset: "Reset fields" },
     fullWidth: "Button as wide as the form",
     doubleOptIn: "Confirm the address first (double opt-in)",
     doubleOptInHint: "The visitor gets an email with a link, and the sign-up is sent to you only once they open it. Recommended: it proves the consent and keeps out addresses typed by others.",

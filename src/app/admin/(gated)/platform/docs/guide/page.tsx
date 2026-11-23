@@ -19,7 +19,7 @@ import { requirePlatformReader } from "@/server/auth";
 import { getDocsGuideForEdit, guideKeeping } from "@/server/docs-guide-settings";
 import { uploadsEnabled } from "@/server/media";
 
-import { uploadPlatformImageAction } from "../../actions";
+import { uploadPlatformImageAction } from "../../upload-actions";
 import { saveDocsGuideAction } from "./actions";
 
 export const metadata: Metadata = { title: "Docs guide" };

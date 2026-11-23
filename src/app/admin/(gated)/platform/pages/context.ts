@@ -24,7 +24,7 @@ import { platformMenuPreviews } from "@/server/menus";
 import { getPlatformChrome, getPlatformFonts } from "@/server/platform-navigation";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
 
-import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../actions";
+import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../upload-actions";
 import { installPlatformFontAction } from "../fonts/actions";
 import {
   createPageTermAction,

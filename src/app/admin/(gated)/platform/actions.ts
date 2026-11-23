@@ -25,8 +25,6 @@ import {
   type PlanInput,
 } from "@/server/billing";
 import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
-import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/media";
-import { forgetUnstoredVideo, registerVideo, uploadToLibrary } from "@/server/media-library";
 import { contentForLook, designTags } from "@/server/design-presets";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { setSelfServe } from "@/server/self-signup";
@@ -305,36 +303,6 @@ export async function savePlatformSeoAction(_state: FormState, formData: FormDat
   updateTag(PLATFORM_SEO_TAG);
   refresh();
   return { status: "ok", messages: [(await said()).searchAndSharingSaved] };
-}
-
-export async function uploadPlatformImageAction(formData: FormData): Promise<UploadResult> {
-  const admin = await requirePlatform("website");
-  // Kept in Kaizen's media library too (D88).
-  return uploadToLibrary({ storeId: null, accountId: admin.id }, formData);
-}
-
-/** Starts an upload of a row's background video on Kaizen's pages, straight from the browser to the public bucket. */
-export async function startPlatformVideoUploadAction(file: unknown): Promise<VideoUpload> {
-  const admin = await requirePlatform("website");
-  const parsed = z
-    .object({
-      name: z.string().max(255).optional(),
-      type: z.string().max(100),
-      size: z.number().int().nonnegative(),
-      compressed: z.boolean().optional(),
-      /** The path an earlier start gave, when the browser's upload to it never arrived (D536). */
-      abandoned: z.string().max(300).optional(),
-    })
-    .safeParse(file);
-  if (!parsed.success) return { ok: false, problem: (await said()).chooseAVideoToUpload };
-  if (parsed.data.abandoned !== undefined) {
-    await forgetUnstoredVideo({ storeId: null }, parsed.data.abandoned);
-    return { ok: false, problem: "" };
-  }
-  const started = await startVideoUpload("platform", parsed.data);
-  // Kept in Kaizen's media library as its upload starts (D88).
-  if (started.ok) await registerVideo({ storeId: null, accountId: admin.id }, started, parsed.data);
-  return started;
 }
 
 /** The platform discount form's fields, as the server checks them. */

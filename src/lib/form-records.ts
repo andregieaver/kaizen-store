@@ -1,4 +1,5 @@
 import type { EmailFormBlock, FormButton, FormField, FormFieldKind, NewsletterBlock, NewsletterLayout, ShowWhen } from "./page-content";
+import type { FieldStyle } from "./form-field-style";
 import type { AnswerBounds } from "./questions";
 import { normaliseEmail } from "./email-address";
 import { plainWords, wordsIn, type Words } from "./words";
@@ -80,7 +81,7 @@ export type FormDraft = {
 export type FormRecord = FormDraft & { id: string; storeId: string | null; status: FormStatus; madeFrom: string | null };
 
 /** How the page's component draws its form: the look of a button (D49) and, for a sign-up, side by side or stacked. */
-export type FormLook = { button?: FormButton; layout?: NewsletterLayout };
+export type FormLook = { button?: FormButton; layout?: NewsletterLayout; fieldStyle?: FieldStyle };
 
 const words = (w: Words | undefined, locale: string) => (w ? wordsIn(w, locale) : "");
 
@@ -104,6 +105,7 @@ export function formAsBlock(form: Pick<FormRecord, "id" | "kind" | "questions" |
       confirm: signup.confirm,
       ...(look.layout ? { layout: look.layout } : {}),
       ...(look.button ? { button: look.button } : {}),
+      ...(look.fieldStyle ? { fieldStyle: look.fieldStyle } : {}),
       ...(signup.incentive ? { incentive: signup.incentive } : {}),
       ...(signup.tags?.length ? { tags: signup.tags } : {}),
     };
@@ -134,6 +136,7 @@ export function formAsBlock(form: Pick<FormRecord, "id" | "kind" | "questions" |
     successMessage: at(form.words.success),
     ...(consent ? { consent } : {}),
     ...(look.button ? { button: look.button } : {}),
+    ...(look.fieldStyle ? { fieldStyle: look.fieldStyle } : {}),
   };
 }
 

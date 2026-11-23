@@ -18,6 +18,7 @@ import {
 import { browserText as t } from "@/lib/browser-text";
 import type { BrowserMessages as Messages } from "@/lib/browser-text";
 import type { FormField } from "@/lib/page-content";
+import { ALWAYS_MOVED_KINDS, FLOATING_KINDS, fieldStyleAttrs, type FieldStyle } from "@/lib/form-field-style";
 import { daysAfter, todayInZone } from "@/lib/questions";
 
 import { Dropdown } from "./dropdown";
@@ -25,7 +26,8 @@ import { Inline } from "./inline-text";
 import { buttonLook } from "./button-look";
 import { usePageLanguage } from "./page-language";
 
-const input = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-base";
+/** A field's box: its look is `form-look.css`'s, from the form's field style (D878). */
+const input = "kf-ctl";
 const labelClass = "flex flex-col gap-1 text-sm font-medium";
 
 type Values = Record<string, string | boolean>;
@@ -175,6 +177,9 @@ export function SiteForm({
   }
 
   const look = buttonLook(form.button, form.button?.fullWidth);
+  // The fields' look and how their labels show (D878): attributes and custom properties `form-look.css` reads.
+  const fieldLook = fieldStyleAttrs(form.fieldStyle);
+  const labels = form.fieldStyle?.labels;
   const sending = state.kind === "sending";
   const button = (
     <button type="submit" disabled={sending} aria-disabled={preview || undefined} className={`${look.className} disabled:opacity-60`} style={look.style}>
@@ -189,7 +194,7 @@ export function SiteForm({
           {notice}
         </p>
       )}
-      <form noValidate onSubmit={submit} className="flex flex-col gap-4">
+      <form noValidate onSubmit={submit} className="kf-fields flex flex-col" {...fieldLook.data} style={fieldLook.vars}>
         {/* People never see this field; robots fill it in. */}
         <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
           <label>
@@ -198,10 +203,10 @@ export function SiteForm({
           </label>
         </div>
         {form.type === "newsletter" ? (
-          <NewsletterFields form={form} m={m} values={values} errors={errors} set={set} button={button} />
+          <NewsletterFields form={form} m={m} values={values} errors={errors} set={set} button={button} labels={labels} />
         ) : (
           // The questions asked given the answers so far (D705 F3); half-width ones side by side on a wider screen.
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="kf-grid grid sm:grid-cols-2">
             {askedQuestions(form.fields, values).map((field) => (
               <div key={field.id} className={field.width === "half" ? "min-w-0" : "min-w-0 sm:col-span-2"}>
                 {field.kind === "file" ? (
@@ -219,7 +224,7 @@ export function SiteForm({
                     onProblem={(problem) => setErrors((current) => ({ ...current, [field.id]: problem }))}
                   />
                 ) : (
-                  <Field field={field} m={m} value={values[field.id]} error={errors[field.id]} set={set} />
+                  <Field field={field} m={m} value={values[field.id]} error={errors[field.id]} set={set} labels={labels} />
                 )}
               </div>
             ))}
@@ -254,7 +259,7 @@ export function SiteForm({
   );
 }
 
-type FieldProps = { m: Messages; set: (key: string, value: string | boolean) => void };
+type FieldProps = { m: Messages; set: (key: string, value: string | boolean) => void; labels?: FieldStyle["labels"] };
 
 function NewsletterFields({
   form,
@@ -263,6 +268,7 @@ function NewsletterFields({
   errors,
   set,
   button,
+  labels,
 }: FieldProps & { form: PublicNewsletter; values: Values; errors: FormErrors; button: ReactNode }) {
   const email = (
     <Field
@@ -271,13 +277,14 @@ function NewsletterFields({
       value={values[NEWSLETTER_KEYS.email]}
       error={errors[NEWSLETTER_KEYS.email]}
       set={set}
+      labels={labels}
       hideLabel={form.layout !== "stacked"}
     />
   );
   return (
     <>
       {form.askName && (
-        <Field field={{ id: NEWSLETTER_KEYS.name, kind: "name", label: "" }} m={m} value={values[NEWSLETTER_KEYS.name]} error={errors[NEWSLETTER_KEYS.name]} set={set} />
+        <Field field={{ id: NEWSLETTER_KEYS.name, kind: "name", label: "" }} m={m} value={values[NEWSLETTER_KEYS.name]} error={errors[NEWSLETTER_KEYS.name]} set={set} labels={labels} />
       )}
       {form.layout === "stacked" ? (
         email
@@ -303,11 +310,29 @@ function Field({
   value,
   error,
   set,
-  hideLabel = false,
+  labels,
+  hideLabel: hiddenByForm = false,
 }: FieldProps & { field: FormField; value: string | boolean | undefined; error?: string; hideLabel?: boolean }) {
   const id = useId();
   const label = fieldLabel(field, m);
   const text = typeof value === "string" ? value : "";
+  // Hidden where the placeholder names the field (D878), for screen readers still; animated where it has a box to rest in.
+  const hideLabel = hiddenByForm || (labels === "placeholder" && Boolean(field.placeholder));
+  const floats = labels === "animated" && !hideLabel && label !== "" && FLOATING_KINDS.has(field.kind);
+  const spoken = field.required ? label : `${label} (${m.form.optional})`;
+  const float = (props: { htmlFor?: string }) => {
+    const Tag = props.htmlFor ? "label" : "span";
+    return (
+      <Tag {...(props.htmlFor ? { htmlFor: props.htmlFor } : { "aria-hidden": true })} className="kf-float">
+        <span className="kf-rg">{spoken}</span>
+        {/* The capitals the label turns to as it moves, cross-faded in; read once, as the label. */}
+        <span className="kf-up" aria-hidden>
+          {spoken}
+        </span>
+      </Tag>
+    );
+  };
+  const boxProps = { className: "kf-box", "data-moved": text !== "" || ALWAYS_MOVED_KINDS.has(field.kind) ? "" : undefined };
   const described = error ? `${id}-error` : undefined;
   const errorLine = error && (
     <span id={`${id}-error`} className="text-sm font-normal text-red-700 dark:text-red-400">
@@ -329,7 +354,7 @@ function Field({
     const many = field.kind === "checklist";
     return (
       <fieldset className="flex flex-col gap-2" data-field={field.id} tabIndex={-1} aria-invalid={error ? true : undefined} aria-describedby={described}>
-        <legend className="text-sm font-medium">
+        <legend className="kf-label text-sm font-medium">
           {label}
           {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
         </legend>
@@ -358,12 +383,26 @@ function Field({
   if (field.kind === "select") {
     return (
       <div className="flex flex-col gap-1" data-field={field.id} tabIndex={-1}>
-        <Dropdown
-          label={field.required ? label : `${label} (${m.form.optional})`}
-          options={[{ value: "", label: field.placeholder || m.form.choose }, ...(field.options ?? []).map((option, index) => ({ value: String(index), label: option }))]}
-          value={text}
-          onChange={(next) => set(field.id, next)}
-        />
+        {(() => {
+          const dropdown = (
+            <Dropdown
+              label={spoken}
+              hideLabel={hideLabel || floats}
+              options={[{ value: "", label: field.placeholder || m.form.choose }, ...(field.options ?? []).map((option, index) => ({ value: String(index), label: option }))]}
+              value={text}
+              onChange={(next) => set(field.id, next)}
+              boxClassName="kf-ctl kf-drop"
+            />
+          );
+          return floats ? (
+            <div {...boxProps}>
+              {float({})}
+              {dropdown}
+            </div>
+          ) : (
+            dropdown
+          );
+        })()}
         {helpLine}
         {errorLine}
       </div>
@@ -379,24 +418,35 @@ function Field({
     "aria-required": field.required || undefined,
     "data-field": field.id,
   } as const;
+  const control =
+    field.kind === "textarea" ? (
+      <textarea {...common} rows={5} maxLength={5000} onChange={(event) => set(field.id, event.target.value)} className={input} />
+    ) : (
+      <input
+        {...common}
+        type={INPUT_TYPE[field.kind] ?? "text"}
+        autoComplete={AUTOCOMPLETE[field.kind]}
+        maxLength={field.kind === "number" || field.kind === "date" ? undefined : field.kind === "email" ? 254 : 300}
+        {...boundsOfInput(field)}
+        onChange={(event) => set(field.id, event.target.value)}
+        className={input}
+      />
+    );
   return (
     <div className={labelClass}>
-      <label htmlFor={id} className={hideLabel ? "sr-only" : undefined}>
-        {label}
-        {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
-      </label>
-      {field.kind === "textarea" ? (
-        <textarea {...common} rows={5} maxLength={5000} onChange={(event) => set(field.id, event.target.value)} className={`${input} py-2`} />
+      {floats ? (
+        <div {...boxProps} data-tall={field.kind === "textarea" ? "" : undefined}>
+          {float({ htmlFor: id })}
+          {control}
+        </div>
       ) : (
-        <input
-          {...common}
-          type={INPUT_TYPE[field.kind] ?? "text"}
-          autoComplete={AUTOCOMPLETE[field.kind]}
-          maxLength={field.kind === "number" || field.kind === "date" ? undefined : field.kind === "email" ? 254 : 300}
-          {...boundsOfInput(field)}
-          onChange={(event) => set(field.id, event.target.value)}
-          className={input}
-        />
+        <>
+          <label htmlFor={id} className={hideLabel ? "sr-only" : "kf-label"}>
+            {label}
+            {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
+          </label>
+          {control}
+        </>
       )}
       {helpLine}
       {errorLine}
@@ -449,13 +499,13 @@ function FileField({
   }
   return (
     <div className="flex flex-col gap-1 text-sm font-medium" data-field={field.id} tabIndex={-1}>
-      <span id={`${id}-label`}>
+      <span id={`${id}-label`} className="kf-label">
         {label}
         {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
       </span>
       {field.help && <span className="text-sm font-normal text-muted">{field.help}</span>}
       <div className="flex flex-wrap items-center gap-2">
-        <label className={`inline-flex min-h-11 cursor-pointer items-center rounded-md border border-border bg-background px-3 text-base font-normal ${disabled ? "pointer-events-none opacity-60" : ""}`}>
+        <label className={`kf-file inline-flex min-h-11 cursor-pointer items-center rounded-md border border-border bg-background px-3 text-base font-normal ${disabled ? "pointer-events-none opacity-60" : ""}`}>
           {preparing ? m.form.filePreparing : m.form.fileChoose}
           <input
             ref={input}

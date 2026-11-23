@@ -19,7 +19,7 @@ import { listMenuPages } from "@/server/pages";
 import { listTerms } from "@/server/taxonomy";
 import { PageHeader } from "@/components/admin/ui";
 
-import { uploadPlatformImageAction } from "../actions";
+import { uploadPlatformImageAction } from "../upload-actions";
 import { deletePlatformMenuAction, savePlatformMenuAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
 import { AdminAreas } from "@/components/admin/admin-areas";
