@@ -8,7 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { useSignInText } from "./sign-in-text";
 import { RecoveryCodesView } from "./recovery-codes-view";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS } from "@/components/admin/ui/card";
 
 
 

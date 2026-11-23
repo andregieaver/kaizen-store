@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { buttonClass, FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { buttonClass } from "@/components/admin/ui/button";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui/focus-frame";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { type AdminLang } from "@/lib/admin-lang";

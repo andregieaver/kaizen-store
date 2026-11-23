@@ -8,7 +8,10 @@ import type { RunningPageJob } from "@/server/page-jobs";
 
 import { useAdminText } from "./admin-text";
 import { RefreshWhile } from "./refresh-while";
-import { ButtonLink, buttonClass, Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { ButtonLink, buttonClass } from "@/components/admin/ui/button";
+import { Card } from "@/components/admin/ui/card";
+import { Chip } from "@/components/admin/ui/chip";
+import { List, ListRow, RowActions, RowLead } from "@/components/admin/ui/list";
 
 /**
  * The AI's page work still going, on a site's Pages and Articles lists (PSI UX-01): each build waiting or being built, and each page whose

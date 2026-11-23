@@ -5,7 +5,9 @@ import { AdminLink } from "./ui/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import { hiddenIn, shownIn } from "@/lib/admin-view";
+import { currentIndex, placeIndex } from "@/lib/nav-current";
 
 import { useAdminText } from "./admin-text";
 import { BasicViewHint, useAdminView } from "./admin-view";
@@ -14,7 +16,9 @@ import { NavIcon, type NavIconName } from "./nav-icons";
 /**
  * The store admin's navigation (D39): the main sections as tabs along the
  * header, and the store's settings grouped in a sidebar (the slide-out menu
- * on phones). The page being viewed, or one inside its section, is marked.
+ * on phones). The section the page is inside is marked among the tabs, and the
+ * page among the sidebar's links: in each list one link only, the one whose
+ * address the page is deepest inside (code review step 2.2, D873).
  */
 
 export type NavItem = {
@@ -33,37 +37,31 @@ export type NavItem = {
   foot?: boolean;
   /** Left out of the Basic view (D454) unless it is the page being viewed. */
   advanced?: boolean;
+  /** The level's Home tab: a page there has no section, so its header shows no section's word (D873). */
+  home?: true;
 };
-export type NavGroup = { heading: string; items: NavItem[] };
-
-/** An address is inside `prefix` when it is that address or below it. */
-const inside = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+/** A sidebar's group; `sections` is the level's tabs as a group of the phone's menu, marked by section apart from the pages (D873). */
+export type NavGroup = { heading: string; items: NavItem[]; sections?: true };
 
 /**
- * Whether a link is the page being viewed, or a section the page is inside. A tab that names its `section` and no `also` is inside the
- * addresses of that section's sidebar in `areas` (the store's menu sends each address once, bloat review step 2.28).
+ * Which of `links`, one list (the level's tabs, or a sidebar's pages), is the page being viewed or the section it is inside: only the one
+ * whose address the page is deepest inside (`currentIndex()`, D873), so Draft orders lights alone, not Orders with it. A tab that names its
+ * `section` and no `also` is inside the addresses of that section's sidebar in `areas` (the store's menu sends each address once, bloat
+ * review step 2.28).
  */
-export function useIsCurrent(areas: NavArea[] = [], groups: NavGroup[] = []) {
-  const pathname = usePathname();
-  const alsoOf = (item: NavItem) => (item.section !== undefined && item.also === undefined ? (areas.find((a) => a.section === item.section)?.prefixes ?? []) : (item.also ?? []));
-  // A sidebar item below another's address (Contracts below Deals, D857) is the one marked there, not both; a section's tab keeps its mark.
-  const hrefs = [...areas.flatMap((a) => a.groups), ...groups].flatMap((g) => g.items.filter((i) => !i.exact).map((i) => i.href));
-  const deeper = (item: NavItem) => item.section === undefined && hrefs.some((href) => href.startsWith(`${item.href}/`) && inside(pathname, href));
-  return (item: NavItem) =>
-    deeper(item)
-      ? false
-      : item.exact ? pathname === item.href || alsoOf(item).some((prefix) => inside(pathname, prefix)) : [item.href, ...alsoOf(item)].some((prefix) => inside(pathname, prefix));
+export function useIsCurrent(links: readonly NavItem[], areas: readonly NavArea[] = []) {
+  const current = links[currentIndex(usePathname(), links, areas)];
+  return (item: NavItem) => item === current;
 }
 
 /**
- * A level's sidebar that depends on the section being viewed (D144): the groups of the first area whose addresses the
- * page is inside, or none (the area has no sidebar). `prefixes` are the area's addresses; `exact` ones match only themselves.
+ * A level's sidebar that depends on the section being viewed (D144): the groups of the area whose addresses the page is deepest
+ * inside (`placeIndex()`), or none (the area has no sidebar). `prefixes` are the area's addresses; `exact` ones match only themselves.
  */
 export type NavArea = { prefixes: string[]; exact?: string[]; groups: NavGroup[]; /** The key a tab names it by (`NavItem.section`). */ section?: string };
 
 export function useAreaGroups(areas: NavArea[], fallback: NavGroup[]): NavGroup[] {
-  const pathname = usePathname();
-  const area = areas.find((a) => (a.exact ?? []).includes(pathname) || a.prefixes.some((prefix) => inside(pathname, prefix)));
+  const area = areas[placeIndex(usePathname(), areas)];
   return area ? area.groups : fallback;
 }
 
@@ -93,11 +91,10 @@ export function AreaSidebar({ areas, fallback, label, railed = false }: { areas:
  */
 export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallback: NavGroup[]; label: string }) {
   const groups = useAreaGroups(areas, fallback);
-  const isCurrent = useIsCurrent([], groups);
+  const all = groups.flatMap((group) => group.items);
+  const isCurrent = useIsCurrent(all);
   const { view } = useAdminView();
-  const items = groups
-    .flatMap((group) => group.items)
-    .filter((item) => shownIn(view, item, isCurrent(item)));
+  const items = all.filter((item) => shownIn(view, item, isCurrent(item)));
   if (items.length === 0) return null;
   return (
     <nav aria-label={label} className="hidden min-w-0 overflow-x-auto [scrollbar-width:none] lg:block [&::-webkit-scrollbar]:hidden">
@@ -127,7 +124,7 @@ export function AreaMenu({ tabs, areas, fallback, label, footer }: { tabs: NavIt
   const sections = useAdminText("shell").frame.sections;
   return (
     <>
-      <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: sections, items: tabs }] : []), ...groups]} label={label} areas={areas} />
+      <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: sections, items: tabs, sections: true as const }] : []), ...groups]} label={label} areas={areas} />
       {footer}
     </>
   );
@@ -135,7 +132,7 @@ export function AreaMenu({ tabs, areas, fallback, label, footer }: { tabs: NavIt
 
 /** The main sections, as tabs under the store's name; they scroll sideways on narrow screens. */
 export function StoreTabs({ items, label, areas }: { items: NavItem[]; label: string; areas?: NavArea[] }) {
-  const isCurrent = useIsCurrent(areas);
+  const isCurrent = useIsCurrent(items, areas);
   return (
     <nav aria-label={label} className="-mb-px overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <ul className="flex min-w-max gap-1">
@@ -181,7 +178,8 @@ export function LinkPending({ className = "inset-x-3 bottom-1" }: { className?: 
  * editor's Save, View page and Duplicate; the navigation editor's Save) marks it `data-bottom-bar`, and this bar steps aside for it.
  */
 export function PhoneTabBar({ items, label, more, areas }: { items: NavItem[]; label: string; more: string; areas?: NavArea[] }) {
-  const isCurrent = useIsCurrent(areas);
+  const isCurrent = useIsCurrent(items, areas);
+  const waiting = useAdminText("shell").frame.waiting;
   const shown = items.filter((item) => !item.foot).slice(0, 4);
   return (
     <nav
@@ -200,9 +198,12 @@ export function PhoneTabBar({ items, label, more, areas }: { items: NavItem[]; l
               {item.icon && <NavIcon name={item.icon} className="size-[22px]" />}
               <span className="max-w-full truncate px-1">{item.label}</span>
               {item.badge ? (
-                <span className="absolute top-0 right-[calc(50%-22px)] min-w-[18px] rounded-pill bg-brand px-1 text-center text-[10px] leading-[18px] text-brand-ink tabular-nums">
-                  {item.badge > 99 ? "99+" : item.badge}
-                </span>
+                <>
+                  <span aria-hidden className="absolute top-0 right-[calc(50%-22px)] min-w-[18px] rounded-pill bg-brand px-1 text-center text-[10px] leading-[18px] text-brand-ink tabular-nums">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                  <span className="sr-only">{fillWords(waiting, { count: item.badge })}</span>
+                </>
               ) : null}
             </AdminLink>
           </li>
@@ -225,12 +226,14 @@ export function PhoneTabBar({ items, label, more, areas }: { items: NavItem[]; l
   );
 }
 
-/** A small count beside a link's label. */
+/** A small count beside a link's label, read out as what it counts in the account's language ("3 waiting", D873). */
 function Badge({ count }: { count?: number }) {
+  const waiting = useAdminText("shell").frame.waiting;
   if (!count) return null;
   return (
-    <span className="ml-1.5 rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink" aria-label={`${count} waiting`}>
-      {count > 99 ? "99+" : count}
+    <span className="ml-1.5 rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink">
+      <span aria-hidden>{count > 99 ? "99+" : count}</span>
+      <span className="sr-only">{fillWords(waiting, { count })}</span>
     </span>
   );
 }
@@ -240,7 +243,10 @@ function Badge({ count }: { count?: number }) {
  * page being viewed; a group with none left is not drawn, and the foot says how many more Advanced has, with the switch to it.
  */
 export function StoreSidebar({ groups, label, hint = true, areas }: { groups: NavGroup[]; label: string; hint?: boolean; areas?: NavArea[] }) {
-  const isCurrent = useIsCurrent(areas, groups);
+  // The phone's menu holds the level's sections and the section's pages: one marked among each (D873), as the rail and the sidebar mark them.
+  const isSection = useIsCurrent(groups.filter((group) => group.sections).flatMap((group) => group.items), areas);
+  const isPage = useIsCurrent(groups.filter((group) => !group.sections).flatMap((group) => group.items));
+  const isCurrent = (item: NavItem) => isSection(item) || isPage(item);
   const { view } = useAdminView();
   const shown = groups.map((group) => ({ ...group, items: group.items.filter((item) => shownIn(view, item, isCurrent(item))) })).filter((group) => group.items.length > 0);
   const hidden = hiddenIn(
@@ -252,7 +258,7 @@ export function StoreSidebar({ groups, label, hint = true, areas }: { groups: Na
     <nav aria-label={label} className="flex flex-col gap-6">
       {shown.map((group) => (
         <div key={group.heading}>
-          <h2 className="mb-1 px-3 text-xs tracking-wide text-muted uppercase text-title text-ink">{group.heading}</h2>
+          <h2 className="mb-1 px-3 text-eyebrow text-muted uppercase">{group.heading}</h2>
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => (
               <li key={item.href}>
