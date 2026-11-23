@@ -38,6 +38,7 @@ import { CLAIM_LABELS } from "@/lib/claims";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { describeRules, matches, SEGMENT_CAP } from "@/lib/segments";
+import { broadcastRefusal } from "@/lib/send-allowance";
 import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
 import type { OrderCredit } from "@/lib/order-credit";
 import { siteUrl } from "@/lib/site";
@@ -60,6 +61,7 @@ import { emailLookOf } from "./email-look";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
 import { marketingRoute, type MarketingRoute } from "./sending-domains";
+import { sendAllowance } from "./send-allowance";
 import { sesSettings } from "./ses";
 import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
@@ -364,6 +366,12 @@ class TooFewToTest extends Error {
 /** Why a broadcast does not start while the sending guard holds the store's marketing email (D730). */
 export const SENDING_PAUSED = "Your marketing email is paused because too many recent emails bounced or were marked as spam. Resume it on the Marketing page first.";
 
+/** The store's subscribed people, whom a broadcast to the whole list reaches. */
+async function subscribedCount(storeId: string): Promise<number> {
+  const row = await typedRow(z.object({ n: col.int }), sql`select count(*)::int as n from commerce.marketing_subscribers where store_id = ${storeId}::uuid and status = 'subscribed'`);
+  return row?.n ?? 0;
+}
+
 export async function startBroadcast(storeId: string, accountId: string | null, id: string): Promise<StartResult> {
   const [store, broadcast] = await Promise.all([storeById(storeId), getBroadcast(storeId, id)]);
   if (!store || !broadcast) return { ok: false, problem: "Unknown broadcast." };
@@ -375,6 +383,13 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
   if ("problem" in audience) return { ok: false, problem: audience.problem };
   if (audience.emails && audience.emails.length === 0) return { ok: false, problem: "Nobody in the segment wants your emails, so nobody would get it." };
   const wanted = audience.emails;
+  // Email automation's size (D876): while the account's lists hold more contacts than it, or this send would pass its emails of the month,
+  // a new broadcast waits until the account moves up; flows and order emails never wait here.
+  const allowance = await sendAllowance(storeId);
+  if (allowance) {
+    const refusal = broadcastRefusal(allowance, wanted ? wanted.length : await subscribedCount(storeId));
+    if (refusal) return { ok: false, problem: refusal };
+  }
   // The marketing emails the store's plan allows this month (D314): a send that would pass it does not start.
   const allowed = await limitFor(storeId, "marketing_emails_month");
   const room = allowed === null ? Infinity : roomLeft(await usageNow(storeId, "marketing_emails_month"), allowed);

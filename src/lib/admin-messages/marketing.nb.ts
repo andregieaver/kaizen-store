@@ -932,6 +932,8 @@ export const marketingNb: MarketingMessages = {
     segmentCap: "Segmentet leses fra høyst {n} personer, så det ville ikke nådd alle.",
     sentAlready: "Dette nyhetsbrevet er allerede sendt.",
     sendingPaused: "Markedsførings-e-posten din er satt på pause fordi for mange av de siste e-postene kom i retur eller ble merket som søppelpost. Start den igjen på Markedsføring-siden først.",
+    overContacts: "Listen din har {contacts} kontakter, og e-postautomatiseringen din rommer {allowed}. Nye nyhetsbrev venter til du går opp en størrelse; flyter og ordre-e-poster sendes som før.",
+    overEmails: "Dette ville gå over de {allowed} markedsførings-e-postene e-postautomatiseringen din rommer denne måneden. Nye nyhetsbrev venter til du går opp en størrelse; flyter og ordre-e-poster sendes som før.",
     nobodyInSegment: "Ingen i segmentet vil ha e-postene dine, så ingen ville fått det.",
     nobodyOnList: "Ingen på listen din vil ha e-postene dine ennå, så ingen ville fått det.",
     fiveMinutes: "Velg et tidspunkt minst fem minutter fra nå.",

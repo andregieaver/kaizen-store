@@ -515,8 +515,9 @@ and order emails keep sending; use beyond the support desk's and the people allo
    back through SNS to `/api/ses/events` and count for the sending guard. Off until `AWS_SES_*` is set in Vercel.
 2. **The account's sending domain (D874, built 23 November 2026).** One domain for the account, on Your domains for its owner, used by each
    of its stores without its own, a workspace included; a store's own still comes first.
-3. **The send allowance**: marketing emails and contacts counted per account against the size it has; told at 80 %, and at the limit new
-   broadcasts wait with one button to move up.
+3. **The send allowance (D876, built 23 November 2026).** Marketing emails and contacts counted per account against the size it has (its
+   contacts times 10 emails each a month is the account's `marketing_emails_month`); told at 80 %, and at the limit new broadcasts wait
+   with one press to move up a size (`moveUpExtension()`), while flows and order emails keep sending.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 

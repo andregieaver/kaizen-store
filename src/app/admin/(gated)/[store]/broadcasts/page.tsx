@@ -11,6 +11,12 @@ import { subscriberCounts } from "@/server/marketing-subscribers";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { sendingHealth } from "@/server/sending-guard";
 import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
+import { SendAllowanceNotice } from "@/components/admin/send-allowance-notice";
+import { SEND_ALLOWANCE_WORDS } from "@/lib/admin-words/send-allowance";
+import { ownedAccount } from "@/server/privacy-officers";
+import { sendAllowance } from "@/server/send-allowance";
+
+import { moveUpEmailAction } from "../../(owner)/account/actions";
 
 import { resumeSendingAction } from "../marketing/actions";
 import { requireExtension } from "@/components/admin/extension-off";
@@ -34,7 +40,14 @@ export default async function BroadcastsPage({ params }: PageProps<"/admin/[stor
   const notInAccount = requireExtension(member, "email_automation");
   if (notInAccount) return notInAccount;
   const { store } = member;
-  const [broadcasts, counts, health] = await Promise.all([listBroadcasts(store.id), subscriberCounts(store.id), sendingHealth(store.id)]);
+  const [broadcasts, counts, health, allowance, owned] = await Promise.all([
+    listBroadcasts(store.id),
+    subscriberCounts(store.id),
+    sendingHealth(store.id),
+    // Email automation's size (D876): told at 80 %, and at the limit new newsletters wait until the account moves up.
+    sendAllowance(store.id),
+    ownedAccount(member.account.id),
+  ]);
   const people = counts.subscribed;
   const base = `/admin/${store.slug}/broadcasts`;
   const mayWrite = memberCan(member, "marketing:write");
@@ -73,6 +86,12 @@ export default async function BroadcastsPage({ params }: PageProps<"/admin/[stor
         locale={ADMIN_LANG_FACTS[lang].locale}
         timeZone={store.timeZone}
         resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
+      />
+      <SendAllowanceNotice
+        allowance={allowance}
+        words={SEND_ALLOWANCE_WORDS[lang]}
+        locale={ADMIN_LANG_FACTS[lang].locale}
+        moveUp={owned && owned.id === store.organisationId ? moveUpEmailAction : null}
       />
       {broadcasts.length > 0 && (
         <Card compact>

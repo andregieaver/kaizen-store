@@ -14,8 +14,12 @@ import { bundleHints } from "@/server/account-cover";
 import { requireAccount } from "@/server/auth";
 import { accountExtensions, extensionFounding, extensionsLaunchedAt, type AccountExtension } from "@/server/extensions";
 import { ownedAccount } from "@/server/privacy-officers";
+import { SendAllowanceNotice } from "@/components/admin/send-allowance-notice";
+import { SEND_ALLOWANCE_WORDS } from "@/lib/admin-words/send-allowance";
+import { accountSendAllowance } from "@/server/send-allowance";
 
-import { setExtensionAction, tryExtensionAction } from "../actions";
+import { moveUpEmailAction, setExtensionAction, tryExtensionAction } from "../actions";
+
 
 export const metadata: Metadata = { title: "Extensions" };
 
@@ -32,7 +36,14 @@ export default async function ExtensionsPage() {
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const own = await ownedAccount(account.id);
   if (!own) return <PageHeader title={w.title} description={w.ownerOnly} />;
-  const [launchedAt, billing, currency, founding] = await Promise.all([extensionsLaunchedAt(), getAccountBilling(own.id), accountCurrency(own.id), extensionFounding()]);
+  const [launchedAt, billing, currency, founding, allowance] = await Promise.all([
+    extensionsLaunchedAt(),
+    getAccountBilling(own.id),
+    accountCurrency(own.id),
+    extensionFounding(),
+    // Email automation's size this month (D876): what is used of it, and one press to move up.
+    accountSendAllowance(own.id),
+  ]);
   const foundingOffered = foundingOpen(founding.until, new Date());
   const extensions = await accountExtensions(own.id, currency);
   const launched = launchedAt !== null && launchedAt <= new Date();
@@ -61,6 +72,7 @@ export default async function ExtensionsPage() {
     <>
       <PageHeader title={w.title} description={fillWords(w.description, { days: EXTENSION_TRIAL_DAYS })} />
       {!launched && <p className="rounded-panel border border-line bg-card p-4 text-sm">{w.notLaunched}</p>}
+      <SendAllowanceNotice allowance={allowance} words={SEND_ALLOWANCE_WORDS[lang]} locale={locale} moveUp={moveUpEmailAction} always />
       <List label={w.title}>
         {extensions.map((e) => (
           <ListRow key={e.id}>

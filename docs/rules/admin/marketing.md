@@ -219,6 +219,11 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `SendingOwner` in `src/server/sending-domains.ts`). Every store of the account without its own sends from it, order emails and marketing
   alike (`senderFor()`, `marketingRoute()`: the store's own first, then the account's, then the shared address). It is set on Your domains
   by the account's owner only (`ownedAccount()`); a store's card says when it sends from the account's address.
+- **Email automation's send allowance (D876, `src/lib/send-allowance.ts`, `src/server/send-allowance.ts`, `SendAllowanceNotice`)**: the
+  account's size of email automation (`accountSize()`) sets its `marketing_emails_month` (contacts times emails per contact, in place of the
+  plan's number) and its contacts (subscribed, each address once, across its open stores). Broadcasts tells at 80 % and holds a new
+  broadcast at the limit (`broadcastRefusal()` in `startBroadcast()`); flows and order emails are never held here. One press moves up
+  (`moveUpEmailAction`, the account owner's only; `moveUpExtension()`).
 - **Marketing email through Amazon SES (D872, `src/server/ses.ts`, `src/lib/ses.ts`, `/api/ses/events`)**: with `AWS_SES_*` set, a
   store's broadcasts and flows (`SES_KINDS`) go through SES in the EU (`marketingRoute()`: its own domain once SES verified it, else
   Resend's way; the shared address through SES only when it is on Kaizena Flow's own domain and SES verified that). Order, account and

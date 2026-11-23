@@ -882,6 +882,8 @@ export const marketingEn = {
     segmentCap: "The segment is read from at most {n} people, so it would not reach all of them.",
     sentAlready: "This broadcast was sent already.",
     sendingPaused: "Your marketing email is paused because too many recent emails bounced or were marked as spam. Resume it on the Marketing page first.",
+    overContacts: "Your list has {contacts} contacts, and your email automation holds {allowed}. New newsletters wait until you move up; flows and order emails keep sending.",
+    overEmails: "This would pass the {allowed} marketing emails your email automation holds this month. New newsletters wait until you move up; flows and order emails keep sending.",
     nobodyInSegment: "Nobody in the segment wants your emails, so nobody would get it.",
     nobodyOnList: "Nobody on your list wants your emails yet, so nobody would get it.",
     fiveMinutes: "Choose a time at least five minutes from now.",

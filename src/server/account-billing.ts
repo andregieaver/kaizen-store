@@ -12,6 +12,7 @@ import { effectiveFeeBps, isOnPlan } from "@/lib/plans";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { accountCover } from "./account-cover";
+import { accountSize, nextSize } from "./extension-sizes";
 import { audit, type Account } from "./auth";
 import {
   billingMode,
@@ -280,6 +281,7 @@ const WANTED_ROW = z.object({
   members: z.array(z.string()).nullable(),
   founding_minor: col.minorOrNull,
   size_id: col.uuid.nullable(),
+  size_position: col.int.nullable(),
 });
 
 /** A price id without its founding marker (`founding:{price id}`, E6): the row it is read from. */
@@ -336,19 +338,19 @@ async function resolveItems(
           WANTED_ROW,
           sql`
             select pp.id, 'plan' as kind, pp.plan_id::text as owner, pp.currency, pp.interval, null::text[] as members, null::bigint as founding_minor,
-                   null::uuid as size_id
+                   null::uuid as size_id, null::int as size_position
               from commerce.plan_prices pp
               join commerce.plans p on p.id = pp.plan_id and p.active
              where pp.active and pp.id in (${list})
             union all
-            select ep.id, 'extension', es.extension_id, ep.currency, ep.interval, null, ep.founding_minor, es.id from commerce.extension_prices ep
+            select ep.id, 'extension', es.extension_id, ep.currency, ep.interval, null, ep.founding_minor, es.id, es.position from commerce.extension_prices ep
               join commerce.extension_sizes es on es.id = ep.size_id and es.active
               join commerce.extensions e on e.id = es.extension_id and e.active
              where ep.active and ep.id in (${list})
             union all
             select bp.id, 'bundle', b.id::text, bp.currency, bp.interval,
                    array(select m.extension_id from commerce.extension_bundle_members m where m.bundle_id = b.id order by m.extension_id),
-                   bp.founding_minor, null
+                   bp.founding_minor, null, null
               from commerce.extension_bundle_prices bp join commerce.extension_bundles b on b.id = bp.bundle_id and b.active
              where bp.active and bp.id in (${list})
           `,
@@ -367,11 +369,22 @@ async function resolveItems(
     else return { ok: false, problems: ["That extension is no longer offered."] };
   }
   const plan = planRow ? { id: planRow.id, currency: planRow.currency, interval: planRow.interval, planId: planRow.owner } : null;
-  const included = plan
-    ? (await typedRows(z.object({ extension_id: col.text }), sql`select extension_id from commerce.plan_extension_grants where plan_id = ${plan.planId}::uuid`))
-        .map((r) => r.extension_id)
-        .filter(isExtensionId)
+  // What the plan includes, unless the extension is bought at a bigger size than the plan's (D876: moving up), which is not twice.
+  const grants = plan
+    ? await typedRows(
+        z.object({ extension_id: col.text, position: col.int }),
+        sql`select g.extension_id, gs.position from commerce.plan_extension_grants g join commerce.extension_sizes gs on gs.id = g.size_id where g.plan_id = ${plan.planId}::uuid`,
+      )
     : [];
+  const biggerThanPlan = (id: string, position: number) =>
+    items.extensionPriceIds.some((p) => {
+      const row = rows.find((r) => r.id === localPrice(p) && r.kind === "extension");
+      return row?.owner === id && (row.size_position ?? -1) > position;
+    });
+  const included = grants
+    .filter((g) => !biggerThanPlan(g.extension_id, g.position))
+    .map((g) => g.extension_id)
+    .filter(isExtensionId);
   const problems = itemProblems(plan, extensions, included, bundles);
   if (problems.length > 0) return { ok: false, problems };
 
@@ -514,6 +527,33 @@ export async function setAccountExtension(
   const prices = cover.picks.map((p) => p.priceId);
   if (!on && prices.length === 0 && !billing.priceId) return cancelAccountPlan(owner, organisationId, "now");
   return chooseAccountPlan(owner, organisationId, { planPriceId: billing.priceId, extensionPriceIds: prices }, origin);
+}
+
+/**
+ * The owner moves an extension up to its next size (D876, D748 E10 part three: email automation past its contacts or its send allowance):
+ * bought on its own at that size, the cheapest way with everything else the account pays for (a bundle holds the smallest size, so a part
+ * moved up leaves the bundle; a plan's size stays the plan's until the bought size is bigger). Without a running subscription it opens
+ * Stripe Checkout, as adding an extension does.
+ */
+export async function moveUpExtension(
+  owner: Account,
+  organisationId: string,
+  extensionId: ExtensionId,
+  origin: string,
+): Promise<{ ok: true; checkoutUrl?: string; size: string; contacts: number | null } | { ok: false; problems: string[] }> {
+  const billing = await getAccountBilling(organisationId);
+  if (!billing) return { ok: false, problems: [NOT_BILLED_BY_ACCOUNT] };
+  const next = await nextSize(extensionId, await accountSize(organisationId, extensionId));
+  if (!next) return { ok: false, problems: ["This is the biggest size there is. Write to us and we'll find room."] };
+  const currency = billing.price?.currency ?? (await accountCurrency(organisationId));
+  if (!currency) return { ok: false, problems: ["That extension has no price in your account's currency yet."] };
+  const interval = billing.price?.interval ?? "month";
+  const cover = await accountCover(organisationId, { currency, interval, planId: billing.planId, add: extensionId, sizes: { [extensionId]: next.id } });
+  if (!cover) return { ok: false, problems: ["That size has no price in your account's currency yet."] };
+  const chosen = await chooseAccountPlan(owner, organisationId, { planPriceId: billing.priceId, extensionPriceIds: cover.picks.map((p) => p.priceId) }, origin);
+  if (!chosen.ok) return chosen;
+  await audit(owner.id, null, "billing.account_extension_moved_up", { organisationId, extensionId, size: next.label }, accountTarget(organisationId));
+  return { ...chosen, size: next.label, contacts: next.allowances.contacts ?? null };
 }
 
 /**
