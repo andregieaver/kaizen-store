@@ -9,9 +9,10 @@ import type { AdminView } from "@/lib/admin-view";
 import { useAdminText } from "./admin-text";
 
 /**
- * Basic and Advanced (D454, `src/lib/admin-view.ts`): the person's choice, held for a store's admin by `AdminViewProvider` so the sidebar,
- * the phone's menu and the pages of cards follow it at once, and kept on their account by `save` without drawing the page again. Outside a
- * provider (the platform, the owner's level) nothing is hidden and nothing is said about it.
+ * Basic and Advanced (D454, `src/lib/admin-view.ts`): the person's choice, held by `AdminViewProvider` in each level's layout (a store's,
+ * the platform's and the owner's, D884) so the sidebar, the phone's menu and the pages of cards follow it at once, and kept on their
+ * account by `save` without drawing the page again. Outside a provider (the builder's sandbox, a page drawn alone in a test) nothing is
+ * hidden and nothing is said about it.
  */
 type ViewState = { view: AdminView; setView: (view: AdminView) => void; offered: boolean };
 

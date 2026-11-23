@@ -46,7 +46,7 @@ export type Account = {
   adminScheme?: string;
   /** The admin's language for them (D312 A0): what `accounts.admin_locale` keeps (`en`, `nb-NO`), null until their first sign-in sets it. */
   adminLocale?: string | null;
-  /** How much of a store's admin they are shown (D454): `basic`, the default, or `advanced`. */
+  /** How much of the admin they are shown, at every level (D454, D884): `basic`, the default, or `advanced`. */
   adminView?: AdminView;
   /** Where the session stands on two-step sign-in (wave 1, 1f): set by `getAccount()` and `getSessionAccount()`, absent on a hand-made account in a test. */
   assurance?: AccountAssurance;

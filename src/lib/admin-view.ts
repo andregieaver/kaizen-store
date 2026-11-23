@@ -1,7 +1,8 @@
 /**
- * Basic and Advanced (D454, `docs/audits/admin-usability-2026-11.md`): how much of a store's navigation a person is shown. Basic, the
- * default, is Homer's: each section's everyday pages, the rest one deliberate press away. Advanced is Lisa's: every page. It is the
- * account's own choice (`accounts.admin_view`), so it follows the person to every device and store.
+ * Basic and Advanced (D454, `docs/audits/admin-usability-2026-11.md`): how much of the admin's navigation a person is shown, in a store,
+ * on the platform and at the owner's level (D884). Basic, the default, is Homer's: each section's everyday pages, the rest one deliberate
+ * press away. Advanced is Lisa's: every page. It is the account's own choice (`accounts.admin_view`), so it follows the person to every
+ * device, store and level: one person, one choice.
  *
  * Basic hides links, never pages: an address, a link from Home, the setup checklist or the AI manager still opens any page, and the
  * sidebar then shows that page where it lives (`shownIn()`), so nobody lands somewhere the navigation does not admit to.
@@ -20,6 +21,12 @@ export const adminViewOf = (stored: unknown): AdminView => (isAdminView(stored) 
 
 /** A link the navigation can leave out of Basic. */
 export type ViewItem = { advanced?: boolean };
+
+/**
+ * Whether a section's page is left out of the Basic view (D454), at every level (D884): one not marked `basic`, unless it is where the
+ * section's tab leads, which Basic always lists.
+ */
+export const advancedIn = (section: { start: string }, item: { path: string; basic?: boolean }): boolean => !item.basic && item.path !== section.start;
 
 /**
  * Whether a link is drawn: always in Advanced; in Basic, a link not marked advanced, or the page being viewed (or one inside it), so a

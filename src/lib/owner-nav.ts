@@ -1,37 +1,65 @@
 /**
  * The store owner's level (D147), pure data for its layout and the tests that keep it in step with the admin map, built like
  * the platform's (D144): a tab for each section with an icon, and a sidebar where the section has pages of its own. Home,
- * Stores and Work have none (Work has its own sub-navigation); Account has its pages in a sidebar. Someone who only works
- * in stores sees Stores, Work (where a store has it on) and their account, without the owner's pages.
+ * Stores and Work have none (Work has its own sub-navigation); Account has its pages in a sidebar, in groups (D884). Someone
+ * who only works in stores sees Stores, Work (where a store has it on) and their account, without the owner's pages.
  */
 
 import type { NavIconName } from "@/components/admin/nav-icons";
 
+import { advancedIn } from "./admin-view";
 import { WORK_ROOT } from "./work-paths";
 
 export const OWNER_BASE = "/admin";
 
-/** A page of the Account section, with the icon drawn beside its label (D454). */
-export type OwnerItem = { path: string; label: string; description: string; icon: NavIconName; exact?: boolean; owner?: boolean; holder?: boolean };
+/**
+ * A page of the Account section, with the icon drawn beside its label (D454). `basic` puts it in the Basic view (D884, as a store's
+ * `StoreItem.basic`); Your account, where the tab leads, is in it whatever it says (`advancedIn()`).
+ */
+export type OwnerItem = { path: string; label: string; description: string; icon: NavIconName; exact?: boolean; owner?: boolean; holder?: boolean; basic?: true };
 
-/** The Account section's pages, after `/admin`: the person's own first, then what concerns the stores they own. */
-export const ACCOUNT_ITEMS: OwnerItem[] = [
-  { path: "/account", icon: "user", label: "Your account", description: "Your name, picture, password, light or dark, and Kaizen Life.", exact: true },
-  { path: "/account/appearance", icon: "palette", label: "Appearance", description: "Light or dark and the admin's colour scheme, with every scheme shown side by side." },
-  { path: "/account/notices", icon: "bell", label: "AI manager notices", description: "What the AI manager finished or waits on while you were away, in every store.", owner: true },
-  { path: "/account/kaizen-support", icon: "life-buoy", label: "Kaizena Flow support", description: "Ask Kaizena Flow for help with your stores or your account, and read the answers." },
-  { path: "/account/domains", icon: "globe", label: "Your domains", description: "Every domain you hold, which store uses it, renewal, DNS and moving it.", holder: true },
-  { path: "/account/billing", icon: "receipt-text", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true },
-  { path: "/account/extensions", icon: "blocks", label: "Extensions", description: "The extensions your account has, their trials and prices, and adding or ending one.", owner: true },
-  { path: "/account/add", icon: "list-plus", label: "Add to your account", description: "An online store or another extension, one press each to start its free trial.", owner: true },
-  { path: "/account/usage", icon: "sparkles", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
-  { path: "/account/limits", icon: "gauge", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
-  { path: "/account/referrals", icon: "share", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
-  { path: "/account/themes", icon: "paintbrush", label: "Your themes", description: "The looks you shared as themes, their review, and how many stores use your themes." },
-  { path: "/account/connected", icon: "plug", label: "Connected apps and assistants", description: "The AI assistants and apps you let work with your stores, and Disconnect." },
-  { path: "/account/developer", icon: "braces", label: "Developer", description: "Developer mode and your apps for many stores: make one, its secrets, and how many stores installed it." },
-  { path: "/account/wordpress", icon: "blocks", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
+/**
+ * The Account section's pages, after `/admin`, in three groups (code review step 2.3, D884): the person's own first, then what they pay for
+ * and use across the stores they own, then what they build or connect.
+ */
+export const ACCOUNT_GROUPS: { heading: string; items: OwnerItem[] }[] = [
+  {
+    heading: "Personal",
+    items: [
+      { path: "/account", icon: "user", label: "Your account", description: "Your name, picture, password, light or dark, and Kaizen Life.", exact: true, basic: true },
+      { path: "/account/appearance", icon: "palette", label: "Appearance", description: "Light or dark and the admin's colour scheme, with every scheme shown side by side." },
+      { path: "/account/notices", icon: "bell", label: "AI manager notices", description: "What the AI manager finished or waits on while you were away, in every store.", owner: true },
+      { path: "/account/kaizen-support", icon: "life-buoy", label: "Kaizena Flow support", description: "Ask Kaizena Flow for help with your stores or your account, and read the answers.", basic: true },
+    ],
+  },
+  {
+    heading: "Billing and usage",
+    items: [
+      { path: "/account/domains", icon: "globe", label: "Your domains", description: "Every domain you hold, which store uses it, renewal, DNS and moving it.", holder: true, basic: true },
+      { path: "/account/billing", icon: "receipt-text", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true, basic: true },
+      { path: "/account/extensions", icon: "blocks", label: "Extensions", description: "The extensions your account has, their trials and prices, and adding or ending one.", owner: true },
+      { path: "/account/add", icon: "list-plus", label: "Add to your account", description: "An online store or another extension, one press each to start its free trial.", owner: true, basic: true },
+      { path: "/account/usage", icon: "sparkles", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
+      { path: "/account/limits", icon: "gauge", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
+      { path: "/account/referrals", icon: "share", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
+    ],
+  },
+  {
+    heading: "Apps and themes",
+    items: [
+      { path: "/account/themes", icon: "paintbrush", label: "Your themes", description: "The looks you shared as themes, their review, and how many stores use your themes." },
+      { path: "/account/connected", icon: "plug", label: "Connected apps and assistants", description: "The AI assistants and apps you let work with your stores, and Disconnect." },
+      { path: "/account/developer", icon: "braces", label: "Developer", description: "Developer mode and your apps for many stores: make one, its secrets, and how many stores installed it." },
+      { path: "/account/wordpress", icon: "blocks", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
+    ],
+  },
 ];
+
+/** The Account section's pages, in its sidebar's order. */
+export const ACCOUNT_ITEMS: OwnerItem[] = ACCOUNT_GROUPS.flatMap((g) => g.items);
+
+/** Where the Account tab leads: Your account, which the Basic view always lists. */
+const ACCOUNT_START = { start: "/account" };
 
 /**
  * Addresses inside the Account section besides its pages: Kaizen Life's sign-in return, deleting one's account (D377), changing one's email
@@ -39,7 +67,7 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
  */
 export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/delete", "/account/email"];
 
-type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName };
+type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; advanced?: true };
 /** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */
 export type OwnerWho = { owner: boolean; work: boolean; support?: boolean; domains?: boolean; books?: boolean };
 
@@ -105,7 +133,7 @@ export function ownerSectionOf(path: string): string | undefined {
   return found;
 }
 
-/** The sidebar of each section: none but Account's (for owners), which holds the pages that concern the person and their stores. */
+/** The sidebar of each section: none but Account's (for owners), which holds the pages that concern the person and their stores, in groups. */
 export function ownerAreas(who: OwnerWho): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
   return [
     { prefixes: [], exact: [OWNER_BASE], groups: [] },
@@ -115,7 +143,16 @@ export function ownerAreas(who: OwnerWho): { prefixes: string[]; exact?: string[
     { prefixes: [WORK_ROOT], groups: [] },
     {
       prefixes: accountPaths(who).map((p) => `${OWNER_BASE}${p}`),
-      groups: who.owner || who.domains ? [{ heading: "Account", items: accountItems(who).map((i) => ({ href: `${OWNER_BASE}${i.path}`, label: i.label, icon: i.icon, ...(i.exact && { exact: true as const }) })) }] : [],
+      // Its groups (D884) with the pages shown to this person; a page the Basic view leaves out is `advanced`, as a store's.
+      groups:
+        who.owner || who.domains
+          ? ACCOUNT_GROUPS.map((group) => ({
+              heading: group.heading,
+              items: group.items
+                .filter((i) => shownTo(who, i))
+                .map((i) => ({ href: `${OWNER_BASE}${i.path}`, label: i.label, icon: i.icon, ...(i.exact && { exact: true as const }), ...(advancedIn(ACCOUNT_START, i) && { advanced: true as const }) })),
+            })).filter((group) => group.items.length > 0)
+          : [],
     },
   ];
 }

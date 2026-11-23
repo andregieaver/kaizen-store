@@ -6,6 +6,8 @@ const path = vi.hoisted(() => ({ current: "/" }));
 vi.mock("next/navigation", () => ({ usePathname: () => path.current, useRouter: () => ({ push() {}, refresh() {} }) }));
 
 import type { AdminView } from "@/lib/admin-view";
+import { ownerAreas } from "@/lib/owner-nav";
+import { platformAreas } from "@/lib/platform-nav";
 
 import { AdminViewProvider, AdminViewToggle, BasicViewHint } from "./admin-view";
 import { HubCards } from "./section-hub-cards";
@@ -89,6 +91,40 @@ describe("the pages of cards in each view", () => {
   });
 });
 
+describe("the platform's and the owner's sidebars in each view (D884)", () => {
+  const settings = platformAreas().find((a) => a.section === "settings")!.groups;
+  const account = ownerAreas({ owner: true, work: true }).find((a) => a.groups.length > 0)!.groups;
+
+  it("shows the platform's Settings in six groups, its everyday pages in Basic and how many more Advanced has", () => {
+    path.current = "/admin/platform/team";
+    const basic = inView("basic", h(StoreSidebar, { groups: settings, label: "More" }));
+    for (const heading of ["Site", "Money and tax", "AI", "Apps and connections", "Privacy and law", "Running the platform"]) expect(basic).toContain(`uppercase">${heading}</h2>`);
+    expect(basic).toContain("VAT rates");
+    expect(basic).not.toContain("Duty rates");
+    expect(basic).toContain("17 more in Advanced view");
+    const advanced = inView("advanced", h(StoreSidebar, { groups: settings, label: "More" }));
+    expect(advanced).toContain("Duty rates");
+    expect(advanced).not.toContain("more in Advanced view");
+  });
+
+  it("keeps an advanced page of the platform in its sidebar while it is viewed", () => {
+    path.current = "/admin/platform/duty-rates";
+    const basic = inView("basic", h(StoreSidebar, { groups: settings, label: "More" }));
+    expect(basic).toMatch(/aria-current="page"[^>]*>.*Duty rates/);
+    expect(basic).toContain("16 more in Advanced view");
+  });
+
+  it("shows the owner's Account in its groups, its everyday pages in Basic", () => {
+    path.current = "/admin/account";
+    const basic = inView("basic", h(StoreSidebar, { groups: account, label: "More" }));
+    expect(basic).toContain(`uppercase">Personal</h2>`);
+    expect(basic).toContain("Billing");
+    expect(basic).not.toContain("Appearance");
+    expect(basic).not.toContain(`uppercase">Apps and themes</h2>`);
+    expect(basic).toContain("10 more in Advanced view");
+  });
+});
+
 describe("the switch and the note", () => {
   it("names both views and marks the one in force", () => {
     const out = inView("basic", h(AdminViewToggle));
@@ -101,7 +137,7 @@ describe("the switch and the note", () => {
     expect(inView("advanced", h(AdminViewToggle, { compact: true }))).toContain('class="sr-only xl:not-sr-only">Advanced</span>');
   });
 
-  it("is not drawn outside a store's admin, and the note only in Basic", () => {
+  it("is not drawn outside a level's provider, and the note only in Basic", () => {
     expect(inView(null, h(AdminViewToggle))).toBe("<div></div>");
     expect(inView("advanced", h(BasicViewHint, { card: true }))).toBe("");
     expect(inView("basic", h(BasicViewHint, { card: true }))).toContain("You are in Basic view");

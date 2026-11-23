@@ -495,13 +495,21 @@ export const NAV_NB: Record<string, string> = {
     "Hva plattformadministratorene og plattformen har gjort: hendelser med totrinnsinnlogging, godkjenninger og innstillinger, med hvem som gjorde det og når.",
   "Everything that makes Kaizena Flow's own site: build its pages and blog, keep its pictures, menus, header, footer and fonts.":
     "Alt som utgjør Kaizena Flows eget nettsted: lag sidene og bloggen, og ta vare på bildene, menyene, toppteksten, bunnteksten og skrifttypene.",
-  "How Kaizena Flow's site is found, what it sets, how it takes payment, its AI, emails and languages.":
-    "Hvordan Kaizena Flows nettsted blir funnet, hva det lagrer, hvordan det tar betalt, KI-en, e-postene og språkene.",
+  "Kaizena Flow's own site, money and tax, AI, apps and connections, privacy and law, and how the platform runs.":
+    "Kaizena Flows eget nettsted, penger og avgifter, KI, apper og tilkoblinger, personvern og lovkrav, og hvordan plattformen drives.",
+  // The platform's Settings in six groups (D884); Site and AI are the store's words above.
+  "Money and tax": "Penger og avgifter",
+  "Apps and connections": "Apper og tilkoblinger",
+  "Privacy and law": "Personvern og lovkrav",
+  "Running the platform": "Driften av plattformen",
   Home: "Hjem",
   Themes: "Temaer",
   Plans: "Abonnementer",
 
-  // The owner's level
+  // The owner's level; Account's three groups (D884).
+  Personal: "Personlig",
+  "Billing and usage": "Fakturering og bruk",
+  "Apps and themes": "Apper og temaer",
   "Your account": "Din konto",
   "Your name, picture, password, light or dark, and Kaizen Life.": "Navnet ditt, bildet, passordet, lyst eller mørkt, og Kaizen Life.",
   Appearance: "Utseende",

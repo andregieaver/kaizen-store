@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { BasicViewHint } from "@/components/admin/admin-view";
 import { AskCard } from "@/components/admin/home/ask-card";
 import { DotChip, HomeCard, HomeColumns, HomeHeader, Initials, LinkRow, NextUp } from "@/components/admin/home/home-parts";
 import type { AttentionItem } from "@/components/admin/overview-parts";
@@ -330,6 +331,8 @@ export default async function PlatformOverviewPage() {
           </div>
         </section>
       )}
+      {/* Home has no sidebar to say it (D454, the platform's D884): in the Basic view, where the rest of the admin is and the switch to it. */}
+      <BasicViewHint card />
     </div>
   );
 }
