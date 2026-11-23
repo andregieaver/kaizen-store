@@ -138,7 +138,7 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
               <BroadcastEditor
                 storeSlug={store.slug}
                 broadcastId={broadcast.id}
-                initial={{ title: broadcast.title, audience: broadcast.audience, segmentId: broadcast.segmentId, content: broadcast.content, test: broadcast.test }}
+                initial={{ title: broadcast.title, audience: broadcast.audience, segmentId: broadcast.segmentId, content: broadcast.content, test: broadcast.test, bestTime: broadcast.bestTime }}
                 {...choices}
                 save={saveBroadcastAction}
                 count={audienceCountAction}

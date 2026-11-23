@@ -1,6 +1,6 @@
 {
-  "id": "81dc25e4-3fe3-48ac-94ba-97e5ada9887d",
-  "prevId": "585fd75d-eca7-4cb6-a994-cb540ba83857",
+  "id": "d718ac65-37cb-4654-8a6e-1b67bfb95b26",
+  "prevId": "81dc25e4-3fe3-48ac-94ba-97e5ada9887d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -13060,6 +13060,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "send_after": {
+          "name": "send_after",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -13461,6 +13467,13 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "best_time": {
+          "name": "best_time",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_by": {
           "name": "created_by",

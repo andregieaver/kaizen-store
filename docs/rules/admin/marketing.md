@@ -144,6 +144,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - **The sunset (M2.8, `docs/flows.md`)**: a person is paused only by `pauseSunsetRuns()` (a sunset flow's run ended with no press since it
   began) and woken only by a kept press (`email-clicks.ts`); a paused person stays subscribed and is never deleted, and `suppressed()` holds
   every marketing email to them (broadcasts and automations), never a transactional one.
+- **Send time per person (M4.4)**: a broadcast with `best_time` gives each recipient `send_after` only in `startBroadcast()`'s transaction
+  (`setOwnHours()`: their own hour of most presses, else the store's, within `QUIET_DEFAULT`, `src/lib/send-time.ts`), and the claim
+  waits for it; never with a split test (`BEST_TIME_WITH_TEST`).
 - **Split tests (M2.5, D868, `docs/split-tests.md`)**: a broadcast's test is only `broadcasts.test` (version B's subject and preview, share,
   hours); readers are split only by `startBroadcast()` (refused below `audienceNeeded()`) and released only by `callDueTests()`, which calls
   with `callBroadcastTest()` (the A/B engine's `callRates()`, readers who left as the guardrail) once. A model never picks the winner.

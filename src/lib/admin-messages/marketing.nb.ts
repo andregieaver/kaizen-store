@@ -476,6 +476,11 @@ export const marketingNb: MarketingMessages = {
     subject: "Emne",
     preview: "Forhåndsvisningslinje",
     previewHint: "Vises ved siden av emnet i de fleste e-postprogrammer. Valgfritt.",
+    bestTime: {
+      label: "Send til hver leser på deres egen tid",
+      hint: "Den timen de pleier å trykke på lenker i e-postene dine, innen et døgn; lesere uten en slik time på listens beste time.",
+      notWithTest: "En splittest sender begge emnene samtidig, så dette venter til du sender ett emne.",
+    },
     test: {
       add: "Prøv et annet emne",
       title: "To emner, det beste går til resten",

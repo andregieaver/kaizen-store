@@ -17690,6 +17690,8 @@ export const broadcasts = commerce.table(
     /** When the test was called, and its figures and winner (`BroadcastTestResult`); null until then. */
     testCalledAt: timestamp("test_called_at", { withTimezone: true }),
     testResult: jsonb("test_result"),
+    /** Sent at each reader's own hour within a day of the start (email plan M4.4, `src/lib/send-time.ts`); false: to everyone at once. */
+    bestTime: boolean("best_time").notNull().default(false),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -17754,6 +17756,8 @@ export const broadcastRecipients = commerce.table(
     sentAt: timestamp("sent_at", { withTimezone: true }),
     /** Their version in a split test (M2.5, D868): `a` (the broadcast's own) or `b`; null for a broadcast without a test, or held until called. */
     version: text("version"),
+    /** Not claimed before this (M4.4, their own hour, within a day of the start); null: at once. */
+    sendAfter: timestamp("send_after", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [

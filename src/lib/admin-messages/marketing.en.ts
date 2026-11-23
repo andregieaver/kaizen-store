@@ -413,6 +413,12 @@ export const marketingEn = {
     subject: "Subject",
     preview: "Preview line",
     previewHint: "Shown beside the subject in most mail apps. Optional.",
+    /** Send time per person (email plan M4.4). */
+    bestTime: {
+      label: "Send to each reader at their own time",
+      hint: "At the hour they usually press links in your emails, within a day; readers without one at your list's best hour.",
+      notWithTest: "A split test sends both subjects at once, so this waits until you send one subject.",
+    },
     /** A broadcast's split test (email plan M2.5, D868). */
     test: {
       add: "Try another subject",

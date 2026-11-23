@@ -28,6 +28,7 @@ import {
 } from "@/lib/broadcasts";
 import { broadcastContentSchema, broadcastInput, broadcastTestSchema, parseSubjects, rewrittenContent, parseSuggestion, type BroadcastTest } from "@/lib/broadcasts-schema";
 import { audienceNeeded, callBroadcastTest, testedOf, type BroadcastTestResult, type VersionFigures } from "@/lib/broadcast-tests";
+import { bestHour, nextAtHour, PERSON_PRESSES_MIN, sendHour, STORE_PRESSES_MIN } from "@/lib/send-time";
 import { roomLeft } from "@/lib/limits";
 import { limitRefusal } from "@/lib/usage-format";
 import { LIMIT_REFUSALS } from "@/lib/usage-labels";
@@ -53,7 +54,7 @@ import { recordFlowClick } from "./flows";
 import { flowRunsPrune } from "./flows";
 import { log } from "./log";
 import { sendCredit } from "./order-credit";
-import { col, typedRows } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
 import { senderFor } from "./sending-domains";
@@ -99,6 +100,8 @@ export type Broadcast = {
   test: BroadcastTest | null;
   testCalledAt: string | null;
   testResult: BroadcastTestResult | null;
+  /** Sent at each reader's own hour within a day (M4.4). */
+  bestTime: boolean;
 };
 
 function toBroadcast(row: Row): Broadcast {
@@ -122,11 +125,12 @@ function toBroadcast(row: Row): Broadcast {
     test: row.test ? (broadcastTestSchema.safeParse(row.test).data ?? null) : null,
     testCalledAt: iso(row.test_called_at),
     testResult: row.test_result ? (row.test_result as BroadcastTestResult) : null,
+    bestTime: row.best_time === true,
   };
 }
 
 const COLUMNS = sql`b.id, b.title, b.audience, b.segment_id, g.title as segment_name, b.content, b.status, b.scheduled_for, b.schedule_problem,
-  b.audience_words, b.recipient_count, b.started_at, b.finished_at, b.created_at, b.updated_at, b.test, b.test_called_at, b.test_result`;
+  b.audience_words, b.recipient_count, b.started_at, b.finished_at, b.created_at, b.updated_at, b.test, b.test_called_at, b.test_result, b.best_time`;
 
 export async function listBroadcasts(storeId: string): Promise<Broadcast[]> {
   const rows = await db().execute<Row>(sql`
@@ -157,6 +161,9 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
   // A split test's version B (M2.5, D868) in the languages the broadcast is written in; none left, no test.
   const b = value.test ? Object.fromEntries(Object.entries(value.test.b).filter(([locale]) => locale in content)) : {};
   const test = value.test && Object.keys(b).length > 0 ? JSON.stringify({ ...value.test, b }) : null;
+  // Each reader's own hour (M4.4) and a split test do not go together: a test's versions go out at once, to be compared after its wait.
+  if (test && value.bestTime) return { ok: false, problem: BEST_TIME_WITH_TEST };
+  const bestTime = value.bestTime === true;
   const picture = await emailPictureProblem(store.id, content);
   if (picture) return { ok: false, problem: picture };
   const segmentId = value.audience === "segment" ? value.segmentId : null;
@@ -166,7 +173,7 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
     if (id) {
       const rows = await db().execute<Row>(sql`
         update commerce.broadcasts set title = ${value.title}, audience = ${value.audience}, segment_id = ${segmentId}::uuid,
-          content = ${JSON.stringify(content)}::jsonb, test = ${test}::jsonb
+          content = ${JSON.stringify(content)}::jsonb, test = ${test}::jsonb, best_time = ${bestTime}
         where store_id = ${store.id}::uuid and id = ${id}::uuid and status in ('draft', 'scheduled')
         returning id
       `);
@@ -174,8 +181,8 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
       savedId = id;
     } else {
       const [row] = await db().execute<Row>(sql`
-        insert into commerce.broadcasts (store_id, title, audience, segment_id, content, test, created_by)
-        values (${store.id}::uuid, ${value.title}, ${value.audience}, ${segmentId}::uuid, ${JSON.stringify(content)}::jsonb, ${test}::jsonb, ${accountId}::uuid)
+        insert into commerce.broadcasts (store_id, title, audience, segment_id, content, test, best_time, created_by)
+        values (${store.id}::uuid, ${value.title}, ${value.audience}, ${segmentId}::uuid, ${JSON.stringify(content)}::jsonb, ${test}::jsonb, ${bestTime}, ${accountId}::uuid)
         returning id
       `);
       savedId = String(row.id);
@@ -324,6 +331,8 @@ async function readiness(store: EmailStore, broadcast: Broadcast): Promise<strin
   return null;
 }
 
+export const BEST_TIME_WITH_TEST = "A split test sends both versions at once, so it cannot also go at each reader's own hour. Choose one.";
+
 export const TEST_NOT_WRITTEN = "Write version B's subject in every language of the email, or remove the test.";
 
 /** Why a test cannot run on this audience: each version would get fewer than the engine needs to tell them apart. */
@@ -382,6 +391,8 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
     `);
     if (inserted.length === 0) throw new Nobody();
     if (inserted.length > room) throw new OverLimit();
+    // Each reader's own hour (M4.4): set before anyone can be claimed, in this transaction.
+    if (broadcast.bestTime && !broadcast.test) await setOwnHours(tx, storeId, id, store.timeZone);
     // A split test (M2.5, D868): the tested share, in an order no one chooses (a hash of the broadcast and the reader), alternates A and B,
     // so the two versions differ by one reader at most; the rest are held for the winner.
     if (broadcast.test) {
@@ -570,6 +581,8 @@ async function claim(only: string | null, limit: number): Promise<Claimed[]> {
       from commerce.broadcast_recipients r
       join commerce.broadcasts b on b.id = r.broadcast_id and b.store_id = r.store_id and b.status = 'sending'
       where r.status = 'queued' and (r.claimed_until is null or r.claimed_until < now())
+        -- A reader's own hour (M4.4): not before it.
+        and (r.send_after is null or r.send_after <= now())
         ${only ? sql`and r.broadcast_id = ${only}::uuid` : sql``}
         -- A store whose marketing email the sending guard holds (D730): its recipients wait, queued, until it resumes.
         and not exists (select 1 from commerce.sending_pauses p where p.store_id = r.store_id and p.resumed_at is null)
@@ -764,6 +777,47 @@ async function finishDone(only: string | null): Promise<number> {
     select done.id, commerce.queue_integration_event(done.store_id, 'broadcast.sent', done.id) from done
   `);
   return rows.length;
+}
+
+// ---------------------------------------------------------------------------
+// Send time per person (email plan M4.4, `src/lib/send-time.ts`)
+// ---------------------------------------------------------------------------
+
+type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/**
+ * Gives each recipient of a send their own hour (M4.4): the hour of day they pressed links in the store's emails most over the presses
+ * kept, else the store's best hour, within the day's hours (`sendHour()`), as the next such moment in the store's clock (`nextAtHour()`).
+ * Readers with neither go at once. One update per hour, so a large list costs at most a day's 24 statements.
+ */
+async function setOwnHours(tx: Tx, storeId: string, id: string, zone: string): Promise<void> {
+  const hourOf = sql`extract(hour from c.clicked_at at time zone ${zone})::int`;
+  const hours = z.array(z.number().int()).catch([]);
+  const [people, all, recipients] = await Promise.all([
+    typedRows(
+      z.object({ subscriber_id: col.uuid, hours }),
+      sql`select c.subscriber_id, array_agg(${hourOf}) as hours from commerce.email_clicks c
+           where c.store_id = ${storeId}::uuid and c.subscriber_id in (select subscriber_id from commerce.broadcast_recipients where broadcast_id = ${id}::uuid)
+           group by c.subscriber_id`,
+      tx,
+    ),
+    typedRow(z.object({ hours }), sql`select coalesce(array_agg(${hourOf}), '{}') as hours from commerce.email_clicks c where c.store_id = ${storeId}::uuid`, tx),
+    typedRows(z.object({ subscriber_id: col.uuid }), sql`select subscriber_id from commerce.broadcast_recipients where broadcast_id = ${id}::uuid`, tx),
+  ]);
+  const storeHour = bestHour(all?.hours ?? [], STORE_PRESSES_MIN);
+  const own = new Map(people.map((r) => [r.subscriber_id, bestHour(r.hours, PERSON_PRESSES_MIN)]));
+  const byHour = new Map<number, string[]>();
+  for (const r of recipients) {
+    const hour = sendHour(own.get(r.subscriber_id) ?? null, storeHour);
+    if (hour === null) continue;
+    byHour.set(hour, [...(byHour.get(hour) ?? []), r.subscriber_id]);
+  }
+  const now = new Date();
+  for (const [hour, ids] of byHour) {
+    await tx.execute(sql`
+      update commerce.broadcast_recipients set send_after = ${nextAtHour(now, hour, zone).toISOString()}::timestamptz
+       where broadcast_id = ${id}::uuid and subscriber_id = any(${pgUuidArray(ids)}::uuid[])`);
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -116,3 +116,32 @@ describe("a broadcast's split test (D868)", () => {
     expect(left[0].n).toBe(0);
   });
 });
+
+describe("send time per person (M4.4)", () => {
+  it("gives a reader who pressed links at 19 o'clock that hour, the rest the store's best hour, and refuses it with a test", async () => {
+    const store = await storeById(storeId);
+    if (!store) throw new Error("no store");
+    const [sent] = await db().execute<Row>(sql`select id from commerce.broadcasts where store_id = ${storeId}::uuid and status = 'sent' limit 1`);
+    const [reader] = await db().execute<Row>(sql`select id from commerce.marketing_subscribers where store_id = ${storeId}::uuid order by email limit 1`);
+    for (const day of [1, 2, 3]) {
+      await db().execute(sql`
+        insert into commerce.email_clicks (store_id, subscriber_id, broadcast_id, link, clicked_at)
+        values (${storeId}::uuid, ${String(reader.id)}::uuid, ${String(sent.id)}::uuid, 'nb-NO.0',
+          (date_trunc('day', now() at time zone 'Europe/Oslo') - make_interval(days => ${day}) + interval '19 hours') at time zone 'Europe/Oslo')`);
+    }
+    const refused = await bc.saveBroadcast(store, owner, null, { title: "Both", audience: "everyone", segmentId: null, content, test, bestTime: true });
+    expect(refused).toEqual({ ok: false, problem: bc.BEST_TIME_WITH_TEST });
+    const saved = await bc.saveBroadcast(store, owner, null, { title: "Own hour", audience: "everyone", segmentId: null, content, bestTime: true });
+    if (!saved.ok) throw new Error(saved.problem);
+    expect((await bc.startBroadcast(storeId, owner, saved.id)).ok).toBe(true);
+    // This store's earlier presses (80, in the test above) give it a best hour, which every reader without one of their own gets.
+    const rows = await db().execute<Row>(sql`
+      select subscriber_id, extract(hour from send_after at time zone 'Europe/Oslo')::int as hour
+        from commerce.broadcast_recipients where broadcast_id = ${saved.id}::uuid`);
+    expect(rows.find((r) => String(r.subscriber_id) === String(reader.id))?.hour).toBe(19);
+    const others = new Set(rows.filter((r) => String(r.subscriber_id) !== String(reader.id)).map((r) => r.hour));
+    expect(others.size).toBe(1);
+    expect([...others][0]).not.toBeNull();
+  });
+});
+

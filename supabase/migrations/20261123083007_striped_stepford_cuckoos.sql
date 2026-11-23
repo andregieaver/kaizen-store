@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."broadcast_recipients" ADD COLUMN "send_after" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."broadcasts" ADD COLUMN "best_time" boolean DEFAULT false NOT NULL;

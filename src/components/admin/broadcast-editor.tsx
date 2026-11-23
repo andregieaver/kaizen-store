@@ -26,7 +26,7 @@ type Problem = { ok: false; problem: string };
 type Props = {
   storeSlug: string;
   broadcastId: string | null;
-  initial: { title: string; audience: BroadcastAudience; segmentId: string | null; content: BroadcastContent; test?: BroadcastTestDraft | null };
+  initial: { title: string; audience: BroadcastAudience; segmentId: string | null; content: BroadcastContent; test?: BroadcastTestDraft | null; bestTime?: boolean };
   /** The store's languages, main first. */
   locales: { code: string; name: string }[];
   segments: { id: string; name: string }[];
@@ -82,6 +82,7 @@ export function BroadcastEditor(props: Props) {
   const [people, setPeople] = useState<string>(w.common.counting);
   const [peopleCount, setPeopleCount] = useState<number | null>(null);
   const [test, setTest] = useState<BroadcastTestDraft | null>(props.initial.test ?? null);
+  const [bestTime, setBestTime] = useState(props.initial.bestTime === true);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, startSave] = useTransition();
@@ -110,7 +111,7 @@ export function BroadcastEditor(props: Props) {
       setProblem(null);
       // A language left empty is not kept.
       const written = Object.fromEntries(Object.entries(content).filter(([, c]) => c.subject.trim() || c.preview.trim() || c.blocks.length > 0));
-      const result = await props.save(storeSlug, props.broadcastId, { title, audience, segmentId: audience === "segment" ? segmentId : null, content: written, test });
+      const result = await props.save(storeSlug, props.broadcastId, { title, audience, segmentId: audience === "segment" ? segmentId : null, content: written, test, bestTime: bestTime && !test });
       if (result && !result.ok) setProblem(result.problem);
       else setSaved(true);
     });
@@ -183,6 +184,21 @@ export function BroadcastEditor(props: Props) {
             : undefined
         }
       />
+
+      {/* Send time per person (M4.4): each reader at the hour they usually press links, within a day; not with a split test. */}
+      <label className="flex items-start gap-2 text-body text-ink" data-best-time>
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={bestTime && !test}
+          disabled={test !== null}
+          onChange={(e) => (setSaved(false), setBestTime(e.target.checked))}
+        />
+        <span className="flex flex-col">
+          {we.bestTime.label}
+          <span className="text-caption text-muted">{test ? we.bestTime.notWithTest : we.bestTime.hint}</span>
+        </span>
+      </label>
 
       {problem && (
         <p role="alert" className="text-body text-danger-text">

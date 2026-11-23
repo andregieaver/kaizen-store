@@ -76,14 +76,14 @@ export const QUIET_EARLIEST = 8;
 export const QUIET_LATEST = 21;
 
 /** The wall clock of `zone` at `at`, as the parts a time is built from. */
-function wallClock(at: Date, zone: string): { year: number; month: number; day: number; hour: number; minute: number } {
+export function wallClock(at: Date, zone: string): { year: number; month: number; day: number; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(at);
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
   return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute") };
 }
 
 /** The moment that is `hour`:00 on a wall-clock day of `zone`. */
-function atWallHour(year: number, month: number, day: number, hour: number, zone: string): Date {
+export function atWallHour(year: number, month: number, day: number, hour: number, zone: string): Date {
   const guess = Date.UTC(year, month - 1, day, hour);
   // The zone's offset at the guess, applied, and once more where the offset changed in between (a change of summer time).
   let at = guess;
