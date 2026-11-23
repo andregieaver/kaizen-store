@@ -129,12 +129,16 @@ describe("the switch and the note", () => {
   it("names both views and marks the one in force", () => {
     const out = inView("basic", h(AdminViewToggle));
     expect(out).toContain('role="group" aria-label="How much the admin shows"');
-    expect(out).toMatch(/aria-pressed="true" title="Basic view: the pages you use every day"/);
-    expect(out).toMatch(/aria-pressed="false" title="Advanced view: every page and setting"/);
+    expect(out).toMatch(/aria-pressed="true"[^>]*>.*Basic<\/button>/);
+    expect(out).toMatch(/aria-pressed="false"[^>]*>.*Advanced<\/button>/);
+    expect(out.match(/<svg/g)).toHaveLength(2);
   });
 
-  it("keeps its names for screen readers where it is compact", () => {
-    expect(inView("advanced", h(AdminViewToggle, { compact: true }))).toContain('class="sr-only xl:not-sr-only">Advanced</span>');
+  it("keeps its names for screen readers where it is compact, and says what each view shows", () => {
+    const out = inView("advanced", h(AdminViewToggle, { compact: true }));
+    expect(out).toContain('class="sr-only xl:not-sr-only">Advanced</span>');
+    expect(out).toMatch(/aria-pressed="false" title="Basic view: the pages you use every day"/);
+    expect(out).toMatch(/aria-pressed="true" title="Advanced view: every page and setting"/);
   });
 
   it("is not drawn outside a level's provider, and the note only in Basic", () => {
