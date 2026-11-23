@@ -38,6 +38,7 @@ import { sendEmail } from "./email";
 import { advanceCursor, readEventsAfter } from "./event-log";
 import { limitFor, usageNow } from "./limits";
 import { clickRef, keepFlowClick } from "./email-clicks";
+import { emailLookOf } from "./email-look";
 import { log } from "./log";
 import { factsForEmail, marketingEmail, marketSlugFor, resolverFor } from "./marketing-email";
 import { segmentsOfAddress } from "./segment-membership";
@@ -231,6 +232,7 @@ export async function drawFlowEmails(storeId: string, id: string): Promise<{ per
         marketCode: person.market_code,
         token: person.token,
         facts: await factsForEmail(store, content, person.locale, person.market_code),
+        look: await emailLookOf(store.id),
       });
       if (drawn) emails.push({ stepId: move.step.id, subject: drawn.subject, html: drawn.html });
     }
@@ -602,6 +604,7 @@ async function moveOn(
       // Personal fields (M2.6): the reader's name and company, theirs on the list, else their account's.
       person: { name: run.person_name, company: run.company },
       facts,
+      look: await emailLookOf(store.id),
       link: tracked ? (linkKey, _target, marketSlug) => flowClickUrl(run.flow_id, move.step.id, linkKey, marketSlug, run.subscriber_id) : undefined,
     });
     const sent = email

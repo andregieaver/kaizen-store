@@ -120,7 +120,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 
 | Id | Step | Size | Status | Notes |
 |---|---|---|---|---|
-| M4.1 | Email design | M | Open | Columns, social links, saved blocks, spacing and colours from the theme, an HTML block for Lisa (sanitised), complete templates per goal |
+| M4.1 | Email design | M | Part 2026-11-23: buttons in the theme's accent and corners (`emailLook()`, black where they would be faint) | Columns, social links, saved blocks, spacing and colours from the theme, an HTML block for Lisa (sanitised), complete templates per goal |
 | M4.2 | Topics and a preference page | M | Open | The store's own topics; the subscriber picks topics and how often, or pauses for a month; consent per topic kept as a record |
 | M4.3 | A popup's own report | S | Done 2026-11-23: views per form and day, the forms list says seen and answered (D871) | Views, sign-ups and the rate per popup and form (the parity row's caveat) |
 | M4.4 | Send time per person | S | Done 2026-11-23: a broadcast at each reader's own hour within a day, else the store's best, in the day's hours (`send-time.ts`) | From their own clicks (M1.3) inside quiet hours; else the store's best hour |

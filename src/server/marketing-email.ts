@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { EmailLook } from "@/lib/email-look";
 import { personalizeContent, type PersonalFacts } from "@/lib/personal-fields";
 
 import { sql } from "drizzle-orm";
@@ -49,6 +50,8 @@ export function marketingEmail(input: {
   moved?: boolean;
   /** The reader's name and company for personal fields (M2.6); left out (a test, a preview), each field's fallback. */
   person?: PersonalFacts | null;
+  /** The store's look for buttons (M4.1, `emailLookOf()`, read once per batch); left out, the default black. */
+  look?: EmailLook;
 }): MarketingEmail | null {
   const { store, token } = input;
   const main = store.localization.locales[0];
@@ -60,8 +63,8 @@ export function marketingEmail(input: {
   const m = t(lang);
   const marketSlug = marketSlugFor(store, input.marketCode);
   const base = `${marketUrl(store.slug, marketSlug)}`;
-  const email = renderEmail(
-    buildBroadcastEmail({
+  const email = renderEmail({
+    ...buildBroadcastEmail({
       content,
       facts: input.facts,
       locale: language,
@@ -70,7 +73,8 @@ export function marketingEmail(input: {
       resolve: resolverFor(store, marketSlug),
       link: (key, target) => (input.link ? input.link(key, target, marketSlug) : target),
     }),
-  );
+    look: input.look,
+  });
   return {
     ...email,
     headers: token ? { "List-Unsubscribe": `<${siteUrl()}/api/unsubscribe/${token}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined,

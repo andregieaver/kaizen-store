@@ -1,5 +1,7 @@
 import "server-only";
 
+import { emailLookOf } from "./email-look";
+
 import { createHash, randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
@@ -182,6 +184,7 @@ export async function runReviewRequests(options: { only?: string; deadline?: num
           locale: order.locale,
           marketCode: order.marketCode,
           token: order.token,
+          look: await emailLookOf(store.id),
         });
         const outcome: SendOutcome = email
           ? await sendEmail({

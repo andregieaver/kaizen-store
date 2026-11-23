@@ -28,6 +28,7 @@ import {
 } from "@/lib/broadcasts";
 import { broadcastContentSchema, broadcastInput, broadcastTestSchema, parseSubjects, rewrittenContent, parseSuggestion, type BroadcastTest } from "@/lib/broadcasts-schema";
 import { audienceNeeded, callBroadcastTest, testedOf, type BroadcastTestResult, type VersionFigures } from "@/lib/broadcast-tests";
+import type { EmailLook } from "@/lib/email-look";
 import { bestHour, nextAtHour, PERSON_PRESSES_MIN, sendHour, STORE_PRESSES_MIN } from "@/lib/send-time";
 import { roomLeft } from "@/lib/limits";
 import { limitRefusal } from "@/lib/usage-format";
@@ -55,6 +56,7 @@ import { flowRunsPrune } from "./flows";
 import { log } from "./log";
 import { sendCredit } from "./order-credit";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { emailLookOf } from "./email-look";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
 import { senderFor } from "./sending-domains";
@@ -233,10 +235,13 @@ function emailFor(
   subscriberId: string | null = null,
   /** Their name and company for personal fields (M2.6); null for a test, which shows every fallback. */
   person: PersonalFacts | null = null,
+  /** The store's look for buttons (M4.1). */
+  look?: EmailLook,
 ): Rendered | null {
   return marketingEmail({
     moved,
     person,
+    look,
     store,
     content: broadcast.content,
     facts,
@@ -263,7 +268,7 @@ export async function sendTestBroadcast(storeId: string, to: string, id: string,
   if (!store || !broadcast) return "failed";
   if (!broadcast.content[locale]?.subject || !broadcast.content[locale]?.blocks.length) return "empty";
   const content = { [locale]: broadcast.content[locale] };
-  const email = emailFor(store, { ...broadcast, content }, locale, null, null, await factsForEmail(store, content, locale, null));
+  const email = emailFor(store, { ...broadcast, content }, locale, null, null, await factsForEmail(store, content, locale, null), false, null, null, await emailLookOf(store.id));
   if (!email) return "empty";
   return sendEmail({
     storeId,
@@ -679,7 +684,7 @@ async function sendBatch(
     if (!broadcasts.has(r.broadcastId)) broadcasts.set(r.broadcastId, await getBroadcast(r.storeId, r.broadcastId));
     const store = stores.get(r.storeId);
     const broadcast = broadcasts.get(r.broadcastId);
-    const email = store && broadcast ? emailFor(store, versionOf(broadcast, r.version), r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId), r.subscriberId, { name: r.name, company: r.company }) : null;
+    const email = store && broadcast ? emailFor(store, versionOf(broadcast, r.version), r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId), r.subscriberId, { name: r.name, company: r.company }, await emailLookOf(store.id)) : null;
     if (!store || !email) {
       await markRecipient(r, "failed", null);
       result.failed += 1;

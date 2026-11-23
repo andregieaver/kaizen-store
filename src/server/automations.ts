@@ -1,5 +1,7 @@
 import "server-only";
 
+import { emailLookOf } from "./email-look";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -262,7 +264,7 @@ export async function sendTestFollowUp(storeId: string, to: string, kind: Lifecy
 
 async function testEmail(store: EmailStore, to: string, content: BroadcastContent[string] | undefined, locale: string): Promise<SendOutcome | "empty"> {
   if (!content?.subject || content.blocks.length === 0) return "empty";
-  const email = marketingEmail({ store, content: { [locale]: content }, locale, marketCode: null, token: null, facts: await factsForEmail(store, { [locale]: content }, locale, null) });
+  const email = marketingEmail({ store, content: { [locale]: content }, locale, marketCode: null, token: null, facts: await factsForEmail(store, { [locale]: content }, locale, null), look: await emailLookOf(store.id) });
   if (!email) return "empty";
   return sendEmail({ storeId: store.id, kind: "marketing.automation.test", to, email: { ...email, subject: `[Test] ${email.subject}` }, fromName: store.name, replyTo: store.details.contactEmail ?? null });
 }
@@ -678,7 +680,7 @@ export async function runAutomations(options: { only?: string; deadline?: number
     }
     rooms.set(flow.storeId, (rooms.get(flow.storeId) ?? 0) - 1);
     const facts = await factsForEmail(store, words, due.locale, due.marketCode);
-    const email = marketingEmail({ store, content: words, locale: due.locale, marketCode: due.marketCode, token: due.token, facts });
+    const email = marketingEmail({ store, content: words, locale: due.locale, marketCode: due.marketCode, token: due.token, facts, look: await emailLookOf(store.id) });
     const outcome: SendOutcome = email
       ? await sendEmail({
           storeId: flow.storeId,

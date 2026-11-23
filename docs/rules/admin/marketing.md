@@ -144,6 +144,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - **The sunset (M2.8, `docs/flows.md`)**: a person is paused only by `pauseSunsetRuns()` (a sunset flow's run ended with no press since it
   began) and woken only by a kept press (`email-clicks.ts`); a paused person stays subscribed and is never deleted, and `suppressed()` holds
   every marketing email to them (broadcasts and automations), never a transactional one.
+- **An email's look (M4.1)**: a marketing email's buttons take only `emailLook()` (the live theme's light accent, its text colour and the
+  buttons' corners; black and white where they contrast under 4.5 to 1), read through `emailLookOf()` (kept five minutes per store), never
+  per recipient from the database.
 - **Send time per person (M4.4)**: a broadcast with `best_time` gives each recipient `send_after` only in `startBroadcast()`'s transaction
   (`setOwnHours()`: their own hour of most presses, else the store's, within `QUIET_DEFAULT`, `src/lib/send-time.ts`), and the claim
   waits for it; never with a split test (`BEST_TIME_WITH_TEST`).

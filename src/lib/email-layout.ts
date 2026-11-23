@@ -4,6 +4,8 @@
  * functions, so they can be tested without sending anything.
  */
 
+import { DEFAULT_EMAIL_LOOK, type EmailLook } from "./email-look";
+
 export type EmailBlock =
   | { type: "heading"; text: string }
   | { type: "paragraph"; text: string }
@@ -56,6 +58,8 @@ export type EmailContent = {
   lang: string;
   /** A way to stop emails like this one, at the very foot (D33). */
   unsubscribe?: { text: string; linkText: string; url: string };
+  /** The store's own look for a marketing email's buttons (M4.1, `emailLook()`); none, the default black. */
+  look?: EmailLook;
 };
 
 export type RenderedEmail = { subject: string; html: string; text: string };
@@ -71,14 +75,14 @@ export function escapeHtml(value: string): string {
 
 const FONT = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-function blockHtml(block: EmailBlock): string {
+function blockHtml(block: EmailBlock, look: EmailLook = DEFAULT_EMAIL_LOOK): string {
   switch (block.type) {
     case "heading":
       return `<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#171717">${escapeHtml(block.text)}</h1>`;
     case "paragraph":
       return `<p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#171717">${escapeHtml(block.text).replace(/\n/g, "<br>")}</p>`;
     case "button":
-      return `<p style="margin:8px 0 24px"><a href="${escapeHtml(block.url)}" style="display:inline-block;background:#171717;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:12px 22px;border-radius:999px">${escapeHtml(block.text)}</a></p>`;
+      return `<p style="margin:8px 0 24px"><a href="${escapeHtml(block.url)}" style="display:inline-block;background:${look.accent};color:${look.onAccent};text-decoration:none;font-weight:600;font-size:16px;padding:12px 22px;border-radius:${look.radius}">${escapeHtml(block.text)}</a></p>`;
     case "link":
       return `<p style="margin:0 0 16px;font-size:14px;line-height:1.5"><a href="${escapeHtml(block.url)}" style="color:#525252;text-decoration:underline">${escapeHtml(block.text)}</a></p>`;
     case "code":
@@ -160,7 +164,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
 <span style="display:none;max-height:0;overflow:hidden">${escapeHtml(content.preview)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f4"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px"><tr><td style="padding:28px 24px">
-${content.blocks.map(blockHtml).join("\n")}
+${content.blocks.map((block) => blockHtml(block, content.look)).join("\n")}
 </td></tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px"><tr><td style="padding:16px 24px;font-size:13px;line-height:1.5;color:#525252">
 ${content.footer.map(escapeHtml).join("<br>")}${
