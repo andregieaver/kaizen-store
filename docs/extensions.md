@@ -567,7 +567,11 @@ conversations to people. Contacts beyond email automation's size move up a size 
   `AWS_SES_*` set, so all mail still goes through Resend. Advisors: INFO only, nothing new on the table; no new warning.
 - E10 part two (the account's sending domain, D874): `20261123112157_late_deadpool`, applied by CI 23 November 2026 with run 1865 (run 1864
   for b75afa00 was red over the product editor's save in the signed-in tests, not this change); the old one-per-store key dropped after
-  by `20261123140443_wild_devos`. Part three (D876) needs no migration. Advisors: INFO only (the new index not yet used); no new warning.
+  by `20261123140443_wild_devos`, applied by CI with run 1868 (commit 4f507bc1). Part three (D876) needs no migration. Advisors: INFO only
+  (the new index not yet used); no new warning.
+- E11 (D880): `20261123144334_keen_bloodaxe`, `20261123144343_extension_extras_rules`, applied by CI 23 November 2026 with run 1876 (held
+  back from run 1875, red over other sessions' stylesheet budgets, ci-red #42). In production: the six prices beyond (EUR and NOK), no cap
+  set, no extra charged yet. Advisors: INFO only (RLS on, no policy; the new indexes not yet used); no new warning.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
