@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 
+import { copyMenuLook } from "./bar-look";
 import { slide, useFocusShows, useScroll } from "./header-chrome";
 
 /**
@@ -66,14 +67,8 @@ function useMenuLookForBar(ready: boolean) {
   useEffect(() => {
     const bar = ref.current;
     if (!bar) return;
-    let gone = false;
-    // The copying is its own module, fetched by the bar alone: the admin's frame draws `HidingHeader` from this file and needs none of it.
-    void import("./bar-look").then(({ copyMenuLook }) => {
-      if (!gone) setLook(copyMenuLook(bar, backgroundRef.current));
-    });
-    return () => {
-      gone = true;
-    };
+    // Copied once the page is drawn: the background a header carries for its menu is only in the document then.
+    setLook(copyMenuLook(bar, backgroundRef.current));
   }, [pathname, ready]);
   return [ref, backgroundRef, look] as const;
 }

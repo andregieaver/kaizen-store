@@ -1,6 +1,6 @@
 /**
- * Copies the slide-out menu's look onto the phone's bottom bar (`HidingBottomBar` in `store-chrome.tsx`, which loads this with
- * `import()` so the admin's frame never carries it): the header menu button's data attributes onto the bar's own Menu button, and the
+ * Copies the slide-out menu's look onto the phone's bottom bar (`HidingBottomBar` in `store-chrome.tsx`, in the same chunk: a chunk
+ * of its own would be one more late script on every store page, and the admin no longer loads that file): the header menu button's data attributes onto the bar's own Menu button, and the
  * background it carries for the menu (`DrawerLook`) behind the bar. Answers the colour set and blur the bar takes with it.
  */
 
