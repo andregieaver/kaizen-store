@@ -1,6 +1,6 @@
 {
-  "id": "585fd75d-eca7-4cb6-a994-cb540ba83857",
-  "prevId": "d8648776-186f-4717-8866-4b391ed14095",
+  "id": "81dc25e4-3fe3-48ac-94ba-97e5ada9887d",
+  "prevId": "585fd75d-eca7-4cb6-a994-cb540ba83857",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -38357,6 +38357,108 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.form_view_counts": {
+      "name": "form_view_counts",
+      "schema": "commerce",
+      "columns": {
+        "form_id": {
+          "name": "form_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "views": {
+          "name": "views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "form_view_counts_store_idx": {
+          "name": "form_view_counts_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "day",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "form_view_counts_form_id_forms_id_fk": {
+          "name": "form_view_counts_form_id_forms_id_fk",
+          "tableFrom": "form_view_counts",
+          "tableTo": "forms",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "form_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "form_view_counts_store_id_stores_id_fk": {
+          "name": "form_view_counts_store_id_stores_id_fk",
+          "tableFrom": "form_view_counts",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "form_view_counts_form_id_day_pk": {
+          "name": "form_view_counts_form_id_day_pk",
+          "columns": [
+            "form_id",
+            "day"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "form_view_counts_views": {
+          "name": "form_view_counts_views",
+          "value": "\"commerce\".\"form_view_counts\".\"views\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.forms": {
       "name": "forms",

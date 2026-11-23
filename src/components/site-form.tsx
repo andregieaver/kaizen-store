@@ -35,6 +35,8 @@ const without = (errors: FormErrors, key: string) => {
   delete next[key];
   return next;
 };
+/** A saved form's id (D705); a page's own form has a block id and is not counted. */
+const SAVED_FORM = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 /** Milliseconds since a moment (the form shown): robots send at once. */
 const msSince = (at: number) => Date.now() - at;
 type State = { kind: "idle" | "sending" } | { kind: "done"; text: string } | { kind: "failed"; text: string };
@@ -102,6 +104,23 @@ export function SiteForm({
   useEffect(() => {
     if (state.kind === "done") done.current?.focus();
   }, [state.kind]);
+
+  // A saved form seen (email plan M4.3, a popup's own report): once per page load, when half of it comes into view, which is also when its
+  // popup opens. A counter on the server, nothing about the visitor; no cookie or storage.
+  useEffect(() => {
+    const el = root.current;
+    if (preview || !el || !SAVED_FORM.test(form.id) || typeof IntersectionObserver === "undefined" || typeof navigator.sendBeacon !== "function") return;
+    const watch = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        watch.disconnect();
+        navigator.sendBeacon("/api/forms/seen", new Blob([JSON.stringify({ store, form: form.id })], { type: "text/plain" }));
+      },
+      { threshold: 0.5 },
+    );
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [form.id, preview, store]);
 
   const set = (key: string, value: string | boolean) => {
     setValues((current) => ({ ...current, [key]: value }));

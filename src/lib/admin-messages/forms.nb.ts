@@ -18,6 +18,7 @@ export const formsNb: FormsMessages = {
     archived: "Arkivert",
     lastAt: "Siste svar {when}",
     never: "Ingen svar ennå",
+    seen: "Sett {views} ganger på 30 dager, {rate} % svarte",
   },
   kinds: { message: "Melding", signup: "Påmelding til nyhetsbrev" },
   start: {

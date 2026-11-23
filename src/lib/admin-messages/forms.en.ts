@@ -21,6 +21,7 @@ export const formsEn = {
     archived: "Archived",
     lastAt: "Last response {when}",
     never: "No responses yet",
+    seen: "Seen {views} times in 30 days, {rate} % answered",
   },
   kinds: { message: "Message", signup: "Newsletter sign-up" },
   start: {

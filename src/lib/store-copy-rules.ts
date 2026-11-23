@@ -358,6 +358,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   forms: settings("A store's forms (D705) come with the pages, headers and footers that show them (`copy_remap()`), as they are but for their payment (D738 F6c: a product of the original's); their responses stay with the original."),
   form_templates: never("A store's form templates (D705 F4) stay with it: its owner's other stores, a copy among them, use those shared with `stores`."),
   form_responses: never("What visitors sent with the original's forms is personal data of the original."),
+  form_view_counts: never("How often the original's forms were seen (M4.3): its own counts, which start again at nothing."),
   form_payments: never("Which cart a response went on to pay with (D738 F6c) is the original's, with its response. A copied form takes no payment until its owner picks one of the copy's products."),
   form_submissions: never("What visitors wrote in forms is personal data of the original."),
   google_places: never("Holds an API key."),

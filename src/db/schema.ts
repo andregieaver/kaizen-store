@@ -11945,6 +11945,28 @@ export const forms = commerce.table(
 );
 
 /**
+ * How often each saved form was seen on the site, per day (email plan M4.3, a popup's own report): a counter only, nothing about who saw
+ * it, written only by `recordFormSeen()` when a form first comes into view on a page (or its popup opens). Kaizena Flow's own forms
+ * (`store_id` null) too. Not personal.
+ */
+export const formViewCounts = commerce.table(
+  "form_view_counts",
+  {
+    formId: uuid("form_id")
+      .notNull()
+      .references(() => forms.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    views: integer("views").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.formId, t.day] }),
+    index("form_view_counts_store_idx").on(t.storeId, t.day),
+    check("form_view_counts_views", sql`${t.views} >= 0`),
+  ],
+).enableRLS();
+
+/**
  * A form template (D705 F4, `docs/forms.md`, written only by `src/server/form-templates.ts`): Kaizena Flow's own (no store, always the
  * marketplace's; the seven starters are seeded by key) or a store's, saved from one of its forms. `content` is a form without what
  * belongs to one store (`FormTemplateContent`: questions, words, a sign-up's confirm and name, the months kept), its words in `lang` with

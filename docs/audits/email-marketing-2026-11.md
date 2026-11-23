@@ -122,7 +122,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 |---|---|---|---|---|
 | M4.1 | Email design | M | Open | Columns, social links, saved blocks, spacing and colours from the theme, an HTML block for Lisa (sanitised), complete templates per goal |
 | M4.2 | Topics and a preference page | M | Open | The store's own topics; the subscriber picks topics and how often, or pauses for a month; consent per topic kept as a record |
-| M4.3 | A popup's own report | S | Open | Views, sign-ups and the rate per popup and form (the parity row's caveat) |
+| M4.3 | A popup's own report | S | Done 2026-11-23: views per form and day, the forms list says seen and answered (D871) | Views, sign-ups and the rate per popup and form (the parity row's caveat) |
 | M4.4 | Send time per person | S | Open | From their own clicks (M1.3) inside quiet hours; else the store's best hour |
 | M4.5 | Owners nurtured from trial to plan (was E4.6) | M | Open | The house store's flows on the platform's events: trial started, store published, first order, trial ending, plan paid, store closed |
 

@@ -9,6 +9,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { formUses, listForms } from "@/server/forms-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { formReport } from "@/server/form-views";
 
 export const metadata: Metadata = { title: "Forms" };
 
@@ -19,7 +20,7 @@ export default async function FormsPage({ params, searchParams }: PageProps<"/ad
   const lang = adminLangOf(account.adminLocale);
   const w = FORMS_WORDS[lang];
   const { problem } = await searchParams;
-  const [forms, uses] = await Promise.all([listForms(store.id), formUses(store.id)]);
+  const [forms, uses, report] = await Promise.all([listForms(store.id), formUses(store.id), formReport(store.id)]);
   const base = `/admin/${store.slug}/forms`;
   const canEdit = memberCan(member, "website:write");
   return (
@@ -41,7 +42,7 @@ export default async function FormsPage({ params, searchParams }: PageProps<"/ad
             {problem}
           </p>
         )}
-        <FormsList lang={lang} base={base} forms={forms} uses={uses} timeZone={store.timeZone} />
+        <FormsList lang={lang} base={base} forms={forms} uses={uses} timeZone={store.timeZone} report={report} />
       </div>
     </AdminTextScope>
   );

@@ -13,7 +13,22 @@ import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } f
  * deliver or is archived says so, since it shows nothing on the site.
  */
 /** `timeZone`: the store's, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own forms: the last response on its clock (D812). */
-export function FormsList({ lang, base, forms, uses, timeZone }: { lang: AdminLang; base: string; forms: FormSummary[]; uses: FormUse[]; timeZone: string }) {
+export function FormsList({
+  lang,
+  base,
+  forms,
+  uses,
+  timeZone,
+  report,
+}: {
+  lang: AdminLang;
+  base: string;
+  forms: FormSummary[];
+  uses: FormUse[];
+  timeZone: string;
+  /** Each form's views and answers in 30 days (M4.3, a popup's own report). */
+  report?: ReadonlyMap<string, { views: number; responses: number }>;
+}) {
   const w = FORMS_WORDS[lang];
   if (forms.length === 0) {
     return (
@@ -33,9 +48,13 @@ export function FormsList({ lang, base, forms, uses, timeZone }: { lang: AdminLa
     <List label={w.title}>
       {forms.map((form) => {
         const shown = uses.filter((u) => u.formId === form.id);
+        const seen = report?.get(form.id);
         const sub = [
           w.kinds[form.kind],
           shown.length > 0 ? `${w.editor.placedOn}: ${shown.map((u) => u.title || "…").join(", ")}` : null,
+          seen && seen.views > 0
+            ? fillWords(w.list.seen, { views: seen.views.toLocaleString(), rate: Math.round((Math.min(seen.responses, seen.views) / seen.views) * 1000) / 10 })
+            : null,
         ]
           .filter(Boolean)
           .join(" · ");

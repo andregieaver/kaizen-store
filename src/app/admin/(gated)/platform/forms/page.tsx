@@ -10,6 +10,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { platformCan, requirePlatform } from "@/server/auth";
 import { formUses, listForms } from "@/server/forms-admin";
+import { formReport } from "@/server/form-views";
 
 export const metadata: Metadata = { title: "Forms" };
 
@@ -19,7 +20,7 @@ export default async function PlatformFormsPage({ searchParams }: PageProps<"/ad
   const lang = adminLangOf(account.adminLocale);
   const w = FORMS_WORDS[lang];
   const { problem } = await searchParams;
-  const [forms, uses] = await Promise.all([listForms(null), formUses(null)]);
+  const [forms, uses, report] = await Promise.all([listForms(null), formUses(null), formReport(null)]);
   const base = "/admin/platform/forms";
   return (
     <AdminTextScope texts={areaTexts(lang, { forms: FORMS_WORDS })}>
@@ -40,7 +41,7 @@ export default async function PlatformFormsPage({ searchParams }: PageProps<"/ad
             {problem}
           </p>
         )}
-        <FormsList lang={lang} base={base} forms={forms} uses={uses} timeZone={PLATFORM_TIME_ZONE} />
+        <FormsList lang={lang} base={base} forms={forms} uses={uses} timeZone={PLATFORM_TIME_ZONE} report={report} />
       </div>
     </AdminTextScope>
   );
