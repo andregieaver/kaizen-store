@@ -14,6 +14,10 @@ import { AdminRail } from "./admin-rail";
 import { ShortcutSheet } from "./shortcut-sheet";
 import { AdminTooltips } from "./tooltips";
 import { AreaLinks, AreaMenu, AreaSidebar, PhoneTabBar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
+import { NavHereProvider } from "./ui/section-eyebrow";
+
+/** A level with one sidebar for every page has no sections' addresses: its tabs are matched by their own. */
+const NO_AREAS: NavArea[] = [];
 
 /**
  * The shell every level of the admin is drawn in (D107, docs/admin-navigation.md):
@@ -28,6 +32,8 @@ import { AreaLinks, AreaMenu, AreaSidebar, PhoneTabBar, StoreSidebar, StoreTabs,
  *
  * `lang` is the account's (D312 A2): the frame's own words are the `shell` catalogue's, and the tabs, sidebars and their headings, written
  * in English in the levels' navigation, are shown through `navWord()`.
+ *
+ * Around the page it puts the same tabs and sidebars (`NavHereProvider`), so a page's header names the section the rail marks (D873).
  */
 export function AdminFrame({
   switcher,
@@ -99,6 +105,12 @@ export function AdminFrame({
   const tabs = navItemsIn(lang, tabsGiven);
   const groups = navAreasIn(lang, [{ groups: groupsGiven }])[0].groups;
   const areas = areasGiven && navAreasIn(lang, areasGiven);
+  // The page, with the level's menu for its header's eyebrow: the objects the rail and sidebars are given, so they are sent once (D873).
+  const page = (
+    <NavHereProvider tabs={tabs} places={areas ?? NO_AREAS}>
+      {children}
+    </NavHereProvider>
+  );
   const workspace = workspaceLinks ? `(?:${fullWidth})|(?:${workspaceLinks})` : fullWidth;
   const hasMenu = tabs.length > 0 || groups.length > 0 || (areas?.length ?? 0) > 0 || Boolean(menuFooter);
   const bar = wide ? "" : "max-w-7xl";
@@ -140,7 +152,7 @@ export function AdminFrame({
         />
       ) : (
         <>
-          <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: w.sections, items: tabs }] : []), ...groups]} label={w.allPages} areas={areas ?? []} />
+          <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: w.sections, items: tabs, sections: true as const }] : []), ...groups]} label={w.allPages} areas={areas ?? []} />
           {menuFooter && <div className="flex flex-col gap-4 border-t border-line px-3 pt-6 text-sm">{menuFooter}</div>}
         </>
       )}
@@ -200,7 +212,7 @@ export function AdminFrame({
               </div>
             </header>
             <AdminMain fullWidth={workspace} focus={focus?.pattern} wide={wide} railed sidebar={sidebar(true)}>
-              {children}
+              {page}
             </AdminMain>
             {/* Room under the page for the phone's bottom bar. */}
             {phoneTabs && focused(<div aria-hidden className="h-24 shrink-0 md:hidden [body:has([data-bottom-bar])_&]:hidden" />, null)}
@@ -241,7 +253,7 @@ export function AdminFrame({
         wide={wide}
         sidebar={sidebar(false)}
       >
-        {children}
+        {page}
       </AdminMain>
 
       {menu}

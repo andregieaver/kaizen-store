@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
@@ -13,6 +13,7 @@ import { ConfirmButton, splitQuestion } from "./confirm-button";
 import { fieldClass, TextArea, type FieldControl } from "./field";
 import { pageAddress } from "./pager";
 import ConfirmDialog from "./confirm-dialog";
+import { reach } from "../../../../scripts/lib/import-walk.mjs";
 import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, EmptyState, Field, fillWidth, FocusFrame, FocusHeading, InsightPanel, KpiTile, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, Select, ShareBar, TextInput, TrendChip } from "./index";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
@@ -375,6 +376,36 @@ describe("the confirm button (code review 1.12)", () => {
     const client = named.filter((name) => /^\s*["']use client["']/.test(readFileSync(join(__dirname, `${name}.tsx`), "utf8")));
     expect(client).toEqual(["link"]);
     expect(index).not.toMatch(/export \{[^}]*\bConfirmButton\b[^}]*\} from/);
+  });
+
+  it("lets the page header's eyebrow be its one client part, a leaf that reads only React, the address and the pure lookup (D873)", () => {
+    const imports = (file: string) => [...readFileSync(join(__dirname, file), "utf8").matchAll(/^import [^"]*"([^"]+)";$/gm)].map((m) => m[1]);
+    const local = imports("page-header.tsx").filter((from) => from.startsWith("./"));
+    const client = local.filter((from) => /^\s*["']use client["']/.test(readFileSync(join(__dirname, `${from.slice(2)}.tsx`), "utf8")));
+    expect(client).toEqual(["./link", "./section-eyebrow"]);
+    expect(imports("section-eyebrow.tsx").sort()).toEqual(["@/lib/nav-current", "next/navigation", "react"]);
+    expect(readFileSync(join(__dirname, "../../../lib/nav-current.ts"), "utf8")).not.toMatch(/^import /m);
+  });
+
+  it("is reached by no route outside the admin, import() followed: Next puts a client part found behind import() in the route's first scripts (D873)", () => {
+    // Before D873 the AI manager's shipping tool imported a function from the Shipping hub's view, and through it every storefront route
+    // (by import() in the server's owner tools) carried the kit's link, and would have carried the eyebrow. A shared helper lives in src/lib.
+    const src = join(process.cwd(), "src");
+    const routes: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const file = join(dir, name);
+        if (statSync(file).isDirectory()) {
+          if (file !== join(src, "app", "admin")) walk(file);
+        } else if (/^(?:layout|page|template|default|not-found|error|global-error|global-not-found)\.tsx$/.test(name)) routes.push(file);
+      }
+    };
+    walk(join(src, "app"));
+    const kit = join(__dirname, "index.ts");
+    const memo = new Map();
+    const reaching = routes.filter((file) => reach(src, file, { dynamic: true, clientLeaf: false, memo }).has(kit)).map((file) => relative(src, file));
+    expect(routes.length).toBeGreaterThan(100);
+    expect(reaching).toEqual([]);
   });
 
   it("never asks with the browser's own confirm", () => {
