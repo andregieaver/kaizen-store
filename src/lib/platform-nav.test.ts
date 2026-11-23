@@ -3,51 +3,101 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "./platform-nav";
+import { placeIndex } from "./nav-current";
+import {
+  PLATFORM_BASE,
+  PLATFORM_HOME_PATHS,
+  PLATFORM_SECTIONS,
+  platformAreas,
+  platformItemsOf,
+  platformSectionPaths,
+  platformTabs,
+} from "./platform-nav";
 
 const ROOT = "src/app/admin/(gated)/platform";
-/** Sections with no sidebar, and what is in them. */
-const WITHOUT_SIDEBAR = ["stores", "themes", "customers", "requests", "assistant"];
-/** Pages that are a section's first page, not in its sidebar. */
-const HUBS = ["website", "settings"];
+const items = PLATFORM_SECTIONS.flatMap(platformItemsOf);
+const known = new Set(ADMIN_PAGES.filter((p) => p.area === "platform").map((p) => p.path));
+const areas = platformAreas();
+/** The section a page after the platform's address is in, as the frame finds it (`placeIndex()`, D873): `home` for Home's pages. */
+const placeOf = (path: string) => areas[placeIndex(`${PLATFORM_BASE}${path}`, areas)]?.section;
 
-describe("the platform admin's sections (D144)", () => {
-  const sections = { website: WEBSITE_ITEMS, plans: PLAN_ITEMS, support: SUPPORT_ITEMS, settings: SETTINGS_ITEMS };
+/** Every folder of the platform admin that holds a page or a route, as an address after its base (`/plans/analytics/payouts/[payoutId]`). */
+function folders(dir = ROOT, rel = ""): string[] {
+  return readdirSync(dir)
+    .filter((name) => statSync(join(dir, name)).isDirectory())
+    .flatMap((name) => {
+      const here = `${rel}/${name}`;
+      const files = readdirSync(join(dir, name));
+      return [...(files.some((f) => /^(page|route)\.tsx?$/.test(f)) ? [here] : []), ...folders(join(dir, name), here)];
+    });
+}
 
+describe("the platform admin's sections (D144), one structure (D877)", () => {
   it("lists each page once, in one sidebar", () => {
-    const paths = Object.values(sections).flatMap((items) => items.map((i) => i.path));
+    const paths = items.map((i) => i.path);
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it("links only pages the admin map knows", () => {
-    const known = new Set(ADMIN_PAGES.filter((p) => p.area === "platform").map((p) => p.path));
-    for (const item of Object.values(sections).flat()) expect(known.has(item.path), item.path).toBe(true);
-    for (const hub of HUBS) expect(known.has(`/${hub}`), hub).toBe(true);
+  it("links only pages the admin map knows: every section's tab, every sidebar page and Home's", () => {
+    for (const item of items) expect(known.has(item.path), item.path).toBe(true);
+    for (const section of PLATFORM_SECTIONS) expect(known.has(section.start), section.start).toBe(true);
+    for (const page of PLATFORM_HOME_PATHS) expect(known.has(page.path), page.path).toBe(true);
   });
 
-  it("puts every platform page in exactly one section, by its top-level address", () => {
-    const inSidebar = new Set(Object.values(sections).flatMap((items) => items.map((i) => i.path.split("/")[1])));
-    const dirs = readdirSync(ROOT).filter((name) => statSync(join(ROOT, name)).isDirectory());
-    for (const dir of dirs) {
-      const homes = [inSidebar.has(dir), WITHOUT_SIDEBAR.includes(dir), HUBS.includes(dir)].filter(Boolean).length;
-      // A page's own folder is in its sidebar, or its section has no sidebar, or it is a hub; `[…]` folders belong to their parent.
-      expect(homes, `${dir} is in ${homes} sections`).toBeGreaterThanOrEqual(1);
-    }
+  it("puts every platform page folder in a section, or in Home", () => {
+    const all = folders();
+    expect(all.filter((path) => placeOf(path) === undefined)).toEqual([]);
+    expect(all.length).toBeGreaterThan(100);
+    // Every page of the admin map too, its own parameters as they are.
+    expect([...known].filter((page) => placeOf(page) === undefined)).toEqual([]);
+    // The two that were in none (code review FN9): the AI manager is Home's, as a store's is; the docs portal's folder the website's.
+    expect(PLATFORM_HOME_PATHS.map((p) => p.path)).toEqual(["/assistant"]);
+    expect(placeOf("/assistant/autopilot")).toBe("home");
+    expect(platformTabs()[0].also).toEqual(["/admin/platform/assistant"]);
+    expect(placeOf("/docs")).toBe("website");
+    // A page with no item of its own is in the section whose address it is under.
+    expect([placeOf("/docs/guide"), placeOf("/themes/submissions"), placeOf("/chat/questions"), placeOf("/ai/dream/[runId]")]).toEqual(["website", "themes", "support", "settings"]);
   });
 
-  it("puts Themes in the rail beneath Website (D285), each a page the admin map knows", () => {
-    const tabs = platformTabs().map((tab) => tab.label);
-    expect(tabs.indexOf("Themes")).toBe(tabs.indexOf("Website") + 1);
-    const known = new Set(ADMIN_PAGES.filter((p) => p.area === "platform").map((p) => `/admin/platform${p.path}`));
-    for (const tab of platformTabs()) if (tab.href !== "/admin/platform") expect(known.has(tab.href), tab.href).toBe(true);
+  it("draws a tab for each section in its order after Home, a page of cards marked on itself alone, and Settings at the rail's foot", () => {
+    const tabs = platformTabs({ requests: 2, support: 3 });
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Website", "Themes", "Stores", "Customers", "Plans", "Access requests", "Support", "Settings"]);
+    expect(tabs.slice(1).map((t) => [t.href, t.section])).toEqual(PLATFORM_SECTIONS.map((s) => [`${PLATFORM_BASE}${s.start}`, s.key]));
+    expect(tabs.filter((t) => t.exact).map((t) => t.label)).toEqual(["Home", "Website", "Settings"]);
+    expect(tabs.filter((t) => t.badge).map((t) => [t.label, t.badge])).toEqual([["Access requests", 2], ["Support", 3]]);
+    expect(tabs.filter((t) => t.foot).map((t) => t.label)).toEqual(["Settings"]);
+    // Themes beneath Website (D285); every tab leads to a page the admin map knows.
+    expect(tabs.findIndex((t) => t.label === "Themes")).toBe(tabs.findIndex((t) => t.label === "Website") + 1);
+    for (const tab of tabs) if (tab.href !== PLATFORM_BASE) expect(known.has(tab.href.slice(PLATFORM_BASE.length)), tab.href).toBe(true);
   });
 
   it("names the pages of a sidebar under the platform's address, with their icons (D454), and marks only exact ones exact", () => {
-    const links = withBase(PLAN_ITEMS);
-    expect(links[0]).toEqual({ href: "/admin/platform/plans", label: "Editor", icon: "credit-card", exact: true });
-    expect(links[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits", icon: "gauge" });
-    expect(links[2]).toEqual({ href: "/admin/platform/plans/features", label: "Plan features", icon: "toggle" });
-    expect(sectionPrefixes("/website", WEBSITE_ITEMS)[0]).toBe("/admin/platform/website");
-    expect(sectionPrefixes(null, PLAN_ITEMS)[0]).toBe("/admin/platform/plans");
+    const plans = areas.find((a) => a.section === "plans")!;
+    expect(plans.groups[0].items[0]).toEqual({ href: "/admin/platform/plans", label: "Editor", icon: "credit-card", exact: true });
+    expect(plans.groups[0].items[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits", icon: "gauge" });
+    expect(plans.groups[0].items[2]).toEqual({ href: "/admin/platform/plans/features", label: "Plan features", icon: "toggle" });
+    // A page of cards is its section's alone (`exact`); its pages and the docs portal's folder are inside the section.
+    const website = areas.find((a) => a.section === "website")!;
+    expect(website.exact).toEqual(["/admin/platform/website"]);
+    expect(website.prefixes).toEqual(expect.arrayContaining(["/admin/platform/docs", "/admin/platform/pages", "/admin/platform/docs/guide"]));
+    expect(website.prefixes).not.toContain("/admin/platform/website");
+    // A section with no sidebar holds its own address; Home its own and the AI manager.
+    expect(areas.find((a) => a.section === "themes")).toEqual({ section: "themes", prefixes: ["/admin/platform/themes"], groups: [] });
+    expect(areas[0]).toEqual({ section: "home", prefixes: ["/admin/platform/assistant"], exact: ["/admin/platform"], groups: [] });
+    // Each section's sidebar is its groups, under their headings; its addresses are its own paths.
+    for (const section of PLATFORM_SECTIONS) {
+      const area = areas.find((a) => a.section === section.key)!;
+      expect(area.groups.map((g) => g.heading), section.key).toEqual(section.groups.map((g) => g.heading));
+      expect([...(area.exact ?? []), ...area.prefixes].sort(), section.key).toEqual(platformSectionPaths(section).map((p) => `${PLATFORM_BASE}${p}`).sort());
+    }
+  });
+
+  it("gives a page of cards its intro, and a section whose tab opens a page of its sidebar that page's area", () => {
+    for (const section of PLATFORM_SECTIONS) {
+      expect(Boolean(section.intro), section.key).toBe(section.hub);
+      const first = platformItemsOf(section).find((i) => i.path === section.start);
+      if (first) expect(first.area, section.key).toBe(section.area);
+      else expect(section.hub || section.groups.length === 0, `${section.key} opens on a page of its own`).toBe(true);
+    }
   });
 });
