@@ -12,9 +12,11 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`LevelSwitcher`, `AdminAccountMenu`), the level's daily sections as `tabs`,
   the rest as sidebar `groups`. A level's layout supplies only those; a new
   page goes in exactly one level's tabs or groups and in `ADMIN_PAGES`. The
-  platform's sections (D144) and their sidebars are `src/lib/platform-nav.ts` (a new platform page goes in one section's items, or
-  in a section with no sidebar, and in `ADMIN_PAGES`; a test fails otherwise) and the shell takes them as `areas` (`NavArea`) with
-  `wide`. The store (D147) and the owner's level are built the same way: `src/lib/store-nav.ts` (Orders, Products, Customers,
+  platform's sections (D144) are one structure, `PLATFORM_SECTIONS` in `src/lib/platform-nav.ts` (D877, shaped as `STORE_SECTIONS`:
+  key, label, icon, start, hub, intro, area, groups of items each naming its area); its tabs with their counts, sidebars, pages of cards
+  and permission areas are derived from it (`platformNav()`, `platformNavAreas()`), so the layout lists none by hand. A new platform page
+  goes in one section's items, under an item's or a section's address, or in Home's (`PLATFORM_HOME_PATHS`), and in `ADMIN_PAGES`;
+  `platform-nav.test.ts` fails on a page folder in none. The shell takes them as `areas` (`NavArea`) with `wide`. The store (D147) and the owner's level are built the same way: `src/lib/store-nav.ts` (Orders, Products, Customers,
   Marketing, Website, Bookings, Settings; a new store page goes in one section's items, or Home's, and in `ADMIN_PAGES`, whose
   `group` follows the section; Website and Settings open on pages of cards) and `src/lib/owner-nav.ts` (Home, Stores, Work,
   Account); pages use the whole width, so no `max-w-*xl` on a page's root. The owner's overview is `controlCenter()`
@@ -41,7 +43,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - Each list of the menu (the tabs and rail, a section's sidebar, the phone menu's sections and, apart, its pages) marks one link, the one
   whose address the page is deepest inside (`currentIndex()`, the rule of `sectionOf()`); a page shows the sidebar of the section it is
   deepest inside (`placeIndex()`). No special case per page: `store-admin-nav.test.ts` walks every address of the three levels (menus and
-  `ADMIN_PAGES`) and fails on a second mark. The platform's sidebars are `platformAreas()`, beside its tabs.
+  `ADMIN_PAGES`) and fails on a second mark. The platform's tabs and sidebars are `platformTabs()` and `platformAreas()`, from `PLATFORM_SECTIONS`.
 - A menu's group heading is `text-eyebrow text-muted uppercase`; a count beside a link is read out in the shell's words
   (`frame.waiting`), never fixed English.
 - The level switcher keeps the page when switching store: its link asks the other store's Home (`?keep=`, `switchHref()`), which opens
@@ -454,9 +456,10 @@ under *What the router fetches ahead*.
   for the folder it sits in, never read from the request's address (a server action can be posted to any page's); a server module asks
   `platformCan(account, area, access)`, never `account.platformAdmin` for something a role may do; `platform-access.scan.test.ts` holds the
   areas of `requirePlatform()` and `platformCan()` to their folders and keeps `requirePlatformReader()` out of anything that changes something.
-  A folder's area is its page's own (D851): `platformAreaOfPath()` reads the `area` each sidebar item names (`SectionItem`) and
-  `PLATFORM_PAGE_AREAS` for the pages outside a sidebar (the hubs, Themes, Stores, Customers, Access requests, the docs folder), by the
-  longest address, never the tab or list a page sits in; Home is `home`, an address in none the owners' (`settings`). Everyone on the team is held at
+  A folder's area is its page's own (D851): `platformAreaOfPath()` reads the `area` each sidebar item names (`PlatformItem`) and, for a
+  section's own page (a hub, or Themes, Stores, Customers and Access requests) and its `also` (the docs folder), the section's `area`
+  (`platformNavAreas()`, D877), by the longest address, never the tab or list a page sits in; Home is `home`, the AI manager (Home's)
+  and an address in none the owners' (`settings`). Everyone on the team is held at
   two-step sign-in. Only an owner changes the team (`addPlatformAdmin()`, `setPlatformRole()`, `removePlatformAdmin()`), never their own
   place, and the platform keeps an owner; a member is an admin of Kaizena Flow's own store in the store role of their work
   (`HOUSE_ROLE_TEMPLATE`), set in the same transaction, never its owner (`store_members_house()`).
