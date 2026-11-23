@@ -11,7 +11,7 @@ import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { platformRoleOf } from "@/lib/platform-access";
-import { PLATFORM_BASE, platformAreas, platformTabs } from "@/lib/platform-nav";
+import { PLATFORM_BASE, platformNav } from "@/lib/platform-nav";
 import { areaTexts } from "@/lib/admin-area";
 import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
 import { SHELL_WORDS } from "@/lib/admin-words/shell";
@@ -41,9 +41,6 @@ const INBOX = String.raw`^/admin/platform/support$`;
 
 const base = PLATFORM_BASE;
 
-/** The platform's sections (D144) and their sidebars, by address (`platformAreas()`, beside the tabs in `platform-nav.ts`). */
-const areas: NavArea[] = platformAreas();
-
 /**
  * Kaizen's own admin (D107), in the same shell as a store's: the level
  * switcher and account menu in the header, the operator's sections as tabs
@@ -56,7 +53,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
   noteFirstRequest("platform_admin", after);
   const role = platformRoleOf(account) ?? "read_only";
   const { waiting, supportWaiting, supportRequests } = await platformShellReads();
-  const tabs: NavItem[] = platformTabs({ requests: waiting, support: supportWaiting + supportRequests });
+  // The sections (D144), their sidebars and the counts on their tabs, all from `PLATFORM_SECTIONS` (D877), as a store's from `storeNav()`.
+  const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = platformNav({ requests: waiting, support: supportWaiting + supportRequests });
   const lang = adminLangOf(account.adminLocale);
   const w = SHELL_WORDS[lang];
   return (

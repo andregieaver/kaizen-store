@@ -5,7 +5,7 @@ import { SettingsHub } from "@/components/admin/settings-hub";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
-import { PLATFORM_BASE, PLATFORM_HUB_INTROS, PLATFORM_HUB_TITLES, SETTINGS_ITEMS } from "@/lib/platform-nav";
+import { PLATFORM_BASE, platformItemsOf, platformSection } from "@/lib/platform-nav";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { requirePlatformReader } from "@/server/auth";
 
@@ -21,7 +21,9 @@ export default async function PlatformSettingsPage() {
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const t = HOME_WORDS[lang].settings;
-  const cards = SETTINGS_ITEMS.map((item) => ({
+  // The section's own words and pages (`PLATFORM_SECTIONS`, D877): the cards are its sidebar's pages, in its order.
+  const section = platformSection("settings");
+  const cards = platformItemsOf(section).map((item) => ({
     href: `${PLATFORM_BASE}${item.path}`,
     label: navWord(lang, item.label),
     icon: item.icon,
@@ -30,8 +32,8 @@ export default async function PlatformSettingsPage() {
   }));
   return (
     <SettingsHub
-      title={navWord(lang, PLATFORM_HUB_TITLES.settings)}
-      lead={navWord(lang, PLATFORM_HUB_INTROS.settings)}
+      title={navWord(lang, section.label)}
+      lead={navWord(lang, section.intro ?? "")}
       progress={null}
       groups={[{ heading: "", items: cards }]}
       rest={[]}

@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => path.current }));
 import { ADMIN_PAGES, type AdminArea } from "@/lib/admin-map";
 import { SHELL_WORDS } from "@/lib/admin-words/shell";
 import { ACCOUNT_EXTRA, ACCOUNT_ITEMS, OWNER_BASE, ownerAreas, ownerTabs } from "@/lib/owner-nav";
-import { PLATFORM_BASE, PLATFORM_PAGE_AREAS, PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformAreas, platformTabs } from "@/lib/platform-nav";
+import { PLATFORM_BASE, platformAreas, platformNavAreas, platformTabs } from "@/lib/platform-nav";
 import { FEATURE_IDS } from "@/lib/store-features";
 import { HOME_PATHS, STORE_SECTIONS, navAreas, sectionOf, storeNav } from "@/lib/store-nav";
 import { WORK_ROOT } from "@/lib/work-paths";
@@ -125,7 +125,6 @@ describe("one link marked in each list (D873)", () => {
 
   const storeBase = "/admin/s";
   const store = storeNav(storeBase, [...FEATURE_IDS]);
-  const platformItems = [...WEBSITE_ITEMS, ...PLAN_ITEMS, ...SUPPORT_ITEMS, ...SETTINGS_ITEMS];
   const who = { owner: true, work: true, support: true, domains: true, books: true };
   const levels: { name: string; tabs: NavItem[]; areas: NavArea[]; addresses: string[] }[] = [
     {
@@ -138,7 +137,7 @@ describe("one link marked in each list (D873)", () => {
       name: "the platform",
       tabs: platformTabs({ requests: 2, support: 1 }),
       areas: platformAreas(),
-      addresses: ["", ...platformItems.map((i) => i.path), ...PLATFORM_PAGE_AREAS.map((a) => a.path), ...pagesOf("platform")].map((p) => `${PLATFORM_BASE}${p}`),
+      addresses: ["", ...platformNavAreas().map((a) => a.path), ...pagesOf("platform")].map((p) => `${PLATFORM_BASE}${p}`),
     },
     {
       name: "the owner's level",

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { canPlatform, HOUSE_ROLE_TEMPLATE, MEMBER_ROLES, PLATFORM_AREAS, PLATFORM_ROLES, platformAreaIn, platformAreaOfPath, platformNavAreas, platformRoleOf, ROLE_WRITES } from "./platform-access";
+import { canPlatform, HOUSE_ROLE_TEMPLATE, MEMBER_ROLES, PLATFORM_AREAS, PLATFORM_ROLES, platformAreaIn, platformAreaOfPath, platformRoleOf, ROLE_WRITES } from "./platform-access";
 import { ROLE_TEMPLATES } from "./permissions";
-import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
+import { PLATFORM_SECTIONS, platformItemsOf, platformNavAreas } from "./platform-nav";
 
 describe("roles on the platform's team (D510)", () => {
   it("reads a role from an account: an owner by platform_admin, else the role kept, else none", () => {
@@ -53,14 +53,15 @@ describe("roles on the platform's team (D510)", () => {
   });
 
   it("reads the area a page's entry names (D851): a sidebar page given another area takes its own pages along, and nothing else", () => {
-    const lists = [WEBSITE_ITEMS, PLAN_ITEMS, SUPPORT_ITEMS, SETTINGS_ITEMS].map((items) => items.map((i) => (i.path === "/discounts" ? { ...i, area: "website" as const } : i)));
-    const areas = platformNavAreas(lists);
+    const sections = PLATFORM_SECTIONS.map((s) => ({ ...s, groups: s.groups.map((g) => ({ ...g, items: g.items.map((i) => (i.path === "/discounts" ? { ...i, area: "website" as const } : i)) })) }));
+    const areas = platformNavAreas(sections);
     expect(platformAreaIn(areas, "/discounts")).toBe("website");
     expect(platformAreaIn(areas, "/discounts/1")).toBe("website");
     expect(platformAreaIn(areas, "/referrals")).toBe("plans");
     expect(platformAreaOfPath("/discounts")).toBe("plans");
-    // Every sidebar page names an area, and the pages outside a sidebar name theirs (Themes the website's, Access requests the stores').
-    for (const item of lists.flat()) expect(PLATFORM_AREAS, item.path).toContain(item.area);
+    // Every sidebar page names an area, and every section its own page's (Themes the website's, Access requests the stores').
+    for (const item of sections.flatMap(platformItemsOf)) expect(PLATFORM_AREAS, item.path).toContain(item.area);
+    for (const section of sections) expect(PLATFORM_AREAS, section.key).toContain(section.area);
     expect(platformAreaOfPath("/themes")).toBe("website");
     expect(platformAreaOfPath("/requests/abc")).toBe("stores");
   });
