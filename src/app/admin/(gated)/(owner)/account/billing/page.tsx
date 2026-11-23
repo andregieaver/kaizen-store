@@ -20,13 +20,16 @@ import { listPlans, listStoreBilling, type StoreBilling } from "@/server/billing
 import { ownedAccount } from "@/server/privacy-officers";
 import { Card, CARD_CLASS, EmptyState, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
 import { BILLING_WORDS } from "@/lib/admin-words/billing";
 import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 
-import { accountPortalAction, cancelAccountPlanAction, chooseAccountPlanAction } from "../actions";
+import { accountPortalAction, cancelAccountPlanAction, chooseAccountPlanAction, saveExtrasCapAction } from "../actions";
+import { ExtrasCard } from "@/components/admin/extras-card";
+import { SEND_ALLOWANCE_WORDS } from "@/lib/admin-words/send-allowance";
+import { accountExtrasNow } from "@/server/extras";
 
 export const metadata: Metadata = { title: "Billing" };
 
@@ -118,11 +121,13 @@ async function AccountPlan({
   per: (price: NonNullable<StoreBilling["price"]>) => string;
   lang: AdminLang;
 }) {
-  const [plans, currency, extensions, invoices] = await Promise.all([
+  const [plans, currency, extensions, invoices, extras] = await Promise.all([
     listPlans(),
     accountCurrency(billing.organisationId),
     boughtExtensions(billing.organisationId),
     listAccountInvoices(billing.organisationId, 5),
+    // Use beyond what the account's sizes include, this period (D880).
+    accountExtrasNow(billing.organisationId),
   ]);
   const running = ["trialing", "active", "past_due"].includes(billing.status ?? "");
   const offered = plans.filter((plan) => plan.active).flatMap((plan) => {
@@ -173,6 +178,16 @@ async function AccountPlan({
           </div>
         </div>
       </Card>
+      {extras && (
+        <ExtrasCard
+          lines={extras.lines}
+          currency={extras.currency}
+          capMinor={extras.capMinor}
+          words={SEND_ALLOWANCE_WORDS[lang].extras}
+          locale={ADMIN_LANG_FACTS[lang].locale}
+          saveCap={saveExtrasCapAction}
+        />
+      )}
       {offered.length > 0 && (
         <Section id="account-plans-heading" title={words.plans}>
           <p className="text-sm text-muted">{words.plansNote}</p>

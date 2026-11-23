@@ -519,6 +519,12 @@ and order emails keep sending; use beyond the support desk's and the people allo
    contacts times 10 emails each a month is the account's `marketing_emails_month`); told at 80 %, and at the limit new broadcasts wait
    with one press to move up a size (`moveUpExtension()`), while flows and order emails keep sending.
 
+**E11 as built (23 November 2026, D880).** Use beyond the allowances is billed as used: the support desk's AI-handled conversations and
+Work's and Deals' people, counted across the account's stores, go as one line each on the account's renewal invoice while Stripe holds it
+as a draft (invoice items rather than usage meters, the owner's choice). The platform admin sets the prices beyond on the Extensions page;
+the account's owner sees the period so far on Account → Billing and may set a monthly cap, at which the support desk's AI hands new
+conversations to people. Contacts beyond email automation's size move up a size instead (E10 part three).
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.

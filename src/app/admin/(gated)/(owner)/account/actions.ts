@@ -21,7 +21,7 @@ import { endAccountGrants } from "@/server/oauth";
 import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepResult } from "@/server/two-step";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
 import { ownedAccount, setOfficer } from "@/server/privacy-officers";
-import { accountPortalUrl, cancelAccountPlan, chooseAccountPlan, moveUpExtension, setAccountExtension } from "@/server/account-billing";
+import { accountCurrency, accountPortalUrl, cancelAccountPlan, chooseAccountPlan, moveUpExtension, setAccountExtension } from "@/server/account-billing";
 import { startExtensionTrial } from "@/server/extensions";
 import { GRACE_DAYS } from "@/lib/account-billing";
 import { fillWords } from "@/lib/admin-fill";
@@ -269,6 +269,30 @@ export async function moveUpEmailAction(): Promise<FormState> {
   refresh();
   const contacts = result.contacts?.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
   return { status: "ok", messages: [contacts ? fillWords(w.movedUp, { contacts }) : w.moveUpAny] };
+}
+
+/**
+ * The account owner's monthly cap on use beyond what's included (D880): an amount in the account's currency, or empty for none. Its words
+ * and code load when it runs.
+ */
+export async function saveExtrasCapAction(_state: FormState, form: FormData): Promise<FormState> {
+  const account = await requireAccount();
+  const [{ SEND_ALLOWANCE_WORDS }, { saveExtrasCap }, { minorUnitDigits }] = await Promise.all([
+    import("@/lib/admin-words/send-allowance"),
+    import("@/server/extras-billing"),
+    import("@/lib/money"),
+  ]);
+  const w = SEND_ALLOWANCE_WORDS[adminLangOf(account.adminLocale)].extras;
+  const owned = await ownedAccount(account.id);
+  const currency = owned ? await accountCurrency(owned.id) : null;
+  if (!owned || !currency) return { status: "error", messages: [w.badCap] };
+  const text = String(form.get("cap") ?? "").replace(/\s/g, "").replace(",", ".");
+  if (text !== "" && !/^\d+(\.\d{1,3})?$/.test(text)) return { status: "error", messages: [w.badCap], fields: { cap: w.badCap } };
+  const capMinor = text === "" ? null : Math.round(Number(text) * 10 ** minorUnitDigits(currency));
+  const result = await saveExtrasCap(account, owned.id, capMinor);
+  if (!result.ok) return { status: "error", messages: [w.badCap] };
+  refresh();
+  return { status: "ok", messages: [w.saved] };
 }
 
 // ---------------------------------------------------------------------------

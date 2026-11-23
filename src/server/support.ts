@@ -38,6 +38,7 @@ import type { ConversationRef, VisitorAction, VisitorMessage, VisitorMessageData
 
 import { avatarPictureUrl } from "@/lib/avatar";
 
+import { aiRoomFor } from "./extras";
 import type { Desk } from "./support-desk";
 import { owned } from "./owned";
 
@@ -219,10 +220,12 @@ export async function openConversation(
   input: { mode: SupportMode; locale: string; market: string | null; pagePath: string | null; customerId: string | null },
 ): Promise<{ conversation: Conversation; token: string }> {
   const token = randomBytes(24).toString("base64url");
+  // An account at its cap for use beyond its allowances (D880): its AI takes no new conversation, a person does.
+  const people = input.mode === "people" || (desk.storeId !== null && !(await aiRoomFor(desk.storeId)));
   const [row] = await guarded(() =>
     db().execute<Row>(sql`
       insert into commerce.support_conversations (store_id, source, handler, token_hash, customer_id, market, locale, page_path)
-      values (${desk.storeId}::uuid, 'site', ${input.mode === "people" ? "queue" : "ai"}, ${sha256(token)}, ${desk.storeId ? input.customerId : null}::uuid,
+      values (${desk.storeId}::uuid, 'site', ${people ? "queue" : "ai"}, ${sha256(token)}, ${desk.storeId ? input.customerId : null}::uuid,
         ${input.market}, ${input.locale.slice(0, 16)}, ${input.pagePath?.slice(0, 300) ?? null})
       returning ${CONVERSATION_COLUMNS}
     `),
