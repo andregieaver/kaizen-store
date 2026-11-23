@@ -1,7 +1,7 @@
 import { AdminLink } from "./ui/link";
 import type { ReactNode } from "react";
 
-import { HidingHeader, MobileMenu } from "@/components/store-chrome";
+import { HidingHeader, MobileMenu } from "@/components/header-chrome";
 
 import type { AdminLang } from "@/lib/admin-lang";
 import type { AdminLayoutId } from "@/lib/admin-layouts";
