@@ -188,12 +188,21 @@ export async function saveAsTemplateAction(storeSlug: string, id: string, form: 
   refresh();
 }
 
-/** Saves one block of an email by name (M4.1), answering with the store's saved blocks as they now are. */
-export async function saveBlockAction(storeSlug: string, name: string, block: unknown): Promise<Problem | { ok: true; saved: SavedBlock[] }> {
+/**
+ * Saves one block of an email by name, or deletes a saved one (M4.1, D875), answering with the store's saved blocks as they now are; one
+ * action for both, so saved blocks add one server reference.
+ */
+export async function savedBlockAction(
+  storeSlug: string,
+  change: { op: "save"; name: string; block: unknown } | { op: "delete"; id: string },
+): Promise<Problem | { ok: true; saved: SavedBlock[] }> {
   const who = await writer(storeSlug);
   if (!who) return noAccess();
-  const result = await saveBlock(who.store.id, who.member.account.id, name, block);
-  if (!result.ok) return { ok: false, problem: MARKETING_WORDS[adminLangOf(who.member.account.adminLocale)].email.keptBlockProblems[result.problem] };
+  if (change.op === "delete") await deleteSavedBlock(who.store.id, who.member.account.id, String(change.id));
+  else {
+    const result = await saveBlock(who.store.id, who.member.account.id, String(change.name ?? ""), change.block);
+    if (!result.ok) return { ok: false, problem: MARKETING_WORDS[adminLangOf(who.member.account.adminLocale)].email.keptBlockProblems[result.problem] };
+  }
   return { ok: true, saved: await listSavedBlocks(who.store.id) };
 }
 
@@ -202,14 +211,6 @@ export async function cleanHtmlAction(storeSlug: string, html: string): Promise<
   const who = await writer(storeSlug);
   if (!who) return noAccess();
   return { ok: true, html: cleanEmailHtml(String(html).slice(0, HTML_BLOCK_MAX)).html };
-}
-
-/** Deletes one of the store's saved blocks (M4.1). */
-export async function deleteSavedBlockAction(storeSlug: string, id: string): Promise<Problem | { ok: true; saved: SavedBlock[] }> {
-  const who = await writer(storeSlug);
-  if (!who) return noAccess();
-  await deleteSavedBlock(who.store.id, who.member.account.id, id);
-  return { ok: true, saved: await listSavedBlocks(who.store.id) };
 }
 
 /** Deletes one of the store's own templates (D368). */

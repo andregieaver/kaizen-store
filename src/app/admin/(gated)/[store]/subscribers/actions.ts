@@ -7,6 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { unsubscribeByStaff } from "@/server/marketing-subscribers";
 import { archiveTopic, moveTopic, saveTopic } from "@/server/marketing-topics";
+import type { TopicChange } from "@/components/admin/topics-card";
 import { requirePermission } from "@/server/permissions";
 
 /** Staff unsubscribing a person who asked by other means (D295): `marketing:write`, audited with the id only. */
@@ -25,27 +26,21 @@ async function topicWriter(storeSlug: string) {
   return { member, w: MARKETING_WORDS[adminLangOf(member.account.adminLocale)].topics };
 }
 
-/** Adds a topic (`id` null) or renames one (email plan M4.2, D882). */
-export async function saveTopicAction(storeSlug: string, id: string | null, input: unknown): Promise<Problem | { ok: true }> {
+/**
+ * Every change to the store's topics (email plan M4.2, D882) in one action, so the topics add one server reference: a save (`id` null adds
+ * one), an archive or bringing back, a move up or down.
+ */
+export async function topicAction(storeSlug: string, change: TopicChange): Promise<Problem | { ok: true }> {
   const { member, w } = await topicWriter(storeSlug);
-  const result = await saveTopic(member.store.id, member.account.id, id, input);
-  if (result.ok) {
-    refresh();
-    return { ok: true };
+  if (change.op === "archive") {
+    await archiveTopic(member.store.id, member.account.id, String(change.id), change.archived === true);
+  } else if (change.op === "move") {
+    await moveTopic(member.store.id, member.account.id, String(change.id), change.by < 0 ? -1 : 1);
+  } else {
+    const result = await saveTopic(member.store.id, member.account.id, change.id ?? null, change.input);
+    if (!result.ok)
+      return { ok: false, problem: result.problem === "full" ? w.full : result.problem === "input" ? (result.message === "Give the topic a name." || !result.message ? w.needsName : result.message) : w.gone };
   }
-  return { ok: false, problem: result.problem === "full" ? w.full : result.problem === "input" && result.message === "Give the topic a name." ? w.needsName : result.problem === "input" ? (result.message ?? w.needsName) : w.gone };
-}
-
-/** Archives a topic or brings it back. */
-export async function archiveTopicAction(storeSlug: string, id: string, archived: boolean): Promise<void> {
-  const { member } = await topicWriter(storeSlug);
-  await archiveTopic(member.store.id, member.account.id, id, archived);
   refresh();
-}
-
-/** Moves a topic one place up or down. */
-export async function moveTopicAction(storeSlug: string, id: string, by: number): Promise<void> {
-  const { member } = await topicWriter(storeSlug);
-  await moveTopic(member.store.id, member.account.id, id, by < 0 ? -1 : 1);
-  refresh();
+  return { ok: true };
 }

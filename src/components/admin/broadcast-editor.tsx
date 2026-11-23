@@ -47,8 +47,7 @@ type Props = {
   upload: ((storeSlug: string, data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>) | null;
   /** Saved blocks (M4.1): the store's list (from `broadcastChoices()`) and the actions that keep and delete one. */
   savedBlocks?: SavedBlock[];
-  saveBlock?: SavedBlocksProps["save"];
-  deleteBlock?: SavedBlocksProps["remove"];
+  savedBlock?: SavedBlocksProps["act"];
   cleanHtml?: CleanHtml;
   /** The store's products and running campaigns to put in (D352); none, the finder is not offered. */
   facts?: FindFacts;
@@ -200,7 +199,7 @@ export function BroadcastEditor(props: Props) {
         facts={props.facts}
         segmentId={audience === "segment" ? segmentId : null}
         cleanHtml={props.cleanHtml}
-        saved={props.saveBlock && props.deleteBlock ? { list: props.savedBlocks ?? [], save: props.saveBlock, remove: props.deleteBlock } : undefined}
+        saved={props.savedBlock ? { list: props.savedBlocks ?? [], act: props.savedBlock } : undefined}
       />
 
       <SplitTestFields
@@ -491,7 +490,7 @@ export function EmailContentFields(props: {
               <BlockFields block={block} index={i} onChange={(b) => setBlock(i, b)} storeSlug={storeSlug} upload={props.upload} clean={props.cleanHtml} />
               {props.saved && (
                 <div className="flex justify-end">
-                  <KeepBlock block={block} kind={we.blocks[block.type]} storeSlug={storeSlug} save={props.saved.save} onSaved={setKept} />
+                  <KeepBlock block={block} kind={we.blocks[block.type]} storeSlug={storeSlug} act={props.saved.act} onSaved={setKept} />
                 </div>
               )}
             </li>
@@ -522,7 +521,7 @@ export function EmailContentFields(props: {
           <SavedBlockList
             list={kept}
             storeSlug={storeSlug}
-            remove={props.saved.remove}
+            act={props.saved.act}
             onAdd={(block) => setCurrent({ ...current, blocks: [...current.blocks, block] })}
             onChange={setKept}
           />

@@ -13,7 +13,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { listTopics, topicCounts } from "@/server/marketing-topics";
 import { TopicsCard } from "@/components/admin/topics-card";
 
-import { archiveTopicAction, moveTopicAction, saveTopicAction } from "./actions";
+import { topicAction } from "./actions";
 
 export const metadata: Metadata = { title: "Subscribers" };
 
@@ -147,9 +147,8 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
         topics={topics.map((t) => ({ ...t, readers: topicReach.get(t.id) ?? 0 }))}
         canWrite={memberCan(member, "marketing:write")}
         numbers={numbers}
-        save={saveTopicAction}
-        archive={archiveTopicAction}
-        move={moveTopicAction}
+        words={w.topics}
+        act={topicAction}
       />
 
       {total > 0 && (

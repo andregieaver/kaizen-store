@@ -12,9 +12,8 @@ import type { Store } from "@/server/stores";
 import {
   audienceCountAction,
   cleanHtmlAction,
-  deleteSavedBlockAction,
   findBroadcastFactsAction,
-  saveBlockAction,
+  savedBlockAction,
   saveBroadcastAction,
   suggestBroadcastAction,
   suggestTestSubjectsAction,
@@ -29,8 +28,7 @@ export const editorActions = () => ({
   facts: findBroadcastFactsAction,
   subjects: suggestTestSubjectsAction,
   upload: uploadsEnabled() ? uploadBroadcastPictureAction : null,
-  saveBlock: saveBlockAction,
-  deleteBlock: deleteSavedBlockAction,
+  savedBlock: savedBlockAction,
   cleanHtml: cleanHtmlAction,
 });
 

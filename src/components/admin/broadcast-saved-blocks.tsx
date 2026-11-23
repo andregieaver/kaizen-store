@@ -14,15 +14,14 @@ type Answer = Promise<Problem | { ok: true; saved: SavedBlock[] }>;
 /** What the editor needs for saved blocks (email plan M4.1): the store's list and the two actions, the store bound by the caller. */
 export type SavedBlocksProps = {
   list: SavedBlock[];
-  save: (storeSlug: string, name: string, block: unknown) => Answer;
-  remove: (storeSlug: string, id: string) => Answer;
+  act: (storeSlug: string, change: { op: "save"; name: string; block: unknown } | { op: "delete"; id: string }) => Answer;
 };
 
 /**
  * *Save for later* on one block: a press opens a name field (filled with the block's kind), a second saves it to the store's saved blocks.
  * Says the server's refusal in place.
  */
-export function KeepBlock({ block, kind, storeSlug, save, onSaved }: { block: BroadcastBlock; kind: string; storeSlug: string; save: SavedBlocksProps["save"]; onSaved: (list: SavedBlock[]) => void }) {
+export function KeepBlock({ block, kind, storeSlug, act, onSaved }: { block: BroadcastBlock; kind: string; storeSlug: string; act: SavedBlocksProps["act"]; onSaved: (list: SavedBlock[]) => void }) {
   const we = useAdminText("marketing").email;
   const [name, setName] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -35,7 +34,7 @@ export function KeepBlock({ block, kind, storeSlug, save, onSaved }: { block: Br
     );
   const keep = () =>
     start(async () => {
-      const result = await save(storeSlug, name, block);
+      const result = await act(storeSlug, { op: "save", name, block });
       if (!result.ok) return setProblem(result.problem);
       setProblem(null);
       setName(null);
@@ -63,7 +62,7 @@ export function KeepBlock({ block, kind, storeSlug, save, onSaved }: { block: Br
 }
 
 /** The store's saved blocks beside *Add*: a press adds a copy to the email; the small cross deletes the saved one. */
-export function SavedBlockList({ list, storeSlug, remove, onAdd, onChange }: { list: SavedBlock[]; storeSlug: string; remove: SavedBlocksProps["remove"]; onAdd: (block: BroadcastBlock) => void; onChange: (list: SavedBlock[]) => void }) {
+export function SavedBlockList({ list, storeSlug, act, onAdd, onChange }: { list: SavedBlock[]; storeSlug: string; act: SavedBlocksProps["act"]; onAdd: (block: BroadcastBlock) => void; onChange: (list: SavedBlock[]) => void }) {
   const we = useAdminText("marketing").email;
   const [busy, start] = useTransition();
   if (list.length === 0) return null;
@@ -82,7 +81,7 @@ export function SavedBlockList({ list, storeSlug, remove, onAdd, onChange }: { l
             aria-label={we.keptBlockDelete.replace("{name}", s.name)}
             onClick={() =>
               start(async () => {
-                const result = await remove(storeSlug, s.id);
+                const result = await act(storeSlug, { op: "delete", id: s.id });
                 if (result.ok) onChange(result.saved);
               })
             }
