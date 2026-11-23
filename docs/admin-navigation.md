@@ -59,7 +59,7 @@ own, or none:
 | Tab | Sidebar |
 |---|---|
 | Home (house) | None: the operator's first look; the AI manager is Home's |
-| Website (monitor) | Pages · Blog · Content · Media · Templates · Menus · Forms · Header · Footer · Fonts · Design · Docs feedback · Docs guide |
+| Website (monitor) | Pages · Blog · Content · Media · Templates · Menus · Forms · Headers · Footers · Fonts · Design · Docs feedback · Docs guide |
 | Themes (palette) | None |
 | Stores (shopping bag) | None |
 | Customers (people) | None |
@@ -74,7 +74,7 @@ header's button, not a tab; its page is Home's. The sections, their items and wh
 every page's permission area are derived; a test fails when a platform page folder is in no section and not Home's, or a
 sidebar item is not in the admin map. A section's tab is marked for every page inside it, the deepest match (D873); the
 sidebar is chosen by the page's address (`NavArea`, `AreaSidebar`), and the phone's menu shows the tabs and the sidebar of
-the section being viewed.
+the section being viewed. A platform page's group in the admin map is its tab (`platformSectionOf()`, D881).
 
 The home page is the operator's first look: requests waiting, stores by state,
 plans, emails that failed, AI use, each with the page to act on.
@@ -145,6 +145,15 @@ Shipping and Payments are `/settings/…` and Settings'. A tab with a page of ca
 sidebar, so Design marks Website and not Settings. The admin map's `group` for a store page is its section
 (`sectionOf()`), so the AI manager guides by the tabs people see.
 
+## A page's name (D881)
+
+The menu is the one source of a page's name at all three levels. The admin map (`ADMIN_PAGES`) writes no section and no menu
+word of its own: each page's group is the section whose tab the frame marks on its address (`sectionOf()`, `platformSectionOf()`,
+`ownerSectionOf()`), and a page in the menu carries the menu's word (`navLabel`). The page finder, the AI manager and the docs name
+a page by that word, so renaming a menu item renames the page everywhere. The section above a page's title (D873) is the same
+section. Five titles stay fuller than their menu word (Analytics for Overview, the VAT, OSS and IOSS reports for VAT, Plans for
+Editor, Stores' support for Stores, Control center for Home), listed with their reasons in `src/lib/page-names.test.ts`.
+
 ## Basic and Advanced (D454)
 
 A store's admin lists each section's everyday pages in **Basic**, every account's default, and every page in **Advanced**
@@ -174,7 +183,8 @@ eight screens (bloat review step 0.13).
 ## Rules for changes
 
 - A new page goes in exactly one section of its level (`platform-nav.ts`, `store-nav.ts`, `owner-nav.ts`), and in
-  `ADMIN_PAGES` (`src/lib/admin-map.ts`), so the AI manager can guide to it. It has an `icon`; a store page says `basic: true` only
+  `ADMIN_PAGES` (`src/lib/admin-map.ts`), so the AI manager can guide to it. Its section and menu word come from the
+  navigation; its title is the menu's word (D881). It has an `icon`; a store page says `basic: true` only
   if most owners use it every week (D454).
 - A level's own pages check who is asking themselves (`requirePlatformAdmin()`,
   `requireAccount()`, `requireMember()`): a layout's check redirects only
