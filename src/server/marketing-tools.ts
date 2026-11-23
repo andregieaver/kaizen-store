@@ -1,5 +1,8 @@
 import "server-only";
 
+import { topicName, type Topic } from "@/lib/marketing-topics";
+import { listTopics } from "./marketing-topics";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -86,13 +89,16 @@ const sendAt = (store: Store, at: string): Date => {
 };
 
 export async function listBroadcastsTool({ store }: Ctx, { limit }: OwnerToolInput<"list_broadcasts">) {
-  const all = await listBroadcasts(store.id);
+  const [all, topics] = await Promise.all([listBroadcasts(store.id), listTopics(store.id, true)]);
+  const main = store.localization.locales[0] ?? "en-GB";
+  const topicNames = new Map(topics.map((t) => [t.id, topicName(t.names, main, main).name]));
   return {
     broadcasts: all.slice(0, limit).map((b) => ({
       id: b.id,
       name: b.title,
       status: b.status,
       audience: b.audience === "everyone" ? "everyone on the list" : `segment: ${b.segmentName ?? "deleted"}`,
+      ...(b.topicId && { topic: topicNames.get(b.topicId) ?? "archived or gone" }),
       ...(b.scheduledFor && b.status === "scheduled" && { scheduled_for: timeWords(store, new Date(b.scheduledFor)) }),
       ...(b.scheduleProblem && { schedule_problem: b.scheduleProblem }),
       ...(b.startedAt && { started: b.startedAt.slice(0, 10) }),
@@ -103,8 +109,26 @@ export async function listBroadcastsTool({ store }: Ctx, { limit }: OwnerToolInp
   };
 }
 
+/** One of the store's email topics (M4.2, D882) by its id or name in any language; refused with the store's topics where none matches. */
+async function findTopic(store: Store, named: string): Promise<Topic> {
+  const topics = await listTopics(store.id);
+  const wanted = named.trim().toLowerCase();
+  const found = topics.filter((t) => t.id === named || Object.values(t.names).some((n) => n.name.trim().toLowerCase() === wanted));
+  if (found.length === 1) return found[0];
+  const main = store.localization.locales[0] ?? "en-GB";
+  const names = topics.map((t) => `"${topicName(t.names, main, main).name}"`);
+  return fail(
+    found.length > 1
+      ? `Several topics are called "${named}": give its id.`
+      : names.length > 0
+        ? `No topic "${named}". The store's topics: ${names.join(", ")}.`
+        : "The store has no email topics, so a broadcast goes to everyone; the owner adds topics on the subscriber list.",
+  );
+}
+
 export async function draftBroadcastTool({ account, store }: Ctx, input: OwnerToolInput<"draft_broadcast">) {
   const segment = input.segment ? await findSegment(store, input.segment) : null;
+  const topic = input.topic ? await findTopic(store, input.topic) : null;
   const locale = store.localization.locales[0] ?? "en";
   const suggested = await suggestBroadcast(store, account.id, input.brief, locale, { segmentId: segment?.id ?? null });
   if (!suggested.ok) return fail(suggested.problem);
@@ -119,11 +143,12 @@ export async function draftBroadcastTool({ account, store }: Ctx, input: OwnerTo
     audience: segment ? "segment" : "everyone",
     segmentId: segment?.id ?? null,
     content: { [locale]: { subject: s.subject, preview: s.preview, blocks: suggestionBlocks(s) } },
+    topicId: topic?.id ?? null,
     ...(b && { test: { b: { [locale]: { subject: b, preview: s.preview } }, share: TEST_SHARE.start, hours: TEST_HOURS.start } }),
   });
   if (!saved.ok) return fail(saved.problem);
   return {
-    done: `A draft broadcast "${input.name}" is saved, for ${segment ? `the segment "${segment.name}"` : "everyone on the list"}. Nothing is sent.`,
+    done: `A draft broadcast "${input.name}" is saved, for ${segment ? `the segment "${segment.name}"` : "everyone on the list"}${topic ? ` who want the topic "${topicName(topic.names, locale, locale).name}"` : ""}. Nothing is sent.`,
     id: saved.id,
     subject: s.subject,
     ...(b && { split_test: `Subject B: "${b}". ${TEST_SHARE.start} % of the readers get one of the two; ${TEST_HOURS.start} hours later the one more people pressed goes to the rest.` }),

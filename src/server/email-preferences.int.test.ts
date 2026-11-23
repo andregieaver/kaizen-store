@@ -78,6 +78,18 @@ describe("a reader's email preferences", () => {
     expect(await marketing(5)).toBe("logged");
   });
 
+  it("shows the staff the reader's choices and the record of each, newest first", async () => {
+    const [sub] = await db().execute<Row>(sql`select id from commerce.marketing_subscribers where store_id = ${storeId}::uuid and token = ${token}`);
+    const choices = await topics.readerChoices(storeId, String(sub.id));
+    expect(choices?.frequency).toBe("all");
+    const rows = choices?.record.map((c) => [c.names["nb-NO"].name, c.optedIn, c.source]) ?? [];
+    // The newest first; the two choices saved together share their moment, in no set order.
+    expect(rows[0]).toEqual(["Tilbud", false, "preferences"]);
+    expect(rows.slice(1)).toEqual(expect.arrayContaining([["Nyheter", false, "preferences"], ["Tilbud", true, "preferences"]]));
+    expect(rows).toHaveLength(3);
+    expect(await topics.readerChoices(storeId, "00000000-0000-4000-8000-000000000000")).toBeNull();
+  });
+
   it("changes nothing for a reader who left", async () => {
     await db().execute(sql`update commerce.marketing_subscribers set status = 'unsubscribed', unsubscribe_source = 'link' where store_id = ${storeId}::uuid and token = ${token}`);
     expect(await prefs.savePreferences(storeId, token, { topicIds: [], frequency: "monthly", words: "" })).toBe(false);

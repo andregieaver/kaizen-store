@@ -264,6 +264,15 @@ export const marketingEn = {
     needsName: "Give the topic a name.",
     full: "You have 20 topics. Archive one to add another.",
     gone: "That topic is gone.",
+    readerTitle: "What they chose",
+    readerTopics: "Topics",
+    readerNone: "None of the topics",
+    readerOften: "How often",
+    often: { all: "Everything you send", weekly: "At most once a week", monthly: "At most once a month" },
+    restingUntil: "Paused until {date}",
+    recordTitle: "Their topic choices",
+    chose: { in: "Chose {topic}", out: "Turned off {topic}" },
+    sources: { preferences: "On the page their emails link to", form: "On a sign-up form", staff: "By your staff", api: "Through the API" },
   },
   subscribers: {
     /** The page drawn for Homer (round 13, D639). */

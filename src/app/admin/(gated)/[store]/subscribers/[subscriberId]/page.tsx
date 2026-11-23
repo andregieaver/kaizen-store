@@ -10,6 +10,8 @@ import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
 import { SUBSCRIBE_SOURCES, type SubscribeSource, type UnsubscribeSource } from "@/lib/marketing-consent";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { subscriberDetail } from "@/server/marketing-subscribers";
+import { readerChoices } from "@/server/marketing-topics";
+import { topicName } from "@/lib/marketing-topics";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { unsubscribeAction } from "../actions";
@@ -24,10 +26,12 @@ export default async function SubscriberPage({ params }: PageProps<"/admin/[stor
   const { store: slug, subscriberId } = await params;
   const member = await requirePermission(slug, "marketing:read");
   const { store } = member;
-  const subscriber = await subscriberDetail(store.id, subscriberId);
+  const [subscriber, choices] = await Promise.all([subscriberDetail(store.id, subscriberId), readerChoices(store.id, subscriberId)]);
   if (!subscriber) notFound();
+  const main = store.localization.locales[0] ?? "en-GB";
   const lang = adminLangOf(member.account.adminLocale);
   const ws = MARKETING_WORDS[lang].subscribers;
+  const wt = MARKETING_WORDS[lang].topics;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
 
   return (
@@ -113,6 +117,44 @@ export default async function SubscriberPage({ params }: PageProps<"/admin/[stor
           )}
         </dl>
       </Card>
+
+      {/* Their own choices (M4.2, D882): topics now, how often, a month's pause, and every topic choice as it was made. */}
+      {choices && subscriber.status === "subscribed" && (
+        <Card title={wt.readerTitle} compact>
+          <dl className="grid grid-cols-1 gap-3 text-body sm:grid-cols-2" data-reader-choices>
+            {choices.topics.length > 0 && (
+              <div>
+                <dt className="text-caption text-muted">{wt.readerTopics}</dt>
+                <dd className="text-ink">
+                  {choices.topics.filter((t) => t.in).map((t) => topicName(t.names, main, main).name).join(", ") || wt.readerNone}
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-caption text-muted">{wt.readerOften}</dt>
+              <dd className="text-ink">
+                {wt.often[choices.frequency]}
+                {choices.restUntil && ` · ${wt.restingUntil.replace("{date}", when(choices.restUntil))}`}
+              </dd>
+            </div>
+          </dl>
+        </Card>
+      )}
+      {choices && choices.record.length > 0 && (
+        <Card title={wt.recordTitle} compact>
+          <List label={wt.recordTitle}>
+            {choices.record.map((c, index) => (
+              <ListRow key={index}>
+                <RowLead
+                  title={(c.optedIn ? wt.chose.in : wt.chose.out).replace("{topic}", topicName(c.names, main, main).name)}
+                  sub={[wt.sources[c.source], c.words].filter(Boolean).join(" · ")}
+                />
+                <RowFact>{when(c.at)}</RowFact>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
+      )}
 
       <Card title={ws.history} compact>
         <List label={ws.history}>

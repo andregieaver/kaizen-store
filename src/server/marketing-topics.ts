@@ -180,3 +180,39 @@ export async function readerTopics(storeId: string, subscriberId: string): Promi
   );
   return rows.map((r) => ({ ...asTopic(r), in: r.in }));
 }
+
+export type ReaderChoices = {
+  frequency: "all" | "weekly" | "monthly";
+  /** While resting, until when; else null. */
+  restUntil: string | null;
+  topics: (Topic & { in: boolean })[];
+  /** Every topic choice they made, newest first: the topic, in or out, from where, the words they saw and when. */
+  record: { topicId: string; names: TopicNames; optedIn: boolean; source: TopicSource; words: string; at: string }[];
+};
+
+/** A subscriber's own choices for their page in the admin (M4.2, D882); null for one not in the store. */
+export async function readerChoices(storeId: string, subscriberId: string): Promise<ReaderChoices | null> {
+  if (!z.uuid().safeParse(subscriberId).success) return null;
+  const [subscriber, record] = await Promise.all([
+    typedRow(
+      z.object({ frequency: z.enum(["all", "weekly", "monthly"]), rest_until: col.timestampOrNull }),
+      sql`select frequency, case when rest_until > now() then rest_until end as rest_until
+            from commerce.marketing_subscribers where store_id = ${storeId}::uuid and id = ${subscriberId}::uuid`,
+    ),
+    typedRows(
+      z.object({ topic_id: col.uuid, names: TOPIC_ROW.shape.names, opted_in: col.bool, source: z.enum(["preferences", "form", "staff", "api"]), words: col.text, at: col.timestamp }),
+      sql`select c.topic_id, t.names, c.opted_in, c.source, c.words, c.created_at as at
+            from commerce.marketing_topic_choices c
+            join commerce.marketing_topics t on t.store_id = c.store_id and t.id = c.topic_id
+           where c.store_id = ${storeId}::uuid and c.subscriber_id = ${subscriberId}::uuid
+           order by c.created_at desc, c.id desc limit 100`,
+    ),
+  ]);
+  if (!subscriber) return null;
+  return {
+    frequency: subscriber.frequency,
+    restUntil: subscriber.rest_until,
+    topics: await readerTopics(storeId, subscriberId),
+    record: record.map((r) => ({ topicId: r.topic_id, names: r.names as TopicNames, optedIn: r.opted_in, source: r.source, words: r.words, at: r.at })),
+  };
+}
