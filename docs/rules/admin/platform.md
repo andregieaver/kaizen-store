@@ -16,10 +16,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   key, label, icon, start, hub, intro, area, groups of items each naming its area); its tabs with their counts, sidebars, pages of cards
   and permission areas are derived from it (`platformNav()`, `platformNavAreas()`), so the layout lists none by hand. A new platform page
   goes in one section's items, under an item's or a section's address, or in Home's (`PLATFORM_HOME_PATHS`), and in `ADMIN_PAGES`;
-  `platform-nav.test.ts` fails on a page folder in none. The shell takes them as `areas` (`NavArea`) with `wide`. The store (D147) and the owner's level are built the same way: `src/lib/store-nav.ts` (Orders, Products, Customers,
-  Marketing, Website, Bookings, Settings; a new store page goes in one section's items, or Home's, and in `ADMIN_PAGES` (D881);
-  Website and Settings open on pages of cards) and `src/lib/owner-nav.ts` (Home, Stores, Work,
-  Account); pages use the whole width, so no `max-w-*xl` on a page's root. The owner's overview is `controlCenter()`
+  `platform-nav.test.ts` fails on a page folder in none. The shell takes them as `areas` (`NavArea`) with `wide`. The store (D147) and the owner's level are built the same way: `src/lib/store-nav.ts` (a new store page goes in one
+  section's items, or Home's, and in `ADMIN_PAGES` (D881); Marketing, Website and Settings open on a page of their own) and
+  `src/lib/owner-nav.ts`; pages use the whole width, so no `max-w-*xl` on a page's root. The owner's overview is `controlCenter()`
   (`src/server/control-center.ts`, pure
   parts in `src/lib/control-center.ts`: one statement for the stores, then one wave with one statement per key set, 16 statements in
   2 waves for one store, held in `control-center.int.test.ts`); the platform's is `platformOverview()`.
@@ -33,6 +32,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   streaming: every page checks for itself.
 - The menu is built by `storeNav()` once per shell render; `permissionOfPath()` is memoised by path and access,
   never by anything of the member.
+- `docs/admin-navigation.md`'s tables of each level's tabs and every page are written from the three nav files (D885,
+  `src/lib/admin-navigation.ts`): after changing a menu, run `pnpm nav:write` and commit the doc with the change;
+  `src/lib/admin-navigation.test.ts` fails in CI while they differ (`pnpm nav:check` locally). Never edit between its
+  `nav:generated` markers; the words around them are kept by hand.
 
 ## Say where you are: the section above the title, one link marked (code review 2.2, D873, `src/lib/nav-current.ts`)
 
