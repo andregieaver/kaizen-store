@@ -50,6 +50,8 @@ export type StoreFigures = {
   hides?: ("sales" | "stock" | "plan")[];
   /** The store is a website (D178 step 5: the online shop off): no sales, stock or payments to show. */
   website?: boolean;
+  /** Kaizena Flow's own store (`stores.house`): it sells plans and needs none of its own, so it is never asked to choose or pay for one. */
+  house?: boolean;
   /**
    * What needs attention in the Work area (D122, docs/work.md 6.5), only for a store with the module on: the Work
    * overview's own items (`workOverview().attention`, worded with the store's name and pointing at its Work pages).
@@ -248,7 +250,9 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     const days = (n: number) => countWords(n, w.days);
     if (s.suspended) items.push({ kind: "suspended", text: say(w.suspended), href: base, action: a.open, urgent: true });
     if (owner && !s.open) items.push({ kind: "not_open", text: say(w.notOpen), href: `${base}/setup`, action: a.finishSetup });
-    if (owner && s.open && s.plan?.status && ["past_due", "unpaid"].includes(s.plan.status)) {
+    if (s.house) {
+      // Kaizena Flow's own store has no plan to choose, pay or lose (the owner, 23 November 2026).
+    } else if (owner && s.open && s.plan?.status && ["past_due", "unpaid"].includes(s.plan.status)) {
       items.push({ kind: "plan", text: say(w.planOverdue), href: `${base}/billing`, action: a.openBilling, urgent: true });
     } else if (owner && s.open && !s.plan) {
       items.push({ kind: "plan", text: say(w.noPlan), href: `${base}/billing`, action: a.choosePlan });
