@@ -187,7 +187,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 - **Broadcasts (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5, `src/lib/broadcasts.ts`, `src/server/broadcasts.ts`)**: a
   broadcast is written per language from `broadcastContentSchema`'s blocks (a picture only from the store's own media library, as
-  JPEG, PNG or GIF) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
+  JPEG, PNG or GIF; social links, M4.1, up to `SOCIAL_MAX` profiles, each through `socialHref()` and left out when it is no address) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
   `segmentPeople()`/`matches()`), frozen into `broadcast_recipients` when the send starts (`startBroadcast()`); the database moves
   its status only as `broadcasts_rules()` allows and fixes its words once sending. Emails go only through `runBroadcasts()` (the
   every-minute `/api/cron/broadcasts` and `after()` the press): one `email_messages` row per recipient under

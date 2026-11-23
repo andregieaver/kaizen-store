@@ -117,3 +117,25 @@ test("a sent broadcast's report says how many people on the list pressed each li
   await expect(card).toContainText(/Broadcasts\s*[1-9]\d* orders?/);
   await card.screenshot({ path: "test-results/marketing-messages.png" });
 });
+
+test("a broadcast takes the store's social links (M4.1)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/broadcasts/new`);
+  await page.getByLabel("Name").fill(`Social ${RUN}`);
+  await page.getByLabel("Subject").fill("Følg oss");
+  await page.getByRole("button", { name: "Social links", exact: true }).click();
+  const block = page.locator("[data-social-block]");
+  await block.getByLabel("Address").fill("instagram.com/kaizena");
+  await block.getByRole("button", { name: "Add a profile" }).click();
+  await block.getByLabel("Network").nth(1).selectOption("email");
+  await block.getByLabel("Address").nth(1).fill("post@example.com");
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT, fullPage: true });
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/broadcasts/[0-9a-f-]{36}$`));
+  const sql = testDb();
+  try {
+    const [row] = await sql`select content from commerce.broadcasts where title = ${`Social ${RUN}`}`;
+    expect(JSON.stringify(row.content)).toContain('"network":"email"');
+  } finally {
+    await sql.end();
+  }
+});

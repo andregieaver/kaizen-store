@@ -24,6 +24,8 @@ export type EmailBlock =
   /** A running campaign's offer in the shop's own words (D352: `noticeText()`), with when it ends. */
   | { type: "offer"; title: string; text: string; until: string | null }
   | { type: "divider" }
+  /** A quiet row of links, such as the store's social profiles (M4.1): each its name, joined by dots. */
+  | { type: "links"; items: { text: string; url: string }[] }
   /**
    * The AI assistant's signature under its answer by email (D332): the closing, its picture, name and occupation, and the site's logo as a
    * link to the site. Pictures are full addresses; either may be missing.
@@ -89,6 +91,10 @@ function blockHtml(block: EmailBlock, look: EmailLook = DEFAULT_EMAIL_LOOK): str
       return `<p style="margin:0 0 16px;font-size:32px;letter-spacing:6px;font-weight:700;font-family:ui-monospace,Menlo,monospace;color:#171717">${escapeHtml(block.text)}</p>`;
     case "divider":
       return `<hr style="border:none;border-top:1px solid #e5e5e5;margin:8px 0 16px">`;
+    case "links":
+      return `<p style="margin:8px 0 16px;font-size:14px;line-height:1.6;color:#525252">${block.items
+        .map((item) => `<a href="${escapeHtml(item.url)}" style="color:#171717;text-decoration:underline">${escapeHtml(item.text)}</a>`)
+        .join(" &middot; ")}</p>`;
     case "image": {
       const picture = `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:8px">`;
       return `<p style="margin:0 0 16px">${block.href ? `<a href="${escapeHtml(block.href)}">${picture}</a>` : picture}</p>`;
@@ -143,6 +149,8 @@ function blockText(block: EmailBlock): string {
       return block.text;
     case "divider":
       return "----";
+    case "links":
+      return block.items.map((item) => `${item.text}: ${item.url}`).join("\n");
     case "image":
       return [block.alt && `[${block.alt}]`, block.href].filter(Boolean).join(" ");
     case "lines":

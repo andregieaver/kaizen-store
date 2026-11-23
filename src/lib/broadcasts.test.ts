@@ -186,6 +186,36 @@ describe("the store's own facts in an email (D352)", () => {
   });
 });
 
+describe("social links (M4.1)", () => {
+  it("draws each good profile as a link by its network's name and leaves a bad one out", () => {
+    const lang = {
+      subject: "s",
+      preview: "",
+      blocks: [
+        {
+          type: "social" as const,
+          links: [
+            { network: "instagram" as const, url: "instagram.com/kaizena" },
+            { network: "email" as const, url: "post@example.com" },
+            { network: "phone" as const, url: "not a number" },
+          ],
+        },
+      ],
+    };
+    expect(broadcastInput.safeParse({ title: "x", audience: "everyone", segmentId: null, content: { "nb-NO": lang } }).success).toBe(true);
+    const empty = { "nb-NO": { ...lang, blocks: [{ type: "social", links: [] }] } };
+    expect(broadcastInput.safeParse({ title: "x", audience: "everyone", segmentId: null, content: empty }).success).toBe(false);
+    const email = renderEmail(
+      buildBroadcastEmail({ content: lang, locale: "nb-NO", footer: [], unsubscribe: { text: "", linkText: "", url: "" }, resolve: (u) => u, link: (_k, t) => t }),
+    );
+    expect(email.html).toContain('href="https://instagram.com/kaizena"');
+    expect(email.html).toContain('href="mailto:post@example.com"');
+    expect(email.html).toContain("Instagram");
+    expect(email.html).not.toContain("not a number");
+    expect(email.text).toContain("Instagram: https://instagram.com/kaizena");
+  });
+});
+
 describe("subject lines to choose from (M3.7)", () => {
   it("reads three different subjects within the limit, never the current one", async () => {
     const { SUBJECT_MAX } = await import("./broadcasts");

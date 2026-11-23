@@ -19,6 +19,7 @@ import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
 import { waitWords } from "@/lib/flow-story";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
+import { SOCIAL_NETWORKS } from "@/lib/social-links";
 import type { FactBlock, FlowCondition, FlowPlace, FlowStep } from "@/lib/flows";
 import type { CampaignFact, ProductFact } from "@/lib/broadcasts";
 import { findBroadcastFactsAction } from "../../broadcasts/actions";
@@ -430,6 +431,12 @@ function EmailInPlace({ p, step }: { p: Props; step: Extract<FlowStep, { kind: "
             // eslint-disable-next-line @next/next/no-img-element -- the email's own picture, as the reader's mail app shows it.
             inner = <img src={block.url} alt={block.alt} className="max-h-40 w-auto rounded" />;
           else if (block.type === "divider") inner = <hr className="border-line" />;
+          else if (block.type === "social")
+            inner = (
+              <p className="text-sm text-ink-2 underline" data-in-place-fact="social">
+                {block.links.map((l) => SOCIAL_NETWORKS[l.network]).join(" · ")}
+              </p>
+            );
           else
             inner = (
               <p className="rounded border border-dashed border-line px-3 py-2 text-caption text-muted" data-in-place-fact={block.type}>
