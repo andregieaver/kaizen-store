@@ -369,6 +369,20 @@ const consentVars = (settings: ThemeSettings, scheme: "light" | "dark") => {
   ].join("; ");
 };
 
+/** Whether the cookie popup's colours differ from the page's (D883): a set of its own or colours of its own. */
+const consentColoursOwn = (settings: ThemeSettings) =>
+  settings.consent?.colours !== undefined || settings.consent?.scheme === "light" || settings.consent?.scheme === "dark";
+
+/** The cookie popup's corners and shadow (D883): each only where its look sets it, or every one with `all` (the admin's preview). */
+function consentSizes(settings: ThemeSettings, all: boolean): string[] {
+  const look = settings.consent ?? {};
+  return [
+    ...(all || look.corners ? [`--consent-radius: ${CARD_RADIUS[look.corners ?? settings.corners.cards]}`] : []),
+    ...(all || look.buttonCorners ? [`--consent-button-radius: ${BUTTON_RADIUS[look.buttonCorners ?? settings.buttons.corners]}`] : []),
+    ...(all || look.shadow ? [`--consent-shadow: ${CONSENT_SHADOW_CSS[look.shadow ?? "strong"]}`] : []),
+  ];
+}
+
 /** The cookie popup's shadows (D883). */
 export const CONSENT_SHADOW_CSS: Record<ConsentShadow, string> = {
   none: "none",
@@ -402,18 +416,19 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
     `--heading-weight: ${HEADING_WEIGHTS[settings.headings.weight]}`,
     // The checkout's pay button (D337): its own corners, else the theme's buttons'.
     `--checkout-button-radius: ${BUTTON_RADIUS[settings.checkout?.corners ?? settings.buttons.corners]}`,
-    // The cookie popup (D883): its own corners and shadow, else the cards' and the buttons' corners and a strong shadow.
-    `--consent-radius: ${CARD_RADIUS[settings.consent?.corners ?? settings.corners.cards]}`,
-    `--consent-button-radius: ${BUTTON_RADIUS[settings.consent?.buttonCorners ?? settings.buttons.corners]}`,
-    `--consent-shadow: ${CONSENT_SHADOW_CSS[settings.consent?.shadow ?? "strong"]}`,
+    // The cookie popup (D883): its own corners and shadow only where it has them; globals.css's :root gives it the page's otherwise.
+    ...consentSizes(settings, preview !== undefined),
     // The site's hover timing (D206): only what the owner set, so effects keep their own times otherwise.
     ...Object.entries(hoverTimingVars(settings.hover)).map(([name, value]) => `${name}: ${value}`),
   ].join("; ");
-  const colors = (scheme: "light" | "dark") =>
-    `${paletteVars(settings[scheme], scheme)}; ${checkoutVars(settings, scheme)}; ${consentVars(settings, scheme)}`;
+  // The cookie popup's colours (D883) only where its look names a set or colours of its own (globals.css's :root derives them from the
+  // page's otherwise, so a theme without a look of its own costs no bytes), and always in the admin's preview, which is not the root.
+  const ownConsent = preview !== undefined || consentColoursOwn(settings);
+  const colors = (scheme: "light" | "dark", consent = ownConsent) =>
+    `${paletteVars(settings[scheme], scheme)}; ${checkoutVars(settings, scheme)}${consent ? `; ${consentVars(settings, scheme)}` : ""}`;
   // A row or column on a light or dark background of its own (D390, `src/lib/background-surface.ts`) holds the colour set made for that
   // background, whatever the page's, so text in the theme's colours stays readable on it in both.
-  const surfaces = (["light", "dark"] as const).map((scheme) => `\n${selector} .kz-on-${scheme} { ${colors(scheme)}; color: var(--foreground); }`).join("");
+  const surfaces = (["light", "dark"] as const).map((scheme) => `\n${selector} .kz-on-${scheme} { ${colors(scheme, false)}; color: var(--foreground); }`).join("");
   if (preview) return `${selector} { ${colors(preview)}; ${sizes}; }${surfaces}`;
   const base = baseScheme(settings);
   const other = base === "dark" ? "light" : "dark";

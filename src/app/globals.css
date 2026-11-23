@@ -56,8 +56,8 @@
   --card-aspect: 1 / 1;
   --heading-weight: 600;
   /*
-   * The cookie popup's own colours, corners and shadow (D883): `themeCss()` writes them for a themed site; elsewhere they are the page's.
-   * Declared on the root, they are worked out there and passed down as colours, so `.consent-look` can put them in place of the page's.
+   * The cookie popup's own colours, corners and shadow (D883): the page's, worked out here on the root (where a theme writes its own) and
+   * passed down as values, so `.consent-look` can put them in place of the page's; `themeCss()` writes them only for a look of its own.
    */
   --consent-background: var(--background);
   --consent-foreground: var(--foreground);
@@ -67,7 +67,7 @@
   --consent-accent-foreground: var(--accent-foreground);
   --consent-secondary: var(--background);
   --consent-secondary-foreground: var(--foreground);
-  --consent-radius: 0.5rem;
+  --consent-radius: var(--radius-lg, 0.5rem);
   --consent-button-radius: var(--button-radius);
   --consent-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }

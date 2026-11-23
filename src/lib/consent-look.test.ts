@@ -18,9 +18,10 @@ describe("the cookie popup's own look (D883)", () => {
       colours: expect.objectContaining({ background: s.light.background, text: s.light.text, button: s.light.accent, buttonText: s.light.accentText }),
     });
     expect(consentColours(s, "dark").set).toBe("dark");
-    const css = themeCss(s, "html");
-    expect(rule(css, "html")).toContain(`--consent-background: ${s.light.background}`);
-    expect(rule(css, "html")).toContain("--consent-scheme: light");
+    // Without a look of its own the theme writes nothing for it: globals.css's :root takes the page's, so a store pays no bytes.
+    expect(themeCss(s, "html")).not.toContain("--consent-");
+    // The admin's preview is not the root, so it always carries them.
+    expect(themeCss(s, "[data-theme-preview]", "light")).toContain(`--consent-background: ${s.light.background}`);
   });
 
   it("keeps the set it is given, whatever set the page shows", () => {
@@ -28,8 +29,8 @@ describe("the cookie popup's own look (D883)", () => {
     expect(consentColours(s, "light")).toMatchObject({ set: "dark", colours: { background: s.dark.background } });
     const css = themeCss(s, "html");
     expect(rule(css, "html")).toContain(`--consent-background: ${s.dark.background}`);
-    // A row on a light background of its own does not make it light either.
-    expect(css).toMatch(new RegExp(`\\.kz-on-light \\{[^}]*--consent-background: ${s.dark.background}`));
+    // Rows never hold the popup, so their colour sets carry none of its variables.
+    expect(css).not.toMatch(/\.kz-on-(light|dark) \{[^}]*--consent-/);
   });
 
   it("draws its own colours, corners and shadow where it has them", () => {
@@ -38,6 +39,7 @@ describe("the cookie popup's own look (D883)", () => {
     s.consent = { colours: { ...colours, light: { ...colours.light, background: "#123456" } }, corners: "none", buttonCorners: "square", shadow: "none" };
     const css = rule(themeCss(s, "html"), "html");
     expect(css).toContain("--consent-background: #123456");
+    expect(rule(themeCss({ ...minimal(), consent: { shadow: "soft" } }, "html"), "html")).not.toContain("--consent-background");
     expect(css).toContain("--consent-radius: 0;");
     expect(css).toContain("--consent-button-radius: 0;");
     expect(css).toContain("--consent-shadow: none");
@@ -45,8 +47,8 @@ describe("the cookie popup's own look (D883)", () => {
 
   it("starts its own colours from what it shows, so choosing them changes nothing", () => {
     const s = minimal();
-    const before = themeCss(s, "html");
-    expect(themeCss({ ...s, consent: { colours: startingColours(s) } }, "html")).toBe(before);
+    const own = { ...s, consent: { colours: startingColours(s) } };
+    for (const scheme of ["light", "dark"] as const) expect(consentColours(own, scheme)).toEqual(consentColours(s, scheme));
   });
 
   it("puts its headings in the body text's font only when chosen", () => {
