@@ -497,9 +497,11 @@ export async function runBroadcasts(options: { only?: string; deadline?: number;
   const result: RunResult = { started: 0, returned: 0, stopped: 0, sent: 0, skipped: 0, failed: 0, finished: 0 };
   const deadline = options.deadline ?? Date.now() + RUN_MS;
   try {
-    if (!options.only) await startDue(result);
+    // One statement for the minute's due work (the query budget): scheduled sends to start, and split tests to call (M2.5).
+    const due = options.only ? null : await dueWork(new Date());
+    if (due) await startDue(result, due.start);
     if (!options.only) await stopClosed(result);
-    if (!options.only) await callDueTests();
+    if (due) await callDueTests(new Date(), due.call);
     let claimed = 0;
     const stores = new Map<string, EmailStore | null>();
     const broadcasts = new Map<string, Broadcast | null>();
@@ -517,14 +519,29 @@ export async function runBroadcasts(options: { only?: string; deadline?: number;
   return result;
 }
 
-async function startDue(result: RunResult) {
-  const due = await db().execute<Row>(sql`
-    select id, store_id from commerce.broadcasts
-     where status = 'scheduled' and scheduled_for <= now()
-       -- A store whose account does not have Email automation (D748) starts nothing; its broadcast waits, scheduled.
-       and commerce.extension_on(store_id, 'email_automation')
-     order by scheduled_for limit 10
-  `);
+type DueRow = { id: string; store_id: string; title: string };
+
+/** The scheduled sends whose time has come (10 at most) and the split tests whose wait is over (20 at most, M2.5), in one statement. */
+async function dueWork(now: Date): Promise<{ start: DueRow[]; call: DueRow[] }> {
+  const rows = await typedRows(
+    z.object({ kind: z.enum(["start", "call"]), id: col.uuid, store_id: col.uuid, title: col.text }),
+    sql`
+      (select 'start' as kind, id, store_id, title from commerce.broadcasts
+        where status = 'scheduled' and scheduled_for <= ${now.toISOString()}::timestamptz
+          -- A store whose account does not have Email automation (D748) starts nothing; its broadcast waits, scheduled.
+          and commerce.extension_on(store_id, 'email_automation')
+        order by scheduled_for limit 10)
+      union all
+      (select 'call' as kind, id, store_id, title from commerce.broadcasts
+        where status = 'sending' and test is not null and test_called_at is null
+          and started_at + make_interval(hours => coalesce((test->>'hours')::int, 4)) <= ${now.toISOString()}::timestamptz
+        order by started_at limit 20)
+    `,
+  );
+  return { start: rows.filter((r) => r.kind === "start"), call: rows.filter((r) => r.kind === "call") };
+}
+
+async function startDue(result: RunResult, due: DueRow[]) {
   for (const row of due) {
     const started = await startBroadcast(String(row.store_id), null, String(row.id)).catch(() => ({ ok: false as const, problem: "It could not be started." }));
     if (started.ok) {
@@ -794,16 +811,8 @@ async function versionFigures(storeId: string, id: string): Promise<{ a: Version
  * the figures and winner are kept on the broadcast, and the held readers are queued with the winning version. Once per test: the
  * statement that marks it called is the one that may release them. Never throws.
  */
-export async function callDueTests(now = new Date()): Promise<number> {
-  const due = await typedRows(
-    z.object({ id: col.uuid, store_id: col.uuid, title: col.text }),
-    sql`
-      select id, store_id, title from commerce.broadcasts
-       where status = 'sending' and test is not null and test_called_at is null
-         and started_at + make_interval(hours => coalesce((test->>'hours')::int, 4)) <= ${now.toISOString()}::timestamptz
-       order by started_at limit 20
-    `,
-  );
+export async function callDueTests(now = new Date(), read?: DueRow[]): Promise<number> {
+  const due = read ?? (await dueWork(now)).call;
   let called = 0;
   for (const row of due) {
     try {
