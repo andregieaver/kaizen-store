@@ -10,8 +10,8 @@ import { SectionEyebrow } from "./section-eyebrow";
  * to the page it belongs under; under the title, a description for a page that needs a sentence to say what it is for.
  *
  * The eyebrow says where the page is (code review step 2.2, D873): a page that passes none shows its section's word, the section the
- * rail marks for its address (`SectionEyebrow`), and none on Home's pages or where the title is that word. A page's own `eyebrow` wins,
- * `eyebrow={false}` asks for none, and a sample header (`as="p"`) shows none.
+ * rail marks for its address (`SectionEyebrow`), and none on Home's pages or where the title or the way back is that word. A page's
+ * own `eyebrow` wins, `eyebrow={false}` asks for none, and a sample header (`as="p"`) shows none.
  */
 export function PageHeader({
   back,
@@ -37,11 +37,13 @@ export function PageHeader({
   as?: "h1" | "p";
 }) {
   const facts = meta.filter((fact) => fact !== null && fact !== undefined && fact !== false && fact !== "");
-  // The section's word where the page names no eyebrow, drawn where the address is known; a line left empty folds away (`empty:hidden`).
+  // The section's word where the page names no eyebrow, drawn where the address is known, unless the title or the way back already says
+  // it (their plain words, lower-cased, a line each); a line left empty folds away (`empty:hidden`).
+  const said = [title, back?.label].filter((words) => typeof words === "string").join("\n").toLowerCase();
   const word = eyebrow ? (
     <span className="text-eyebrow text-muted uppercase">{eyebrow}</span>
   ) : eyebrow === undefined && Title === "h1" ? (
-    <SectionEyebrow title={typeof title === "string" ? title : undefined} />
+    <SectionEyebrow said={said} />
   ) : null;
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">

@@ -78,12 +78,16 @@ describe("the section above a page's title", () => {
     expect(eyebrow(header(OWNER_BASE, menu))).toBeUndefined();
   });
 
-  it("is left out where the title already is the section's word, and its empty line folds away", () => {
+  it("is left out where the title or the way back already says the section's word, and its empty line folds away", () => {
     const menu = menus("en").store;
     const out = header(`${STORE}/orders`, menu, { title: "Orders" });
     expect(eyebrow(out)).toBeUndefined();
     expect(out).toContain('<div class="mb-2 flex flex-wrap items-center gap-3 empty:hidden"></div>');
     expect(eyebrow(header(`${STORE}/marketing`, menu, { title: "Marketing" }))).toBeUndefined();
+    // Draft orders leads back to Orders: the way back names the section already.
+    expect(eyebrow(header(`${STORE}/orders/drafts`, menu, { title: "Draft orders", back: { href: `${STORE}/orders`, label: "Orders" } }))).toBeUndefined();
+    // A way back to a record says where it leads, not the section.
+    expect(eyebrow(header(`${STORE}/customers/x1/notes`, menu, { title: "Notes", back: { href: `${STORE}/customers/x1`, label: "Alderney Ceramics" } }))).toBe("Customers");
   });
 
   it("keeps a page's own eyebrow, draws none for eyebrow={false} or a sample header, and none outside the admin's frame", () => {

@@ -30,16 +30,16 @@ export function NavHereProvider({ tabs, places, children }: Here & { children: R
 
 /**
  * The section's word, in the eyebrow's look: nothing on Home's pages (Home is no section, and its other pages, the AI manager and the setup
- * steps, are tools whose titles say what they are), on a page in no section, where the title (plain text) already is the section's word (the
- * section's own page: Orders, Marketing), or outside the admin's frame, where the address is not read at all: the page builder's sandbox
- * draws headers outside it, on addresses not known before the request.
+ * steps, are tools whose titles say what they are), on a page in no section, where the header already says the word (`said`: its title, as
+ * on the section's own page, or its way back, as Draft orders' "Orders"), or outside the admin's frame, where the address is not read at
+ * all: the page builder's sandbox draws headers outside it, on addresses not known before the request.
  */
-export function SectionEyebrow({ title }: { title?: string }) {
+export function SectionEyebrow({ said }: { said: string }) {
   const here = use(NavHere);
-  return here ? <SectionWord here={here} title={title} /> : null;
+  return here ? <SectionWord here={here} said={said} /> : null;
 }
 
-function SectionWord({ here, title }: { here: Here; title?: string }) {
+function SectionWord({ here, said }: { here: Here; said: string }) {
   const tab = here.tabs[currentIndex(usePathname(), here.tabs, here.places)];
-  return tab && !tab.home && tab.label.toLowerCase() !== title?.toLowerCase() ? <span className="text-eyebrow text-muted uppercase">{tab.label}</span> : null;
+  return tab && !tab.home && !said.split("\n").includes(tab.label.toLowerCase()) ? <span className="text-eyebrow text-muted uppercase">{tab.label}</span> : null;
 }
