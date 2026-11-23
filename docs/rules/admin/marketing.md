@@ -193,7 +193,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   address; columns, M4.1, two or three cells side by side that stack on a phone, a cell's button tracked by its own key
   `nb-NO.3-1` and its picture checked like any other; a block saved by name for later in `email_saved_blocks`, D875, at most 50;
   own HTML under *More blocks*, D879, cleaned by `cleanEmailHtml()` each time it is sent and left out where the builder has no
-  cleaner) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
+  cleaner; a hand-written template completed by `completeTemplate()` with the store's running campaigns for an offer and its
+  published footer's social links, `siteSocialLinks()`) and sent only to addresses on the subscriber list that are `subscribed` (everyone, or a segment's through
   `segmentPeople()`/`matches()`), frozen into `broadcast_recipients` when the send starts (`startBroadcast()`); the database moves
   its status only as `broadcasts_rules()` allows and fixes its words once sending. Emails go only through `runBroadcasts()` (the
   every-minute `/api/cron/broadcasts` and `after()` the press): one `email_messages` row per recipient under

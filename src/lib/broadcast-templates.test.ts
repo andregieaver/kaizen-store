@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BROADCAST_TEMPLATE_KEYS, BROADCAST_TEMPLATES, isBroadcastTemplateKey, templateContent, withProducts } from "./broadcast-templates";
+import { BROADCAST_TEMPLATE_KEYS, BROADCAST_TEMPLATES, completeTemplate, isBroadcastTemplateKey, templateContent, withProducts } from "./broadcast-templates";
 import { sendProblems } from "./broadcasts";
 import { broadcastContentSchema } from "./broadcasts-schema";
 import { findClaims } from "./claims";
@@ -39,5 +39,21 @@ describe("withProducts", () => {
   it("leaves the words alone without products", () => {
     const content = templateContent("new_products", ["en"]);
     expect(withProducts(content, [])).toBe(content);
+  });
+});
+
+describe("completeTemplate (M4.1)", () => {
+  const offer = templateContent("offer", ["nb-NO", "en-GB"]);
+  const C = "00000000-0000-4000-8000-0000000000c1";
+
+  it("puts the store's campaigns before the button and its social links at the foot, in every language, and the email can be sent", () => {
+    const whole = completeTemplate(offer, { campaigns: [{ id: C, name: "Vinter" }], social: [{ network: "instagram", url: "instagram.com/butikken" }] });
+    for (const locale of ["nb-NO", "en-GB"]) expect(whole[locale].blocks.map((b) => b.type)).toEqual(["heading", "paragraph", "campaign", "button", "divider", "social"]);
+    expect(broadcastContentSchema.safeParse(whole).success).toBe(true);
+    expect(sendProblems(whole, "nb-NO")).toEqual([]);
+  });
+
+  it("adds nothing the store does not have", () => {
+    expect(completeTemplate(offer, { campaigns: [], social: [] })).toEqual(offer);
   });
 });

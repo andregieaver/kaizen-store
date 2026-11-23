@@ -4,11 +4,13 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { isBroadcastTemplateKey, OWN_TEMPLATES_MAX, templateContent, withProducts } from "@/lib/broadcast-templates";
-import type { BroadcastContent } from "@/lib/broadcasts";
+import { completeTemplate, isBroadcastTemplateKey, OWN_TEMPLATES_MAX, templateContent, withProducts } from "@/lib/broadcast-templates";
+import { SOCIAL_MAX, type BroadcastContent } from "@/lib/broadcasts";
+import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "@/lib/social-links";
 import { broadcastContentSchema } from "@/lib/broadcasts-schema";
 
 import { audit } from "./auth";
+import { campaignFacts } from "./broadcast-facts";
 import { listGridProducts } from "./catalog";
 import type { Store } from "./stores";
 import { getBroadcast } from "./broadcasts";
@@ -90,7 +92,37 @@ export async function newestProducts(store: Pick<Store, "id" | "markets">): Prom
 }
 
 /** Where a new broadcast starts: a template or an own one, and for new products the newest three already in it. */
-export async function startingBroadcast(store: Pick<Store, "id" | "markets">, locales: readonly string[], choice: string | null): Promise<BroadcastContent> {
+export async function startingBroadcast(store: Pick<Store, "id" | "markets" | "timeZone">, locales: readonly string[], choice: string | null): Promise<BroadcastContent> {
   const content = await startingContent(store.id, locales, choice);
-  return choice === "new_products" ? withProducts(content, await newestProducts(store)) : content;
+  // A store's own template is already the whole email it saved; a hand-written one is completed from the store's facts (M4.1).
+  if (!isBroadcastTemplateKey(choice)) return content;
+  const market = store.markets[0];
+  const [products, campaigns, social] = await Promise.all([
+    choice === "new_products" ? newestProducts(store) : [],
+    choice === "offer" && market ? campaignFacts(store, market) : [],
+    siteSocialLinks(store.id),
+  ]);
+  return completeTemplate(withProducts(content, products), { campaigns, social });
+}
+
+/**
+ * The social links of the store's site footer as it is published (D91's `socialLinks` blocks), each a network the email knows with its
+ * address; the first block's links, at most `SOCIAL_MAX`. None when the footer has none.
+ */
+export async function siteSocialLinks(storeId: string): Promise<{ network: SocialNetwork; url: string }[]> {
+  const rows = await typedRows(
+    z.object({ network: col.text, href: col.text }),
+    sql`
+      select l->>'network' as network, l->>'href' as href
+        from commerce.stores s
+        join commerce.pages p on p.id = s.footer_id and p.store_id = s.id
+        cross join lateral jsonb_path_query(p.published, 'strict $.**? (@.type == "socialLinks").links[*]') l
+       where s.id = ${storeId}::uuid and p.published is not null and jsonb_typeof(l) = 'object'
+       limit ${SOCIAL_MAX * 2}
+    `,
+  );
+  const seen = new Set<string>();
+  return rows
+    .flatMap((r) => (r.network in SOCIAL_NETWORKS && r.href.trim() && socialHref(r.network as SocialNetwork, r.href) && !seen.has(r.network) && seen.add(r.network) ? [{ network: r.network as SocialNetwork, url: r.href.trim() }] : []))
+    .slice(0, SOCIAL_MAX);
 }
