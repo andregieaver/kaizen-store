@@ -22,6 +22,8 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => auth.client 
 
 const p = await import("./permissions");
 const roles = await import("./store-roles");
+// The guards' list is read where it is defined: no route re-exports it (D881).
+const guards = await import("@/lib/permission-guards");
 
 type Row = Record<string, unknown>;
 
@@ -255,7 +257,7 @@ describe("who is not let in at all", () => {
 
 describe("what the guards promise the scan test", () => {
   it("names ten guards and the wrappers that call one", () => {
-    expect([...p.GUARDS].sort()).toEqual([
+    expect([...guards.GUARDS].sort()).toEqual([
       "checkAnyPermission",
       "checkMemberAny",
       "checkOwnerRole",
@@ -267,7 +269,7 @@ describe("what the guards promise the scan test", () => {
       "requirePageTypeAccess",
       "requirePermission",
     ]);
-    expect(Object.keys(p.DELEGATED_GUARDS).sort()).toEqual([
+    expect(Object.keys(guards.DELEGATED_GUARDS).sort()).toEqual([
       "StoreEditPageView",
       "StoreNewPageView",
       "StorePageTermsView",
