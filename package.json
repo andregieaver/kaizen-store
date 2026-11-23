@@ -22,7 +22,9 @@
     "seed:themed": "vitest run --config vitest.seed.config.mts",
     "parity": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/parity.mjs",
     "parity:write": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/parity.mjs write",
-    "parity:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/parity.mjs check"
+    "parity:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/parity.mjs check",
+    "nav:write": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/admin-navigation.mjs write",
+    "nav:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/admin-navigation.mjs check"
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.4",
