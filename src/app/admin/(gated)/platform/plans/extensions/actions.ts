@@ -110,3 +110,26 @@ export async function saveUpsellAction(_state: FormState, form: FormData): Promi
     return { status: "ok", messages: [words(lang).saved] };
   });
 }
+
+/** The prices beyond the allowances (D880): one field per extension with a unit beyond and currency, in major units; empty takes one off. */
+export async function saveExtraPricesAction(_state: FormState, form: FormData): Promise<FormState> {
+  return platformAction({ area: "plans", action: "platform.extension_extra_prices_save", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (account, lang) => {
+    const [{ SEND_ALLOWANCE_WORDS }, { saveExtraPrices }, { minorUnitDigits }] = await Promise.all([
+      import("@/lib/admin-words/send-allowance"),
+      import("@/server/extras-billing"),
+      import("@/lib/money"),
+    ]);
+    const w = SEND_ALLOWANCE_WORDS[lang].extraPrices;
+    const prices: { extensionId: ExtensionId; currency: string; amountMinor: number | null }[] = [];
+    for (const [key, value] of form.entries()) {
+      const match = /^extra:([a-z_]+):([A-Z]{3})$/.exec(key);
+      if (!match || !isExtensionId(match[1])) continue;
+      const text = String(value).replace(/\s/g, "").replace(",", ".");
+      if (text !== "" && !/^\d+(\.\d{1,3})?$/.test(text)) return { status: "error", messages: [w.bad] };
+      prices.push({ extensionId: match[1], currency: match[2], amountMinor: text === "" ? null : Math.round(Number(text) * 10 ** minorUnitDigits(match[2])) });
+    }
+    await saveExtraPrices(account, prices);
+    refresh();
+    return { status: "ok", messages: [w.saved] };
+  });
+}

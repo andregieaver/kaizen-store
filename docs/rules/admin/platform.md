@@ -323,6 +323,14 @@ under *What the router fetches ahead*.
 - **The cheapest way (E6)**: an account buys `accountCover()`'s answer, never a list made elsewhere: each extension once, never one
   the plan includes, a founding price only while offered or kept.
 
+## Use beyond the allowances (D880, D748 E11, `src/lib/extras.ts`, `src/server/extras.ts`, `src/server/extras-billing.ts`)
+
+- **Use beyond the allowances (E11, D880)**: AI-handled conversations and
+  Work's and Deals' people beyond what the account's size includes are added as one line each to its renewal invoice while Stripe holds it
+  as a draft (`billInvoiceExtras()` on `invoice.created`), each line's `organisation_extra_charges` row written first. Only what the
+  account pays for counts. The owner's cap (`extras_cap_minor`, Account → Billing) is never billed past, and at it a new support
+  conversation goes to people (`aiRoomFor()`). Prices beyond are `extension_extra_prices`, set on Platform → Plans → Extensions.
+
 ## A standalone account's workspace (D748 E7, `commerce.make_workspace()`, `src/server/workspace.scan.test.ts`)
 
 - A workspace is the store row that holds an extensions-only account's data (`stores.workspace`), made only by `commerce.make_workspace()`,

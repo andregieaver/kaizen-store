@@ -21,7 +21,7 @@
   "shopOnlyTools": 266,
   "managerTools": 28,
   "featureIds": 14,
-  "tables": 543,
+  "tables": 545,
   "platformTables": 21,
   "hot": {
     "orders": {
@@ -291,6 +291,12 @@
       "from": 542,
       "to": 543,
       "decision": "D875"
+    },
+    {
+      "count": "tables",
+      "from": 543,
+      "to": 545,
+      "decision": "D880"
     }
   ]
 }

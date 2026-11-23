@@ -9,8 +9,11 @@ import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
-import { ALLOWANCES_OF, LAUNCH_TRIAL_DAYS, type AllowanceKey, type ExtensionId } from "@/lib/extensions";
-import { formatMoney } from "@/lib/money";
+import { ALLOWANCES_OF, EXTENSION_NAMES, LAUNCH_TRIAL_DAYS, type AllowanceKey, type ExtensionId } from "@/lib/extensions";
+import { EXTRA_UNIT_OF } from "@/lib/extras";
+import { formatMoney, minorUnitDigits } from "@/lib/money";
+import { SEND_ALLOWANCE_WORDS } from "@/lib/admin-words/send-allowance";
+import { platformExtraPrices, type ExtraPrice } from "@/server/extras-billing";
 import { PLAN_INTERVALS, type PlanInterval } from "@/lib/plans";
 import { formatPriceInput } from "@/lib/product-input";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
@@ -28,7 +31,7 @@ import {
   type ExtensionPrice,
 } from "@/server/extensions";
 
-import { launchExtensionsAction, saveBundleAction, saveExtensionAction, saveFoundingAction, savePlanGrantsAction, saveUpsellAction } from "./actions";
+import { launchExtensionsAction, saveBundleAction, saveExtensionAction, saveExtraPricesAction, saveFoundingAction, savePlanGrantsAction, saveUpsellAction } from "./actions";
 
 export const metadata: Metadata = { title: "Extensions" };
 
@@ -47,13 +50,14 @@ export default async function ExtensionsPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = PLATFORM_WORDS[lang].extensions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const [catalogue, plans, currencies, launchedAt, founding, upsell] = await Promise.all([
+  const [catalogue, plans, currencies, launchedAt, founding, upsell, extraPrices] = await Promise.all([
     getExtensionCatalogue(),
     listPlans(),
     extensionCurrencies(),
     extensionsLaunchedAt(),
     extensionFounding(),
     extensionUpsellPercent(),
+    platformExtraPrices(),
   ]);
   const columns = plans.filter((plan) => plan.active);
   // The launch's preview is read only until it has happened.
@@ -98,6 +102,12 @@ export default async function ExtensionsPage() {
       <div className="max-sm:overflow-hidden max-sm:rounded-panel">
         <PhoneRow flat last title={w.upsell.title} sub={upsell > 0 ? fillWords(w.upsell.on, { percent: String(upsell) }) : w.upsell.off} change={w.phone.edit} done={w.phone.close}>
           <UpsellCard percent={upsell} w={w} />
+        </PhoneRow>
+      </div>
+
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow flat last title={SEND_ALLOWANCE_WORDS[lang].extraPrices.title} sub={SEND_ALLOWANCE_WORDS[lang].extraPrices.hint} change={w.phone.edit} done={w.phone.close}>
+          <ExtraPricesCard prices={extraPrices} currencies={currencies} lang={lang} />
         </PhoneRow>
       </div>
 
@@ -503,6 +513,44 @@ function UpsellCard({ percent, w }: { percent: number; w: W }) {
           {(field) => <TextInput {...field} type="number" name="percent" min={0} max={100} defaultValue={percent} />}
         </Field>
         <SubmitButton>{w.save}</SubmitButton>
+      </ActionForm>
+    </section>
+  );
+}
+
+/** The prices beyond the allowances (D880): a field per extension with a unit beyond and currency, empty for none. */
+function ExtraPricesCard({ prices, currencies, lang }: { prices: readonly ExtraPrice[]; currencies: readonly string[]; lang: AdminLang }) {
+  const w = SEND_ALLOWANCE_WORDS[lang].extraPrices;
+  const ids = (Object.keys(EXTRA_UNIT_OF) as ExtensionId[]).filter((id) => EXTRA_UNIT_OF[id]);
+  return (
+    <section aria-labelledby="extra-prices" className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
+      <h2 id="extra-prices" className="text-title text-ink">
+        {w.title}
+      </h2>
+      <p className="text-sm text-muted">{w.hint}</p>
+      <ActionForm action={saveExtraPricesAction} className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {ids.flatMap((id) =>
+            currencies.map((currency) => {
+              const price = prices.find((p) => p.extensionId === id && p.currency === currency);
+              return (
+                <Field key={`${id}-${currency}`} label={fillWords(EXTRA_UNIT_OF[id] === "ai_conversation" ? w.aiUnit : w.personUnit, { name: EXTENSION_NAMES[id], currency })}>
+                  {(field) => (
+                    <TextInput
+                      {...field}
+                      name={`extra:${id}:${currency}`}
+                      inputMode="decimal"
+                      defaultValue={price ? String(price.amountMinor / 10 ** minorUnitDigits(currency)) : ""}
+                    />
+                  )}
+                </Field>
+              );
+            }),
+          )}
+        </div>
+        <div>
+          <SubmitButton>{w.save}</SubmitButton>
+        </div>
       </ActionForm>
     </section>
   );

@@ -11,6 +11,7 @@ import { applyDomainInvoiceEvent, registerPaidDomains } from "@/server/domain-pu
 import { applyThemeInvoiceEvent } from "@/server/theme-prices";
 import { applyPlatformSaleEvent } from "@/server/platform-sales";
 import { log } from "@/server/log";
+import { billInvoiceExtras } from "@/server/extras-billing";
 
 /** A payment provider's event is answered within a minute, or the function stops and the provider sends it again (code review 1.5, FD9). */
 export const maxDuration = 60;
@@ -44,11 +45,13 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
       const theme = await applyThemeInvoiceEvent(mode as PaymentModeName, event);
       // A domain's invoice paid (D315): the registration starts at once, after the answer.
       const domain = await applyDomainInvoiceEvent(event);
+      // An account's renewal invoice, still a draft (D880): its use beyond the allowances goes on it first, so referral credit can cover it.
+      const extras = event.type === "invoice.created" ? await billInvoiceExtras(mode as PaymentModeName, event.data.object) : null;
       if (domain.detail === "domain paid") after(() => registerPaidDomains().then(() => undefined));
       const result = await handleReferralEvent(mode as PaymentModeName, event);
       // What Kaizena Flow sold (D507): a paid invoice kept as a sale, a credit note's amount on it.
       const sale = await applyPlatformSaleEvent(mode as PaymentModeName, event);
-      return Response.json({ received: true, ...(result.handled || theme.handled || domain.handled || sale ? {} : { ignored: event.type }) });
+      return Response.json({ received: true, ...(result.handled || theme.handled || domain.handled || sale || extras?.added ? {} : { ignored: event.type }) });
     } catch (error) {
       log("error", "stripe.platform_webhook_failed", { mode, eventId: event.id, type: event.type }, error);
       // Stripe retries on errors, with backoff, for up to three days; every step is safe to repeat.

@@ -2238,6 +2238,72 @@ export const extensionPrices = commerce.table(
   ],
 );
 
+/**
+ * What one unit beyond an extension's allowance costs (D880, D748 E11), in one currency, excluding VAT: an AI-handled conversation for the
+ * support desk, a person for Work and Deals. As prices: never changed, a new amount is a new row and the old one inactive.
+ */
+export const extensionExtraPrices = commerce.table(
+  "extension_extra_prices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    extensionId: text("extension_id")
+      .notNull()
+      .references(() => extensions.id),
+    /** `ai_conversation` or `person`. */
+    unit: text("unit").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("extension_extra_prices_unit", sql`${t.unit} in ('ai_conversation', 'person')`),
+    check("extension_extra_prices_amount", sql`${t.amountMinor} >= 0`),
+    uniqueIndex("extension_extra_prices_one_active").on(t.extensionId, t.currency).where(sql`${t.active}`),
+    index("extension_extra_prices_created_by_idx").on(t.createdBy),
+  ],
+);
+
+/**
+ * Use beyond the allowances added to one of an account's invoices (D880, D748 E11): one row an extension, written before the invoice line
+ * so a retried webhook never adds it twice, with what was counted and what it cost. Kept with the account.
+ */
+export const organisationExtraCharges = commerce.table(
+  "organisation_extra_charges",
+  {
+    organisationId: uuid("organisation_id")
+      .notNull()
+      .references(() => organisations.id, { onDelete: "cascade" }),
+    /** Stripe's invoice id, in `mode`. */
+    invoiceId: text("invoice_id").notNull(),
+    mode: text("mode").notNull(),
+    extensionId: text("extension_id")
+      .notNull()
+      .references(() => extensions.id),
+    unit: text("unit").notNull(),
+    /** What was used, what the size includes, and the units billed (the rest, after any cap). */
+    used: integer("used").notNull(),
+    included: integer("included").notNull(),
+    quantity: integer("quantity").notNull(),
+    unitMinor: bigint("unit_minor", { mode: "number" }).notNull(),
+    amountMinor: money("amount_minor"),
+    currency: char("currency", { length: 3 }).notNull(),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+    periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+    /** Stripe's invoice item, once added. */
+    invoiceItemId: text("invoice_item_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "organisation_extra_charges_pk", columns: [t.organisationId, t.invoiceId, t.extensionId] }),
+    check("organisation_extra_charges_unit", sql`${t.unit} in ('ai_conversation', 'person')`),
+    check("organisation_extra_charges_counts", sql`${t.used} >= 0 and ${t.included} >= 0 and ${t.quantity} >= 0 and ${t.unitMinor} >= 0 and ${t.amountMinor} >= 0`),
+    check("organisation_extra_charges_period", sql`${t.periodEnd} > ${t.periodStart}`),
+    index("organisation_extra_charges_extension_idx").on(t.extensionId),
+  ],
+);
+
 /** Extensions sold together for less (D748 E2): each part at its smallest size. Never deleted: a bundle not offered is inactive. */
 export const extensionBundles = commerce.table(
   "extension_bundles",
@@ -2569,11 +2635,17 @@ export const organisationBilling = commerce.table(
     customerAccount: text("customer_account"),
     /** When the account's stores moved here from being billed one by one (step E4's move); null for an account billed so from the start. */
     movedAt: timestamp("moved_at", { withTimezone: true }),
+    /**
+     * The most the account pays a period for use beyond its allowances (D880, D748 E11), in its currency's minor units; null is no cap. At it
+     * the support desk's AI hands new conversations to people, and no more is billed.
+     */
+    extrasCapMinor: bigint("extras_cap_minor", { mode: "number" }),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
   (t) => [
     unique("organisation_billing_subscription_key").on(t.mode, t.subscriptionId),
+    check("organisation_billing_extras_cap", sql`${t.extrasCapMinor} is null or ${t.extrasCapMinor} >= 0`),
     check("organisation_billing_fee_range", sql`${t.saleFeeBpsOverride} is null or ${t.saleFeeBpsOverride} between 0 and 2000`),
     index("organisation_billing_plan_idx").on(t.planId),
     index("organisation_billing_price_idx").on(t.priceId),

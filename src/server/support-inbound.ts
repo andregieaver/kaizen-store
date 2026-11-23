@@ -32,6 +32,7 @@ import { homeMarket, inView } from "@/lib/markets";
 import { NO_SIGNALS } from "@/lib/recommendations";
 import { CONVERSATION_MESSAGES_MAX } from "@/lib/support-rules";
 
+import { aiRoomFor } from "./extras";
 import { takeChatTurn, type ChatSite } from "./chat-agent";
 import { chatContext, type ChatPlace } from "./chat-route";
 import { fileReceived, pruneFiledEmails, storeOfFilingKey } from "./email-filing";
@@ -492,9 +493,11 @@ async function newConversation(
   email: { from: string; name: string | null; subject: string | null; messageId: string | null },
 ): Promise<string> {
   const place = placeOf(site);
+  // An account at its cap for use beyond its allowances (D880): its AI takes no new conversation, a person does.
+  const people = settings.mode === "people" || settings.sensitive || (desk.storeId !== null && !(await aiRoomFor(desk.storeId)));
   const [row] = await db().execute<Row>(sql`
     insert into commerce.support_conversations (store_id, source, handler, market, locale, contact_email, contact_name, reply_key, email_subject, email_message_id)
-    values (${desk.storeId}::uuid, 'email', ${settings.mode === "people" || settings.sensitive ? "queue" : "ai"}, ${place.market}, ${place.locale.slice(0, 16)},
+    values (${desk.storeId}::uuid, 'email', ${people ? "queue" : "ai"}, ${place.market}, ${place.locale.slice(0, 16)},
       ${email.from}, ${email.name}, ${newKey()}, ${email.subject}, ${email.messageId})
     returning id
   `);
