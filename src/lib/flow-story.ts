@@ -10,7 +10,7 @@ export type StoryWords = {
   triggers: Record<string, string>;
   sameDay: string;
   after: { hours: { one: string; many: string }; days: { one: string; many: string } };
-  conditions: { ordered: { yes: string; no: string }; clicked: { yes: string; no: string }; segment: { yes: string; no: string } };
+  conditions: { ordered: { yes: string; no: string }; clicked: { yes: string; no: string }; segment: { yes: string; no: string }; split: { yes: string; no: string } };
   goal: string;
   ends: string;
 };
@@ -44,6 +44,7 @@ function conditionWords(condition: FlowCondition, holds: boolean, w: StoryWords,
   const pick = (pair: { yes: string; no: string }) => (holds ? pair.yes : pair.no);
   if (condition.kind === "ordered_since_entry") return pick(w.conditions.ordered);
   if (condition.kind === "clicked_flow_email") return pick(w.conditions.clicked);
+  if (condition.kind === "split") return pick(w.conditions.split);
   return fill(pick(w.conditions.segment), { segment: segmentName(condition.segmentId) });
 }
 

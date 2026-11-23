@@ -62,3 +62,8 @@ orders), and the counted figures with the engine's interval.
 - **Slice 3, 23 November 2026.** In the test, *Suggest subject B with AI* asks the store's writer (`suggestSubjects()`, M3.7, claims
   checked) for three subject lines from the email as written, and one press makes a line subject B (`suggestTestSubjectsAction()`). The AI
   manager's `draft_broadcast` takes `split_test`: the writer's first line becomes subject B at the default share and wait (API 1.54).
+- **Slice 4, first part, 23 November 2026.** A flow's *if* step can split: the condition `split` sends half the people the first way
+  and half the other, by `splitDraw()` (a hash of the run and the step, so a person's way never changes and no one chooses it). The canvas
+  offers *Split*, the story reads *for half (a test)* / *for the rest*, and the AI's flow words
+  know the halves. No migration: the run's path already keeps the way taken. Still to come: each way's figures side by side and *Keep this
+  way* (a new version without the other).

@@ -67,12 +67,14 @@ const KINDS = ["email", "wait", "if", "end"] as const;
 const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
 const placeId = (place: FlowPlace) => `place:${JSON.stringify(place)}`;
-const conditionValue = (c: FlowCondition) => (c.kind === "ordered_since_entry" ? "ordered" : c.kind === "clicked_flow_email" ? "clicked" : `segment:${c.segmentId}`);
+const conditionValue = (c: FlowCondition) =>
+  c.kind === "ordered_since_entry" ? "ordered" : c.kind === "clicked_flow_email" ? "clicked" : c.kind === "split" ? "split" : `segment:${c.segmentId}`;
 
 function conditionLabel(c: FlowCondition, p: Props): string {
   const yes = p.w.story.conditions;
   if (c.kind === "ordered_since_entry") return yes.ordered.yes;
   if (c.kind === "clicked_flow_email") return yes.clicked.yes;
+  if (c.kind === "split") return yes.split.yes;
   return yes.segment.yes.replace("{segment}", p.segments.find((s) => s.id === c.segmentId)?.name ?? "?");
 }
 
@@ -540,6 +542,7 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
     const options = [
       { value: "ordered", label: w.story.conditions.ordered.yes },
       { value: "clicked", label: w.story.conditions.clicked.yes },
+      { value: "split", label: w.story.conditions.split.choose },
       ...p.segments.map((s) => ({ value: `segment:${s.id}`, label: w.story.conditions.segment.yes.replace("{segment}", s.name) })),
     ];
     body = (

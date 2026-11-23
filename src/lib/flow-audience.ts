@@ -31,6 +31,7 @@ const CONDITIONS: Record<FlowCondition["kind"], [string, string]> = {
   ordered_since_entry: ["who have ordered since the flow started for them", "who have not ordered since the flow started for them"],
   clicked_flow_email: ["who pressed a link in one of its emails", "who have not pressed a link in its emails"],
   in_segment: ["in one of the shop's groups of customers", "outside one of the shop's groups of customers"],
+  split: ["in one half of a split test (the other half get another email)", "in the other half of a split test"],
 };
 
 type Place = { index: number; hours: number; branch: string | null };

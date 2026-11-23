@@ -147,13 +147,14 @@ export async function removeFlowStepAction(storeSlug: string, flowId: string, st
   return saveTree(storeSlug, flowId, (flow) => removeStep(flow.steps, stepId));
 }
 
-/** Sets an `if`'s condition: `ordered`, `clicked`, or `segment:{id}` of one of the store's own segments. */
+/** Sets an `if`'s condition: `ordered`, `clicked`, `split` (half and half, M2.5), or `segment:{id}` of one of the store's own segments. */
 export async function changeFlowConditionAction(storeSlug: string, flowId: string, stepId: string, _state: FormState, form: FormData): Promise<FormState> {
   const value = String(form.get("condition") ?? "");
   return saveTree(storeSlug, flowId, async (flow, storeId) => {
     let condition: FlowCondition | null = null;
     if (value === "ordered") condition = { kind: "ordered_since_entry" };
     else if (value === "clicked") condition = { kind: "clicked_flow_email" };
+    else if (value === "split") condition = { kind: "split" };
     else if (value.startsWith("segment:")) {
       const segmentId = value.slice("segment:".length);
       if ((await listSegments(storeId)).some((s) => s.id === segmentId)) condition = { kind: "in_segment", segmentId };

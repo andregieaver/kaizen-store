@@ -59,6 +59,7 @@ export const flowsNb: FlowsMessages = {
       ordered: { yes: "hvis de har bestilt", no: "hvis de ikke har bestilt" },
       clicked: { yes: "hvis de trykket på en lenke", no: "hvis de ikke trykket på en lenke" },
       segment: { yes: "hvis de er i {segment}", no: "hvis de ikke er i {segment}" },
+      split: { yes: "for halvparten (en test)", no: "for resten", choose: "Del i to" },
     },
     goal: "Det stopper når de bestiller.",
     endsPaused: "Når det slutter, settes de som ikke har trykket på en lenke siden det begynte, på pause: ingen markedsføring før de trykker på en.",

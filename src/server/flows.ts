@@ -523,7 +523,7 @@ async function factsFor(run: z.infer<typeof dueRow>, steps: FlowStep[], store: E
     sql`select count(*)::int as n from commerce.email_clicks k where k.store_id = ${run.store_id}::uuid and k.flow_id = ${run.flow_id}::uuid
           and k.subscriber_id = ${run.subscriber_id}::uuid and k.clicked_at >= ${run.entered_at}::timestamptz`,
   );
-  return { orderedSinceEntry: (ordered?.n ?? 0) > 0, clickedFlowEmail: (clicked?.n ?? 0) > 0, segments };
+  return { orderedSinceEntry: (ordered?.n ?? 0) > 0, clickedFlowEmail: (clicked?.n ?? 0) > 0, segments, runKey: run.id };
 }
 
 async function moveOn(

@@ -143,6 +143,11 @@ goal's flow switched off and untested (`start_flow`), so the autopilot can propo
 flow's page after a test. Still to come in M3.9: suggesting split tests (with M2.5).
 
 
+## Split tests (email plan M2.5, D868)
+
+An *if* step whose condition is `split` sends half the people each way, by `splitDraw()` (`src/lib/flows.ts`, a hash of the run id and
+the step id); a test or dry run uses the person's own key, so it shows one way. Details and what is still to come: `docs/split-tests.md`.
+
 ## Keep your list awake, the sunset (20 November 2026, email plan M2.8)
 
 The date trigger `subscriber.asleep` starts a flow for a subscriber who has pressed no link in the store's emails for its days (90 to 180,

@@ -11,6 +11,7 @@ const w: StoryWords = {
     ordered: { yes: "if they have ordered", no: "if they have not ordered" },
     clicked: { yes: "if they pressed a link", no: "if they did not press a link" },
     segment: { yes: "if they are in {segment}", no: "if they are not in {segment}" },
+    split: { yes: "for half of them (a split test)", no: "for the other half" },
   },
   goal: "It ends when they order.",
   ends: "Then it ends.",

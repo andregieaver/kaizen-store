@@ -178,3 +178,28 @@ describe("a language started from another (email plan M3.4)", () => {
     expect(withLanguageCopy(tree, "welcome", "sv-SE", "en-GB")).toEqual(tree);
   });
 });
+
+describe("a split in a flow (M2.5, D868)", () => {
+  it("sends about half each way, the same way every time for a run, and never by choice", async () => {
+    const { advance, splitDraw } = await import("./flows");
+    const steps = [
+      {
+        id: "split",
+        kind: "if" as const,
+        condition: { kind: "split" as const },
+        then: [{ id: "a", kind: "wait" as const, hours: 1 }],
+        else: [{ id: "b", kind: "wait" as const, hours: 2 }],
+      },
+    ];
+    const facts = (runKey: string) => ({ orderedSinceEntry: false, clickedFlowEmail: false, segments: new Set<string>(), runKey });
+    let first = 0;
+    for (let i = 0; i < 2000; i++) {
+      const move = advance(steps, [], ["0"], facts(`run-${i}`));
+      if (move.do === "wait" && move.hours === 1) first++;
+    }
+    expect(first).toBeGreaterThan(900);
+    expect(first).toBeLessThan(1100);
+    expect(splitDraw("run-7", "split")).toBe(splitDraw("run-7", "split"));
+    expect(advance(steps, [], ["0"], facts("run-7"))).toEqual(advance(steps, [], ["0"], facts("run-7")));
+  });
+});

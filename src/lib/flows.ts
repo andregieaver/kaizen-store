@@ -17,7 +17,9 @@ import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "./flow-triggers
 export type FlowCondition =
   | { kind: "ordered_since_entry" }
   | { kind: "clicked_flow_email" }
-  | { kind: "in_segment"; segmentId: string };
+  | { kind: "in_segment"; segmentId: string }
+  /** A split test (email plan M2.5, D868): half the people go the first way, by a hash of their run and the step, the other half the other. */
+  | { kind: "split" };
 
 export type FlowStep =
   /** `picks` (slice 4): products chosen for each reader by code (D653, D691) put in the email; without any for a reader, it is not sent. */
@@ -38,6 +40,7 @@ const conditionSchema: z.ZodType<FlowCondition> = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("ordered_since_entry") }),
   z.object({ kind: z.literal("clicked_flow_email") }),
   z.object({ kind: z.literal("in_segment"), segmentId: z.uuid() }),
+  z.object({ kind: z.literal("split") }),
 ]);
 
 export const flowStepSchema: z.ZodType<FlowStep> = z.lazy(() =>
@@ -138,14 +141,32 @@ export function nextPath(steps: readonly FlowStep[], path: FlowPath): FlowPath |
 }
 
 /** What is known about a person when they move on: their facts, read by the server. */
-export type FlowFacts = { orderedSinceEntry: boolean; clickedFlowEmail: boolean; segments: ReadonlySet<string> };
+export type FlowFacts = {
+  orderedSinceEntry: boolean;
+  clickedFlowEmail: boolean;
+  segments: ReadonlySet<string>;
+  /** What a split test's way is drawn from (M2.5): the run's id; a test or dry run passes the person's, so they see one way. */
+  runKey?: string;
+};
 
-const holds = (condition: FlowCondition, facts: FlowFacts): boolean =>
+/** A number in [0, 1) fixed by the run and the step (FNV-1a), so a person's way through a split never changes and no one chooses it. */
+export function splitDraw(runKey: string, stepId: string): number {
+  let h = 0x811c9dc5;
+  for (const ch of `${runKey}:${stepId}`) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h / 0x1_0000_0000;
+}
+
+const holds = (condition: FlowCondition, facts: FlowFacts, stepId: string): boolean =>
   condition.kind === "ordered_since_entry"
     ? facts.orderedSinceEntry
     : condition.kind === "clicked_flow_email"
       ? facts.clickedFlowEmail
-      : facts.segments.has(condition.segmentId);
+      : condition.kind === "split"
+        ? splitDraw(facts.runKey ?? "", stepId) < 0.5
+        : facts.segments.has(condition.segmentId);
 
 /** What a person does next. */
 export type FlowMove =
@@ -166,7 +187,7 @@ export function advance(steps: readonly FlowStep[], goals: readonly FlowGoal[], 
     if (step.kind === "email") return { do: "email", step, next: nextPath(steps, current) };
     if (step.kind === "wait") return { do: "wait", hours: step.hours, next: nextPath(steps, current) };
     if (step.kind === "end") return { do: "end", reason: "done" };
-    const branch = holds(step.condition, facts) ? "then" : "else";
+    const branch = holds(step.condition, facts, step.id) ? "then" : "else";
     current = step[branch].length > 0 ? [...current, branch, "0"] : nextPath(steps, current);
   }
   return { do: "end", reason: "done" };
