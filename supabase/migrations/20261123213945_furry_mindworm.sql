@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."accounts" ADD COLUMN "owner_journey_off_at" timestamp with time zone;

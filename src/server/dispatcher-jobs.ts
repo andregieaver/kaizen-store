@@ -1,6 +1,7 @@
 import "server-only";
 
 import { runEbayJobs } from "@/server/ebay";
+import { sendOwnerJourney } from "@/server/owner-journey";
 import { runSms } from "@/server/sms";
 import { runSupplierOrders } from "@/server/supplier-orders";
 import { markAiPictures } from "@/server/ai-picture-marks";
@@ -105,6 +106,8 @@ export const DISPATCHER_JOBS = {
   docsIndex: () => refreshDocsIndex(),
   // Kaizena Flow's own customers (D467): its owners and applicants kept as customers of its own store, with their tags and sign-up deals.
   houseCustomers: () => syncHouseCustomers(),
+  // Owners guided from trial to plan (M4.5, D886): each store's due step, once, to its first owner who has not turned them off.
+  ownerJourney: () => sendOwnerJourney(),
   media: () => refreshMediaEmbeddings(),
   altTexts: () => refreshAltTexts(),
   // What a product's page shows of its standard category (bloat review step 2.23): derived for products whose words are missing or from an

@@ -14,6 +14,7 @@ import type { Membership } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
 import { applyPlanDiscount, cancelPlan, choosePlan, NO_COUNTRY, portalUrl, removeWaitingDiscount } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
+import { setOwnerJourneyOff } from "@/server/owner-journey";
 import { setPlanRemindersOptOut } from "@/server/plan-reminders";
 import { checkOwnerRole, checkPermission, NO_ACCESS, requireOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
@@ -311,8 +312,10 @@ export async function removePlanDiscountAction(storeSlug: string): Promise<FormS
 }
 
 /** The Plan page's link: no reminders from Kaizen about plans left unpaid, or reminders after all (D33). */
-export async function planRemindersOptOutAction(storeSlug: string, optOut: boolean): Promise<void> {
+export async function planRemindersOptOutAction(storeSlug: string, optOut: boolean, which: "plan" | "journey"): Promise<void> {
   const member = await requireOwnerRole(storeSlug);
-  await setPlanRemindersOptOut(member.account.id, optOut);
+  // One action for the owner's two switches on Billing (D33's plan reminders, M4.5's journey emails, D886), so the second adds no server reference.
+  if (which === "journey") await setOwnerJourneyOff(member.account.id, optOut);
+  else await setPlanRemindersOptOut(member.account.id, optOut);
   refresh();
 }

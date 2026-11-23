@@ -500,6 +500,8 @@ export const accounts = commerce.table(
     assistantLearns: boolean("assistant_learns").notNull().default(true),
     /** The owner asked Kaizen for no reminders about plans left unpaid (D33). */
     planRemindersOptedOutAt: timestamp("plan_reminders_opted_out_at", { withTimezone: true }),
+    /** The owner turned off the emails that guide them from trial to plan (email plan M4.5, D886, `src/server/owner-journey.ts`). */
+    ownerJourneyOffAt: timestamp("owner_journey_off_at", { withTimezone: true }),
     /**
      * A mirror for display only (wave 1, 1f): when the account was last seen with a verified second step ("has
      * two-step" on the Team page). Never used to decide access: that is read from the signed `aal` claim or a

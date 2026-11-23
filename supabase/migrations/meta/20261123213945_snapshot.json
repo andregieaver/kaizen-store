@@ -1,6 +1,6 @@
 {
-  "id": "4d262de2-6425-4972-95bd-fc4be98b2609",
-  "prevId": "a7ad93c3-f6b5-4b44-b7cc-28c23d430877",
+  "id": "ea7b82b4-609b-4683-a178-3273f8448aa7",
+  "prevId": "4d262de2-6425-4972-95bd-fc4be98b2609",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1381,6 +1381,12 @@
         },
         "plan_reminders_opted_out_at": {
           "name": "plan_reminders_opted_out_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_journey_off_at": {
+          "name": "owner_journey_off_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

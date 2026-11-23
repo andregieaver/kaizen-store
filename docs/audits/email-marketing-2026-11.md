@@ -124,7 +124,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 | M4.2 | Topics and a preference page | M | Done 2026-11-23: the store's topics, consent per topic kept, a broadcast about one; the page every email links to (topics, how often, a month's pause); forms' topics, each reader's record, the AI manager (D882, `docs/email-topics.md`) | The store's own topics; the subscriber picks topics and how often, or pauses for a month; consent per topic kept as a record |
 | M4.3 | A popup's own report | S | Done 2026-11-23: views per form and day, the forms list says seen and answered (D871) | Views, sign-ups and the rate per popup and form (the parity row's caveat) |
 | M4.4 | Send time per person | S | Done 2026-11-23: a broadcast at each reader's own hour within a day, else the store's best, in the day's hours (`send-time.ts`) | From their own clicks (M1.3) inside quiet hours; else the store's best hour |
-| M4.5 | Owners nurtured from trial to plan (was E4.6) | M | Open | The house store's flows on the platform's events: trial started, store published, first order, trial ending, plan paid, store closed |
+| M4.5 | Owners nurtured from trial to plan (was E4.6) | M | Done 2026-11-23: six service emails, once per store, every owner, a switch under Billing (D886, `docs/owner-journey.md`) | The house store's flows on the platform's events: trial started, store published, first order, trial ending, plan paid, store closed |
 
 ## Phase 5: finding business customers, lawfully
 

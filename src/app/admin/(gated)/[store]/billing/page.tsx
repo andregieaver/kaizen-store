@@ -11,6 +11,7 @@ import { mainCurrency } from "@/lib/markets";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getFeatureMatrix } from "@/server/plan-features";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
+import { ownerJourneyOff } from "@/server/owner-journey";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
 import { listPlanCampaigns } from "@/server/platform-discounts";
 import { campaignFor, campaignRuns } from "@/lib/plan-campaigns";
@@ -99,7 +100,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
     storeAiMoney(store.id),
   ]);
   const isOwner = memberCan(staffer, "owner");
-  const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
+  const [reminders, optedOut, journeyOff] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id), ownerJourneyOff(account.id)]);
   const mode = billingMode();
   const onPlan = isOnPlan(billing?.status) && billing?.mode === mode;
   const current = plans.find((plan) => plan.id === billing?.planId);
@@ -249,10 +250,19 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           </div>
           {!onPlan && (isOwner || billing?.discount) && codeField}
           {!onPlan && isOwner && reminders && (
-            <QuietActionForm action={planRemindersOptOutAction.bind(null, store.slug, !optedOut)} className="text-sm text-muted">
+            <QuietActionForm action={planRemindersOptOutAction.bind(null, store.slug, !optedOut, "plan")} className="text-sm text-muted">
               {optedOut ? w.noReminders : w.mayRemind}
               <button type="submit" className="underline hover:text-ink">
                 {optedOut ? w.sendReminders : w.stopReminders}
+              </button>
+            </QuietActionForm>
+          )}
+          {/* The emails that guide an owner from trial to plan (M4.5, D886): the switch every one of them links to. */}
+          {isOwner && (
+            <QuietActionForm action={planRemindersOptOutAction.bind(null, store.slug, !journeyOff, "journey")} className="text-sm text-muted" data-journey-switch>
+              {journeyOff ? w.journeyOff : w.journeyOn}
+              <button type="submit" className="underline hover:text-ink">
+                {journeyOff ? w.journeyStart : w.journeyStop}
               </button>
             </QuietActionForm>
           )}

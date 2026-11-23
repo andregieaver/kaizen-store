@@ -689,6 +689,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.briefing": "staff",
   // A platform workflow's email (D516), to the platform's owners.
   "platform.workflow": "staff",
+  "platform.owner_journey": "staff",
   // Notices of illegal content (DSA, D411): the sender's receipt and decision go to a member of the public; the alert and the statement of
   // reasons go to Kaizena Flow's admins and the store's owners.
   "platform.content_report_received": "shopper",
