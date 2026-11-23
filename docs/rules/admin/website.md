@@ -1384,7 +1384,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   containers `max-w-(--content-width)`, headings `font-heading`, product
   cards `product-card`/`product-card-image`, highlights `bg-accent
   text-accent-foreground`. A new setting goes in `ThemeSettings`, both
-  templates, `themeCss()`/`themeAttributes()` and the editor. Store fonts
+  templates, `themeCss()`/`themeAttributes()` and the editor. The cookie popup's look (D883) is `ThemeSettings.consent`, the *Cookie popup*
+  card on every `ThemeEditor` (stores and Kaizena Flow's Site design alike). Store fonts
   are the theme's (`store.fonts` is derived from it). Logos are drawn with
   `LogoPicture` and `darkBehindLogo()`, which swap in the logo for dark
   backgrounds (`navigation.logoDark`) where the theme puts it on a dark one.

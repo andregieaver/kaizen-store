@@ -16,6 +16,7 @@ import { designPreviewPath } from "@/lib/design-presets";
 import { areaTexts } from "@/lib/admin-area";
 import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { CONSENT_LOOK_WORDS } from "@/lib/admin-words/consent-look";
 import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 import { THEME_UPDATE_KEEP_DAYS, latestDesignUse, listOfferedDesigns, themeUpdates } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -92,7 +93,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const hasUpdates = updates.available.length > 0 || updates.made.length > 0 || updates.installs.length > 0;
   const canShare = canChange && !store.isTemplate && !store.starter;
   return (
-    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS, schedules: SCHEDULES_WORDS })}>
+    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS, consentLook: CONSENT_LOOK_WORDS, schedules: SCHEDULES_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}

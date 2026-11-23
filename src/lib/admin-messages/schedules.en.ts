@@ -132,6 +132,7 @@ export const schedulesEn = {
       sectionStyles: "Section styles",
       hover: "Hover effects",
       checkout: "Checkout look",
+      consent: "Cookie popup",
       breakpoints: "Screen sizes",
       library: "Saved colours",
     },

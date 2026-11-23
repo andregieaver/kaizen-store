@@ -55,6 +55,21 @@
   --content-width: 64rem;
   --card-aspect: 1 / 1;
   --heading-weight: 600;
+  /*
+   * The cookie popup's own colours, corners and shadow (D883): `themeCss()` writes them for a themed site; elsewhere they are the page's.
+   * Declared on the root, they are worked out there and passed down as colours, so `.consent-look` can put them in place of the page's.
+   */
+  --consent-background: var(--background);
+  --consent-foreground: var(--foreground);
+  --consent-muted: var(--muted);
+  --consent-border: var(--border);
+  --consent-accent: var(--accent);
+  --consent-accent-foreground: var(--accent-foreground);
+  --consent-secondary: var(--background);
+  --consent-secondary-foreground: var(--foreground);
+  --consent-radius: 0.5rem;
+  --consent-button-radius: var(--button-radius);
+  --consent-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
 @theme inline {
@@ -284,6 +299,33 @@ body {
   --accent: var(--checkout-accent);
   --accent-foreground: var(--checkout-accent-foreground);
   --button-radius: var(--checkout-button-radius);
+}
+
+/*
+ * The cookie banner and popup (D883): drawn over the page, outside any row, they read only their own variables (Design settings' *Cookie
+ * popup*, written by `themeCss()` as `--consent-*`), so a dark row under them or a site in light colours does not decide how they look.
+ */
+.consent-look {
+  color-scheme: var(--consent-scheme);
+  --background: var(--consent-background);
+  --foreground: var(--consent-foreground);
+  --muted: var(--consent-muted);
+  --border: var(--consent-border);
+  --accent: var(--consent-accent);
+  --accent-foreground: var(--consent-accent-foreground);
+  --button-radius: var(--consent-button-radius);
+  background-color: var(--background);
+  color: var(--foreground);
+  border-radius: var(--consent-radius);
+  box-shadow: var(--consent-shadow);
+}
+.consent-secondary {
+  border: 1px solid var(--border);
+  background-color: var(--consent-secondary);
+  color: var(--consent-secondary-foreground);
+}
+:where([data-consent-heading="body"]) .consent-look :is(h1, h2, h3) {
+  font-family: inherit;
 }
 
 /* Product cards (D60): the picture's shape, and plain, bordered or raised, left or centred. */

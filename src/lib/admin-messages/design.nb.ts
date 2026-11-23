@@ -390,6 +390,7 @@ export const designNb: DesignMessages = {
       mode: "lyst og mørkt",
       visitorSwitch: "bryteren for lyst og mørkt",
       checkout: "kassens utseende",
+      consent: "informasjonskapsel-vinduet",
     },
     layouts: { header: "topptekst", footer: "bunntekst", productLayout: "produktside" },
     newAreas: "Endret: {areas}.",

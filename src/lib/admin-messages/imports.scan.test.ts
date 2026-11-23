@@ -27,6 +27,7 @@ const ALLOWED_LEAVES: Record<string, string> = {
   "lib/pick-list-labels.ts": "What the pick list leaves out, read by the AI manager's pick list tool as well.",
   "lib/animation-words.ts": "The builder's Animation words (D538): a label module already (no imports), which the fields read in English when no words are handed down.",
   "lib/analytics-captions.ts": "Each analytics table's caption, which the CSV registry (ANALYTICS_TABLES) and its file names are built from.",
+  "lib/consent-look-words.ts": "The theme editor's Cookie popup card (D883): a label module (no imports), which the card reads in English when no words are handed down.",
   "lib/backdrop-words.ts": "The builder's backdrop and layer words (D534), which the fields read in English when no words are handed down.",
   "lib/bulk-admin-labels.ts": "The bulk editor's words, read by bulk-admin.ts's functions as their English as well.",
   "lib/data-admin-labels.ts": "What the import and export pages say, read by the redirect import's pages and data-admin.ts's test as well.",

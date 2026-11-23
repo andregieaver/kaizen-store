@@ -18,6 +18,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { areaTexts } from "@/lib/admin-area";
 import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { CONSENT_LOOK_WORDS } from "@/lib/admin-words/consent-look";
 import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Customise theme" };
@@ -44,7 +45,7 @@ export default async function CustomisePlatformThemePage({ params }: PageProps<"
   ];
 
   return (
-    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS })}>
+    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS, consentLook: CONSENT_LOOK_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: "/admin/platform/site-design", label: d.title }}

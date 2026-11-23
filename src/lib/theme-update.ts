@@ -103,6 +103,7 @@ export const WHATS_NEW_WORDS = {
     mode: "light and dark",
     visitorSwitch: "the light and dark switch",
     checkout: "checkout look",
+    consent: "cookie popup",
   } as Record<string, string>,
   layouts: { header: "header", footer: "footer", productLayout: "product page" } as Record<DesignLayoutKind, string>,
   newAreas: "New {areas}.",

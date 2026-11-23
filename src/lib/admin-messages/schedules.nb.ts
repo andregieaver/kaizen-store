@@ -127,6 +127,7 @@ export const schedulesNb: SchedulesMessages = {
       sectionStyles: "Seksjonsstiler",
       hover: "Pekereffekter",
       checkout: "Kassens utseende",
+      consent: "Informasjonskapsel-vinduet",
       breakpoints: "Skjermstørrelser",
       library: "Lagrede farger",
     },

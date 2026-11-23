@@ -16,6 +16,12 @@ import {
   CHECKOUT_BACKGROUNDS,
   CHECKOUT_FIELDS,
   COLOR_MODES,
+  CONSENT_COLOUR_KEYS,
+  CONSENT_HEADINGS,
+  CONSENT_SCHEMES,
+  CONSENT_SHADOWS,
+  type ConsentColourKey,
+  type ConsentLook,
   CONTENT_WIDTHS,
   type CheckoutLook,
   FIELD_CORNERS,
@@ -51,6 +57,18 @@ export const checkoutLookSchema = z.object({
   fields: z.enum(keys(CHECKOUT_FIELDS)).optional(),
 }) satisfies z.ZodType<CheckoutLook, unknown>;
 
+const consentColours = z.object(Object.fromEntries(CONSENT_COLOUR_KEYS.map((key) => [key, hex])) as Record<ConsentColourKey, typeof hex>);
+
+/** The cookie popup's look (D883). */
+export const consentLookSchema = z.object({
+  scheme: z.enum(keys(CONSENT_SCHEMES)).optional(),
+  colours: z.object({ light: consentColours, dark: consentColours }).optional(),
+  corners: z.enum(keys(CARD_CORNERS)).optional(),
+  buttonCorners: z.enum(keys(BUTTON_CORNERS)).optional(),
+  heading: z.enum(keys(CONSENT_HEADINGS)).optional(),
+  shadow: z.enum(keys(CONSENT_SHADOWS)).optional(),
+}) satisfies z.ZodType<ConsentLook, unknown>;
+
 export const themeSettingsSchema = z.object({
   mode: z.enum(keys(COLOR_MODES)),
   visitorSwitch: z.boolean().default(false),
@@ -77,6 +95,7 @@ export const themeSettingsSchema = z.object({
   library: colourLibrarySchema.optional(),
   hover: themeHoverSchema,
   checkout: checkoutLookSchema.optional(),
+  consent: consentLookSchema.optional(),
 }) satisfies z.ZodType<ThemeSettings, unknown>;
 
 export const storeThemeInput = z.object({

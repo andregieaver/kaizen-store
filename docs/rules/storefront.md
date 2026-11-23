@@ -767,6 +767,10 @@ the path, component or table you change, or list the rules with a search for lin
   `siteCookies()`), so visitors are asked again and the statistics text names them. An owner's code and an owner's note on a scanned item
   never take `recordings` (`CODE_CATEGORIES`). A known storage item carries `storage` on its `KNOWN_COOKIES` entry, which is how the scan
   recognises it. Legal facts gain `heatmaps` and `sessionRecordings` only when true, so the legal AI rewrites nothing for other stores.
+  The banner and the popup have a look of their own (D883, `ThemeSettings.consent`, `src/lib/consent-look.ts`): they carry `.consent-look`,
+  which reads only the `--consent-*` variables `themeCss()` writes (the site's set, or always light or dark, and the owner's own colours,
+  corners, heading font and shadow), never the variables of the part they sit over. Anything new drawn inside them uses the theme's
+  classes as before (`bg-background`, `text-muted`, `button-primary`, `consent-secondary` for the other buttons), which `.consent-look` maps.
 
 ## Links say what they may fetch ahead (bloat review step 2.6)
 

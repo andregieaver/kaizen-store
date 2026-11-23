@@ -5,8 +5,7 @@ import type { Widen } from "./common.en";
  * theme*, the theme's settings and the cart), an installed theme's own page and preview, the owner's *Try a theme in your store*, the font
  * picker, and the sentences the libraries write (`chargeLine()`, `whatChanges()`, `whatsNew()`, `presetLine()`, `themeWarnings()`,
  * `breakpointsProblem()`), whose English is held equal to the libraries' own by `design.test.ts`. A person reads *theme*, *preset* and
- * *demo store* (D273). `{name}`-style placeholders are filled by `fillWords()`; a count is a `{ one, many }` pair read by `countWords()`,
- * with `{n}` the number.
+ * *demo store* (D273).
  */
 export const designEn = {
   common: {
@@ -397,6 +396,7 @@ export const designEn = {
       mode: "light and dark",
       visitorSwitch: "the light and dark switch",
       checkout: "checkout look",
+      consent: "cookie popup",
     } as Record<string, string>,
     layouts: { header: "header", footer: "footer", productLayout: "product page" },
     newAreas: "New {areas}.",

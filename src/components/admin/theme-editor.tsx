@@ -20,14 +20,22 @@ import {
   type CheckoutBackground,
   type CheckoutFields,
   type CheckoutLook,
+  CONSENT_COLOUR_KEYS,
+  type CardCorners,
+  type ConsentHeading,
+  type ConsentLook,
+  type ConsentScheme,
+  type ConsentShadow,
   type Palette,
   type StoreTheme,
   type ThemeSettings,
 } from "@/lib/theme";
 import { checkoutLookOf, checkoutLookOwn, followTheme, patchCheckoutLook } from "@/lib/checkout-look";
+import { consentLookOwn, followTheme as followThemeConsent, patchConsentLook, startingColours } from "@/lib/consent-look";
 import type { SavedTheme } from "@/server/themes";
 
-import { useAdminText } from "./admin-text";
+import { useAdminText, useHandedText } from "./admin-text";
+import { CONSENT_LOOK_WORDS, type ConsentLookWords } from "@/lib/consent-look-words";
 import type { LookVersionActions } from "@/lib/look-versions";
 
 import { LookVersionsDialog } from "./look-versions-dialog";
@@ -230,6 +238,7 @@ function Preview({ settings, storeName, mode, checkout = true }: { settings: The
         </ul>
         <input readOnly tabIndex={-1} aria-hidden value={sample.email} className="min-h-9 rounded-md border border-border bg-background px-3 text-xs" />
         {checkout && <CheckoutSample settings={settings} />}
+        <ConsentSample />
       </div>
       <div className="border-t border-border bg-surface px-4 py-3 text-xs text-muted">© {storeName}</div>
     </div>
@@ -346,6 +355,124 @@ function CheckoutLookFields({
             {own ? null : w.following}
             {own && (
               <button type="button" onClick={() => onChange(followTheme(settings.checkout))} className={`${button} border border-border text-foreground`}>
+                {w.followTheme}
+              </button>
+            )}
+          </p>
+        </div>
+      </details>
+    </>
+  );
+}
+
+/**
+ * The cookie popup in the preview (D883): its box, words and buttons drawn with `.consent-look`, as the site draws them, so the colour set
+ * it takes, its own colours, corners, heading font and shadow show here as they will on the site.
+ */
+/** The card's words: handed down in another language than English, else the English module's (D883). */
+const useConsentWords = (): ConsentLookWords => useHandedText("consentLook") ?? CONSENT_LOOK_WORDS;
+
+function ConsentSample() {
+  const w = useConsentWords().sample;
+  const button = "inline-flex min-h-9 flex-1 items-center justify-center whitespace-nowrap rounded-button px-3 text-xs font-medium";
+  return (
+    <div data-consent-sample="" className="consent-look flex flex-col gap-2 border border-border p-3 text-xs">
+      <h2 className="text-sm font-semibold">{w.heading}</h2>
+      <p>{w.text}</p>
+      <p className="text-muted">{w.more}</p>
+      <div className="flex flex-wrap gap-2">
+        <span className={`${button} consent-secondary`}>{w.reject}</span>
+        <span className={`${button} consent-secondary`}>{w.accept}</span>
+        <span className={`${button} button-primary`}>{w.save}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The *Cookie popup* card (D883): for Homer, which colours the banner and popup take (the site's, or always light or dark); for Lisa,
+ * behind *Customise the cookie popup*, colours of its own in each set, the box's and the buttons' corners, the heading's font and the
+ * shadow, and a way back to following the theme. Saved with the theme, as every other card here.
+ */
+function ConsentLookFields({ settings, onChange }: { settings: ThemeSettings; onChange: (consent: ConsentLook) => void }) {
+  const all = useAdminText("design");
+  const w = useConsentWords();
+  const o = all.editor.options;
+  const look = settings.consent ?? {};
+  const own = consentLookOwn(settings.consent);
+  const patch = (change: Partial<ConsentLook>) => onChange(patchConsentLook(settings.consent, change));
+  const [open, setOpen] = useState(own);
+  return (
+    <>
+      <p className="text-sm text-muted">{w.intro}</p>
+      <Choice
+        legend={w.scheme}
+        hint={w.schemeHint}
+        options={w.schemes as Record<ConsentScheme, string>}
+        value={look.scheme ?? "site"}
+        onChange={(scheme) => patch({ scheme: scheme === "site" ? undefined : scheme })}
+      />
+      <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+        <summary className="cursor-pointer text-sm font-medium">{w.customise}</summary>
+        <div className="mt-4 flex flex-col gap-4">
+          <Choice
+            legend={w.colours}
+            options={w.colourChoices as Record<"theme" | "own", string>}
+            value={look.colours ? "own" : "theme"}
+            onChange={(choice) => patch({ colours: choice === "own" ? startingColours(settings) : undefined })}
+          />
+          {look.colours && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(["light", "dark"] as const).map((scheme) => (
+                <fieldset key={scheme} className="flex flex-col gap-2">
+                  <legend className="float-left mb-1 w-full text-sm font-medium">{scheme === "light" ? w.inLight : w.inDark}</legend>
+                  {CONSENT_COLOUR_KEYS.map((key) => (
+                    <label key={key} className="flex items-center gap-3 text-sm">
+                      <input
+                        type="color"
+                        name={`consent-${scheme}-${key}`}
+                        value={look.colours![scheme][key]}
+                        aria-label={fillWords(w.pick, { colour: w.colourNames[key].toLowerCase(), set: all.editor.previewModes[scheme] })}
+                        onChange={(event) =>
+                          patch({ colours: { ...look.colours!, [scheme]: { ...look.colours![scheme], [key]: event.target.value.toLowerCase() } } })
+                        }
+                        className="size-9 shrink-0 cursor-pointer rounded-md border border-border bg-background p-0.5"
+                      />
+                      <span aria-hidden>{w.colourNames[key]}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+            </div>
+          )}
+          <Choice
+            legend={w.corners}
+            options={{ theme: w.cornersTheme, ...(o.cardCorners as Record<CardCorners, string>) } as Record<"theme" | CardCorners, string>}
+            value={look.corners ?? "theme"}
+            onChange={(corners) => patch({ corners: corners === "theme" ? undefined : corners })}
+          />
+          <Choice
+            legend={w.buttonCorners}
+            options={{ theme: w.cornersTheme, ...(o.buttonCorners as Record<ButtonCorners, string>) } as Record<"theme" | ButtonCorners, string>}
+            value={look.buttonCorners ?? "theme"}
+            onChange={(buttonCorners) => patch({ buttonCorners: buttonCorners === "theme" ? undefined : buttonCorners })}
+          />
+          <Choice
+            legend={w.heading}
+            options={w.headings as Record<ConsentHeading, string>}
+            value={look.heading ?? "heading"}
+            onChange={(heading) => patch({ heading: heading === "heading" ? undefined : heading })}
+          />
+          <Choice
+            legend={w.shadow}
+            options={w.shadows as Record<ConsentShadow, string>}
+            value={look.shadow ?? "strong"}
+            onChange={(shadow) => patch({ shadow: shadow === "strong" ? undefined : shadow })}
+          />
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+            {own ? null : w.following}
+            {own && (
+              <button type="button" onClick={() => onChange(followThemeConsent(settings.consent))} className={`${button} border border-border text-foreground`}>
                 {w.followTheme}
               </button>
             )}
@@ -487,7 +614,8 @@ export function ThemeEditor({
   const sourceSettings = loaded?.settings ?? templateSettings(theme.base);
   const changedFromSource = !same(settings, sourceSettings);
   const unpublished = !same(theme, live);
-  const warnings = themeWarnings(settings, all.readability);
+  const consentWords = useConsentWords();
+  const warnings = themeWarnings(settings, all.readability, consentWords.readability);
   // Screen sizes that cannot be used are not saved (D179): the store keeps its own until they can.
   const widthsProblem = settings.breakpoints ? breakpointsProblem(settings.breakpoints, all.breakpoints) : null;
   // A logo without a light version, on a background the theme makes dark somewhere.
@@ -818,17 +946,22 @@ export function ThemeEditor({
             <BreakpointFields value={breakpointsOf(settings)} onChange={(breakpoints) => set({ breakpoints })} />
           </Section>
 
-          <Section title={w.productCards} sub={subs.cards} last={!checkout}>
+          <Section title={w.productCards} sub={subs.cards}>
             <Choice legend={w.picture} options={o.cardImages as Record<ThemeSettings["productCards"]["image"], string>} value={settings.productCards.image} onChange={(image) => set({ productCards: { ...settings.productCards, image } })} />
             <Choice legend={w.card} options={o.cardStyles as Record<ThemeSettings["productCards"]["style"], string>} value={settings.productCards.style} onChange={(style) => set({ productCards: { ...settings.productCards, style } })} />
             <Choice legend={w.text} options={o.cardAligns as Record<ThemeSettings["productCards"]["align"], string>} value={settings.productCards.align} onChange={(align) => set({ productCards: { ...settings.productCards, align } })} />
           </Section>
 
           {checkout && (
-            <Section title={w.checkout.title} sub={p.checkoutSub} last>
+            <Section title={w.checkout.title} sub={p.checkoutSub}>
               <CheckoutLookFields settings={settings} hasLogo={logos.logo} onChange={(look) => set({ checkout: look })} />
             </Section>
           )}
+
+          {/* The cookie banner and popup (D883): on every site, Kaizena Flow's own included. */}
+          <Section title={consentWords.title} sub={consentWords.sub[settings.consent?.scheme ?? "site"]} last>
+            <ConsentLookFields settings={settings} onChange={(consent) => set({ consent })} />
+          </Section>
           </PhoneRows>
         </div>
 

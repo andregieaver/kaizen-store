@@ -156,7 +156,7 @@ export function compareVersions(before: PageContent, after: PageContent): PageDi
 }
 
 /** The areas of a look a person knows, each the settings it holds. */
-export const LOOK_AREAS = ["base", "colours", "fonts", "headings", "buttons", "corners", "layout", "productCards", "elements", "sectionStyles", "hover", "checkout", "breakpoints", "library"] as const;
+export const LOOK_AREAS = ["base", "colours", "fonts", "headings", "buttons", "corners", "layout", "productCards", "elements", "sectionStyles", "hover", "checkout", "consent", "breakpoints", "library"] as const;
 export type LookArea = (typeof LOOK_AREAS)[number];
 
 const AREA_KEYS: Record<Exclude<LookArea, "base">, (keyof ThemeSettings)[]> = {
@@ -171,6 +171,7 @@ const AREA_KEYS: Record<Exclude<LookArea, "base">, (keyof ThemeSettings)[]> = {
   sectionStyles: ["sectionStyles"],
   hover: ["hover"],
   checkout: ["checkout"],
+  consent: ["consent"],
   breakpoints: ["breakpoints"],
   library: ["library"],
 };

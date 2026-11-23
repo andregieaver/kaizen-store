@@ -95,6 +95,34 @@ export type CheckoutLook = {
   fields?: CheckoutFields;
 };
 
+/**
+ * The cookie banner and popup's look (D883, `src/lib/consent-look.ts`): drawn over the whole page, outside any row, they took the site's
+ * colour set even where the page around them is dark, and had no settings. `scheme` says which set they take (the site's, or always the
+ * light or the dark one); what is left out follows the theme: no `colours`, the set's own; no `corners`, the cards'; no `buttonCorners`, the
+ * buttons'; no `heading`, the headings' font; no `shadow`, a strong one.
+ */
+export const CONSENT_SCHEMES = { site: "Like the site", light: "Light", dark: "Dark" } as const;
+export type ConsentScheme = keyof typeof CONSENT_SCHEMES;
+export const CONSENT_COLOUR_KEYS = ["background", "text", "muted", "border", "button", "buttonText", "secondary", "secondaryText"] as const;
+export type ConsentColourKey = (typeof CONSENT_COLOUR_KEYS)[number];
+export type ConsentColours = Record<ConsentColourKey, string>;
+export const CONSENT_HEADINGS = { heading: "The headings' font", body: "The body text's font" } as const;
+export type ConsentHeading = keyof typeof CONSENT_HEADINGS;
+export const CONSENT_SHADOWS = { none: "None", soft: "Soft", strong: "Strong" } as const;
+export type ConsentShadow = keyof typeof CONSENT_SHADOWS;
+
+export type ConsentLook = {
+  scheme?: ConsentScheme;
+  /** Colours of its own in the light and the dark set, over the set's. */
+  colours?: { light: ConsentColours; dark: ConsentColours };
+  /** The box's corners, over the cards' corners. */
+  corners?: CardCorners;
+  /** The buttons' corners, over the theme's button corners. */
+  buttonCorners?: ButtonCorners;
+  heading?: ConsentHeading;
+  shadow?: ConsentShadow;
+};
+
 export type ThemeSettings = {
   mode: ColorMode;
   /** Visitors may choose light or dark for themselves (D99), over the store's mode; the header shows a switch. */
@@ -126,6 +154,8 @@ export type ThemeSettings = {
   hover?: ThemeHover;
   /** The checkout's look (D337): Design settings' *Checkout look*; what it leaves out follows the theme. */
   checkout?: CheckoutLook;
+  /** The cookie banner and popup's look (D883): Design settings' *Cookie popup*; what it leaves out follows the theme. */
+  consent?: ConsentLook;
 };
 
 // ---------------------------------------------------------------------------
@@ -299,6 +329,54 @@ const checkoutVars = (settings: ThemeSettings, scheme: "light" | "dark") => {
 };
 
 /**
+ * The cookie banner and popup's colours (D883) where the page shows the `scheme` set: the set the popup takes (the page's, unless its look
+ * names one), its own colours in that set where it has them, else the set's (the main button the accent, the others the background).
+ */
+export function consentColours(settings: ThemeSettings, scheme: "light" | "dark"): { set: "light" | "dark"; colours: ConsentColours } {
+  const look = settings.consent;
+  const set = look?.scheme === "light" || look?.scheme === "dark" ? look.scheme : scheme;
+  const own = look?.colours?.[set];
+  if (own) return { set, colours: own };
+  const p = settings[set];
+  return {
+    set,
+    colours: {
+      background: p.background,
+      text: p.text,
+      muted: p.muted,
+      border: p.border,
+      button: p.accent,
+      buttonText: p.accentText,
+      secondary: p.background,
+      secondaryText: p.text,
+    },
+  };
+}
+
+/** The cookie popup's own variables in a colour set (D883), which `.consent-look` (globals.css) puts in place of the theme's. */
+const consentVars = (settings: ThemeSettings, scheme: "light" | "dark") => {
+  const { set, colours: c } = consentColours(settings, scheme);
+  return [
+    `--consent-scheme: ${set}`,
+    `--consent-background: ${c.background}`,
+    `--consent-foreground: ${c.text}`,
+    `--consent-muted: ${c.muted}`,
+    `--consent-border: ${c.border}`,
+    `--consent-accent: ${c.button}`,
+    `--consent-accent-foreground: ${c.buttonText}`,
+    `--consent-secondary: ${c.secondary}`,
+    `--consent-secondary-foreground: ${c.secondaryText}`,
+  ].join("; ");
+};
+
+/** The cookie popup's shadows (D883). */
+export const CONSENT_SHADOW_CSS: Record<ConsentShadow, string> = {
+  none: "none",
+  soft: "0 4px 16px -4px rgb(0 0 0 / 0.16)",
+  strong: "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+};
+
+/**
  * Where a store's or Kaizena Flow's theme is drawn on its pages: on `<html>`. It must out-weigh globals.css's own colours for a mode
  * (`:root[data-color-mode="dark"]`, two attribute or pseudo-class parts), or a theme that is always dark shows the default greys in place of its
  * own background, text and borders; `html:root[…]` is one part more.
@@ -324,10 +402,15 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
     `--heading-weight: ${HEADING_WEIGHTS[settings.headings.weight]}`,
     // The checkout's pay button (D337): its own corners, else the theme's buttons'.
     `--checkout-button-radius: ${BUTTON_RADIUS[settings.checkout?.corners ?? settings.buttons.corners]}`,
+    // The cookie popup (D883): its own corners and shadow, else the cards' and the buttons' corners and a strong shadow.
+    `--consent-radius: ${CARD_RADIUS[settings.consent?.corners ?? settings.corners.cards]}`,
+    `--consent-button-radius: ${BUTTON_RADIUS[settings.consent?.buttonCorners ?? settings.buttons.corners]}`,
+    `--consent-shadow: ${CONSENT_SHADOW_CSS[settings.consent?.shadow ?? "strong"]}`,
     // The site's hover timing (D206): only what the owner set, so effects keep their own times otherwise.
     ...Object.entries(hoverTimingVars(settings.hover)).map(([name, value]) => `${name}: ${value}`),
   ].join("; ");
-  const colors = (scheme: "light" | "dark") => `${paletteVars(settings[scheme], scheme)}; ${checkoutVars(settings, scheme)}`;
+  const colors = (scheme: "light" | "dark") =>
+    `${paletteVars(settings[scheme], scheme)}; ${checkoutVars(settings, scheme)}; ${consentVars(settings, scheme)}`;
   // A row or column on a light or dark background of its own (D390, `src/lib/background-surface.ts`) holds the colour set made for that
   // background, whatever the page's, so text in the theme's colours stays readable on it in both.
   const surfaces = (["light", "dark"] as const).map((scheme) => `\n${selector} .kz-on-${scheme} { ${colors(scheme)}; color: var(--foreground); }`).join("");
@@ -355,6 +438,8 @@ export function themeAttributes(settings: ThemeSettings): Record<string, string>
     "data-card-style": settings.productCards.style,
     "data-card-align": settings.productCards.align,
     ...(settings.hover?.button && { "data-button-hover": settings.hover.button }),
+    // The cookie popup's headings in the body text's font (D883); without it they take the headings' font.
+    ...(settings.consent?.heading === "body" && { "data-consent-heading": "body" }),
     ...(settings.mode !== "auto" && { "data-color-mode": settings.mode }),
   };
 }
@@ -448,7 +533,16 @@ export type ReadabilityWords = {
  * the theme shows; the editor warns about them rather than refusing, so an
  * owner can work through a palette.
  */
-export function themeWarnings(settings: ThemeSettings, w: ReadabilityWords = READABILITY_WORDS): string[] {
+/** What the readability warnings name the cookie popup's own colours (D883): `CONSENT_LOOK_WORDS.readability`, in the admin's language. */
+export type ConsentReadabilityWords = { consentText: string; consentMuted: string; consentButton: string; consentSecondary: string };
+const CONSENT_READABILITY: ConsentReadabilityWords = {
+  consentText: "The cookie popup's text",
+  consentMuted: "The cookie popup's secondary text",
+  consentButton: "The cookie popup's main button",
+  consentSecondary: "The cookie popup's other buttons",
+};
+
+export function themeWarnings(settings: ThemeSettings, w: ReadabilityWords = READABILITY_WORDS, cw: ConsentReadabilityWords = CONSENT_READABILITY): string[] {
   // Both sets show where the device decides or the visitor may choose (D99).
   const sets = settings.mode === "auto" || settings.visitorSwitch ? (["light", "dark"] as const) : ([settings.mode] as const);
   const pairs: [PaletteKey, PaletteKey, string][] = [
@@ -457,12 +551,22 @@ export function themeWarnings(settings: ThemeSettings, w: ReadabilityWords = REA
     ["text", "surface", w.pairs.textOnSurface],
     ["accentText", "accent", w.pairs.textOnAccent],
   ];
-  return sets.flatMap((set) =>
-    pairs.flatMap(([a, b, what]) => {
-      const ratio = contrastRatio(settings[set][a], settings[set][b]);
-      return ratio < 4.5 ? [fillWords(w.hard, { what, set: w.sets[set], ratio: ratio.toFixed(1).replace(".", w.decimal) })] : [];
-    }),
-  );
+  const hard = (a: string, b: string, what: string, set: "light" | "dark") => {
+    const ratio = contrastRatio(a, b);
+    return ratio < 4.5 ? [fillWords(w.hard, { what, set: w.sets[set], ratio: ratio.toFixed(1).replace(".", w.decimal) })] : [];
+  };
+  const palette = sets.flatMap((set) => pairs.flatMap(([a, b, what]) => hard(settings[set][a], settings[set][b], what, set)));
+  // The cookie popup's own colours (D883), in the sets it shows; the theme's own are checked above.
+  const own = settings.consent?.colours;
+  if (!own) return palette;
+  const shown = [...new Set(sets.map((set) => consentColours(settings, set).set))];
+  const consentPairs: [ConsentColourKey, ConsentColourKey, string][] = [
+    ["text", "background", cw.consentText],
+    ["muted", "background", cw.consentMuted],
+    ["buttonText", "button", cw.consentButton],
+    ["secondaryText", "secondary", cw.consentSecondary],
+  ];
+  return [...palette, ...shown.flatMap((set) => consentPairs.flatMap(([a, b, what]) => hard(own[set][a], own[set][b], what, set)))];
 }
 
 // ---------------------------------------------------------------------------

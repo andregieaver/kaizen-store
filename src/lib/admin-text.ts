@@ -38,6 +38,7 @@ import type { DealsMessages } from "./admin-messages/deals.en";
 import type { ScreensMessages } from "./admin-messages/screens.en";
 import type { StorePartsMessages } from "./admin-messages/store-parts.en";
 import type { BackdropsMessages } from "./admin-messages/backdrops.en";
+import type { ConsentLookMessages } from "./admin-messages/consent-look.en";
 import type { AnimationMessages } from "./admin-messages/animation.en";
 import type { HeatmapsMessages } from "./admin-messages/heatmaps.en";
 import type { RecordingsMessages } from "./admin-messages/recordings.en";
@@ -121,6 +122,7 @@ export type AdminAreaMessages = {
   screens: ScreensMessages;
   storeParts: StorePartsMessages;
   backdrops: BackdropsMessages;
+  consentLook: ConsentLookMessages;
   animation: AnimationMessages;
   heatmaps: HeatmapsMessages;
   recordings: RecordingsMessages;
@@ -214,7 +216,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
@@ -222,8 +224,8 @@ export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
 /**
  * Server-only areas a page may hand down to a client part whose English is in its own module already (`useHandedText()`): the builder's
  * shop parts, named in `store-parts.ts`, its backdrops and layers (D534), named in `backdrops.ts`, and its Animation component (D538), named
- * in `animation-words.ts`. Handed down only where a page draws
+ * in `animation-words.ts`, and the theme editor's *Cookie popup* card (D883), named in `consent-look-words.ts`. Handed down only where a page draws
  * that part, in another language than English.
  */
-export type HandedArea = "storeParts" | "backdrops" | "animation";
+export type HandedArea = "storeParts" | "backdrops" | "animation" | "consentLook";
 

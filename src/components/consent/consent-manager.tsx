@@ -368,7 +368,7 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, extra
         <section
           aria-labelledby={titleId}
           data-kz-private=""
-          className="fixed inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm shadow-xl md:right-auto md:bottom-4 md:left-4 md:max-w-md print:hidden"
+          className="consent-look fixed inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex flex-col gap-3 border border-border p-5 text-sm md:right-auto md:bottom-4 md:left-4 md:max-w-md print:hidden"
         >
           <h2 id={titleId} className="text-base font-semibold">
             {texts.title}
@@ -402,7 +402,7 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, extra
           event.preventDefault();
           setChoosing(false);
         }}
-        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/40"
+        className="consent-look m-auto w-[min(32rem,calc(100vw-2rem))] border border-border p-0 backdrop:bg-black/40"
       >
         {choosing && (
           <form
@@ -444,10 +444,10 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, extra
               ))}
             </ul>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => decide(NO_CONSENT)} className={`${button} border border-border`}>
+              <button type="button" onClick={() => decide(NO_CONSENT)} className={`${button} consent-secondary`}>
                 {texts.rejectAll}
               </button>
-              <button type="button" onClick={() => decide(FULL_CONSENT)} className={`${button} border border-border`}>
+              <button type="button" onClick={() => decide(FULL_CONSENT)} className={`${button} consent-secondary`}>
                 {texts.acceptAll}
               </button>
               <button type="submit" className={`${button} button-primary`}>

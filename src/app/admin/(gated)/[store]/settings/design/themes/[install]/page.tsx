@@ -16,6 +16,7 @@ import { chargeButton, chargeLine, chargeToken } from "@/lib/theme-prices";
 import { areaTexts } from "@/lib/admin-area";
 import { DESIGN_WORDS } from "@/lib/admin-words/design";
 import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
+import { CONSENT_LOOK_WORDS } from "@/lib/admin-words/consent-look";
 import { SCHEDULES_WORDS } from "@/lib/admin-words/schedules";
 import { SCHEDULES_EDITOR_WORDS } from "@/lib/admin-words/schedules-editor";
 
@@ -72,7 +73,7 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
   const switchName = fillWords(w.switchTo, { name: install.title });
 
   return (
-    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS, schedules: SCHEDULES_WORDS, schedulesEditor: SCHEDULES_EDITOR_WORDS })}>
+    <AdminTextScope texts={areaTexts(lang, { design: DESIGN_WORDS, designEditor: DESIGN_EDITOR_WORDS, consentLook: CONSENT_LOOK_WORDS, schedules: SCHEDULES_WORDS, schedulesEditor: SCHEDULES_EDITOR_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: design, label: w.back }}
