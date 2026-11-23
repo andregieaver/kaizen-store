@@ -139,3 +139,27 @@ test("a broadcast takes the store's social links (M4.1)", async ({ page }) => {
     await sql.end();
   }
 });
+
+test("a broadcast takes columns side by side (M4.1)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/broadcasts/new`);
+  await page.getByLabel("Name").fill(`Columns ${RUN}`);
+  await page.getByLabel("Subject").fill("To nyheter");
+  await page.getByRole("button", { name: "Columns", exact: true }).click();
+  const block = page.locator("[data-columns-block]");
+  await block.getByLabel("Heading").nth(0).fill("Ullsokker");
+  await block.getByLabel("Text").nth(0).fill("Varme til vinteren.");
+  await block.getByLabel("Words on the button").nth(0).fill("Se sokkene");
+  await block.getByLabel(/^Where it goes/).nth(0).fill("/products");
+  await block.getByLabel("Heading").nth(1).fill("Lue");
+  await block.getByLabel("Text").nth(1).fill("Strikket i Norge.");
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-columns.png"), fullPage: true });
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/broadcasts/[0-9a-f-]{36}$`));
+  const sql = testDb();
+  try {
+    const [row] = await sql`select content from commerce.broadcasts where title = ${`Columns ${RUN}`}`;
+    expect(JSON.stringify(row.content)).toContain('"buttonUrl":"/products"');
+  } finally {
+    await sql.end();
+  }
+});

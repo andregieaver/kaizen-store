@@ -26,6 +26,16 @@ const store = (over: Partial<StoreFigures> = {}): StoreFigures => ({
   ...over,
 });
 
+describe("Kaizena Flow's own store and its plan", () => {
+  const texts = (figures: Partial<StoreFigures>) => attentionFor([store(figures)], undefined, homeEn.attention).map((i) => i.text);
+
+  it("asks a store with no plan to choose one, and never Kaizena Flow's own store, which sells plans", () => {
+    expect(texts({ open: true, plan: null })).toEqual(["Kaffe has no plan yet."]);
+    expect(texts({ open: true, plan: null, house: true })).toEqual([]);
+    expect(texts({ open: true, plan: { name: "Plan", status: "past_due", endsAt: null, cancelling: false }, house: true })).toEqual([]);
+  });
+});
+
 describe("the control center and stock (D172)", () => {
   const texts = (figures: Partial<StoreFigures>) => attentionFor([store(figures)], undefined, homeEn.attention).map((i) => `${i.text} -> ${i.href}`);
 

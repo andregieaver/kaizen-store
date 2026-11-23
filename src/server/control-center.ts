@@ -406,6 +406,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       owedUnits: owedBy.get(id) ?? 0,
       // A website (D178 step 5: the online shop off) has no sales or stock to show: left out, as a figure a role does not open.
       ...(website ? { website: true } : {}),
+      ...(r.house ? { house: true } : {}),
       ...(orderSet.has(id) && productSet.has(id) && billingIds.has(id) && !website
         ? {}
         : { hides: [...(orderSet.has(id) && !website ? [] : (["sales"] as const)), ...(productSet.has(id) && !website ? [] : (["stock"] as const)), ...(billingIds.has(id) ? [] : (["plan"] as const))] }),
