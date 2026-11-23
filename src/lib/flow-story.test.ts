@@ -13,6 +13,7 @@ const w: StoryWords = {
     segment: { yes: "if they are in {segment}", no: "if they are not in {segment}" },
     split: { yes: "for half of them (a split test)", no: "for the other half" },
   },
+  until: { ordered: "once they order, or {n} days later", clicked: "once they press a link, or {n} days later" },
   goal: "It ends when they order.",
   ends: "Then it ends.",
 };

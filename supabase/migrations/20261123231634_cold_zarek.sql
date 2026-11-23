@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."flow_runs" ADD COLUMN "wait_ends_at" timestamp with time zone;

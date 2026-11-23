@@ -42,6 +42,7 @@ import { emailLookOf } from "./email-look";
 import { log } from "./log";
 import { factsForEmail, marketingEmail, marketSlugFor, resolverFor } from "./marketing-email";
 import { segmentsOfAddress } from "./segment-membership";
+import { tagFromForm } from "./segments";
 import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
 import type { Store } from "./stores";
@@ -436,6 +437,9 @@ export async function enterFlows(): Promise<number> {
 // Moving on
 // ---------------------------------------------------------------------------
 
+/** How often a person held at a wait-until is looked at again (M2.1). */
+const HOLD_CHECK_MS = 3_600_000;
+
 const dueRow = z.object({
   id: col.uuid,
   store_id: col.uuid,
@@ -443,6 +447,7 @@ const dueRow = z.object({
   subscriber_id: col.uuid,
   path: col.textOrNull,
   entered_at: col.timestamp,
+  wait_ends_at: col.timestampOrNull,
   steps: z.unknown(),
   goals: z.unknown(),
   email: col.text,
@@ -473,9 +478,9 @@ export async function runFlows(options: { now?: Date; only?: string } = {}): Pro
                 and (claimed_until is null or claimed_until < ${now.toISOString()}::timestamptz)
                 ${options.only ? sql`and store_id = ${options.only}::uuid` : sql``}
               order by wake_at limit ${RUN_BATCH} for update skip locked)
-          returning r.id, r.store_id, r.flow_id, r.version, r.path, r.entered_at, r.subscriber_id
+          returning r.id, r.store_id, r.flow_id, r.version, r.path, r.entered_at, r.subscriber_id, r.wait_ends_at
         )
-        select c.id, c.store_id, c.flow_id, c.subscriber_id, c.path, c.entered_at, v.steps, v.goals, s.email, s.locale, s.market_code, s.token, s.status,
+        select c.id, c.store_id, c.flow_id, c.subscriber_id, c.path, c.entered_at, c.wait_ends_at, v.steps, v.goals, s.email, s.locale, s.market_code, s.token, s.status,
           coalesce(nullif(s.name, ''), (select cu.name from commerce.customers cu where cu.store_id = s.store_id and cu.id = s.customer_id), '') as person_name,
           coalesce((select cu.company_name from commerce.customers cu where cu.store_id = s.store_id and cu.id = s.customer_id), '') as company
           from claimed c
@@ -498,7 +503,7 @@ export async function runFlows(options: { now?: Date; only?: string } = {}): Pro
   return result;
 }
 
-async function settle(run: { id: string; store_id: string }, set: { path: FlowPath | null; wakeAt?: Date; end?: "goal" | "done" | "stopped" }) {
+async function settle(run: { id: string; store_id: string }, set: { path: FlowPath | null; wakeAt?: Date; end?: "goal" | "done" | "stopped"; waitEndsAt?: Date | null }) {
   if (set.end) {
     await db().execute(sql`
       update commerce.flow_runs set status = ${set.end}, ended_at = now(), path = null, claimed_until = null
@@ -506,7 +511,8 @@ async function settle(run: { id: string; store_id: string }, set: { path: FlowPa
     return;
   }
   await db().execute(sql`
-    update commerce.flow_runs set path = ${set.path ? pathText(set.path) : null}, wake_at = ${(set.wakeAt ?? new Date()).toISOString()}::timestamptz, claimed_until = null
+    update commerce.flow_runs set path = ${set.path ? pathText(set.path) : null}, wake_at = ${(set.wakeAt ?? new Date()).toISOString()}::timestamptz, claimed_until = null,
+           wait_ends_at = ${set.waitEndsAt ? set.waitEndsAt.toISOString() : null}::timestamptz
      where store_id = ${run.store_id}::uuid and id = ${run.id}::uuid`);
 }
 
@@ -553,6 +559,22 @@ async function moveOn(
   }
   if (move.do === "wait") {
     await settle(run, { path: move.next, wakeAt: new Date(now.getTime() + move.hours * 3_600_000) });
+    result.waiting++;
+    return;
+  }
+  // Wait until (M2.1): held at the step, looked at again each hour, until its event happens (then `advance()` walks past it) or its
+  // deadline passes, which lets the person go on.
+  if (move.do === "hold") {
+    const ends = run.wait_ends_at ? new Date(run.wait_ends_at) : new Date(now.getTime() + move.hours * 3_600_000);
+    if (ends.getTime() <= now.getTime()) await settle(run, { path: move.next, wakeAt: now });
+    else await settle(run, { path: move.here, wakeAt: new Date(Math.min(ends.getTime(), now.getTime() + HOLD_CHECK_MS)), waitEndsAt: ends });
+    result.waiting++;
+    return;
+  }
+  // A store action (M2.1): the store's tag on the person's address, then straight on.
+  if (move.do === "tag") {
+    await tagFromForm(run.store_id, run.email, [move.tag]);
+    await settle(run, { path: move.next, wakeAt: now });
     result.waiting++;
     return;
   }

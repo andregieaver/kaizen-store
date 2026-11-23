@@ -11,6 +11,8 @@ export type StoryWords = {
   sameDay: string;
   after: { hours: { one: string; many: string }; days: { one: string; many: string } };
   conditions: { ordered: { yes: string; no: string }; clicked: { yes: string; no: string }; segment: { yes: string; no: string }; split: { yes: string; no: string } };
+  /** A wait-until (M2.1): what the next emails wait for, or the days. */
+  until: { ordered: string; clicked: string };
   goal: string;
   ends: string;
 };
@@ -56,9 +58,10 @@ const subjectOf = (step: Extract<FlowStep, { kind: "email" }>): string => Object
  */
 export function storyLines(steps: readonly FlowStep[], w: StoryWords, segmentName: (id: string) => string = () => "?"): StoryLine[] {
   const lines: StoryLine[] = [];
-  const walk = (list: readonly FlowStep[], waited: number, conditions: string[], depth: number, before: Extract<FlowStep, { kind: "wait" }> | null): number => {
+  const walk = (list: readonly FlowStep[], waited: number, given: string[], depth: number, before: Extract<FlowStep, { kind: "wait" }> | null): number => {
     let hours = waited;
     let wait = before;
+    let conditions = given;
     for (const step of list) {
       if (step.kind === "wait") {
         hours += step.hours;
@@ -75,6 +78,13 @@ export function storyLines(steps: readonly FlowStep[], w: StoryWords, segmentNam
         });
         hours = 0;
         wait = null;
+      } else if (step.kind === "until") {
+        // The emails after it wait for its event or its days: said once, as a condition of their own, and time starts again from it.
+        conditions = [...conditions, fill(w.until[step.until], { n: Math.round(step.hours / 24) })];
+        hours = 0;
+        wait = null;
+      } else if (step.kind === "tag") {
+        // A tag changes nothing a reader sees: the story reads on.
       } else if (step.kind === "if") {
         const yes = conditionWords(step.condition, true, w, segmentName);
         const no = conditionWords(step.condition, false, w, segmentName);

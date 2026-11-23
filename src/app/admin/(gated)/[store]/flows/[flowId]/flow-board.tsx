@@ -64,7 +64,7 @@ type Props = {
 
 type Selected = { kind: "trigger" } | { kind: "step"; id: string } | null;
 
-const KINDS = ["email", "wait", "if", "end"] as const;
+const KINDS = ["email", "wait", "until", "tag", "if", "end"] as const;
 const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
 const placeId = (place: FlowPlace) => `place:${JSON.stringify(place)}`;
@@ -88,11 +88,13 @@ function cardWords(step: FlowStep, p: Props): { title: string; line: string | nu
     return { title: first?.subject || w.canvas.kinds.email, line: step.picks ? w.canvas.pickKinds[step.picks] : (text?.text ?? null) };
   }
   if (step.kind === "wait") return { title: waitWords(step.hours, w.story), line: null };
+  if (step.kind === "until") return { title: w.story.until[step.until].replace("{n}", String(Math.round(step.hours / 24))), line: null };
+  if (step.kind === "tag") return { title: step.tag, line: null };
   if (step.kind === "if") return { title: conditionLabel(step.condition, p), line: null };
   return { title: w.canvas.kinds.end, line: null };
 }
 
-const KIND_MARK: Record<FlowStep["kind"], string> = { email: "✉", wait: "◷", if: "⑂", end: "■" };
+const KIND_MARK: Record<FlowStep["kind"], string> = { email: "✉", wait: "◷", until: "⧗", tag: "#", if: "⑂", end: "■" };
 
 /** A place a step may be dropped: between cards, or first in a branch. A dragged card or kind over it lights it; + adds by keyboard. */
 function Place({ place, p, busy, onAdd }: { place: FlowPlace; p: Props; busy: boolean; onAdd: (kind: (typeof KINDS)[number], place: FlowPlace) => void }) {
@@ -557,6 +559,39 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
         <label className="flex flex-col gap-1 text-sm">
           {w.days}
           <input name="days" type="number" min={1} max={365} required defaultValue={Math.max(1, Math.round(step.hours / 24))} className={`${FIELD} w-24`} />
+        </label>
+        <SubmitButton variant="secondary">{w.save}</SubmitButton>
+      </ActionForm>
+    );
+  } else if (step?.kind === "until") {
+    // A wait-until (M2.1): what it waits for, and the days after which the person goes on regardless.
+    body = (
+      <>
+        <ActionForm key={`${step.id}-event`} action={changeFlowConditionAction.bind(null, p.storeSlug, p.flowId, step.id)}>
+          <div role="group" aria-label={w.canvas.condition} className="flex flex-wrap gap-2">
+            <span className="w-full text-caption text-muted">{w.canvas.condition}</span>
+            {(["ordered", "clicked"] as const).map((e) => (
+              <SubmitButton key={e} variant={step.until === e ? "primary" : "secondary"} name="condition" value={e} disabled={step.until === e}>
+                {w.story.until[e].replace("{n}", String(Math.round(step.hours / 24)))}
+              </SubmitButton>
+            ))}
+          </div>
+        </ActionForm>
+        <ActionForm key={`${step.id}-days`} action={changeFlowWaitAction.bind(null, p.storeSlug, p.flowId, step.id)} className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-sm">
+            {w.days}
+            <input name="days" type="number" min={1} max={365} required defaultValue={Math.max(1, Math.round(step.hours / 24))} className={`${FIELD} w-24`} />
+          </label>
+          <SubmitButton variant="secondary">{w.save}</SubmitButton>
+        </ActionForm>
+      </>
+    );
+  } else if (step?.kind === "tag") {
+    body = (
+      <ActionForm key={step.id} action={changeFlowConditionAction.bind(null, p.storeSlug, p.flowId, step.id)} className="flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-sm">
+          {w.canvas.kinds.tag}
+          <input name="tag" required maxLength={40} defaultValue={step.tag} className={FIELD} />
         </label>
         <SubmitButton variant="secondary">{w.save}</SubmitButton>
       </ActionForm>

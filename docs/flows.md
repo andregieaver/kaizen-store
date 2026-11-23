@@ -68,6 +68,11 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    *Part d:* the date trigger `customer.browsed` (1 to 5 days after a signed-in subscriber's latest product view, nothing paid since,
    once per day viewed; `enterBrowsed()`) and the goal Remind them what they looked at (`browseReminder()`, replacing the browse
    automation). Views are kept while the browse automation or such a flow is on (`BROWSE_ON`), and go when the last is off (D691).
+   *Part e, 23 November 2026:* two more steps. *Wait until* holds a person until they order or press a link in the flow's emails since
+   entering, or until its days pass (`until`, its deadline on the run in `flow_runs.wait_ends_at`, looked at again each hour); the story
+   says it on the emails after it (*once they order, or 3 days later*). *Tag them*, the first store action, puts the store's tag on the
+   address as a sign-up form's tags are (`tagFromForm()`), for segments. Both set from the canvas with the actions it had, so they add no
+   server reference. M2.1 is done but texts, which wait for 46elks (M2.7).
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 

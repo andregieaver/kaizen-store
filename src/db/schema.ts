@@ -8875,6 +8875,8 @@ export const flowRuns = commerce.table(
     path: text("path"),
     status: text("status").notNull().default("running"),
     wakeAt: timestamp("wake_at", { withTimezone: true }).notNull().defaultNow(),
+    /** While the person is held at a wait-until step (M2.1): when it lets them go on regardless; null at any other step. */
+    waitEndsAt: timestamp("wait_ends_at", { withTimezone: true }),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     enteredAt: timestamp("entered_at", { withTimezone: true }).notNull().defaultNow(),
     endedAt: timestamp("ended_at", { withTimezone: true }),

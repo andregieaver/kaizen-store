@@ -1,6 +1,6 @@
 {
-  "id": "ea7b82b4-609b-4683-a178-3273f8448aa7",
-  "prevId": "4d262de2-6425-4972-95bd-fc4be98b2609",
+  "id": "9af82e2a-76b1-482e-8d5a-f8d42c0cf0c0",
+  "prevId": "ea7b82b4-609b-4683-a178-3273f8448aa7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -37245,6 +37245,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "wait_ends_at": {
+          "name": "wait_ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "claimed_until": {
           "name": "claimed_until",

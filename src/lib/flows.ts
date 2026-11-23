@@ -26,7 +26,19 @@ export type FlowStep =
   | { id: string; kind: "email"; content: BroadcastContent; picks?: PickKind }
   | { id: string; kind: "wait"; hours: number }
   | { id: string; kind: "if"; condition: FlowCondition; then: FlowStep[]; else: FlowStep[] }
+  /**
+   * Wait until (M2.1): the person stays here until they order or press a link in the flow's emails since entering, or until `hours` pass,
+   * whichever is first; then they go on. The deadline is kept on their run (`flow_runs.wait_ends_at`).
+   */
+  | { id: string; kind: "until"; until: UntilEvent; hours: number }
+  /** A store action (M2.1): the store's tag put on the person's address (as a sign-up form's tags are, D304 J3), for segments. */
+  | { id: string; kind: "tag"; tag: string }
   | { id: string; kind: "end" };
+
+/** What a wait-until step waits for. */
+export const UNTIL_EVENTS = ["ordered", "clicked"] as const;
+export type UntilEvent = (typeof UNTIL_EVENTS)[number];
+export const TAG_MAX = 40;
 
 /** A goal ends a person's run early, counted as reached. Slice 1 has one: an order placed after they entered. */
 export type FlowGoal = { kind: "ordered" };
@@ -48,6 +60,8 @@ export const flowStepSchema: z.ZodType<FlowStep> = z.lazy(() =>
     z.object({ id: z.string().regex(STEP_ID), kind: z.literal("email"), content: broadcastContentSchema, picks: z.enum(PICK_KINDS).optional() }),
     z.object({ id: z.string().regex(STEP_ID), kind: z.literal("wait"), hours: z.number().int().min(1).max(WAIT_HOURS_MAX) }),
     z.object({ id: z.string().regex(STEP_ID), kind: z.literal("if"), condition: conditionSchema, then: z.array(flowStepSchema), else: z.array(flowStepSchema) }),
+    z.object({ id: z.string().regex(STEP_ID), kind: z.literal("until"), until: z.enum(UNTIL_EVENTS), hours: z.number().int().min(1).max(WAIT_HOURS_MAX) }),
+    z.object({ id: z.string().regex(STEP_ID), kind: z.literal("tag"), tag: z.string().trim().min(1, "Give the tag a name.").max(TAG_MAX) }),
     z.object({ id: z.string().regex(STEP_ID), kind: z.literal("end") }),
   ]),
 );
@@ -172,6 +186,9 @@ const holds = (condition: FlowCondition, facts: FlowFacts, stepId: string): bool
 export type FlowMove =
   | { do: "email"; step: Extract<FlowStep, { kind: "email" }>; next: FlowPath | null }
   | { do: "wait"; hours: number; next: FlowPath | null }
+  /** A wait-until whose event has not happened: stay at `here` until it does or `hours` pass (the runner keeps the deadline). */
+  | { do: "hold"; hours: number; here: FlowPath; next: FlowPath | null }
+  | { do: "tag"; tag: string; next: FlowPath | null }
   | { do: "end"; reason: "goal" | "done" };
 
 /**
@@ -187,6 +204,15 @@ export function advance(steps: readonly FlowStep[], goals: readonly FlowGoal[], 
     if (step.kind === "email") return { do: "email", step, next: nextPath(steps, current) };
     if (step.kind === "wait") return { do: "wait", hours: step.hours, next: nextPath(steps, current) };
     if (step.kind === "end") return { do: "end", reason: "done" };
+    if (step.kind === "tag") return { do: "tag", tag: step.tag, next: nextPath(steps, current) };
+    if (step.kind === "until") {
+      // The event happened: go straight on. Otherwise hold here.
+      if ((step.until === "ordered" && facts.orderedSinceEntry) || (step.until === "clicked" && facts.clickedFlowEmail)) {
+        current = nextPath(steps, current);
+        continue;
+      }
+      return { do: "hold", hours: step.hours, here: current, next: nextPath(steps, current) };
+    }
     const branch = holds(step.condition, facts, step.id) ? "then" : "else";
     current = step[branch].length > 0 ? [...current, branch, "0"] : nextPath(steps, current);
   }
@@ -289,7 +315,18 @@ export function withLanguageCopy(steps: readonly FlowStep[], id: string, from: s
 
 /** A wait step with a new number of days (D767 slice 2). */
 export function withWaitDays(steps: readonly FlowStep[], id: string, days: number): FlowStep[] {
-  return replaceStep(steps, id, (step) => (step.kind === "wait" ? { ...step, hours: Math.round(days * 24) } : step));
+  return replaceStep(steps, id, (step) => (step.kind === "wait" || step.kind === "until" ? { ...step, hours: Math.round(days * 24) } : step));
+}
+
+/** A wait-until step waiting for another event (M2.1). */
+export function withUntil(steps: readonly FlowStep[], id: string, until: UntilEvent): FlowStep[] {
+  return replaceStep(steps, id, (step) => (step.kind === "until" ? { ...step, until } : step));
+}
+
+/** A tag step with another tag (M2.1). */
+export function withTag(steps: readonly FlowStep[], id: string, tag: string): FlowStep[] {
+  const name = tag.trim().slice(0, TAG_MAX);
+  return name ? replaceStep(steps, id, (step) => (step.kind === "tag" ? { ...step, tag: name } : step)) : [...steps];
 }
 
 /** A step's id not yet in the tree: the kind and the lowest free number (`email-2`). Pure. */
@@ -299,8 +336,10 @@ export function freeStepId(steps: readonly FlowStep[], kind: FlowStep["kind"]): 
 }
 
 /** A new step of a kind, with words to start from for an email (its subject and first paragraph, in `locale`). Pure. */
-export function newStep(steps: readonly FlowStep[], kind: "email" | "wait" | "if" | "end", locale: string, words: { subject: string; text: string }): FlowStep {
+export function newStep(steps: readonly FlowStep[], kind: "email" | "wait" | "until" | "tag" | "if" | "end", locale: string, words: { subject: string; text: string }): FlowStep {
   const id = freeStepId(steps, kind);
+  if (kind === "until") return { id, kind, until: "ordered", hours: 72 };
+  if (kind === "tag") return { id, kind, tag: words.subject.slice(0, TAG_MAX) || "flow" };
   if (kind === "email") return { id, kind, content: { [locale]: { subject: words.subject, preview: "", blocks: [{ type: "paragraph", text: words.text }] } } };
   if (kind === "wait") return { id, kind, hours: 24 };
   if (kind === "if") return { id, kind, condition: { kind: "ordered_since_entry" }, then: [], else: [] };

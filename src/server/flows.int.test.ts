@@ -519,3 +519,37 @@ describe("flows (D767)", () => {
   });
 });
 
+
+describe("wait until and tags (M2.1)", () => {
+  it("holds a person at a wait-until until its days pass, then tags them and goes on", async () => {
+    // Only this flow listens now.
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+    const flowSteps: FlowStep[] = [email("hei", "Hei"), { id: "until-1", kind: "until", until: "clicked", hours: 1 }, { id: "tag-1", kind: "tag", tag: `Ventet ${run}` }, email("siste", "Siste")];
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Vent ${run}`, trigger: "subscriber.subscribed", steps: flowSteps, goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    const per = await subscriber(`per-${run}@example.com`);
+    await fl.enterFlows();
+    const entered = await runOf(per);
+    const now = Date.now();
+    await fl.runFlows({ only: storeId, now: new Date(now + 1000) });
+    await fl.runFlows({ only: storeId, now: new Date(now + 2000) });
+    const [held] = await db().execute<Row>(sql`select path, wait_ends_at from commerce.flow_runs where id = ${String(entered.id)}::uuid`);
+    expect(held.path).toBe("1");
+    expect(new Date(String(held.wait_ends_at)).getTime()).toBeGreaterThan(now + 59 * 60_000);
+    // Before its hour, nothing moves.
+    await fl.runFlows({ only: storeId, now: new Date(now + 30 * 60_000) });
+    expect((await runOf(per)).path).toBe("1");
+    // Its hour passed: on to the tag, which is put on the address, then the last email.
+    await fl.runFlows({ only: storeId, now: new Date(now + HOUR + 5000) });
+    await fl.runFlows({ only: storeId, now: new Date(now + HOUR + 6000) });
+    const [tag] = await db().execute<Row>(sql`select label from commerce.customer_tags where store_id = ${storeId}::uuid and email = ${`per-${run}@example.com`}`);
+    expect(tag?.label).toBe(`Ventet ${run}`);
+    await fl.runFlows({ only: storeId, now: new Date(now + HOUR + 7000) });
+    expect(await stepsOf(String(entered.id))).toEqual([
+      ["hei", "logged"],
+      ["siste", "logged"],
+    ]);
+  });
+});

@@ -203,3 +203,16 @@ describe("a split in a flow (M2.5, D868)", () => {
     expect(advance(steps, [], ["0"], facts("run-7"))).toEqual(advance(steps, [], ["0"], facts("run-7")));
   });
 });
+
+describe("wait until and tags (M2.1)", () => {
+  const flow: FlowStep[] = [email("welcome"), { id: "until-1", kind: "until", until: "ordered", hours: 72 }, { id: "tag-1", kind: "tag", tag: "Kjøpt etter velkomst" }, email("thanks")];
+
+  it("holds a person at a wait-until until its event happens, then tags them and goes on", () => {
+    expect(advance(flow, [], ["1"], facts())).toEqual({ do: "hold", hours: 72, here: ["1"], next: ["2"] });
+    expect(advance(flow, [], ["1"], facts({ orderedSinceEntry: true }))).toEqual({ do: "tag", tag: "Kjøpt etter velkomst", next: ["3"] });
+    const clicked: FlowStep[] = [email("a"), { id: "until-1", kind: "until", until: "clicked", hours: 24 }, email("b")];
+    expect(advance(clicked, [], ["1"], facts({ orderedSinceEntry: true }))).toMatchObject({ do: "hold" });
+    expect(advance(clicked, [], ["1"], facts({ clickedFlowEmail: true }))).toMatchObject({ do: "email", step: { id: "b" } });
+    expect(checkFlow(flow)).toEqual([]);
+  });
+});

@@ -246,7 +246,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## Flows (D767, `docs/flows.md`, `src/lib/flows.ts` pure, `src/server/flows.ts`, `/admin/{store}/flows`)
 
 - **Flows (D767, `docs/flows.md`, `src/lib/flows.ts` pure, `src/server/flows.ts`, `/admin/{store}/flows`)**: a flow is a trigger, a tree of steps
-  (email, wait, if, end) and goals, checked by `checkFlow()` and walked by `advance()`, both pure; every save is a version in
+  (email, wait, wait until, tag, if, end; a wait-until's deadline kept on the run, `flow_runs.wait_ends_at`, the tag put on the address as
+  a form's are) and goals, checked by `checkFlow()` and walked by `advance()`, both pure; every save is a version in
   `flow_versions`, switched off until that version is tested (`testFlow()` walks the newest subscriber and sends nothing). People enter
   only from the event log (reader `flows`), once per event and never twice at once (`flow_runs`), and the every-minute marketing job
   moves each due run on one step a turn (`tickFlows()`, one read while no flow is on); an email goes through the sending guard, the

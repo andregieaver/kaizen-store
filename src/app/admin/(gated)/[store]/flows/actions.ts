@@ -11,7 +11,7 @@ import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { findStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withLanguageContent, withCondition, withEmailWords, withStepPicks, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { findStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withLanguageContent, withCondition, withEmailWords, withStepPicks, withTag, withUntil, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { REWRITE_TONES, suggestionBlocks, type RewriteTone } from "@/lib/broadcasts";
 import { broadcastBlockSchema } from "@/lib/broadcasts-schema";
 import { earnedWords, flowAudience } from "@/lib/flow-audience";
@@ -141,7 +141,7 @@ async function saveTree(
   });
 }
 
-const KINDS = ["email", "wait", "if", "end"] as const;
+const KINDS = ["email", "wait", "until", "tag", "if", "end"] as const;
 
 /** Keeps one way of a split test (M2.5, D868): the split's place takes that way's steps, the other way's go. A new version, off until tested. */
 export async function keepFlowWayAction(storeSlug: string, flowId: string, stepId: string, way: "then" | "else"): Promise<FormState> {
@@ -156,7 +156,11 @@ export async function removeFlowStepAction(storeSlug: string, flowId: string, st
 /** Sets an `if`'s condition: `ordered`, `clicked`, `split` (half and half, M2.5), or `segment:{id}` of one of the store's own segments. */
 export async function changeFlowConditionAction(storeSlug: string, flowId: string, stepId: string, _state: FormState, form: FormData): Promise<FormState> {
   const value = String(form.get("condition") ?? "");
+  const tag = form.get("tag");
   return saveTree(storeSlug, flowId, async (flow, storeId) => {
+    // The same action carries the two new steps' one setting each (M2.1), so they add no server reference: a tag's name, a wait-until's event.
+    if (typeof tag === "string") return withTag(flow.steps, stepId, tag);
+    if (findStep(flow.steps, stepId)?.kind === "until" && (value === "ordered" || value === "clicked")) return withUntil(flow.steps, stepId, value);
     let condition: FlowCondition | null = null;
     if (value === "ordered") condition = { kind: "ordered_since_entry" };
     else if (value === "clicked") condition = { kind: "clicked_flow_email" };
@@ -211,7 +215,8 @@ export async function moveFlowStepAction(storeSlug: string, flowId: string, step
 export async function dropFlowStepAction(storeSlug: string, flowId: string, kind: string, place: unknown, locale: string, words: { subject: string; text: string }): Promise<FormState> {
   const parsed = placeSchema.safeParse(place);
   const k = KINDS.find((x) => x === kind);
-  return saveTree(storeSlug, flowId, (flow) => (parsed.success && k ? insertStep(flow.steps, newStep(flow.steps, k, locale, words), parsed.data) : null));
+  // A new tag step is named after its flow (M2.1), which the owner may change; an email starts from the words the browser sends.
+  return saveTree(storeSlug, flowId, (flow) => (parsed.success && k ? insertStep(flow.steps, newStep(flow.steps, k, locale, k === "tag" ? { subject: flow.name, text: "" } : words), parsed.data) : null));
 }
 
 /**
