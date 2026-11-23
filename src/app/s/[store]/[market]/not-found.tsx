@@ -18,7 +18,7 @@ export default async function MarketNotFound() {
   const shop = storeSlug && marketSlug ? await resolveShop(storeSlug, marketSlug) : null;
   const page = shop ? await pageForRole(shop.store, "not_found") : null;
   if (shop && page) {
-    return <StorePageArticle content={localizePage(page.content, shop.market.locale)} place={{ pageId: page.id, owner: shop.store.id, market: shop.market.slug }} />;
+    return <StorePageArticle shop={shop} content={localizePage(page.content, shop.market.locale)} place={{ pageId: page.id, owner: shop.store.id, market: shop.market.slug }} />;
   }
   const m = t(shop?.market.lang ?? "en");
   return (

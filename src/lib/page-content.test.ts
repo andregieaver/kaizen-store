@@ -733,6 +733,15 @@ describe("article addresses (D57)", () => {
     expect(pageInput.safeParse({ ...newPageContent(), title: "News", slug: "news", author: "Kari" }).success).toBe(true);
     expect(pageInput.safeParse({ ...newPageContent(), title: "News", slug: "news", author: "x".repeat(101) }).success).toBe(false);
   });
+
+  it("takes a page's own header by id, and nothing that is not an id (21 November 2026)", () => {
+    const header = "3f0c2b1e-7a4d-4c5e-9b8a-1d2e3f4a5b6c";
+    const parsed = pageInput.safeParse({ ...newPageContent(), title: "About", slug: "about", header });
+    expect(parsed.success && parsed.data.header).toBe(header);
+    expect(pageInput.safeParse({ ...newPageContent(), title: "About", slug: "about", header: "site" }).success).toBe(false);
+    const none = pageInput.safeParse({ ...newPageContent(), title: "About", slug: "about" });
+    expect(none.success && none.data.header).toBeUndefined();
+  });
 });
 
 describe("a store's reserved addresses (D53)", () => {

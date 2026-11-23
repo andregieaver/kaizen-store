@@ -495,6 +495,14 @@ body:has([data-product-bar]) [data-default-bar] {
     transition: none;
   }
 }
+/*
+ * A page with a header of its own (`PageContent.header`, 21 November 2026): the page draws it, and the site's header gives way. Before
+ * scripts run, the page's own header marks it; after, the document's mark (`PageHeaderMark`), as pages visited stay in it, hidden.
+ */
+html:not([data-page-header-live]) body:has([data-page-header]) [data-hiding-header]:not([data-page-header]),
+html[data-page-header-on] [data-hiding-header]:not([data-page-header]) {
+  display: none;
+}
 /* Before scripts run, the page's mark; after, the document's (`HeaderOverlayMark`), as pages visited stay in it, hidden. */
 html:not([data-overlay-live]) body:has([data-header-overlay]) [data-header-wrap],
 html[data-overlay-on] [data-header-wrap] {

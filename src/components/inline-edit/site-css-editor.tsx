@@ -97,12 +97,13 @@ const ENDPOINT = "/api/platform/editor/css";
 /** The `<style>` elements React drew for a `<CustomCss name>` (`data-href` is `css-{name}-{hash}`). */
 const stylesNamed = (name: string) => Array.from(document.querySelectorAll<HTMLStyleElement>(`style[data-href^="css-${CSS.escape(name)}-"]`));
 
-export default function SiteCssEditor({ pageId, store, onClose, onNotice }: { pageId: string; store?: string; onClose: () => void; onNotice: (text: string) => void }) {
+/** Without a page (`pageId` null: a product, a category, the cart) it holds the whole site's CSS alone. */
+export default function SiteCssEditor({ pageId, store, onClose, onNotice }: { pageId: string | null; store?: string; onClose: () => void; onNotice: (text: string) => void }) {
   const router = useRouter();
   const id = useId();
   const [read, setRead] = useState<Read | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [tab, setTab] = useState<"page" | "site">("page");
+  const [tab, setTab] = useState<"page" | "site">(pageId ? "page" : "site");
   const [pageCss, setPageCss] = useState("");
   const [site, setSite] = useState("");
   const [saving, setSaving] = useState(false);
@@ -151,7 +152,8 @@ export default function SiteCssEditor({ pageId, store, onClose, onNotice }: { pa
 
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams({ page: pageId });
+    const params = new URLSearchParams();
+    if (pageId) params.set("page", pageId);
     if (store) params.set("store", store);
     fetch(`${ENDPOINT}?${params}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
@@ -171,7 +173,7 @@ export default function SiteCssEditor({ pageId, store, onClose, onNotice }: { pa
   // The page shows what is typed: the site's own styles for it are switched off and the typed CSS stands in their place.
   useEffect(() => {
     if (!read) return;
-    const own = [...stylesNamed(read.styles.page), ...stylesNamed(read.styles.site)];
+    const own = [...(read.styles.page ? stylesNamed(read.styles.page) : []), ...stylesNamed(read.styles.site)];
     for (const style of own) style.media = "not all";
     const live = document.createElement("style");
     live.setAttribute("data-kz-live-css", "");
@@ -234,7 +236,7 @@ export default function SiteCssEditor({ pageId, store, onClose, onNotice }: { pa
     }
   }
 
-  const tabs = read?.site ? (["page", "site"] as const) : (["page"] as const);
+  const tabs = !pageId ? (["site"] as const) : read?.site ? (["page", "site"] as const) : (["page"] as const);
   const names = { page: "This page", site: "Whole site" } as const;
   // In the body, not where the edit buttons are: a page wrapped for the footer reveal (`over-footer`, `z-10`) makes its own layer, and
   // the panel inside it would fall under a sticky header whatever its own z-index.

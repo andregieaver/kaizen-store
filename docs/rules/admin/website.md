@@ -898,7 +898,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   changed, the newest `VERSIONS_KEPT` per page; taking one back only puts it in the editor (`actions.versions`). *Custom CSS*
   beside *Edit text* (`SiteCssEditor`, `/api/platform/editor/css`, `src/server/page-css-edit.ts`) shows the typed CSS in place of
   the site's own `<CustomCss>` styles (found by `data-href`, so keep `CustomCss`'s `css-{name}-` naming), writes the published
-  page and a draft that still has the same CSS, and checks as the builder does.
+  page and a draft that still has the same CSS, and checks as the builder does. A page not built in the builder (a product, a
+  category, the cart) offers the whole site's CSS alone (`SiteCssLink`, loaded through `SiteCssSlot` in `back-to-admin.tsx` only for a
+  browser that may be staff's; the route without `page`, `readSiteOnlyCss()`/`saveSiteOnlyCss()`), and stands back where the page's
+  own `PageEditLink` is. On phones staff's tools are icons behind one pencil at the bottom left (`StaffDock`, 21 November 2026): each
+  part hands its tools over with `useStaffDockItems()` and hides its worded buttons below `md`; a new staff tool on the live site does
+  the same.
 
 ## Dual page (D412, `docs/dual-page.md`, `src/lib/dual-page.ts`, `DualPageEditor`, `DualFrame`)
 
@@ -1358,7 +1363,13 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   covers (only over a first row with a background): pages mark themselves
   `data-header-overlay` and render `HeaderOverlayMark` (visited pages stay in
   the document hidden, so the shown one marks `<html data-overlay-on>`), and
-  globals.css does the rest. A new part goes in
+  globals.css does the rest. A page may have a header of its own (`PageContent.header`, the *Header* setting made for the
+  special pages, 21 November 2026; only the owner's headers, `isOwnHeader()` in `savePage()`): `StorePageArticle` (given `shop`)
+  and `PlatformPageView` draw it above the page (`headerLayoutById()`, `pageOwn`), render `PageHeaderMark`, and globals.css hides
+  the site's header while it is shown, as the overlay's mark does; one not published shows the site's. The phone menu's links stay
+  the site header's. The phone's bottom bar (`HidingBottomBar`) dresses as the slide-out menu (21 November 2026): it copies the
+  header menu button's drawer background, colour set and blur (`DrawerLook`), and its Menu button takes that button's `data-menu-*`,
+  so a new look setting of the menu reaches the bar through `DrawerLook` too. A new part goes in
   `SITE_PARTS`, `SiteBlock`, `SitePartView`/`sitePartShows()` and the
   builder's `SiteFields`/`SiteStandIn`.
 

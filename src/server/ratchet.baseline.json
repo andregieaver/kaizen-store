@@ -1776,7 +1776,7 @@
     "src/server/product-questions.ts": 1,
     "src/server/recommend.ts": 1,
     "src/server/seo.ts": 1,
-    "src/server/site-layouts.ts": 1,
+    "src/server/site-layouts.ts": 2,
     "src/server/site-staging.ts": 3,
     "src/server/store-copy.ts": 2,
     "src/server/store-translate.ts": 2,
@@ -2751,6 +2751,7 @@
     "src/server/theme-preview.ts#whatChangesFor": "What a theme changes on a store is worked out from every page's blocks."
   },
   "pageDocumentsOneRow": [
+    "src/server/site-layouts.ts#headerLayoutById",
     "src/server/blog-comments.ts#postComment",
     "src/server/content-site.ts#findEntryPage",
     "src/server/design-presets.ts#liveLookChanges",

@@ -1,5 +1,5 @@
 import { pickPlatformMediaAction } from "../media/actions";
-import { listMenuPages } from "@/server/pages";
+import { headerChoices, listMenuPages } from "@/server/pages";
 import "server-only";
 
 import { themeSwatches } from "@/lib/colour";
@@ -96,6 +96,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     menus,
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
+    // A page's own header (21 November 2026): Kaizena Flow's headers, on pages only.
+    headers: type === "page" ? { choices: await headerChoices(null) } : null,
     plans: planChoices(plans),
     extensionChoices: extensionChoices(await getPublicExtensions()),
     // Kaizena Flow's own content types (D326 H4), whose published entries a grid can list.

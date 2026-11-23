@@ -1,7 +1,7 @@
 import { pickMediaAction } from "../media/actions";
 import { typeAsGroup, type ContentType } from "@/lib/content-types";
 import { listContentTypes } from "@/server/content-types";
-import { listMenuPages } from "@/server/pages";
+import { headerChoices, listMenuPages } from "@/server/pages";
 import "server-only";
 
 import { themeSwatches } from "@/lib/colour";
@@ -182,6 +182,8 @@ export async function storePageContext(
     menus,
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
+    // A page's own header (21 November 2026): the store's headers, on pages only.
+    headers: type === "page" ? { choices: await headerChoices(store.id) } : null,
     // Kaizena Flow's own store (D469, step 4 of the plan) has Kaizena Flow's own parts: its plans, a domain search and the list of themes.
     plans: store.house ? planChoices(await getPublicPlans()) : null,
     extensionChoices: store.house ? extensionChoices(await getPublicExtensions()) : null,

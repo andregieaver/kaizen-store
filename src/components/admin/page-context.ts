@@ -161,6 +161,8 @@ export type PageOwnerContext = {
   standardMenus: StandardMenus;
   /** Where the owner's menus are edited. */
   menusHref: string;
+  /** The owner's headers for a page's own (`PageContent.header`); pages only. */
+  headers?: { choices: readonly { id: string; title: string; published: boolean }[] } | null;
   /**
    * The store's features as kept (D178): the builder offers only the parts of features that are on, and marks a part of one that is off
    * on the canvas. Absent for Kaizen's pages and a design profile's workspace (whose look serves any store), which offer every part.

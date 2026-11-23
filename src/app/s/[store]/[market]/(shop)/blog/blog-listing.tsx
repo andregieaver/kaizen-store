@@ -140,6 +140,7 @@ export async function StoreBlog({ params, handle = null }: { params: ShopParams;
     return (
       <>
         <StorePageArticle
+          shop={{ store, market }}
           content={localizePage(page.content, market.locale)}
           place={{ pageId: page.id, owner: store.id, market: market.slug }}
           editable={market.locale === store.localization.locales[0]}

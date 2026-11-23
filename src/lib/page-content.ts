@@ -2304,6 +2304,12 @@ export type PageContent = {
   translations?: Record<string, PageTranslation>;
   /** The owner's own CSS for this page, header, footer or layout (D100), checked by `cssProblem()`. */
   css?: string;
+  /**
+   * A page's own header (21 November 2026), by id: one of the owner's headers built in the page builder, drawn on this page in place of the
+   * site's (the special pages' *Header* setting, but any page may have one). Absent: the site's header, whichever it is at the time. Only
+   * pages have it; one that is not the owner's, or no longer published, shows the site's.
+   */
+  header?: string;
 };
 
 /**
@@ -3832,6 +3838,8 @@ export const pageInput = z.preprocess(
       authorId: z.uuid("Choose one of the store's authors.").optional(),
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
       footerReveal: z.boolean().optional(),
+      // Checked against the owner's own headers when saved (`savePage`): one that is not theirs is left out.
+      header: z.uuid("Choose one of the site's headers.").optional(),
       overlay: z
         .object({
           where: z.enum(["everywhere", "front", "terms"]),

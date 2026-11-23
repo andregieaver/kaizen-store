@@ -366,12 +366,15 @@ export async function StoreSiteHeader({
   notice,
   layout,
   withdrawal = true,
+  pageOwn = false,
 }: {
   store: Store;
   market: Market;
   notice: string | null;
   layout: SiteLayout;
   withdrawal?: boolean;
+  /** A page's own header (`PageContent.header`), drawn by the page in place of the site's. */
+  pageOwn?: boolean;
 }) {
   const m = t(market.lang);
   // Blocks taking their content from the store's own custom fields (D120) show it; nothing is read when there are none.
@@ -379,7 +382,7 @@ export async function StoreSiteHeader({
   const background = HEADER_BACKGROUND[store.theme.settings.layout.headerBackground];
   const ownSwitch = siteBlocks(content).some((block) => block.part === "buyerSwitch");
   return (
-    <HidingHeader overlay={content.overlay && headerStageLook(content.overlay)}>
+    <HidingHeader overlay={content.overlay && headerStageLook(content.overlay)} pageOwn={pageOwn}>
       <Notice text={notice} />
       {store.audience === "both" && !ownSwitch && (
         <div className={`border-b border-border ${background}`}>
@@ -425,10 +428,23 @@ export async function StoreSiteFooter({ store, market, layout, withdrawal = true
 /** `theme`: the layers to draw it in when they are not Kaizena Flow's live theme's (an installed theme's preview, D252). */
 type KaizenLayers = GridPlace["theme"];
 
-export function KaizenSiteHeader({ chrome, layout, theme, lang = "en" }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers; lang?: PlatformLang }) {
+export function KaizenSiteHeader({
+  chrome,
+  layout,
+  theme,
+  lang = "en",
+  pageOwn = false,
+}: {
+  chrome: PlatformChrome;
+  layout: SiteLayout;
+  theme?: KaizenLayers;
+  lang?: PlatformLang;
+  /** A page's own header (`PageContent.header`), drawn by the page in place of the site's. */
+  pageOwn?: boolean;
+}) {
   const overlay = layout.content.overlay;
   return (
-    <HidingHeader overlay={overlay && headerStageLook(overlay)}>
+    <HidingHeader overlay={overlay && headerStageLook(overlay)} pageOwn={pageOwn}>
       <header className={`site-header border-b border-border bg-background/95 backdrop-blur ${stageLayersClass(overlay)}`.trim()}>
         <HeaderStageLayers overlay={overlay} />
         {/* In the language drawn (D312 P4): the texts written for it over the English, and its links to the site in it too. */}

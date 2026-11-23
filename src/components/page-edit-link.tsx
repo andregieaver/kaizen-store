@@ -7,6 +7,7 @@ import { handedOffPath, hasSessionCookie } from "@/lib/admin-return";
 import { EDIT_HASH, editPassActive, forgetEditPass, grantUrl, rememberEditPass } from "@/lib/edit-link";
 
 import { STAFF_EVENT } from "./back-to-admin";
+import { StaffDock, useStaffDockItems, type StaffDockItem } from "./staff-dock";
 
 // The editor for the page's words is fetched only when the person turns the mode on (D192): visitors never load it.
 const SiteTextEditor = dynamic(() => import("./inline-edit/site-editor"), { ssr: false });
@@ -34,6 +35,7 @@ const onStaff = (onChange: () => void) => {
  * On a store's own domain it starts with a short visit to the admin, which gives
  * this browser a pass for half an hour (D193); the page then opens in editing.
  * And "Custom CSS" (D306): the page's own CSS and the site's, typed in a panel and shown on the page as they are typed.
+ * On phones the worded buttons give way to icons behind one pencil at the bottom left (`StaffDock`), beside *Back to admin*.
  */
 export function PageEditLink({
   pageId,
@@ -94,10 +96,11 @@ export function PageEditLink({
     const timer = window.setTimeout(() => setNotice(null), 5000);
     return () => window.clearTimeout(timer);
   }, [notice]);
-  if (!editor) return null;
   // Whoever the admin or its pass vouches for can type in the page; staff handed over from the admin of another host ask it for a pass.
   const mayEditText = member && textEditable;
   const mayStartPass = textEditable && !member && !hasPass && handedOver && Boolean(store) && Boolean(adminOrigin);
+  const editHref = `${adminOrigin}/admin/${store ?? "platform"}/${article ? "articles" : "pages"}/${pageId}`;
+  const startPass = () => window.location.assign(grantUrl(adminOrigin, store!, `${window.location.pathname}${window.location.search}`));
   const done = () => {
     setEditing(false);
     // On a store's own domain the pass ends here, so a shared computer is not left with it.
@@ -108,22 +111,30 @@ export function PageEditLink({
       void fetch("/api/platform/editor/leave", { method: "POST", cache: "no-store" }).catch(() => {});
     }
   };
+  // The same tools as icons, for the pencil on phones (`StaffDock`); *Back to admin* comes first, from the layout.
+  const dock: StaffDockItem[] = !editor
+    ? []
+    : [
+        ...(mayEditText
+          ? [{ key: "text", label: editing ? words.doneEditing : words.editText, icon: editing ? "check" : "text", order: 1, lang: words.lang, pressed: editing, onSelect: () => (editing ? done() : setEditing(true)) } satisfies StaffDockItem]
+          : []),
+        ...(mayStartPass ? [{ key: "text", label: words.editText, icon: "text", order: 1, lang: words.lang, onSelect: startPass } satisfies StaffDockItem] : []),
+        ...(member ? [{ key: "css", label: words.customCss, icon: "code", order: 2, lang: words.lang, pressed: css, onSelect: () => setCss((open) => !open) } satisfies StaffDockItem] : []),
+        { key: "page", label: words.editPage, icon: "layout", order: 3, lang: words.lang, href: editHref },
+      ];
+  useStaffDockItems("page-edit-link", dock);
+  if (!editor) return null;
   return (
     <>
       <div
         lang={words.lang}
         // Staff's tools, not the page's content (the theme switch e2e leaves them out).
         data-staff-tools=""
-        className={`fixed z-50 flex flex-col gap-2 print:hidden ${
+        className={`fixed z-50 flex flex-col gap-2 max-md:hidden print:hidden ${
           // In a store, beside "Back to admin" and above the phone bar.
           store ? "right-4 bottom-20 items-end md:bottom-4" : "bottom-20 left-4 items-start md:bottom-4"
         }`}
       >
-        {notice && (
-          <p role="status" className="max-w-72 rounded-md bg-foreground px-3 py-2 text-sm text-background shadow-lg">
-            {notice}
-          </p>
-        )}
         <div className="flex items-center gap-2">
           {mayEditText && (
             <button
@@ -150,20 +161,33 @@ export function PageEditLink({
           {mayStartPass && (
             <button
               type="button"
-              onClick={() => window.location.assign(grantUrl(adminOrigin, store!, `${window.location.pathname}${window.location.search}`))}
+              onClick={startPass}
               className="rounded-full border-2 border-foreground bg-background/90 px-4 py-2 text-sm font-medium text-foreground shadow-lg"
             >
               {words.editText}
             </button>
           )}
           <a
-            href={`${adminOrigin}/admin/${store ?? "platform"}/${article ? "articles" : "pages"}/${pageId}`}
+            href={editHref}
             className="rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-lg"
           >
             {words.editPage}
           </a>
         </div>
       </div>
+      {/* What was done, on every screen: above the tools on wider ones, above the pencil on phones. */}
+      {notice && (
+        <p
+          role="status"
+          lang={words.lang}
+          className={`fixed z-50 max-w-72 rounded-md bg-foreground px-3 py-2 text-sm text-background shadow-lg print:hidden max-md:bottom-[calc(9.5rem+env(safe-area-inset-bottom))] max-md:left-4 ${
+            store ? "md:right-4 md:bottom-16" : "md:bottom-16 md:left-4"
+          }`}
+        >
+          {notice}
+        </p>
+      )}
+      <StaffDock />
       {editing && mayEditText && <SiteTextEditor pageId={pageId} store={store} onNotice={setNotice} />}
       {css && member && <SiteCssEditor pageId={pageId} store={store} onClose={() => setCss(false)} onNotice={setNotice} />}
     </>

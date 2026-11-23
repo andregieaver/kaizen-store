@@ -1,5 +1,6 @@
 import { FooterRevealGuard } from "@/components/footer-reveal";
 import { KeepFocusEverywhere } from "@/components/keep-focus-everywhere";
+import { SiteCssSlot } from "@/components/back-to-admin";
 import { SpeedBeacon } from "@/components/speed-beacon";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -95,6 +96,8 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
         {footerLayout?.content.footerReveal && <FooterRevealGuard />}
         {/* A button disabled while it sends gets the focus back when done (D390, ACC-02). */}
         <KeepFocusEverywhere />
+        {/* Kaizena Flow's own CSS from any of its pages, for its admins, as a store's (a page built in the builder has its own). */}
+        <SiteCssSlot />
         {/* How fast Kaizena Flow's own pages are for their visitors (D390), as a store's (D336), never on a pay route (it has none). */}
         <SpeedBeacon own="platform" />
         {/* The languages are a part of the header or footer the owner places (D312), never added under the footer. */}

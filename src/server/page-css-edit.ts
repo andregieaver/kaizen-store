@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 import { pageInput, parsePageContent, type PageContent } from "@/lib/page-content";
 
-import { audit, type Account } from "./auth";
+import { audit, getAccount, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { keepVersion } from "./page-versions";
 import { PLATFORM_NAVIGATION_TAG } from "./platform-navigation";
@@ -163,4 +163,45 @@ export async function savePageCss(input: {
     else refreshTagNow(storeTag(String(input.store)));
   }
   return { ok: true, draftKept: outcome.draftKept, rev: cssRevision(pageCss, siteCss) };
+}
+
+/** Who may change the whole site's CSS from the live site: a platform admin for Kaizena Flow's, else the website permission (or its pass). */
+async function siteCssEditor(store: string | null): Promise<{ account: Account; owner: string | null } | null> {
+  if (store === null) {
+    const account = await getAccount();
+    return account?.platformAdmin ? { account, owner: null } : null;
+  }
+  const member = (await checkPermission(store, "website:write")) ?? (await checkPassPermission(store, "website:write"));
+  return member ? { account: member.account, owner: member.store.id } : null;
+}
+
+/**
+ * The whole site's CSS alone, for a page of the site that is not one built in the page builder (a product, a category, the cart): the
+ * live site's *Custom CSS* there has only its *Whole site* tab. Same answer as `readPageCss()`, with no page CSS.
+ */
+export async function readSiteOnlyCss(input: { store: string | null }): Promise<PageCssRead | PageTextFailure> {
+  const who = await siteCssEditor(input.store);
+  if (!who) return FORBIDDEN;
+  const siteCss = await siteCssOf(who.owner);
+  return { ok: true, pageCss: "", siteCss, site: true, rev: cssRevision("", siteCss), styles: { page: "", site: who.owner === null ? "kaizen" : `store-${who.owner}` } };
+}
+
+/** Saves the whole site's CSS from such a page; refused when someone else changed it since it was read, or it has a problem. */
+export async function saveSiteOnlyCss(input: { store: string | null; rev: string; siteCss: string }): Promise<{ ok: true; draftKept: false; rev: string } | PageTextFailure> {
+  const who = await siteCssEditor(input.store);
+  if (!who) return FORBIDDEN;
+  const siteCss = input.siteCss.trim();
+  const problem = siteCss ? cssProblem(siteCss) : null;
+  if (problem) return fail(422, "refused", problem);
+  const before = await siteCssOf(who.owner);
+  if (cssRevision("", before) !== input.rev) {
+    return fail(409, "conflict", "This CSS was changed by someone else while you were editing it. Reload the page to see their version.");
+  }
+  if (siteCss !== before.trim()) {
+    const saved = await saveSiteCss(who.account, who.owner, siteCss);
+    if (!saved.ok) return fail(422, "refused", saved.problems.join(" "));
+    if (who.owner === null) refreshTagNow(PLATFORM_NAVIGATION_TAG);
+    else refreshTagNow(storeTag(String(input.store)));
+  }
+  return { ok: true, draftKept: false, rev: cssRevision("", siteCss) };
 }

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { BackToAdmin } from "@/components/back-to-admin";
+import { BackToAdmin, SiteCssSlot } from "@/components/back-to-admin";
 import { CountryHintSlot } from "@/components/country-hint-slot";
 import { AbMarker } from "@/components/lazy/blocks";
 import { StoreExperiments } from "@/components/ab/store-experiments";
@@ -13,7 +13,7 @@ import { OffPayRoutes } from "@/components/off-pay-routes";
 import { PayDocumentWatcher } from "@/components/pay-route-guard";
 import { StoreVisits } from "@/components/store-visits";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
-import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu, WithdrawalStrip } from "@/components/store-layout";
+import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu, storeNotice, WithdrawalStrip } from "@/components/store-layout";
 import { CustomCss } from "@/components/custom-css";
 import { StoreColorScript } from "@/components/store-color-switch";
 import { UiTexts } from "@/components/ui-texts";
@@ -132,18 +132,8 @@ export default async function MarketLayout({ children, params }: Props) {
   const headerLayout = header.layout;
   const footerLayout = footer.layout;
   const uiTexts = uiTextsFor(market.lang);
-  // A store template (D175) says only that it is one: a preview that takes no orders.
-  // A website (D178 step 5) takes no payments, so nothing is said about them.
-  const notice = store.starter
-    ? m.starterNotice
-    : [
-      // A workspace (D748 E7) is never set up as a shop: its emails' pages (a contract, an invoice) say nothing of opening.
-      !(store.setupCompletedAt || store.isTemplate || store.workspace) && m.previewNotice,
-      selling && !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
-      selling && store.paymentsOn && store.paymentsTest && m.testNotice,
-    ]
-      .filter(Boolean)
-      .join(" ") || null;
+  // What shoppers are told above the header (`storeNotice()`).
+  const notice = storeNotice(store, market);
 
   return (
     // The store's theme (D60): its choices as attributes, its colours and sizes as variables.
@@ -233,6 +223,8 @@ export default async function MarketLayout({ children, params }: Props) {
           </Suspense>
         )}
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        {/* The whole site's CSS from any of its pages, for those who may change the website; a page built in the builder has its own. */}
+        <SiteCssSlot store={store.slug} />
         {/* A button disabled while it sends gets the focus back when done (D390, ACC-02). */}
         <KeepFocusEverywhere />
         {/* Notes when this document has left the pay routes, so the cart, checkout and order load afresh (wave 1, 1e). */}
