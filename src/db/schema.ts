@@ -17754,6 +17754,32 @@ export const broadcastTemplates = commerce.table(
 );
 
 /**
+ * A store's saved email blocks (email plan M4.1): one block of a broadcast or flow email kept by name, to add again to the next one (a
+ * footer, a pair of columns, the social links). Written only by `src/server/email-saved-blocks.ts`; `block` is one
+ * `broadcastBlockSchema` block, its picture the store's own library's. At most `SAVED_BLOCKS_MAX` a store.
+ */
+export const emailSavedBlocks = commerce
+  .table(
+    "email_saved_blocks",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id),
+      name: text("name").notNull(),
+      block: jsonb("block").notNull(),
+      createdBy: uuid("created_by").references(() => accounts.id),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      unique("email_saved_blocks_store_id_key").on(t.storeId, t.id),
+      index("email_saved_blocks_list_idx").on(t.storeId, t.createdAt),
+      index("email_saved_blocks_created_by_idx").on(t.createdBy),
+      check("email_saved_blocks_name", sql`length(${t.name}) between 1 and 80`),
+      check("email_saved_blocks_block", sql`jsonb_typeof(${t.block}) = 'object'`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * The addresses a broadcast went to (D297, 5.3), frozen when its send started: one row per address (the subscriber's own, its language and market),
  * claimed a batch at a time and sent once (`email_messages`' key `broadcast:{id}:{subscriber}`). Personal data (the address): in the export's
  * `marketing` section, deleted on erasure and 90 days after the send ended (its figures kept on the broadcast). Never copied.

@@ -12,6 +12,8 @@ import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { campaignFacts, emailMarket, findProductFacts } from "@/server/broadcast-facts";
 import { deleteOwnTemplate, saveAsTemplate } from "@/server/broadcast-templates";
+import type { SavedBlock } from "@/lib/broadcasts";
+import { deleteSavedBlock, listSavedBlocks, saveBlock } from "@/server/email-saved-blocks";
 import {
   audienceCount,
   deleteBroadcast,
@@ -182,6 +184,23 @@ export async function saveAsTemplateAction(storeSlug: string, id: string, form: 
   const saved = await saveAsTemplate(member.store.id, member.account.id, id, String(form.get("title") ?? ""));
   if (saved.ok) redirect(`/admin/${member.store.slug}/broadcasts/new?from=${saved.id}`);
   refresh();
+}
+
+/** Saves one block of an email by name (M4.1), answering with the store's saved blocks as they now are. */
+export async function saveBlockAction(storeSlug: string, name: string, block: unknown): Promise<Problem | { ok: true; saved: SavedBlock[] }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  const result = await saveBlock(who.store.id, who.member.account.id, name, block);
+  if (!result.ok) return { ok: false, problem: MARKETING_WORDS[adminLangOf(who.member.account.adminLocale)].email.keptBlockProblems[result.problem] };
+  return { ok: true, saved: await listSavedBlocks(who.store.id) };
+}
+
+/** Deletes one of the store's saved blocks (M4.1). */
+export async function deleteSavedBlockAction(storeSlug: string, id: string): Promise<Problem | { ok: true; saved: SavedBlock[] }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  await deleteSavedBlock(who.store.id, who.member.account.id, id);
+  return { ok: true, saved: await listSavedBlocks(who.store.id) };
 }
 
 /** Deletes one of the store's own templates (D368). */

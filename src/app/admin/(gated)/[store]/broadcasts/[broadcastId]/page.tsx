@@ -15,26 +15,19 @@ import { areaTexts } from "@/lib/admin-area";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { audienceCount, broadcastReport, getBroadcast } from "@/server/broadcasts";
-import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { storeById } from "@/server/shopper-emails";
 
 import {
-  audienceCountAction,
   deleteBroadcastAction,
   saveAsTemplateAction,
-  saveBroadcastAction,
   scheduleBroadcastAction,
   sendTestAction,
   startBroadcastAction,
   stopBroadcastAction,
-  suggestBroadcastAction,
-  findBroadcastFactsAction,
-  suggestTestSubjectsAction,
   unscheduleBroadcastAction,
-  uploadBroadcastPictureAction,
 } from "../actions";
-import { broadcastChoices } from "../editor-props";
+import { broadcastChoices, editorActions } from "../editor-props";
 import { requireExtension } from "@/components/admin/extension-off";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
@@ -140,12 +133,7 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
                 broadcastId={broadcast.id}
                 initial={{ title: broadcast.title, audience: broadcast.audience, segmentId: broadcast.segmentId, content: broadcast.content, test: broadcast.test, bestTime: broadcast.bestTime }}
                 {...choices}
-                save={saveBroadcastAction}
-                count={audienceCountAction}
-                suggest={suggestBroadcastAction}
-            facts={findBroadcastFactsAction}
-            subjects={suggestTestSubjectsAction}
-                upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
+                {...editorActions()}
               />
             </Card>
             </AdminTextScope>

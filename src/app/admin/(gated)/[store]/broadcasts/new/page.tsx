@@ -10,11 +10,9 @@ import { areaTexts } from "@/lib/admin-area";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { listOwnTemplates, startingBroadcast } from "@/server/broadcast-templates";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { uploadsEnabled } from "@/server/media";
 
-import { audienceCountAction, deleteTemplateAction, saveBroadcastAction, findBroadcastFactsAction,
-  suggestTestSubjectsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../actions";
-import { broadcastChoices } from "../editor-props";
+import { deleteTemplateAction } from "../actions";
+import { broadcastChoices, editorActions } from "../editor-props";
 import { requireExtension } from "@/components/admin/extension-off";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
@@ -89,12 +87,7 @@ export default async function NewBroadcastPage({ params, searchParams }: PagePro
           broadcastId={null}
           initial={{ title: "", audience: "everyone", segmentId: null, content }}
           {...choices}
-          save={saveBroadcastAction}
-          count={audienceCountAction}
-          suggest={suggestBroadcastAction}
-            facts={findBroadcastFactsAction}
-            subjects={suggestTestSubjectsAction}
-          upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
+                {...editorActions()}
         />
         </AdminTextScope>
       </Card>

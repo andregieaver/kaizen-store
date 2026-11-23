@@ -12,6 +12,7 @@ import {
   type BroadcastBlock,
   type BroadcastContent,
   type BroadcastSuggestion,
+  type SavedBlock,
   type FindFacts,
   type LanguageContent,
 } from "@/lib/broadcasts";
@@ -24,6 +25,7 @@ import { useAdminLang, useAdminText } from "./admin-text";
 import { Button, CARD_CLASS } from "./ui";
 import { Select } from "./ui/field";
 import { ColumnsFields, emptyCell } from "./broadcast-columns";
+import { KeepBlock, SavedBlockList, type SavedBlocksProps } from "./broadcast-saved-blocks";
 
 type Problem = { ok: false; problem: string };
 
@@ -40,6 +42,10 @@ type Props = {
   count: (storeSlug: string, audience: string, segmentId: string | null) => Promise<Problem | { ok: true; people: number }>;
   suggest: (storeSlug: string, brief: string, locale: string, segmentId?: string | null) => Promise<Problem | { ok: true; suggestion: BroadcastSuggestion }>;
   upload: ((storeSlug: string, data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>) | null;
+  /** Saved blocks (M4.1): the store's list (from `broadcastChoices()`) and the actions that keep and delete one. */
+  savedBlocks?: SavedBlock[];
+  saveBlock?: SavedBlocksProps["save"];
+  deleteBlock?: SavedBlocksProps["remove"];
   /** The store's products and running campaigns to put in (D352); none, the finder is not offered. */
   facts?: FindFacts;
   /** Three subject lines for a split test's version B (M2.5 slice 3), while the store has AI. */
@@ -172,6 +178,7 @@ export function BroadcastEditor(props: Props) {
         upload={props.upload}
         facts={props.facts}
         segmentId={audience === "segment" ? segmentId : null}
+        saved={props.saveBlock && props.deleteBlock ? { list: props.savedBlocks ?? [], save: props.saveBlock, remove: props.deleteBlock } : undefined}
       />
 
       <SplitTestFields
@@ -382,8 +389,11 @@ export function EmailContentFields(props: {
   facts?: FindFacts;
   /** The segment the email is for, which shapes the AI's words (D352). */
   segmentId?: string | null;
+  /** The store's saved blocks and their actions (M4.1); none, no saving. */
+  saved?: SavedBlocksProps;
 }) {
   const { storeSlug, content } = props;
+  const [kept, setKept] = useState(props.saved?.list ?? []);
   const wm = useAdminText("marketing");
   const we = wm.email;
   const [locale, setLocale] = useState(props.locales[0]?.code ?? "nb-NO");
@@ -455,6 +465,11 @@ export function EmailContentFields(props: {
                 </span>
               </div>
               <BlockFields block={block} index={i} onChange={(b) => setBlock(i, b)} storeSlug={storeSlug} upload={props.upload} />
+              {props.saved && (
+                <div className="flex justify-end">
+                  <KeepBlock block={block} kind={we.blocks[block.type]} storeSlug={storeSlug} save={props.saved.save} onSaved={setKept} />
+                </div>
+              )}
             </li>
           ))}
         </ol>
@@ -468,6 +483,15 @@ export function EmailContentFields(props: {
               </Button>
             ))}
           </div>
+        )}
+        {current.blocks.length < BLOCKS_MAX && props.saved && (
+          <SavedBlockList
+            list={kept}
+            storeSlug={storeSlug}
+            remove={props.saved.remove}
+            onAdd={(block) => setCurrent({ ...current, blocks: [...current.blocks, block] })}
+            onChange={setKept}
+          />
         )}
         {current.blocks.length < BLOCKS_MAX && props.facts && (
           <FactFinder storeSlug={storeSlug} find={props.facts} onAdd={(block) => setCurrent({ ...current, blocks: [...current.blocks, block] })} />
