@@ -133,7 +133,7 @@ This report is a working document: the plan below is the list of work, and this 
 |---|---|---|---|---|---|
 | 4.1 | Lint rules for the boundaries | FH7, FH8 | M | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach |
 | 4.2 | All environment reads through `env.ts` | FD12 | S | Open || `src/server/encryption-key.ts` now holds `encryptionKey()`, a reader of `SETTINGS_ENCRYPTION_KEY` (bloat review step 0.6) |
-| 4.3 | Generate the navigation doc | FN11 | S | Open | |
+| 4.3 | Generate the navigation doc | FN11 | S | Done | 23 Nov 2026, c8a378012, 13aacd242, D885: `pnpm nav:write` writes each level's tabs and every page (group, address, Basic, needs); `admin-navigation.test.ts` fails CI while they differ; see Notes below |
 | 4.4 | The small ones | severity 1 findings | S to M | Open | |
 | 4.5 | Check that each guard exists | - | S | Open | Guards of bloat review step 1.8: `src/server/route-load.graph.test.ts`, `src/lib/dependencies.scan.test.ts`, `scripts/trace-sizes.mjs`, `scripts/route-budget.mjs` |
 | 4.6 | Measure, then tune | (admin audit, phase 4) | M | Open | |
@@ -198,6 +198,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 23 November 2026: step 1.18 done (D877, finding FN9): the platform's navigation is one structure, `PLATFORM_SECTIONS`; its tabs and counts, sidebars, pages of cards and every page's area are derived from it, the layout lists none; the AI manager is Home's and every page folder is in a section (a test); 782 addresses, relative and whole, answer the same area before and after.
 - 23 November 2026: step 1.19 done (D881, finding FN8): the admin map takes each page's section and menu word from the navigation at all three levels; ten titles take the menu's word, five fuller ones are listed with their reasons, the platform's menu says Headers and Footers; the page finder, the AI manager and the docs name pages as the menu does.
 - 23 November 2026: step 2.3 done (D884, finding FN4): the platform's Settings in six groups and the owner's Account in three; every platform sidebar and Account have a Basic view (24 of 57 platform pages, 5 of 15), with the switch in the top bar and the phone's menu at all three levels and one choice per person; `platform-nav.test.ts` holds the cap; the row in `docs/platform-parity.md` added.
+- 23 November 2026: step 4.3 done (D885, finding FN11): `docs/admin-navigation.md`'s tables of each level's tabs and every page are written from the three nav files (`pnpm nav:write`); `src/lib/admin-navigation.test.ts` fails in CI while they differ; the hand tables and the words that contradicted the menu went.
 
 **Notes on the steps**
 
@@ -527,6 +528,17 @@ switch (the phone's menu, Your account) drops the titles the compact one keeps. 
 switch works at all three levels (`e2e/signed-in/admin-view.spec.ts`), `platform-nav.test.ts` holds the cap (some Basic in every
 sidebar, at most 12 a section, under half in all, each section's list by name, a tab's page always), and the parity row is in.
 
+**Step 4.3.** 23 Nov 2026, D885: `src/lib/admin-navigation.ts` writes six tables of `docs/admin-navigation.md` between `nav:generated`
+markers, from `PLATFORM_SECTIONS`, `ownerTabs()` with `ACCOUNT_GROUPS`, and `STORE_SECTIONS`: each level's tabs (icon, address, the
+sidebar's pages and Basic count, a store tab's needs, whom an owner's tab is for) and, under *Every page*, one table per section (the
+store's 117 pages in nine) with each page's group, label, address, view and need (a feature or extension, customers' stores only, an
+Account page's owners or domain holders). `parity.ts`'s marker functions take a tag and share their table helpers. `pnpm nav:write` and
+`pnpm nav:check` (`scripts/admin-navigation.mjs`) run under node's type stripping, resolving the nav modules' extensionless imports as
+the bundler does; no database or secrets. CI holds it as it holds the parity report, in the unit tests: `admin-navigation.test.ts`.
+The hand tables had a store with 45 of 117 pages, no Analytics or Support, and an owner's level without Support and Books; the words
+that contradicted the menu were corrected (Marketing opens on a page of its own; what staff see). Done when met: with Returns renamed
+in `store-nav.ts`, `pnpm nav:check` and the test failed on `store-pages` alone, and passed once it was put back.
+
 ## 1. The headline
 
 **The rules are good; they do not yet reach the riskiest places.** Money is worked out in the database, every admin action is guarded
@@ -651,7 +663,7 @@ that decide how cheaply the admin's map can change; section 4.3 points back to t
 | FS10 | 2 | 14 admin page files over 340 lines read, decide and draw everything in one server component (the order page: 1,071 lines, 13 awaits). They cannot stream in parts or be shared with the platform's twin screens. | `S/orders/[orderId]/page.tsx`; `S/settings/moving/page.tsx` (27 awaits); `S/customers/[customerId]/page.tsx` | A soft ceiling of about 250 lines: the page checks permission and lays out; each card is an async server component that reads its own data in Suspense, as Home does (`S/page.tsx:116-161`). | L |
 | FN8 | 2 | Three hand-kept lists name each page (the menu, `ADMIN_PAGES`, the page's header) and disagree on 30 pages: the assistant says *Support inbox* where the menu says *Inbox*. The platform's map groups no longer match its tabs. | `src/lib/admin-map.ts:1325`; `src/lib/store-nav.ts`, `platform-nav.ts` (compared by script) | The nav item is the source for a page's menu label and section; `ADMIN_PAGES` takes `group` and a `navLabel` from it at all three levels; delete the dead group arguments. *Built: step 1.19, D881.* | M |
 | FN9 | 2 | The platform's navigation is put together in three places (four item arrays, a hand-listed tab list, areas rebuilt in the layout) and read a fourth time for permissions. Some static platform routes are in no list. | `src/lib/platform-nav.ts:18-68, 118-132`; `P/layout.tsx:44-56`; `platform-access.ts:68-77` | `PLATFORM_SECTIONS` in the shape of `StoreSection`, from which tabs, areas and `platformAreaOfPath()` are derived; the platform's own test "puts every page folder in a section". *Built: step 1.18, D877.* | M |
-| FN11 | 2 | `docs/admin-navigation.md` describes a much smaller admin: no Analytics or Support for stores, Marketing with 6 pages (the code has 14), no Themes or Support for the platform. `CLAUDE.md` sends every contributor there. | `docs/admin-navigation.md:59-67, 82, 127-133` | A script beside `scripts/parity.mjs` that writes the three tables between markers, with a check mode in CI. *Audit N14, phase 4: not built.* | S |
+| FN11 | 2 | `docs/admin-navigation.md` describes a much smaller admin: no Analytics or Support for stores, Marketing with 6 pages (the code has 14), no Themes or Support for the platform. `CLAUDE.md` sends every contributor there. | `docs/admin-navigation.md:59-67, 82, 127-133` | A script beside `scripts/parity.mjs` that writes the three tables between markers, with a check mode in CI. *Audit N14, phase 4. Built: step 4.3, D885.* | S |
 | FH5 | 2 | `CLAUDE.md` costs about 10,000 tokens in every session, and 28 of its 301 index lines are cut mid-sentence, hiding the paths. | `CLAUDE.md` (418 lines, 39.5 KB) | Reduce the Storefront and Admin sections to the six area files (the per-rule index moves to the top of each, where `rules-index.test.ts` checks it); break Conventions into short bullets. | S |
 | FH7, FH8 | 2 | ESLint is the Next.js default; architecture is policed by 39 regex scan tests that report only in `pnpm test`. One rule has no check at all: `src/lib` is called pure, yet 33 of its files import `server-only`, 3 import `@/server` and 4 drive a browser. | `eslint.config.mjs:1-20`; e.g. `src/lib/order-edit.ts`, `work-invoice-ui.ts`, `cookie-scan.ts`, `theme-shoot.ts` | `no-restricted-imports` for `src/lib/**` with today's offenders as a shrinking allow-list; move the import and call bans from scans to lint rules; keep the whole-repo scans, on one shared file walker. | M |
 

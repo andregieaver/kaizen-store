@@ -587,11 +587,13 @@ export function movesSince(rows: readonly ParityRow[], since: string): Move[] {
 const RATING_LABEL: Record<Rating, string> = { full: "Full", partial: "Partial", missing: "Missing" };
 const TIER_LABEL: Record<Tier, string> = { native: "Native", app: "App", plus: "Plus" };
 
-function cell(text: string): string {
+/** A table cell's text on one line, its pipes escaped. */
+export function cell(text: string): string {
   return text.replace(/\s*\n\s*/g, " ").replace(/\|/g, "\\|").trim();
 }
 
-function table(head: string[], body: string[][], align: ("l" | "r")[] = []): string {
+/** A Markdown table; a column whose `align` is "r" is right-aligned. */
+export function table(head: string[], body: string[][], align: ("l" | "r")[] = []): string {
   const rule = head.map((_, i) => (align[i] === "r" ? "---:" : "---"));
   return [`| ${head.join(" | ")} |`, `| ${rule.join(" | ")} |`, ...body.map((r) => `| ${r.join(" | ")} |`)].join("\n");
 }
@@ -868,10 +870,10 @@ export function renderSections(rows: readonly ParityRow[], since: string): Recor
 }
 
 // ---------------------------------------------------------------------------
-// Generated sections inside a Markdown file
+// Generated sections inside a Markdown file, between `<!-- {tag}:generated:start {name} -->` and its end marker: `parity` here, `nav`
+// for docs/admin-navigation.md's tables (src/lib/admin-navigation.ts, D885).
 
-const START = /^<!-- parity:generated:start ([a-z0-9-]+) -->$/;
-const END = /^<!-- parity:generated:end ([a-z0-9-]+) -->$/;
+const markerOf = (tag: string, edge: "start" | "end") => new RegExp(`^<!-- ${tag}:generated:${edge} ([a-z0-9-]+) -->$`);
 
 interface Block {
   name: string;
@@ -880,7 +882,8 @@ interface Block {
   end: number;
 }
 
-function findBlocks(lines: string[]): { blocks: Block[]; problems: string[] } {
+function findBlocks(lines: string[], tag: string): { blocks: Block[]; problems: string[] } {
+  const [START, END] = [markerOf(tag, "start"), markerOf(tag, "end")];
   const blocks: Block[] = [];
   const problems: string[] = [];
   let open: { name: string; start: number } | null = null;
@@ -908,18 +911,18 @@ function findBlocks(lines: string[]): { blocks: Block[]; problems: string[] } {
 }
 
 /** Marker problems plus sections the document lacks or has no renderer for. */
-export function markerProblems(doc: string, sections: Record<string, string>): string[] {
-  const { blocks, problems } = findBlocks(doc.split("\n"));
+export function markerProblems(doc: string, sections: Record<string, string>, tag = "parity"): string[] {
+  const { blocks, problems } = findBlocks(doc.split("\n"), tag);
   const present = new Set(blocks.map((b) => b.name));
-  for (const name of Object.keys(sections)) if (!present.has(name)) problems.push(`the report has no marker for generated section "${name}"`);
-  for (const name of present) if (!(name in sections)) problems.push(`the report has a marker "${name}" that nothing generates`);
+  for (const name of Object.keys(sections)) if (!present.has(name)) problems.push(`the document has no marker for generated section "${name}"`);
+  for (const name of present) if (!(name in sections)) problems.push(`the document has a marker "${name}" that nothing generates`);
   return problems;
 }
 
 /** Rewrites what lies between the markers; the prose around them is kept. */
-export function writeSections(doc: string, sections: Record<string, string>): string {
+export function writeSections(doc: string, sections: Record<string, string>, tag = "parity"): string {
   const lines = doc.split("\n");
-  const { blocks } = findBlocks(lines);
+  const { blocks } = findBlocks(lines, tag);
   const out: string[] = [];
   let cursor = 0;
   for (const block of [...blocks].sort((a, b) => a.start - b.start)) {
@@ -933,8 +936,8 @@ export function writeSections(doc: string, sections: Record<string, string>): st
 }
 
 /** Names of generated sections whose text in the document differs from what the data gives. */
-export function outOfDate(doc: string, sections: Record<string, string>): string[] {
-  return Object.keys(sections).filter((name) => writeSections(doc, { [name]: sections[name] }) !== doc);
+export function outOfDate(doc: string, sections: Record<string, string>, tag = "parity"): string[] {
+  return Object.keys(sections).filter((name) => writeSections(doc, { [name]: sections[name] }, tag) !== doc);
 }
 
 // ---------------------------------------------------------------------------
