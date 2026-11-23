@@ -6,7 +6,7 @@ import { Card } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
+import { HOUSE_STORE_SLUG } from "@/lib/house-store";
 import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import type { SiteSwitch } from "@/server/house-switch";
 

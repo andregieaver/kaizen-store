@@ -155,5 +155,4 @@ export const requireMemberAny = (storeSlug: string): Promise<Membership> => requ
 /** The same for an action. */
 export const checkMemberAny = (storeSlug: string): Promise<Membership | null> => getMembership(storeSlug);
 
-// The guards the scan test accepts, and the wrappers that call one: pure data in `src/lib/permission-guards.ts`.
-export { DELEGATED_GUARDS, GUARDS } from "@/lib/permission-guards";
+// The guards the scan test accepts, and the wrappers that call one, are pure data in `src/lib/permission-guards.ts`: read them there.

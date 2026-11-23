@@ -4,7 +4,8 @@ import { ADMIN_LANGS } from "./admin-lang";
 import { navWord } from "./admin-nav-words";
 import { levelClashes, storeClashes, type NavEntry, type SameThing } from "./nav-labels";
 import { ACCOUNT_ITEMS, OWNER_BASE, ownerTabs } from "./owner-nav";
-import { HOUSE_STORE_CARD, PLATFORM_BASE, PLATFORM_SECTIONS, platformItemsOf, platformTabs } from "./platform-nav";
+import { HOUSE_STORE_CARD } from "./house-store";
+import { PLATFORM_BASE, PLATFORM_SECTIONS, platformItemsOf, platformTabs } from "./platform-nav";
 import { STORE_SECTIONS } from "./store-nav";
 
 /**

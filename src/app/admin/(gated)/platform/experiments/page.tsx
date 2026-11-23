@@ -13,7 +13,7 @@ import { requirePlatformReader } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
 import { platformUnitTests } from "@/server/platform-unit-tests";
 import { siteStore } from "@/server/house-switch";
-import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
+import { HOUSE_STORE_SLUG } from "@/lib/house-store";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";

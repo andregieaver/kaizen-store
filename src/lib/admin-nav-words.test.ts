@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { NAV_NB } from "./admin-messages/nav.nb";
 import { navAreasIn, navItemsIn, navWord } from "./admin-nav-words";
+import { HOUSE_STORE_CARD } from "./house-store";
 import { ACCOUNT_ITEMS, ownerAreas, ownerTabs } from "./owner-nav";
 import * as PLATFORM from "./platform-nav";
 import { STORE_SECTIONS } from "./store-nav";
@@ -25,7 +26,7 @@ function navTexts(): string[] {
       for (const i of g.items) texts.add(i.label).add(i.description);
     }
   }
-  texts.add(PLATFORM.HOUSE_STORE_CARD.label).add(PLATFORM.HOUSE_STORE_CARD.description);
+  texts.add(HOUSE_STORE_CARD.label).add(HOUSE_STORE_CARD.description);
   for (const t of PLATFORM.platformTabs()) texts.add(t.label);
   for (const i of ACCOUNT_ITEMS) texts.add(i.label).add(i.description);
   for (const t of ownerTabs({ owner: true, work: true, support: true })) texts.add(t.label);

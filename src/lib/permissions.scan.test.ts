@@ -12,7 +12,7 @@ import { STORE_NAV_AREAS, STORE_SECTIONS, areaIn, navAreas } from "./store-nav";
 
 /**
  * The sweep of wave 1, 1f (docs/wave-1-trust.md 2.7.2), held mechanically: every page, route handler, layout and server action of a store's
- * admin (and the Work screens, which live at the owner's level but belong to a store) asks a guard from `GUARDS` (`src/server/permissions.ts`)
+ * admin (and the Work screens, which live at the owner's level but belong to a store) asks a guard from `GUARDS` (`src/lib/permission-guards.ts`)
  * with the key of its own area, and nothing else decides who the owner is. A new admin file that forgets its guard fails here, so a role can
  * never see a page by accident.
  *

@@ -7,7 +7,6 @@
  */
 
 import type { NavIconName } from "@/components/admin/nav-icons";
-import { HOUSE_SLUG } from "@/lib/house-routing";
 
 import type { PlatformArea, PlatformNavArea } from "./platform-access";
 
@@ -187,21 +186,6 @@ export const PLATFORM_SECTIONS: PlatformSection[] = [
  * anything on the platform, so its area is the owners' (D510).
  */
 export const PLATFORM_HOME_PATHS: readonly PlatformNavArea[] = [{ path: "/assistant", area: "settings" }];
-
-/** Kaizena Flow's own store (D466): made by its migration at this address, never moved (`HOUSE_SLUG`). */
-export const HOUSE_STORE_SLUG = HOUSE_SLUG;
-
-/**
- * Kaizena Flow's own store as the first card of the Website hub (D466): a store's admin of its own, where its customers, subscribers and
- * email are kept and its site moves step by step. A card only, outside the sidebar: it leads to another level.
- */
-export const HOUSE_STORE_CARD = {
-  path: "",
-  href: `/admin/${HOUSE_STORE_SLUG}`,
-  label: "Kaizena Flow's store",
-  description: "Kaizena Flow's own store, with every page a store's admin has: its customers, subscribers, email and, step by step, its site.",
-  icon: "store" as NavIconName,
-};
 
 /** A section's pages, in its sidebar's order. */
 export const platformItemsOf = (section: Pick<PlatformSection, "groups">): PlatformItem[] => section.groups.flatMap((g) => g.items);
