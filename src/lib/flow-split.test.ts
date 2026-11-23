@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { keepWay, splitFigures, splitsOf } from "./flow-split";
+import { keepWay, splitFigures, splitsOf, splitWorthTrying } from "./flow-split";
 import type { FlowStep } from "./flows";
 
 const email = (id: string): FlowStep => ({ id, kind: "email", content: {} });
@@ -28,5 +28,12 @@ describe("a flow's split tests (M2.5, D868)", () => {
     expect(keepWay(steps, "s", "else").map((s) => s.id)).toEqual(["hello", "w", "b", "bye"]);
     expect(keepWay(steps, "s", "then").map((s) => s.id)).toEqual(["hello", "a", "bye"]);
     expect(keepWay(steps, "nope", "then")).toEqual(steps);
+  });
+
+  it("suggests a test for a flow with enough people for both halves and no split yet (slice 5)", () => {
+    const plain: FlowStep[] = [email("hello"), email("bye")];
+    expect(splitWorthTrying(plain, 400)).toBe(true);
+    expect(splitWorthTrying(plain, 399)).toBe(false);
+    expect(splitWorthTrying(steps, 5000)).toBe(false);
   });
 });

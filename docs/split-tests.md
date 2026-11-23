@@ -71,3 +71,7 @@ orders), and the counted figures with the engine's interval.
   (D761), called on orders per person by the engine (`splitFigures()`, interval rule, floor 200). When the call is clear, *Keep the first
   (second) way* replaces the split with that way's steps (`keepWay()`, `keepFlowWayAction()`): a new version, off until tested. Each
   email's reach in a split's half reads about half (`stepReach()`). The words are an area of their own (`flowSplits`).
+- **Slice 5, 23 November 2026.** A flow that 400 or more people started in 30 days (200 a half, the engine's floor) and has no split
+  yet is worth testing (`splitWorthTrying()`): its page says so where no stronger suggestion stands, and `list_flows` gives the AI
+  manager and the autopilot (which reads it in a goal's review) `split_test_worth_trying`, so they can propose one. Adding the Split stays
+  the owner's press. A broadcast's editor offers *Try another subject* on every draft, so it needs no suggestion of its own.

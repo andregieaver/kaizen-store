@@ -17,6 +17,7 @@ export const flowSplitsEn = {
   second: "second",
   keep: "Keep the {way} way",
   kept: "Kept. The flow is off until you test it again.",
+  worthTrying: "{n} people started it in 30 days, enough to test: put a Split before one of its emails, with a second version on the other way, to see which brings more orders.",
 };
 
 export type FlowSplitsMessages = Widen<typeof flowSplitsEn>;

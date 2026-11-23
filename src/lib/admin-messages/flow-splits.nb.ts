@@ -14,4 +14,5 @@ export const flowSplitsNb: FlowSplitsMessages = {
   second: "andre",
   keep: "Behold den {way} veien",
   kept: "Beholdt. Forløpet er av til du tester det igjen.",
+  worthTrying: "{n} personer startet det de siste 30 dagene, nok til å teste: legg inn en Del i to foran en av e-postene, med en annen versjon på den andre veien, for å se hvilken som gir flest bestillinger.",
 };

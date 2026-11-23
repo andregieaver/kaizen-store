@@ -25,6 +25,7 @@ import { cartReminderStats, getCartReminderSettings, saveCartReminderStep, setCa
 import { brandOf } from "./brand";
 import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBroadcast, startBroadcast, suggestBroadcast, suggestSubjects, type Broadcast } from "./broadcasts";
 import { TEST_HOURS, TEST_SHARE } from "@/lib/broadcast-test-sizes";
+import { splitWorthTrying } from "@/lib/flow-split";
 import { listTiers } from "./customer-tiers";
 import { issueGiftCard } from "./gift-cards-admin";
 import { OwnerToolError } from "./owner-tool-error";
@@ -641,6 +642,10 @@ export async function listFlowsTool({ store }: Ctx) {
       starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays),
       started_last_30_days: reports[i].entered,
       orders_after_last_30_days: reports[i].orders,
+      // A split test worth trying (M2.5 slice 5, M3.9): enough people for each half; the owner adds the Split on the flow's page.
+      ...(splitWorthTrying(f.steps, reports[i].entered) && {
+        split_test_worth_trying: `${reports[i].entered} people started it in 30 days, enough for a split test: a Split before one of its emails, a second version on the other way, and the flow's page says which brings more orders.`,
+      }),
       ...(f.guard && !f.enabled && { switched_off_by_guard: `${f.guard.left} of ${f.guard.sent} readers left the list within two days of its emails` }),
       link: adminLink(store, `/flows/${f.id}`),
     })),

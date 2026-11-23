@@ -50,6 +50,14 @@ export function splitFigures(split: Split, people: ReadonlyMap<string, number>, 
   return { id: split.id, first, second, call: called.call, better };
 }
 
+/**
+ * Whether a flow could run a split test now (M2.5 slice 5, M3.9's suggestion): enough people started it in 30 days for each half to reach
+ * the engine's floor, and it has no split yet.
+ */
+export function splitWorthTrying(steps: readonly FlowStep[], entered30: number): boolean {
+  return entered30 >= 2 * TEST_FLOOR && splitsOf(steps).length === 0 && steps.some((s) => s.kind === "email");
+}
+
 /** The tree with a split replaced by the steps of the way kept (the other way's steps are gone); the same tree when no split has that id. */
 export function keepWay(steps: readonly FlowStep[], id: string, way: "then" | "else"): FlowStep[] {
   return steps.flatMap((step): FlowStep[] => {

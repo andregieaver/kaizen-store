@@ -12,7 +12,7 @@ import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { darkPreview } from "@/lib/email-dark";
 import { stepReach } from "@/lib/flow-reach";
-import { splitFigures, splitsOf } from "@/lib/flow-split";
+import { splitFigures, splitsOf, splitWorthTrying } from "@/lib/flow-split";
 import { TEST_FLOOR } from "@/lib/broadcast-test-sizes";
 import { fillWords } from "@/lib/admin-fill";
 import { FLOW_SPLITS_WORDS } from "@/lib/admin-words/flow-splits";
@@ -300,6 +300,12 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
             {topSubject && <p className="text-body text-ink-2">{w.report.top.replace("{subject}", Object.values(topSubject.content)[0]?.subject ?? "")}</p>}
             {report.left > 0 && <p className="text-body text-ink-2">{w.report.left.replace("{left}", report.left.toLocaleString(numbers))}</p>}
             {suggestion && <p className="text-body text-ink">{suggestion}</p>}
+            {/* A split test worth trying (M2.5 slice 5), when no stronger suggestion stands. */}
+            {!suggestion && splitWorthTrying(flow.steps, report.entered) && (
+              <p className="text-body text-ink" data-split-worth-trying>
+                {fillWords(ws.worthTrying, { n: report.entered.toLocaleString(numbers) })}
+              </p>
+            )}
           </div>
         </Card>
       )}
