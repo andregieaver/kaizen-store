@@ -57,8 +57,8 @@ is one click from the control center.
 ## Platform
 
 The platform (D144) uses the whole width of the screen. Its tabs carry an icon and each section has a sidebar of its
-own, or none. Home is the operator's first look and the AI manager's page is Home's; Access requests and Support show the number
-waiting. Settings' six groups (D884) and every page are under *Every page*.
+own, or none. Access requests and Support show the number waiting. Settings' six groups (D884) and every page are under
+*Every page*.
 
 <!-- nav:generated:start platform-tabs -->
 
