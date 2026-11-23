@@ -879,6 +879,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D874 | **The account's own sending domain, for every store of the account without its own (D748 E10 part two)** | 2026-11-23 | [text](decisions/D874.md) |
 | D875 | **Saved email blocks: a store keeps up to 50 named blocks to add again to broadcasts (email plan M4.1)** | 2026-11-23 | [text](decisions/D875.md) |
 | D876 | **Email automation's send allowance and contact limit: told at 80 %, new broadcasts wait at the limit with one press to mo** | 2026-11-23 | [text](decisions/D876.md) |
+| D877 | **One structure for the platform's navigation: PLATFORM_SECTIONS, from which the tabs, the sidebars, the areas and the pag** | 2026-11-23 | [text](decisions/D877.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
