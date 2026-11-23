@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."sending_domains" DROP CONSTRAINT "sending_domains_store_key";

@@ -300,6 +300,37 @@ describe("an account's one subscription (D748 E4 part two)", () => {
     ]);
   });
 
+  it("moves email automation up a size, and the account's emails a month and contacts go with it (D876)", async () => {
+    const { limitFor, forgetLimits } = await import("./limits");
+    const { sendAllowance } = await import("./send-allowance");
+    forgetLimits();
+    // Bought on its own at its smallest (the bundle test left it so): 2,500 contacts, 10 emails each a month.
+    expect(await limitFor(storeId, "marketing_emails_month")).toBe(25000);
+    expect(await sendAllowance(storeId)).toMatchObject({ contactsAllowed: 2500, emailsAllowed: 25000, next: { contacts: 10000 } });
+
+    const before = calls("subscriptions.update").length;
+    const moved = await accounts.moveUpExtension(owner, organisation, "email_automation", origin);
+    expect(moved).toMatchObject({ ok: true, contacts: 10000 });
+    // The smaller size's item goes and the bigger one's comes; nothing else on the subscription changes.
+    const items = calls("subscriptions.update").at(-1)?.params.items as ({ deleted: true } | { price: string })[];
+    expect(calls("subscriptions.update").length).toBe(before + 1);
+    expect(items.filter((i) => "deleted" in i)).toHaveLength(1);
+    expect(items.filter((i) => "price" in i)).toHaveLength(1);
+    const [row] = await db().execute<Row>(sql`
+      select es.allowances->>'contacts' as contacts, oe.source from commerce.organisation_extensions oe join commerce.extension_sizes es on es.id = oe.size_id
+       where oe.organisation_id = ${organisation}::uuid and oe.extension_id = 'email_automation'`);
+    expect(row).toEqual({ contacts: "10000", source: "bought" });
+    forgetLimits();
+    expect(await limitFor(storeId, "marketing_emails_month")).toBe(100000);
+    // Up again until the biggest, which says so.
+    expect(await accounts.moveUpExtension(owner, organisation, "email_automation", origin)).toMatchObject({ ok: true, contacts: 25000 });
+    expect(await accounts.moveUpExtension(owner, organisation, "email_automation", origin)).toMatchObject({ ok: true, contacts: 50000 });
+    expect(await accounts.moveUpExtension(owner, organisation, "email_automation", origin)).toEqual({
+      ok: false,
+      problems: ["This is the biggest size there is. Write to us and we'll find room."],
+    });
+  });
+
   it("bills a founding price while it is offered, keeps it for its months, then moves it to the price (D748 E6)", async () => {
     const stripeOf = async (local: string) => {
       const [row] = await db().execute<Row>(sql`select stripe_id from commerce.stripe_sync where mode = 'test' and kind = 'price' and local_id = ${local}`);

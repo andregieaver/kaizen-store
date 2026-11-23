@@ -4,7 +4,7 @@ import { ADMIN_LANGS } from "./admin-lang";
 import { navWord } from "./admin-nav-words";
 import { levelClashes, storeClashes, type NavEntry, type SameThing } from "./nav-labels";
 import { ACCOUNT_ITEMS, OWNER_BASE, ownerTabs } from "./owner-nav";
-import { HOUSE_STORE_CARD, PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs } from "./platform-nav";
+import { HOUSE_STORE_CARD, PLATFORM_BASE, PLATFORM_SECTIONS, platformItemsOf, platformTabs } from "./platform-nav";
 import { STORE_SECTIONS } from "./store-nav";
 
 /**
@@ -30,7 +30,7 @@ const OTHERS: NavEntry[] = [
   ...ownerTabs({ owner: true, work: true, support: true, books: true, domains: true }).map((t) => ({ label: t.label, level: "owner" as const, page: after(OWNER_BASE, t.href) })),
   ...ACCOUNT_ITEMS.map((i) => ({ label: i.label, level: "owner" as const, page: i.path })),
   ...platformTabs().map((t) => ({ label: t.label, level: "platform" as const, page: after(PLATFORM_BASE, t.href) })),
-  ...[...WEBSITE_ITEMS, ...PLAN_ITEMS, ...SUPPORT_ITEMS, ...SETTINGS_ITEMS].map((i) => ({ label: i.label, level: "platform" as const, page: i.path })),
+  ...PLATFORM_SECTIONS.flatMap(platformItemsOf).map((i) => ({ label: i.label, level: "platform" as const, page: i.path })),
   { label: HOUSE_STORE_CARD.label, level: "platform", page: HOUSE_STORE_CARD.href },
 ];
 

@@ -1,6 +1,6 @@
 {
-  "id": "bceb89a5-6cc9-4ac9-bfe6-a4d3d0b60b54",
-  "prevId": "d06157aa-295d-4c0f-8fd1-c964bcaf8d5a",
+  "id": "0a10f509-5f38-498d-9cb1-10591a35ef29",
+  "prevId": "bceb89a5-6cc9-4ac9-bfe6-a4d3d0b60b54",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -77476,13 +77476,6 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "sending_domains_store_key": {
-          "name": "sending_domains_store_key",
-          "nullsNotDistinct": true,
-          "columns": [
-            "store_id"
-          ]
-        },
         "sending_domains_owner_key": {
           "name": "sending_domains_owner_key",
           "nullsNotDistinct": true,

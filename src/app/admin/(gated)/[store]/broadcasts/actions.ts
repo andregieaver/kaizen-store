@@ -12,7 +12,8 @@ import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { campaignFacts, emailMarket, findProductFacts } from "@/server/broadcast-facts";
 import { deleteOwnTemplate, saveAsTemplate } from "@/server/broadcast-templates";
-import type { SavedBlock } from "@/lib/broadcasts";
+import { HTML_BLOCK_MAX, type SavedBlock } from "@/lib/broadcasts";
+import { cleanEmailHtml } from "@/server/email-html";
 import { deleteSavedBlock, listSavedBlocks, saveBlock } from "@/server/email-saved-blocks";
 import {
   audienceCount,
@@ -193,6 +194,13 @@ export async function saveBlockAction(storeSlug: string, name: string, block: un
   const result = await saveBlock(who.store.id, who.member.account.id, name, block);
   if (!result.ok) return { ok: false, problem: MARKETING_WORDS[adminLangOf(who.member.account.adminLocale)].email.keptBlockProblems[result.problem] };
   return { ok: true, saved: await listSavedBlocks(who.store.id) };
+}
+
+/** An own HTML block as it would be sent (M4.1), for the editor's preview: the server's cleaning, nothing kept. */
+export async function cleanHtmlAction(storeSlug: string, html: string): Promise<Problem | { ok: true; html: string }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  return { ok: true, html: cleanEmailHtml(String(html).slice(0, HTML_BLOCK_MAX)).html };
 }
 
 /** Deletes one of the store's saved blocks (M4.1). */

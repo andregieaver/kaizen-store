@@ -4,8 +4,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { platformAreaIn, platformAreaOfPath, platformNavAreas } from "./platform-access";
-import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
+import { platformAreaIn, platformAreaOfPath } from "./platform-access";
+import { PLATFORM_SECTIONS, platformItemsOf, platformNavAreas } from "./platform-nav";
 
 /**
  * The platform's guards (D510) stay where they belong: every `requirePlatform("area")` and `platformCan(account, "area")` under the platform
@@ -55,20 +55,23 @@ describe("the platform's guards (D510)", () => {
 describe("a platform page's area is its own, not its tab (D851)", () => {
   /** Every folder the guards above are held to, and every platform page of the map. */
   const addresses = [...new Set(["", ...folders.map((rel) => `/${rel}`), ...ADMIN_PAGES.filter((p) => p.area === "platform").map((p) => p.path)])];
-  const lists = [WEBSITE_ITEMS, PLAN_ITEMS, SUPPORT_ITEMS, SETTINGS_ITEMS];
-  const listAreas = ["website", "plans", "support", "settings"] as const;
 
   it("leaves every folder's and page's area as it is when any sidebar page moves to another section", () => {
     const before = addresses.map((address) => platformAreaOfPath(address));
     let moves = 0;
-    lists.forEach((list, l) =>
-      list.forEach((item, i) => {
-        const moved = lists.map((items) => [...items]);
-        const [taken] = moved[l].splice(i, 1);
-        const to = (l + 1) % moved.length;
-        moved[to].push(taken);
+    PLATFORM_SECTIONS.forEach((section, s) =>
+      platformItemsOf(section).forEach((item) => {
+        // To the next section of another area (`PLATFORM_SECTIONS`, D877), whose area the page took before D851; one with no sidebar gets one.
+        const offsets = PLATFORM_SECTIONS.map((_, i) => (s + 1 + i) % PLATFORM_SECTIONS.length);
+        const to = offsets.find((i) => PLATFORM_SECTIONS[i].area !== item.area)!;
+        const moved = PLATFORM_SECTIONS.map((x, i) => ({
+          ...x,
+          groups: x.groups.map((g) => ({ ...g, items: i === s ? g.items.filter((other) => other !== item) : g.items })),
+        }));
+        const target = moved[to];
+        target.groups = target.groups.length > 0 ? target.groups.map((g, i) => (i === target.groups.length - 1 ? { ...g, items: [...g.items, item] } : g)) : [{ heading: target.label, items: [item] }];
         // The menu now lists it under another section, whose area decided before D851.
-        expect([item.path, listAreas[to] === item.area]).toEqual([item.path, false]);
+        expect([item.path, target.area === item.area]).toEqual([item.path, false]);
         const areas = platformNavAreas(moved);
         expect([item.path, addresses.map((address) => platformAreaIn(areas, address))]).toEqual([item.path, before]);
         moves += 1;

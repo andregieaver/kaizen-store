@@ -17,10 +17,16 @@ function navTexts(): string[] {
       for (const i of g.items) texts.add(i.label).add(i.description);
     }
   }
-  for (const list of [PLATFORM.WEBSITE_ITEMS, PLATFORM.PLAN_ITEMS, PLATFORM.SUPPORT_ITEMS, PLATFORM.SETTINGS_ITEMS]) for (const i of list) texts.add(i.label).add(i.description);
+  for (const s of PLATFORM.PLATFORM_SECTIONS) {
+    texts.add(s.label);
+    if (s.intro) texts.add(s.intro);
+    for (const g of s.groups) {
+      texts.add(g.heading);
+      for (const i of g.items) texts.add(i.label).add(i.description);
+    }
+  }
   texts.add(PLATFORM.HOUSE_STORE_CARD.label).add(PLATFORM.HOUSE_STORE_CARD.description);
   for (const t of PLATFORM.platformTabs()) texts.add(t.label);
-  for (const intro of Object.values(PLATFORM.PLATFORM_HUB_INTROS)) texts.add(intro);
   for (const i of ACCOUNT_ITEMS) texts.add(i.label).add(i.description);
   for (const t of ownerTabs({ owner: true, work: true, support: true })) texts.add(t.label);
   for (const a of ownerAreas({ owner: true, work: true })) for (const g of a.groups) texts.add(g.heading);

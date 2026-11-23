@@ -15,6 +15,7 @@ import {
   SOCIAL_MAX,
   SUBJECT_MAX,
   CELL_TEXT_MAX,
+  HTML_BLOCK_MAX,
   CELLS_MAX,
   isBroadcastAddress,
   rewritableTexts,
@@ -74,6 +75,8 @@ export const broadcastBlockSchema = z.discriminatedUnion("type", [
       .min(1, "Add at least one profile.")
       .max(SOCIAL_MAX, `At most ${SOCIAL_MAX} profiles.`),
   }),
+  // The owner's own HTML (M4.1, for Lisa): kept as written, cleaned by the server each time it is sent (`cleanEmailHtml()`).
+  z.object({ type: z.literal("html"), html: z.string().trim().min(1, "The HTML is empty.").max(HTML_BLOCK_MAX, `Keep the HTML under ${HTML_BLOCK_MAX} characters.`) }),
   // Two or three cells side by side (M4.1), stacked on a phone.
   z.object({ type: z.literal("columns"), cells: z.array(cellSchema).min(2, "Columns need at least two.").max(CELLS_MAX, `At most ${CELLS_MAX} columns.`) }),
 ]);

@@ -5,7 +5,7 @@ import { HouseSiteCard } from "@/components/admin/house-site-card";
 import { SiteSwitchCard } from "@/components/admin/site-switch-card";
 import { SectionHub } from "@/components/admin/section-hub";
 import { adminLangOf } from "@/lib/admin-lang";
-import { HOUSE_STORE_CARD, PLATFORM_HUB_INTROS, PLATFORM_HUB_TITLES, WEBSITE_ITEMS } from "@/lib/platform-nav";
+import { HOUSE_STORE_CARD, platformItemsOf, platformSection } from "@/lib/platform-nav";
 import { requirePlatformReader } from "@/server/auth";
 import { lastSiteCopy } from "@/server/house-site";
 import { siteSwitch } from "@/server/house-switch";
@@ -21,14 +21,16 @@ export default async function PlatformWebsitePage() {
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const [last, state] = await Promise.all([lastSiteCopy(), siteSwitch()]);
+  // The section's own words and pages (`PLATFORM_SECTIONS`, D877).
+  const section = platformSection("website");
   return (
     <div className="flex flex-col gap-8">
       <SectionHub
         lang={lang}
-        title={PLATFORM_HUB_TITLES.website}
-        intro={PLATFORM_HUB_INTROS.website}
+        title={section.label}
+        intro={section.intro ?? ""}
         // Kaizena Flow's own store first (D466): where its site and customers move.
-        items={[HOUSE_STORE_CARD, ...WEBSITE_ITEMS]}
+        items={[HOUSE_STORE_CARD, ...platformItemsOf(section)]}
       />
       {/* Step 3 of the plan (D469): the site copied into the store, to look at beside the live one; not again once the store serves it. */}
       {!state.on && <HouseSiteCard lang={lang} last={last} copy={copySiteAction} />}

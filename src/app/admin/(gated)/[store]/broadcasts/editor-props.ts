@@ -9,6 +9,7 @@ import type { Store } from "@/server/stores";
 
 import {
   audienceCountAction,
+  cleanHtmlAction,
   deleteSavedBlockAction,
   findBroadcastFactsAction,
   saveBlockAction,
@@ -28,6 +29,7 @@ export const editorActions = () => ({
   upload: uploadsEnabled() ? uploadBroadcastPictureAction : null,
   saveBlock: saveBlockAction,
   deleteBlock: deleteSavedBlockAction,
+  cleanHtml: cleanHtmlAction,
 });
 
 /** What the broadcast editor offers: the store's languages (main first) by name in the admin's language, its segments, whether the AI can write, and its saved blocks (M4.1). */

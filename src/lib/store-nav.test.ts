@@ -8,7 +8,7 @@ import { AFTER_SALE_ADMIN_PATHS, FEATURE_IDS, isAfterSaleAdminPath, requirementM
 import { NAV_ICON_NAMES } from "@/components/admin/nav-icons";
 
 import { ACCOUNT_ITEMS } from "./owner-nav";
-import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
+import { PLATFORM_SECTIONS, platformItemsOf } from "./platform-nav";
 import { HOME_PATHS, STORE_SECTIONS, advancedIn, sectionOf, sectionPaths, storeAreas, storeNav, storeSections, storeTabs } from "./store-nav";
 
 const ROOT = "src/app/admin/(gated)/[store]";
@@ -304,7 +304,8 @@ describe("the pages' icons and the Basic view (D454)", () => {
   it("gives every page of every level an icon the admin draws", () => {
     const names = new Set<string>(NAV_ICON_NAMES);
     for (const section of STORE_SECTIONS) expect(names.has(section.icon), section.key).toBe(true);
-    for (const page of [...items, ...ACCOUNT_ITEMS, ...WEBSITE_ITEMS, ...PLAN_ITEMS, ...SUPPORT_ITEMS, ...SETTINGS_ITEMS]) expect(names.has(page.icon), page.path).toBe(true);
+    for (const section of PLATFORM_SECTIONS) expect(names.has(section.icon), section.key).toBe(true);
+    for (const page of [...items, ...ACCOUNT_ITEMS, ...PLATFORM_SECTIONS.flatMap(platformItemsOf)]) expect(names.has(page.icon), page.path).toBe(true);
   });
 
   it("keeps Basic to each section's everyday pages: some in every section, and fewer than half in all", () => {

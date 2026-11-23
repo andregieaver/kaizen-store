@@ -7,7 +7,7 @@ import { buildTestDatabaseTemplate, createTestDatabase } from "@/db/testing";
 import { MANAGER_TOOLS } from "@/lib/manager-tools";
 import { toolOffered } from "@/lib/owner-tool-features";
 import { OWNER_TOOLS } from "@/lib/owner-tools";
-import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "@/lib/platform-nav";
+import { PLATFORM_SECTIONS, platformItemsOf } from "@/lib/platform-nav";
 import { FEATURE_IDS } from "@/lib/store-features";
 import { advancedIn, STORE_SECTIONS } from "@/lib/store-nav";
 
@@ -114,7 +114,7 @@ export async function surfaceCounts(root: string): Promise<SurfaceCounts> {
       storeLinks: items.length,
       storeLinksBySection,
       basicLinks,
-      platformLinks: WEBSITE_ITEMS.length + PLAN_ITEMS.length + SUPPORT_ITEMS.length + SETTINGS_ITEMS.length,
+      platformLinks: PLATFORM_SECTIONS.flatMap(platformItemsOf).length,
       storeTools: OWNER_TOOLS.length,
       shopOnlyTools: OWNER_TOOLS.filter((t) => toolOffered(shopOnly, t.name)).length,
       managerTools: MANAGER_TOOLS.length,

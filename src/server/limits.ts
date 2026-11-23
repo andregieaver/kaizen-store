@@ -10,6 +10,7 @@ import { limitRefusal } from "@/lib/usage-format";
 import { LIMIT_REFUSALS } from "@/lib/usage-labels";
 import { monthFigure, monthOf, utcDay, type UsageMetric } from "@/lib/usage-metrics";
 
+import { accountSizeSql } from "./extension-sizes";
 import { col, typedRow } from "./typed-rows";
 import { dayBounds } from "./usage-meter";
 import { aiCostSql, domainsSql, emailsSql, productsSql, recordingsSql, staffSql } from "./usage-sql";
@@ -86,6 +87,17 @@ async function readStoreLimits(storeId: string): Promise<StoreLimits> {
       join commerce.plan_limits l on l.plan_id = b.plan_id
      where b.store_id = ${storeId}::uuid and b.status in (${onPlan})
     union all
+    -- Email automation's size (D876): its contacts times its emails per contact is the account's marketing emails a month, in place of
+    -- the plan's number; a size without both is unlimited.
+    select 'extension', null, 'marketing_emails_month',
+           case when sz.allowances ? 'contacts' and sz.allowances ? 'emails_per_contact'
+                then (sz.allowances->>'contacts')::bigint * (sz.allowances->>'emails_per_contact')::bigint end,
+           null
+      from commerce.stores s
+      join commerce.organisation_billing ob on ob.organisation_id = s.organisation_id
+      cross join lateral (${accountSizeSql(sql`s.organisation_id`, "email_automation")}) sz
+     where s.id = ${storeId}::uuid
+    union all
     select 'platform', null, l.key, l.value, null from commerce.plan_limits l where l.plan_id is null
     union all
     select 'counted', null, null, null, s2.id from commerce.stores s
@@ -103,7 +115,9 @@ async function readStoreLimits(storeId: string): Promise<StoreLimits> {
   const limits = Object.fromEntries(
     LIMIT_KEYS.map((key) => [
       key,
-      exempt ? { value: null, origin: "none" as const } : effectiveLimit({ override: override(key), plan: pick("plan", key), platform: pick("platform", key) }),
+      exempt
+        ? { value: null, origin: "none" as const }
+        : effectiveLimit({ override: override(key), plan: pick("extension", key) ?? pick("plan", key), platform: pick("platform", key) }),
     ]),
   ) as Record<LimitKey, ResolvedLimit>;
   const stores = rows.filter((r) => r.kind === "counted").map((r) => String(r.store_id));

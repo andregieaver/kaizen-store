@@ -11,7 +11,7 @@ import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { isOfferedScheme } from "@/lib/admin-schemes";
 import { audit, requireAccount, saveAdminScheme } from "@/server/auth";
 import { requestAdminLang } from "@/server/admin-request-lang";
@@ -21,7 +21,7 @@ import { endAccountGrants } from "@/server/oauth";
 import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepResult } from "@/server/two-step";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
 import { ownedAccount, setOfficer } from "@/server/privacy-officers";
-import { accountPortalUrl, cancelAccountPlan, chooseAccountPlan, setAccountExtension } from "@/server/account-billing";
+import { accountPortalUrl, cancelAccountPlan, chooseAccountPlan, moveUpExtension, setAccountExtension } from "@/server/account-billing";
 import { startExtensionTrial } from "@/server/extensions";
 import { GRACE_DAYS } from "@/lib/account-billing";
 import { fillWords } from "@/lib/admin-fill";
@@ -250,6 +250,25 @@ export async function setExtensionAction(extension: string, on: boolean): Promis
   if ("checkoutUrl" in result && result.checkoutUrl) redirect(result.checkoutUrl);
   refresh();
   return { status: "ok", messages: [on ? w.added : fillWords(w.ended, { days: GRACE_DAYS })] };
+}
+
+/**
+ * Moves the account's email automation up to its next size (D876, D748 E10 part three): one press from Broadcasts or Account, Extensions
+ * when the account has reached what its size holds. Only the account's owner may; Stripe Checkout when the account pays for nothing yet.
+ * Its words load when it runs, as the name and email's code does, so the store admin's routes that import this file do not carry them.
+ */
+export async function moveUpEmailAction(): Promise<FormState> {
+  const account = await requireAccount();
+  const lang = adminLangOf(account.adminLocale);
+  const w = (await import("@/lib/admin-words/send-allowance")).SEND_ALLOWANCE_WORDS[lang];
+  const owned = await ownedAccount(account.id);
+  if (!owned) return { status: "error", messages: [w.askOwner] };
+  const result = await moveUpExtension(account, owned.id, "email_automation", await origin());
+  if (!result.ok) return { status: "error", messages: result.problems };
+  if ("checkoutUrl" in result && result.checkoutUrl) redirect(result.checkoutUrl);
+  refresh();
+  const contacts = result.contacts?.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
+  return { status: "ok", messages: [contacts ? fillWords(w.movedUp, { contacts }) : w.moveUpAny] };
 }
 
 // ---------------------------------------------------------------------------

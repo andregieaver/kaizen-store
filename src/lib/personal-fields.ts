@@ -47,6 +47,8 @@ type Texts = { subject: string; preview: string; blocks: readonly { type: string
 type Cell = { heading: string; text: string; buttonText: string };
 const cellsOf = (b: { type: string }): Cell[] | null => (b.type === "columns" && "cells" in b && Array.isArray(b.cells) ? (b.cells as Cell[]) : null);
 const textOf = (b: { type: string }): string | null => ("text" in b && typeof (b as { text?: unknown }).text === "string" ? (b as { text: string }).text : null);
+/** An own HTML block's (M4.1): filled before the server cleans it, so a value never brings markup of its own into the email. */
+const htmlOf = (b: { type: string }): string | null => (b.type === "html" && "html" in b && typeof b.html === "string" ? b.html : null);
 
 /** One language's words with every field filled (subject, preview, headings, words and buttons, in columns too); other blocks as they are. */
 export function personalizeContent<T extends Texts>(content: T, facts: PersonalFacts | null): T {
@@ -58,6 +60,8 @@ export function personalizeContent<T extends Texts>(content: T, facts: PersonalF
     blocks: content.blocks.map((b) => {
       const cells = cellsOf(b);
       if (cells) return { ...b, cells: cells.map((c) => ({ ...c, heading: fill(c.heading), text: fill(c.text), buttonText: fill(c.buttonText) })) };
+      const html = htmlOf(b);
+      if (html !== null) return { ...b, html: fill(html) };
       const text = textOf(b);
       return text === null ? b : { ...b, text: fill(text) };
     }),
@@ -72,6 +76,8 @@ export function contentTexts(content: Texts): string[] {
     ...content.blocks.flatMap((b) => {
       const cells = cellsOf(b);
       if (cells) return cells.flatMap((c) => [c.heading, c.text, c.buttonText]);
+      const html = htmlOf(b);
+      if (html !== null) return [html];
       const text = textOf(b);
       return text === null ? [] : [text];
     }),
