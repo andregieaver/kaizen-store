@@ -883,6 +883,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D878 | **Form fields styled per block: hidden labels behind placeholders, field look and sizes, and animated labels** | 2026-11-23 | [text](decisions/D878.md) |
 | D879 | **An email's own HTML block, cleaned by sanitize-html on the server each time it is sent (email plan M4.1)** | 2026-11-23 | [text](decisions/D879.md) |
 | D880 | **Use beyond the allowances billed as lines on the account's invoice, with a cap the owner may set (D748 E11)** | 2026-11-23 | [text](decisions/D880.md) |
+| D881 | **One source for a page's name: the admin map takes each page's section and menu label from the nav data at all three leve** | 2026-11-23 | [text](decisions/D881.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
