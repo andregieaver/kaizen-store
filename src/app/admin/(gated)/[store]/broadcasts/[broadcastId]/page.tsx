@@ -30,6 +30,7 @@ import {
   stopBroadcastAction,
   suggestBroadcastAction,
   findBroadcastFactsAction,
+  suggestTestSubjectsAction,
   unscheduleBroadcastAction,
   uploadBroadcastPictureAction,
 } from "../actions";
@@ -143,6 +144,7 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
                 count={audienceCountAction}
                 suggest={suggestBroadcastAction}
             facts={findBroadcastFactsAction}
+            subjects={suggestTestSubjectsAction}
                 upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
               />
             </Card>

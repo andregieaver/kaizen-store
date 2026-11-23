@@ -22,6 +22,7 @@ import {
   startBroadcast,
   stopBroadcast,
   suggestBroadcast,
+  suggestSubjects,
   unscheduleBroadcast,
 } from "@/server/broadcasts";
 import type { UploadResult } from "@/server/media";
@@ -134,6 +135,26 @@ export async function suggestBroadcastAction(storeSlug: string, brief: string, l
   if (typeof brief !== "string" || typeof locale !== "string" || !who.store.localization.keptLocales.includes(locale)) return { ok: false, problem: who.w.storeLanguage };
   const segment = typeof segmentId === "string" && uuid.safeParse(segmentId).success ? segmentId : null;
   return said(await suggestBroadcast(who.store, who.member.account.id, brief, locale, { segmentId: segment }), who.w);
+}
+
+/**
+ * Three subject lines for a split test's version B (email plan M2.5 slice 3, M3.7's writer), from the email's words in one language as
+ * the editor holds them; nothing is saved: the owner presses one to make it subject B.
+ */
+export async function suggestTestSubjectsAction(
+  storeSlug: string,
+  locale: string,
+  subject: string,
+  words: string[],
+  segmentId: string | null,
+): Promise<Problem | { ok: true; subjects: string[] }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  if (typeof locale !== "string" || !who.store.localization.keptLocales.includes(locale)) return { ok: false, problem: who.w.storeLanguage };
+  const text = (v: unknown) => (typeof v === "string" ? v.slice(0, 3000) : "");
+  const said_ = Array.isArray(words) ? words.slice(0, 40).map(text) : [];
+  const audience = typeof segmentId === "string" && uuid.safeParse(segmentId).success ? "It goes to a segment of the shop's list." : "It goes to everyone on the shop's list.";
+  return said(await suggestSubjects(who.store, who.member.account.id, { subject: text(subject), words: said_ }, locale, audience), who.w);
 }
 
 /** The editor's finder (D352): the store's products by words and its running campaigns, read in its own country; nothing is saved. */

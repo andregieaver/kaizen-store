@@ -2211,6 +2211,7 @@ const ALL_OWNER_TOOLS = [
       brief: z.string().trim().min(5).max(1000).describe("What the email is about, in the owner's words."),
       name: z.string().trim().min(1).max(80).describe("The broadcast's name in the admin, such as 'Autumn news'."),
       segment: z.string().trim().max(120).optional().describe("A segment's name or id from list_segments; leave out for everyone on the list."),
+      split_test: z.boolean().optional().describe("True to test a second subject line, written by the store's AI: a share of the readers get one of the two and the rest get the one more people pressed (needs 2,000 readers or more)."),
     }),
   ),
   tool(

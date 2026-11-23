@@ -222,3 +222,24 @@ describe("the marketing tools", () => {
     await expect(run("start_flow", { goal: "win_back" })).rejects.toThrow(/already has a flow/);
   });
 });
+
+describe("a drafted broadcast's split test (M2.5 slice 3, D868)", () => {
+  it("adds subject B from the store's writer when asked, and none when not", async () => {
+    model.reply = JSON.stringify({
+      subject: "Autumn news",
+      preview: "What is new",
+      heading: "Hello",
+      paragraphs: ["Our autumn coffee is here."],
+      button: "",
+      subjects: ["Fresh beans for autumn", "Coffee season is here", "Something new to try"],
+    });
+    const made = (await run("draft_broadcast", { brief: "Our autumn coffee arrived", name: "Split", split_test: true })) as { id: string; split_test?: string };
+    expect(made.split_test).toContain("Fresh beans for autumn");
+    const [row] = await db().execute<Record<string, unknown>>(sql`select test from commerce.broadcasts where id = ${made.id}::uuid`);
+    expect(row.test).toMatchObject({ share: 20, hours: 4, b: { [Object.keys((row.test as { b: object }).b)[0]]: { subject: "Fresh beans for autumn" } } });
+    const plain = (await run("draft_broadcast", { brief: "Our autumn coffee arrived", name: "Plain" })) as { id: string; split_test?: string };
+    expect(plain.split_test).toBeUndefined();
+    const [none] = await db().execute<Record<string, unknown>>(sql`select test from commerce.broadcasts where id = ${plain.id}::uuid`);
+    expect(none.test).toBeNull();
+  });
+});

@@ -38,6 +38,8 @@ type Props = {
   upload: ((storeSlug: string, data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>) | null;
   /** The store's products and running campaigns to put in (D352); none, the finder is not offered. */
   facts?: FindFacts;
+  /** Three subject lines for a split test's version B (M2.5 slice 3), while the store has AI. */
+  subjects?: (storeSlug: string, locale: string, subject: string, words: string[], segmentId: string | null) => Promise<Problem | { ok: true; subjects: string[] }>;
 };
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3";
@@ -172,6 +174,14 @@ export function BroadcastEditor(props: Props) {
           setSaved(false);
           setTest(next);
         }}
+        suggest={
+          props.aiReady && props.subjects
+            ? (locale) => {
+                const words = (content[locale]?.blocks ?? []).flatMap((b) => ("text" in b && typeof b.text === "string" ? [b.text] : []));
+                return props.subjects!(storeSlug, locale, content[locale]?.subject ?? "", words, audience === "segment" ? segmentId : null);
+              }
+            : undefined
+        }
       />
 
       {problem && (
@@ -203,6 +213,8 @@ function SplitTestFields(props: {
   locales: { code: string; name: string }[];
   people: number | null;
   onChange: (test: BroadcastTestDraft | null) => void;
+  /** The AI's three subject lines for one language (M2.5 slice 3); one press makes a line subject B. */
+  suggest?: (locale: string) => Promise<Problem | { ok: true; subjects: string[] }>;
 }) {
   const w = useAdminText("marketing");
   const wt = w.email.test;
@@ -241,6 +253,7 @@ function SplitTestFields(props: {
             {wt.subjectB}
             <input value={test.b[l.code]?.subject ?? ""} maxLength={150} onChange={(e) => setB(l.code, { subject: e.target.value })} className={field} />
           </label>
+          {props.suggest && <TestSubjects suggest={() => props.suggest!(l.code)} onPick={(subject) => setB(l.code, { subject })} />}
           <label className="flex flex-col gap-1 text-body text-ink">
             {wt.previewB}
             <input value={test.b[l.code]?.preview ?? ""} maxLength={200} onChange={(e) => setB(l.code, { preview: e.target.value })} className={field} />
@@ -283,6 +296,52 @@ function SplitTestFields(props: {
         </Button>
       </div>
     </section>
+  );
+}
+
+/** The AI's three subject lines as buttons (M2.5 slice 3, M3.7): one press makes it subject B; nothing is saved until the broadcast is. */
+function TestSubjects({ suggest, onPick }: { suggest: () => Promise<Problem | { ok: true; subjects: string[] }>; onPick: (subject: string) => void }) {
+  const wt = useAdminText("marketing").email.test;
+  const [subjects, setSubjects] = useState<string[] | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [asking, start] = useTransition();
+  return (
+    <div className="flex flex-col gap-1" data-test-subjects>
+      <button
+        type="button"
+        disabled={asking}
+        onClick={() =>
+          start(async () => {
+            setProblem(null);
+            const result = await suggest();
+            if (result.ok) setSubjects(result.subjects);
+            else setProblem(result.problem);
+          })
+        }
+        className="self-start text-caption text-ink-2 underline underline-offset-2 hover:text-ink"
+      >
+        {asking ? wt.asking : wt.ask}
+      </button>
+      {problem && (
+        <p role="alert" className="text-caption text-danger-text">
+          {problem}
+        </p>
+      )}
+      {subjects && (
+        <div role="group" aria-label={wt.choose} className="flex flex-col gap-1">
+          {subjects.map((subject) => (
+            <button
+              key={subject}
+              type="button"
+              onClick={() => (onPick(subject), setSubjects(null))}
+              className="rounded border border-line bg-card px-2 py-1 text-left text-sm text-ink hover:border-ink"
+            >
+              {subject}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

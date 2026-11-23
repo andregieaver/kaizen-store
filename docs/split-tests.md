@@ -59,3 +59,6 @@ orders), and the counted figures with the engine's interval.
   changes). `callDueTests()`, in every broadcast run, calls each test whose hours are over with `callBroadcastTest()` (presses, and
   readers who left as the guardrail, by the engine's interval rule) once, keeps the result on the broadcast (`test_result`) and queues the
   held readers with the winner. The sent broadcast's page says the call in one sentence. Goal: presses only; orders and B's own words wait.
+- **Slice 3, 23 November 2026.** In the test, *Suggest subject B with AI* asks the store's writer (`suggestSubjects()`, M3.7, claims
+  checked) for three subject lines from the email as written, and one press makes a line subject B (`suggestTestSubjectsAction()`). The AI
+  manager's `draft_broadcast` takes `split_test`: the writer's first line becomes subject B at the default share and wait (API 1.54).

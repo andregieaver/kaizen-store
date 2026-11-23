@@ -23,7 +23,8 @@ import { plainText } from "@/lib/approval-summaries";
 import { automationStats, getAutomation, getAutomations, saveAutomation, saveFollowUp, switchAutomation, type Automation } from "./automations";
 import { cartReminderStats, getCartReminderSettings, saveCartReminderStep, setCartRemindersEnabled } from "./cart-reminders";
 import { brandOf } from "./brand";
-import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBroadcast, startBroadcast, suggestBroadcast, type Broadcast } from "./broadcasts";
+import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBroadcast, startBroadcast, suggestBroadcast, suggestSubjects, type Broadcast } from "./broadcasts";
+import { TEST_HOURS, TEST_SHARE } from "@/lib/broadcast-test-sizes";
 import { listTiers } from "./customer-tiers";
 import { issueGiftCard } from "./gift-cards-admin";
 import { OwnerToolError } from "./owner-tool-error";
@@ -107,17 +108,25 @@ export async function draftBroadcastTool({ account, store }: Ctx, input: OwnerTo
   const suggested = await suggestBroadcast(store, account.id, input.brief, locale, { segmentId: segment?.id ?? null });
   if (!suggested.ok) return fail(suggested.problem);
   const s = suggested.suggestion;
+  // A split test (M2.5, D868): subject B is the store's writer's, checked as any subject it offers; none, the draft has one subject.
+  const subjectB = input.split_test
+    ? await suggestSubjects(store, account.id, { subject: s.subject, words: [s.heading, ...s.paragraphs] }, locale, segment ? "It goes to a segment of the shop's list." : "It goes to everyone on the shop's list.")
+    : null;
+  const b = subjectB?.ok ? subjectB.subjects[0] : null;
   const saved = await saveBroadcast(store, account.id, null, {
     title: input.name,
     audience: segment ? "segment" : "everyone",
     segmentId: segment?.id ?? null,
     content: { [locale]: { subject: s.subject, preview: s.preview, blocks: suggestionBlocks(s) } },
+    ...(b && { test: { b: { [locale]: { subject: b, preview: s.preview } }, share: TEST_SHARE.start, hours: TEST_HOURS.start } }),
   });
   if (!saved.ok) return fail(saved.problem);
   return {
     done: `A draft broadcast "${input.name}" is saved, for ${segment ? `the segment "${segment.name}"` : "everyone on the list"}. Nothing is sent.`,
     id: saved.id,
     subject: s.subject,
+    ...(b && { split_test: `Subject B: "${b}". ${TEST_SHARE.start} % of the readers get one of the two; ${TEST_HOURS.start} hours later the one more people pressed goes to the rest.` }),
+    ...(input.split_test && !b && { split_test: "No second subject could be written, so the draft has one subject; the owner can add one on its page." }),
     words: [s.heading, ...s.paragraphs],
     // Chosen by the store's AI from its own products and running campaigns; their pictures, prices and offers are drawn by code (D352).
     ...(s.products.length > 0 && { products: s.products.map((p) => p.label) }),

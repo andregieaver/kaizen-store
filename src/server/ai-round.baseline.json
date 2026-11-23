@@ -31,9 +31,9 @@
     "shop|marketing": {
       "promptChars": 15648,
       "toolCount": 128,
-      "toolChars": 159221,
+      "toolChars": 159450,
       "alwaysSentChars": 36543,
-      "totalChars": 174869
+      "totalChars": 175098
     },
     "shop|analytics": {
       "promptChars": 15648,
@@ -122,9 +122,9 @@
     "all|marketing": {
       "promptChars": 16538,
       "toolCount": 128,
-      "toolChars": 159313,
+      "toolChars": 159542,
       "alwaysSentChars": 36573,
-      "totalChars": 175851
+      "totalChars": 176080
     },
     "all|analytics": {
       "promptChars": 16538,
@@ -331,7 +331,7 @@
     "delete_search_merchandising": 949,
     "delete_skill": 282,
     "design_look": 2711,
-    "draft_broadcast": 1148,
+    "draft_broadcast": 1377,
     "draft_contract": 1065,
     "draft_experiment": 2282,
     "draft_header_footer": 1273,

@@ -12,7 +12,8 @@ import { listOwnTemplates, startingBroadcast } from "@/server/broadcast-template
 import { memberCan, requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 
-import { audienceCountAction, deleteTemplateAction, saveBroadcastAction, findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../actions";
+import { audienceCountAction, deleteTemplateAction, saveBroadcastAction, findBroadcastFactsAction,
+  suggestTestSubjectsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../actions";
 import { broadcastChoices } from "../editor-props";
 import { requireExtension } from "@/components/admin/extension-off";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
@@ -92,6 +93,7 @@ export default async function NewBroadcastPage({ params, searchParams }: PagePro
           count={audienceCountAction}
           suggest={suggestBroadcastAction}
             facts={findBroadcastFactsAction}
+            subjects={suggestTestSubjectsAction}
           upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
         />
         </AdminTextScope>
