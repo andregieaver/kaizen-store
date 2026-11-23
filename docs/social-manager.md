@@ -1,0 +1,144 @@
+# The AI social media manager (plan, 23 November 2026)
+
+Status: **agreed with the owner, not started.** Its decision number is claimed with `node scripts/claim-decision.mjs` when the
+first step starts; until then this file is the plan, and nothing cites a number for it.
+
+![How the social media manager works](social-manager.svg)
+
+## 1. The intent, in the owner's words
+
+Social media management is what store owners (and the owner too) find hardest. Kaizena Flow gets an AI social media manager
+that knows the store's goals and its performance, in three phases:
+
+1. **An adviser** that assesses the status quo and presents recommendations.
+2. **Copy and graphics** on top of the adviser.
+3. **Posting** to a set of channels on an automated schedule.
+
+## 2. What was decided
+
+| Question | Decision |
+|---|---|
+| Where it lives | A new area of the AI manager and the autopilot (`social`), not a separate system: goals (`assistant_goals`), plans, the gates (`autopilotDecision()`), budgets and the reports are reused |
+| What it optimises for | **Revenue and margin per post**, not likes. Every link it makes carries a tagged link (UTM) and posts are attributed to visits, carts and orders by our own analytics |
+| Channels, in order | **Instagram and Facebook** (one Meta connection), then **Pinterest**, then **TikTok**, then **LinkedIn** (mostly for Kaizena Flow itself). X is left out: a paid API that brings little to a shop |
+| Pictures | **Composed, not invented.** The real product photo, a brand template and text set by code; the price comes from the database, the logo from `brand-marks.ts` (D330). The picture model only makes backgrounds and scenes, reframes (1:1, 4:5, 9:16) and removes backgrounds. A made picture of a product the store does not sell is never posted |
+| Video | Phase 2 makes slideshows from photos, by code (motion and music). Generative video is a later step, behind its own cost check and the EU rule |
+| Approval | **Every post is approved by a person at first.** The owner can switch on *Post on its own within my rules*: a toggle per store (and for the platform), off by default, which lets the autopilot publish what passes the rules without asking. Switching it off takes effect at once, and posts already queued go back to waiting for a yes |
+| Comments and DMs | **Out of scope** of these three phases (a fourth, with the support desk's rules) |
+| Paid boosting | Out of scope; a later step on the ad accounts of D585 and their limits |
+| Pricing | **A paid extension** (the sixth in D748): bought on its own, and may be included in a plan as a grant. Hidden until opted in, 14-day trial, read-only after grace, as every extension |
+| The platform | Kaizena Flow's own accounts get the same feature from `/admin/platform` in the same change (parity rule); the platform always has every extension |
+
+## 3. Phase 1: the adviser
+
+**What it reads**
+
+- *The store:* goals and targets (`goalFigures()`), revenue and margin per product (`periodTotals()`, `order-profit.ts`), stock and
+  new arrivals, campaigns and discounts, reviews (counts and ratings only; a review's words never reach a model), the season.
+- *The channels:* each connected account's posts and their reach, saves, clicks and follower growth. Instagram needs a wider
+  connection than the feed's (`instagram_business_basic` today, D560) with insights; Meta's App Review is applied for at the start of
+  this phase, since it takes weeks.
+- *The link between them:* a tagged link on every post link and the bio link, read back through the analytics (`analytics-traffic.ts`)
+  so a post's visits, carts, orders and margin are known. Posts made before we tagged anything are measured by reach only, and say so.
+- *Optionally the market:* a few comparable brands the owner names, through web research (D329).
+
+**What it gives**
+
+- A **status-quo report** in a few verdicts for Homer ("You post twice a week, 80 % product shots; posts with people sell three times
+  more"), every figure worked out by code; Lisa gets the breakdown by channel, format, day and hour.
+- **Recommendations as plan steps**, each tied to a goal ("Push the five well-stocked products with the highest margin", "Post Tue
+  and Thu evenings", "Restart Pinterest"), started only with the owner's yes, as every plan.
+- **A content plan**: themes and a month's calendar of slots, not finished posts.
+- **A weekly review** beside the autopilot's own (`autopilot-reports.ts`): plan against outcome, the model's note through
+  `checkedNote()`.
+
+**Steps**
+
+| Step | What | Done when |
+|---|---|---|
+| S1.1 | Tagged links on every link the platform builds for social (bio, posts), and attribution of visits and orders to a post | A test order from a tagged link shows on its post |
+| S1.2 | Social accounts: one table for connected channels (Meta first), tokens encrypted as `ad_connections`, insights fetched by the dispatcher | A connected account's last 90 days of posts and insights are kept |
+| S1.3 | The adviser's facts (`socialFacts()`): store and channel figures in one typed object, by code | The facts test covers an empty, a quiet and a busy account |
+| S1.4 | The report, recommendations and content plan as manager tools (`social_report`, `social_plan`), the plan as autopilot steps | Homer sees three verdicts and one button; Lisa sees every figure |
+| S1.5 | The weekly review | It arrives once per week per store, claimed before sending |
+| S1.6 | The extension: an id in `EXTENSION_IDS`, its price rows and plan grants, markers and trial | Hidden for an account without it; the platform has it |
+
+## 4. Phase 2: copy and graphics
+
+- **Post drafts** per channel: caption, hashtags, alt text and the tagged link, by the brand-aware writer (`brandGuide()`), through
+  `findClaims()` and `findAvoided()`; a price or stock level appears only as code placed it.
+- **Composed pictures**: templates per format drawn by code from the store's theme (colours already checked by `themeWarnings()`),
+  the product's own photos, and made backgrounds or scenes through `makeSitePicture()` and `editImage()` (kept in the media library
+  with `made_by`). Carousels and Story frames come from the same templates.
+- **A vision check** before a draft reaches the queue: the text is readable, the product shown is the product named, it fits each
+  format, it looks like the brand. A failing draft is made again, at most twice, then shown with the reason.
+- **The calendar screen** (`/admin/{store}/social`): Homer sees the week's drafts and *Approve the week*; Lisa edits each post, swaps
+  its picture, sees every variant and the facts each draft was written from.
+- **Slideshow video** from photos, by code, for Reels and TikTok.
+
+| Step | What |
+|---|---|
+| S2.1 | Templates and the composer (picture from code + photo + made background) |
+| S2.2 | The caption writer per channel, with the filters and the tagged link |
+| S2.3 | The vision check |
+| S2.4 | The calendar screen, approval per post and per week |
+| S2.5 | Slideshow video |
+
+## 5. Phase 3: posting on a schedule
+
+- **Publishing**: Meta's content publishing (Instagram and Facebook pages), then Pinterest's API, then TikTok's Content Posting API
+  (public posts only after TikTok's audit; private until then), then LinkedIn. Each needs its own app review: started in phase 1.
+- **The queue**: a job in the five-minute dispatcher posts what is due, with retries, each platform's rate limits, expiring tokens and a
+  post the platform removed; each published post is an event in the log and an audit row with `acted_by`.
+- **Approval**: a new gated tool `publish_social_post` in area `social`. While the toggle is off it is never automatic: each post waits
+  for a person's yes (`decideApproval()`). With *Post on its own within my rules* on, the autopilot publishes a post that passes the
+  rules: the vision check, the filters, the owner's limits (posts per day per channel, quiet hours, words and topics to avoid), and
+  never a post about a product that is out of stock or unpublished when it is due (checked again at posting time). Anything outside
+  the rules waits for a yes, as before. The toggle is the owner's alone, audited, and the platform-wide pause (AST-07) stops it too.
+- **The loop closes**: each post's figures flow back into phase 1's facts; what sold shapes the next plan. A/B tests of captions and
+  pictures are a later step.
+
+| Step | What |
+|---|---|
+| S3.1 | Publishing to Instagram and Facebook, approval per post |
+| S3.2 | The queue, retries, limits and token refresh |
+| S3.3 | The toggle and the rules, through `autonomyDecision()` |
+| S3.4 | Pinterest |
+| S3.5 | TikTok (after the audit) |
+| S3.6 | LinkedIn |
+
+## 6. Models per stage
+
+All calls go through the AI settings' provider (the AI Gateway with its EU-only and zero-retention options) and are metered in
+`ai_usage` like every other feature, with the autopilot's budget.
+
+| Stage | Model | Why |
+|---|---|---|
+| Strategy, the status-quo report, the weekly review | Claude Opus 5.5, `high` effort | Judgement across many signals, weekly, so cheap per store |
+| Sorting and tagging posts, extraction | Claude Haiku 5.5 (the Batch API where it can wait) | Volume at a tiny price |
+| Captions, hashtags, channel variants | Claude Sonnet 5.5 | Good writing in every store language at a mid price |
+| The vision check, reading comparable brands' posts | Claude Sonnet 5.5 (Haiku 5.5 for simple checks) | The AI settings' vision model |
+| Backgrounds, scenes, reframing, editing | The AI settings' picture model (`gpt-image-1.5` today) | Product, words and price are code's |
+| Video (later) | Slideshows by code; a generative model later | Cost, consistency and the EU rule |
+| Timing, scheduling, attribution, every figure | Code | Must be exact |
+
+## 7. Pricing (a proposal; every number is a setting)
+
+What one store costs Kaizena Flow at 30 posts a month, roughly: the weekly analysis about €3, captions about €2, pictures €3 to €12
+(two tries each, depending on size and quality), checks well under €1: about **€8 to €18**. Checked against the providers' prices
+before the price is set.
+
+| | List | Founding (12 months) | Included | Beyond |
+|---|---|---|---|---|
+| Social media manager | €39 | **€29** | 30 published posts a month, all channels, the adviser | €0.50 per post |
+
+Plan grants proposed: included in **Plus**; Advanced gets the adviser (phase 1) only, or nothing. The owner decides when S1.6 starts.
+
+## 8. Still open
+
+Settled by the owner when the step that needs it starts:
+
+1. The price and the plan grants (section 7).
+2. Whether the adviser alone (phase 1) is a lower tier of the extension, so owners can start cheaply.
+3. The owner's default rules for *Post on its own*: posts per day per channel, quiet hours.
+4. Which comparable brands, if any, the adviser follows by default for Kaizena Flow's own accounts.
