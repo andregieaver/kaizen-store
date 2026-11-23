@@ -1,5 +1,6 @@
 import "server-only";
 
+import { topicName, type Topic } from "@/lib/marketing-topics";
 import { pgUuidArray } from "./pg-arrays";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -60,6 +61,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
 import { emailLookOf } from "./email-look";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
+import { getTopic, inTopic } from "./marketing-topics";
 import { marketingRoute, type MarketingRoute } from "./sending-domains";
 import { sendAllowance } from "./send-allowance";
 import { sesSettings } from "./ses";
@@ -107,6 +109,8 @@ export type Broadcast = {
   testResult: BroadcastTestResult | null;
   /** Sent at each reader's own hour within a day (M4.4). */
   bestTime: boolean;
+  /** The store's topic it is about (M4.2, D882); null for everyone. */
+  topicId: string | null;
 };
 
 function toBroadcast(row: Row): Broadcast {
@@ -131,11 +135,12 @@ function toBroadcast(row: Row): Broadcast {
     testCalledAt: iso(row.test_called_at),
     testResult: row.test_result ? (row.test_result as BroadcastTestResult) : null,
     bestTime: row.best_time === true,
+    topicId: row.topic_id ? String(row.topic_id) : null,
   };
 }
 
 const COLUMNS = sql`b.id, b.title, b.audience, b.segment_id, g.title as segment_name, b.content, b.status, b.scheduled_for, b.schedule_problem,
-  b.audience_words, b.recipient_count, b.started_at, b.finished_at, b.created_at, b.updated_at, b.test, b.test_called_at, b.test_result, b.best_time`;
+  b.audience_words, b.recipient_count, b.started_at, b.finished_at, b.created_at, b.updated_at, b.test, b.test_called_at, b.test_result, b.best_time, b.topic_id`;
 
 export async function listBroadcasts(storeId: string): Promise<Broadcast[]> {
   const rows = await db().execute<Row>(sql`
@@ -173,12 +178,14 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
   if (picture) return { ok: false, problem: picture };
   const segmentId = value.audience === "segment" ? value.segmentId : null;
   if (segmentId && !(await getSegment(store.id, segmentId))) return { ok: false, problem: "That segment is gone. Choose another." };
+  const topicId = value.topicId ?? null;
+  if (topicId && !(await getTopic(store.id, topicId))) return { ok: false, problem: TOPIC_GONE };
   try {
     let savedId: string;
     if (id) {
       const rows = await db().execute<Row>(sql`
         update commerce.broadcasts set title = ${value.title}, audience = ${value.audience}, segment_id = ${segmentId}::uuid,
-          content = ${JSON.stringify(content)}::jsonb, test = ${test}::jsonb, best_time = ${bestTime}
+          content = ${JSON.stringify(content)}::jsonb, test = ${test}::jsonb, best_time = ${bestTime}, topic_id = ${topicId}::uuid
         where store_id = ${store.id}::uuid and id = ${id}::uuid and status in ('draft', 'scheduled')
         returning id
       `);
@@ -186,8 +193,8 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
       savedId = id;
     } else {
       const [row] = await db().execute<Row>(sql`
-        insert into commerce.broadcasts (store_id, title, audience, segment_id, content, test, best_time, created_by)
-        values (${store.id}::uuid, ${value.title}, ${value.audience}, ${segmentId}::uuid, ${JSON.stringify(content)}::jsonb, ${test}::jsonb, ${bestTime}, ${accountId}::uuid)
+        insert into commerce.broadcasts (store_id, title, audience, segment_id, content, test, best_time, topic_id, created_by)
+        values (${store.id}::uuid, ${value.title}, ${value.audience}, ${segmentId}::uuid, ${JSON.stringify(content)}::jsonb, ${test}::jsonb, ${bestTime}, ${topicId}::uuid, ${accountId}::uuid)
         returning id
       `);
       savedId = String(row.id);
@@ -289,10 +296,27 @@ export async function sendTestBroadcast(storeId: string, to: string, id: string,
 
 export type StartResult = { ok: true; recipients: number } | { ok: false; problem: string };
 
-type Audience = { emails: string[] | null; words: string } | { problem: string };
+type Audience = { emails: string[] | null; words: string; topic: Topic | null } | { problem: string };
 
-/** Who a broadcast is for now: every subscribed address (`emails` null) or a segment's, with its words. */
-async function audienceOf(store: EmailStore, broadcast: Broadcast): Promise<Audience> {
+/** A broadcast about a topic that was deleted cannot be sent until another is chosen (M4.2). */
+export const NOBODY_IN_TOPIC = "Nobody on your list is in this topic, so nobody would get it.";
+
+export const TOPIC_GONE = "Its topic is gone. Choose another, or Everything.";
+
+/**
+ * Who a broadcast is for now: every subscribed address (`emails` null) or a segment's, with its words; with a topic (M4.2, D882), only those
+ * in it (`inTopic()`, applied where the addresses are counted and frozen).
+ */
+async function audienceOf(store: EmailStore, broadcast: Pick<Broadcast, "audience" | "segmentId" | "topicId">): Promise<Audience> {
+  const topic = broadcast.topicId ? await getTopic(store.id, broadcast.topicId) : null;
+  if (broadcast.topicId && !topic) return { problem: TOPIC_GONE };
+  const found = await peopleOf(store, broadcast);
+  if ("problem" in found) return found;
+  const about = topic ? ` · ${topicName(topic.names, store.localization.locales[0] ?? "en-GB", store.localization.locales[0] ?? "en-GB").name}` : "";
+  return { ...found, words: found.words + about, topic };
+}
+
+async function peopleOf(store: EmailStore, broadcast: Pick<Broadcast, "audience" | "segmentId">): Promise<{ emails: string[] | null; words: string } | { problem: string }> {
   if (broadcast.audience === "everyone") return { emails: null, words: "Everyone who wants your emails" };
   if (!broadcast.segmentId) return { problem: "Its segment was deleted. Choose another." };
   const segment = await getSegment(store.id, broadcast.segmentId);
@@ -310,14 +334,22 @@ async function audienceOf(store: EmailStore, broadcast: Broadcast): Promise<Audi
 }
 
 /** How many addresses a send would go to now (the editor's count): the audience's people who are `subscribed`. */
-export async function audienceCount(store: EmailStore, audience: BroadcastAudience, segmentId: string | null): Promise<{ ok: true; people: number } | { ok: false; problem: string }> {
-  const found = await audienceOf(store, { audience, segmentId } as Broadcast);
+export async function audienceCount(
+  store: EmailStore,
+  audience: BroadcastAudience,
+  segmentId: string | null,
+  topicId: string | null = null,
+): Promise<{ ok: true; people: number } | { ok: false; problem: string }> {
+  const found = await audienceOf(store, { audience, segmentId, topicId });
   if ("problem" in found) return { ok: false, problem: found.problem };
-  if (found.emails) return { ok: true, people: found.emails.length };
-  const [row] = await db().execute<Row>(sql`
-    select count(*)::int as n from commerce.marketing_subscribers where store_id = ${store.id}::uuid and status = 'subscribed'
-  `);
-  return { ok: true, people: Number(row?.n ?? 0) };
+  if (found.emails && !found.topic) return { ok: true, people: found.emails.length };
+  const row = await typedRow(
+    z.object({ n: col.int }),
+    sql`select count(*)::int as n from commerce.marketing_subscribers s where s.store_id = ${store.id}::uuid and s.status = 'subscribed'
+          ${found.emails ? sql`and lower(s.email) in (select jsonb_array_elements_text(${JSON.stringify(found.emails)}::jsonb))` : sql``}
+          ${found.topic ? sql`and ${inTopic(found.topic)}` : sql``}`,
+  );
+  return { ok: true, people: row?.n ?? 0 };
 }
 
 async function storeOpen(storeId: string): Promise<string | null> {
@@ -408,6 +440,7 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
       from commerce.marketing_subscribers s
       where s.store_id = ${storeId}::uuid and s.status = 'subscribed'
         ${wanted ? sql`and lower(s.email) in (select jsonb_array_elements_text(${JSON.stringify(wanted)}::jsonb))` : sql``}
+        ${audience.topic ? sql`and ${inTopic(audience.topic)}` : sql``}
       returning subscriber_id
     `);
     if (inserted.length === 0) throw new Nobody();
@@ -433,7 +466,7 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
     await tx.execute(sql`update commerce.broadcasts set recipient_count = ${inserted.length} where id = ${id}::uuid`);
     return { ok: true as const, recipients: inserted.length };
   }).catch((error: unknown) => {
-    if (error instanceof Nobody) return { ok: false as const, problem: "Nobody on your list wants your emails yet, so nobody would get it." };
+    if (error instanceof Nobody) return { ok: false as const, problem: audience.topic ? NOBODY_IN_TOPIC : "Nobody on your list wants your emails yet, so nobody would get it." };
     if (error instanceof OverLimit && allowed !== null) return { ok: false as const, problem: limitRefusal("marketing_emails_month", allowed, LIMIT_REFUSALS) };
     if (error instanceof TooFewToTest && broadcast.test) return { ok: false as const, problem: testTooSmall(error.people, broadcast.test.share) };
     throw error;

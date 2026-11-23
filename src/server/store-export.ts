@@ -95,6 +95,7 @@ export const STORE_EXPORT_TABLES = [
   "cart_reminder_steps",
   "broadcast_templates",
   "email_saved_blocks",
+  "marketing_topics",
   "bonus_settings",
   "bonus_rewards",
   "affiliate_settings",

@@ -195,3 +195,33 @@ test("an own HTML block is shown cleaned, in a frame that runs nothing (M4.1)", 
   await expect(frame.contentFrame().getByText("Vinterutsalg")).toBeVisible();
   if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-html.png"), fullPage: true });
 });
+
+test("the store's topics are added on the subscriber list, and a broadcast is about one (M4.2)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/subscribers`);
+  const card = page.locator("[data-topics]");
+  await card.getByRole("button", { name: "Add a topic" }).click();
+  const form = card.locator("[data-topic-form]");
+  await form.getByRole("textbox").first().fill(`Workshops ${RUN}`);
+  await form.getByRole("button", { name: "Save" }).click();
+  await expect(card.getByText(`Workshops ${RUN}`)).toBeVisible();
+  await expect(card.getByText(/readers · On unless turned off/).first()).toBeVisible();
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-topics.png"), fullPage: true });
+
+  await page.goto(`/admin/${STORE}/broadcasts/new`);
+  await page.getByLabel("Name").fill(`About ${RUN}`);
+  await page.locator("select[data-topic]").selectOption({ label: `Workshops ${RUN}` });
+  await expect(page.getByRole("status").filter({ hasText: /goes to/ })).toBeVisible();
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-about.png"), fullPage: true });
+  await page.getByLabel("Subject").fill("Nye kurs");
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.getByRole("textbox", { name: "Text", exact: true }).fill("Vi har nye kurs.");
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/broadcasts/[0-9a-f-]{36}$`));
+  const sql = testDb();
+  try {
+    const [row] = await sql`select topic_id from commerce.broadcasts where title = ${`About ${RUN}`}`;
+    expect(row.topic_id).not.toBeNull();
+  } finally {
+    await sql.end();
+  }
+});

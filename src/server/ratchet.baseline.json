@@ -54,7 +54,7 @@
     "src/server/bookings.ts": 10,
     "src/server/bring-shipping.ts": 2,
     "src/server/broadcast-templates.ts": 4,
-    "src/server/broadcasts.ts": 22,
+    "src/server/broadcasts.ts": 21,
     "src/server/bulk-edit.ts": 11,
     "src/server/bundles.ts": 8,
     "src/server/business-change.ts": 5,

@@ -33,14 +33,16 @@ type Problem = { ok: false; problem: string };
 type Props = {
   storeSlug: string;
   broadcastId: string | null;
-  initial: { title: string; audience: BroadcastAudience; segmentId: string | null; content: BroadcastContent; test?: BroadcastTestDraft | null; bestTime?: boolean };
+  initial: { title: string; audience: BroadcastAudience; segmentId: string | null; content: BroadcastContent; test?: BroadcastTestDraft | null; bestTime?: boolean; topicId?: string | null };
   /** The store's languages, main first. */
   locales: { code: string; name: string }[];
   segments: { id: string; name: string }[];
   /** The site's AI has a text model, so *Write with AI* is offered. */
   aiReady: boolean;
   save: (storeSlug: string, id: string | null, input: unknown) => Promise<Problem | { ok: true }>;
-  count: (storeSlug: string, audience: string, segmentId: string | null) => Promise<Problem | { ok: true; people: number }>;
+  count: (storeSlug: string, audience: string, segmentId: string | null, topicId?: string | null) => Promise<Problem | { ok: true; people: number }>;
+  /** The store's topics (M4.2), by name in the admin's main language; none, and no *About* is asked. */
+  topics?: { id: string; name: string }[];
   suggest: (storeSlug: string, brief: string, locale: string, segmentId?: string | null) => Promise<Problem | { ok: true; suggestion: BroadcastSuggestion }>;
   upload: ((storeSlug: string, data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>) | null;
   /** Saved blocks (M4.1): the store's list (from `broadcastChoices()`) and the actions that keep and delete one. */
@@ -101,6 +103,7 @@ export function BroadcastEditor(props: Props) {
   const [peopleCount, setPeopleCount] = useState<number | null>(null);
   const [test, setTest] = useState<BroadcastTestDraft | null>(props.initial.test ?? null);
   const [bestTime, setBestTime] = useState(props.initial.bestTime === true);
+  const [topicId, setTopicId] = useState<string | null>(props.initial.topicId ?? null);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, startSave] = useTransition();
@@ -110,7 +113,7 @@ export function BroadcastEditor(props: Props) {
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      count(storeSlug, audience, audience === "segment" ? segmentId : null).then(
+      count(storeSlug, audience, audience === "segment" ? segmentId : null, topicId).then(
         (r) => {
           setPeople(r.ok ? fillWords(we.goesTo, { people: countWords(r.people, w.common.people, { n: r.people.toLocaleString(numbers) }) }) : r.problem);
           setPeopleCount(r.ok ? r.people : null);
@@ -121,7 +124,7 @@ export function BroadcastEditor(props: Props) {
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [audience, segmentId, count, storeSlug, w, we, numbers]);
+  }, [audience, segmentId, topicId, count, storeSlug, w, we, numbers]);
 
 
   const submit = () =>
@@ -129,7 +132,7 @@ export function BroadcastEditor(props: Props) {
       setProblem(null);
       // A language left empty is not kept.
       const written = Object.fromEntries(Object.entries(content).filter(([, c]) => c.subject.trim() || c.preview.trim() || c.blocks.length > 0));
-      const result = await props.save(storeSlug, props.broadcastId, { title, audience, segmentId: audience === "segment" ? segmentId : null, content: written, test, bestTime: bestTime && !test });
+      const result = await props.save(storeSlug, props.broadcastId, { title, audience, segmentId: audience === "segment" ? segmentId : null, content: written, test, bestTime: bestTime && !test, topicId });
       if (result && !result.ok) setProblem(result.problem);
       else setSaved(true);
     });
@@ -164,6 +167,20 @@ export function BroadcastEditor(props: Props) {
           )}
         </label>
         {props.segments.length === 0 && <p className="text-caption text-muted">{we.noSegments}</p>}
+        {/* The store's topics (M4.2, D882): only where it has some, Everything unless one is chosen. */}
+        {(props.topics?.length ?? 0) > 0 && (
+          <label className="flex flex-wrap items-center gap-2 text-body text-ink">
+            {we.about}
+            <Select value={topicId ?? ""} onChange={(e) => (setSaved(false), setTopicId(e.target.value || null))} data-topic>
+              <option value="">{we.aboutEverything}</option>
+              {props.topics?.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+        )}
         <p role="status" aria-live="polite" className="text-body text-ink-2">
           {people}
         </p>

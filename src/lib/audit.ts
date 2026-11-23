@@ -116,6 +116,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "broadcast_template.": "marketing",
   // Saved email blocks (M4.1): ids and the block's type, never its words.
   "email_block.": "marketing",
+  // Email topics (M4.2, D882): ids, never names.
+  "marketing_topic.": "marketing",
   // SMS marketing (D565): the account connected or its rules changed (never its password), a campaign started or stopped, a number stopped by staff.
   "sms.": "marketing",
   // Marketing automations (D298); `automation.` is wave 3's order rules.

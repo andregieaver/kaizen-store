@@ -69,13 +69,14 @@ export async function saveBroadcastAction(storeSlug: string, id: string | null, 
 }
 
 /** How many it would go to now: numbers only. */
-export async function audienceCountAction(storeSlug: string, audience: string, segmentId: string | null): Promise<Problem | { ok: true; people: number }> {
+export async function audienceCountAction(storeSlug: string, audience: string, segmentId: string | null, topicId: string | null = null): Promise<Problem | { ok: true; people: number }> {
   const who = await writer(storeSlug);
   if (!who) return noAccess();
   const kind = z.enum(BROADCAST_AUDIENCES).safeParse(audience);
   if (!kind.success || (segmentId !== null && !uuid.safeParse(segmentId).success)) return { ok: false, problem: who.w.chooseAudience };
   if (kind.data === "segment" && !segmentId) return { ok: false, problem: who.w.chooseSegment };
-  return said(await audienceCount(who.store, kind.data, kind.data === "segment" ? segmentId : null), who.w);
+  if (topicId !== null && !uuid.safeParse(topicId).success) return { ok: false, problem: who.w.topicGone };
+  return said(await audienceCount(who.store, kind.data, kind.data === "segment" ? segmentId : null, topicId), who.w);
 }
 
 export async function sendTestAction(storeSlug: string, id: string, locale: string): Promise<Problem | { ok: true; to: string }> {

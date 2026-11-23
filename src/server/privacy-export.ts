@@ -986,6 +986,23 @@ async function loadBroadcasts(s: PrivacySubject): Promise<{ broadcast: string; s
   return rows.map((r) => ({ broadcast: strs(r.title), sentAt: r.sent_at ? new Date(String(r.sent_at)).toISOString() : null }));
 }
 
+/** The person's topic choices (D882): the topic's name in the store's main language, in or out, from where, the words and when. */
+async function loadTopicChoices(s: PrivacySubject): Promise<{ topic: string; optedIn: boolean; source: string; words: string; at: string }[]> {
+  const rows = await typedRows(
+    z.object({ topic: col.text, opted_in: col.bool, source: col.text, words: col.text, at: col.timestamp }),
+    sql`
+      select coalesce((select v->>'name' from jsonb_each(t.names) as e(k, v) order by e.k limit 1), '') as topic,
+             c.opted_in, c.source, c.words, c.created_at as at
+        from commerce.marketing_topic_choices c
+        join commerce.marketing_subscribers m on m.store_id = c.store_id and m.id = c.subscriber_id
+        join commerce.marketing_topics t on t.store_id = c.store_id and t.id = c.topic_id
+       where c.store_id = ${s.storeId}::uuid and (lower(m.email) = any(${textList(s.addresses)}) or m.customer_id = ${s.customerId}::uuid)
+       order by c.created_at, c.id
+    `,
+  );
+  return rows.map((r) => ({ topic: r.topic, optedIn: r.opted_in, source: r.source, words: r.words, at: r.at }));
+}
+
 /** The automation emails sent to the person (D298): which kind and when, by the subject's subscriber rows. */
 async function loadAutomations(s: PrivacySubject): Promise<{ automation: string; sentAt: string | null }[]> {
   const rows = await db().execute<Row>(sql`
@@ -1211,7 +1228,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerContracts, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers, productViews, emailClicks, flowRuns] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerContracts, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers, productViews, emailClicks, flowRuns, topicChoices] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -1233,6 +1250,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadProductViews(s),
     clicksOf(s.storeId, s.addresses, s.customerId),
     flowRunsOf(s.storeId, s.addresses, s.customerId),
+    loadTopicChoices(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -1274,6 +1292,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     broadcasts,
     emailClicks,
     flowRuns,
+    topicChoices,
     automations,
     stockRequests,
     productViews,

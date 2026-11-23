@@ -255,6 +255,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   broadcast_recipients: "marketing",
   automation_sends: "marketing",
   email_clicks: "marketing",
+  marketing_topic_choices: "marketing",
   flow_runs: "marketing",
   flow_run_steps: "marketing",
   product_reviews: "contributions",

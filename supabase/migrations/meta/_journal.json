@@ -1114,6 +1114,13 @@
       "when": 1795445023800,
       "tag": "20261123144343_extension_extras_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1795452493888,
+      "tag": "20261123164813_right_scarecrow",
+      "breakpoints": true
     }
   ]
 }

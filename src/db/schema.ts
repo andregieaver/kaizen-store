@@ -17783,6 +17783,8 @@ export const broadcasts = commerce.table(
     testResult: jsonb("test_result"),
     /** Sent at each reader's own hour within a day of the start (email plan M4.4, `src/lib/send-time.ts`); false: to everyone at once. */
     bestTime: boolean("best_time").notNull().default(false),
+    /** The store's topic it is about (email plan M4.2, D882): only readers in the topic get it; null, everyone (`inTopic()`). */
+    topicId: uuid("topic_id"),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -17823,6 +17825,70 @@ export const broadcastTemplates = commerce.table(
     check("broadcast_templates_title", sql`length(${t.title}) between 1 and 120`),
   ],
 );
+
+/**
+ * A store's own email topics (email plan M4.2, D882, `docs/email-topics.md`): what it writes about (News, Offers), each a name and an
+ * optional line per language (`{ "nb-NO": { "name": "…", "line": "…" } }`), on for a reader unless they turn it off (`default_on`), in
+ * the owner's order. Archived rather than deleted, since a choice once made is a record. Written only by `src/server/marketing-topics.ts`;
+ * at most 20 a store. The store's own setting; copied with the store.
+ */
+export const marketingTopics = commerce
+  .table(
+    "marketing_topics",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      names: jsonb("names").notNull(),
+      defaultOn: boolean("default_on").notNull().default(true),
+      position: integer("position").notNull().default(0),
+      archivedAt: timestamp("archived_at", { withTimezone: true }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("marketing_topics_store_id_key").on(t.storeId, t.id),
+      index("marketing_topics_list_idx").on(t.storeId, t.position),
+      check("marketing_topics_names", sql`jsonb_typeof(${t.names}) = 'object' and ${t.names} <> '{}'::jsonb`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * Every topic choice a subscriber made (email plan M4.2, D882), kept as a record and never updated: in or out, when, from where and the
+ * words they saw. Their current choice per topic is the newest row; with none, the topic's `default_on`. Personal data (with the
+ * subscriber): in the export's `marketing` section, deleted with the subscriber. Never copied.
+ */
+export const marketingTopicChoices = commerce
+  .table(
+    "marketing_topic_choices",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId(),
+      subscriberId: uuid("subscriber_id").notNull(),
+      topicId: uuid("topic_id").notNull(),
+      optedIn: boolean("opted_in").notNull(),
+      source: text("source").notNull(),
+      words: text("words").notNull().default(""),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      index("marketing_topic_choices_newest_idx").on(t.subscriberId, t.topicId, t.createdAt),
+      index("marketing_topic_choices_topic_idx").on(t.storeId, t.topicId),
+      foreignKey({
+        name: "marketing_topic_choices_subscriber_fk",
+        columns: [t.storeId, t.subscriberId],
+        foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+      }).onDelete("cascade"),
+      foreignKey({
+        name: "marketing_topic_choices_topic_fk",
+        columns: [t.storeId, t.topicId],
+        foreignColumns: [marketingTopics.storeId, marketingTopics.id],
+      }).onDelete("cascade"),
+      check("marketing_topic_choices_source", sql`${t.source} in ('preferences', 'form', 'staff', 'api')`),
+      check("marketing_topic_choices_words", sql`char_length(${t.words}) <= 1000`),
+    ],
+  )
+  .enableRLS();
 
 /**
  * A store's saved email blocks (email plan M4.1): one block of a broadcast or flow email kept by name, to add again to the next one (a

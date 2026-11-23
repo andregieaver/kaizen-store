@@ -1,8 +1,10 @@
 import "server-only";
 
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { topicName } from "@/lib/marketing-topics";
 import { aiFor } from "@/server/ai";
 import { listSavedBlocks } from "@/server/email-saved-blocks";
+import { listTopics } from "@/server/marketing-topics";
 import { uploadsEnabled } from "@/server/media";
 import { listSegments } from "@/server/segments";
 import type { Store } from "@/server/stores";
@@ -34,10 +36,11 @@ export const editorActions = () => ({
 
 /** What the broadcast editor offers: the store's languages (main first) by name in the admin's language, its segments, whether the AI can write, and its saved blocks (M4.1). */
 export async function broadcastChoices(store: Store, lang: AdminLang = "en") {
-  const [segments, ai, savedBlocks] = await Promise.all([
+  const [segments, ai, savedBlocks, topics] = await Promise.all([
     listSegments(store.id),
     aiFor(store.id, { feature: "marketing_email" }).catch(() => null),
     listSavedBlocks(store.id),
+    listTopics(store.id),
   ]);
   const tongues = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
   return {
@@ -45,5 +48,6 @@ export async function broadcastChoices(store: Store, lang: AdminLang = "en") {
     segments: segments.map((s) => ({ id: s.id, name: s.name })),
     aiReady: Boolean(ai?.textModel),
     savedBlocks,
+    topics: topics.map((t) => ({ id: t.id, name: topicName(t.names, store.localization.locales[0] ?? "en-GB", store.localization.locales[0] ?? "en-GB").name })),
   };
 }

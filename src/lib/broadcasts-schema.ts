@@ -118,6 +118,8 @@ export const broadcastInput = z
     test: broadcastTestSchema.nullable().optional(),
     /** Each reader at their own hour (M4.4); not with a split test, whose versions go out together. */
     bestTime: z.boolean().optional(),
+    /** The store's topic it is about (M4.2, D882); null or none, everyone the audience holds. */
+    topicId: z.uuid().nullable().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.audience === "segment" && !value.segmentId) ctx.addIssue({ code: "custom", message: "Choose a segment.", path: ["segmentId"] });

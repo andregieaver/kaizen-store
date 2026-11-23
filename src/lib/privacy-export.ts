@@ -405,6 +405,8 @@ export type ExportInput = {
   emailClicks?: { broadcast: string; link: string; clickedAt: string }[];
   /** The flows the person went through (D767): the flow's name, when they entered, and how it stands; absent is none. */
   flowRuns?: { flow: string; enteredAt: string; status: string; endedAt: string | null }[];
+  /** The person's topic choices (D882), each kept: the topic, in or out, from where, the words they saw and when; absent is none. */
+  topicChoices?: { topic: string; optedIn: boolean; source: string; words: string; at: string }[];
   /** The automation emails sent to the person (D298): which and when; absent is none. */
   automations?: { automation: string; sentAt: string | null }[];
   /** The person's back-in-stock requests (D298): the product, the status and when; absent is none. */
@@ -795,7 +797,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     support: (input.support ?? []).length,
     reviews: (input.reviews ?? []).length,
     comments: (input.comments ?? []).length,
-    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.customerContracts ?? []).length + (input.customerActivities ?? []).length + (input.broadcasts ?? []).length + (input.emailClicks ?? []).length + (input.flowRuns ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.productViews ?? []).length + (input.signupCodes ?? []).length + (input.smsNumbers ?? []).length,
+    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.customerContracts ?? []).length + (input.customerActivities ?? []).length + (input.broadcasts ?? []).length + (input.emailClicks ?? []).length + (input.flowRuns ?? []).length + (input.topicChoices ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.productViews ?? []).length + (input.signupCodes ?? []).length + (input.smsNumbers ?? []).length,
   };
 }
 
@@ -904,6 +906,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       ...(input.broadcasts ?? []).map((b) => ({ kind: "broadcast", broadcast: b.broadcast, sentAt: b.sentAt })),
       ...(input.emailClicks ?? []).map((c) => ({ kind: "email_click", broadcast: c.broadcast, link: c.link, clickedAt: c.clickedAt })),
       ...(input.flowRuns ?? []).map((r) => ({ kind: "flow", flow: r.flow, enteredAt: r.enteredAt, status: r.status, endedAt: r.endedAt })),
+      ...(input.topicChoices ?? []).map((c) => ({ kind: "topic_choice", topic: c.topic, optedIn: c.optedIn, source: c.source, words: c.words, at: c.at })),
       ...(input.automations ?? []).map((a) => ({ kind: "automation", automation: a.automation, sentAt: a.sentAt })),
       ...(input.signupCodes ?? []).map((c) => ({ kind: "signup_code", discount: c.discount, givenAt: c.givenAt })),
       ...(input.stockRequests ?? []).map((r) => ({ kind: "back_in_stock", product: r.product, status: r.status, askedAt: r.askedAt, notifiedAt: r.notifiedAt })),

@@ -10,6 +10,10 @@ import { countWords } from "@/lib/admin-fill";
 import { featureOn } from "@/lib/store-features";
 import { MARKETING_WORDS } from "@/lib/admin-words/marketing";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { listTopics, topicCounts } from "@/server/marketing-topics";
+import { TopicsCard } from "@/components/admin/topics-card";
+
+import { archiveTopicAction, moveTopicAction, saveTopicAction } from "./actions";
 
 export const metadata: Metadata = { title: "Subscribers" };
 
@@ -36,17 +40,20 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   const path = first(query.page).startsWith("/") ? first(query.page).slice(0, 500) : null;
   const [at, id] = first(query.before).split("_");
   const before = at && id && !Number.isNaN(Date.parse(at)) && /^[0-9a-f-]{36}$/.test(id) ? { at, id } : null;
-  const [counts, page, formPages, sources] = await Promise.all([
+  const [counts, page, formPages, sources, topics, topicReach] = await Promise.all([
     subscriberCounts(store.id),
     listSubscribers(store.id, { query: q, status, form, path, before }),
     newsletterFormPages(store.id),
     subscriberSources(store.id),
+    listTopics(store.id, true),
+    topicCounts(store.id),
   ]);
   const base = `/admin/${store.slug}/subscribers`;
   const lang = adminLangOf(member.account.adminLocale);
   const w = MARKETING_WORDS[lang];
   const ws = w.subscribers;
   const numbers = ADMIN_LANG_FACTS[lang].locale;
+  const tongues = new Intl.DisplayNames([numbers], { type: "language" });
   const n = (v: number) => v.toLocaleString(numbers);
   const date = (iso: string) => new Date(iso).toLocaleDateString(numbers, { dateStyle: "medium", timeZone: store.timeZone });
   const filter = (next: { status?: SubscriberStatus | null; before?: string }) => {
@@ -132,6 +139,18 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
           </li>
         </ul>
       </section>
+
+      {/* The store's email topics (M4.2, D882): what it writes about, and how many readers each reaches. */}
+      <TopicsCard
+        storeSlug={store.slug}
+        locales={store.localization.locales.map((code) => ({ code, name: tongues.of(code) ?? code }))}
+        topics={topics.map((t) => ({ ...t, readers: topicReach.get(t.id) ?? 0 }))}
+        canWrite={memberCan(member, "marketing:write")}
+        numbers={numbers}
+        save={saveTopicAction}
+        archive={archiveTopicAction}
+        move={moveTopicAction}
+      />
 
       {total > 0 && (
         <Card
