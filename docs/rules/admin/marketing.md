@@ -151,7 +151,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   database; without a look, `renderEmail()` draws as it always did, so transactional emails are unchanged.
 - **Topics (M4.2, D882)**: `src/server/marketing-topics.ts` is the only writer of `marketing_topics` and `marketing_topic_choices`
   (append only, a row only when the choice changes). A reader is in a topic by their newest choice, else its `default_on`: `inTopic()`,
-  read by a broadcast's count, its frozen list and (slice 2) the preference page, never a second rule. A broadcast's `topic_id` is
+  read by a broadcast's count, its frozen list and the preference page, never a second rule. A reader's `frequency` and `rest_until`
+  are written only by `src/server/email-preferences.ts` (by their token) and held only in `suppressed()`, so every marketing email obeys them. A broadcast's `topic_id` is
   checked as the store's at save; a topic gone stops the start with words.
 - **Send time per person (M4.4)**: a broadcast with `best_time` gives each recipient `send_after` only in `startBroadcast()`'s transaction
   (`setOwnHours()`: their own hour of most presses, else the store's, within `QUIET_DEFAULT`, `src/lib/send-time.ts`), and the claim

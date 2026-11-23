@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."marketing_subscribers" ADD COLUMN "frequency" text DEFAULT 'all' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."marketing_subscribers" ADD COLUMN "rest_until" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."marketing_subscribers" ADD CONSTRAINT "marketing_subscribers_frequency" CHECK ("commerce"."marketing_subscribers"."frequency" in ('all', 'weekly', 'monthly'));

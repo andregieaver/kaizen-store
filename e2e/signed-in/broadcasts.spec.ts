@@ -225,3 +225,30 @@ test("the store's topics are added on the subscriber list, and a broadcast is ab
     await sql.end();
   }
 });
+
+test("a reader chooses their topics and how often, pauses for a month, and starts again, on the page every email links to (M4.2)", async ({ page }) => {
+  const token = (RUN + "b".repeat(43)).slice(0, 43);
+  await page.goto(`/s/${STORE}/no/unsubscribe/${token}`);
+  const form = page.locator("[data-preferences]");
+  await expect(form.getByLabel(`Workshops ${RUN}`)).toBeChecked();
+  await form.getByLabel(`Workshops ${RUN}`).uncheck();
+  await form.getByLabel("Høyst én gang i uken").check();
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-prefs.png"), fullPage: true });
+  await form.getByRole("button", { name: "Lagre" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Lagret" })).toBeVisible();
+  await expect(page.locator("[data-preferences]").getByLabel(`Workshops ${RUN}`)).not.toBeChecked();
+  await expect(page.locator("[data-preferences]").getByLabel("Høyst én gang i uken")).toBeChecked();
+  await page.getByRole("button", { name: "Ta en pause i en måned" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "satt på pause til" })).toBeVisible();
+  await page.getByRole("button", { name: "Start igjen nå" }).click();
+  await expect(page.getByRole("button", { name: "Ta en pause i en måned" })).toBeVisible();
+  const sql = testDb();
+  try {
+    const [row] = await sql`select frequency, rest_until from commerce.marketing_subscribers where token = ${token}`;
+    expect(row).toMatchObject({ frequency: "weekly", rest_until: null });
+    const [kept] = await sql`select count(*)::int as n from commerce.marketing_topic_choices c join commerce.marketing_subscribers s on s.id = c.subscriber_id where s.token = ${token} and c.source = 'preferences'`;
+    expect(kept.n).toBe(1);
+  } finally {
+    await sql.end();
+  }
+});

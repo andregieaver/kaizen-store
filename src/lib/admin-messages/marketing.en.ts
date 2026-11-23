@@ -243,7 +243,7 @@ export const marketingEn = {
   describe: { ...SEGMENT_DESCRIBE },
   topics: {
     title: "Topics",
-    lead: "What you write about. A broadcast about a topic goes only to the readers in it.",
+    lead: "What you write about. A broadcast about a topic goes only to the readers in it, and every email's footer links to a page where readers choose their topics.",
     none: "No topics yet, so every broadcast goes to everyone who wants your emails.",
     add: "Add a topic",
     name: "Name",

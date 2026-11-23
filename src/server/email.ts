@@ -282,13 +282,23 @@ async function suppressed(message: OutgoingEmail): Promise<string | null> {
   }
   if (message.kind.startsWith("privacy.") || kind === "evidence") return null;
   // The sunset (email plan M2.8): a subscriber paused after months with no press gets no marketing email until they press a link again.
+  // The reader's own choices (M4.2, D882): a month's rest, and at most one marketing email in 7 or 30 days. The look back at what was sent
+  // runs only for a reader who chose a limit.
   if (message.storeId && (message.kind === "marketing.broadcast" || message.kind === "marketing.automation")) {
-    const paused = await typedRow(
-      z.object({ one: col.int }),
-      sql`select 1 as one from commerce.marketing_subscribers
-           where store_id = ${message.storeId}::uuid and lower(email) = lower(${message.to}) and paused_at is not null limit 1`,
+    const held = await typedRow(
+      z.object({ paused: col.bool, resting: col.bool, too_soon: col.bool }),
+      sql`select s.paused_at is not null as paused, coalesce(s.rest_until > now(), false) as resting,
+                 (s.frequency <> 'all' and exists (
+                    select 1 from commerce.email_messages e
+                     where e.store_id = s.store_id and lower(e.to_address) = lower(s.email)
+                       and e.kind in ('marketing.broadcast', 'marketing.automation') and e.status in ('sent', 'logged', 'delivered', 'bounced', 'complained')
+                       and e.created_at > now() - (case s.frequency when 'weekly' then interval '7 days' else interval '30 days' end))) as too_soon
+            from commerce.marketing_subscribers s
+           where s.store_id = ${message.storeId}::uuid and lower(s.email) = lower(${message.to}) limit 1`,
     );
-    if (paused) return "suppressed: paused after months with no press on a link (the sunset)";
+    if (held?.paused) return "suppressed: paused after months with no press on a link (the sunset)";
+    if (held?.resting) return "suppressed: the reader paused their emails for a month";
+    if (held?.too_soon) return "suppressed: the reader asked for fewer emails";
   }
   if (!message.orderId && !message.subscriptionId) return null;
   const [row] = await db().execute<Row>(sql`

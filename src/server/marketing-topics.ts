@@ -167,3 +167,16 @@ export async function topicCounts(storeId: string): Promise<Map<string, number>>
   );
   return new Map(rows.map((r) => [r.id, r.n]));
 }
+
+/** A reader's topics as the preference page shows them: each live topic of the store, in order, with whether they are in it now. */
+export async function readerTopics(storeId: string, subscriberId: string): Promise<(Topic & { in: boolean })[]> {
+  const rows = await typedRows(
+    TOPIC_ROW.extend({ in: col.bool }),
+    sql`select t.id, t.names, t.default_on, false as archived, ${inTopicRule(sql`t.id`, sql`t.default_on`)} as in
+          from commerce.marketing_topics t
+          join commerce.marketing_subscribers s on s.store_id = t.store_id and s.id = ${subscriberId}::uuid
+         where t.store_id = ${storeId}::uuid and t.archived_at is null
+         order by t.position, t.created_at, t.id`,
+  );
+  return rows.map((r) => ({ ...asTopic(r), in: r.in }));
+}

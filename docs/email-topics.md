@@ -52,3 +52,9 @@ choice (when, from where, the words shown); the AI manager and the API read and 
   `src/server/marketing-topics.ts`; `inTopic()` the one rule. The subscriber list has a *Topics* card: each topic's readers now
   (`topicCounts()`), add, change per language, order, archive and bring back. A broadcast asks *About* where the store has topics; its count
   and its frozen list read `inTopic()`. A reader's topic choices are in their data export and go with the subscriber.
+- **Slice 2, 23 November 2026.** The page an email's foot links to (*Choose what you get or unsubscribe*, in every storefront
+  language) shows a subscriber their topics (`readerTopics()`), how often, *Pause for a month* (or the date it ends and *Start again
+  now*) and *Unsubscribe from everything*, in the store's look, as a server page with one form action (`emailChoiceAction`, which
+  replaced the old unsubscribe action, so the page adds no server reference). `src/server/email-preferences.ts` saves by the token;
+  `marketing_subscribers.frequency` and `rest_until` (migration `tiny_rattler`) are held in `suppressed()`, one statement with the sunset,
+  the look back at what was sent run only for a reader who chose a limit. A cart reminder's token keeps the plain unsubscribe page.

@@ -1,6 +1,6 @@
 {
-  "id": "a7ad93c3-f6b5-4b44-b7cc-28c23d430877",
-  "prevId": "fbee5fc6-ad72-4cc2-ad84-d7ac3683e3b5",
+  "id": "4d262de2-6425-4972-95bd-fc4be98b2609",
+  "prevId": "a7ad93c3-f6b5-4b44-b7cc-28c23d430877",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -47596,6 +47596,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "frequency": {
+          "name": "frequency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'all'"
+        },
+        "rest_until": {
+          "name": "rest_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "unsubscribed_at": {
           "name": "unsubscribed_at",
           "type": "timestamp with time zone",
@@ -47788,6 +47801,10 @@
         "marketing_subscribers_status": {
           "name": "marketing_subscribers_status",
           "value": "\"commerce\".\"marketing_subscribers\".\"status\" in ('pending', 'subscribed', 'unsubscribed')"
+        },
+        "marketing_subscribers_frequency": {
+          "name": "marketing_subscribers_frequency",
+          "value": "\"commerce\".\"marketing_subscribers\".\"frequency\" in ('all', 'weekly', 'monthly')"
         },
         "marketing_subscribers_source": {
           "name": "marketing_subscribers_source",

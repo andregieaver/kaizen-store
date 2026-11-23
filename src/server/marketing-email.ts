@@ -70,7 +70,7 @@ export function marketingEmail(input: {
       facts: input.facts,
       locale: language,
       footer: emailFooter(store, emailText(lang)),
-      unsubscribe: { text: input.moved ? m.news.movedReason(store.name) : m.news.emailReason(store.name), linkText: m.news.unsubscribe, url: `${base}/unsubscribe/${token ?? "test"}` },
+      unsubscribe: { text: input.moved ? m.news.movedReason(store.name) : m.news.emailReason(store.name), linkText: m.news.choose, url: `${base}/unsubscribe/${token ?? "test"}` },
       resolve: resolverFor(store, marketSlug),
       link: (key, target) => (input.link ? input.link(key, target, marketSlug) : target),
       html: cleanEmailHtml,

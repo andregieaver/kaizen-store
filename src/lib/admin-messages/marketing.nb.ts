@@ -309,7 +309,7 @@ export const marketingNb: MarketingMessages = {
   },
   topics: {
     title: "Emner",
-    lead: "Det du skriver om. Et nyhetsbrev om et emne går bare til leserne som er med i det.",
+    lead: "Det du skriver om. Et nyhetsbrev om et emne går bare til leserne som er med i det, og bunnen av hver e-post lenker til en side der leserne velger emnene sine.",
     none: "Ingen emner ennå, så hvert nyhetsbrev går til alle som vil ha e-postene dine.",
     add: "Legg til et emne",
     name: "Navn",

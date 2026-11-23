@@ -17426,6 +17426,10 @@ export const marketingSubscribers = commerce.table(
     // The sunset (email plan M2.8): when a flow on `subscriber.asleep` ended with no press, marketing email to them is held (`sendEmail()`),
     // never deleted or unsubscribed; a press on a link clears it.
     pausedAt: timestamp("paused_at", { withTimezone: true }),
+    // The reader's own choices on the preference page (email plan M4.2, D882): how often (`all`, at most one marketing email in 7 days,
+    // or in 30), and a month's rest; both held at send (`suppressed()`), never counted as sent.
+    frequency: text("frequency").notNull().default("all"),
+    restUntil: timestamp("rest_until", { withTimezone: true }),
     unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
     unsubscribeSource: text("unsubscribe_source"),
     createdAt: createdAt(),
@@ -17445,6 +17449,7 @@ export const marketingSubscribers = commerce.table(
       foreignColumns: [customers.storeId, customers.id],
     }),
     check("marketing_subscribers_status", sql`${t.status} in (${sqlList(SUBSCRIBER_STATUSES)})`),
+    check("marketing_subscribers_frequency", sql`${t.frequency} in ('all', 'weekly', 'monthly')`),
     check("marketing_subscribers_source", sql`${t.source} in (${sqlList(SUBSCRIBE_SOURCES)})`),
     check("marketing_subscribers_source_path", sql`${t.sourcePath} is null or (${t.source} = 'form' and char_length(${t.sourcePath}) between 1 and 500)`),
     check(

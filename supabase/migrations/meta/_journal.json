@@ -1121,6 +1121,13 @@
       "when": 1795452493888,
       "tag": "20261123164813_right_scarecrow",
       "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1795459446564,
+      "tag": "20261123184406_tiny_rattler",
+      "breakpoints": true
     }
   ]
 }
