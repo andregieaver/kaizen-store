@@ -1,12 +1,14 @@
 import { after } from "next/server";
 import { Suspense } from "react";
 
+import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/shell-actions";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { PageFinder } from "@/components/admin/page-finder";
 import { PlatformRoleNotice } from "@/components/admin/platform-role-notice";
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
@@ -57,60 +59,68 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
   const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = platformNav({ requests: waiting, support: supportWaiting + supportRequests });
   const lang = adminLangOf(account.adminLocale);
   const w = SHELL_WORDS[lang];
+  // Basic or Advanced (D454, D884): the person's own choice, the one a store's admin shows them, around the whole frame.
   return (
-    <AdminFrame
-      layout={LEVEL_LAYOUTS.platform}
-      lang={lang}
-      switcher={
-        <Suspense fallback={<span className="px-2 font-medium">{w.levels.platform}</span>}>
-          <LevelSwitcher account={account} level="platform" label={w.levels.platform} />
-        </Suspense>
-      }
-      actions={
-        <>
-        {/* The page finder (round 1): any platform page by name, ⌘K. */}
-        <PageFinder find={findPlatformPagesAction} words={w.finder} />
-        {/* The AI manager can do anything on the platform, so it is the owners' (D510). */}
-        {account.platformAdmin && (
-        <AdminTextScope texts={areaTexts(lang, { assistantBar: ASSISTANT_BAR_WORDS })}>
-          <AiManagerLauncher
-            area="platform"
-            base={`${base}/assistant`}
-            siteName="Kaizena Flow"
-            settingsHref={`${base}/ai`}
-            start={startPlatformAssistantAction}
-            actions={{
-              decide: decidePlatformApprovalAction,
-              remove: deletePlatformConversationAction,
-              load: loadPlatformConversationAction,
-              rate: ratePlatformAnswerAction,
-              hear: platformHearAction,
-              saveSkill: savePlatformSkillAction,
-              pageHere: pagePlatformHereAction,
-            }}
-          />
-        </AdminTextScope>
-        )}
-        </>
-      }
-      account={<AdminAccountMenu account={account} role={w.levels.platform} />}
-      tabs={tabs}
-      groups={[]}
-      areas={areas}
-      wide
-      tabsLabel={w.levels.platformSections}
-      menuTitle={<span className="font-medium">{w.levels.platform}</span>}
-      menuFooter={
-        <>
-          <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>
-          <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
-        </>
-      }
-      fullWidth={FULL_WIDTH}
-      workspaceLinks={INBOX}
-    >
-      {role !== "owner" && <PlatformRoleNotice role={role} words={w.platformRole} />}
-      {children}
-    </AdminFrame>
+    <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
+      <AdminFrame
+        layout={LEVEL_LAYOUTS.platform}
+        lang={lang}
+        switcher={
+          <Suspense fallback={<span className="px-2 font-medium">{w.levels.platform}</span>}>
+            <LevelSwitcher account={account} level="platform" label={w.levels.platform} />
+          </Suspense>
+        }
+        actions={
+          <>
+          {/* The page finder (round 1): any platform page by name, ⌘K. */}
+          <PageFinder find={findPlatformPagesAction} words={w.finder} />
+          {/* Basic or Advanced (D884), as in a store; on phones it is in the menu. */}
+          <div className="hidden md:block">
+            <AdminViewToggle compact />
+          </div>
+          {/* The AI manager can do anything on the platform, so it is the owners' (D510). */}
+          {account.platformAdmin && (
+          <AdminTextScope texts={areaTexts(lang, { assistantBar: ASSISTANT_BAR_WORDS })}>
+            <AiManagerLauncher
+              area="platform"
+              base={`${base}/assistant`}
+              siteName="Kaizena Flow"
+              settingsHref={`${base}/ai`}
+              start={startPlatformAssistantAction}
+              actions={{
+                decide: decidePlatformApprovalAction,
+                remove: deletePlatformConversationAction,
+                load: loadPlatformConversationAction,
+                rate: ratePlatformAnswerAction,
+                hear: platformHearAction,
+                saveSkill: savePlatformSkillAction,
+                pageHere: pagePlatformHereAction,
+              }}
+            />
+          </AdminTextScope>
+          )}
+          </>
+        }
+        account={<AdminAccountMenu account={account} role={w.levels.platform} />}
+        tabs={tabs}
+        groups={[]}
+        areas={areas}
+        wide
+        tabsLabel={w.levels.platformSections}
+        menuTitle={<span className="font-medium">{w.levels.platform}</span>}
+        menuFooter={
+          <>
+            <AdminViewToggle />
+            <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>
+            <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
+          </>
+        }
+        fullWidth={FULL_WIDTH}
+        workspaceLinks={INBOX}
+      >
+        {role !== "owner" && <PlatformRoleNotice role={role} words={w.platformRole} />}
+        {children}
+      </AdminFrame>
+    </AdminViewProvider>
   );
 }

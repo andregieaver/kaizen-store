@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
+import { advancedIn } from "./admin-view";
 import { placeIndex } from "./nav-current";
 import {
   PLATFORM_BASE,
@@ -10,8 +11,10 @@ import {
   PLATFORM_SECTIONS,
   platformAreas,
   platformItemsOf,
+  platformSection,
   platformSectionPaths,
   platformTabs,
+  type PlatformSection,
 } from "./platform-nav";
 
 const ROOT = "src/app/admin/(gated)/platform";
@@ -74,8 +77,9 @@ describe("the platform admin's sections (D144), one structure (D877)", () => {
   it("names the pages of a sidebar under the platform's address, with their icons (D454), and marks only exact ones exact", () => {
     const plans = areas.find((a) => a.section === "plans")!;
     expect(plans.groups[0].items[0]).toEqual({ href: "/admin/platform/plans", label: "Editor", icon: "credit-card", exact: true });
-    expect(plans.groups[0].items[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits", icon: "gauge" });
-    expect(plans.groups[0].items[2]).toEqual({ href: "/admin/platform/plans/features", label: "Plan features", icon: "toggle" });
+    // Left out of the Basic view (D884): drawn in Advanced, or while it is the page being viewed.
+    expect(plans.groups[0].items[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits", icon: "gauge", advanced: true });
+    expect(plans.groups[0].items[2]).toEqual({ href: "/admin/platform/plans/features", label: "Plan features", icon: "toggle", advanced: true });
     // A page of cards is its section's alone (`exact`); its pages and the docs portal's folder are inside the section.
     const website = areas.find((a) => a.section === "website")!;
     expect(website.exact).toEqual(["/admin/platform/website"]);
@@ -92,6 +96,30 @@ describe("the platform admin's sections (D144), one structure (D877)", () => {
     }
   });
 
+  it("puts Settings in six groups, each page in one, where one heading stood over every page (code review FN4, D884)", () => {
+    const settings = PLATFORM_SECTIONS.find((s) => s.key === "settings")!;
+    expect(settings.groups.map((g) => [g.heading, g.items.length])).toEqual([
+      ["Site", 5],
+      ["Money and tax", 4],
+      ["AI", 4],
+      ["Apps and connections", 4],
+      ["Privacy and law", 3],
+      ["Running the platform", 8],
+    ]);
+    // The sidebar draws them under its headings (in D873's one style), and the page of cards under the same words.
+    expect(areas.find((a) => a.section === "settings")!.groups.map((g) => g.heading)).toEqual(settings.groups.map((g) => g.heading));
+    expect(settings.groups.find((g) => g.heading === "Running the platform")!.items.map((i) => i.label)).toEqual([
+      "Status page",
+      "Usage and limits",
+      "Emails",
+      "Languages",
+      "A/B tests",
+      "Search test",
+      "Team",
+      "Change log",
+    ]);
+  });
+
   it("gives a page of cards its intro, and a section whose tab opens a page of its sidebar that page's area", () => {
     for (const section of PLATFORM_SECTIONS) {
       expect(Boolean(section.intro), section.key).toBe(section.hub);
@@ -99,5 +127,52 @@ describe("the platform admin's sections (D144), one structure (D877)", () => {
       if (first) expect(first.area, section.key).toBe(section.area);
       else expect(section.hub || section.groups.length === 0, `${section.key} opens on a page of its own`).toBe(true);
     }
+  });
+});
+
+describe("the platform's Basic view (D884, as a store's D454)", () => {
+  const sidebars = PLATFORM_SECTIONS.filter((s) => s.groups.length > 0);
+  const basicOf = (section: PlatformSection) => platformItemsOf(section).filter((i) => !advancedIn(section, i));
+
+  it("keeps Basic to each section's everyday pages: some in every sidebar, at most 12 a section, and fewer than half in all", () => {
+    let basic = 0;
+    for (const section of sidebars) {
+      const shown = basicOf(section);
+      expect(shown.length, section.key).toBeGreaterThan(0);
+      expect(shown.length, section.key).toBeLessThanOrEqual(12);
+      basic += shown.length;
+    }
+    expect(basic).toBeLessThan(items.length / 2);
+    // Each section's everyday pages, by name: a page joins Basic by a deliberate change here.
+    expect(Object.fromEntries(sidebars.map((s) => [s.key, basicOf(s).map((i) => i.label)]))).toEqual({
+      website: ["Pages", "Blog", "Media", "Menus", "Forms", "Design"],
+      plans: ["Editor", "Accounts", "Plan analytics", "Discounts"],
+      support: ["Inbox", "Support reports", "Chat assistant"],
+      settings: ["Header and footer", "VAT rates", "Domains", "AI usage", "100-day challenge", "App listings", "Content notices", "Status page", "Usage and limits", "Emails", "Team"],
+    });
+    // Each of Settings' six groups keeps an everyday page, so Basic still shows every group.
+    const settings = platformSection("settings");
+    for (const group of settings.groups) expect(group.items.some((i) => !advancedIn(settings, i)), group.heading).toBe(true);
+  });
+
+  it("never leaves out of Basic the page a section's tab leads to", () => {
+    const links = areas.flatMap((a) => a.groups.flatMap((g) => g.items));
+    for (const section of PLATFORM_SECTIONS) {
+      const start = links.find((l) => l.href === `${PLATFORM_BASE}${section.start}`);
+      // A page of cards, or a section with no sidebar, opens on a page of its own, which no sidebar lists.
+      if (!start) expect(section.hub || section.groups.length === 0, section.key).toBe(true);
+      else expect(start.advanced, section.key).toBeUndefined();
+    }
+    // Where the tab leads is in Basic whatever its item says.
+    expect(advancedIn({ start: "/plans" }, { path: "/plans" })).toBe(false);
+    expect(advancedIn({ start: "/plans" }, { path: "/plans/limits" })).toBe(true);
+  });
+
+  it("marks in the sidebar the links Basic leaves out, each with its icon, and no other", () => {
+    const links = areas.flatMap((a) => a.groups.flatMap((g) => g.items));
+    expect(links).toHaveLength(items.length);
+    expect(links.find((l) => l.label === "Duty rates")).toMatchObject({ icon: "container", advanced: true });
+    expect(links.find((l) => l.label === "VAT rates")!.advanced).toBeUndefined();
+    expect(links.filter((l) => l.advanced)).toHaveLength(sidebars.reduce((n, s) => n + platformItemsOf(s).length - basicOf(s).length, 0));
   });
 });

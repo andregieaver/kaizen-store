@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { ACCOUNT_EXTRA, ACCOUNT_ITEMS, BOOKS_PATH, SUPPORT_PATH, ownerAreas, ownerOpens, ownerTabs } from "./owner-nav";
+import { ACCOUNT_EXTRA, ACCOUNT_GROUPS, ACCOUNT_ITEMS, BOOKS_PATH, SUPPORT_PATH, ownerAreas, ownerOpens, ownerTabs } from "./owner-nav";
 
 const ROOT = "src/app/admin/(gated)/(owner)";
 
@@ -29,12 +29,36 @@ describe("the store owner's sections (D147)", () => {
   it("has a sidebar for Account (owners' pages only for owners) and for no other section", () => {
     const owner = ownerAreas({ owner: true, work: true });
     expect(owner.filter((a) => a.groups.length > 0)).toHaveLength(1);
-    expect(owner.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "AI manager notices", "Kaizena Flow support", "Your domains", "Billing", "Extensions", "Add to your account", "AI usage", "Usage and limits", "Referrals", "Your themes", "Connected apps and assistants", "Developer", "WordPress"]);
+    const labels = (areas: ReturnType<typeof ownerAreas>) => areas.find((a) => a.groups.length > 0)!.groups.map((g) => [g.heading, g.items.map((i) => i.label)]);
+    // In three groups (code review FN4, D884), the person's own first.
+    expect(labels(owner)).toEqual([
+      ["Personal", ["Your account", "Appearance", "AI manager notices", "Kaizena Flow support"]],
+      ["Billing and usage", ["Your domains", "Billing", "Extensions", "Add to your account", "AI usage", "Usage and limits", "Referrals"]],
+      ["Apps and themes", ["Your themes", "Connected apps and assistants", "Developer", "WordPress"]],
+    ]);
+    expect(ACCOUNT_ITEMS.map((i) => i.label)).toEqual(labels(owner).flatMap(([, items]) => items));
     const staff = ownerAreas({ owner: false, work: true });
     expect(staff.every((a) => a.groups.length === 0)).toBe(true);
     // Someone who holds a domain but owns no store (D317) sees their account's pages and Your domains, not the owners' pages.
     const holder = ownerAreas({ owner: false, work: false, domains: true });
-    expect(holder.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "Kaizena Flow support", "Your domains", "Your themes", "Connected apps and assistants", "Developer"]);
+    expect(labels(holder)).toEqual([
+      ["Personal", ["Your account", "Appearance", "Kaizena Flow support"]],
+      ["Billing and usage", ["Your domains"]],
+      ["Apps and themes", ["Your themes", "Connected apps and assistants", "Developer"]],
+    ]);
+  });
+
+  it("keeps Account's Basic view to the everyday pages, Your account always among them (D884, as a store's D454)", () => {
+    const links = ownerAreas({ owner: true, work: true }).flatMap((a) => a.groups.flatMap((g) => g.items));
+    const basic = links.filter((l) => !l.advanced).map((l) => l.label);
+    expect(basic).toEqual(["Your account", "Kaizena Flow support", "Your domains", "Billing", "Add to your account"]);
+    expect(basic.length).toBeGreaterThan(0);
+    expect(basic.length).toBeLessThan(links.length / 2);
+    // The page the Account tab leads to is in Basic whatever its item says.
+    const tab = ownerTabs({ owner: true, work: true }).find((t) => t.label === "Account")!;
+    expect(links.find((l) => l.href === tab.href)!.advanced).toBeUndefined();
+    // What a person builds or connects is Lisa's: in Basic the group is left out, and the sidebar's foot says how many more Advanced has.
+    expect(ACCOUNT_GROUPS.filter((g) => !g.items.some((i) => i.basic)).map((g) => g.heading)).toEqual(["Apps and themes"]);
   });
 
   it("offers in the page finder what the tabs and the sidebar show (ecosystem plan E2.2, D713)", () => {

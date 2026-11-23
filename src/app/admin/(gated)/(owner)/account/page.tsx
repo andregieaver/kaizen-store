@@ -5,7 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { AppearanceField } from "@/components/admin/admin-colors";
 import { SchemeField } from "@/components/admin/admin-scheme";
-import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
+import { AdminViewToggle } from "@/components/admin/admin-view";
 import { AdminLanguageField, AdminTextProvider } from "@/components/admin/admin-text";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -49,7 +49,7 @@ import {
   setAccountOfficerAction,
   setPasswordAction,
 } from "./actions";
-import { adminLangAction, adminViewAction, colorModeAction } from "./shell-actions";
+import { adminLangAction, colorModeAction } from "./shell-actions";
 
 export const metadata: Metadata = { title: "Your account" };
 
@@ -187,15 +187,13 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
         </Link>
       </section>
 
-      {/* Basic or Advanced (D454): the same choice as the switch at the top of a store's admin. */}
+      {/* Basic or Advanced (D454): the switch at the top of the admin, held by the level's layout (D884), so Account's sidebar follows it. */}
       <section aria-labelledby="view-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="view-heading" className="text-title text-ink">
           {vw.label}
         </h2>
         <p className="text-sm text-muted">{vw.accountHint}</p>
-        <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
-          <AdminViewToggle />
-        </AdminViewProvider>
+        <AdminViewToggle />
       </section>
 
       {owner && (

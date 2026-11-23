@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { AdminFrame } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
+import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
 import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -12,6 +13,7 @@ import { requireAccount } from "@/server/auth";
 import { ownerWho } from "@/server/owner-level";
 import { waitingCount } from "@/server/support";
 
+import { adminViewAction } from "./account/shell-actions";
 import { findOwnerAction } from "./finder-actions";
 
 /** The combined support inbox is drawn in the `workspace` layout (D230): its own columns across the width, beside a narrowed rail. */
@@ -40,27 +42,40 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   const shell = SHELL_WORDS[lang];
   const w = shell.levels;
   const title = who.owner ? w.controlCenter : w.yourStores;
+  // Basic or Advanced (D454, D884): the person's own choice, the one a store's admin and the platform show them, around the whole frame,
+  // so Account's sidebar and the switch on Your account follow it at once.
   return (
-    <AdminFrame
-      layout={LEVEL_LAYOUTS.control}
-      lang={lang}
-      switcher={
-        <Suspense fallback={<span className="px-2 font-medium">{title}</span>}>
-          <LevelSwitcher account={account} level="control" label={title} />
-        </Suspense>
-      }
-      // The page finder (ecosystem plan E2.2, D713): this level's pages and the records of every store the person may read, ⌘K.
-      actions={<PageFinder find={findOwnerAction} words={{ ...shell.finder, placeholder: shell.finder.placeholderRecords, hint: shell.finder.hintRecords }} />}
-      account={<AdminAccountMenu account={account} />}
-      tabs={tabs}
-      groups={[]}
-      areas={areas}
-      wide
-      tabsLabel={w.controlCenterSections}
-      fullWidth={INBOX}
-      menuTitle={<span className="font-medium">{title}</span>}
-    >
-      {children}
-    </AdminFrame>
+    <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
+      <AdminFrame
+        layout={LEVEL_LAYOUTS.control}
+        lang={lang}
+        switcher={
+          <Suspense fallback={<span className="px-2 font-medium">{title}</span>}>
+            <LevelSwitcher account={account} level="control" label={title} />
+          </Suspense>
+        }
+        actions={
+          <>
+            {/* The page finder (ecosystem plan E2.2, D713): this level's pages and the records of every store the person may read, ⌘K. */}
+            <PageFinder find={findOwnerAction} words={{ ...shell.finder, placeholder: shell.finder.placeholderRecords, hint: shell.finder.hintRecords }} />
+            {/* Basic or Advanced (D884), as in a store; on phones it is in the menu. */}
+            <div className="hidden md:block">
+              <AdminViewToggle compact />
+            </div>
+          </>
+        }
+        account={<AdminAccountMenu account={account} />}
+        tabs={tabs}
+        groups={[]}
+        areas={areas}
+        wide
+        tabsLabel={w.controlCenterSections}
+        fullWidth={INBOX}
+        menuTitle={<span className="font-medium">{title}</span>}
+        menuFooter={<AdminViewToggle />}
+      >
+        {children}
+      </AdminFrame>
+    </AdminViewProvider>
   );
 }

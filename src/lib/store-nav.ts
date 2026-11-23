@@ -7,6 +7,7 @@
 import { EXTENSION_IDS, STORE_ONLY_EXTENSIONS, storeExtensionsOn, type ExtensionId } from "./extensions";
 import type { NavIconName } from "@/components/admin/nav-icons";
 
+import { advancedIn } from "./admin-view";
 import type { Area } from "./permission-keys";
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
 
@@ -523,8 +524,8 @@ export type StoreTab = Link & { icon: NavIconName; also?: string[]; section?: st
 /** A section's sidebar, by the addresses inside it (`prefixes`; a page of cards in `exact`), keyed as its tab is (`section`, Home's `home`). */
 export type StoreArea = { section: string; prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] };
 
-/** Whether a section's page is left out of the Basic view (D454): one not marked `basic`, unless it is where the section's tab leads. */
-export const advancedIn = (section: Pick<StoreSection, "start">, item: Pick<StoreItem, "path" | "basic">): boolean => !item.basic && item.path !== section.start;
+// Whether a section's page is left out of the Basic view (D454): the rule of all three levels, kept in `admin-view.ts` (D884).
+export { advancedIn };
 
 function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<StoreSection["key"], number>>): StoreTab[] {
   return [

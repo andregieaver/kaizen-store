@@ -103,6 +103,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Targets (Analytics settings) | Analytics → Settings | Plans → Analytics, *Targets* (D513): a month's recurring revenue, sales, paying and new stores, their progress on the home and in the briefing |
 | Live (sign-ups today) | Analytics → Live | Kaizena Flow's store for visitors (D484); the platform home for who asked for a store and opened one today (D513) |
 | A list's search, views and filters, a hundred a page (D834; the platform's D847) | Customers, Products: one search bar, its views and filters in the same form, *Next 100* | Customers; Stores: by store, owner or domain, the store's state, plan and subscription, the pager keeping them |
+| Basic and Advanced views, and a long sidebar in groups (D454; the platform's D884) | Every section's sidebar; the switch in the top bar, the phone's menu and Your account | Every platform sidebar's everyday pages in Basic (24 of 57), Settings in six groups, the same switch, one choice per person across the levels; the owner's Account in three groups with its Basic |
 | Where you are: the section above a page's title, one link marked in each list of the menu (D873) | Every page with a page header; the rail, sidebars and phone menu | The same frame: every platform page in a section (Plans, Support, Settings…), and the owner's level (Stores, Account, Work) |
 
 ## Store-only: cannot apply to Kaizena Flow

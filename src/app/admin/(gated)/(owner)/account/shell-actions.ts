@@ -22,8 +22,8 @@ export async function colorModeAction(choice: unknown): Promise<void> {
 }
 
 /**
- * Keeps how much of a store's admin the account is shown (D454); the page has switched already. A store's admin and Your account both
- * call it; nothing is drawn again, as the navigation follows the choice in the browser.
+ * Keeps how much of the admin the account is shown (D454), at every level (D884); the page has switched already. The switch in each level's
+ * top bar and phone menu and on Your account call it; nothing is drawn again, as the navigation follows the choice in the browser.
  */
 export async function adminViewAction(view: unknown): Promise<void> {
   const account = await requireAccount();
