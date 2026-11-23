@@ -1,7 +1,6 @@
-# The AI social media manager (plan, 23 November 2026)
+# The AI social media manager (D870, plan, 23 November 2026)
 
-Status: **agreed with the owner, not started.** Its decision number is claimed with `node scripts/claim-decision.mjs` when the
-first step starts; until then this file is the plan, and nothing cites a number for it.
+Status: **agreed with the owner (D870), not started.**
 
 ![How the social media manager works](social-manager.svg)
 
