@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { BROADCAST_AUDIENCES } from "./broadcast-status";
+import { SOCIAL_NETWORKS, type SocialNetwork } from "./social-links";
 import { TEST_HOURS, TEST_SHARE } from "./broadcast-test-sizes";
 import {
   ADDRESS_MAX,
@@ -11,6 +12,7 @@ import {
   PARAGRAPH_MAX,
   PREVIEW_MAX,
   SUBJECT_CHOICES,
+  SOCIAL_MAX,
   SUBJECT_MAX,
   isBroadcastAddress,
   rewritableTexts,
@@ -45,6 +47,14 @@ export const broadcastBlockSchema = z.discriminatedUnion("type", [
     label: z.string().trim().max(200).default(""),
   }),
   z.object({ type: z.literal("campaign"), campaign: z.uuid(), label: z.string().trim().max(200).default("") }),
+  // The store's social profiles (email plan M4.1): up to eight networks with their addresses, drawn as one quiet row of links.
+  z.object({
+    type: z.literal("social"),
+    links: z
+      .array(z.object({ network: z.enum(Object.keys(SOCIAL_NETWORKS) as [SocialNetwork, ...SocialNetwork[]]), url: z.string().trim().min(1).max(ADDRESS_MAX) }))
+      .min(1, "Add at least one profile.")
+      .max(SOCIAL_MAX, `At most ${SOCIAL_MAX} profiles.`),
+  }),
 ]);
 export type BroadcastBlock = z.infer<typeof broadcastBlockSchema>;
 

@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 
+import { SOCIAL_NETWORKS, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import {
   BLOCKS_MAX,
+  SOCIAL_MAX,
   emptyContent,
   suggestionBlocks,
   type BroadcastAudience,
@@ -20,6 +22,7 @@ import { compressPicture, extensionOf } from "@/lib/image-compress";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Button, CARD_CLASS } from "./ui";
+import { Select } from "./ui/field";
 
 type Problem = { ok: false; problem: string };
 
@@ -47,8 +50,8 @@ const field = "min-h-10 w-full rounded-md border border-line bg-card px-3";
 /** A split test as the editor holds it (M2.5, D868): version B's subject and preview per language, the share and the hours. */
 type BroadcastTestDraft = { b: Record<string, { subject: string; preview: string }>; share: number; hours: number };
 
-type Addable = "heading" | "paragraph" | "button" | "image" | "divider";
-const ADD: Addable[] = ["heading", "paragraph", "button", "image", "divider"];
+type Addable = "heading" | "paragraph" | "button" | "image" | "divider" | "social";
+const ADD: Addable[] = ["heading", "paragraph", "button", "image", "divider", "social"];
 
 function newBlock(type: Addable): BroadcastBlock {
   switch (type) {
@@ -62,6 +65,8 @@ function newBlock(type: Addable): BroadcastBlock {
       return { type, url: "", alt: "", href: null };
     case "divider":
       return { type };
+    case "social":
+      return { type, links: [{ network: "instagram", url: "" }] };
   }
 }
 
@@ -537,6 +542,47 @@ function BlockFields({
       );
     case "divider":
       return <hr className="border-line" />;
+    case "social": {
+      // The store's profiles (M4.1): a network and its address per row; drawn in the email as one row of their names.
+      const set = (links: typeof block.links) => onChange({ ...block, links });
+      return (
+        <div className="flex flex-col gap-2" data-social-block>
+          {block.links.map((link, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <Select
+                aria-label={we.socialNetwork}
+                value={link.network}
+                onChange={(e) => set(block.links.map((l, j) => (j === i ? { ...l, network: e.target.value as SocialNetwork } : l)))}
+              >
+                {(Object.keys(SOCIAL_NETWORKS) as SocialNetwork[]).map((n) => (
+                  <option key={n} value={n}>
+                    {SOCIAL_NETWORKS[n]}
+                  </option>
+                ))}
+              </Select>
+              <input
+                aria-label={we.socialAddress}
+                value={link.url}
+                maxLength={500}
+                placeholder={socialPlaceholder(link.network)}
+                onChange={(e) => set(block.links.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))}
+                className={`${field} min-w-48 flex-1`}
+              />
+              {block.links.length > 1 && (
+                <Button size="dense" kind="quiet" onClick={() => set(block.links.filter((_, j) => j !== i))}>
+                  {we.socialRemove}
+                </Button>
+              )}
+            </div>
+          ))}
+          {block.links.length < SOCIAL_MAX && (
+            <Button size="dense" onClick={() => set([...block.links, { network: "facebook", url: "" }])}>
+              {we.socialAdd}
+            </Button>
+          )}
+        </div>
+      );
+    }
   }
 }
 

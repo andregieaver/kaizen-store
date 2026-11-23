@@ -5,6 +5,8 @@ import { findClaims, type ClaimFinding } from "./claims";
 import type { EmailBlock, EmailContent } from "./email-layout";
 import type { BroadcastBlock, BroadcastContent, LanguageContent, SuggestionDraft } from "./broadcasts-schema";
 
+import { SOCIAL_NETWORKS, socialHref } from "./social-links";
+
 export type { BroadcastBlock, BroadcastContent, LanguageContent, SuggestionDraft } from "./broadcasts-schema";
 
 export * from "./broadcast-status";
@@ -23,6 +25,8 @@ export const PARAGRAPH_MAX = 3000;
 export const BUTTON_MAX = 60;
 export const ALT_MAX = 200;
 export const ADDRESS_MAX = 500;
+/** Profiles in a social links block (M4.1). */
+export const SOCIAL_MAX = 8;
 /** Recipients are deleted this long after a send ended, their figures kept on the broadcast (5.6). */
 export const RECIPIENTS_KEEP_DAYS = 90;
 
@@ -184,6 +188,14 @@ export function buildBroadcastEmail(input: BuildInput): EmailContent {
       }
       case "divider":
         return [{ type: "divider" }];
+      case "social": {
+        // Each profile by its network's name, to the address the owner typed (`socialHref()`); one that is not an address is left out.
+        const items = block.links.flatMap((l) => {
+          const url = socialHref(l.network, l.url);
+          return url ? [{ text: SOCIAL_NETWORKS[l.network], url }] : [];
+        });
+        return items.length > 0 ? [{ type: "links", items }] : [];
+      }
     }
   });
   return {
