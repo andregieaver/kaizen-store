@@ -887,6 +887,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D882 | **Topics and a preference page: a store's own topics, consent per topic kept as a record, how often and a month's pause ch** | 2026-11-23 | [text](decisions/D882.md) |
 | D883 | **The cookie popup's own look** | 2026-11-23 | [text](decisions/D883.md) |
 | D884 | **Basic and groups on the platform and the account: the platform's Settings in six groups, a Basic view at all three level** | 2026-11-23 | [text](decisions/D884.md) |
+| D885 | **The navigation doc written from the menu: a script writes docs/admin-navigation.md's tables from the nav data at all thr** | 2026-11-23 | [text](decisions/D885.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
