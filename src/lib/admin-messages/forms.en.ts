@@ -82,6 +82,8 @@ export const formsEn = {
     welcomeCodeHint: "Each address that confirms is emailed one single-use code of this discount, once.",
     tags: "Tag those who sign up",
     tagsHint: "Up to {max} tags, separated by commas. Use them in segments.",
+    topics: "Topics they get",
+    topicsHint: "Everyone who signs up here is in these topics, as if they ticked them. Their other topics stay as they are.",
     keep: "Keep responses for",
     keepHint: "Older responses are deleted on their own. Responses are a person's data: keep them only as long as you need them.",
     months: { one: "{n} month", many: "{n} months" },

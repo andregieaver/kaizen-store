@@ -1852,6 +1852,8 @@ export type NewsletterBlock = PartBase & {
     incentive?: string;
     /** Customer tags put on each confirmed address (D304 J3), at most `SIGNUP_TAGS_MAX`. */
     tags?: string[];
+    /** The store's email topics a sign-up here is in (email plan M4.2, D882), kept as the reader's choice with the words they agreed to. */
+    topics?: string[];
   };
 
 /**
@@ -3609,6 +3611,7 @@ const newsletterBlock = z.object({
   fieldStyle: fieldStyleSchema.optional(),
   incentive: z.string().uuid().optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(SIGNUP_TAGS_MAX).optional(),
+  topics: z.array(z.uuid()).max(20).optional(),
   ...partBase,
 });
 

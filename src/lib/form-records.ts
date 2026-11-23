@@ -59,7 +59,7 @@ export type FormInbox = "email" | "inbox" | "both";
 export type FormDelivery = { recipients: string[]; subject: string; inbox?: FormInbox };
 
 /** A sign-up's settings (D93, D304 J3). */
-export type FormSignup = { confirm: boolean; askName: boolean; incentive?: string; tags?: string[] };
+export type FormSignup = { confirm: boolean; askName: boolean; incentive?: string; tags?: string[]; topics?: string[] };
 
 /** What the owner edits: the form without its id, store and times. */
 export type FormDraft = {
@@ -106,6 +106,7 @@ export function formAsBlock(form: Pick<FormRecord, "id" | "kind" | "questions" |
       ...(look.button ? { button: look.button } : {}),
       ...(signup.incentive ? { incentive: signup.incentive } : {}),
       ...(signup.tags?.length ? { tags: signup.tags } : {}),
+      ...(signup.topics?.length ? { topics: signup.topics } : {}),
     };
   }
   const consent = at(form.words.consent);

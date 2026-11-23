@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { listTopics } from "@/server/marketing-topics";
+import { topicName } from "@/lib/marketing-topics";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { FormEditor } from "@/components/admin/forms/form-editor";
 import { FormTabs } from "@/components/admin/forms/form-tabs";
@@ -33,13 +35,15 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
   if (!form) notFound();
   const lang = adminLangOf(account.adminLocale);
   const w = FORMS_WORDS[lang];
-  const [uses, codes, linked, owner, paying] = await Promise.all([
+  const [uses, codes, linked, owner, paying, topics] = await Promise.all([
     formUses(store.id, form.id),
     form.kind === "signup" ? signupCodeChoices(store.id) : Promise.resolve([]),
     templatesOfForm({ accountId: account.id, storeId: store.id }, form.id, store.markets[0]?.lang ?? "en"),
     isStoreOwner(account.id, store.id),
     form.kind === "message" ? formPaymentChosen(store.id, form.paymentVariantId) : Promise.resolve(null),
+    form.kind === "signup" ? listTopics(store.id) : Promise.resolve([]),
   ]);
+  const main = store.localization.locales[0] ?? "en-GB";
   const base = `/admin/${store.slug}/forms`;
   // The store's other languages (F3), named in the admin's language, for the words a visitor in them sees.
   const langs = [...new Set(store.markets.map((m) => m.lang))];
@@ -59,6 +63,7 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
           key={form.id}
           form={form}
           siteLang={langs[0] ?? "en"}
+          topics={topics.map((t) => ({ id: t.id, name: topicName(t.names, main, main).name }))}
           languages={languages}
           inboxChoice
           canEdit={memberCan(member, "website:write")}

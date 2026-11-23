@@ -63,6 +63,7 @@ export function FormEditor({
   placedOn,
   templates,
   payment,
+  topics,
   listHref,
   save,
   setStatus,
@@ -86,6 +87,8 @@ export function FormEditor({
    * of the store's products. Left out on Kaizena Flow's own forms, which take no payments.
    */
   payment?: { chosen: PaymentChoice | null; search: (query: string) => Promise<PaymentChoice[]> };
+  /** The list's email topics (M4.2, D882) a sign-up form may put people in, by name; none, nothing is asked. */
+  topics?: { id: string; name: string }[];
   listHref: string;
   save: (draft: FormDraft) => Promise<SaveFormOutcome>;
   setStatus: (status: FormStatus) => Promise<boolean>;
@@ -288,6 +291,26 @@ export function FormEditor({
                     <span className={hint}>{fillWords(e.tagsHint, { max: SIGNUP_TAGS_MAX })}</span>
                   </label>
                 </>
+              )}
+              {/* The email topics a sign-up here is in (email plan M4.2, D882): only where the list has topics. */}
+              {draft.kind === "signup" && topics && topics.length > 0 && (
+                <fieldset className={label} data-form-topics>
+                  <legend className={labelText}>{e.topics}</legend>
+                  {topics.map((t) => (
+                    <Tick
+                      key={t.id}
+                      label={t.name}
+                      checked={Boolean(draft.signup?.topics?.includes(t.id))}
+                      onChange={(on) => {
+                        const now = new Set(draft.signup?.topics ?? []);
+                        if (on) now.add(t.id);
+                        else now.delete(t.id);
+                        change({ signup: { ...(draft.signup ?? { confirm: true, askName: false }), topics: now.size ? [...now] : undefined } });
+                      }}
+                    />
+                  ))}
+                  <span className={hint}>{e.topicsHint}</span>
+                </fieldset>
               )}
               {inboxChoice && draft.kind === "message" && (
                 <label className={label}>

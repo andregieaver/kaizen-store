@@ -79,6 +79,8 @@ export const formsNb: FormsMessages = {
     welcomeCodeHint: "Hver adresse som bekrefter, får én engangskode for denne rabatten på e-post, én gang.",
     tags: "Merk de som melder seg på",
     tagsHint: "Opptil {max} merker, skilt med komma. Bruk dem i segmenter.",
+    topics: "Emner de får",
+    topicsHint: "Alle som melder seg på her er med i disse emnene, som om de hadde krysset av for dem. De andre emnene deres blir som de er.",
     keep: "Behold svar i",
     keepHint: "Eldre svar slettes av seg selv. Svar er personopplysninger: behold dem bare så lenge du trenger dem.",
     months: { one: "{n} måned", many: "{n} måneder" },

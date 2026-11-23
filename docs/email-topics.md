@@ -58,3 +58,9 @@ choice (when, from where, the words shown); the AI manager and the API read and 
   replaced the old unsubscribe action, so the page adds no server reference). `src/server/email-preferences.ts` saves by the token;
   `marketing_subscribers.frequency` and `rest_until` (migration `tiny_rattler`) are held in `suppressed()`, one statement with the sunset,
   the look back at what was sent run only for a reader who chose a limit. A cart reminder's token keeps the plain unsubscribe page.
+- **Slice 3, 23 November 2026.** A sign-up form's settings name the topics it puts people in (*Topics they get*, store and Kaizena
+  Flow's own forms, the latter with its house store's topics); the sign-up keeps each as the reader's choice with the words they agreed to
+  (`keepOnList()`, source `form`), with no script added to the storefront. A subscriber's page in the admin shows *What they chose* and
+  every topic choice (`readerChoices()`). The AI manager's `draft_broadcast` takes a `topic` (refused with the store's topics where unknown,
+  so no new tool) and `list_broadcasts` says each one's topic (API 1.55). Visitors ticking topics themselves on a form is left for later:
+  it would put client code on the order page's path, whose first scripts are at their budget.

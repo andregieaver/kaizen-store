@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { houseStoreId } from "@/server/house-customers";
+import { listTopics } from "@/server/marketing-topics";
+import { topicName } from "@/lib/marketing-topics";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { FormEditor } from "@/components/admin/forms/form-editor";
 import { FormTabs } from "@/components/admin/forms/form-tabs";
@@ -42,7 +45,14 @@ export default async function PlatformFormPage({ params }: PageProps<"/admin/pla
   if (!form) notFound();
   const lang = adminLangOf(account.adminLocale);
   const w = FORMS_WORDS[lang];
-  const [uses, linked, starter] = await Promise.all([formUses(null, form.id), templatesOfForm({ accountId: account.id, storeId: null }, form.id, "en"), starterOfForm(form.id, "en")]);
+  // Kaizena Flow's sign-ups join its own store's list (D467), so its topics are that store's.
+  const house = form.kind === "signup" ? await houseStoreId() : null;
+  const [uses, linked, starter, topics] = await Promise.all([
+    formUses(null, form.id),
+    templatesOfForm({ accountId: account.id, storeId: null }, form.id, "en"),
+    starterOfForm(form.id, "en"),
+    house ? listTopics(house) : Promise.resolve([]),
+  ]);
   const base = "/admin/platform/forms";
   return (
     <AdminTextScope texts={areaTexts(lang, { forms: FORMS_WORDS, blocksForm: BLOCKS_FORM_WORDS, formTemplates: FORM_TEMPLATES_WORDS })}>
@@ -58,6 +68,7 @@ export default async function PlatformFormPage({ params }: PageProps<"/admin/pla
           key={form.id}
           form={form}
           siteLang="en"
+          topics={topics.map((t) => ({ id: t.id, name: topicName(t.names, "en-GB", "en-GB").name }))}
           languages={TEMPLATE_LANGUAGES}
           canEdit={platformCan(account, "website", "write")}
           codes={null}

@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
@@ -23,6 +24,8 @@ import { issueSignupCode } from "./discounts";
 import { houseStoreId } from "./house-customers";
 import { log } from "./log";
 import { joinList } from "./marketing-subscribers";
+import { recordChoices } from "./marketing-topics";
+import { col, typedRow } from "./typed-rows";
 import { tagFromForm } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { formToInbox } from "./support-forms";
@@ -318,7 +321,7 @@ export async function submitForm(request: FormRequest, visitor: string, files: R
     // A store's form keeps the person on its list (D295), as unconfirmed: the owner switched the confirmation off. Kaizena Flow's own forms keep
     // them on its own store's list (D467).
     const list = owner.storeId ?? (await houseStoreId());
-    if (list) await keepOnList(list, block.id, checked.email, payload, request.lang, "unconfirmed", request.path);
+    if (list) await keepOnList(list, block.id, checked.email, payload, request.lang, "unconfirmed", request.path, block.topics ?? []);
     const status = await relaySignup(found, checked.email, payload, null, request.path, id);
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid and ${owned(owner.storeId)}`);
     if (found.formId) {
@@ -367,6 +370,7 @@ async function keepOnList(
   locale: string,
   proof: "confirmed" | "unconfirmed",
   path: string,
+  topics: readonly string[],
 ) {
   try {
     await joinList({
@@ -383,6 +387,14 @@ async function keepOnList(
       consentedAt: new Date(payload.consentedAt),
       proof,
     });
+    // The form's topics (email plan M4.2, D882): the reader is in each, kept as their choice with the words they agreed to.
+    if (topics.length > 0) {
+      const subscriber = await typedRow(
+        z.object({ id: col.uuid }),
+        sql`select id from commerce.marketing_subscribers where store_id = ${storeId}::uuid and lower(email) = lower(${email})`,
+      );
+      if (subscriber) await recordChoices(storeId, subscriber.id, topics.map((topicId) => ({ topicId, optedIn: true })), "form", payload.consent);
+    }
   } catch (error) {
     // The owner's email still goes (it carries the same consent), and the person is told it worked; the list misses them, which the log says.
     log("error", "forms.subscriber_keep_failed", {}, error);
@@ -488,7 +500,7 @@ export async function confirmSignup(token: string): Promise<{ location: string }
     return back("expired");
   }
   const list = storeId ?? (await houseStoreId());
-  if (list) await keepOnList(list, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed", path);
+  if (list) await keepOnList(list, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed", path, found.block.type === "newsletter" ? (found.block.topics ?? []) : []);
   if (storeId && found.block.type === "newsletter") await welcomeSignup(found, String(row.email), String(row.locale), String(row.id));
   const confirmedAt = new Date(String(row.confirmed_at));
   const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, confirmedAt, path, String(row.id));

@@ -15,6 +15,8 @@ const forms = await import("./forms");
 type Row = Record<string, unknown>;
 
 const run = Date.now().toString(36);
+// A topic of the store's (email plan M4.2), made with this id before the page is published.
+const topicId = crypto.randomUUID();
 let storeId: string;
 let otherStoreId: string;
 const path = "/s/forms/no/kontakt";
@@ -47,6 +49,7 @@ const page = pageInput.parse({
             },
             { id: `news-${run}`, type: "newsletter", recipients: [`liste-${run}@example.com`], askName: true, placeholder: "", submitLabel: "", successMessage: "", consent: "" },
             { id: `direct-${run}`, type: "newsletter", recipients: [`liste-${run}@example.com`], confirm: false, placeholder: "", submitLabel: "", successMessage: "", consent: "" },
+            { id: `topical-${run}`, type: "newsletter", recipients: [`liste-${run}@example.com`], confirm: false, topics: [topicId], placeholder: "", submitLabel: "", successMessage: "", consent: "Ja, kurs" },
             { id: `nowhere-${run}`, type: "newsletter", recipients: [], placeholder: "", submitLabel: "", successMessage: "", consent: "" },
           ],
         },
@@ -70,6 +73,7 @@ beforeAll(async () => {
   otherStoreId = await newStore("forms-other");
   // The owner's emails are in the store's main language: its own country's.
   await db().execute(sql`update commerce.stores set country = 'NO' where id = ${storeId}::uuid`);
+  await db().execute(sql`insert into commerce.marketing_topics (id, store_id, names, default_on) values (${topicId}::uuid, ${storeId}::uuid, '{"nb-NO": {"name": "Kurs", "line": ""}}'::jsonb, false)`);
   await db().execute(sql`
     insert into commerce.pages (store_id, type, slug, draft, published, published_at)
     values (${storeId}::uuid, 'page', 'kontakt', ${JSON.stringify(page)}::jsonb, ${JSON.stringify(page)}::jsonb, now())
@@ -216,6 +220,17 @@ describe("forms (D93)", () => {
     expect(String(list.at(-1)!.text)).toContain(`rett-${run}@example.com`);
     // Subscribed at once, and the list says it was never confirmed (the owner switched that off).
     expect(await subscriber(`rett-${run}@example.com`)).toMatchObject({ status: "subscribed", source: "form", confirmed: false });
+  });
+
+  it("puts a sign-up in the form's topics, kept as their choice with the words they agreed to (M4.2)", async () => {
+    const result = await forms.submitForm(request(`topical-${run}`, { email: `kurs-${run}@example.com` }), `visitor-t-${run}`);
+    expect(result).toEqual({ status: 200, body: { ok: true, outcome: "sent" } });
+    const [choice] = await db().execute<Row>(sql`
+      select c.opted_in, c.source, c.words from commerce.marketing_topic_choices c
+        join commerce.marketing_subscribers s on s.store_id = c.store_id and s.id = c.subscriber_id
+       where s.store_id = ${storeId}::uuid and s.email = ${`kurs-${run}@example.com`} and c.topic_id = ${topicId}::uuid
+    `);
+    expect(choice).toEqual({ opted_in: true, source: "form", words: "Ja, kurs" });
   });
 
   it("forgets sends after 30 days", async () => {

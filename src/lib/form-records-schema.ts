@@ -136,6 +136,8 @@ const draftObject = z.object({
         askName: z.boolean(),
         incentive: z.uuid().optional(),
         tags: z.array(z.string().trim().min(1).max(40)).max(SIGNUP_TAGS_MAX, `A sign-up puts at most ${SIGNUP_TAGS_MAX} tags on an address.`).optional(),
+        // The store's email topics a sign-up here is in (email plan M4.2, D882).
+        topics: z.array(z.uuid()).max(20).optional(),
       })
       .nullable(),
     keepMonths: z.number().int().min(1).max(FORM_KEEP_MONTHS_MAX, `Responses are kept at most ${FORM_KEEP_MONTHS_MAX} months.`),
