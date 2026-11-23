@@ -155,20 +155,26 @@ under *What the router fetches ahead*.
   files calling `confirm(` (`confirmFiles`) in `src/app/admin`, the platform's and the owner's pages included, and `src/components/admin`;
   none may rise. `docs/admin-style.md` 5.10 has the look.
 
-## Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`)
+## Basic and Advanced views (D454, D884, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`)
 
-- Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`): a store's admin lists each section's everyday pages in **Basic**, the default for every account, and every page in
-  **Advanced**. The choice is the account's (`accounts.admin_view`, saved by `adminViewAction()` from the switch in a store's top bar, the
-  phone's menu and Your account) and is held for the page by `AdminViewProvider` in the store's layout, so the sidebar (`StoreSidebar`,
-  `AreaLinks`), the phone's menu and the pages of cards (`HubCards`) follow it at once without a reload. A store page is in Basic when its
-  `StoreItem` says `basic: true` or it is where its section's tab leads (`advancedIn()`). Basic hides links, never pages: an address, Home,
-  the setup checklist or the AI manager still open any page, and its sidebar then shows it (`shownIn()`). While Basic is on, each
-  sidebar's foot, each page of cards and Home say how many pages Advanced adds and that it is where to look when something is missing,
-  with one press to switch (`BasicViewHint`). A new store page chooses: `basic: true` only for what most owners use every week
-  (`store-nav.test.ts` keeps Basic under half the pages and at most 12 a section). Every page in a sidebar or on a page of cards, at all
-  three levels, has an `icon` that `NavIcon` draws (the test refuses a name the set lacks; a new icon is a key in `nav-icons.tsx`, lucide
-  at the sections' stroke). The platform and the owner's level have no views. The rail shows its sections' names on screens
-  `RAIL_NAMES_WIDE` and wider until the person narrows it, which is kept.
+- Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`): every level of the admin (a store, the platform and the owner's level, D884) lists each section's everyday pages in **Basic**, the default for every account, and every page in
+  **Advanced**. The choice is the account's, one for every level (`accounts.admin_view`, saved by `adminViewAction()` from the switch in
+  each level's top bar, the phone's menu and Your account) and is held for the page by `AdminViewProvider` in each level's layout, from the
+  account the layout already reads (no new `cookies()` or `headers()` read), so the sidebar (`StoreSidebar`, `AreaLinks`), the phone's
+  menu and the pages of cards that follow it (`HubCards`) change at once without a reload. A page is in Basic when its item says
+  `basic: true` (`StoreItem`, `PlatformItem`, `OwnerItem`) or it is where its section's tab leads (`advancedIn()`, the one rule of the
+  three levels). Basic hides links, never pages: an address, Home, the setup checklist or the AI manager still open any page, and its
+  sidebar then shows it (`shownIn()`). While Basic is on, each sidebar's foot, each page of cards that follows the view and a store's Home (the
+  platform's has no note, to keep its document in its room, D884) say how many pages Advanced adds and that it is where to look when something is missing, with one press to switch
+  (`BasicViewHint`). A Settings page of cards lists every setting in either view (D597; the platform's too). A new page chooses:
+  `basic: true` only for what most people at that level use every week (`store-nav.test.ts`, `platform-nav.test.ts` and
+  `owner-nav.test.ts` keep Basic under half the pages, at most 12 a section, some in every sidebar, and list each section's by name). A
+  sidebar of many pages is in groups under headings, as a store's: the platform's Settings in six (Site, Money and tax, AI, Apps and
+  connections, Privacy and law, Running the platform) and the owner's Account in three (Personal, Billing and usage, Apps and themes); a
+  new page goes in the group a person would look in, and a new heading needs its Norwegian (`admin-nav-words.test.ts`). Every page in a
+  sidebar or on a page of cards, at all three levels, has an `icon` that `NavIcon` draws (the test refuses a name the set lacks; a new icon
+  is a key in `nav-icons.tsx`, lucide at the sections' stroke). The rail shows its sections' names on screens `RAIL_NAMES_WIDE` and wider
+  until the person narrows it, which is kept.
 
 ## Dates in the admin (code review 1.14, D786, `src/lib/admin-date.ts`)
 

@@ -66,9 +66,14 @@ own, or none:
 | Plans (credit card) | Editor · Limits · Plan features · Extensions · Accounts · Plan analytics · Reminders · Discounts · Referrals |
 | Access requests (bell, with the number waiting) | None |
 | Support (chat, with the number waiting) | Inbox · Support reports · Stores · Saved replies · Chat assistant · Website chat · Support settings |
-| Settings (cog) | 28 pages under one heading, from Header and footer, A/B tests and SEO to Team and Change log |
+| Settings (cog) | 28 pages in six groups (D884): Site · Money and tax · AI · Apps and connections · Privacy and law · Running the platform |
 
-Website and Settings open on a page of cards, one for each page in the sidebar. The AI manager is opened from the
+Settings' groups: **Site** (Header and footer, SEO, Cookies, Google reviews, Instagram), **Money and tax** (Stripe, VAT rates, Duty
+rates, Domains), **AI** (AI, AI usage, AI prices, 100-day challenge), **Apps and connections** (Integrations, Workflows, AI assistants
+and apps, App listings), **Privacy and law** (Data retention, Record of processing, Content notices) and **Running the platform** (Status
+page, Usage and limits, Emails, Languages, A/B tests, Search test, Team, Change log).
+
+Website and Settings open on a page of cards, one for each page in the sidebar; Settings' cards are in its six groups. The AI manager is opened from the
 header's button, not a tab; its page is Home's. The sections, their items and what each does are one structure,
 `PLATFORM_SECTIONS` in `src/lib/platform-nav.ts` (D877), from which the tabs and their counts, the sidebars, the hub pages and
 every page's permission area are derived; a test fails when a platform page folder is in no section and not Home's, or a
@@ -83,7 +88,7 @@ plans, emails that failed, AI use, each with the page to act on.
 
 | Tabs | Sidebar groups |
 |---|---|
-| Home · Stores · Work · Account | Account only (D147): Your account · Billing · AI usage · Referrals. Home, Stores and Work need none |
+| Home · Stores · Work · Account | Account only (D147), in three groups (D884): Personal · Billing and usage · Apps and themes. Home, Stores and Work need none |
 
 The overview is an operational bird's-eye view of every store the owner owns:
 
@@ -117,10 +122,11 @@ Someone who only works in stores (staff) sees just Stores and Account.
 
 The owner's level (D147) is the same shape: tabs with icons, the whole width, and `src/lib/owner-nav.ts` as its data.
 Home (owners), Stores, Support (where the person may read a store's inbox), Work (owners, or where a store has it on; it has its own
-sub-navigation) have no sidebar. Account has one: the person's own pages (Your account, Appearance, Kaizena Flow support, Your themes,
-Connected apps and assistants, Developer) and, for owners, what concerns their stores (AI manager notices, Your domains, Billing, AI
-usage, Usage and limits, Referrals, WordPress), each with its icon (`ACCOUNT_ITEMS`). Staff see Stores, Work where it is on, and Account
-without the owners' pages.
+sub-navigation) have no sidebar. Account has one, in three groups (`ACCOUNT_GROUPS`, D884): Personal (Your account, Appearance, AI
+manager notices, Kaizena Flow support), Billing and usage (Your domains, Billing, Extensions, Add to your account, AI usage, Usage and
+limits, Referrals) and Apps and themes (Your themes, Connected apps and assistants, Developer, WordPress), each page with its icon; the
+owners' pages only for owners, Your domains for a domain's holder too. Staff see Stores, Work where it is on, and Account without the
+owners' pages.
 
 ## Store
 
@@ -154,20 +160,21 @@ a page by that word, so renaming a menu item renames the page everywhere. The se
 section. Five titles stay fuller than their menu word (Analytics for Overview, the VAT, OSS and IOSS reports for VAT, Plans for
 Editor, Stores' support for Stores, Control center for Home), listed with their reasons in `src/lib/page-names.test.ts`.
 
-## Basic and Advanced (D454)
+## Basic and Advanced (D454, D884)
 
-A store's admin lists each section's everyday pages in **Basic**, every account's default, and every page in **Advanced**
-(`src/lib/admin-view.ts`, the audit behind it in `docs/audits/admin-usability-2026-11.md`). The switch, **Basic | Advanced**, is in the
-top bar beside the AI manager (icons only below 1280 px), at the foot of the phone's menu and on Your account; the choice is kept on the
-account, so it follows the person, and the sidebar and the pages of cards follow it at once.
+Every level lists each section's everyday pages in **Basic**, every account's default, and every page in **Advanced**
+(`src/lib/admin-view.ts`, the audit behind it in `docs/audits/admin-usability-2026-11.md`): a store since D454, the platform and the
+owner's level since D884. The switch, **Basic | Advanced**, is in the top bar beside the page finder (icons only below 1280 px), at the
+foot of the phone's menu and on Your account; the choice is kept on the account, one for every level, so it follows the person from a
+store to the platform and back, and the sidebar follows it at once.
 
-- A page is in Basic when its `StoreItem` says `basic: true`, or when its section's tab leads to it. About two in five are (45 of the 115 pages
-  on 17 November 2026); with only the online shop on, a store's Basic lists about 28 (Settings 11 of 33 when D454 was built).
+- A page is in Basic when its item says `basic: true` (`StoreItem`, `PlatformItem`, `OwnerItem`), or when its section's tab leads to it
+  (`advancedIn()`). In a store about two in five are (45 of the 115 pages on 17 November 2026; Settings 11 of 33 when D454 was built); on
+  the platform 24 of 57 (Website 6, Plans 4, Support 3, Settings 11, one in each of its groups); in Account 5 of 15.
 - Basic hides links, never pages. A link from Home, the setup checklist, a notice or the AI manager opens any page, and its sidebar then
   lists it where it lives, marked as the page being viewed.
-- While Basic is on, the foot of each sidebar, the foot of each page of cards and Home say how many more pages Advanced has here, that it
-  is where to look when something is missing, and switch with one press.
-- The platform and the owner's level have no views.
+- While Basic is on, the foot of each sidebar and a store's Home say how many more pages Advanced has here, that it
+  is where to look when something is missing, and switch with one press. The pages of cards list every page in either view (D597, D603).
 
 Every page in a sidebar and on a page of cards has an icon beside its name (`icon`, drawn by `NavIcon`), at all three levels. The rail
 shows its sections' names on screens 1280 px and wider until the person narrows it.
