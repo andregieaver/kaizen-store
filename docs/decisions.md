@@ -885,6 +885,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D880 | **Use beyond the allowances billed as lines on the account's invoice, with a cap the owner may set (D748 E11)** | 2026-11-23 | [text](decisions/D880.md) |
 | D881 | **One source for a page's name: the admin map takes each page's section and menu label from the nav data at all three leve** | 2026-11-23 | [text](decisions/D881.md) |
 | D882 | **Topics and a preference page: a store's own topics, consent per topic kept as a record, how often and a month's pause ch** | 2026-11-23 | [text](decisions/D882.md) |
+| D883 | **The cookie popup's own look** | 2026-11-23 | [text](decisions/D883.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
