@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { buildBroadcastEmail, languageFor, type BroadcastContent, type EmailFacts } from "@/lib/broadcasts";
 import { renderEmail } from "@/lib/email-layout";
+import { preferenceWords } from "@/lib/email-preference-words";
 import { emailText } from "@/lib/email-text";
 import { t } from "@/lib/i18n";
 import { marketUrl } from "@/lib/paths";
@@ -70,7 +71,7 @@ export function marketingEmail(input: {
       facts: input.facts,
       locale: language,
       footer: emailFooter(store, emailText(lang)),
-      unsubscribe: { text: input.moved ? m.news.movedReason(store.name) : m.news.emailReason(store.name), linkText: m.news.choose, url: `${base}/unsubscribe/${token ?? "test"}` },
+      unsubscribe: { text: input.moved ? m.news.movedReason(store.name) : m.news.emailReason(store.name), linkText: preferenceWords(lang).choose, url: `${base}/unsubscribe/${token ?? "test"}` },
       resolve: resolverFor(store, marketSlug),
       link: (key, target) => (input.link ? input.link(key, target, marketSlug) : target),
       html: cleanEmailHtml,

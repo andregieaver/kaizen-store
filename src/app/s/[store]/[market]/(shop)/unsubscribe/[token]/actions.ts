@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import { t } from "@/lib/i18n";
+import { preferenceWords } from "@/lib/email-preference-words";
 import { topicName } from "@/lib/marketing-topics";
 import { marketPath } from "@/lib/paths";
 import { unsubscribe } from "@/server/cart-reminders";
@@ -31,10 +31,9 @@ export async function emailChoiceAction(storeSlug: string, marketSlug: string, t
   // Save: the topics ticked, how often, and the words the page showed, kept with each changed choice as the record of what was agreed.
   const prefs = await preferencesByToken(storeId, token);
   if (!prefs) back("unknown");
-  const m = t(shop!.market.lang);
   const main = shop!.store.localization.locales[0] ?? shop!.market.locale;
   const names = prefs!.topics.map((topic) => topicName(topic.names, shop!.market.locale, main).name);
-  const words = [m.news.prefsIntro, ...names].join(" · ");
+  const words = [preferenceWords(shop!.market.lang).prefsIntro, ...names].join(" · ");
   const saved = await savePreferences(storeId, token, { topicIds: form.getAll("topic").map(String), frequency: String(form.get("frequency") ?? ""), words });
   back(saved ? "saved" : "unknown");
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { preferenceWords } from "@/lib/email-preference-words";
 import { t } from "@/lib/i18n";
 import { topicName } from "@/lib/marketing-topics";
 import { preferencesByToken } from "@/server/email-preferences";
@@ -35,6 +36,7 @@ async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "sea
   const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const m = t(shop.market.lang);
+  const pw = preferenceWords(shop.market.lang);
   const query = await searchParams;
   const prefs = await preferencesByToken(shop.store.id, token);
   const action = emailChoiceAction.bind(null, shop.store.slug, shop.market.slug, token);
@@ -67,19 +69,19 @@ async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "sea
   const main = shop.store.localization.locales[0] ?? shop.market.locale;
   const until = prefs.restUntil ? new Date(prefs.restUntil).toLocaleDateString(shop.market.locale, { dateStyle: "long", timeZone: shop.store.timeZone }) : null;
   const OFTEN = [
-    ["all", m.news.oftenAll],
-    ["weekly", m.news.oftenWeekly],
-    ["monthly", m.news.oftenMonthly],
+    ["all", pw.oftenAll],
+    ["weekly", pw.oftenWeekly],
+    ["monthly", pw.oftenMonthly],
   ] as const;
   return (
     <>
       {heading}
-      {query.saved && <p role="status">{m.news.saved}</p>}
+      {query.saved && <p role="status">{pw.saved}</p>}
       <form action={action} className="flex flex-col gap-5" data-preferences>
-        <p>{m.news.prefsIntro}</p>
+        <p>{pw.prefsIntro}</p>
         {prefs.topics.length > 0 && (
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 font-medium">{m.news.topicsLegend}</legend>
+            <legend className="mb-1 font-medium">{pw.topicsLegend}</legend>
             {prefs.topics.map((topic) => {
               const { name, line } = topicName(topic.names, shop.market.locale, main);
               return (
@@ -95,7 +97,7 @@ async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "sea
           </fieldset>
         )}
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 font-medium">{m.news.often}</legend>
+          <legend className="mb-1 font-medium">{pw.often}</legend>
           {OFTEN.map(([value, label]) => (
             <label key={value} className="flex items-center gap-3">
               <input type="radio" name="frequency" value={value} defaultChecked={prefs.frequency === value} className="size-4" />
@@ -104,29 +106,29 @@ async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "sea
           ))}
         </fieldset>
         <button type="submit" name="do" value="save" className="min-h-11 self-start button-primary px-5 font-medium">
-          {m.news.save}
+          {pw.save}
         </button>
       </form>
       <form action={action} className="flex flex-col gap-3 border-t border-border pt-6">
-        <h2 className="text-xl font-heading">{m.news.pauseHeading}</h2>
+        <h2 className="text-xl font-heading">{pw.pauseHeading}</h2>
         {until ? (
           <>
-            <p role="status">{m.news.resting(until)}</p>
+            <p role="status">{pw.resting(until)}</p>
             <button type="submit" name="do" value="resume" className={SECONDARY}>
-              {m.news.resume}
+              {pw.resume}
             </button>
           </>
         ) : (
           <>
-            <p>{m.news.pauseText}</p>
+            <p>{pw.pauseText}</p>
             <button type="submit" name="do" value="pause" className={SECONDARY}>
-              {m.news.pauseButton}
+              {pw.pauseButton}
             </button>
           </>
         )}
       </form>
       <form action={action} className="flex flex-col gap-3 border-t border-border pt-6">
-        <h2 className="text-xl font-heading">{m.news.leaveHeading}</h2>
+        <h2 className="text-xl font-heading">{pw.leaveHeading}</h2>
         <p>{m.news.unsubscribeIntro}</p>
         <button type="submit" name="do" value="unsubscribe" className={SECONDARY}>
           {m.unsubscribeButton}
