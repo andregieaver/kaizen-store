@@ -32,12 +32,26 @@ export async function FormSection({ block, place }: { block: EmailFormBlock | Ne
   // A form with a payment (D738 F6c) says what is paid and its price in this market, worded here so visitors' scripts carry no more words.
   const offer = place.owner && form.paymentVariantId ? await formPaymentOffer(place.owner, form.paymentVariantId, place.market) : null;
   return (
-    <SiteForm
-      form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout }))}
-      store={place.owner}
-      lang={lang}
-      market={place.market}
-      payNote={offer ? t(lang).form.payNote(offer.title, offer.price) : undefined}
-    />
+    <div>
+      {/* A saved form's views (M4.3, D871): a lazy one-pixel image, fetched by the browser only as the form comes near view (and not while
+          its popup is closed), counted by `/api/forms/seen`. No script, cookie or storage. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- a counter, not a picture: next/image would cache and resize it. */}
+      <img
+        src={`/api/forms/seen?form=${form.id}${place.owner ? `&store=${place.owner}` : ""}`}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        width={1}
+        height={1}
+        className="pointer-events-none absolute size-px opacity-0"
+      />
+      <SiteForm
+        form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout }))}
+        store={place.owner}
+        lang={lang}
+        market={place.market}
+        payNote={offer ? t(lang).form.payNote(offer.title, offer.price) : undefined}
+      />
+    </div>
   );
 }

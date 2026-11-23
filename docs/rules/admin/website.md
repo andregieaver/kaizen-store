@@ -1703,7 +1703,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   puts it in the visitor's cart and writes `form_payments` in the same transaction; never a payment outside an order, never on Kaizena Flow's forms.
 - A form template never changes a form made from it; a form on a page is archived, never deleted.
 - A saved form's views (M4.3, D871) are only `commerce.form_view_counts`, a counter per form and day, written only by `recordFormSeen()`
-  from `SiteForm`'s one beacon a page load (`/api/forms/seen`, no cookie or storage; robots and privacy signals not counted); the forms
+  from the lazy one-pixel image `FormSection` draws beside a saved form (`/api/forms/seen`, no script, cookie or storage; robots and privacy
+  signals not counted), never client code on the form's path (first-scripts budgets); the forms
   list reads them with its answers through `formReport()`.
 - Form templates (F4) are `commerce.form_templates`, written only by `src/server/form-templates.ts`: Kaizena Flow's seven starters are
   seeded rows (`starter`), hidden but never deleted; a template holds no recipients, subject, inbox, welcome code or tags; only a store's
