@@ -5861,8 +5861,7 @@ export const sendingDomains = commerce.table(
     updatedAt: updatedAt(),
   },
   (t) => [
-    // One per store, per account and Kaizena Flow's own (D874). The older one per store goes once the code that names it has been replaced.
-    unique("sending_domains_store_key").on(t.storeId).nullsNotDistinct(),
+    // One per store, per account and Kaizena Flow's own (D874).
     unique("sending_domains_owner_key").on(t.storeId, t.organisationId).nullsNotDistinct(),
     check("sending_domains_one_owner", sql`${t.storeId} is null or ${t.organisationId} is null`),
     index("sending_domains_organisation_idx").on(t.organisationId),

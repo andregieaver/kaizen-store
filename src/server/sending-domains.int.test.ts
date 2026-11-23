@@ -337,6 +337,14 @@ describe("an account's own sending domain (D874)", () => {
     expect(await sending.senderFor(sesStoreOf())).toBeNull();
   });
 
+  it("keeps an account's domain beside Kaizena Flow's own, each one at most (D874)", async () => {
+    await db().execute(sql`insert into commerce.sending_domains (store_id, organisation_id, domain) values (null, null, ${`own-${run}.com`})`);
+    await db().execute(sql`insert into commerce.sending_domains (store_id, organisation_id, domain) values (null, ${organisationId}::uuid, ${`acct2-${run}.com`})`);
+    await expect(db().execute(sql`insert into commerce.sending_domains (store_id, organisation_id, domain) values (null, ${organisationId}::uuid, ${`acct3-${run}.com`})`)).rejects.toThrow();
+    await expect(db().execute(sql`insert into commerce.sending_domains (store_id, organisation_id, domain) values (null, null, ${`own2-${run}.com`})`)).rejects.toThrow();
+    await db().execute(sql`delete from commerce.sending_domains where domain in (${`own-${run}.com`}, ${`acct2-${run}.com`})`);
+  });
+
   it("refuses a row that is both a store's and an account's", async () => {
     await expect(
       db().execute(sql`insert into commerce.sending_domains (store_id, organisation_id, domain) values (${storeId}::uuid, ${organisationId}::uuid, ${`both-${run}.no`})`),
