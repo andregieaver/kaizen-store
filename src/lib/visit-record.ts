@@ -23,6 +23,7 @@ export const visitBody = z.object({
   utm_source: z.string().max(60).optional(),
   utm_medium: z.string().max(30).optional(),
   utm_campaign: z.string().max(80).optional(),
+  utm_content: z.string().max(60).optional(),
   gclid: z.literal(true).optional(),
   fbclid: z.literal(true).optional(),
   ttclid: z.literal(true).optional(),

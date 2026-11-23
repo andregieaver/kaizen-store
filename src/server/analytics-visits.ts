@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { db } from "@/db/client";
-import { classifyChannel } from "@/lib/analytics-traffic";
+import { classifyChannel, cleanContent } from "@/lib/analytics-traffic";
 import { deviceOf, isBot } from "@/lib/experiments";
 import { storeDomain, storeOrigins } from "@/lib/paths";
 import { parseKey } from "@/lib/secret-box";
@@ -180,10 +180,10 @@ export async function recordVisit({ headers: h, body, now = new Date() }: { head
     ),
     up as (
       insert into commerce.visits as v
-        (store_id, day, visitor, market_code, device, channel, source, campaign, landing_path, page_views, product_views, checkout_at, first_seen, last_seen)
+        (store_id, day, visitor, market_code, device, channel, source, campaign, content, landing_path, page_views, product_views, checkout_at, first_seen, last_seen)
       values (
         ${store.id}::uuid, ${day}::date, ${visitor}, ${place.market}::char(2),
-        ${deviceOf(userAgent)}, ${channel.channel}, ${clip(channel.source, 100)}, ${clip(channel.campaign, 100)}, ${clip(place.landing, 300)},
+        ${deviceOf(userAgent)}, ${channel.channel}, ${clip(channel.source, 100)}, ${clip(channel.campaign, 100)}, ${cleanContent(input.utm_content)}, ${clip(place.landing, 300)},
         1, (select count(*)::int from prod), case when ${place.kind === "checkout"}::boolean then ${at}::timestamptz end, ${at}::timestamptz, ${at}::timestamptz
       )
       on conflict (store_id, day, visitor) do update set

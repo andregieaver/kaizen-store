@@ -3,7 +3,7 @@
  * browser; `VisitBeacon` only wires it to `navigator`, `location` and `sendBeacon`.
  *
  * It uses no cookie and no storage of any kind (a test reads this file and the component to hold it to that). What is
- * sent is the path of the page (never its query), the referring site's host when it is another site, the three `utm_*`
+ * sent is the path of the page (never its query), the referring site's host when it is another site, the four `utm_*`
  * tags and whether an ad click id was in the address (never its value), and only on the first page view of a page load.
  */
 
@@ -20,7 +20,7 @@ export const MAX_BODY_BYTES = 1000;
 /** Kept shorter than that, so the largest body is about 700 bytes and a multi-byte character cannot tip it over. */
 const SOFT_BODY_BYTES = 900;
 
-export const LIMITS = { path: 300, referrer: 120, source: 60, medium: 30, campaign: 80 } as const;
+export const LIMITS = { path: 300, referrer: 120, source: 60, medium: 30, campaign: 80, content: 60 } as const;
 
 /** Two page views of one path closer together than this are one (a double fire, a strict-mode remount). */
 export const DEBOUNCE_MS = 1500;
@@ -32,6 +32,7 @@ export type VisitBody = {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  utm_content?: string;
   gclid?: true;
   fbclid?: true;
   ttclid?: true;
@@ -79,7 +80,7 @@ const clip = (value: string | null, max: number): string | undefined => {
 };
 
 /** The tags and click-id flags of an address's query string. */
-export function campaignParams(search: string): Pick<VisitBody, "utm_source" | "utm_medium" | "utm_campaign" | "gclid" | "fbclid" | "ttclid"> {
+export function campaignParams(search: string): Pick<VisitBody, "utm_source" | "utm_medium" | "utm_campaign" | "utm_content" | "gclid" | "fbclid" | "ttclid"> {
   let params: URLSearchParams;
   try {
     params = new URLSearchParams(search);
@@ -90,9 +91,11 @@ export function campaignParams(search: string): Pick<VisitBody, "utm_source" | "
   const source = clip(params.get("utm_source"), LIMITS.source);
   const medium = clip(params.get("utm_medium"), LIMITS.medium);
   const campaign = clip(params.get("utm_campaign"), LIMITS.campaign);
+  const content = clip(params.get("utm_content"), LIMITS.content);
   if (source) out.utm_source = source;
   if (medium) out.utm_medium = medium;
   if (campaign) out.utm_campaign = campaign;
+  if (content) out.utm_content = content;
   // Only that an ad click id was there: its value identifies a click, and is never sent.
   for (const id of ["gclid", "fbclid", "ttclid"] as const) if (params.has(id)) out[id] = true;
   return out;
@@ -127,7 +130,7 @@ export function beaconBody(input: BeaconInput): string | null {
     Object.assign(body, campaignParams(input.search));
   }
   let text = JSON.stringify(body);
-  for (const drop of ["utm_campaign", "utm_source", "utm_medium", "referrer"] as const) {
+  for (const drop of ["utm_content", "utm_campaign", "utm_source", "utm_medium", "referrer"] as const) {
     if (bytes(text) <= SOFT_BODY_BYTES) break;
     delete body[drop];
     text = JSON.stringify(body);

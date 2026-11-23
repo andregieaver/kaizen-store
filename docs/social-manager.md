@@ -55,7 +55,7 @@ that knows the store's goals and its performance, in three phases:
 
 | Step | What | Done when |
 |---|---|---|
-| S1.1 | Tagged links on every link the platform builds for social (bio, posts), and attribution of visits and orders to a post | A test order from a tagged link shows on its post |
+| S1.1 | Tagged links on every link the platform builds for social (bio, posts), and attribution of visits and orders to a post | A test order from a tagged link shows on its post. **Done 2026-11-23**: `utm_content` kept on `visits.content`, `postLink()` (`src/lib/post-links.ts`), `postReport()` and `postRows()`, `docs/analytics.md` "Post"; `analytics-posts.int.test.ts` |
 | S1.2 | Social accounts: one table for connected channels (Meta first), tokens encrypted as `ad_connections`, insights fetched by the dispatcher | A connected account's last 90 days of posts and insights are kept |
 | S1.3 | The adviser's facts (`socialFacts()`): store and channel figures in one typed object, by code | The facts test covers an empty, a quiet and a busy account |
 | S1.4 | The report, recommendations and content plan as manager tools (`social_report`, `social_plan`), the plan as autopilot steps | Homer sees three verdicts and one button; Lisa sees every figure |

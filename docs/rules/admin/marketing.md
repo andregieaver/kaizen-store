@@ -24,7 +24,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   cannot explode; `analytics-perf.int.test.ts` guards it). Visit counting (`stores.visit_counting`, default off; `/api/visit`,
   `VisitBeacon`, `src/server/analytics-visits.ts`) sets no cookie and uses no storage, keeps no IP address or user agent, stores
   only a whitelisted landing path (`placeOfPath()`: never an id or token) and a visitor hash that changes every store day, and
-  ties a visit to a cart made that day (`carts.visit_id`) so orders know their channel and device; any new claim about it must
+  ties a visit to a cart made that day (`carts.visit_id`) so orders know their channel and device; a visit keeps its tidied tags (`source`, `campaign`, and since D870 `content`, `cleanContent()`), which `postReport()` follows to each post's orders and profit (`docs/analytics.md` "Post"); any new claim about it must
   stay true to that. Alerts, the forecast and the diagnosis are code (`alertsFor()`, `forecastMonth()`, `explainChange()`), with
   minimum volumes; the AI manager's `analytics_overview`, `explain_change` and `analytics_alerts` repeat them and never make a
   number. A rule's input is read in `alertSnapshotFor()` and nowhere else, so the Overview, Home, the alert emails, the briefing and

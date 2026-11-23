@@ -14629,6 +14629,8 @@ export const visits = commerce.table(
     channel: text("channel").notNull(),
     source: text("source").notNull().default(""),
     campaign: text("campaign").notNull().default(""),
+    /** The visit's `utm_content` (D870 S1.1, `cleanContent()`): which post or link of the campaign; empty when the address had none. */
+    content: text("content").notNull().default(""),
     landingPath: text("landing_path").notNull(),
     pageViews: integer("page_views").notNull().default(1),
     productViews: integer("product_views").notNull().default(0),

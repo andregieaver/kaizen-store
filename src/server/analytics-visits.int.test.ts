@@ -114,6 +114,17 @@ describe("recording a page view", () => {
     expect(String(row.visitor)).toMatch(/^[0-9a-f]{24}$/);
   });
 
+  it("keeps the post a visit came from (utm_content, D870 S1.1), tidied, and empty when the address had none", async () => {
+    await recordVisit({
+      headers: asRequest(),
+      body: view(page("/p/demo-mug"), { utm_source: "instagram", utm_medium: "social", utm_campaign: "spring", utm_content: " P-Abc123 " }),
+      now: EVENING,
+    });
+    expect((await visits())[0]).toMatchObject({ channel: "organic_social", source: "instagram", campaign: "spring", content: "p-abc123" });
+    await recordVisit({ headers: asRequest({}, DESKTOP), body: view(page()), now: EVENING });
+    expect((await visits()).map((r) => r.content).sort()).toEqual(["", "p-abc123"]);
+  });
+
   it("adds a later page view to the same row and keeps what the first one decided", async () => {
     await recordVisit({ headers: asRequest(), body: view(page(), { utm_source: "newsletter", utm_medium: "email" }), now: EVENING });
     await recordVisit({ headers: asRequest(), body: view(page("/cart"), { referrer: "www.facebook.com" }), now: new Date(EVENING.getTime() + 60_000) });

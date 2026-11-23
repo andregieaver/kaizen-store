@@ -26,6 +26,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ANALYTICS_NOTES_EN } from "@/lib/analytics-note-labels";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
+import type { PostInput } from "@/lib/post-links";
 
 import { getAnalyticsSettings } from "./analytics-settings";
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayKey, dayStart, EXCHANGE_ORDER, FROM_CHECKOUT, HAS_CUSTOMER, inMain, num, PAID, type Row, soldIn, STAFF_MADE, toMainOne } from "./analytics-sql";
@@ -829,5 +830,98 @@ export async function campaignReport(store: Store, period: AnalyticsPeriod, mode
     missingCurrencies: [...missing].sort(),
     rows: [...rows.values()].sort((a, b) => b.revenueMinor - a.revenueMinor || b.sessions - a.sessions || a.campaign.localeCompare(b.campaign)),
     covered,
+  };
+}
+
+export type PostReport = {
+  currency: string;
+  counting: boolean;
+  /** The covered days of the period; null when no day of it was counted. */
+  covered: { from: string; to: string } | null;
+  rows: PostInput[];
+  /** Currencies with no rate, whose orders are left out and counted. */
+  missingCurrencies: string[];
+};
+
+const POST_SESSIONS = z.object({ k: col.text, sessions: col.minor, carts: col.minor });
+const POST_ORDERS = z.object({
+  k: col.text,
+  currency: col.currency,
+  orders: col.minor,
+  revenue: col.minor,
+  cogs: col.minor,
+  line_rev: col.minor,
+  known_rev: col.minor,
+});
+
+/**
+ * What each tagged post sold (D870 S1.1, `docs/analytics.md` "Post"): per source, campaign and content of the day's visit (`visits.content`,
+ * so only visits whose address carried a `utm_content`), the visitor-days, those that made a cart, and the paid checkout orders of those
+ * carts with their revenue, line revenue and cost of goods (`postRows()` works out conversion and profit). Last visit only: the first-visit
+ * cookie keeps no content. Covered days only, as every visit report.
+ */
+export async function postReport(store: Store, period: AnalyticsPeriod, now?: Date): Promise<PostReport> {
+  const firstDay = store.visitCounting ? await firstCountedDay(store) : null;
+  const { coverage, range } = coverageOf(store, period, firstDay, now);
+  const base = { currency: mainCurrency(store), counting: coverage.counting, missingCurrencies: [] as string[] };
+  if (!range) return { ...base, covered: null, rows: [] };
+  const key = sql`v.source || ${SEP} || v.campaign || ${SEP} || v.content`;
+  const [sessionRows, orderRows] = await Promise.all([
+    typedRows(
+      POST_SESSIONS,
+      sql`
+      select ${key} as k, count(*) as sessions,
+        count(*) filter (where exists (select 1 from commerce.carts c where c.store_id = v.store_id and c.visit_id = v.id)) as carts
+      from commerce.visits v
+      where ${visitsIn(store, range)} and v.content <> ''
+      group by 1
+    `,
+    ),
+    setBased(sql`
+      with po as materialized (
+        select o.id, o.currency::text as currency, (o.total_minor - o.tax_minor) as revenue, (${key})::text as k
+        from commerce.orders o ${ORDER_VISIT}
+        where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${soldIn(store, range)}
+          and o.currency = any(${convertibleCurrencies(store)}) and v.content <> ''
+      ),
+      pl as (
+        select po.k, po.currency, coalesce(sum(ol.unit_cost_minor * ol.quantity), 0) as cogs, coalesce(sum(ol.total_minor - ol.tax_minor), 0) as line_rev,
+          coalesce(sum(case when (ol.variant_id is not null or ol.custom) and ol.unit_cost_minor is null then 0 else ol.total_minor - ol.tax_minor end), 0) as known_rev
+        from po join commerce.order_lines ol on ol.order_id = po.id and ol.store_id = ${store.id}::uuid
+        group by po.k, po.currency
+      ),
+      po_agg as (select k, currency, count(*) as orders, sum(revenue) as revenue from po group by k, currency)
+      select a.k, a.currency, a.orders, a.revenue, coalesce(l.cogs, 0) as cogs, coalesce(l.line_rev, 0) as line_rev, coalesce(l.known_rev, 0) as known_rev
+      from po_agg a left join pl l on l.k = a.k and l.currency = a.currency
+    `).then((read) => checkedRows(POST_ORDERS, read)),
+  ]);
+  const rows = new Map<string, PostInput>();
+  const at = (k: string) => {
+    let r = rows.get(k);
+    if (!r) {
+      const [source = "", campaign = "", content = ""] = k.split(SEP);
+      rows.set(k, (r = { source, campaign, content, sessions: 0, carts: 0, orders: 0, revenueMinor: 0, cogsMinor: 0, lineRevenueMinor: 0, knownLineRevenueMinor: 0 }));
+    }
+    return r;
+  };
+  for (const r of sessionRows) Object.assign(at(r.k), { sessions: r.sessions, carts: r.carts });
+  const missing = new Set<string>();
+  const groups = new Map<string, typeof orderRows>();
+  for (const r of orderRows) groups.set(r.k, [...(groups.get(r.k) ?? []), r]);
+  for (const [k, list] of groups) {
+    const row = at(k);
+    row.orders = list.reduce((s, r) => s + r.orders, 0);
+    const converted = inMain(store, list, ["revenue", "cogs", "line_rev", "known_rev"]);
+    row.revenueMinor = converted.values.revenue;
+    row.cogsMinor = converted.values.cogs;
+    row.lineRevenueMinor = converted.values.line_rev;
+    row.knownLineRevenueMinor = converted.values.known_rev;
+    for (const c of converted.missing) missing.add(c);
+  }
+  return {
+    ...base,
+    covered: range,
+    missingCurrencies: [...missing].sort(),
+    rows: [...rows.values()].sort((a, b) => b.revenueMinor - a.revenueMinor || b.sessions - a.sessions || a.content.localeCompare(b.content)),
   };
 }

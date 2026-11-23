@@ -147,6 +147,14 @@ export function cleanCampaign(raw: unknown): string {
   return tidy(raw, 80);
 }
 
+/**
+ * A `utm_content` as it is kept (D870 S1.1): which post, picture or link of a campaign a visit came from, tidied as a campaign is, at most
+ * 60 characters. It is a label the store chose (`postLink()` writes `p-…` for a post, `bio` for a profile link), never a person.
+ */
+export function cleanContent(raw: unknown): string {
+  return tidy(raw, 60);
+}
+
 function tidy(raw: unknown, max: number): string {
   if (typeof raw !== "string") return "";
   const text = raw

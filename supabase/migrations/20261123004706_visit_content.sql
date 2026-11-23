@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."visits" ADD COLUMN "content" text DEFAULT '' NOT NULL;
