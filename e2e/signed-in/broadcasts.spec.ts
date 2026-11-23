@@ -248,6 +248,12 @@ test("a reader chooses their topics and how often, pauses for a month, and start
     expect(row).toMatchObject({ frequency: "weekly", rest_until: null });
     const [kept] = await sql`select count(*)::int as n from commerce.marketing_topic_choices c join commerce.marketing_subscribers s on s.id = c.subscriber_id where s.token = ${token} and c.source = 'preferences'`;
     expect(kept.n).toBe(1);
+    // The staff see it on the subscriber's page: their topics now, how often, and the record of the choice.
+    const [sub] = await sql`select id from commerce.marketing_subscribers where token = ${token}`;
+    await page.goto(`/admin/${STORE}/subscribers/${sub.id}`);
+    await expect(page.locator("[data-reader-choices]")).toContainText("At most once a week");
+    await expect(page.getByText(`Turned off Workshops ${RUN}`)).toBeVisible();
+    if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT.replace(".png", "-reader.png"), fullPage: true });
   } finally {
     await sql.end();
   }
