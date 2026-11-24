@@ -16,7 +16,7 @@ import { adminScheme, isOfferedScheme } from "@/lib/admin-schemes";
 import { adminViewOf, type AdminView } from "@/lib/admin-view";
 import { signedInWithin } from "@/lib/fresh-sign-in";
 import { type PermissionHolder } from "@/lib/permissions";
-import { canPlatform, isMemberRole, platformRoleOf, type MemberRole, type PlatformAccess, type PlatformArea } from "@/lib/platform-access";
+import { canPlatform, isLegalReviewer, isMemberRole, type MemberRole, type PlatformAccess, type PlatformArea, platformRoleOf } from "@/lib/platform-access";
 import { createClient } from "@/lib/supabase/server";
 import { assuranceOf, heldPath, KILL_SWITCH_ACTION, mayUseAdmin, twoStepKillSwitch, TWO_STEP_PATHS, type Assurance } from "@/lib/two-step";
 
@@ -196,8 +196,8 @@ export function assuranceFor(session: SessionFacts, storeRequires = false): Assu
   return assuranceOf({
     level: session.level,
     enrolled: session.enrolled,
-    // Everyone on the platform's team is held at the second step, whatever their role (D510).
-    platformAdmin: platformRoleOf(session.account) !== null,
+    // Everyone on the platform's team is held at the second step, whatever their role (D510), its lawyers too (D892).
+    platformAdmin: platformRoleOf(session.account) !== null || isLegalReviewer(session.account),
     storeRequires,
     reenrolPending: session.reenrolPending,
     killSwitch: session.killSwitch,

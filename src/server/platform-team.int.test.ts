@@ -92,5 +92,21 @@ describe("the platform's team (D471)", () => {
     expect(await houseOwner(writer.id)).toBe(false);
     expect(await houseRole(writer.id)).toBeNull();
   });
-});
 
+  it("gives the Legal role (D892): on the team, never a seat in Kaizena Flow's store, and a seat held is closed", async () => {
+    const me = await admin(`team-me4-${run}@example.com`);
+    expect((await addPlatformAdmin(me, `team-lawyer-${run}@example.com`, "Lena", "legal")).ok).toBe(true);
+    const [lawyer] = await db().execute<{ id: string; platform_admin: boolean; platform_role: string }>(
+      sql`select id, platform_admin, platform_role from commerce.accounts where email = ${`team-lawyer-${run}@example.com`}`,
+    );
+    expect([lawyer.platform_admin, lawyer.platform_role]).toEqual([false, "legal"]);
+    expect(await houseRole(lawyer.id)).toBeNull();
+    expect((await listPlatformAdmins(me)).find((p) => p.id === lawyer.id)?.role).toBe("legal");
+
+    // A member moved to Legal leaves the store.
+    expect((await setPlatformRole(me, lawyer.id, "support")).ok).toBe(true);
+    expect((await houseRole(lawyer.id))?.template).toBe("support");
+    expect((await setPlatformRole(me, lawyer.id, "legal")).ok).toBe(true);
+    expect(await houseRole(lawyer.id)).toBeNull();
+  });
+});

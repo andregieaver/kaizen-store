@@ -297,6 +297,7 @@
     "src/db/schema.ts#platformApiTokens",
     "src/db/schema.ts#platformIntegrationDeliveries",
     "src/db/schema.ts#platformIntegrations",
+    "src/db/schema.ts#platformLegalViews",
     "src/db/schema.ts#platformMarketingSpend",
     "src/db/schema.ts#platformPageRoles",
     "src/db/schema.ts#platformPayoutLines",

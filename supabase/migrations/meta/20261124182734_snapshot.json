@@ -1,6 +1,6 @@
 {
-  "id": "43429fe7-ded1-4091-b31c-9775ff0f39ff",
-  "prevId": "72fc97e1-fad4-4589-90b0-13c2bc6f14d2",
+  "id": "bbf5eb9a-e017-43f9-87e6-c8b203178258",
+  "prevId": "43429fe7-ded1-4091-b31c-9775ff0f39ff",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1495,7 +1495,7 @@
         },
         "accounts_platform_role": {
           "name": "accounts_platform_role",
-          "value": "\"commerce\".\"accounts\".\"platform_role\" is null or (\"commerce\".\"accounts\".\"platform_role\" in ('support', 'content', 'finance', 'read_only') and not \"commerce\".\"accounts\".\"platform_admin\")"
+          "value": "\"commerce\".\"accounts\".\"platform_role\" is null or (\"commerce\".\"accounts\".\"platform_role\" in ('support', 'content', 'finance', 'read_only', 'legal') and not \"commerce\".\"accounts\".\"platform_admin\")"
         }
       },
       "isRLSEnabled": false
@@ -62399,6 +62399,124 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.platform_legal_views": {
+      "name": "platform_legal_views",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "review": {
+          "name": "review",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item": {
+          "name": "item",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "view": {
+          "name": "view",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "platform_legal_views_review_idx": {
+          "name": "platform_legal_views_review_idx",
+          "columns": [
+            {
+              "expression": "review",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "item",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_legal_views_account_idx": {
+          "name": "platform_legal_views_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "platform_legal_views_account_id_accounts_id_fk": {
+          "name": "platform_legal_views_account_id_accounts_id_fk",
+          "tableFrom": "platform_legal_views",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_legal_views_review": {
+          "name": "platform_legal_views_review",
+          "value": "\"commerce\".\"platform_legal_views\".\"review\" ~ '^[a-z0-9-]{1,60}$' and \"commerce\".\"platform_legal_views\".\"item\" ~ '^[A-Za-z0-9_-]{1,40}$'"
+        },
+        "platform_legal_views_view": {
+          "name": "platform_legal_views_view",
+          "value": "char_length(\"commerce\".\"platform_legal_views\".\"view\") between 1 and 4000"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.platform_marketing_spend": {
       "name": "platform_marketing_spend",

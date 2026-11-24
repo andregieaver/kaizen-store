@@ -58,6 +58,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     // The build writes this file when it ends (scripts/next-build.mjs: seconds, peak memory, the ten builds before) and the health route reads it.
     "/api/health": ["./build-stats.json"],
+    // The drafts under Legal reviews are read from the repository at run time (D892, `src/server/legal-reviews.ts`).
+    "/admin/legal/[review]": ["./docs/outreach-rules.md"],
     // Playwright also reads browsers.json and package.json at run time. The globs name
     // pnpm's own folders: a file under a linked folder would turn the link into a folder.
     "/api/cron/cookie-scan": CHROMIUM_FILES,

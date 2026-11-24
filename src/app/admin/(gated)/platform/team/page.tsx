@@ -6,7 +6,7 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { PLATFORM_ROLES } from "@/lib/platform-access";
+import { TEAM_ROLES } from "@/lib/platform-access";
 import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import { requirePlatformReader } from "@/server/auth";
 import { listPlatformAdmins } from "@/server/platform-team";
@@ -56,7 +56,7 @@ export default async function PlatformTeamPage() {
                       {w.role}
                     </label>
                     <select id={`role-${p.id}`} name="role" defaultValue={p.role} className={select}>
-                      {PLATFORM_ROLES.map((r) => (
+                      {TEAM_ROLES.map((r) => (
                         <option key={r} value={r}>
                           {w.roles[r]}
                         </option>
@@ -89,7 +89,7 @@ export default async function PlatformTeamPage() {
           </label>
           <fieldset className="flex max-w-xl flex-col gap-2 text-sm">
             <legend className="mb-1">{w.role}</legend>
-            {PLATFORM_ROLES.map((r) => (
+            {TEAM_ROLES.map((r) => (
               <label key={r} className="flex items-start gap-2">
                 <input type="radio" name="role" value={r} defaultChecked={r === "read_only"} className="mt-1" />
                 <span>

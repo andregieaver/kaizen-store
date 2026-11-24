@@ -497,6 +497,16 @@ under *What the router fetches ahead*.
   place, and the platform keeps an owner; a member is an admin of Kaizena Flow's own store in the store role of their work
   (`HOUSE_ROLE_TEMPLATE`), set in the same transaction, never its owner (`store_members_house()`).
 
+## Legal reviews and the Legal role (D892, `src/lib/legal-reviews.ts`, `src/server/legal-reviews.ts`, `/admin/legal`)
+
+- **Legal reviews and the Legal role (D892)**: drafts an outside lawyer reads (`LEGAL_REVIEWS`, each a file under `docs/` named by a
+  literal in `TEXTS` and traced into its route in `next.config.ts`) and the views written on each point (`platform_legal_views`, one record
+  per view, never edited; the newest shows). `legal` is a team role kept in `accounts.platform_role` (`TEAM_ROLES`) but never a platform
+  role: `platformRoleOf()` answers null for it, so no platform guard opens; it holds no seat in Kaizena Flow's store (`setPlatformRole()`
+  closes one); it is held at two-step sign-in (`assuranceFor()`). Legal reviews checks `mayReadLegalReviews()` itself (owners and lawyers,
+  never the other roles), and a view is posted to a route handler, same-site only, audited without its text. A view changes no code: the
+  owner moves the draft's rows, and the code follows the rows.
+
 ## The platform's figures, targets and morning briefing (C2, D513, `src/lib/platform-briefing.ts`, `src/server/platform-briefing.ts`)
 
 - **The platform's figures, targets and morning briefing (C2, D513, `src/lib/platform-briefing.ts`, `src/server/platform-briefing.ts`)**:

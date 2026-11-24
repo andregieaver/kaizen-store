@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { normaliseEmail } from "@/lib/email-address";
 import { ROLE_TEMPLATES } from "@/lib/permissions";
-import { HOUSE_ROLE_TEMPLATE, isMemberRole, isPlatformRole, type MemberRole, type PlatformRole } from "@/lib/platform-access";
+import { HOUSE_ROLE_TEMPLATE, isMemberRole, isTeamRole, type MemberRole, type TeamRole } from "@/lib/platform-access";
 
 import { audit, type Account } from "./auth";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -21,7 +21,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * changes the team; the platform always keeps an owner.
  */
 
-export type PlatformAdmin = { id: string; email: string; name: string | null; role: PlatformRole; twoStep: boolean; since: string; you: boolean };
+export type PlatformAdmin = { id: string; email: string; name: string | null; role: TeamRole; twoStep: boolean; since: string; you: boolean };
 
 /** Everyone on the platform's team, owners first. */
 export async function listPlatformAdmins(viewer: Account): Promise<PlatformAdmin[]> {
@@ -37,7 +37,7 @@ export async function listPlatformAdmins(viewer: Account): Promise<PlatformAdmin
     id: r.id,
     email: r.email,
     name: r.name,
-    role: r.platform_admin ? "owner" : isPlatformRole(r.platform_role) ? r.platform_role : "read_only",
+    role: r.platform_admin ? "owner" : isTeamRole(r.platform_role) ? r.platform_role : "read_only",
     twoStep: r.two_step,
     since: new Date(r.since).toISOString(),
     you: r.id === viewer.id,
@@ -80,14 +80,19 @@ async function placeInHouse(tx: Tx, accountId: string, role: MemberRole): Promis
 export type TeamResult = { ok: true; email: string } | { ok: false; problem: "invalid" | "disabled" | "already" | "self" | "last" | "not_found" };
 
 /** The two columns a role is kept in: an owner is `platform_admin`, any other role `platform_role`. */
-const columnsOf = (role: PlatformRole | null) => ({ admin: role !== null && !isMemberRole(role), member: isMemberRole(role) ? role : null });
+// A lawyer (D892) is kept in platform_role like a member, but is no member of the platform: no seat in Kaizena Flow's own store.
+const columnsOf = (role: TeamRole | null) => ({
+  admin: role !== null && role !== "legal" && !isMemberRole(role),
+  member: role === "legal" || isMemberRole(role) ? role : null,
+  house: isMemberRole(role) ? role : null,
+});
 
 const emailShape = z.email().max(254);
 
 /** Puts a person on the platform's team in a role (an owner by default): their account if they have one, else a new account they sign in to with this email. */
-export async function addPlatformAdmin(actor: Account, rawEmail: string, rawName: string, role: PlatformRole = "owner"): Promise<TeamResult> {
+export async function addPlatformAdmin(actor: Account, rawEmail: string, rawName: string, role: TeamRole = "owner"): Promise<TeamResult> {
   const email = normaliseEmail(rawEmail);
-  if (!actor.platformAdmin || !emailShape.safeParse(email).success || !isPlatformRole(role)) return { ok: false, problem: "invalid" };
+  if (!actor.platformAdmin || !emailShape.safeParse(email).success || !isTeamRole(role)) return { ok: false, problem: "invalid" };
   const name = rawName.replace(/\s+/g, " ").trim().slice(0, 120) || null;
   const found = await typedRow(
     z.object({ id: col.uuid, on_team: col.bool, disabled: col.bool }),
@@ -95,12 +100,12 @@ export async function addPlatformAdmin(actor: Account, rawEmail: string, rawName
   );
   if (found?.disabled) return { ok: false, problem: "disabled" };
   if (found?.on_team) return { ok: false, problem: "already" };
-  const { admin, member } = columnsOf(role);
+  const { admin, member, house } = columnsOf(role);
   const id = await db().transaction(async (tx) => {
     const made = found
       ? (await tx.execute(sql`update commerce.accounts set platform_admin = ${admin}, platform_role = ${member} where id = ${found.id}::uuid`), found.id)
       : (await typedRow(z.object({ id: col.uuid }), sql`insert into commerce.accounts (email, name, platform_admin, platform_role) values (${email}, ${name}, ${admin}, ${member}) returning id`, tx))!.id;
-    if (member) await placeInHouse(tx, made, member);
+    if (house) await placeInHouse(tx, made, house);
     return made;
   });
   await audit(actor.id, null, "platform.admin_added", { account: id, made: !found, role }, { target: { type: "account", id } });
@@ -108,10 +113,10 @@ export async function addPlatformAdmin(actor: Account, rawEmail: string, rawName
 }
 
 /** Gives someone on the team another role: an owner's alone, never one's own, and never so the platform is left without an owner. */
-export async function setPlatformRole(actor: Account, accountId: string, role: PlatformRole): Promise<TeamResult> {
-  if (!actor.platformAdmin || !isPlatformRole(role)) return { ok: false, problem: "invalid" };
+export async function setPlatformRole(actor: Account, accountId: string, role: TeamRole): Promise<TeamResult> {
+  if (!actor.platformAdmin || !isTeamRole(role)) return { ok: false, problem: "invalid" };
   if (accountId === actor.id) return { ok: false, problem: "self" };
-  const { admin, member } = columnsOf(role);
+  const { admin, member, house } = columnsOf(role);
   const result = await db().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('platform_team'))`);
     const target = await typedRow(
@@ -126,7 +131,13 @@ export async function setPlatformRole(actor: Account, accountId: string, role: P
     if (!target) return { ok: false as const, problem: "not_found" as const };
     if (target.owner && !admin && target.owners === 0) return { ok: false as const, problem: "last" as const };
     await tx.execute(sql`update commerce.accounts set platform_admin = ${admin}, platform_role = ${member} where id = ${accountId}::uuid`);
-    if (member) await placeInHouse(tx, accountId, member);
+    if (house) await placeInHouse(tx, accountId, house);
+    // A lawyer (D892) keeps no seat in Kaizena Flow's own store: one they held in another role is closed.
+    if (role === "legal") {
+      await tx.execute(sql`
+        update commerce.store_members set disabled_at = coalesce(disabled_at, now()), expires_at = coalesce(expires_at, now())
+         where account_id = ${accountId}::uuid and store_id = commerce.house_store()`);
+    }
     return { ok: true as const, email: target.email };
   });
   if (result.ok) await audit(actor.id, null, "platform.role_changed", { account: accountId, role }, { target: { type: "account", id: accountId } });

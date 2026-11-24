@@ -371,13 +371,14 @@ export const consoleNb: ConsoleMessages = {
     membersText:
       "Eiere kan gjøre alt, og er eiere av Kaizena Flows egen butikk. De andre rollene ser alle sider og endrer sin egen del, og arbeider i Kaizena Flows butikk i samme rolle.",
     role: "Rolle",
-    roles: { owner: "Eier", support: "Kundestøtte", content: "Innhold", finance: "Økonomi", read_only: "Kun lesing" },
+    roles: { owner: "Eier", support: "Kundestøtte", content: "Innhold", finance: "Økonomi", read_only: "Kun lesing", legal: "Jurist" },
     roleHelp: {
       owner: "Alt: innstillinger, teamet, AI-manageren.",
       support: "Svarer i kundestøtten og chatassistenten, og avgjør forespørsler om butikker.",
       content: "Bygger Kaizena Flows nettsted og temaer.",
       finance: "Holder abonnementene, prisene, rabattene, vervingen, påminnelsene og regnskapet.",
       read_only: "Ser alt, endrer ingenting.",
+      legal: "En ekstern advokat: leser og svarer på utkastene under Juridiske gjennomganger, og ser ikke noe annet.",
     },
     change: "Endre",
     roleSet: "{email} er {role} nå.",

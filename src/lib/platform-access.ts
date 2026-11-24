@@ -17,7 +17,23 @@ import { PLATFORM_BASE, PLATFORM_NAV_AREAS } from "./platform-nav";
 
 export const PLATFORM_ROLES = ["owner", "support", "content", "finance", "read_only"] as const;
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
-export const isPlatformRole = (value: unknown): value is PlatformRole => (PLATFORM_ROLES as readonly unknown[]).includes(value);
+
+/**
+ * The roles the team page offers (D892): the platform's roles and `legal`, an outside lawyer who reads and answers the drafts under Legal
+ * reviews and nothing else. `legal` is never a platform role: `platformRoleOf()` answers null for it, so no page or action of the platform
+ * admin opens to it, and Legal reviews checks `isLegalReviewer()` itself. Kept in `accounts.platform_role` like the others.
+ */
+export const TEAM_ROLES = [...PLATFORM_ROLES, "legal"] as const;
+export type TeamRole = (typeof TEAM_ROLES)[number];
+export const isTeamRole = (value: unknown): value is TeamRole => (TEAM_ROLES as readonly unknown[]).includes(value);
+
+/** Whether an account is an outside lawyer on the team (D892): it reads and answers Legal reviews, and nothing else of the platform. */
+export const isLegalReviewer = (account: { platformAdmin?: boolean; platformRole?: string | null } | null | undefined): boolean =>
+  Boolean(account && !account.platformAdmin && account.platformRole === "legal");
+
+/** Who may open Legal reviews (D892): the platform's owners, and its lawyers. */
+export const mayReadLegalReviews = (account: { platformAdmin?: boolean; platformRole?: string | null } | null | undefined): boolean =>
+  Boolean(account?.platformAdmin) || isLegalReviewer(account);
 
 /** The roles a platform admin gives that are not owner (kept in `accounts.platform_role`). */
 export const MEMBER_ROLES = ["support", "content", "finance", "read_only"] as const satisfies readonly PlatformRole[];

@@ -11,6 +11,7 @@ import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { attentionFor, changeText, money, totalSales } from "@/lib/control-center";
+import { isLegalReviewer } from "@/lib/platform-access";
 import { platformPath } from "@/lib/platform-lang";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { HOME_WORDS } from "@/lib/admin-words/home";
@@ -37,6 +38,8 @@ export default async function ControlCenterPage() {
   const owner = stores.some((store) => store.role === "owner");
   if (!owner) {
     // Someone whose account has no store, only a workspace (D748 E7), works there: it is their Home.
+    // A lawyer on the platform's team (D892) has one place: Legal reviews.
+    if (isLegalReviewer(account)) redirect("/admin/legal");
     const workspaces = stores.length === 0 && hostings.length === 0 && !account.platformAdmin ? await workspacesOf(account) : [];
     if (workspaces.length > 0) redirect(`/admin/${workspaces[0].slug}`);
     if (stores.length === 1 && hostings.length === 0 && !account.platformAdmin) redirect(`/admin/${stores[0].slug}`);

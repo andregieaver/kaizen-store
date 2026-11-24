@@ -534,7 +534,7 @@ export const accounts = commerce.table(
     check("accounts_admin_scheme", sql`${t.adminScheme} in ('meadow', 'indigo')`),
     check("accounts_admin_locale", sql`${t.adminLocale} in ('en', 'nb-NO')`),
     check("accounts_admin_view", sql`${t.adminView} in ('basic', 'advanced')`),
-    check("accounts_platform_role", sql`${t.platformRole} is null or (${t.platformRole} in ('support', 'content', 'finance', 'read_only') and not ${t.platformAdmin})`),
+    check("accounts_platform_role", sql`${t.platformRole} is null or (${t.platformRole} in ('support', 'content', 'finance', 'read_only', 'legal') and not ${t.platformAdmin})`),
   ],
 );
 
@@ -8885,6 +8885,31 @@ export const flowVersions = commerce.table(
     foreignKey({ name: "flow_versions_flow_fk", columns: [t.storeId, t.flowId], foreignColumns: [flows.storeId, flows.id] }).onDelete("cascade"),
   ],
 );
+
+/**
+ * A lawyer's view on one point of a draft under Legal reviews (D892, `src/lib/legal-reviews.ts`): the review and the point, what they wrote,
+ * who and when. Kept as a record and never changed: the newest per point is the view shown, the older ones its history. The platform's own
+ * (no store). Written only by `src/server/legal-reviews.ts`.
+ */
+export const platformLegalViews = commerce
+  .table(
+    "platform_legal_views",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      review: text("review").notNull(),
+      item: text("item").notNull(),
+      view: text("view").notNull(),
+      accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      index("platform_legal_views_review_idx").on(t.review, t.item, t.createdAt),
+      index("platform_legal_views_account_idx").on(t.accountId),
+      check("platform_legal_views_review", sql`${t.review} ~ '^[a-z0-9-]{1,60}$' and ${t.item} ~ '^[A-Za-z0-9_-]{1,40}$'`),
+      check("platform_legal_views_view", sql`char_length(${t.view}) between 1 and 4000`),
+    ],
+  )
+  .enableRLS();
 
 /**
  * Who is in a segment trigger's segment (M2.3, `segment.entered`), as its last hourly read found them (`enterSegments()`): a person new to it

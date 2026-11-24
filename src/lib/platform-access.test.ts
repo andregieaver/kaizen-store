@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canPlatform, HOUSE_ROLE_TEMPLATE, MEMBER_ROLES, PLATFORM_AREAS, PLATFORM_ROLES, platformAreaIn, platformAreaOfPath, platformRoleOf, ROLE_WRITES } from "./platform-access";
+import { canPlatform, HOUSE_ROLE_TEMPLATE, isLegalReviewer, isTeamRole, mayReadLegalReviews, MEMBER_ROLES, PLATFORM_AREAS, PLATFORM_ROLES, platformAreaIn, platformAreaOfPath, platformRoleOf, ROLE_WRITES } from "./platform-access";
 import { ROLE_TEMPLATES } from "./permissions";
 import { PLATFORM_SECTIONS, platformItemsOf, platformNavAreas } from "./platform-nav";
 
@@ -64,5 +64,22 @@ describe("roles on the platform's team (D510)", () => {
     for (const section of sections) expect(PLATFORM_AREAS, section.key).toContain(section.area);
     expect(platformAreaOfPath("/themes")).toBe("website");
     expect(platformAreaOfPath("/requests/abc")).toBe("stores");
+  });
+});
+
+describe("the Legal role (D892)", () => {
+  it("is on the team but never a platform role, so no platform page or action opens to it", () => {
+    expect(isTeamRole("legal")).toBe(true);
+    expect(PLATFORM_ROLES as readonly string[]).not.toContain("legal");
+    expect(platformRoleOf({ platformAdmin: false, platformRole: "legal" })).toBeNull();
+  });
+
+  it("opens Legal reviews to lawyers and owners, never to the platform's other roles", () => {
+    expect(isLegalReviewer({ platformAdmin: false, platformRole: "legal" })).toBe(true);
+    expect(isLegalReviewer({ platformAdmin: true, platformRole: "legal" })).toBe(false);
+    expect(mayReadLegalReviews({ platformAdmin: true })).toBe(true);
+    expect(mayReadLegalReviews({ platformAdmin: false, platformRole: "legal" })).toBe(true);
+    for (const role of MEMBER_ROLES) expect(mayReadLegalReviews({ platformAdmin: false, platformRole: role })).toBe(false);
+    expect(mayReadLegalReviews(null)).toBe(false);
   });
 });

@@ -6,7 +6,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { requirePlatformAdmin, signedInRecently } from "@/server/auth";
-import { isPlatformRole } from "@/lib/platform-access";
+import { isTeamRole } from "@/lib/platform-access";
 import { CONSOLE_WORDS } from "@/lib/admin-words/console";
 import { addPlatformAdmin, removePlatformAdmin, setPlatformRole, type TeamResult } from "@/server/platform-team";
 
@@ -19,7 +19,7 @@ export async function addAdminAction(_state: FormState, formData: FormData): Pro
   if (!(await signedInRecently())) return { status: "error", messages: [w.signInAgain] };
   // The least a person may do when no role came with the form (D510).
   const role = String(formData.get("role") ?? "read_only");
-  const result = await addPlatformAdmin(admin, String(formData.get("email") ?? ""), String(formData.get("name") ?? ""), isPlatformRole(role) ? role : "read_only");
+  const result = await addPlatformAdmin(admin, String(formData.get("email") ?? ""), String(formData.get("name") ?? ""), isTeamRole(role) ? role : "read_only");
   if (!result.ok) return { status: "error", messages: [w.problems[result.problem as Problem]] };
   revalidatePath("/admin/platform/team");
   return { status: "ok", messages: [fillWords(w.added, { email: result.email })] };
@@ -41,7 +41,7 @@ export async function setRoleAction(accountId: string, _state: FormState, formDa
   const w = CONSOLE_WORDS[adminLangOf(admin.adminLocale)].team;
   if (!(await signedInRecently())) return { status: "error", messages: [w.signInAgain] };
   const role = String(formData.get("role") ?? "");
-  if (!isPlatformRole(role)) return { status: "error", messages: [w.problems.invalid] };
+  if (!isTeamRole(role)) return { status: "error", messages: [w.problems.invalid] };
   const result = await setPlatformRole(admin, accountId, role);
   if (!result.ok) return { status: "error", messages: [w.problems[result.problem as Problem]] };
   revalidatePath("/admin/platform/team");

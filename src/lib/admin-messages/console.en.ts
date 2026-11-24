@@ -380,13 +380,14 @@ export const consoleEn = {
     membersText:
       "Owners can do everything, and are owners of Kaizena Flow's own store. The other roles see every page and change their own part, and work in Kaizena Flow's store in the same role.",
     role: "Role",
-    roles: { owner: "Owner", support: "Support", content: "Content", finance: "Finance", read_only: "Read-only" },
+    roles: { owner: "Owner", support: "Support", content: "Content", finance: "Finance", read_only: "Read-only", legal: "Legal" },
     roleHelp: {
       owner: "Everything: settings, the team, the AI manager.",
       support: "Answers the support desk and the chat assistant, and decides requests for stores.",
       content: "Builds Kaizena Flow's website and themes.",
       finance: "Keeps the plans, their prices, discounts, referrals and reminders, and the books.",
       read_only: "Sees everything, changes nothing.",
+      legal: "An outside lawyer: reads and answers the drafts under Legal reviews, and sees nothing else.",
     },
     change: "Change",
     roleSet: "{email} is {role} now.",
