@@ -141,7 +141,8 @@ with empty emails. Our lead is that the store's own data writes the first versio
 - Cold mail from the shared address would put every store's delivery at risk (M1.6).
 
 So the tool finds **companies, not people**, contacts each by the route its country allows, says where the details came from,
-and stops at the first no. Every country rule is read by a lawyer before the tool is switched on for stores.
+and stops at the first no. Every country rule is read by a lawyer before the tool is switched on for stores. The rules as we read them, for that
+lawyer: `docs/outreach-rules.md` (P5.3's draft, 24 November 2026).
 
 | Id | Step | Size | Status | Notes |
 |---|---|---|---|---|
