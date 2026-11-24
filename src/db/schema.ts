@@ -94,7 +94,7 @@ import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
 import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "../lib/marketing-consent";
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
-import { AUTOMATION_KINDS, LIFECYCLE_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
+import { AUTOMATION_KINDS, FLOW_ONLY_GOALS, LIFECYCLE_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
 import {
   HIDE_REASONS,
   PUBLISH_MODES,
@@ -8848,7 +8848,7 @@ export const flows = commerce.table(
       "flows_trigger_days",
       sql`case ${t.trigger} when 'customer.lapsed' then coalesce(${t.triggerDays} between 30 and 730, false) when 'customer.browsed' then coalesce(${t.triggerDays} between 1 and 5, false) when 'subscriber.asleep' then coalesce(${t.triggerDays} between 90 and 180, false) else ${t.triggerDays} is null end`,
     ),
-    check("flows_replaces", sql`${t.replaces} is null or ${t.replaces} in (${sqlList(AUTOMATION_KINDS)})`),
+    check("flows_replaces", sql`${t.replaces} is null or ${t.replaces} in (${sqlList([...AUTOMATION_KINDS, ...FLOW_ONLY_GOALS])})`),
     index("flows_store_trigger_idx").on(t.storeId, t.trigger).where(sql`${t.enabled}`),
     check("flows_name", sql`char_length(${t.name}) between 1 and 120`),
     check("flows_trigger", sql`${t.trigger} in (${sqlList(FLOW_TRIGGERS)})`),

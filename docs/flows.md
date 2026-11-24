@@ -88,6 +88,9 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    at a time typed on the store's clock (`schedule_at`), once or every 7, 14 or 30 days (`enterScheduled()`); a time missed by more than a
    day (the flow was off) is skipped, never sent late. The story says when and to whom (*Every 7 days from 1 Dec, 09:00, to everyone on
    your list*).
+   *Part j, the same day (M3.1):* the goal Get reviews (`reviews()`): two weeks after an order is sent, each buyer is shown what they bought
+   (picks `bought`, the order's products still on sale, each linking to its page) and asked for a review. No automation did it, so it is a
+   flow-only goal (`FLOW_ONLY_GOALS`, kept in `replaces`), and a store has it once.
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 

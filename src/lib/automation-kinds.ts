@@ -25,10 +25,13 @@ export const DELAY_RANGES: Record<LifecycleKind, { min: number; max: number; sta
 
 /**
  * The kinds whose email shows products chosen for each reader by code (D4): cross-sell what was bought with their order's products by other
- * customers, restock their order's products that customers buy again, browse the products they looked at and did not buy (D691). Never
- * chosen by a model.
+ * customers, restock their order's products that customers buy again, browse the products they looked at and did not buy (D691), bought
+ * their order's own products still on sale (a flow asking for reviews, M3.1). Never chosen by a model.
  */
-export const PICK_KINDS = ["cross_sell", "replenish", "browse"] as const;
+export const PICK_KINDS = ["cross_sell", "replenish", "browse", "bought"] as const;
+
+/** The goals a flow does that no automation did (M3.1): kept in a flow's `replaces` beside the automations' kinds, so a store has each once. */
+export const FLOW_ONLY_GOALS = ["reviews"] as const;
 
 /**
  * How long a signed-in subscriber's product views are kept for browse abandonment (D691): only while they are signed in, subscribed and

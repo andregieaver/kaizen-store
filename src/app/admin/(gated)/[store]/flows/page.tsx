@@ -66,7 +66,7 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
               <Card compact key={key}>
                 <div role="group" aria-label={w.goals[key].title} className="flex h-full flex-col items-start gap-2">
                   <p className="text-body-strong text-ink">{w.goals[key].title}</p>
-                  <p className="flex-1 text-caption text-muted">{key !== "sunset" && automations?.[key].saved ? w.goals.fromOwn : w.goals[key].text}</p>
+                  <p className="flex-1 text-caption text-muted">{key !== "sunset" && key !== "reviews" && automations?.[key].saved ? w.goals.fromOwn : w.goals[key].text}</p>
                   {/* From the store's own data (M3.9): who this goal would reach now, only when someone would. */}
                   {(proposals?.[key] ?? 0) > 0 && (
                     <p className="text-caption text-ink" data-goal-reach={key}>

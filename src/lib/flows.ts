@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AUTOMATION_KINDS, PICK_KINDS, type PickKind } from "./automation-kinds";
+import { AUTOMATION_KINDS, FLOW_ONLY_GOALS, PICK_KINDS, type PickKind } from "./automation-kinds";
 import type { AddedBlock } from "./flow-blocks";
 import type { BroadcastBlock, BroadcastContent } from "./broadcasts";
 import { broadcastContentSchema } from "./broadcasts-schema";
@@ -72,7 +72,7 @@ export const flowInputSchema = z.object({
   steps: z.array(flowStepSchema),
   goals: z.array(z.object({ kind: z.literal("ordered") })).max(1),
   /** The automation a recipe does the work of (slice 3): set when the flow is made, kept through every save. */
-  replaces: z.enum(AUTOMATION_KINDS).nullish(),
+  replaces: z.enum([...AUTOMATION_KINDS, ...FLOW_ONLY_GOALS]).nullish(),
   /** A lapse trigger's days (slice 4): required for `customer.lapsed`, refused for any other trigger. */
   triggerDays: z.number().int().nullish(),
   /** A segment trigger's segment (M2.3): required for `segment.entered`, refused for any other trigger. */

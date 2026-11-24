@@ -603,7 +603,7 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
         <ActionForm action={changeFlowPicksAction.bind(null, p.storeSlug, p.flowId, step.id)}>
           <div role="group" aria-label={w.canvas.picks} className="flex flex-wrap items-center gap-2 text-sm">
             <span className="w-full text-caption text-muted">{w.canvas.picks}</span>
-            {(["none", "cross_sell", "replenish", "browse"] as const)
+            {(["none", "cross_sell", "replenish", "browse", "bought"] as const)
               .filter((k) => k !== (step.picks ?? "none"))
               .map((k) => (
                 <SubmitButton key={k} variant="secondary" name="picks" value={k}>

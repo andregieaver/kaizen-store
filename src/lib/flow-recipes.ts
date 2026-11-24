@@ -24,6 +24,8 @@ type Words = {
   sunsetName: string;
   stillWant: [string, string];
   stillWantButton: string;
+  reviewsName: string;
+  reviewAsk: [string, string];
 };
 
 const WORDS: Record<"nb" | "en", Words> = {
@@ -49,6 +51,8 @@ const WORDS: Record<"nb" | "en", Words> = {
     sunsetName: "Hold listen våken",
     stillWant: ["Vil du fortsatt høre fra oss?", "Det er en stund siden du åpnet en lenke i e-postene våre. Vil du fortsatt ha nyhetene våre, trykk på knappen. Hvis ikke, slutter vi å sende deg e-post, helt greit."],
     stillWantButton: "Ja, hold meg oppdatert",
+    reviewsName: "Få anmeldelser",
+    reviewAsk: ["Hva synes du?", "Nå har du hatt det du kjøpte en stund. Fortell andre hva du synes: skriv en anmeldelse på siden til varen."],
   },
   en: {
     name: "Welcome series",
@@ -72,6 +76,8 @@ const WORDS: Record<"nb" | "en", Words> = {
     sunsetName: "Keep your list awake",
     stillWant: ["Do you still want to hear from us?", "It has been a while since you opened a link in our emails. If you still want our news, press the button. If not, we will stop emailing you, no hard feelings."],
     stillWantButton: "Yes, keep me posted",
+    reviewsName: "Get reviews",
+    reviewAsk: ["What do you think?", "You have had what you bought for a while now. Tell others what you think: write a review on its page."],
   },
 };
 
@@ -210,7 +216,31 @@ export function sunset(locale: string): Recipe {
   };
 }
 
-export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack, cross_sell: crossSell, replenish: restock, browse: browseReminder, sunset } as const;
+/**
+ * Get reviews (M3.1): two weeks after an order is sent, each buyer is shown what they bought and asked to write a review on its page. A goal
+ * no automation did (`FLOW_ONLY_GOALS`), so a store has it once.
+ */
+export function reviews(locale: string): Recipe {
+  const w = wordsFor(locale);
+  return {
+    name: w.reviewsName,
+    trigger: "order.sent",
+    replaces: "reviews",
+    steps: [{ id: "wait-14d", kind: "wait", hours: 14 * 24 }, { ...email("review", locale, w.reviewAsk), picks: "bought" }],
+    goals: [],
+  };
+}
+
+export const RECIPES = {
+  welcome: welcomeSeries,
+  after_purchase: afterPurchase,
+  win_back: winBack,
+  cross_sell: crossSell,
+  replenish: restock,
+  browse: browseReminder,
+  reviews,
+  sunset,
+} as const;
 export type RecipeKey = keyof typeof RECIPES;
 
 /** The goals a store already has a flow for: each flow's automation, and the sunset by its trigger (it replaces none). */

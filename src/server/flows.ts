@@ -345,7 +345,8 @@ export async function startRecipeFlow(store: Store, accountId: string, key: Reci
   const locale = store.localization.locales[0] ?? "en-GB";
   if (key === "own") return saveFlow(store.id, accountId, null, ownFlow(locale));
   if (!(key in RECIPES)) return { ok: false, problem: "No such goal." };
-  if (key === "sunset") return saveFlow(store.id, accountId, null, RECIPES.sunset(locale));
+  // Goals no automation did start from their recipe alone.
+  if (key === "sunset" || key === "reviews") return saveFlow(store.id, accountId, null, RECIPES[key](locale));
   const own = await getAutomation(store, key);
   const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key](locale);
   return saveFlow(store.id, accountId, null, recipe);
@@ -377,7 +378,7 @@ export async function flowProposals(storeId: string): Promise<Partial<Record<Rec
     `,
   );
   if (!row) return {};
-  return { welcome: row.joined, after_purchase: row.buyers, cross_sell: row.buyers, win_back: row.lapsed, replenish: row.repeat, sunset: row.asleep };
+  return { welcome: row.joined, after_purchase: row.buyers, cross_sell: row.buyers, win_back: row.lapsed, replenish: row.repeat, reviews: row.buyers, sunset: row.asleep };
 }
 
 /** The switched-on flow of a store that does an automation's work, by name; null for none (an automation stays off while one is on). */

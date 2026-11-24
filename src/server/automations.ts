@@ -574,6 +574,15 @@ export async function picksFor(storeId: string, kind: PickKind, orderId: string 
   if (!orderId) return [];
   const ordered = sql`(select v.product_id from commerce.order_lines l join commerce.product_variants v on v.id = l.variant_id
     where l.store_id = ${storeId}::uuid and l.order_id = ${orderId}::uuid and not l.gift)`;
+  // Bought (M3.1, asking for reviews): the order's own products still on sale, so each has a page to review it on.
+  if (kind === "bought") {
+    return typedRows(
+      PICK_ROW,
+      sql`select p.id, p.handle from commerce.products p
+           where p.store_id = ${storeId}::uuid and p.id in ${ordered} and p.status = 'active' and ${OFFERED}
+           order by p.id limit ${PICKS_SHOWN}`,
+    );
+  }
   if (kind === "replenish") {
     return typedRows(
       PICK_ROW,

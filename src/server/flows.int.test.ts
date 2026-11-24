@@ -690,4 +690,20 @@ describe("wait until and tags (M2.1)", () => {
     expect(new Date(String((await fl.getFlow(storeId, saved.id))?.scheduleAt)).getTime()).toBeGreaterThan(t);
     await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
   });
+
+  it("starts the reviews goal once, its email showing what each buyer bought (M3.1)", async () => {
+    const { RECIPES, goalsMade } = await import("@/lib/flow-recipes");
+    const { picksFor } = await import("./automations");
+    const saved = await fl.saveFlow(storeId, owner, null, RECIPES.reviews("nb-NO"));
+    if (!saved.ok) throw new Error(saved.problem);
+    const flow = await fl.getFlow(storeId, saved.id);
+    expect(flow?.replaces).toBe("reviews");
+    expect(flow?.steps.find((step) => step.kind === "email")).toMatchObject({ picks: "bought" });
+    expect(goalsMade(await fl.listFlows(storeId)).has("reviews")).toBe(true);
+    // An order with no products to show picks nothing, so the email is not sent and the run goes on.
+    const buyer = `anmelder-${run}@example.com`;
+    await paidOrder(buyer, new Date());
+    const [order] = await db().execute<Row>(sql`select id from commerce.orders where store_id = ${storeId}::uuid and email = ${buyer}`);
+    expect(await picksFor(storeId, "bought", String(order.id), buyer)).toEqual([]);
+  });
 });

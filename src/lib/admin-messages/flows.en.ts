@@ -27,6 +27,7 @@ export const flowsEn = {
     cross_sell: "With what others bought with their order. Not sent to someone with nothing to show.",
     replenish: "With their order's products that customers buy again. Not sent to someone with nothing to show.",
     browse: "With the products they looked at and did not buy. Not sent to someone with nothing to show.",
+    bought: "With what they bought, each linking to its page to review it. Not sent to someone with nothing to show.",
   },
   checks: {
     title: "Before you switch it on",
@@ -79,7 +80,7 @@ export const flowsEn = {
     startsWhen: "What starts it",
     schedule: { title: "On a schedule", at: "When", often: "How often", once: "Once", every: { "7": "Every week", "14": "Every 2 weeks", "30": "Every 30 days" }, who: "To" },
     picks: "Products for each reader",
-    pickKinds: { none: "No products", cross_sell: "Bought together", replenish: "Buy again", browse: "Looked at" },
+    pickKinds: { none: "No products", cross_sell: "Bought together", replenish: "Buy again", browse: "Looked at", bought: "Their order" },
     palette: "Drag a step onto the flow:",
     close: "Close",
     customise: "Customise",

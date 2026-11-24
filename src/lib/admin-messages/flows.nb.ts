@@ -26,6 +26,7 @@ export const flowsNb: FlowsMessages = {
     cross_sell: "Med det andre kjøpte sammen med bestillingen deres. Sendes ikke til noen uten noe å vise.",
     replenish: "Med varene fra bestillingen som kunder kjøper igjen. Sendes ikke til noen uten noe å vise.",
     browse: "Med varene de så på og ikke kjøpte. Sendes ikke til noen uten noe å vise.",
+    bought: "Med det de kjøpte, hver med lenke til siden der de kan anmelde det. Sendes ikke til noen uten noe å vise.",
   },
   checks: {
     title: "Før du slår det på",
@@ -78,7 +79,7 @@ export const flowsNb: FlowsMessages = {
     startsWhen: "Hva som starter det",
     schedule: { title: "Etter en plan", at: "Når", often: "Hvor ofte", once: "Én gang", every: { "7": "Hver uke", "14": "Annenhver uke", "30": "Hver 30. dag" }, who: "Til" },
     picks: "Varer for hver leser",
-    pickKinds: { none: "Ingen varer", cross_sell: "Kjøpt sammen", replenish: "Kjøp igjen", browse: "Sett på" },
+    pickKinds: { none: "Ingen varer", cross_sell: "Kjøpt sammen", replenish: "Kjøp igjen", browse: "Sett på", bought: "Bestillingen deres" },
     palette: "Dra et steg inn i forløpet:",
     close: "Lukk",
     customise: "Tilpass",
