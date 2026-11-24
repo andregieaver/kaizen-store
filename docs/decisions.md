@@ -892,6 +892,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D887 | **Flows start when someone enters a segment (email plan M2.3)** | 2026-11-24 | [text](decisions/D887.md) |
 | D888 | **Back in stock stays a notice and Workflows stay staff automations; flows carry their triggers (email plan M2.2)** | 2026-11-24 | [text](decisions/D888.md) |
 | D889 | **The AI manager writes and changes flows from a sentence (email plan M3.2)** | 2026-11-24 | [text](decisions/D889.md) |
+| D890 | **Which companies visited: company recognition on the visit counter, through Leadfeeder** | 2026-11-24 | [text](decisions/D890.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
