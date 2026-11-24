@@ -889,6 +889,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D884 | **Basic and groups on the platform and the account: the platform's Settings in six groups, a Basic view at all three level** | 2026-11-23 | [text](decisions/D884.md) |
 | D885 | **The navigation doc written from the menu: a script writes docs/admin-navigation.md's tables from the nav data at all thr** | 2026-11-23 | [text](decisions/D885.md) |
 | D886 | **Owners guided from trial to plan by service emails: six steps of their own store's journey, every owner, one switch to t** | 2026-11-23 | [text](decisions/D886.md) |
+| D887 | **Flows start when someone enters a segment (email plan M2.3)** | 2026-11-24 | [text](decisions/D887.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
