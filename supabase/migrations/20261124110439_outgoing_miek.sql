@@ -1,0 +1,8 @@
+ALTER TABLE "commerce"."flows" DROP CONSTRAINT "flows_trigger_segment";--> statement-breakpoint
+ALTER TABLE "commerce"."flows" DROP CONSTRAINT "flows_trigger";--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD COLUMN "schedule_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD COLUMN "schedule_every_days" integer;--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD COLUMN "schedule_fired_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD CONSTRAINT "flows_schedule" CHECK (("commerce"."flows"."trigger" = 'schedule') = ("commerce"."flows"."schedule_at" is not null) and ("commerce"."flows"."schedule_every_days" is null or "commerce"."flows"."schedule_every_days" in (7, 14, 30)));--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD CONSTRAINT "flows_trigger_segment" CHECK (case "commerce"."flows"."trigger" when 'segment.entered' then "commerce"."flows"."trigger_segment_id" is not null when 'schedule' then true else "commerce"."flows"."trigger_segment_id" is null end);--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD CONSTRAINT "flows_trigger" CHECK ("commerce"."flows"."trigger" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'order.refunded', 'return.requested', 'conversation.ended', 'conversation.rated', 'deal.created', 'deal.won', 'contract.signed', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep', 'customer.birthday', 'segment.entered', 'schedule'));

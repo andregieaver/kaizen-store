@@ -645,4 +645,49 @@ describe("wait until and tags (M2.1)", () => {
     expect(await who()).toEqual([later, early]);
     await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
   });
+
+  it("starts a scheduled flow for everyone on the list at its time, once; a weekly one moves on, a missed one is skipped (M2.3)", async () => {
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+    const t = Date.now();
+    const at = new Date(t - 60_000).toISOString();
+    const once = await fl.saveFlow(storeId, owner, null, { name: `Nyhet ${run}`, trigger: "schedule", scheduleAt: at, steps: [email("e", "Nytt")], goals: [] });
+    if (!once.ok) throw new Error(once.problem);
+    await fl.testFlow(storeId, once.id);
+    expect(await fl.switchFlow(storeId, owner, once.id, true)).toBe("ok");
+    const [list] = await db().execute<Row>(sql`select count(*)::int as n from commerce.marketing_subscribers where store_id = ${storeId}::uuid and status = 'subscribed' and paused_at is null`);
+    expect(await fl.flowReach(storeId, "schedule", null)).toBe(Number(list.n));
+    // People still in an earlier flow of theirs are entered all the same: only this flow's own running run holds anyone back.
+    expect(await fl.enterScheduled(new Date(t))).toBe(Number(list.n));
+    expect(await fl.enterScheduled(new Date(t + 60_000))).toBe(0);
+    await fl.switchFlow(storeId, owner, once.id, false);
+
+    // Weekly, to a segment: only its people, and the time moves on a week.
+    const tag = `Ukentlig ${run}`;
+    const { tagFromForm } = await import("./segments");
+    const weekly = `ukentlig-${run}@example.com`;
+    const reader = await subscriber(weekly);
+    await tagFromForm(storeId, weekly, [tag]);
+    const [segment] = await db().execute<Row>(sql`
+      insert into commerce.segments (store_id, title, rules) values (${storeId}::uuid, ${tag}, ${JSON.stringify({ match: "all", conditions: [{ kind: "tag", tags: [tag] }] })}::jsonb) returning id`);
+    const saved = await fl.saveFlow(storeId, owner, null, {
+      name: tag, trigger: "schedule", scheduleAt: at, scheduleEveryDays: 7, triggerSegmentId: String(segment.id), steps: [email("e", "Ukens")], goals: [],
+    });
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    expect(await fl.enterScheduled(new Date(t))).toBe(1);
+    const runs = await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(runs.map((r) => String(r.subscriber_id))).toEqual([reader]);
+    const next = await fl.getFlow(storeId, saved.id);
+    expect(new Date(String(next?.scheduleAt)).getTime()).toBe(new Date(at).getTime() + 7 * 86_400_000);
+
+    // Missed by days (the flow was off): skipped, and the next time waits.
+    await db().execute(sql`
+      update commerce.flows set schedule_at = ${new Date(t - 3 * 86_400_000).toISOString()}::timestamptz,
+             schedule_fired_at = ${new Date(t - 10 * 86_400_000).toISOString()}::timestamptz where id = ${saved.id}::uuid`);
+    await db().execute(sql`delete from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(await fl.enterScheduled(new Date(t))).toBe(0);
+    expect(new Date(String((await fl.getFlow(storeId, saved.id))?.scheduleAt)).getTime()).toBeGreaterThan(t);
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+  });
 });

@@ -45,8 +45,20 @@ export const DAY_TRIGGERS = ["customer.birthday"] as const;
  */
 export const SEGMENT_TRIGGERS = ["segment.entered"] as const;
 
+/**
+ * The trigger set by the owner's own calendar (M2.3): `schedule`, everyone on the list (or in the flow's segment) starts the flow at a time
+ * (`schedule_at`), once or again every `SCHEDULE_EVERY` days (`enterScheduled()`). A time more than `SCHEDULE_LATE_MS` past is skipped.
+ */
+export const SCHEDULE_TRIGGERS = ["schedule"] as const;
+
+/** How often a schedule may repeat, in days: every week, every two weeks, every 30 days. */
+export const SCHEDULE_EVERY = [7, 14, 30] as const;
+
+/** A scheduled time missed by more than this (the flow was off, or a tick late) is skipped, never sent late. */
+export const SCHEDULE_LATE_MS = 86_400_000;
+
 /** Every trigger a flow may have. */
-export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS, ...DAY_TRIGGERS, ...SEGMENT_TRIGGERS] as const;
+export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS, ...DAY_TRIGGERS, ...SEGMENT_TRIGGERS, ...SCHEDULE_TRIGGERS] as const;
 
 /** The days a lapse trigger may wait, as the win-back automation's (D298). */
 export const LAPSE_DAYS = { min: 30, max: 730 } as const;

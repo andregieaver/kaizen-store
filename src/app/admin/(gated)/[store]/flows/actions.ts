@@ -9,7 +9,9 @@ import type { FormState } from "@/components/admin/action-form";
 import type { RecipeKey } from "@/lib/flow-recipes";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
-import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
+import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger, SCHEDULE_EVERY } from "@/lib/flow-triggers";
+import { localInstant } from "@/lib/follow-ups";
+import { zoneOf } from "@/lib/admin-date";
 import { PICK_KINDS } from "@/lib/automation-kinds";
 import { findStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withLanguageContent, withCondition, withEmailWords, withStepPicks, withTag, withUntil, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { REWRITE_TONES, suggestionBlocks, type RewriteTone } from "@/lib/broadcasts";
@@ -89,7 +91,7 @@ export async function changeFlowEmailAction(storeSlug: string, flowId: string, s
     const text = String(form.get("text") ?? "").trim();
     if (!subject || !text) return refusal(w.problems.words);
     const steps = withEmailWords(flow.steps, stepId, locale, { subject: subject.slice(0, 200), text: text.slice(0, 5000) });
-    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, triggerSegmentId: flow.triggerSegmentId, steps, goals: flow.goals });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, triggerSegmentId: flow.triggerSegmentId, scheduleAt: flow.scheduleAt, scheduleEveryDays: flow.scheduleEveryDays, steps, goals: flow.goals });
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
@@ -104,7 +106,7 @@ export async function changeFlowWaitAction(storeSlug: string, flowId: string, st
     if (!flow) return refusal(w.problems.missing);
     const days = Number(form.get("days"));
     if (!Number.isInteger(days) || days < 1 || days > 365) return refusal(w.problems.days);
-    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, triggerSegmentId: flow.triggerSegmentId, steps: withWaitDays(flow.steps, stepId, days), goals: flow.goals });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, triggerSegmentId: flow.triggerSegmentId, scheduleAt: flow.scheduleAt, scheduleEveryDays: flow.scheduleEveryDays, steps: withWaitDays(flow.steps, stepId, days), goals: flow.goals });
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
@@ -118,7 +120,7 @@ async function saveTree(
   storeSlug: string,
   flowId: string,
   change: (flow: Flow, storeId: string, member: Parameters<Parameters<typeof storeAction>[1]>[0]) => Promise<FlowStep[] | string | null> | FlowStep[] | string | null,
-  over: { trigger?: string; triggerDays?: number | null; triggerSegmentId?: string | null } = {},
+  over: { trigger?: string; triggerDays?: number | null; triggerSegmentId?: string | null; scheduleAt?: string | null; scheduleEveryDays?: number | null } = {},
 ): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
     const w = FLOWS_WORDS[lang];
@@ -133,6 +135,8 @@ async function saveTree(
       trigger: over.trigger ?? flow.trigger,
       triggerDays: over.triggerDays !== undefined ? over.triggerDays : flow.triggerDays,
       triggerSegmentId: over.triggerSegmentId !== undefined ? over.triggerSegmentId : flow.triggerSegmentId,
+      scheduleAt: over.scheduleAt !== undefined ? over.scheduleAt : flow.scheduleAt,
+      scheduleEveryDays: over.scheduleEveryDays !== undefined ? over.scheduleEveryDays : flow.scheduleEveryDays,
       steps,
       goals: flow.goals,
     });
@@ -188,13 +192,21 @@ export async function changeFlowTriggerAction(storeSlug: string, flowId: string,
   const trigger = FLOW_TRIGGERS.find((t) => t === form.get("trigger"));
   // No such trigger: the tree change is refused in the owner's words (`problems.step`).
   const days = trigger && isDateTrigger(trigger) ? DATE_TRIGGER_DAYS[trigger].start : null;
-  const segmentId = trigger === "segment.entered" ? String(form.get("segment") ?? "") : null;
-  return saveTree(
-    storeSlug,
-    flowId,
-    async (flow, storeId) => (!trigger || (segmentId !== null && !(await getSegment(storeId, segmentId))) ? null : flow.steps),
-    trigger ? { trigger, triggerDays: days, triggerSegmentId: segmentId } : {},
-  );
+  // A segment trigger names its segment; a schedule may name one (none: everyone on the list).
+  const segmentId = trigger === "segment.entered" || trigger === "schedule" ? String(form.get("segment") ?? "") || null : null;
+  const every = SCHEDULE_EVERY.find((d) => String(d) === form.get("every")) ?? null;
+  const over: Parameters<typeof saveTree>[3] = trigger ? { trigger, triggerDays: days, triggerSegmentId: segmentId, scheduleAt: null, scheduleEveryDays: null } : {};
+  return saveTree(storeSlug, flowId, async (flow, storeId, member) => {
+    if (!trigger || (trigger === "segment.entered" && !segmentId) || (segmentId !== null && !(await getSegment(storeId, segmentId)))) return null;
+    if (trigger === "schedule") {
+      // The time is typed on the store's own clock (D786).
+      const at = localInstant(String(form.get("at") ?? ""), zoneOf(member.store.timeZone));
+      if (at === null) return null;
+      over.scheduleAt = new Date(at).toISOString();
+      over.scheduleEveryDays = every;
+    }
+    return flow.steps;
+  }, over);
 }
 
 /** Puts products picked for each reader in one email (slice 4, D653): `cross_sell`, `replenish`, `browse`, or `none`. A new version, off until tested. */

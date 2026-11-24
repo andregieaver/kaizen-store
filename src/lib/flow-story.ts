@@ -1,3 +1,5 @@
+import type { AdminLang } from "./admin-lang";
+import { adminDate, type ZoneOf } from "./admin-date";
 import { DATE_TRIGGER_DAYS, isDateTrigger } from "./flow-triggers";
 import type { FlowCondition, FlowGoal, FlowStep } from "./flows";
 
@@ -13,6 +15,9 @@ export type StoryWords = {
   anySegment: string;
   /** A date trigger's sentence for one day, where `{n}` days would read wrong ("1 days"). */
   triggersOne?: Record<string, string>;
+  /** A schedule that repeats (`{n}` days from `{when}`, to `{who}`), and its readers when it names no segment. */
+  scheduleEvery?: string;
+  everyone?: string;
   sameDay: string;
   after: { hours: { one: string; many: string }; days: { one: string; many: string } };
   conditions: { ordered: { yes: string; no: string }; clicked: { yes: string; no: string }; segment: { yes: string; no: string }; split: { yes: string; no: string } };
@@ -110,19 +115,43 @@ export function storyLines(steps: readonly FlowStep[], w: StoryWords, segmentNam
  * What starts a flow as a label of its own (the canvas's trigger card and its choices): the story's sentence without its colon, a date
  * trigger's days filled in (its usual days when none are given).
  */
-export function triggerLabel(trigger: string, w: Pick<StoryWords, "triggers" | "anySegment" | "triggersOne">, days: number | null, segment: string | null = null): string {
+export function triggerLabel(trigger: string, w: StartWords, days: number | null, segment: string | null = null, schedule: Schedule | null = null): string {
   const range = isDateTrigger(trigger) ? DATE_TRIGGER_DAYS[trigger] : null;
-  return startWords(trigger, w, days ?? range?.start ?? null, segment).replace(/:$/, "");
+  return startWords(trigger, w, days ?? range?.start ?? null, segment, schedule).replace(/:$/, "");
 }
 
-/** What starts a flow as the story says it: the trigger's sentence with its days and segment, the one-day sentence for a single day. */
-function startWords(trigger: string, w: Pick<StoryWords, "triggers" | "anySegment" | "triggersOne">, days: number | null, segment: string | null): string {
+type StartWords = Pick<StoryWords, "triggers" | "anySegment" | "triggersOne" | "scheduleEvery" | "everyone">;
+
+/** A schedule trigger's time as the reader's admin shows it, and how often it repeats in days (null: once). */
+export type Schedule = { when: string; every: number | null };
+
+/** A flow's schedule for its story (M2.3): its next time on the store's clock in the admin's language; null for any other trigger. */
+export function scheduleOf(flow: { scheduleAt: string | null; scheduleEveryDays: number | null }, store: ZoneOf, lang: AdminLang | string): Schedule | null {
+  return flow.scheduleAt ? { when: adminDate(store, flow.scheduleAt, "dayTime", lang), every: flow.scheduleEveryDays } : null;
+}
+
+/**
+ * What starts a flow as the story says it: the trigger's sentence with its days and segment, the one-day sentence for a single day; a
+ * schedule's when, how often and to whom.
+ */
+function startWords(trigger: string, w: StartWords, days: number | null, segment: string | null, schedule: Schedule | null = null): string {
+  if (trigger === "schedule") {
+    const text = schedule?.every && w.scheduleEvery ? w.scheduleEvery : (w.triggers[trigger] ?? trigger);
+    return fill(text, { when: schedule?.when ?? "?", n: schedule?.every ?? "", who: segment ?? w.everyone ?? "" });
+  }
   const text = (days === 1 ? w.triggersOne?.[trigger] : undefined) ?? w.triggers[trigger] ?? trigger;
   return fill(text, { n: days ?? "?", segment: segment ?? w.anySegment });
 }
 
 /** The story's first sentence: what starts it, and what ends it early. */
-export function storyLead(trigger: string, goals: readonly FlowGoal[], w: StoryWords, days: number | null = null, segment: string | null = null): string {
-  const start = startWords(trigger, w, days, segment);
+export function storyLead(
+  trigger: string,
+  goals: readonly FlowGoal[],
+  w: StoryWords,
+  days: number | null = null,
+  segment: string | null = null,
+  schedule: Schedule | null = null,
+): string {
+  const start = startWords(trigger, w, days, segment, schedule);
   return goals.length > 0 ? `${start} ${w.goal}` : start;
 }

@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
-import { DATE_TRIGGER_DAYS, EVENT_TRIGGERS } from "@/lib/flow-triggers";
+import { DATE_TRIGGER_DAYS, EVENT_TRIGGERS, SCHEDULE_LATE_MS } from "@/lib/flow-triggers";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { FLOW_GUARD, flowGuardPauses, guardCountsOf } from "@/lib/flow-guard";
 import {
@@ -84,6 +84,9 @@ export type FlowView = {
   /** A segment trigger's segment (M2.3) and its name now (null once the segment is deleted), or null. */
   triggerSegmentId: string | null;
   segmentName: string | null;
+  /** A schedule trigger's next time and how often it repeats in days (null: once), or null (M2.3). */
+  scheduleAt: string | null;
+  scheduleEveryDays: number | null;
   /** When the flow guard switched it off and what it counted (M3.9); null once switched on again. */
   guard: { at: string; sent: number; left: number } | null;
 };
@@ -99,6 +102,8 @@ const flowRow = z.object({
   trigger_days: z.number().int().nullable(),
   trigger_segment_id: col.uuid.nullable(),
   segment_name: col.text.nullable(),
+  schedule_at: col.timestampOrNull,
+  schedule_every_days: z.number().int().nullable(),
   guard_paused_at: col.timestampOrNull,
   guard_counts: z.unknown(),
   steps: z.unknown(),
@@ -116,6 +121,8 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   triggerDays: r.trigger_days,
   triggerSegmentId: r.trigger_segment_id,
   segmentName: r.segment_name,
+  scheduleAt: r.schedule_at,
+  scheduleEveryDays: r.schedule_every_days,
   guard: (() => {
     const counts = guardCountsOf(r.guard_counts);
     return r.guard_paused_at && counts ? { at: r.guard_paused_at, ...counts } : null;
@@ -124,7 +131,7 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   goals: z.array(z.object({ kind: z.literal("ordered") })).parse(r.goals),
 });
 
-const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, f.trigger_segment_id, g.title as segment_name,
+const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, f.trigger_segment_id, g.title as segment_name, f.schedule_at, f.schedule_every_days,
     f.guard_paused_at, f.guard_counts, v.steps, v.goals
   from commerce.flows f join commerce.flow_versions v on v.flow_id = f.id and v.version = f.version
   left join commerce.segments g on g.store_id = f.store_id and g.id = f.trigger_segment_id`;
@@ -153,16 +160,20 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
   const { name, trigger, steps, goals, replaces } = parsed.data;
   const days = parsed.data.triggerDays ?? null;
   const segment = parsed.data.triggerSegmentId ?? null;
+  const scheduleAt = parsed.data.scheduleAt ?? null;
+  const every = parsed.data.scheduleEveryDays ?? null;
   const saved = await db().transaction(async (tx) => {
     const [raw] = id
       ? await tx.execute(sql`
           update commerce.flows set name = ${name}, trigger = ${trigger}, trigger_days = ${days}, trigger_segment_id = ${segment}::uuid, segment_checked_at = null,
+                 schedule_at = ${scheduleAt}::timestamptz, schedule_every_days = ${every}::int, schedule_fired_at = null,
                  enabled = false, version = version + 1, updated_at = now(),
                  replaces = case when trigger = ${trigger} then replaces end
            where store_id = ${storeId}::uuid and id = ${id}::uuid returning id, version`)
       : await tx.execute(sql`
-          insert into commerce.flows (store_id, name, trigger, trigger_days, trigger_segment_id, replaces)
-          values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${segment}::uuid, ${replaces ?? null}) returning id, version`);
+          insert into commerce.flows (store_id, name, trigger, trigger_days, trigger_segment_id, schedule_at, schedule_every_days, replaces)
+          values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${segment}::uuid, ${scheduleAt}::timestamptz, ${every}::int, ${replaces ?? null})
+          returning id, version`);
     if (!raw) return null;
     const row = savedRow.parse(raw);
     await tx.execute(sql`
@@ -918,6 +929,65 @@ export async function enterSegments(now = new Date()): Promise<number> {
 }
 
 /**
+ * Enters the people a scheduled flow is for (M2.3, `schedule`): when its time (`schedule_at`) has come, everyone subscribed and not paused on
+ * the list, or in its segment (`segmentSubscribers()`), starts it once (`schedule:{subscriber}:{time}`); then the time moves on by its days, or,
+ * for a flow that runs once, it is marked done (`schedule_fired_at`). A time missed by more than `SCHEDULE_LATE_MS` (the flow was off) is
+ * skipped and the next one waits, so nobody gets an old schedule's email late. Who is still in the flow from the last time is not entered twice.
+ * Returns how many runs began.
+ */
+export async function enterScheduled(now = new Date()): Promise<number> {
+  const due = await typedRows(
+    z.object({ id: col.uuid, store_id: col.uuid, version: col.int, segment_id: col.uuid.nullable(), at: col.timestamp, every: z.number().int().nullable() }),
+    sql`select f.id, f.store_id, f.version, f.trigger_segment_id as segment_id, f.schedule_at as at, f.schedule_every_days as every from commerce.flows f
+         where f.enabled and f.trigger = 'schedule' and f.store_id is not null and f.schedule_at <= ${now.toISOString()}::timestamptz
+           and (f.schedule_fired_at is null or f.schedule_fired_at < f.schedule_at)
+         order by f.schedule_at limit 20`,
+  );
+  let entered = 0;
+  const report = jobReport();
+  for (const flow of due) {
+    try {
+      const at = new Date(flow.at);
+      const late = now.getTime() - at.getTime() > SCHEDULE_LATE_MS;
+      let ids: string[] | null = null;
+      if (!late) {
+        if (flow.segment_id) {
+          const slug = await storeSlugOf(flow.store_id);
+          const store = slug ? await getStore(slug) : null;
+          ids = store ? await segmentSubscribers(store, flow.segment_id, now) : null;
+        } else {
+          const rows = await typedRows(
+            z.object({ id: col.uuid }),
+            sql`select id from commerce.marketing_subscribers where store_id = ${flow.store_id}::uuid and status = 'subscribed' and paused_at is null`,
+          );
+          ids = rows.map((r) => r.id);
+        }
+      }
+      // The next time: on by its days past now, or none for a flow that runs once.
+      let next = at.getTime();
+      if (flow.every) while (next <= now.getTime()) next += flow.every * 86_400_000;
+      await db().transaction(async (tx) => {
+        if (ids && ids.length > 0) {
+          const made = await tx.execute(sql`
+            insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, path)
+            select ${flow.store_id}::uuid, ${flow.id}::uuid, ${flow.version}, n.id, 'schedule:' || n.id || ':' || ${at.toISOString()}, '0'
+              from (select jsonb_array_elements_text(${JSON.stringify(ids)}::jsonb)::uuid as id) n
+            on conflict do nothing
+            returning id`);
+          entered += made.length;
+        }
+        await tx.execute(sql`
+          update commerce.flows set schedule_fired_at = ${now.toISOString()}::timestamptz, schedule_at = ${new Date(next).toISOString()}::timestamptz
+           where store_id = ${flow.store_id}::uuid and id = ${flow.id}::uuid`);
+      });
+    } catch (error) {
+      report(error, "flows.schedule");
+    }
+  }
+  return entered;
+}
+
+/**
  * The every-minute job's turn: while no flow is switched on anywhere (one read), nothing more; else people enter from the event log and the
  * due runs move on, whose runs may still be going after their flow was switched off. Never throws.
  */
@@ -934,6 +1004,7 @@ export async function tickFlows(): Promise<void> {
     await enterAsleep();
     await enterBirthdays();
     await enterSegments();
+    await enterScheduled();
     await runFlows();
     // The sunset's end (M2.8): who finished it with no press is paused.
     await pauseSunsetRuns();
@@ -1031,6 +1102,16 @@ export const REACH_DAYS = 30;
 export async function flowReach(storeId: string, trigger: string, triggerDays: number | null, segmentId: string | null = null): Promise<number> {
   const store = sql`${storeId}::uuid`;
   const n = z.object({ n: col.int });
+  if (trigger === "schedule") {
+    // A schedule reaches everyone on the list, or its segment, each time it comes.
+    if (segmentId) {
+      const slug = await storeSlugOf(storeId);
+      const found = slug ? await getStore(slug) : null;
+      return (found ? await segmentSubscribers(found, segmentId, new Date()) : null)?.length ?? 0;
+    }
+    const row = await typedRow(n, sql`select count(*)::int as n from commerce.marketing_subscribers where store_id = ${store} and status = 'subscribed' and paused_at is null`);
+    return row?.n ?? 0;
+  }
   if (trigger === "segment.entered") {
     // Who comes into a segment cannot be foreseen: those in it now who joined the list in the last as many days stand in for them.
     const slug = segmentId ? await storeSlugOf(storeId) : null;

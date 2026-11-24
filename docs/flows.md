@@ -84,6 +84,10 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    `trigger_segment_id`). The segment is read once an hour per switched-on flow (`enterSegments()`) and who it held is kept
    (`flow_segment_members`): a newcomer starts the flow, one who left is forgotten, and the first read after switching on only notes who is
    in. Customise chooses the segment; the story names it.
+   *Part i, the same day:* a flow may run on the owner's calendar (`schedule`): everyone on the list, or the people of a segment, starts it
+   at a time typed on the store's clock (`schedule_at`), once or every 7, 14 or 30 days (`enterScheduled()`); a time missed by more than a
+   day (the flow was off) is skipped, never sent late. The story says when and to whom (*Every 7 days from 1 Dec, 09:00, to everyone on
+   your list*).
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 

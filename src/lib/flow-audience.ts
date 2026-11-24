@@ -27,6 +27,7 @@ const STARTS: Record<FlowTrigger, (days: number | null) => string> = {
   "deal.created": () => "It goes to each business customer on the shop's list when the shop opens a deal with them. You do not know its terms, so never name them.",
   "deal.won": () => "It goes to each business customer on the shop's list when a deal with them is won. Thank them; you do not know its terms, so never name them.",
   "contract.signed": () => "It goes to each customer on the shop's list who signed a contract with the shop. Thank them; you do not know its terms, so never name them.",
+  schedule: () => "It goes to everyone on the shop's list, or in one of its groups of customers, at a time the shop chose. Write it as news from the shop, not as an answer to something they did.",
   "segment.entered": () => "It goes to each person on the shop's list when they come into one of its groups of customers. You do not know why they came in, so never say it.",
   "customer.birthday": () => "It goes to each customer on the shop's list on their birthday. You know only the day, never their age or year; wish them a happy birthday warmly.",
   "customer.lapsed": (d) => `It goes to customers on the shop's list who have not ordered for ${d ?? 90} days. Invite them back warmly, without pressure.`,

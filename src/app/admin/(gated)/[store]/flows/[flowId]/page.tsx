@@ -6,6 +6,7 @@ import { requireExtension } from "@/components/admin/extension-off";
 import { AdminLink, ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminDate } from "@/lib/admin-date";
+import { wallClock } from "@/lib/page-schedules";
 import { flowSuggestion } from "@/lib/flow-report";
 import { formatMoney } from "@/lib/money";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
@@ -17,7 +18,7 @@ import { TEST_FLOOR } from "@/lib/broadcast-test-sizes";
 import { fillWords } from "@/lib/admin-fill";
 import { FLOW_SPLITS_WORDS } from "@/lib/admin-words/flow-splits";
 import { languageName } from "@/lib/localization";
-import { storyLead, storyLines } from "@/lib/flow-story";
+import { scheduleOf, storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { drawFlowEmails, flowReach, flowStepFigures, flowStepPast, flowReport, getFlow } from "@/server/flows";
@@ -48,6 +49,13 @@ function emailsOf(steps: readonly FlowStep[], into = new Map<string, Extract<Flo
  * not ordered*) with the email itself drawn as a small picture of its subject and first words. Test it, then switch it on; Homer needs
  * nothing else. Change edits an email where it is; Customise opens the canvas (`flow-board.tsx`), the flow drawn as a chart and dragged and dropped.
  */
+
+/** `datetime-local` text for a time on the store's clock, as the schedule's form sends it back (D786). */
+function localText(iso: string, timeZone: string): string {
+  const { day, time } = wallClock(iso, timeZone);
+  return `${day}T${time}`;
+}
+
 export default async function FlowPage({ params, searchParams }: PageProps<"/admin/[store]/flows/[flowId]">) {
   const { store: slug, flowId } = await params;
   const query = await searchParams;
@@ -113,7 +121,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
       )}
       <Card compact>
         <div className="flex flex-col gap-4" data-flow-story>
-          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, flow.segmentName)}</p>
+          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, flow.segmentName, scheduleOf(flow, store, lang))}</p>
           {/* A date trigger's days (slice 4), changed where they are said. */}
           {mayWrite && flow.triggerDays !== null && (
             <details className="text-sm">
@@ -227,6 +235,10 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           trigger={flow.trigger}
           triggerDays={flow.triggerDays}
           segmentName={flow.segmentName}
+          schedule={scheduleOf(flow, store, lang)}
+          scheduleLocal={flow.scheduleAt ? localText(flow.scheduleAt, store.timeZone) : ""}
+          scheduleEvery={flow.scheduleEveryDays}
+          segmentId={flow.triggerSegmentId}
           w={w}
           segments={segmentList}
           languages={languages}

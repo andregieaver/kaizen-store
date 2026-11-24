@@ -76,6 +76,7 @@ export const flowsNb: FlowsMessages = {
   changeOff: "Når du lagrer en endring, slås forløpet av til du tester det igjen.",
   canvas: {
     startsWhen: "Hva som starter det",
+    schedule: { title: "Etter en plan", at: "Når", often: "Hvor ofte", once: "Én gang", every: { "7": "Hver uke", "14": "Annenhver uke", "30": "Hver 30. dag" }, who: "Til" },
     picks: "Varer for hver leser",
     pickKinds: { none: "Ingen varer", cross_sell: "Kjøpt sammen", replenish: "Kjøp igjen", browse: "Sett på" },
     palette: "Dra et steg inn i forløpet:",

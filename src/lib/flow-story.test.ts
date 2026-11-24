@@ -79,5 +79,8 @@ describe("what starts a flow, as a label (M2.3)", () => {
     expect(triggerLabel("customer.browsed", browse, null)).toBe("A day after someone looked");
     expect(triggerLabel("customer.browsed", browse, 3)).toBe("3 days after someone looked");
     expect(storyLead("customer.browsed", [], { ...w, ...browse }, 1)).toBe("A day after someone looked:");
+    const planned = { ...w, triggers: { schedule: "On {when}, to {who}:" }, scheduleEvery: "Every {n} days from {when}, to {who}:", everyone: "everyone on your list" };
+    expect(storyLead("schedule", [], planned, null, null, { when: "1 Dec, 09:00", every: null })).toBe("On 1 Dec, 09:00, to everyone on your list:");
+    expect(storyLead("schedule", [], planned, null, "VIP", { when: "1 Dec, 09:00", every: 7 })).toBe("Every 7 days from 1 Dec, 09:00, to VIP:");
   });
 });

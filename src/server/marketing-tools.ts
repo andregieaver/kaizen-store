@@ -36,7 +36,7 @@ import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type Sav
 import { storeById } from "./shopper-emails";
 import { flowProposals, flowReport, listFlows, startRecipeFlow } from "./flows";
 import { goalsMade, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
-import { storyLead } from "@/lib/flow-story";
+import { scheduleOf, storyLead } from "@/lib/flow-story";
 import { flowStoryEn } from "@/lib/admin-words/flow-story-en";
 import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
@@ -664,7 +664,7 @@ export async function listFlowsTool({ store }: Ctx) {
     flows: flows.map((f, i) => ({
       name: f.name,
       on: f.enabled,
-      starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays, f.segmentName),
+      starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays, f.segmentName, scheduleOf(f, store, "en")),
       started_last_30_days: reports[i].entered,
       orders_after_last_30_days: reports[i].orders,
       // A split test worth trying (M2.5 slice 5, M3.9): enough people for each half; the owner adds the Split on the flow's page.

@@ -4,7 +4,7 @@ import { AUTOMATION_KINDS, PICK_KINDS, type PickKind } from "./automation-kinds"
 import type { AddedBlock } from "./flow-blocks";
 import type { BroadcastBlock, BroadcastContent } from "./broadcasts";
 import { broadcastContentSchema } from "./broadcasts-schema";
-import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "./flow-triggers";
+import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger, SCHEDULE_EVERY } from "./flow-triggers";
 
 /**
  * Flows (D767, `docs/flows.md`, email plan M2.1): a trigger, a tree of steps a person moves along, and goals that end it early. This file is
@@ -77,9 +77,15 @@ export const flowInputSchema = z.object({
   triggerDays: z.number().int().nullish(),
   /** A segment trigger's segment (M2.3): required for `segment.entered`, refused for any other trigger. */
   triggerSegmentId: z.uuid().nullish(),
+  /** A schedule trigger's next time (M2.3): required for `schedule`, refused for any other trigger; and how often it repeats (null: once). */
+  scheduleAt: z.iso.datetime({ offset: true }).nullish(),
+  scheduleEveryDays: z.union([z.literal(SCHEDULE_EVERY[0]), z.literal(SCHEDULE_EVERY[1]), z.literal(SCHEDULE_EVERY[2])]).nullish(),
 }).superRefine((f, ctx) => {
-  if ((f.trigger === "segment.entered") !== Boolean(f.triggerSegmentId)) {
+  if (f.trigger === "segment.entered" ? !f.triggerSegmentId : f.trigger !== "schedule" && f.triggerSegmentId) {
     ctx.addIssue({ code: "custom", path: ["triggerSegmentId"], message: f.trigger === "segment.entered" ? "Choose the segment." : "Only a segment trigger has a segment." });
+  }
+  if ((f.trigger === "schedule") !== Boolean(f.scheduleAt) || (f.trigger !== "schedule" && f.scheduleEveryDays)) {
+    ctx.addIssue({ code: "custom", path: ["scheduleAt"], message: f.trigger === "schedule" ? "Choose when it starts." : "Only a schedule has a time." });
   }
   // A date trigger's days in its range (DATE_TRIGGER_DAYS), and none for any other trigger.
   const range = isDateTrigger(f.trigger) ? DATE_TRIGGER_DAYS[f.trigger] : null;

@@ -8827,12 +8827,22 @@ export const flows = commerce.table(
     // When the segment trigger last read its segment (`enterSegments()`, hourly); null until its first read after being switched on, which
     // only notes who is in already, so switching one on never emails a whole segment.
     segmentCheckedAt: timestamp("segment_checked_at", { withTimezone: true }),
+    // A schedule trigger's next time (M2.3, `schedule`), how often it repeats in days (null: once) and when it last started people
+    // (`enterScheduled()`); null for any other trigger.
+    scheduleAt: timestamp("schedule_at", { withTimezone: true }),
+    scheduleEveryDays: integer("schedule_every_days"),
+    scheduleFiredAt: timestamp("schedule_fired_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("flows_store_id_key").on(t.storeId, t.id),
-    check("flows_trigger_segment", sql`(${t.trigger} = 'segment.entered') = (${t.triggerSegmentId} is not null)`),
+    // A segment trigger needs its segment; a schedule may name one (else everyone on the list); no other trigger has one.
+    check(
+      "flows_trigger_segment",
+      sql`case ${t.trigger} when 'segment.entered' then ${t.triggerSegmentId} is not null when 'schedule' then true else ${t.triggerSegmentId} is null end`,
+    ),
+    check("flows_schedule", sql`(${t.trigger} = 'schedule') = (${t.scheduleAt} is not null) and (${t.scheduleEveryDays} is null or ${t.scheduleEveryDays} in (7, 14, 30))`),
     // DATE_TRIGGER_DAYS: a date trigger's days in its range, and no days for any other trigger.
     check(
       "flows_trigger_days",
