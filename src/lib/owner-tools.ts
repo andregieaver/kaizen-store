@@ -9,7 +9,6 @@ import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_M
 import { EXTENSION_NAMES, EXTENSION_TRIAL_DAYS, isExtensionId } from "./extensions";
 import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
-import { FLOW_TRIGGERS, SCHEDULE_EVERY } from "./flow-triggers";
 import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
 import { TOOL_GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
@@ -160,30 +159,34 @@ export const FLOW_DRAFT_CONDITIONS = ["has_ordered", "has_not_ordered", "pressed
 
 /** A flow as the AI manager drafts it from a sentence (M3.2): code turns it into steps (`draftSteps()`), never the model. */
 const flowDraftSchema = z.object({
+  // Checked against FLOW_TRIGGERS when the flow is saved (flowInputSchema), so this list of every tool does not load the triggers' module.
   trigger: z
-    .enum(FLOW_TRIGGERS)
-    .describe("What starts it: an event (such as subscriber.subscribed or order.sent), customer.lapsed, customer.browsed or subscriber.asleep with days, customer.birthday, segment.entered with a segment, or schedule with a time."),
-  days: z.number().int().min(1).max(730).optional().describe("For customer.lapsed (30 to 730), customer.browsed (1 to 5) or subscriber.asleep (90 to 180) only: how many days."),
-  segment: z.string().trim().min(1).max(120).optional().describe("A saved segment's name: required for segment.entered; for schedule, its readers (else everyone on the list)."),
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .describe("An event such as subscriber.subscribed or order.sent; customer.lapsed, customer.browsed or subscriber.asleep (days); customer.birthday; segment.entered (segment); schedule (schedule)."),
+  days: z.number().int().min(1).max(730).optional().describe("Days, for lapsed (30-730), browsed (1-5) or asleep (90-180)."),
+  segment: z.string().trim().min(1).max(120).optional().describe("A saved segment's name: for segment.entered, or a schedule's readers (else everyone)."),
   schedule: z
     .object({
       at: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).describe("When, on the store's clock: YYYY-MM-DDTHH:MM."),
-      every_days: z.union([z.literal(SCHEDULE_EVERY[0]), z.literal(SCHEDULE_EVERY[1]), z.literal(SCHEDULE_EVERY[2])]).optional().describe("Repeat every 7, 14 or 30 days; leave out for once."),
+      every_days: z.union([z.literal(7), z.literal(14), z.literal(30)]).optional().describe("Repeat every 7, 14 or 30 days; none for once."),
     })
     .optional()
     .describe("For schedule only."),
   emails: z
     .array(
       z.object({
-        after_days: z.number().int().min(0).max(365).describe("Days after the one before (or after the start, for the first): 0 for the same day."),
+        after_days: z.number().int().min(0).max(365).describe("Days after the one before (the first: after the start); 0 the same day."),
         subject: z.string().trim().min(1).max(200),
-        text: z.string().trim().min(1).max(2000).describe("The email's words, paragraphs split by a blank line."),
-        only_if: z.enum(FLOW_DRAFT_CONDITIONS).optional().describe("Only for those who have or have not ordered, or pressed or not pressed a link in its emails, since the flow began."),
+        text: z.string().trim().min(1).max(2000).describe("Paragraphs split by a blank line."),
+        only_if: z.enum(FLOW_DRAFT_CONDITIONS).optional().describe("Only for some, judged since the flow began."),
       }),
     )
     .min(1)
     .max(6),
-  ends_on_order: z.boolean().optional().describe("Ends for a person when they order: true for a flow meant to bring an order."),
+  ends_on_order: z.boolean().optional().describe("Ends for a person when they order."),
 });
 
 export const RESEARCH_TOOLS = [
@@ -2351,16 +2354,16 @@ const ALL_OWNER_TOOLS = [
   tool(
     "start_flow",
     "Starts a flow from a goal the store has no flow for yet (from list_flows): from the store's own email automation's words when the owner wrote one, else the ready-made one. It is saved switched off and untested, so nothing is sent: the owner reads it, tests it and switches it on on its page (the link).",
-    z.object({ goal: z.enum(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse", "sunset"]) }),
+    z.object({ goal: z.enum(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse", "reviews", "leads", "sunset"]) }),
   ),
   tool(
     "create_flow",
-    "Writes a new flow from what the owner asked for in their own words (email plan M3.2): what starts it and its emails in order, each the days after the one before and, if the owner said so, only for those who have or have not ordered or pressed a link since it began. Write the emails in the store's first language and voice, from facts a tool gave you: never a price, a stock level or a product no tool named. Code builds the flow, checks its words, counts who it would reach and saves it switched off and untested, so nothing is sent: the owner reads it as a story, tests it and switches it on on its page (the link). The store's contact policy holds every email it sends.",
+    "Writes a new flow from the owner's own words: what starts it and its emails in order. Write them in the store's first language and voice from facts a tool gave you: never a price, stock level or product no tool named. Code builds it, checks its words and saves it switched off and untested, so nothing is sent: the owner reads, tests and switches it on on its page (the link). The contact policy holds every email.",
     flowDraftSchema.extend({ name: z.string().trim().min(1).max(120).describe("The flow's name, as the owner would call it.") }),
   ),
   tool(
     "change_flow",
-    "Changes one of the store's flows (by its name from list_flows) as the owner asked: its name, what starts it, or its emails (given, they replace all of the flow's emails and their waits). Each change is a new version, switched off and untested until the owner tests it again on its page (the link), so nothing more is sent before they look. Words are checked as create_flow's are.",
+    "Changes a flow (its name from list_flows) as the owner asked: its name, what starts it, or its emails (given, they replace all of them). A new version, switched off until the owner tests it again on its page (the link). Words checked as create_flow's.",
     flowDraftSchema.partial().extend({
       flow: z.string().trim().min(1).max(120).describe("The flow's name, as list_flows gives it."),
       name: z.string().trim().min(1).max(120).optional().describe("A new name, only if the owner asked for one."),
@@ -2449,7 +2452,7 @@ const ALL_OWNER_TOOLS = [
  * eval's replay among them, and a run can only be recorded once the tools are live: so they go live in a push without a migration, the eval
  * is run on Platform → AI, and its recording is committed. Empty but for that.
  */
-export const HELD_FOR_EVAL: ReadonlySet<string> = new Set<string>(["create_flow", "change_flow"]);
+export const HELD_FOR_EVAL: ReadonlySet<string> = new Set<string>([]);
 
 export const OWNER_TOOLS = ALL_OWNER_TOOLS.filter((t) => !HELD_FOR_EVAL.has(t.name));
 

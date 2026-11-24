@@ -31,9 +31,9 @@
     "shop|marketing": {
       "promptChars": 15581,
       "toolCount": 128,
-      "toolChars": 159614,
+      "toolChars": 162168,
       "alwaysSentChars": 36543,
-      "totalChars": 175195
+      "totalChars": 177749
     },
     "shop|analytics": {
       "promptChars": 15581,
@@ -122,9 +122,9 @@
     "all|marketing": {
       "promptChars": 16461,
       "toolCount": 128,
-      "toolChars": 159706,
+      "toolChars": 158743,
       "alwaysSentChars": 36573,
-      "totalChars": 176167
+      "totalChars": 175204
     },
     "all|analytics": {
       "promptChars": 16461,
@@ -292,6 +292,7 @@
     "carry_out_address_change": 1112,
     "cart_reminder_stats": 475,
     "change_dns": 2505,
+    "change_flow": 2261,
     "change_form": 2925,
     "change_order": 2259,
     "change_plan": 773,
@@ -317,6 +318,7 @@
     "create_discount": 1236,
     "create_draft_order": 1909,
     "create_field_group": 2649,
+    "create_flow": 2331,
     "create_product": 11336,
     "create_purchase_order": 2184,
     "create_transfer": 1137,
@@ -640,7 +642,7 @@
     "start_dns_move_here": 819,
     "start_experiment": 1090,
     "start_extension_trial": 517,
-    "start_flow": 552,
+    "start_flow": 570,
     "stock_history": 1101,
     "stock_levels": 1356,
     "stop_autopilot_plan": 440,

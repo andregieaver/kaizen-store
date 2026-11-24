@@ -35,12 +35,8 @@ import { OwnerToolError } from "./owner-tool-error";
 import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type SavedSegment } from "./segments";
 import { storeById } from "./shopper-emails";
 import { flowProposals, flowReach, flowReport, getFlow, listFlows, saveFlow, startRecipeFlow, type FlowView } from "./flows";
-import { getContactPolicy } from "./contact-policy";
 import { goalsMade, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { scheduleOf, storyLead, storyLines } from "@/lib/flow-story";
-import { draftGoals, draftSteps, draftWords } from "@/lib/flow-draft";
-import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
-import { zoneOf } from "@/lib/admin-date";
 import { flowStoryEn } from "@/lib/admin-words/flow-story-en";
 import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
@@ -705,6 +701,12 @@ export async function startFlowTool({ account, store }: Ctx, { goal }: OwnerTool
 
 /** The flow input a drafted flow makes (M3.2): its words checked, its segment and time found, its steps built by code (`draftSteps()`). */
 async function draftInput(store: Store, draft: Partial<OwnerToolInput<"create_flow">>, kept: FlowView | null) {
+  // Loaded when a flow is drafted, so the many entries that reach these tools do not carry them (route-load).
+  const [{ draftGoals, draftSteps, draftWords }, { DATE_TRIGGER_DAYS, isDateTrigger }, { zoneOf }] = await Promise.all([
+    import("@/lib/flow-draft"),
+    import("@/lib/flow-triggers"),
+    import("@/lib/admin-date"),
+  ]);
   if (draft.emails) {
     const brand = await brandOf(store.id);
     const words = draftWords(draft.emails);
@@ -749,6 +751,7 @@ async function flowSaid(store: Store, id: string, done: string) {
   const flow = await getFlow(store.id, id);
   if (!flow) return fail("The flow could not be read back.");
   const w = flowStoryEn.story;
+  const { getContactPolicy } = await import("./contact-policy");
   const [reach, policy] = await Promise.all([flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId), getContactPolicy(store.id)]);
   return {
     done,

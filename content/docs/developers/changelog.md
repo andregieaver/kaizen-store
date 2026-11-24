@@ -16,6 +16,12 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.56 — 2026-11-24
+
+Two MCP tools write flows (email plan M3.2): `create_flow` writes a new flow from the owner's words (what starts it, and its emails in order,
+each with its days and, if asked, only for some). `change_flow` changes one by its name. Both save the flow switched off and untested, and
+nothing is sent until the owner tests it and switches it on. `start_flow` also starts the goals `reviews` and `leads`.
+
 ## 1.55 — 2026-11-23
 
 The MCP tool `draft_broadcast` takes `topic` (email plan M4.2, D882): one of the store's email topics, by name or id. Only readers in that

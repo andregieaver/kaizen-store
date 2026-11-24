@@ -104,7 +104,7 @@ const WORDS: Record<string, string> = {
 };
 
 /** Texts tried, in order, against a field's pattern. */
-const PATTERNED = ["2026-11-30", "2026-11-30 09:00", "09:00", "#1a6b4c", "no", "NO", "NOK", "standard", "7038010069307", "kaffebrenneriet", "/collections/shoes", "a1"];
+const PATTERNED = ["2026-11-30", "2026-11-30 09:00", "2026-11-30T09:00", "09:00", "#1a6b4c", "no", "NO", "NOK", "standard", "7038010069307", "kaffebrenneriet", "/collections/shoes", "a1"];
 const UUID = "3f6c2b9e-5d1a-4f0e-9a7b-2c8d4e6f1a3b";
 
 function fitted(text: string, s: Schema): string {
