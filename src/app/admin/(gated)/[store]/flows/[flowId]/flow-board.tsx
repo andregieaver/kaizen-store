@@ -533,7 +533,7 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
             ))}
           </div>
         </ActionForm>
-        <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)} className="flex flex-col gap-2" data-schedule-form>
+        <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)} className="flex flex-col gap-2">
           <input type="hidden" name="trigger" value="schedule" />
           <span className="text-sm font-medium text-ink">{w.canvas.schedule.title}</span>
           <label className="flex flex-col gap-1 text-sm">

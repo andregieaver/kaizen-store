@@ -330,3 +330,23 @@ test("a segment starts a flow: chosen under Customise and named in the story (M2
   await page.reload();
   await expect(page.locator("[data-flow-story]")).toContainText(`When someone enters ${title}:`);
 });
+
+test("a flow runs on a schedule: set under Customise and said in the story (M2.3)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("group", { name: "Your own flow" }).getByRole("button", { name: "Start" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
+  const canvas = page.locator("[data-flow-canvas]");
+  await canvas.getByText("Customise", { exact: true }).click();
+  await canvas.locator("[data-board-trigger]").click();
+  const form = canvas.getByLabel("When", { exact: true }).locator("xpath=ancestor::form");
+  await form.getByLabel("When").fill("2027-01-05T09:00");
+  await form.getByLabel("How often").selectOption({ label: "Every week" });
+  await form.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/flow-schedule-trigger.png", fullPage: true });
+  await form.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  const story = page.locator("[data-flow-story]");
+  await expect(story).toContainText("Every 7 days from");
+  await expect(story).toContainText("to everyone on your list:");
+});
