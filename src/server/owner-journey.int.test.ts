@@ -38,6 +38,14 @@ beforeAll(async () => {
   await db().execute(sql`update commerce.accounts set admin_locale = 'nb-NO' where id = ${ownerId}::uuid`);
 });
 
+/**
+ * Runs the job until nothing more goes, as the dispatcher's later runs would: other tests' stores share the database, and one run sends
+ * at most fifty, ordered by store, so this store's emails may wait for a later run.
+ */
+async function drain() {
+  for (let i = 0; i < 50 && (await journey.sendOwnerJourney()) > 0; i++);
+}
+
 afterAll(async () => {
   await closeDb();
 });
@@ -50,7 +58,7 @@ describe("the owner journey", () => {
       on conflict (store_id) do update set trial_ends_at = excluded.trial_ends_at
     `);
     await db().execute(sql`update commerce.stores set setup_completed_at = now() where id = ${storeId}::uuid`);
-    await journey.sendOwnerJourney();
+    await drain();
     expect(await sent()).toEqual(["store_published", "trial_started"]);
     const [welcome] = await db().execute<Row>(sql`select to_address, subject, kind, text from commerce.email_messages where idempotency_key = ${`owner-journey:trial_started:${storeId}`}`);
     expect(welcome).toMatchObject({ to_address: ownerEmail, kind: "platform.owner_journey" });
@@ -58,7 +66,7 @@ describe("the owner journey", () => {
     expect(String(welcome.text)).toContain("Sjekklisten");
     expect(String(welcome.text)).toContain(`/admin/oj-${run}/billing`);
     // Again: nothing more.
-    await journey.sendOwnerJourney();
+    await drain();
     expect(await sent()).toEqual(["store_published", "trial_started"]);
   });
 
@@ -68,10 +76,10 @@ describe("the owner journey", () => {
       values (${storeId}::uuid, ${`OJ-${run}`}, 'NO', 'NOK', 'nb-NO', 'kunde@example.com', 12000, 2400, 12000, '{}'::jsonb, '{}'::jsonb, 'paid')
     `);
     await db().execute(sql`update commerce.store_billing set trial_ends_at = now() + interval '2 days 12 hours' where store_id = ${storeId}::uuid`);
-    await journey.sendOwnerJourney();
+    await drain();
     expect(await sent()).toEqual(["first_order", "store_published", "trial_ending", "trial_started"]);
     await db().execute(sql`update commerce.store_billing set trial_ends_at = now() - interval '1 hour', trial_paused_at = now() where store_id = ${storeId}::uuid`);
-    await journey.sendOwnerJourney();
+    await drain();
     expect(await sent()).toContain("store_paused");
   });
 
@@ -79,10 +87,10 @@ describe("the owner journey", () => {
     await journey.setOwnerJourneyOff(ownerId, true);
     expect(await journey.ownerJourneyOff(ownerId)).toBe(true);
     await db().execute(sql`update commerce.store_billing set status = 'active', mode = 'live' where store_id = ${storeId}::uuid`);
-    await journey.sendOwnerJourney();
+    await drain();
     expect(await sent()).not.toContain("plan_paid");
     await journey.setOwnerJourneyOff(ownerId, false);
-    await journey.sendOwnerJourney();
+    await drain();
     expect(await sent()).toContain("plan_paid");
   });
 });
