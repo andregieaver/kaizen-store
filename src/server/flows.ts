@@ -369,8 +369,9 @@ export async function flowReplacing(storeId: string, kind: string): Promise<stri
 // ---------------------------------------------------------------------------
 
 /**
- * The address an event's subject is about (slice 4, M2.3), as one `email` column: the order's, the cart's, the subscription's, a form's
- * contact address, a quote's, a signed-in reviewer's. An erased person's order is never read (`restricted_at`). Null for an event with
+ * The address an event's subject is about (slice 4, M2.3), as one `email` column: the order's (paid, sent, refunded or asked to be
+ * returned), the cart's, the subscription's, a form's contact address, a quote's, a signed-in reviewer's, a support conversation's contact
+ * or customer, a deal's or a contract's customer. An erased person's order is never read (`restricted_at`). Null for an event with
  * no person (or a guest's review, kept only as a hash).
  */
 function emailOfSubject(event: string, storeId: string, subjectId: string) {
@@ -392,6 +393,22 @@ function emailOfSubjectAt(event: string, store: SQL, id: SQL) {
       return sql`select r.contact_email as email from commerce.form_responses r where r.store_id = ${store} and r.id = ${id} and r.contact_email is not null`;
     case "quote.requested":
       return sql`select d.email from commerce.draft_orders d where d.store_id = ${store} and d.id = ${id} and d.email is not null`;
+    case "order.refunded":
+      return sql`select o.email from commerce.orders o where o.store_id = ${store} and o.id = ${id} and o.restricted_at is null`;
+    case "return.requested":
+      return sql`select o.email from commerce.returns x join commerce.orders o on o.store_id = x.store_id and o.id = x.order_id
+                  where x.store_id = ${store} and x.id = ${id} and o.restricted_at is null`;
+    case "conversation.ended":
+    case "conversation.rated":
+      return sql`select coalesce(nullif(c.contact_email, ''), (select u.email from commerce.customers u where u.store_id = c.store_id and u.id = c.customer_id)) as email
+                   from commerce.support_conversations c where c.store_id = ${store} and c.id = ${id}`;
+    case "deal.created":
+    case "deal.won":
+      return sql`select c.email from commerce.deals d join commerce.customers c on c.store_id = d.store_id and c.id = d.customer_id
+                  where d.store_id = ${store} and d.id = ${id}`;
+    case "contract.signed":
+      return sql`select c.email from commerce.contracts k join commerce.customers c on c.store_id = k.store_id and c.id = k.customer_id
+                  where k.store_id = ${store} and k.id = ${id}`;
     case "review.created":
       return sql`select c.email from commerce.product_reviews r join commerce.customers c on c.store_id = r.store_id and c.id = r.customer_id
                   where r.store_id = ${store} and r.id = ${id}`;

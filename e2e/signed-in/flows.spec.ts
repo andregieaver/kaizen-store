@@ -258,7 +258,9 @@ test("your own flow starts from one email, and what starts it is chosen under Cu
   const canvas = page.locator("[data-flow-canvas]");
   await canvas.getByText("Customise", { exact: true }).click();
   await canvas.locator("[data-board-trigger]").click();
-  await canvas.getByRole("group", { name: "Starts when" }).getByRole("button", { name: "A form is sent" }).click();
+  await expect(canvas.getByRole("group", { name: "What starts it" }).getByRole("button", { name: "When an order is refunded" })).toBeVisible();
+  await page.screenshot({ path: "test-results/flow-trigger-choices.png", fullPage: true });
+  await canvas.getByRole("group", { name: "What starts it" }).getByRole("button", { name: "When someone sends a form" }).click();
   await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
   await page.reload();
   await expect(page.locator("[data-flow-story]")).toContainText("When someone sends a form:");

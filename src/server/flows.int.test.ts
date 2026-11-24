@@ -552,4 +552,37 @@ describe("wait until and tags (M2.1)", () => {
       ["siste", "logged"],
     ]);
   });
+
+  it("enters the person a refund, a return asked for or a rated support conversation is about (M2.3)", async () => {
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+    const people = { refund: `refund-${run}@example.com`, back: `back-${run}@example.com`, rated: `rated-${run}@example.com` };
+    const ids = { refund: await subscriber(people.refund), back: await subscriber(people.back), rated: await subscriber(people.rated) };
+    await paidOrder(people.refund, new Date());
+    await paidOrder(people.back, new Date());
+    const orderOf = async (address: string) =>
+      String((await db().execute<Row>(sql`select id from commerce.orders where store_id = ${storeId}::uuid and email = ${address}`))[0].id);
+    const [made] = await db().execute<Row>(sql`
+      insert into commerce.returns (store_id, order_id, kind, status) values (${storeId}::uuid, ${await orderOf(people.back)}::uuid, 'return', 'requested') returning id`);
+    const [customer] = await db().execute<Row>(sql`insert into commerce.customers (store_id, email) values (${storeId}::uuid, ${people.rated}) returning id`);
+    const [talk] = await db().execute<Row>(sql`
+      insert into commerce.support_conversations (store_id, source, handler, token_hash, locale, customer_id)
+      values (${storeId}::uuid, 'site', 'ai', ${`fr-${run}`}, 'nb-NO', ${String(customer.id)}::uuid) returning id`);
+    const flowIds: Record<string, string> = {};
+    for (const trigger of ["order.refunded", "return.requested", "conversation.rated"] as const) {
+      const saved = await fl.saveFlow(storeId, owner, null, { name: `${trigger} ${run}`, trigger, steps: [email("e", "Hei")], goals: [] });
+      if (!saved.ok) throw new Error(saved.problem);
+      await fl.testFlow(storeId, saved.id);
+      expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+      flowIds[trigger] = saved.id;
+    }
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'order.refunded', ${await orderOf(people.refund)}::uuid)`);
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'return.requested', ${String(made.id)}::uuid)`);
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'conversation.rated', ${String(talk.id)}::uuid)`);
+    await fl.enterFlows();
+    const who = async (flow: string) => (await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${flow}::uuid`)).map((r) => String(r.subscriber_id));
+    expect(await who(flowIds["order.refunded"])).toEqual([ids.refund]);
+    expect(await who(flowIds["return.requested"])).toEqual([ids.back]);
+    expect(await who(flowIds["conversation.rated"])).toEqual([ids.rated]);
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+  });
 });

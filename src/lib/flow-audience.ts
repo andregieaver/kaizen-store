@@ -20,6 +20,13 @@ const STARTS: Record<FlowTrigger, (days: number | null) => string> = {
   "form.response": () => "It goes to each person on the shop's list who answered one of its forms. You do not know what they wrote, so never quote it.",
   "quote.requested": () => "It goes to each person on the shop's list who asked for a quote. You do not know what they asked for, so never name it; say the shop will answer.",
   "review.created": () => "It goes to each customer on the shop's list who wrote a review. Thank them; you do not know what they wrote, so never quote it.",
+  "order.refunded": () => "It goes to each customer on the shop's list after an order of theirs is refunded. You do not know why or what, so never name it; be kind and never ask them to buy again at once.",
+  "return.requested": () => "It goes to each customer on the shop's list who asked to return an order. You do not know what or why, so never name it; say the shop will look at it.",
+  "conversation.ended": () => "It goes to each person on the shop's list after a conversation with its support ends. You do not know what was said, so never quote it.",
+  "conversation.rated": () => "It goes to each person on the shop's list who rated a conversation with its support. You do not know the rating or what was said, so never name either; thank them.",
+  "deal.created": () => "It goes to each business customer on the shop's list when the shop opens a deal with them. You do not know its terms, so never name them.",
+  "deal.won": () => "It goes to each business customer on the shop's list when a deal with them is won. Thank them; you do not know its terms, so never name them.",
+  "contract.signed": () => "It goes to each customer on the shop's list who signed a contract with the shop. Thank them; you do not know its terms, so never name them.",
   "customer.lapsed": (d) => `It goes to customers on the shop's list who have not ordered for ${d ?? 90} days. Invite them back warmly, without pressure.`,
   "subscriber.asleep": (d) =>
     `It goes to people on the shop's list who have pressed no link in its emails for ${d ?? 180} days. Ask kindly whether they still want its news, with one button to say yes by visiting; if they do not, the shop stops emailing them. No guilt, no pressure.`,

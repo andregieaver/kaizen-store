@@ -16,7 +16,7 @@ import { useState, useTransition, type ReactNode } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
-import { waitWords } from "@/lib/flow-story";
+import { triggerLabel as triggerWordsOf, waitWords } from "@/lib/flow-story";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { ADDED_BLOCKS } from "@/lib/flow-blocks";
 import { SOCIAL_NETWORKS } from "@/lib/social-links";
@@ -519,7 +519,7 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
           <div role="group" aria-label={w.canvas.startsWhen} className="flex flex-wrap gap-2">
             {FLOW_TRIGGERS.filter((t) => t !== p.trigger).map((t) => (
               <SubmitButton key={t} variant="secondary" name="trigger" value={t}>
-                {w.canvas.triggers[t]}
+                {triggerWordsOf(t, w.story, null)}
               </SubmitButton>
             ))}
           </div>
@@ -671,7 +671,7 @@ export function FlowBoard(p: Props) {
     else if (id.startsWith("step:")) run(() => moveFlowStepAction(p.storeSlug, p.flowId, id.slice(5), place));
   };
 
-  const triggerLabel = w.canvas.triggers[p.trigger as keyof FlowsMessages["canvas"]["triggers"]] ?? p.trigger;
+  const triggerLabel = triggerWordsOf(p.trigger, w.story, p.triggerDays);
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <div className="flex flex-col gap-4" data-flow-board>

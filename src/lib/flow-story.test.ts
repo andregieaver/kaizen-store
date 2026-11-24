@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { storyLead, storyLines, waitWords, type StoryWords } from "./flow-story";
+import { storyLead, storyLines, triggerLabel, waitWords, type StoryWords } from "./flow-story";
 import type { FlowStep } from "./flows";
 
 const w: StoryWords = {
@@ -60,5 +60,14 @@ describe("a lapse flow's lead (slice 4)", () => {
   it("names the days without an order", () => {
     const words = { ...w, triggers: { "customer.lapsed": "When someone has not ordered for {n} days:" } };
     expect(storyLead("customer.lapsed", [{ kind: "ordered" }], words, 90)).toBe("When someone has not ordered for 90 days: It ends when they order.");
+  });
+});
+
+describe("what starts a flow, as a label (M2.3)", () => {
+  it("is the story's sentence without its colon, a date trigger's usual days when none are given", () => {
+    const words = { triggers: { "order.refunded": "When an order is refunded:", "customer.lapsed": "When someone has not ordered for {n} days:" } };
+    expect(triggerLabel("order.refunded", words, null)).toBe("When an order is refunded");
+    expect(triggerLabel("customer.lapsed", words, null)).toBe("When someone has not ordered for 90 days");
+    expect(triggerLabel("customer.lapsed", words, 120)).toBe("When someone has not ordered for 120 days");
   });
 });

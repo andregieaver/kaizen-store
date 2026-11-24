@@ -1,3 +1,4 @@
+import { DATE_TRIGGER_DAYS, isDateTrigger } from "./flow-triggers";
 import type { FlowCondition, FlowGoal, FlowStep } from "./flows";
 
 /**
@@ -99,6 +100,15 @@ export function storyLines(steps: readonly FlowStep[], w: StoryWords, segmentNam
   };
   walk(steps, 0, [], 0, null);
   return lines;
+}
+
+/**
+ * What starts a flow as a label of its own (the canvas's trigger card and its choices): the story's sentence without its colon, a date
+ * trigger's days filled in (its usual days when none are given).
+ */
+export function triggerLabel(trigger: string, w: Pick<StoryWords, "triggers">, days: number | null): string {
+  const range = isDateTrigger(trigger) ? DATE_TRIGGER_DAYS[trigger] : null;
+  return fill(w.triggers[trigger] ?? trigger, { n: days ?? range?.start ?? "?" }).replace(/:$/, "");
 }
 
 /** The story's first sentence: what starts it, and what ends it early. */

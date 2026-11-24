@@ -12,6 +12,13 @@ export const EVENT_TRIGGERS = [
   "form.response",
   "quote.requested",
   "review.created",
+  "order.refunded",
+  "return.requested",
+  "conversation.ended",
+  "conversation.rated",
+  "deal.created",
+  "deal.won",
+  "contract.signed",
 ] as const;
 
 /**

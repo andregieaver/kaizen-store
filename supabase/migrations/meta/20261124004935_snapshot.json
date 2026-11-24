@@ -1,6 +1,6 @@
 {
-  "id": "9af82e2a-76b1-482e-8d5a-f8d42c0cf0c0",
-  "prevId": "ea7b82b4-609b-4683-a178-3273f8448aa7",
+  "id": "5bfc7de1-ec90-414a-8e3c-99835865adab",
+  "prevId": "9af82e2a-76b1-482e-8d5a-f8d42c0cf0c0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -37701,7 +37701,7 @@
         },
         "flows_trigger": {
           "name": "flows_trigger",
-          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep')"
+          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'order.refunded', 'return.requested', 'conversation.ended', 'conversation.rated', 'deal.created', 'deal.won', 'contract.signed', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep')"
         },
         "flows_on_when_tested": {
           "name": "flows_on_when_tested",

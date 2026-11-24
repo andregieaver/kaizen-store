@@ -73,6 +73,10 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    says it on the emails after it (*once they order, or 3 days later*). *Tag them*, the first store action, puts the store's tag on the
    address as a sign-up form's tags are (`tagFromForm()`), for segments. Both set from the canvas with the actions it had, so they add no
    server reference. M2.1 is done but texts, which wait for 46elks (M2.7).
+   *Part f, 24 November 2026:* seven more events start a flow: an order refunded, a return asked for, a support conversation ended or
+   rated, a deal made or won, a contract signed. The person is the order's buyer, the conversation's contact (or its customer) and the
+   deal's or contract's customer (`emailOfSubject()`). The canvas names a trigger by its story sentence (`triggerLabel()`), so each
+   trigger has one wording per language.
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 
