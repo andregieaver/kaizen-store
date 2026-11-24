@@ -47,6 +47,8 @@ export type StoreItem = {
   extension?: ExtensionId;
   /** A page only a customer's store has: left out for Kaizena Flow's own store (D466), which has no plan and is never closed. */
   customer?: true;
+  /** A page only Kaizena Flow's own store has for now (D890: Companies, until company recognition is opened to every store). */
+  house?: true;
   /** A page a workspace (D748 E7) offers besides its extensions' own: always (`true`), or while the account has that extension. */
   workspace?: true | ExtensionId;
   /** A page that is not what its section's tab stands for (Custom fields under Products): the tab never opens on it, and a section with only
@@ -256,6 +258,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/analytics/speed", "Speed", "How fast your pages load for your visitors, measured in their browsers, and what to fix.", { area: "analytics", icon: "gauge" }),
           item("/analytics/heatmaps", "Heatmaps", "Where visitors click, how far they scroll and what they look at, and where they get stuck.", { area: "analytics", icon: "flame" }),
           item("/analytics/recordings", "Recordings", "Watch visits to your pages, for visitors who allow it, to see where they get stuck.", { area: "analytics", icon: "video" }),
+          item("/analytics/companies", "Visiting companies", "Which companies' networks your visitors came from, how often they came back and what they looked at.", { area: "analytics", icon: "building", house: true }),
           item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted.", { area: "analytics", icon: "sliders" }),
         ],
       },
@@ -450,7 +453,7 @@ export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSectio
   const open = (path: string) => !canOpen || canOpen(path);
   return STORE_SECTIONS.filter((s) => on(s))
     .map((s) => {
-      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i) && ours(i) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
+      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i) && ours(i) && open(i.path) && !(house && i.customer) && !(i.house && !house)) })).filter((g) => g.items.length > 0);
       // A section whose main page is hidden opens on the first page it has left (D178 step 5: a website's Customers open on Privacy requests).
       // A page that is aside (Custom fields under Products) is never where a tab leads: a website's Products tab would open on Custom fields.
       const left = groups.flatMap((g) => g.items.filter((i) => !i.aside).map((i) => i.path));

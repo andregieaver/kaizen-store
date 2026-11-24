@@ -10,7 +10,9 @@ import { noteFirstRequest } from "@/server/instance-start";
  * never cached, whether the view was counted or not, so a script learns nothing from it. No cookie is set or read.
  * `recordVisit()` drops robots and visitors who send Global Privacy Control or Do Not Track, drops a request whose
  * Origin/Referer is not a page of the store named in the body, bounds the new rows an address and a store can start in a
- * day, and keeps no IP address and no user agent. The bounds make inflating the count harder; they do not prevent it.
+ * day, and keeps no IP address and no user agent. The bounds make inflating the count harder; they do not prevent it. While the store
+ * recognises companies (D890), a counted page view's address is looked up after the answer (`recordCompanyVisit()`) and only the company
+ * is kept.
  */
 
 const MAX_BYTES = 1000;
@@ -31,7 +33,16 @@ export async function POST(request: Request) {
     } catch {
       return new Response(null, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
-    await recordVisit({ headers: request.headers, body });
+    const outcome = await recordVisit({ headers: request.headers, body });
+    // Which companies visited (D890): looked up after the answer, so the visitor's browser never waits on it. Loaded only for a store that
+    // recognises companies, so the beacon stays light for every other.
+    if (outcome.recorded && outcome.company) {
+      const company = outcome.company;
+      after(async () => {
+        const { recordCompanyVisit } = await import("@/server/company-visits");
+        await recordCompanyVisit(company);
+      });
+    }
   } catch (error) {
     // Counting is never worth an error in a visitor's browser.
     console.warn(`[visits] ${error instanceof Error ? error.message : String(error)}`);

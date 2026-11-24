@@ -154,6 +154,8 @@ export const NAV_NB: Record<string, string> = {
   Speed: "Hastighet",
   Heatmaps: "Varmekart",
   Recordings: "Opptak",
+  "Visiting companies": "Besøkende bedrifter",
+  "Which companies' networks your visitors came from, how often they came back and what they looked at.": "Hvilke bedrifters nettverk de besøkende kom fra, hvor ofte de kom tilbake og hva de så på.",
   "Watch visits to your pages, for visitors who allow it, to see where they get stuck.":
     "Se besøk på sidene dine, for besøkende som tillater det, for å se hvor de står fast.",
   "Where visitors click, how far they scroll and what they look at, and where they get stuck.":

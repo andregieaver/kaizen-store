@@ -1,6 +1,6 @@
 {
-  "id": "d200a7d9-7592-4665-9884-e053e877cefd",
-  "prevId": "9b660ef1-9b87-440e-ba6f-46caa8759a7b",
+  "id": "5da43856-c9a9-4d60-9164-f6b733cb5c26",
+  "prevId": "d200a7d9-7592-4665-9884-e053e877cefd",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -17953,6 +17953,359 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.company_lookup_settings": {
+      "name": "company_lookup_settings",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "api_key_encrypted": {
+          "name": "api_key_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "api_key_hint": {
+          "name": "api_key_hint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "company_lookup_settings_updated_by_idx": {
+          "name": "company_lookup_settings_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "company_lookup_settings_store_id_stores_id_fk": {
+          "name": "company_lookup_settings_store_id_stores_id_fk",
+          "tableFrom": "company_lookup_settings",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "company_lookup_settings_updated_by_accounts_id_fk": {
+          "name": "company_lookup_settings_updated_by_accounts_id_fk",
+          "tableFrom": "company_lookup_settings",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "company_lookup_settings_store_key": {
+          "name": "company_lookup_settings_store_key",
+          "nullsNotDistinct": true,
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "company_lookup_settings_provider": {
+          "name": "company_lookup_settings_provider",
+          "value": "\"commerce\".\"company_lookup_settings\".\"provider\" in ('leadfeeder')"
+        },
+        "company_lookup_settings_account": {
+          "name": "company_lookup_settings_account",
+          "value": "\"commerce\".\"company_lookup_settings\".\"account_id\" ~ '^[0-9]{1,20}$'"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "commerce.company_lookups": {
+      "name": "company_lookups",
+      "schema": "commerce",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "company_lookups_day_idx": {
+          "name": "company_lookups_day_idx",
+          "columns": [
+            {
+              "expression": "day",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "company_lookups_company_idx": {
+          "name": "company_lookups_company_idx",
+          "columns": [
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "company_lookups_company_id_visit_companies_id_fk": {
+          "name": "company_lookups_company_id_visit_companies_id_fk",
+          "tableFrom": "company_lookups",
+          "tableTo": "visit_companies",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "company_lookups_key": {
+          "name": "company_lookups_key",
+          "value": "\"commerce\".\"company_lookups\".\"key\" ~ '^[0-9a-f]{32}$'"
+        },
+        "company_lookups_outcome": {
+          "name": "company_lookups_outcome",
+          "value": "\"commerce\".\"company_lookups\".\"outcome\" in ('company', 'none', 'failed') and (\"commerce\".\"company_lookups\".\"outcome\" = 'company') = (\"commerce\".\"company_lookups\".\"company_id\" is not null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "commerce.company_visits": {
+      "name": "company_visits",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visitors": {
+          "name": "visitors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "page_views": {
+          "name": "page_views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "pages": {
+          "name": "pages",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "first_seen": {
+          "name": "first_seen",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_seen": {
+          "name": "last_seen",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "company_visits_company_idx": {
+          "name": "company_visits_company_idx",
+          "columns": [
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "company_visits_store_id_stores_id_fk": {
+          "name": "company_visits_store_id_stores_id_fk",
+          "tableFrom": "company_visits",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "company_visits_company_id_visit_companies_id_fk": {
+          "name": "company_visits_company_id_visit_companies_id_fk",
+          "tableFrom": "company_visits",
+          "tableTo": "visit_companies",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "company_visits_store_id_day_company_id_pk": {
+          "name": "company_visits_store_id_day_company_id_pk",
+          "columns": [
+            "store_id",
+            "day",
+            "company_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "company_visits_counts": {
+          "name": "company_visits_counts",
+          "value": "\"commerce\".\"company_visits\".\"visitors\" >= 0 and \"commerce\".\"company_visits\".\"page_views\" >= 0"
+        },
+        "company_visits_pages": {
+          "name": "company_visits_pages",
+          "value": "jsonb_typeof(\"commerce\".\"company_visits\".\"pages\") = 'object'"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.consents": {
       "name": "consents",
@@ -88776,6 +89129,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "company_recognition": {
+          "name": "company_recognition",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "private_mode": {
           "name": "private_mode",
           "type": "boolean",
@@ -97894,6 +98254,118 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.visit_companies": {
+      "name": "visit_companies",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "legal_form": {
+          "name": "legal_form",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "industry": {
+          "name": "industry",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "employees": {
+          "name": "employees",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "register_id": {
+          "name": "register_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "do_not_contact": {
+          "name": "do_not_contact",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "visit_companies_source_key": {
+          "name": "visit_companies_source_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "source",
+            "source_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "visit_companies_source": {
+          "name": "visit_companies_source",
+          "value": "\"commerce\".\"visit_companies\".\"source\" in ('leadfeeder')"
+        },
+        "visit_companies_lengths": {
+          "name": "visit_companies_lengths",
+          "value": "length(\"commerce\".\"visit_companies\".\"name\") between 1 and 200 and length(\"commerce\".\"visit_companies\".\"source_id\") between 1 and 100 and coalesce(length(\"commerce\".\"visit_companies\".\"legal_form\"), 0) <= 100\n        and coalesce(length(\"commerce\".\"visit_companies\".\"domain\"), 0) <= 253 and coalesce(length(\"commerce\".\"visit_companies\".\"city\"), 0) <= 100 and coalesce(length(\"commerce\".\"visit_companies\".\"industry\"), 0) <= 200\n        and coalesce(length(\"commerce\".\"visit_companies\".\"employees\"), 0) <= 30 and coalesce(length(\"commerce\".\"visit_companies\".\"register_id\"), 0) <= 60"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.visits": {
       "name": "visits",

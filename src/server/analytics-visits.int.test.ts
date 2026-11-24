@@ -98,7 +98,7 @@ describe("recording a page view", () => {
       body: view(page("/p/demo-mug"), { referrer: "www.google.com", utm_medium: "cpc", utm_campaign: "Spring" }),
       now: EVENING,
     });
-    expect(outcome).toEqual({ recorded: true });
+    expect(outcome).toEqual({ recorded: true, company: null });
     const [row, ...more] = await visits();
     expect(more).toHaveLength(0);
     expect(row).toMatchObject({
@@ -261,7 +261,7 @@ describe("recording a page view", () => {
     ];
     for (const [path, expected] of cases) {
       await db().execute(sql`delete from commerce.visits where store_id = ${storeId}::uuid`);
-      expect(await recordVisit({ headers: asRequest(), body: view(path), now: EVENING }), path).toEqual({ recorded: true });
+      expect(await recordVisit({ headers: asRequest(), body: view(path), now: EVENING }), path).toEqual({ recorded: true, company: null });
       const [row] = await visits();
       expect(row.landing_path, path).toBe(expected);
     }
@@ -291,21 +291,21 @@ describe("recording a page view", () => {
     expect(await recordVisit({ headers: other, body: view(page()), now: EVENING })).toEqual({ recorded: false, reason: "wrong_site" });
     expect(await visits()).toHaveLength(0);
     // The store's own page is fine, with or without a query on the Referer.
-    expect(await recordVisit({ headers: asRequest({ referer: `http://localhost:3000/s/${slug}/no/p/x?a=1` }), body: view(page()), now: EVENING })).toEqual({ recorded: true });
+    expect(await recordVisit({ headers: asRequest({ referer: `http://localhost:3000/s/${slug}/no/p/x?a=1` }), body: view(page()), now: EVENING })).toEqual({ recorded: true, company: null });
   });
 
   it("limits the new rows one address can start, but not the page views of a row it already has", async () => {
     const limit = NEW_VISITS_PER_ADDRESS_WINDOW;
     // A script changing its user agent: each is a new visitor-day row from the same address.
     for (let i = 0; i < limit; i++) {
-      expect(await recordVisit({ headers: asRequest({}, `Mozilla/5.0 Script/${i}`), body: view(page()), now: EVENING }), `row ${i}`).toEqual({ recorded: true });
+      expect(await recordVisit({ headers: asRequest({}, `Mozilla/5.0 Script/${i}`), body: view(page()), now: EVENING }), `row ${i}`).toEqual({ recorded: true, company: null });
     }
     expect(await recordVisit({ headers: asRequest({}, "Mozilla/5.0 Script/over"), body: view(page()), now: EVENING })).toEqual({ recorded: false, reason: "burst" });
     expect(await visits()).toHaveLength(limit);
     // A visitor who already has a row today keeps adding page views to it.
-    expect(await recordVisit({ headers: asRequest({}, "Mozilla/5.0 Script/0"), body: view(page("/cart")), now: EVENING })).toEqual({ recorded: true });
+    expect(await recordVisit({ headers: asRequest({}, "Mozilla/5.0 Script/0"), body: view(page("/cart")), now: EVENING })).toEqual({ recorded: true, company: null });
     // Another address is not held back by it.
-    expect(await recordVisit({ headers: asRequest({}, UA, "198.51.100.9"), body: view(page()), now: EVENING })).toEqual({ recorded: true });
+    expect(await recordVisit({ headers: asRequest({}, UA, "198.51.100.9"), body: view(page()), now: EVENING })).toEqual({ recorded: true, company: null });
   });
 
   it("limits the new rows a store takes in a day", async () => {
@@ -316,7 +316,7 @@ describe("recording a page view", () => {
     expect(await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING })).toEqual({ recorded: false, reason: "store_full" });
     expect(await visits()).toHaveLength(0);
     await db().execute(sql`delete from commerce.chat_usage where store_id = ${storeId}::uuid and bucket = 'visits'`);
-    expect(await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING })).toEqual({ recorded: true });
+    expect(await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING })).toEqual({ recorded: true, company: null });
   });
 
   it("keeps no address in the limits' counters either, and they are pruned with the other counters", async () => {
@@ -330,7 +330,7 @@ describe("recording a page view", () => {
   it("stops counting a visitor past the day's cap", async () => {
     await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING });
     await db().execute(sql`update commerce.visits set page_views = 2999 where store_id = ${storeId}::uuid`);
-    expect(await recordVisit({ headers: asRequest(), body: view(page("/cart")), now: EVENING })).toEqual({ recorded: true });
+    expect(await recordVisit({ headers: asRequest(), body: view(page("/cart")), now: EVENING })).toEqual({ recorded: true, company: null });
     expect(await recordVisit({ headers: asRequest(), body: view(page("/cart")), now: EVENING })).toEqual({ recorded: false, reason: "capped" });
     expect((await visits())[0].page_views).toBe(3000);
   });

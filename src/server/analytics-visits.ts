@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 
 import { db } from "@/db/client";
 import { classifyChannel, cleanContent } from "@/lib/analytics-traffic";
+import type { CompanyVisitInput } from "@/lib/company-lookup";
 import { deviceOf, isBot } from "@/lib/experiments";
 import { storeDomain, storeOrigins } from "@/lib/paths";
 import { parseKey } from "@/lib/secret-box";
@@ -51,7 +52,11 @@ export type VisitSkip =
   | "capped"
   | "burst"
   | "store_full";
-export type VisitOutcome = { recorded: true } | { recorded: false; reason: VisitSkip };
+/**
+ * A counted page view: with `company` while the store recognises companies (D890), for `/api/visit` to hand to `recordCompanyVisit()`
+ * after it has answered; the address in it is never stored.
+ */
+export type VisitOutcome = { recorded: true; company: CompanyVisitInput | null } | { recorded: false; reason: VisitSkip };
 
 /**
  * The secret the daily keys come from: the settings key, kept apart from its other use (encrypting secrets) by deriving a
@@ -202,7 +207,9 @@ export async function recordVisit({ headers: h, body, now = new Date() }: { head
     )
     select (select count(*) from up)::int as recorded, (select count(*) from pv)::int as product_counted
   `);
-  return Number(row?.recorded ?? 0) > 0 ? { recorded: true } : { recorded: false, reason: "capped" };
+  if (Number(row?.recorded ?? 0) === 0) return { recorded: false, reason: "capped" };
+  const company = store.companyRecognition ? { storeId: store.id, day, newVisitor: !known, page: place.landing, address, now } : null;
+  return { recorded: true, company };
 }
 
 /**

@@ -67,6 +67,7 @@ async function createStore(slug: string): Promise<Store> {
     recordings: false,
     recordingShare: 50,
     recordingMask: "balanced",
+    companyRecognition: false,
     privateMode: false,
     shoppingAgents: false,
     privatePassword: false,

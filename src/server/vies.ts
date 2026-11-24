@@ -12,6 +12,7 @@ import {
   viesWorthRetry,
   type ViesAnswer,
 } from "@/lib/vies";
+import { cappedText } from "./capped-text";
 
 /**
  * The call to VIES, the Commission's VAT number service (D157, docs/wave-1a-tax.md section 4.3): one `POST` to a host
@@ -39,21 +40,7 @@ export const viesAddress = (): string =>
   viesEndpoint({ testUrl: process.env.VIES_TEST_URL, allowTest: process.env.VIES_ALLOW_TEST_URL, vercel: process.env.VERCEL });
 
 /** The body of an answer as text, at most `VIES_MAX_BODY_BYTES` of it. */
-async function readText(response: Response): Promise<string> {
-  const body = response.body;
-  if (!body) return (await response.text()).slice(0, VIES_MAX_BODY_BYTES);
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (size < VIES_MAX_BODY_BYTES) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    size += value.byteLength;
-  }
-  await reader.cancel().catch(() => undefined);
-  return new TextDecoder().decode(Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))).slice(0, VIES_MAX_BODY_BYTES);
-}
+const readText = (response: Response): Promise<string> => cappedText(response, VIES_MAX_BODY_BYTES);
 
 async function attempt(url: string, body: string, doFetch: typeof fetch, timeoutMs: number): Promise<ViesAnswer> {
   try {

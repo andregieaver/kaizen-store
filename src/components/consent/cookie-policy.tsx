@@ -29,6 +29,7 @@ export function CookiePolicy({
   visitCounting = false,
   heatmaps = false,
   recordings = false,
+  companies = false,
   store,
 }: {
   lang: string;
@@ -40,6 +41,8 @@ export function CookiePolicy({
   /** The store's heatmaps and recordings are on (D656): the page says what each collects, and statistics names heatmaps. */
   heatmaps?: boolean;
   recordings?: boolean;
+  /** The store recognises companies (D890): the page says a counted visit's network is looked up and only the company kept. */
+  companies?: boolean;
   /** The store, for the button that deletes this browser's recordings (shown while it records). */
   store?: { id: string; slug: string };
 }) {
@@ -63,6 +66,7 @@ export function CookiePolicy({
           />
         )}
         {visitCounting && <p className="max-w-2xl">{m.visitCounting}</p>}
+        {visitCounting && companies && <p className="max-w-2xl">{m.cookieCompanies}</p>}
         {heatmaps && <p className="max-w-2xl">{m.cookieHeatmaps}</p>}
         {recordings && <p className="max-w-2xl">{m.cookieRecordings}</p>}
         {recordings && store ? <DeleteRecordings store={store} lang={lang} /> : null}

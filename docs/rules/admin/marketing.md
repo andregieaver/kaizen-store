@@ -33,6 +33,19 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   read: the domain watch asks the world once a day, `src/server/domain-watch.ts`).
 
 
+## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
+
+- **Which companies visited (D890)**: a counted page view on a store with `stores.company_recognition` on is looked up after `/api/visit`
+  has answered (`recordCompanyVisit()`, loaded only for such a store), through Kaizena Flow's Leadfeeder connection
+  (`company_lookup_settings`, platform row, written only by `src/server/company-lookup-admin.ts`, read by `company-lookup-settings.ts`, which
+  stays light). The address is sent to Leadfeeder's fixed host only and never written: the day's answer is kept under `lookupKey()` in
+  `company_lookups` (two days), the company once in `visit_companies`, a store's day in `company_visits` (no visitor id, never joined to
+  visits, carts, orders or customers); `recordCompanyVisit()` and `pruneCompanyVisits()` are their only writers. A sole trader
+  (`isSoleTrader()`, Brønnøysund's `ENK`) is never counted or shown. Only the house store may switch it on until it is opened to stores
+  (`setCompanyRecognition()`), and the store's Cookies page says it while on (`cookieCompanies`); any new claim must stay true to
+  `docs/analytics.md` "Companies".
+
+
 ## Heatmaps and recordings: the owner's screens (D656, `docs/heatmaps-and-recordings.md`, `src/server/page-heat-read.ts`, `src/server/recordings-read.ts`, `src/lib/replay-sanitize.ts`)
 
 - Analytics → Heatmaps (`analytics:read`) reads `src/server/page-heat-read.ts` (every visitor's rows unless a version is chosen, so

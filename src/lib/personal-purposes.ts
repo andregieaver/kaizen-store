@@ -273,6 +273,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   form_submissions: "support",
   consents: "consent_records",
   visits: "analytics",
+  company_lookups: "analytics",
   recordings: "recordings",
   "storage:recordings": "recordings",
   product_views: "analytics",

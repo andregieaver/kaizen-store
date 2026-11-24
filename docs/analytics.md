@@ -73,6 +73,7 @@ Dates are in the store's time zone (`store.timeZone`), a day being midnight to m
 | **CAC** | Acquisition marketing spend / new customers (blended; per channel where spend and attribution allow). **ROAS** (a channel's) = revenue attributed to the channel / its spend. **ROAS (blended)**, the "All channels" row and the Marketing headline = revenue attributed to the channels that **have ad spend** / the spend of those channels: direct, organic and unknown sales are not a return on ad spend and are never in it. **MER** (marketing efficiency ratio) = **all** revenue / **all** ad spend, shown as its own card, labelled "every sale divided by every ad krone" (the currency's own unit), never as a ROAS; it flatters the ads, since sales that came without them are in it. **Profit ROAS** = contribution before marketing / spend, per channel, and blended likewise over the channels that have spend (none when any of those channels' costs are unknown; per-channel profit is on known costs, see Gross profit). **LTV:CAC** = predicted LTV / CAC. |
 | **Campaign** (D303 I3, wave 5) | A pair of the visit's tidied `source` and `campaign` (from `utm_source`/`utm_campaign`, as kept on `visits`), only where the campaign is not empty. A campaign's **sessions** are its visits in the period; its **orders** and **revenue** are the paid orders (`PAID`, from a shopper's checkout) whose cart's visit carried it, without VAT, in the main currency, copied and host orders out (as the channel table's); its **spend** is `marketing_spend` whose campaign equals the campaign's (case-insensitive, tidied the same way) in the period, whatever its channel; **CAC** = spend / its new customers and **ROAS** = revenue / spend, both shown only with spend (*No spend entered*, never 0). **Attribution model**: *Last visit* (default) is the visit of the day the cart was made, as for channels; *First visit in 30 days* uses that visit's `first_*` columns, known only for visitors who allowed statistics cookies (`kaizen_touch_{store}`), so the page counts only orders that have one and says how many of the period's orders it covers; it never fills the rest. |
 | **Post** (D870 S1.1) | A visit's `source`, `campaign` and `content` (`utm_content`, kept on `visits.content`), where the content is not empty (`p-` and a post's reference, or `bio`). Its sessions, carts, and the paid checkout orders of those carts with revenue, line revenue and cost of goods, as a campaign's; gross profit only when every line's cost is known (`postRows()`). Last visit only. |
+| **Company visits** (D890) | Rows in `company_visits` for the period: a company, a store day, its visitor-days (a visitor counts once a day, on the view that began their visit) and page views. A company's **visits** are those summed, its **days** the days with any. Only while `company_recognition` is on; more under "Companies". |
 | **Refund rate** | Refunds / revenue (same period, refunds by their own date). Also shown: share of orders with a refund. |
 | **Discount dependency** | Paid orders with any discount / paid orders. |
 | **Velocity** | Units sold per day over 7 and over 30 days (goods only); **days of stock** = on hand / (0.6 × 7-day + 0.4 × 30-day velocity); none when nothing sold. |
@@ -173,6 +174,37 @@ cannot be followed from one day to the next, and that adding to the cart lets th
 the visit beacon runs and the browser does not ask not to be tracked. `recordPageError()` checks it as a page view (robots, privacy signals, the
 store's own pages, counting on) and writes `visits.error_at` on the visitor's counted visit of the store's day, the first time only; it starts no
 visit, so an error never counts a visitor. The autopilot's watch (`docs/100-day-challenge.md` F4) counts visitors who met an error per hour.
+## Companies (D890, `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
+
+Which companies' own networks a store's counted visits came from. It rides on visit counting and adds no cookie, storage or banner.
+
+- **The switch.** `stores.company_recognition` (default off), set on Analytics → Settings by the owner (`setCompanyRecognition()`), needs
+  visit counting on. Only Kaizena Flow's own store (`house`) may switch it on until it is opened to every store (D890). The store's
+  Cookies page says it while it is on (`cookieCompanies`, in each hand-written shop language).
+- **The lookup.** A page view `recordVisit()` counted returns its store day, whether it started the visitor's row, its page shape and the
+  address, which `/api/visit` hands to `recordCompanyVisit()` after the answer. The address is asked about once a **UTC day** whatever the
+  store: the day's answer is kept in `company_lookups` under `lookupKey()` (HMAC of the day and the address with the visit purpose key, 32
+  hex), never the address, and deleted after two days. Without an answer, within `LOOKUPS_PER_STORE_DAY` (2,000 a store a day, counted in
+  `chat_usage` bucket `company-lookups`), Kaizena Flow's Leadfeeder connection (`company_lookup_settings`, the key encrypted) is asked:
+  `GET https://api.leadfeeder.com/v1/ip/enrich?ip=…&account_id=…` with `X-Api-Key`, 3 s, 64 KB read, no redirect. Only
+  `company_type = company` with a company id and a name is a company; a shared network or a 404 is none; anything else, a timeout or a
+  network error is `failed`, kept for the day as well. Private, loopback and link-local addresses are never sent (`isLookupAddress()`).
+  The address never reaches the database: every statement gets only its keyed hash, so neither a table nor a failed query's log holds it.
+- **What is kept.** A company once, platform-wide (`visit_companies`: the source's id, name, legal form, website host, country, city, first
+  industry, headcount range, register number, `do_not_contact`), updated from each new answer. A store's day for it (`company_visits`):
+  visitors, page views and `{ shape: views }` for at most `COMPANY_PAGES_KEPT` (30) shapes, the rest under `(other)`, in one statement so
+  concurrent page views add up. No visitor id, no address, and no link to a visit row, a cart, an order or a customer.
+- **Never a person.** A sole trader (`isSoleTrader()`: the legal forms of eleven countries, and for a new Norwegian company with an
+  organisation number Brønnøysund's `ENK`, asked before it is saved) is never kept, counted or shown.
+- **The page.** Analytics → Companies over the period picked: one card per company, most recently seen first (`companySummaries()`), with its
+  facts, its visits and days, a bar per day of the period (a picture of the figures beside it, `aria-hidden`) and its four most viewed pages
+  (a marketless store's without the country, `pageLabel()`). States: off (one button to the switch), on without a connection, on with nothing
+  counted yet, an empty period.
+- **What it cannot know**, said on the page and the switch: visitors at home, on a phone or a VPN show their internet provider and are not
+  named; visitors sending Global Privacy Control or Do Not Track, and robots, are never counted.
+- **Retention.** `pruneCompanyVisits()` in the daily run: lookups after two days, company days after 25 months (as visits), companies no
+  day or lookup points at after a week.
+
 ## Speed (D336, wave 7 unit B, `docs/wave-7-storefront.md` B)
 
 How fast a store's pages are for the people who open them, measured in their browsers (field data), never a score from nothing.

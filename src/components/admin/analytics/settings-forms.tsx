@@ -21,9 +21,11 @@ import type { StoredPeriodTarget, StoredTarget } from "@/server/analytics-settin
 import { TARGET_METRICS, TARGET_PERIODS } from "@/lib/analytics-targets";
 import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
 import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
+import { COMPANIES_WORDS } from "@/lib/admin-words/companies";
 
+import { CompaniesSection, type CompaniesSettings } from "./companies-settings";
 import { DataTable, StatusPill, type Column } from "./data-table";
-import { AnalyticsSection, Note } from "./section";
+import { AnalyticsSection, Note, WhatAndNot } from "./section";
 
 /**
  * The analytics settings page's forms and the view that holds them (D152, `docs/analytics.md`): what products cost, the fees and
@@ -44,6 +46,10 @@ export type SettingsActions = {
   setVisitCounting: FormAction;
   setHeatmaps?: FormAction;
   setRecordings?: FormAction;
+  /** Which companies visited (D890): the switch, and Kaizena Flow's Leadfeeder connection (a platform admin's). */
+  setCompanyRecognition?: FormAction;
+  saveCompanyLookup?: FormAction;
+  removeCompanyLookup?: FormAction;
   backfillCosts: FormAction;
 };
 
@@ -66,6 +72,8 @@ export type AnalyticsSettingsViewProps = {
   heatmaps?: boolean;
   /** Recordings of visits (D656 step 11): whether on, the share recorded, what they hide, and whether the store may switch them on. */
   recordings?: { on: boolean; share: number; mask: "balanced" | "strict"; available: boolean; privacyHref: string; /** The store's own assessment to download (D656, Q3). */ assessmentHref: string };
+  /** Which companies visited (D890); left out where the page does not offer it. */
+  companies?: CompaniesSettings;
   /** Null for a member who may look but not change. */
   actions: SettingsActions | null;
 };
@@ -593,24 +601,7 @@ export function SignalsSection({ heatmaps, action }: { heatmaps: boolean; action
           <p className="text-sm">{heatmaps ? w.stateOn : w.stateOff}</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <h3 className="text-body-strong text-ink">{w.whatTitle}</h3>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-              {w.what.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <h3 className="text-body-strong text-ink">{w.notTitle}</h3>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-              {w.not.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <WhatAndNot whatTitle={w.whatTitle} what={w.what} notTitle={w.notTitle} not={w.not} />
 
         <Note title={w.askAgainTitle}>
           {w.askAgain} {w.keep}
@@ -790,6 +781,19 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
         {props.recordings ? (
           <PhoneRow opens="recordings" title={RECORDINGS_WORDS[analyticsLang()].settings.title} sub={props.recordings.on ? p.on : props.recordings.available ? p.off : p.notAvailable} {...row}>
             <RecordingsSection recordings={props.recordings} action={actions?.setRecordings ?? null} />
+          </PhoneRow>
+        ) : null}
+        {props.companies ? (
+          <PhoneRow opens="companies" title={COMPANIES_WORDS[analyticsLang()].settings.title} sub={props.companies.on ? p.on : props.companies.available ? p.off : p.notAvailable} {...row}>
+            <CompaniesSection
+              companies={props.companies}
+              words={COMPANIES_WORDS[analyticsLang()]}
+              actions={
+                actions?.setCompanyRecognition && actions.saveCompanyLookup && actions.removeCompanyLookup
+                  ? { set: actions.setCompanyRecognition, saveConnection: actions.saveCompanyLookup, removeConnection: actions.removeCompanyLookup }
+                  : null
+              }
+            />
           </PhoneRow>
         ) : null}
       </PhoneRows>

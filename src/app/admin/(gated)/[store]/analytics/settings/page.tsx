@@ -14,6 +14,7 @@ import { analyticsCaptions } from "@/server/analytics-say";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { listPeriodTargets, listTargets } from "@/server/analytics-settings";
 import { recordingsOpenNow } from "@/server/recordings-admin";
+import { companyLookupSettings } from "@/server/company-lookup-settings";
 
 import {
   backfillCostsAction,
@@ -22,6 +23,9 @@ import {
   saveAnalyticsSettingsAction,
   savePeriodTargetAction,
   saveTargetAction,
+  removeCompanyLookupAction,
+  saveCompanyLookupAction,
+  setCompanyRecognitionAction,
   setHeatmapsAction,
   setRecordingsAction,
   setVisitCountingAction,
@@ -38,7 +42,13 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
   const ctx = await analyticsContext((await params).store, {}, "owner");
   const { store, settings, base, now } = ctx;
   const today = todayIn(now, store.timeZone);
-  const [summary, targets, periodTargets] = await Promise.all([analyticsSetupSummary(store.id), listTargets(store.id, 60), listPeriodTargets(store.id, { from: today })]);
+  const [summary, targets, periodTargets, lookup] = await Promise.all([
+    analyticsSetupSummary(store.id),
+    listTargets(store.id, 60),
+    listPeriodTargets(store.id, { from: today }),
+    // Kaizena Flow's Leadfeeder connection (D890): read only where its card offers it, by its key's hint.
+    store.house ? companyLookupSettings() : Promise.resolve(null),
+  ]);
   const owner = ctx.owner;
   const w = analyticsWords().settings;
   return (
@@ -76,6 +86,14 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
             privacyHref: `${base}/settings/legal`,
             assessmentHref: `${base}/analytics/recordings/assessment`,
           }}
+          companies={{
+            on: store.companyRecognition,
+            available: store.house,
+            visitCounting: store.visitCounting,
+            connection: lookup ? { keyHint: lookup.keyHint, accountId: lookup.accountId } : null,
+            platformAdmin: Boolean(ctx.account.platformAdmin),
+            pageHref: `${base}/analytics/companies`,
+          }}
           actions={
             owner
               ? {
@@ -87,6 +105,9 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
                   setVisitCounting: setVisitCountingAction.bind(null, store.slug),
                   setHeatmaps: setHeatmapsAction.bind(null, store.slug),
                   setRecordings: setRecordingsAction.bind(null, store.slug),
+                  setCompanyRecognition: setCompanyRecognitionAction.bind(null, store.slug),
+                  saveCompanyLookup: saveCompanyLookupAction.bind(null, store.slug),
+                  removeCompanyLookup: removeCompanyLookupAction.bind(null, store.slug),
                   backfillCosts: backfillCostsAction.bind(null, store.slug),
                 }
               : null

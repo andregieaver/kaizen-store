@@ -155,6 +155,24 @@ export async function setHeatmaps({ account, store, role }: Membership, enabled:
   return { ok: true, enabled };
 }
 
+/**
+ * Switches company recognition on or off (D890, `docs/analytics.md` "Companies"): which companies' networks the counted visits came from,
+ * through Kaizena Flow's Leadfeeder connection. Owner only. It rides on visit counting, so it needs that on; and until it is opened to
+ * every store (its cost is Kaizena Flow's), only Kaizena Flow's own store may switch it on. Switching it off stops lookups at once and
+ * keeps the days already counted.
+ */
+export async function setCompanyRecognition({ account, store, role }: Membership, enabled: boolean): Promise<AnalyticsResult<{ enabled: boolean }>> {
+  if (!can({ role }, "owner")) return refuse(OWNER_ONLY);
+  if (enabled && !store.house) return refuse("Company recognition is not available yet.");
+  if (enabled && !store.visitCounting) return refuse("Turn on visit counting first.");
+  await db().execute(sql`update commerce.stores set company_recognition = ${enabled} where id = ${store.id}::uuid`);
+  await audit(account.id, store.id, "analytics.company_recognition", { enabled });
+  refreshTag(storeTag(store.slug));
+  // The cookie page's words on visit counting say whether companies are recognised.
+  refreshTag(cookiesTag(store.id));
+  return { ok: true, enabled };
+}
+
 export const RECORDING_SHARES = [10, 25, 50, 100] as const;
 
 export type RecordingsInput = { enabled: boolean; share: number; mask: "balanced" | "strict"; confirmed: boolean };

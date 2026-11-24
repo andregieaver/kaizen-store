@@ -515,6 +515,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Varmekart",
     keywords: ["varmekart", "klikkart", "rullekart", "oppmerksomhet", "sinte klikk", "døde klikk"],
   },
+  "store:analytics.companies": {
+    title: "Besøkende bedrifter",
+    keywords: ["bedrifter", "bedriftsbesøk", "hvilke bedrifter besøkte", "b2b-besøkende", "besøksidentifisering", "leadfeeder", "leads"],
+  },
   "store:analytics.recordings": {
     title: "Opptak",
     keywords: ["opptak", "øktopptak", "se besøk", "skjermopptak"],

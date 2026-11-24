@@ -86,3 +86,24 @@ export function Note({ tone = "info", title, children }: { tone?: NoteTone; titl
     </div>
   );
 }
+
+/** What a switch collects and what it never does, side by side (Heatmaps, D656; Which companies visited, D890): two short lists of words. */
+export function WhatAndNot({ whatTitle, what, notTitle, not }: { whatTitle: string; what: readonly string[]; notTitle: string; not: readonly string[] }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {[
+        { title: whatTitle, lines: what },
+        { title: notTitle, lines: not },
+      ].map((list) => (
+        <div key={list.title} className="flex flex-col gap-1.5">
+          <h3 className="text-body-strong text-ink">{list.title}</h3>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+            {list.lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}

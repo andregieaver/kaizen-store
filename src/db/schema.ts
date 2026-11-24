@@ -874,6 +874,12 @@ export const stores = commerce.table(
     /** When the owner confirmed the store is not aimed at children, sells nothing sensitive, and its privacy policy says visits are recorded. */
     recordingsConfirmedAt: timestamp("recordings_confirmed_at", { withTimezone: true }),
     /**
+     * Which companies visited (D890, `docs/analytics.md` "Companies"): while visits are counted, a visit's address is looked up through
+     * Kaizena Flow's Leadfeeder connection and only the company is kept (`company_visits`). Off until the owner switches it on
+     * (`setCompanyRecognition()`); Kaizena Flow's own store first; never copied with a store.
+     */
+    companyRecognition: boolean("company_recognition").notNull().default(false),
+    /**
      * Private mode (D339, `src/server/private-mode.ts`, its only writer): visitors without the unlock pass see the landing page (the page
      * role `private`). On for a new store until it opens (decision 5); a store template or demo store is never private, whatever this says.
      */
@@ -14843,6 +14849,129 @@ export const productViews = commerce.table(
     check("product_views_views", sql`${t.views} >= 0`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Which companies visited (D890, `docs/analytics.md` "Companies")
+// ---------------------------------------------------------------------------
+
+/**
+ * A company the company lookup named for a visit's network (D890): the platform's, shared by every store that saw it, written only by
+ * `src/server/company-visits.ts` from what Leadfeeder answered. Facts about a business, never a person: a sole trader (whose company is a
+ * person) is never kept (`isSoleTrader()`, Brønnøysund's `ENK`). Kept while a store's `company_visits` or a day's lookup point at it.
+ */
+export const visitCompanies = commerce.table(
+  "visit_companies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Who named it: `leadfeeder`. */
+    source: text("source").notNull(),
+    /** The company's id at the source. */
+    sourceId: text("source_id").notNull(),
+    name: text("name").notNull(),
+    /** The legal form as the source writes it (`AS`, `GmbH`, `Limited`). */
+    legalForm: text("legal_form"),
+    /** The host of its website, without `www.`. */
+    domain: text("domain"),
+    countryCode: char("country_code", { length: 2 }),
+    city: text("city"),
+    /** The first industry the source names. */
+    industry: text("industry"),
+    /** The source's headcount range (`11-100`). */
+    employees: text("employees"),
+    /** The number in its country's business register (a Norwegian organisation number). */
+    registerId: text("register_id"),
+    /** The company asked not to be contacted for advertising (the source's `do_not_contact`). */
+    doNotContact: boolean("do_not_contact").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("visit_companies_source_key").on(t.source, t.sourceId),
+    check("visit_companies_source", sql`${t.source} in ('leadfeeder')`),
+    check(
+      "visit_companies_lengths",
+      sql`length(${t.name}) between 1 and 200 and length(${t.sourceId}) between 1 and 100 and coalesce(length(${t.legalForm}), 0) <= 100
+        and coalesce(length(${t.domain}), 0) <= 253 and coalesce(length(${t.city}), 0) <= 100 and coalesce(length(${t.industry}), 0) <= 200
+        and coalesce(length(${t.employees}), 0) <= 30 and coalesce(length(${t.registerId}), 0) <= 60`,
+    ),
+  ],
+).enableRLS();
+
+/**
+ * A company's visits to a store on a store day (D890): written only by `recordCompanyVisit()` while the store has `company_recognition`
+ * on. No visitor id, address or person: how many visitor-days came from the company's network, their page views, and the pages as
+ * `placeOfPath()` shapes with their views (at most `COMPANY_PAGES_KEPT`). Deleted with visits after 25 months.
+ */
+export const companyVisits = commerce.table(
+  "company_visits",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => visitCompanies.id, { onDelete: "cascade" }),
+    visitors: integer("visitors").notNull().default(0),
+    pageViews: integer("page_views").notNull().default(0),
+    /** `{ "/pricing": 3 }`: a page's shape (`placeOfPath().landing`) and its views that day. */
+    pages: jsonb("pages").notNull().default(sql`'{}'::jsonb`),
+    firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
+    lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.day, t.companyId] }),
+    index("company_visits_company_idx").on(t.companyId),
+    check("company_visits_counts", sql`${t.visitors} >= 0 and ${t.pageViews} >= 0`),
+    check("company_visits_pages", sql`jsonb_typeof(${t.pages}) = 'object'`),
+  ],
+).enableRLS();
+
+/**
+ * What the company lookup answered for an address on a UTC day (D890), so an address is asked about once a day whatever the store: the key
+ * is a keyed hash of the day and the address (`lookupKey()`), never the address. `company_id` null: no company (a shared network such as a
+ * home or mobile connection, nothing found, or the lookup failed). Deleted after two days.
+ */
+export const companyLookups = commerce.table(
+  "company_lookups",
+  {
+    key: text("key").primaryKey(),
+    day: date("day", { mode: "string" }).notNull(),
+    companyId: uuid("company_id").references(() => visitCompanies.id, { onDelete: "cascade" }),
+    /** `company`, `none` (nothing to show) or `failed` (asked again the next day). */
+    outcome: text("outcome").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("company_lookups_day_idx").on(t.day),
+    index("company_lookups_company_idx").on(t.companyId),
+    check("company_lookups_key", sql`${t.key} ~ '^[0-9a-f]{32}$'`),
+    check("company_lookups_outcome", sql`${t.outcome} in ('company', 'none', 'failed') and (${t.outcome} = 'company') = (${t.companyId} is not null)`),
+  ],
+).enableRLS();
+
+/**
+ * The company lookup service and its key (D890): Kaizena Flow's own (`store_id` null), set on its store's Analytics settings by a platform
+ * admin; written only by `src/server/company-lookup-settings.ts`. The key is kept encrypted and shown by its hint only.
+ */
+export const companyLookupSettings = commerce.table(
+  "company_lookup_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `leadfeeder`. */
+    provider: text("provider").notNull(),
+    apiKeyEncrypted: text("api_key_encrypted").notNull(),
+    apiKeyHint: text("api_key_hint").notNull(),
+    /** The Leadfeeder account the key belongs to (its `account_id`). */
+    accountId: text("account_id").notNull(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("company_lookup_settings_store_key").on(t.storeId).nullsNotDistinct(),
+    index("company_lookup_settings_updated_by_idx").on(t.updatedBy),
+    check("company_lookup_settings_provider", sql`${t.provider} in ('leadfeeder')`),
+    check("company_lookup_settings_account", sql`${t.accountId} ~ '^[0-9]{1,20}$'`),
+  ],
+).enableRLS();
 
 /**
  * Heatmaps' daily totals per page (D656, `docs/heatmaps-and-recordings.md` 6.2), written only by `recordHeat()` (`src/server/page-heat.ts`)

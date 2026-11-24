@@ -12,6 +12,7 @@ import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
 import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
+import { COMPANIES_WORDS } from "@/lib/admin-words/companies";
 import {
   backfillCosts,
   deletePeriodTarget,
@@ -21,9 +22,11 @@ import {
   savePeriodTarget,
   saveTarget,
   setHeatmaps,
+  setCompanyRecognition,
   setRecordings,
   setVisitCounting,
 } from "@/server/analytics-settings";
+import { CompanyLookupError, removeCompanyLookupSettings, saveCompanyLookupSettings } from "@/server/company-lookup-admin";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole } from "@/server/permissions";
 import { storeAction } from "@/server/store-action";
@@ -151,6 +154,55 @@ export async function setRecordingsAction(storeSlug: string, _state: FormState, 
     if (!result.ok) return failed(result.problems.map((p) => (p === "Recordings are not available yet." ? w.notAvailable : p)));
     refresh();
     return { status: "ok", messages: [enabled ? (member.store.recordings ? w.settings.saved : w.settings.nowOn) : w.settings.nowOff] };
+  });
+}
+
+/**
+ * Switches company recognition on or off (D890): only Kaizena Flow's own store may switch it on for now, and only while visits are counted
+ * (`setCompanyRecognition()`).
+ */
+export async function setCompanyRecognitionAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "owner", action: "analytics.company_recognition", answer: (message) => failed([message]) }, async (member, lang) => {
+    const w = COMPANIES_WORDS[lang].settings;
+    const choice = form.get("enabled");
+    if (choice !== "on" && choice !== "off") return failed([w.choose]);
+    const result = await setCompanyRecognition(member, choice === "on");
+    if (!result.ok) {
+      const said: Record<string, string> = { "Company recognition is not available yet.": w.notAvailable, "Turn on visit counting first.": w.needsVisits };
+      return failed(result.problems.map((p) => said[p] ?? p));
+    }
+    refresh();
+    return { status: "ok", messages: [result.enabled ? w.nowOn : w.nowOff] };
+  });
+}
+
+/** Saves Kaizena Flow's Leadfeeder connection (D890): a platform admin's alone; the key is kept encrypted and never shown again. */
+export async function saveCompanyLookupAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "owner", action: "analytics.company_lookup", answer: (message) => failed([message]) }, async (member, lang) => {
+    const w = COMPANIES_WORDS[lang].settings.connection;
+    try {
+      await saveCompanyLookupSettings(member.account, { apiKey: String(form.get("api_key") ?? ""), accountId: String(form.get("account_id") ?? "") });
+    } catch (error) {
+      if (error instanceof CompanyLookupError) return failed([w.problems[error.problem]]);
+      throw error;
+    }
+    refresh();
+    return { status: "ok", messages: [w.saved] };
+  });
+}
+
+/** Takes Kaizena Flow's Leadfeeder connection away (D890): lookups stop at once. A platform admin's alone. */
+export async function removeCompanyLookupAction(storeSlug: string): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "owner", action: "analytics.company_lookup", answer: (message) => failed([message]) }, async (member, lang) => {
+    const w = COMPANIES_WORDS[lang].settings.connection;
+    try {
+      await removeCompanyLookupSettings(member.account);
+    } catch (error) {
+      if (error instanceof CompanyLookupError) return failed([w.problems[error.problem]]);
+      throw error;
+    }
+    refresh();
+    return { status: "ok", messages: [w.removed] };
   });
 }
 

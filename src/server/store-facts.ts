@@ -37,11 +37,11 @@ export const FACTS_MS = 10_000;
 /**
  * The one statement both few-second reads of an open store run (`storeFactsOf()` for the proxy, `visitStoreOf()` for the visit beacons):
  * the columns `localized()` needs as `getStore()` selects them, the private-mode version, and what the beacons read (visit counting,
- * the store's zone, never null in the table, and whether its pages are Kaizena Flow's own site, D484).
+ * company recognition (D890), the store's zone, never null in the table, and whether its pages are Kaizena Flow's own site, D484).
  */
 const factsStatement = (slug: string) => sql`
   select s.id, s.slug, s.features, s.locales, s.house, s.language_rule, s.currency_follows_language, s.language_currencies,
-    s.visit_counting, s.time_zone,
+    s.visit_counting, s.company_recognition, s.time_zone,
     (s.house and coalesce((select p.site_from_store from commerce.platform_settings p), false)) as on_site,
     case when s.private_mode and not (s.is_template or s.starter) then s.private_version end as private_version,
     (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
@@ -82,6 +82,8 @@ export type VisitStore = {
   id: string;
   slug: string;
   visitCounting: boolean;
+  /** Which companies visited (D890): a counted page view's address is looked up after the beacon is answered. */
+  companyRecognition: boolean;
   timeZone: string;
   allMarkets: Market[];
   address: StoreAddress | null;
@@ -89,7 +91,7 @@ export type VisitStore = {
   onSite: boolean;
 };
 
-const VISIT_ROW = z.object({ id: col.uuid, slug: col.text, visit_counting: col.bool, time_zone: col.text, on_site: col.bool }).loose();
+const VISIT_ROW = z.object({ id: col.uuid, slug: col.text, visit_counting: col.bool, company_recognition: col.bool, time_zone: col.text, on_site: col.bool }).loose();
 
 /**
  * What the visit beacons need of an open store, read without a cached function so /api/visit lists no server reference; remembered for
@@ -104,6 +106,7 @@ export async function visitStoreOf(slug: string): Promise<VisitStore | null> {
       id: row.id,
       slug: row.slug,
       visitCounting: row.visit_counting,
+      companyRecognition: row.company_recognition,
       timeZone: row.time_zone,
       allMarkets,
       address,

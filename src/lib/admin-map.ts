@@ -840,6 +840,10 @@ const PAGES: readonly MapEntry[] = [
     keywords: ["session replay", "recordings", "replay", "watch visits", "screen recording"],
     tasks: ["Watch how visitors use a page", "See visits where visitors got stuck"],
   }),
+  store("analytics.companies", "/analytics/companies", "Visiting companies", "Which companies visited: the companies whose own networks the store's counted visits came from, looked up through Kaizena Flow's Leadfeeder connection while company recognition is on, each with its industry, size, place and website, its visits per day over the period and the pages it looked at. Sole traders are never shown, and people at home or on a phone are not named. Kaizena Flow's own store first.", {
+    keywords: ["companies", "company visits", "which companies visited", "b2b visitors", "visitor identification", "leadfeeder", "reverse ip", "leads", "accounts"],
+    tasks: ["See which companies visited the site", "See what a company looked at"],
+  }),
   store("analytics.recording", "/analytics/recordings/[id]", "Recording", "One recording of a visit, played back with its pages and frustrated clicks on a timeline; it can be deleted. The owner's alone.", {
     needs: "owner",
     keywords: ["watch recording"],
@@ -1634,6 +1638,9 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   // The questions the chat assistant could not answer (ecosystem plan E4.3, D729): named in the AI's map once the eval is recorded with it.
   "store:chat.questions",
   "platform:chat.questions",
+  // Which companies visited (D890): Kaizena Flow's own store only for now, so not a page to point every store's owner to; named in the
+  // AI's map when it opens to every store, and the eval is recorded with it then.
+  "store:analytics.companies",
 ]);
 
 /** The map as the AI reads it: every page without params, by the menu's sections, each by the menu's word (D881). */

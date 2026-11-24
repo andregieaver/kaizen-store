@@ -17,6 +17,7 @@ export async function CookiesSection({ store, market }: { store: Store; market: 
       cookies={cookies}
       categories={categories}
       visitCounting={store.visitCounting}
+      companies={store.companyRecognition}
       heatmaps={store.heatmaps}
       recordings={store.recordings}
       store={{ id: store.id, slug: store.slug }}
