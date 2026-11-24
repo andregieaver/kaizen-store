@@ -268,6 +268,15 @@ export const staffEmailsNb: StaffEmailsMessages = {
       text: "{amount} for bestilling {order} forfalt {due} og er ikke registrert som betalt. Kunden har fått et varsel. Når pengene kommer utenom Kaizena Flow, registrerer du betalingen på bestillingen.",
       button: "Åpne bestillingen",
     },
+    /** En bedrift butikken selger til på kreditt, ble nettopp flagget i Brønnøysundregistrene (D891). */
+    companyFlagged: {
+      subject: "{company} er {flag}",
+      preview: "En bedrift som kjøper på kreditt hos deg, er {flag}.",
+      heading: "En kunde på kreditt er {flag}",
+      text: "Ifølge Brønnøysundregistrene er {company} {flag}, fra {day}. Bedriften kjøper på kreditt hos deg: vurder å slå av kreditten før neste bestilling, og se hva den skylder deg.",
+      button: "Åpne bedriften",
+      flags: { bankrupt: "konkurs", winding_up: "under avvikling", dissolution: "under tvangsoppløsning", deleted: "slettet fra registeret" },
+    },
     accounting: {
       subject: "{store}: {system} trenger deg",
       tokenHeading: "{system} sluttet å slippe inn Kaizena Flow",

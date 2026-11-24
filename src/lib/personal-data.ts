@@ -358,6 +358,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   oauth_clients: "The clients of Kaizena Flow's authorization server (D439): an AI assistant's or app's name, addresses and logo as it published or registered them, whether Kaizena Flow verified or blocked it, and when it was seen; no person.",
   webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",
   live_drills: "A run of a store's money paths in Stripe's test mode (D406): the kinds asked, who asked (an admin's account) and each outcome with order numbers and amounts; no shopper.",
+  register_companies: "What Brønnøysundregistrene says of the organisation numbers stores hold (D891): a business's public facts and accounts; a sole trader, whose entry is a person's, keeps only that it is one.",
   visit_companies: "Companies the company lookup named for visits' networks (D890): a business's public facts (name, legal form, website, industry, size, place, register number) from Leadfeeder; a sole trader, whose company is a person, is never kept.",
   company_visits: "A company's visits to a store per day (D890): visitor-days, page views and the pages' shapes; no visitor, address or person, and never tied to a visit, cart, order or customer.",
   company_lookup_settings: "Kaizena Flow's Leadfeeder connection (D890): the key encrypted, its hint, the account's number and the account that saved it (an id); no person's data.",

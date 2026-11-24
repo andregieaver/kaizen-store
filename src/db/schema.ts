@@ -14928,6 +14928,61 @@ export const companyVisits = commerce.table(
 ).enableRLS();
 
 /**
+ * What Brønnøysundregistrene says of a Norwegian organisation number we hold (D891): a store's business customer's, a store's own business's,
+ * or a visiting company's. The platform's, one row per number, written only by `src/server/register-facts.ts` from the open Enhetsregisteret
+ * and Regnskapsregisteret (NLOD). A sole trader's row keeps only that it is one (`status` `sole_trader`): its entry is a person's, so no
+ * name, place, figure or flag of it is kept. `red_flag` is the most serious of bankrupt, being wound up, forcibly dissolved or deleted;
+ * `flagged_at` when it was first seen here, for the alerts.
+ */
+export const registerCompanies = commerce
+  .table(
+    "register_companies",
+    {
+      organisationNumber: text("organisation_number").primaryKey(),
+      /** `company`, `sole_trader` (nothing else kept) or `not_found`. */
+      status: text("status").notNull(),
+      name: text("name"),
+      orgForm: text("org_form"),
+      orgFormName: text("org_form_name"),
+      industryCode: text("industry_code"),
+      industryName: text("industry_name"),
+      employees: integer("employees"),
+      founded: date("founded", { mode: "string" }),
+      municipality: text("municipality"),
+      website: text("website"),
+      redFlag: text("red_flag"),
+      redFlagOn: date("red_flag_on", { mode: "string" }),
+      flaggedAt: timestamp("flagged_at", { withTimezone: true }),
+      /** The latest annual accounts of the company itself (not its group): the year, its currency, and figures in minor units. */
+      accountsYear: smallint("accounts_year"),
+      accountsCurrency: char("accounts_currency", { length: 3 }),
+      revenueMinor: bigint("revenue_minor", { mode: "number" }),
+      operatingResultMinor: bigint("operating_result_minor", { mode: "number" }),
+      profitMinor: bigint("profit_minor", { mode: "number" }),
+      equityMinor: bigint("equity_minor", { mode: "number" }),
+      previousRevenueMinor: bigint("previous_revenue_minor", { mode: "number" }),
+      factsCheckedAt: timestamp("facts_checked_at", { withTimezone: true }).notNull().defaultNow(),
+      accountsCheckedAt: timestamp("accounts_checked_at", { withTimezone: true }),
+    },
+    (t) => [
+      index("register_companies_flagged_idx").on(t.flaggedAt),
+      check("register_companies_number", sql`${t.organisationNumber} ~ '^[0-9]{9}$'`),
+      check("register_companies_status", sql`${t.status} in ('company', 'sole_trader', 'not_found')`),
+      check("register_companies_red_flag", sql`${t.redFlag} is null or ${t.redFlag} in ('bankrupt', 'winding_up', 'dissolution', 'deleted')`),
+      check(
+        "register_companies_only_companies",
+        sql`${t.status} = 'company' or (${t.name} is null and ${t.municipality} is null and ${t.website} is null and ${t.redFlag} is null and ${t.revenueMinor} is null and ${t.employees} is null)`,
+      ),
+      check(
+        "register_companies_lengths",
+        sql`coalesce(length(${t.name}), 0) <= 200 and coalesce(length(${t.orgFormName}), 0) <= 100 and coalesce(length(${t.industryName}), 0) <= 200
+          and coalesce(length(${t.municipality}), 0) <= 100 and coalesce(length(${t.website}), 0) <= 253`,
+      ),
+    ],
+  )
+  .enableRLS();
+
+/**
  * What the company lookup answered for an address on a UTC day (D890), so an address is asked about once a day whatever the store: the key
  * is a keyed hash of the day and the address (`lookupKey()`), never the address. `company_id` null: no company (a shared network such as a
  * home or mobile connection, nothing found, or the lookup failed). Deleted after two days.

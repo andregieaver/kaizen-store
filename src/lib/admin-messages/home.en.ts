@@ -275,6 +275,10 @@ export const homeEn = {
       one: "{store}: {n} invoice on payment terms is overdue.",
       many: "{store}: {n} invoices on payment terms are overdue.",
     },
+    companiesFlagged: {
+      one: "{store}: {n} business customer is bankrupt or being wound up, says Brønnøysund.",
+      many: "{store}: {n} business customers are bankrupt or being wound up, says Brønnøysund.",
+    },
     reviewsWaiting: {
       one: "{store}: {n} review is waiting to be checked.",
       many: "{store}: {n} reviews are waiting to be checked.",
@@ -383,6 +387,8 @@ export const homeEn = {
       sendAgain: "Send again",
       answer: "Answer",
       seeOrders: "See orders",
+      openCompany: "Open the company",
+      openCompanies: "Open companies",
       check: "Check",
       openDrafts: "Open drafts",
       sendTheRest: "Send the rest",

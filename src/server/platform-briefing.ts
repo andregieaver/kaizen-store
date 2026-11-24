@@ -45,6 +45,7 @@ import { getStore } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { OPEN_QUESTION } from "./unanswered-questions";
 import { jobReport } from "./cache-events";
+import { orgNumberSql } from "./register-sql";
 
 /**
  * The platform's own figures, targets, alerts and morning briefing (C2 of `docs/platform-parity-plan.md`, D513, `src/lib/platform-briefing.ts`):
@@ -90,6 +91,7 @@ const FIGURES = z.object({
   waiting: col.int,
   oldest_hours: z.number().nullable(),
   questions_open: col.int,
+  businesses_flagged: col.int,
   site_watch: z.unknown(),
 });
 
@@ -135,6 +137,9 @@ export async function platformSnapshot(now = new Date(), options: { house?: bool
           (select extract(epoch from now() - min(created_at)) / 3600 from commerce.access_requests where status = 'pending')::float8 as oldest_hours,
           -- E5.4 (D757): what Kaizena Flow's own chat assistant could not answer, counted as its Questions page lists them.
           (select count(*)::int from commerce.unanswered_questions q where ${owned(null, sql`q.store_id`)} and ${OPEN_QUESTION}) as questions_open,
+          -- D891: open stores whose own business Brønnøysundregistrene flags (bankrupt, being wound up, dissolved, deleted).
+          (select count(*)::int from commerce.stores s join commerce.register_companies rc on rc.organisation_number = ${orgNumberSql(sql`s.organisation_number`)}
+            where s.status = 'active' and s.country = 'NO' and rc.red_flag is not null and not (s.is_template or s.starter or s.sandbox or s.house or s.workspace)) as businesses_flagged,
           -- E5.2 (D757): what the domain watch last found of kaizenaflow.com.
           (select p.domain_watch from commerce.platform_settings p) as site_watch`,
   );
@@ -189,6 +194,7 @@ export async function platformSnapshot(now = new Date(), options: { house?: bool
     trialing: live.trialing,
     late: live.late,
     trialsEnding: figures?.trials_ending ?? 0,
+    businessesFlagged: figures?.businesses_flagged ?? 0,
     sales: salesFigures,
     newStores: figures?.new_stores ?? 0,
     signUpsToday: { asked: figures?.asked_today ?? 0, opened: figures?.opened_today ?? 0 },
@@ -266,6 +272,7 @@ export function alertText(alert: PlatformAlert, lang: AdminLang): string {
   if (alert.id === "ui_text_large") return fillWords(w.ui_text_large, { size: formatUsage("storage_bytes", Number(v.bytes), locale) });
   if (alert.id === "database_flag") return countWords(Number(v.n), w.database_flag);
   if (alert.id === "house_signal") return fillWords(w.house_signal, { text: alert.text?.[lang] ?? alert.text?.en ?? "" });
+  if (alert.id === "business_flagged") return countWords(Number(v.n), w.business_flagged);
   return countWords(Number(v.n), w.trials_ending);
 }
 

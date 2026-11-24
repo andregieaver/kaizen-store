@@ -991,6 +991,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   under `/account/…`, as a new top-level `/s/{store}/{market}/{word}` would
   reserve a page address.
 
+## Company facts from Brønnøysund (D891, `src/lib/register-facts.ts`, `src/server/register-facts.ts`, `RegisterFactsCard`)
+
+- **Company facts from Brønnøysund (D891)**: a Norwegian organisation number we hold (a business customer's, a store's own business's, a
+  visiting company's) is described from the open Enhetsregisteret and Regnskapsregisteret, kept once in `commerce.register_companies`, whose
+  only writer is `src/server/register-facts.ts` (only the number is sent, to `data.brreg.no`). A sole trader keeps only that it is one, never a
+  name, place, figure or flag (the table's check holds it). A page of one company asks when the row is missing or older than `REFRESH_DAYS`
+  (`registerFactsNow()`, `PAGE_TIMEOUT_MS`); a list reads rows only (`registerFacts()`). The daily `watchRegister()` fills, follows the feed and
+  tells a store once (`sendCompanyFlagAlert()`, the `payment_overdue` recipients) when a company it sells to on payment terms is newly
+  flagged; the Home's `companies_flagged` and the platform's `business_flagged` read `red_flag`/`flagged_at`, joined by `orgNumberSql()`.
+
 ## B2B in depth (wave 6 unit C, D321, `docs/wave-6-catalogue.md` C.4 to C.6)
 
 - **B2B in depth (wave 6 unit C, D321, `docs/wave-6-catalogue.md` C.4 to C.6)**: what a buyer pays is only `commerce.buyer_price()` (their

@@ -554,6 +554,7 @@ export const platformEn = {
       mrr_down: "Recurring revenue fell by {amount} in the last 7 days.",
       target_behind: "{metric} is behind its target this month ({pct} %).",
       trials_ending: { one: "1 trial ends in the next 3 days.", many: "{n} trials end in the next 3 days." },
+      business_flagged: { one: "1 store's own business is bankrupt or being wound up, says Brønnøysund.", many: "{n} stores' own businesses are bankrupt or being wound up, says Brønnøysund." },
       database_flag: { one: "1 thing to look at under Usage and limits.", many: "{n} things to look at under Usage and limits." },
       admin_slow: "The admin is slow: {kind} on a {screen}, {metric} {value} at the 75th percentile over 28 days.",
       house_signal: "Kaizena Flow's site: {text}",

@@ -3,13 +3,16 @@ import type { AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import type { CompaniesMessages } from "@/lib/admin-messages/companies.en";
 import { formatCount } from "@/lib/analytics-core";
-import { pageLabel, type CompanySummary } from "@/lib/company-lookup";
+import { norwegianNumber, pageLabel, type CompanySummary } from "@/lib/company-lookup";
+import type { RegisterFactsMessages } from "@/lib/admin-messages/register-facts.en";
+import type { RegisterView } from "@/lib/register-facts";
 import { OTHER_PAGE } from "@/lib/visit-record";
 import type { VisitCompany } from "@/server/company-visits";
 
 import { AdminLink } from "../ui/link";
 import { ButtonLink } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
+import { RegisterLine } from "../register-facts-card";
 import { Note } from "./section";
 
 /**
@@ -40,6 +43,9 @@ export type CompaniesViewProps = {
   summaries: readonly CompanySummary[];
   companies: ReadonlyMap<string, VisitCompany>;
   words: CompaniesMessages;
+  /** What Brønnøysund says of the Norwegian companies (D891), by organisation number; a line under each one's facts. */
+  register?: ReadonlyMap<string, RegisterView>;
+  registerWords?: RegisterFactsMessages;
 };
 
 /** A page as the owner reads it: the front page and the pages past the kept ones by name, the rest by their path. */
@@ -73,7 +79,7 @@ function Timeline({ series, label }: { series: readonly number[]; label: string 
   );
 }
 
-export function CompaniesView({ base, lang, timeZone, state, owner, marketless, days, summaries, companies, words: w }: CompaniesViewProps) {
+export function CompaniesView({ base, lang, timeZone, state, owner, marketless, days, summaries, companies, words: w, register, registerWords }: CompaniesViewProps) {
   const settings = `${base}/analytics/settings#companies`;
   if (state === "off" && summaries.length === 0) {
     return (
@@ -120,6 +126,9 @@ export function CompaniesView({ base, lang, timeZone, state, owner, marketless, 
                   <div className="min-w-0">
                     <h3 className="text-title break-words text-ink">{c.name}</h3>
                     {facts ? <p className="text-sm text-muted">{facts}</p> : null}
+                    {register && registerWords && c.countryCode === "NO" ? (
+                      <RegisterLine view={register.get(norwegianNumber(c.registerId) ?? "")} words={registerWords} lang={lang} />
+                    ) : null}
                     {c.domain ? (
                       <p className="text-sm">
                         <a href={`https://${c.domain}`} className="underline" rel="noopener noreferrer nofollow" target="_blank">

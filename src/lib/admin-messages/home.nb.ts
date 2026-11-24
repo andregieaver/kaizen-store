@@ -262,6 +262,10 @@ export const homeNb: HomeMessages = {
       one: "{store}: {n} faktura med betalingsfrist har forfalt.",
       many: "{store}: {n} fakturaer med betalingsfrist har forfalt.",
     },
+    companiesFlagged: {
+      one: "{store}: {n} bedriftskunde er konkurs eller under avvikling, ifølge Brønnøysund.",
+      many: "{store}: {n} bedriftskunder er konkurs eller under avvikling, ifølge Brønnøysund.",
+    },
     reviewsWaiting: {
       one: "{store}: {n} omtale venter på kontroll.",
       many: "{store}: {n} omtaler venter på kontroll.",
@@ -373,6 +377,8 @@ export const homeNb: HomeMessages = {
       sendAgain: "Send på nytt",
       answer: "Svar",
       seeOrders: "Se bestillinger",
+      openCompany: "Åpne bedriften",
+      openCompanies: "Åpne bedrifter",
       check: "Kontroller",
       openDrafts: "Åpne utkast",
       sendTheRest: "Send resten",

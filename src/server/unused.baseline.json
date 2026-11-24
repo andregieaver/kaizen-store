@@ -339,6 +339,7 @@
     "src/db/schema.ts#referralAllocations",
     "src/db/schema.ts#referralSettings",
     "src/db/schema.ts#referralVisits",
+    "src/db/schema.ts#registerCompanies",
     "src/db/schema.ts#reportSchedules",
     "src/db/schema.ts#researchNotes",
     "src/db/schema.ts#researchSources",

@@ -77,11 +77,13 @@ export type PlatformSnapshot = {
   house?: { slug: string; siteHost: string | null; signals: SignalSnapshot } | null;
   /** Questions Kaizena Flow's own chat assistant could not answer, still open (ecosystem plan E5.4, D757): the home's attention counts them. */
   questionsOpen?: number;
+  /** Open stores whose own business Brønnøysundregistrene flags (D891: bankrupt, being wound up, dissolved, deleted). */
+  businessesFlagged?: number;
   /** The most translated text any instance read at start on the last day with a start (bloat review step 1.16); the briefing says when it is over 1 MB. */
   uiBytesAtStart?: number;
 };
 
-export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow" | "database_flag" | "house_signal" | "ui_text_large";
+export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow" | "database_flag" | "house_signal" | "ui_text_large" | "business_flagged";
 export type PlatformAlert = {
   id: AlertId;
   severity: "urgent" | "warning" | "info";
@@ -150,6 +152,7 @@ export function platformAlertsFor(s: PlatformSnapshot): PlatformAlert[] {
     }
   }
   if (s.trialsEnding > 0) alerts.push({ id: "trials_ending", severity: "info", values: { n: s.trialsEnding }, href: "/admin/platform/stores" });
+  if (s.businessesFlagged && s.businessesFlagged > 0) alerts.push({ id: "business_flagged", severity: "warning", values: { n: s.businessesFlagged }, href: "/admin/platform/stores" });
   alerts.push(...adminSpeedAlerts(s.adminSpeed ?? []));
   if (s.flags && s.flags.length > 0) {
     alerts.push({ id: "database_flag", severity: "warning", values: { n: s.flags.length, first: s.flags[0].id }, href: "/admin/platform/capacity" });

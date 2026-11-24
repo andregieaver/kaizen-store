@@ -16,6 +16,9 @@ import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { companyLookupSettings } from "@/server/company-lookup-settings";
 import { companyReport, hasCompanyVisits } from "@/server/company-visits";
+import { norwegianNumber } from "@/lib/company-lookup";
+import { REGISTER_FACTS_WORDS } from "@/lib/admin-words/register-facts";
+import { registerFacts } from "@/server/register-facts";
 
 export const metadata: Metadata = { title: "Visiting companies" };
 
@@ -33,6 +36,8 @@ export default async function CompaniesPage({ params, searchParams }: PageProps<
   const days = Array.from({ length: period.days }, (_, i) => addDays(period.from, i));
   const [report, connection, counted] = await Promise.all([companyReport(store.id, period), companyLookupSettings(), hasCompanyVisits(store.id)]);
   const summaries = companySummaries(report.days, days);
+  // What Brønnøysund says of the Norwegian ones (D891): kept facts only, filled by the daily register watch; a list never waits on the register.
+  const register = await registerFacts([...report.companies.values()].flatMap((c) => (c.countryCode === "NO" ? [norwegianNumber(c.registerId) ?? ""] : [])));
   const visits = summaries.reduce((total, s) => total + s.visits, 0);
   const state: CompaniesState = !store.companyRecognition ? "off" : !connection ? "not_connected" : counted ? "on" : "waiting";
   return (
@@ -63,6 +68,8 @@ export default async function CompaniesPage({ params, searchParams }: PageProps<
             summaries={summaries}
             companies={report.companies}
             words={words}
+            register={register}
+            registerWords={REGISTER_FACTS_WORDS[ctx.lang]}
           />
         </div>
       </ExportScope>

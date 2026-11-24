@@ -33,6 +33,10 @@ import { listTiers } from "@/server/customer-tiers";
 import { listLocations } from "@/server/company-locations";
 
 import { LocationsCard } from "./locations-card";
+import { RegisterFactsCard } from "@/components/admin/register-facts-card";
+import { isOrganisationNumber, organisationDigits } from "@/lib/brreg";
+import { REGISTER_FACTS_WORDS } from "@/lib/admin-words/register-facts";
+import { registerFactsNow } from "@/server/register-facts";
 import { PageHeader } from "@/components/admin/ui";
 
 import {
@@ -71,12 +75,16 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
   if (!company) notFound();
-  const [groups, members, invites, owes, locations] = await Promise.all([
+  // Company facts from Brønnøysund (D891): a Norwegian organisation number's, asked of the register the first time and monthly after.
+  const digits = organisationDigits(company.organisationNumber);
+  const orgNumber = digits && isOrganisationNumber(digits) ? digits : null;
+  const [groups, members, invites, owes, locations, register] = await Promise.all([
     listTiers(store.id),
     listMembers(store.id, company.id),
     listInvites(store.id, company.id),
     companyOwes(store.id, company.id),
     listLocations(store.id, company.id),
+    orgNumber ? registerFactsNow(orgNumber) : Promise.resolve(null),
   ]);
   const base = `/admin/${store.slug}`;
   // What happened with the company (D462): its people's orders, quotes, conversations, emails, notes and returns, and its own Work invoices.
@@ -112,6 +120,8 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
               : words.noDiscount
         }
       />
+
+      {orgNumber && <RegisterFactsCard view={register} words={REGISTER_FACTS_WORDS[lang]} lang={lang} termsOn={company.paymentTerms !== null} />}
 
       <CustomerTimeline
         read={timeline}

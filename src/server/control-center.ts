@@ -30,6 +30,8 @@ import { turnoverWatch } from "./turnover-watch";
 import { workAttention } from "./work-attention";
 import { WORK_WORDS } from "@/lib/admin-words/work";
 import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
+import { FLAG_NEWS_DAYS } from "@/lib/register-facts";
+import { orgNumberSql } from "./register-sql";
 
 type Row = Record<string, unknown>;
 
@@ -67,6 +69,8 @@ const ORDER_COUNTS = z.object({
   hand_local: col.int,
   terms_overdue: col.int,
   owed_n: col.int,
+  companies_flagged: col.int,
+  companies_flagged_first: col.textOrNull,
 });
 
 /**
@@ -242,7 +246,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
           ORDER_COUNTS,
           sql`
             select s.id as store_id, d.draft_n, d.draft_oldest, d.draft_expiring, p.partly_n, p.partly_oldest, c.change_n, c.change_expiring,
-              h.hand_pickup, h.hand_oldest_pickup, h.hand_local, t.terms_overdue, r.owed_n
+              h.hand_pickup, h.hand_oldest_pickup, h.hand_local, t.terms_overdue, r.owed_n, k.companies_flagged, k.companies_flagged_first
             from unnest(${pgUuidArray(orderIds)}::uuid[]) as s(id)
             left join lateral (
               select count(*)::int as draft_n, min(d.sent_at) as draft_oldest,
@@ -288,6 +292,13 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
                 and exists (select 1 from commerce.order_events ev where ev.store_id = e.store_id and ev.order_id = e.order_id and ev.type = 'order.edit_refund_failed')
                 and ${EDIT_REFUND_OWED_SQL} > 0
             ) r on true
+            left join lateral (
+              select count(*)::int as companies_flagged, min(cc.id::text) as companies_flagged_first
+              from commerce.customer_companies cc
+              join commerce.register_companies rc on rc.organisation_number = ${orgNumberSql(sql`cc.organisation_number`)}
+              where cc.store_id = s.id and cc.organisation_number <> '' and rc.red_flag is not null
+                and (cc.payment_terms is not null or rc.flagged_at > now() - make_interval(days => ${FLAG_NEWS_DAYS}))
+            ) k on true
           `,
         ),
     supportIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
@@ -344,6 +355,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const changeRows = orderCounts.filter((r) => r.change_n > 0).map((r) => ({ store_id: r.store_id, waiting: r.change_n, expiring: r.change_expiring }));
   const handRows = orderCounts.map((r) => ({ store_id: r.store_id, pickup: r.hand_pickup, oldest_pickup: r.hand_oldest_pickup, local: r.hand_local }));
   const termsRows = orderCounts.map((r) => ({ store_id: r.store_id, overdue: r.terms_overdue }));
+  const flaggedBy = new Map(orderCounts.filter((r) => r.companies_flagged > 0).map((r) => [r.store_id, { n: r.companies_flagged, first: r.companies_flagged_first }]));
   const owedEditRows = orderCounts.filter((r) => r.owed_n > 0).map((r) => ({ store_id: r.store_id, n: r.owed_n }));
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -428,6 +440,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
       ...(owedEditsBy.has(id) ? { editRefundsOwed: owedEditsBy.get(id)! } : {}),
       ...(termsBy.has(id) ? { termsOverdue: termsBy.get(id) } : {}),
+      ...(flaggedBy.has(id) ? { companiesFlagged: flaggedBy.get(id) } : {}),
       ...(reviewsBy.has(id) ? { reviewsWaiting: reviewsBy.get(id) } : {}),
       ...(booksBy.has(id) ? { books: booksBy.get(id) } : {}),
       ...(turnoverBy.has(id) ? { turnover: turnoverBy.get(id) } : {}),

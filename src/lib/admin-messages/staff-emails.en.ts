@@ -276,6 +276,15 @@ export const staffEmailsEn = {
       text: "{amount} for order {order} was due on {due} and has not been recorded as paid. The customer has been sent a notice. When the money arrives outside Kaizena Flow, record it on the order.",
       button: "Open the order",
     },
+    /** A company the store sells to on payment terms was newly flagged in Brønnøysundregistrene (D891). */
+    companyFlagged: {
+      subject: "{company} is {flag}",
+      preview: "A company that buys from you on payment terms is {flag}.",
+      heading: "A customer on payment terms is {flag}",
+      text: "According to Brønnøysundregistrene, {company} is {flag}, from {day}. It buys from you on payment terms: consider turning them off before its next order, and look at what it owes you.",
+      button: "Open the company",
+      flags: { bankrupt: "bankrupt", winding_up: "being wound up", dissolution: "being forcibly dissolved", deleted: "deleted from the register" },
+    },
     /** What waits in the store's accounting, Tripletex (D453) or Fiken (D460), as `{system}`: once a day while it lasts, counts only. */
     accounting: {
       subject: "{store}: {system} needs you",

@@ -54,6 +54,8 @@ import { uuidList } from "./sql-arrays";
 import type { CheckupFinding } from "./store-checkup";
 import { getStore, type Store } from "./stores";
 import { jobReport } from "./cache-events";
+import type { RedFlag } from "@/lib/register-facts";
+import { orgNumberSql } from "./register-sql";
 
 type Row = Record<string, unknown>;
 
@@ -826,6 +828,54 @@ export async function sendTermsOverdueAlert(storeId: string, orderId: string, se
     });
   };
   const result = await sendToAll(storeId, store.name, ALERT_EMAIL_KINDS.payment_overdue, targets, email, (r) => `staff-terms-overdue:${orderId}:${r.kind === "contact" ? "contact" : r.accountId}`, orderId, send);
+  return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
+}
+
+/**
+ * A company the store sells to on payment terms was newly flagged in Brønnøysundregistrene (D891: bankrupt, being wound up, forcibly dissolved or
+ * deleted), found by the daily register watch: to the recipients of `payment_overdue` (owners by default, the alert of money owed on terms),
+ * once per company, flag and recipient; the company as the store named it, the flag and its day, and a link to the company's page.
+ */
+export async function sendCompanyFlagAlert(storeId: string, companyId: string, flag: RedFlag, send: typeof sendEmail = sendEmail): Promise<{ ok: boolean; sent: number } | null> {
+  const [[row], store, targets] = await Promise.all([
+    db().execute<Row>(sql`
+      select c.name, r.red_flag_on::text as day
+        from commerce.customer_companies c
+        left join commerce.register_companies r on r.organisation_number = ${orgNumberSql(sql`c.organisation_number`)}
+       where c.store_id = ${storeId}::uuid and c.id = ${companyId}::uuid
+    `),
+    storeById(storeId),
+    alertRecipients(storeId, "payment_overdue"),
+  ]);
+  if (!row || !store) return null;
+  if (targets.length === 0) return { ok: true, sent: 0 };
+  const email = (lang: AdminLang): RenderedEmail => {
+    const w = wordsOf(lang).companyFlagged;
+    const company = String(row.name);
+    const flagWords = w.flags[flag];
+    const day = row.day ? dayWords(String(row.day), formatOf(lang)) : "";
+    return renderEmail({
+      subject: fillWords(w.subject, { company, flag: flagWords }),
+      preview: fillWords(w.preview, { flag: flagWords }),
+      lang: ADMIN_LANG_FACTS[lang].tag,
+      footer: emailFooter(store, footerText(lang)),
+      blocks: [
+        { type: "heading", text: fillWords(w.heading, { flag: flagWords }) },
+        { type: "paragraph", text: fillWords(w.text, { company, flag: flagWords, day }) },
+        { type: "button", text: w.button, url: adminUrl(store.slug, `/companies/${companyId}`) },
+      ],
+    });
+  };
+  const result = await sendToAll(
+    storeId,
+    store.name,
+    ALERT_EMAIL_KINDS.payment_overdue,
+    targets,
+    email,
+    (r) => `staff-company-flag:${companyId}:${flag}:${r.kind === "contact" ? "contact" : r.accountId}`,
+    companyId,
+    send,
+  );
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 

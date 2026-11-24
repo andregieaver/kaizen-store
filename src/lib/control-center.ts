@@ -103,6 +103,12 @@ export type StoreFigures = {
   handOver?: HandOverFigures;
   /** Invoices on payment terms past their due day and not paid (D293), only when some are and only for a member who may read orders. A count only. */
   termsOverdue?: number;
+  /**
+   * The store's business customers whose company Brønnøysundregistrene flags (D891: bankrupt, being wound up, dissolved, deleted) and that
+   * still buy on payment terms or were flagged in the last 30 days, only when some are and only for a member who may read orders: the count
+   * and the first one's id, so one company is opened at once.
+   */
+  companiesFlagged?: { n: number; first: string | null };
   /** Reviews waiting to be checked (D301 G3), only when some do, the feature is on and the member may read products. A count only. */
   reviewsWaiting?: number;
   /**
@@ -203,6 +209,7 @@ export const ATTENTION_KINDS = [
   "turnover",
   "return_requests",
   "terms_overdue",
+  "companies_flagged",
   "drafts",
   "drafts_ending",
   "partly_sent",
@@ -332,6 +339,17 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     // Invoices on payment terms not paid by their due day (D293): the customer was sent a notice; money that came outside Kaizena Flow is recorded on the order.
     if (s.termsOverdue && s.termsOverdue > 0 && !hidden(s, "sales")) {
       items.push({ kind: "terms_overdue", text: count(s.termsOverdue, w.termsOverdue), href: `${base}/orders?pay=terms_overdue`, action: a.seeOrders, urgent: true });
+    }
+    // A business customer whose company is bankrupt, being wound up, dissolved or deleted (D891): the owner turns its payment terms off.
+    if (s.companiesFlagged && s.companiesFlagged.n > 0 && !hidden(s, "sales")) {
+      const one = s.companiesFlagged.n === 1 && s.companiesFlagged.first;
+      items.push({
+        kind: "companies_flagged",
+        text: count(s.companiesFlagged.n, w.companiesFlagged),
+        href: one ? `${base}/companies/${s.companiesFlagged.first}` : `${base}/companies`,
+        action: one ? a.openCompany : a.openCompanies,
+        urgent: true,
+      });
     }
     // Draft orders sent to a customer and not yet paid (D173): the stock they hold is released when the link ends, so the ones about to end are said apart.
     const drafts = s.drafts;

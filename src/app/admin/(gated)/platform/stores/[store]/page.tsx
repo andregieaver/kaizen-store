@@ -18,6 +18,10 @@ import { listStorePeople } from "@/server/platform-customers";
 import { closureBlockers } from "@/lib/store-closure";
 import { storeObligations, storeState } from "@/server/store-closure";
 import { getStore } from "@/server/stores";
+import { RegisterFactsCard } from "@/components/admin/register-facts-card";
+import { isOrganisationNumber, organisationDigits } from "@/lib/brreg";
+import { REGISTER_FACTS_WORDS } from "@/lib/admin-words/register-facts";
+import { registerFactsNow } from "@/server/register-facts";
 
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 import { requirePlatformReader } from "@/server/auth";
@@ -70,6 +74,11 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     themeLookThumbs(),
   ]);
   const offer = await featureOffer(store.id);
+  // The store's own business (D891): who Kaizena Flow's customer is, from Brønnøysund when its number is a Norwegian one.
+  const rw = REGISTER_FACTS_WORDS[lang];
+  const digits = organisationDigits(store.details.organisationNumber ?? "");
+  const orgNumber = store.details.country === "NO" && digits && isOrganisationNumber(digits) ? digits : null;
+  const register = orgNumber ? await registerFactsNow(orgNumber) : null;
   const blockers = closureBlockers(obligations, SETTINGS_WORDS[lang].close);
   const owner = people.find((p) => p.role === "owner");
   // The store's plan and invoices on the store's own day, as its billing page shows them (D786).
@@ -111,6 +120,37 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           }}
         />
       )}
+
+      {(() => {
+        const details = store.details.legalName || store.details.organisationNumber ? (
+          <dl className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-6 gap-y-1 text-sm">
+            {store.details.legalName ? (
+              <>
+                <dt className="text-muted">{rw.legalName}</dt>
+                <dd>{store.details.legalName}</dd>
+              </>
+            ) : null}
+            {store.details.organisationNumber ? (
+              <>
+                <dt className="text-muted">{rw.orgNumber}</dt>
+                <dd>{store.details.organisationNumber}</dd>
+              </>
+            ) : null}
+          </dl>
+        ) : (
+          <p className="text-sm text-muted">{rw.noBusiness}</p>
+        );
+        return orgNumber ? (
+          <RegisterFactsCard title={rw.business} view={register} words={rw} lang={lang} lead={details} />
+        ) : (
+          <Card title={rw.business} compact>
+            <div className="flex flex-col gap-2">
+              {details}
+              {store.details.organisationNumber ? <p className="text-caption text-muted">{rw.notNorwegian}</p> : null}
+            </div>
+          </Card>
+        );
+      })()}
 
       <Card title={w.currentPlan} className="text-sm" compact>
         {billing.planName && billing.status ? (

@@ -1,6 +1,6 @@
 {
-  "id": "72fc97e1-fad4-4589-90b0-13c2bc6f14d2",
-  "prevId": "5da43856-c9a9-4d60-9164-f6b733cb5c26",
+  "id": "43429fe7-ded1-4091-b31c-9775ff0f39ff",
+  "prevId": "72fc97e1-fad4-4589-90b0-13c2bc6f14d2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -73263,6 +73263,195 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.register_companies": {
+      "name": "register_companies",
+      "schema": "commerce",
+      "columns": {
+        "organisation_number": {
+          "name": "organisation_number",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "org_form": {
+          "name": "org_form",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "org_form_name": {
+          "name": "org_form_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "industry_code": {
+          "name": "industry_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "industry_name": {
+          "name": "industry_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "employees": {
+          "name": "employees",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "founded": {
+          "name": "founded",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "municipality": {
+          "name": "municipality",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "red_flag": {
+          "name": "red_flag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "red_flag_on": {
+          "name": "red_flag_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "flagged_at": {
+          "name": "flagged_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accounts_year": {
+          "name": "accounts_year",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accounts_currency": {
+          "name": "accounts_currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revenue_minor": {
+          "name": "revenue_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operating_result_minor": {
+          "name": "operating_result_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profit_minor": {
+          "name": "profit_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "equity_minor": {
+          "name": "equity_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_revenue_minor": {
+          "name": "previous_revenue_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facts_checked_at": {
+          "name": "facts_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "accounts_checked_at": {
+          "name": "accounts_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "register_companies_flagged_idx": {
+          "name": "register_companies_flagged_idx",
+          "columns": [
+            {
+              "expression": "flagged_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "register_companies_number": {
+          "name": "register_companies_number",
+          "value": "\"commerce\".\"register_companies\".\"organisation_number\" ~ '^[0-9]{9}$'"
+        },
+        "register_companies_status": {
+          "name": "register_companies_status",
+          "value": "\"commerce\".\"register_companies\".\"status\" in ('company', 'sole_trader', 'not_found')"
+        },
+        "register_companies_red_flag": {
+          "name": "register_companies_red_flag",
+          "value": "\"commerce\".\"register_companies\".\"red_flag\" is null or \"commerce\".\"register_companies\".\"red_flag\" in ('bankrupt', 'winding_up', 'dissolution', 'deleted')"
+        },
+        "register_companies_only_companies": {
+          "name": "register_companies_only_companies",
+          "value": "\"commerce\".\"register_companies\".\"status\" = 'company' or (\"commerce\".\"register_companies\".\"name\" is null and \"commerce\".\"register_companies\".\"municipality\" is null and \"commerce\".\"register_companies\".\"website\" is null and \"commerce\".\"register_companies\".\"red_flag\" is null and \"commerce\".\"register_companies\".\"revenue_minor\" is null and \"commerce\".\"register_companies\".\"employees\" is null)"
+        },
+        "register_companies_lengths": {
+          "name": "register_companies_lengths",
+          "value": "coalesce(length(\"commerce\".\"register_companies\".\"name\"), 0) <= 200 and coalesce(length(\"commerce\".\"register_companies\".\"org_form_name\"), 0) <= 100 and coalesce(length(\"commerce\".\"register_companies\".\"industry_name\"), 0) <= 200\n          and coalesce(length(\"commerce\".\"register_companies\".\"municipality\"), 0) <= 100 and coalesce(length(\"commerce\".\"register_companies\".\"website\"), 0) <= 253"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.report_schedules": {
       "name": "report_schedules",

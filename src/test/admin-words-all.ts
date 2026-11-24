@@ -80,6 +80,7 @@ import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
 import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
 import { RECORDINGS_WORDS } from "@/lib/admin-words/recordings";
 import { COMPANIES_WORDS } from "@/lib/admin-words/companies";
+import { REGISTER_FACTS_WORDS } from "@/lib/admin-words/register-facts";
 import { REDIRECTS_WORDS } from "@/lib/admin-words/redirects";
 import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { REPORTS_CAMPAIGNS_WORDS } from "@/lib/admin-words/reports-campaigns";
@@ -160,6 +161,7 @@ export const ALL_AREA_WORDS: { [A in AdminArea]: Record<AdminLang, AdminAreaMess
   heatmaps: HEATMAPS_WORDS,
   recordings: RECORDINGS_WORDS,
   companies: COMPANIES_WORDS,
+  registerFacts: REGISTER_FACTS_WORDS,
   privacyOfficer: PRIVACY_OFFICER_WORDS,
   flows: FLOWS_WORDS,
   notifications: NOTIFICATIONS_WORDS,

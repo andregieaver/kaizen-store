@@ -43,6 +43,7 @@ import type { AnimationMessages } from "./admin-messages/animation.en";
 import type { HeatmapsMessages } from "./admin-messages/heatmaps.en";
 import type { RecordingsMessages } from "./admin-messages/recordings.en";
 import type { CompaniesMessages } from "./admin-messages/companies.en";
+import type { RegisterFactsMessages } from "./admin-messages/register-facts.en";
 import type { PrivacyOfficerMessages } from "./admin-messages/privacy-officer.en";
 import type { FlowsMessages } from "./admin-messages/flows.en";
 import type { AutomaticMessages } from "./admin-messages/automatic.en";
@@ -128,6 +129,7 @@ export type AdminAreaMessages = {
   heatmaps: HeatmapsMessages;
   recordings: RecordingsMessages;
   companies: CompaniesMessages;
+  registerFacts: RegisterFactsMessages;
   privacyOfficer: PrivacyOfficerMessages;
   flows: FlowsMessages;
   notifications: NotificationsMessages;
@@ -218,7 +220,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "registerFacts", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
