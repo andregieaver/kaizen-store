@@ -77,6 +77,9 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    rated, a deal made or won, a contract signed. The person is the order's buyer, the conversation's contact (or its customer) and the
    deal's or contract's customer (`emailOfSubject()`). The canvas names a trigger by its story sentence (`triggerLabel()`), so each
    trigger has one wording per language.
+   *Part g, the same day:* a birthday starts a flow (`customer.birthday`, `DAY_TRIGGERS`): a person on the list whose customer gave a
+   birthday (D401) at least 30 days before, as the birthday credit, enters on that day in the store's time zone, once a year
+   (`enterBirthdays()`).
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 

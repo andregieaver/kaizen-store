@@ -585,4 +585,28 @@ describe("wait until and tags (M2.1)", () => {
     expect(await who(flowIds["conversation.rated"])).toEqual([ids.rated]);
     await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
   });
+
+  it("enters a subscriber on their birthday in the store's zone, once a year, and not for a birthday given days ago (M2.3)", async () => {
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+    const now = new Date();
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", month: "2-digit", day: "2-digit" }).format(now);
+    const people = { glad: `glad-${run}@example.com`, fresh: `fresh-${run}@example.com` };
+    const glad = await subscriber(people.glad);
+    await subscriber(people.fresh);
+    await db().execute(sql`update commerce.stores set time_zone = 'Europe/Oslo' where id = ${storeId}::uuid`);
+    await db().execute(sql`
+      insert into commerce.customers (store_id, email, birthday, birthday_set_at)
+      values (${storeId}::uuid, ${people.glad}, ${day}, now() - interval '40 days'), (${storeId}::uuid, ${people.fresh}, ${day}, now() - interval '5 days')`);
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Bursdag ${run}`, trigger: "customer.birthday", steps: [email("e", "Gratulerer")], goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    expect(await fl.flowReach(storeId, "customer.birthday", null)).toBeGreaterThanOrEqual(2);
+    await fl.enterBirthdays(now);
+    await fl.enterBirthdays(now);
+    const runs = await db().execute<Row>(sql`select subscriber_id, entry_key from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(runs.map((r) => String(r.subscriber_id))).toEqual([glad]);
+    expect(String(runs[0].entry_key)).toMatch(/^birthday:[0-9a-f-]{36}:\d{4}$/);
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+  });
 });

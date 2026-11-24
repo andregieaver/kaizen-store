@@ -59,6 +59,7 @@ export const flowsEn = {
       "customer.lapsed": "When someone has not ordered for {n} days:",
       "customer.browsed": "{n} days after someone looked at products and did not buy:",
       "subscriber.asleep": "When someone on your list has pressed no link in {n} days:",
+      "customer.birthday": "On a customer's birthday:",
     },
     sameDay: "the same day",
     after: { hours: { one: "an hour later", many: "{n} hours later" }, days: { one: "a day later", many: "{n} days later" } },

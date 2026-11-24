@@ -801,6 +801,32 @@ export async function enterBrowsed(now = new Date()): Promise<number> {
 }
 
 /**
+ * Enters the people a birthday flow is for (M2.3): a subscribed person whose customer gave a birthday (`MM-DD`, D401) at least 30 days ago
+ * (as the birthday credit, so a date is not typed to claim what the email offers), on that day in the store's time zone (29 February on
+ * the 28th in other years), once a year (`birthday:{customer}:{year}`), only from the day the flow was switched on. One statement for
+ * every store; returns how many runs began.
+ */
+export async function enterBirthdays(now = new Date()): Promise<number> {
+  const at = now.toISOString();
+  const today = sql`(${at}::timestamptz at time zone s.time_zone)::date`;
+  const rows = await db().execute(sql`
+    insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, path)
+    select distinct on (f.id, m.id) f.store_id, f.id, f.version, m.id, 'birthday:' || c.id || ':' || extract(year from ${today})::int, '0'
+      from commerce.flows f
+      join commerce.stores s on s.id = f.store_id
+      join commerce.customers c on c.store_id = f.store_id and c.birthday is not null and c.birthday_set_at <= ${at}::timestamptz - interval '30 days'
+      join commerce.marketing_subscribers m on m.store_id = c.store_id and lower(m.email) = lower(c.email) and m.status = 'subscribed'
+     where f.enabled and f.trigger = 'customer.birthday' and f.store_id is not null and ${today} >= (f.enabled_at at time zone s.time_zone)::date
+       and (c.birthday = to_char(${today}, 'MM-DD')
+            or (c.birthday = '02-29' and to_char(${today}, 'MM-DD') = '02-28'
+                and to_char(${today} + 1, 'MM-DD') = '03-01'))
+     order by f.id, m.id, c.created_at
+    on conflict do nothing
+    returning id`);
+  return rows.length;
+}
+
+/**
  * The every-minute job's turn: while no flow is switched on anywhere (one read), nothing more; else people enter from the event log and the
  * due runs move on, whose runs may still be going after their flow was switched off. Never throws.
  */
@@ -815,6 +841,7 @@ export async function tickFlows(): Promise<void> {
     await enterLapsed();
     await enterBrowsed();
     await enterAsleep();
+    await enterBirthdays();
     await runFlows();
     // The sunset's end (M2.8): who finished it with no press is paused.
     await pauseSunsetRuns();
@@ -905,7 +932,7 @@ export const REACH_DAYS = 30;
 /**
  * About how many people would start a flow in the next `REACH_DAYS` days, from real data (M3.5): for an event, the people on the list behind
  * its events of the last as many days (`emailOfSubjectAt()`); for a lapse, the customers whose lapse falls in the next as many days; for
- * browsing, the signed-in subscribers with views kept now (they are kept a week, D691); for the sunset, those on the list, not paused, whose
+ * browsing, the signed-in subscribers with views kept now (they are kept a week, D691); for a birthday, those whose day falls then; for the sunset, those on the list, not paused, whose
  * days without a press end by then (the already asleep among them). Read only; nothing is sent or entered.
  */
 export async function flowReach(storeId: string, trigger: string, triggerDays: number | null): Promise<number> {
@@ -936,6 +963,13 @@ export async function flowReach(storeId: string, trigger: string, triggerDays: n
        where s.store_id = ${store} and s.status = 'subscribed' and s.paused_at is null
          and greatest(s.consented_at, coalesce((select max(c.clicked_at) from commerce.email_clicks c where c.store_id = s.store_id and c.subscriber_id = s.id), s.consented_at))
              + make_interval(days => ${days}) <= now() + make_interval(days => ${REACH_DAYS})`);
+    return row?.n ?? 0;
+  }
+  if (trigger === "customer.birthday") {
+    const row = await typedRow(n, sql`
+      select count(distinct s.id)::int as n from commerce.customers c
+        join commerce.marketing_subscribers s on s.store_id = c.store_id and lower(s.email) = lower(c.email) and s.status = 'subscribed'
+       where c.store_id = ${store} and c.birthday in (select to_char(d, 'MM-DD') from generate_series(current_date, current_date + ${REACH_DAYS - 1}::int, interval '1 day') d)`);
     return row?.n ?? 0;
   }
   if (trigger === "customer.browsed") {

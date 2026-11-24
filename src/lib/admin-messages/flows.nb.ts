@@ -59,6 +59,7 @@ export const flowsNb: FlowsMessages = {
       "customer.lapsed": "Når noen ikke har bestilt på {n} dager:",
       "customer.browsed": "{n} dager etter at noen så på varer uten å kjøpe:",
       "subscriber.asleep": "Når noen på listen ikke har trykket på en lenke på {n} dager:",
+      "customer.birthday": "På en kundes bursdag:",
     },
     sameDay: "samme dag",
     after: { hours: { one: "en time senere", many: "{n} timer senere" }, days: { one: "en dag senere", many: "{n} dager senere" } },

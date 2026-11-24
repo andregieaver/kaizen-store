@@ -33,8 +33,14 @@ export const EVENT_TRIGGERS = [
 export const DATE_TRIGGERS = ["customer.lapsed", "customer.browsed", "subscriber.asleep"] as const;
 export type DateTrigger = (typeof DATE_TRIGGERS)[number];
 
+/**
+ * The triggers checked on a clock that take no days (M2.3): `customer.birthday`, a person on the list whose customer gave a birthday
+ * (D401, `MM-DD`), on that day in the store's time zone, once a year, the date given at least 30 days before (as the birthday credit).
+ */
+export const DAY_TRIGGERS = ["customer.birthday"] as const;
+
 /** Every trigger a flow may have. */
-export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS] as const;
+export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS, ...DAY_TRIGGERS] as const;
 
 /** The days a lapse trigger may wait, as the win-back automation's (D298). */
 export const LAPSE_DAYS = { min: 30, max: 730 } as const;
