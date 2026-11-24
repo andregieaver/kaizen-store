@@ -65,6 +65,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_email_automations: "marketing:read",
   list_flows: "marketing:read",
   start_flow: "marketing:write",
+  create_flow: "marketing:write",
+  change_flow: "marketing:write",
   switch_email_automation: "marketing:write",
   write_email_automation: "marketing:write",
   write_cart_reminder: "marketing:write",

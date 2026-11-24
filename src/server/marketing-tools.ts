@@ -34,9 +34,13 @@ import { issueGiftCard } from "./gift-cards-admin";
 import { OwnerToolError } from "./owner-tool-error";
 import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type SavedSegment } from "./segments";
 import { storeById } from "./shopper-emails";
-import { flowProposals, flowReport, listFlows, startRecipeFlow } from "./flows";
+import { flowProposals, flowReach, flowReport, getFlow, listFlows, saveFlow, startRecipeFlow, type FlowView } from "./flows";
+import { getContactPolicy } from "./contact-policy";
 import { goalsMade, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
-import { scheduleOf, storyLead } from "@/lib/flow-story";
+import { scheduleOf, storyLead, storyLines } from "@/lib/flow-story";
+import { draftGoals, draftSteps, draftWords } from "@/lib/flow-draft";
+import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
+import { zoneOf } from "@/lib/admin-date";
 import { flowStoryEn } from "@/lib/admin-words/flow-story-en";
 import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
@@ -696,4 +700,83 @@ export async function startFlowTool({ account, store }: Ctx, { goal }: OwnerTool
     done: `${flowStoryEn.goals[goal].title} is started as a flow, switched off and untested: nothing is sent. The owner reads it, tests it and switches it on on its page.`,
     link: adminLink(store, `/flows/${saved.id}`),
   };
+}
+
+
+/** The flow input a drafted flow makes (M3.2): its words checked, its segment and time found, its steps built by code (`draftSteps()`). */
+async function draftInput(store: Store, draft: Partial<OwnerToolInput<"create_flow">>, kept: FlowView | null) {
+  if (draft.emails) {
+    const brand = await brandOf(store.id);
+    const words = draftWords(draft.emails);
+    const found = [...findClaims(words), ...findAvoided(words, brand.avoid)];
+    if (found.length > 0) {
+      const named = [...new Set(found.map((c) => `"${c.phrase}"${c.kind === "avoided" ? " (a word the brand avoids)" : ` (${CLAIM_LABELS[c.kind].toLowerCase()})`}`))].join(", ");
+      return fail(`The emails make claims the store does not let AI make: ${named}. Write them without.`);
+    }
+  }
+  const trigger = draft.trigger ?? kept?.trigger ?? "subscriber.subscribed";
+  const changed = draft.trigger !== undefined && draft.trigger !== kept?.trigger;
+  const days = isDateTrigger(trigger) ? (draft.days ?? (changed ? null : kept?.triggerDays) ?? DATE_TRIGGER_DAYS[trigger].start) : null;
+  const named = draft.segment ?? (changed ? undefined : (kept?.segmentName ?? undefined));
+  const segmentId = (trigger === "segment.entered" || trigger === "schedule") && named ? (await findSegment(store, named)).id : null;
+  let scheduleAt: string | null = null;
+  let every: number | null = null;
+  if (trigger === "schedule") {
+    if (draft.schedule) {
+      const at = localInstant(draft.schedule.at, zoneOf(store.timeZone));
+      if (at === null) return fail("That time cannot be read: give it as YYYY-MM-DDTHH:MM on the store's clock.");
+      scheduleAt = new Date(at).toISOString();
+      every = draft.schedule.every_days ?? null;
+    } else if (!changed && kept?.scheduleAt) {
+      scheduleAt = kept.scheduleAt;
+      every = kept.scheduleEveryDays;
+    } else return fail("A schedule needs its time (schedule.at).");
+  }
+  const locale = store.localization.locales[0] ?? "en-GB";
+  return {
+    trigger,
+    triggerDays: days,
+    triggerSegmentId: segmentId,
+    scheduleAt,
+    scheduleEveryDays: every,
+    steps: draft.emails ? draftSteps(draft.emails, locale) : (kept?.steps ?? []),
+    goals: draft.ends_on_order !== undefined ? draftGoals(draft.ends_on_order) : (kept?.goals ?? []),
+  };
+}
+
+/** A saved flow read back to the model (M3.2): its story in English, who it would reach, the contact policy that holds it, and its page. */
+async function flowSaid(store: Store, id: string, done: string) {
+  const flow = await getFlow(store.id, id);
+  if (!flow) return fail("The flow could not be read back.");
+  const w = flowStoryEn.story;
+  const [reach, policy] = await Promise.all([flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId), getContactPolicy(store.id)]);
+  return {
+    done,
+    starts: storyLead(flow.trigger, flow.goals, w, flow.triggerDays, flow.segmentName, scheduleOf(flow, store, "en")),
+    emails: storyLines(flow.steps, w).map((l) => `${l.when}${l.condition ? `, ${l.condition}` : ""}: ${l.subject}`),
+    would_reach_in_30_days: reach,
+    contact_policy: `Its emails go within the store's contact policy: at most ${policy.perWeek} marketing messages a week to one person${policy.quietHours ? ", in their daytime" : ""}.`,
+    next: "Saved switched off and untested: nothing is sent. Ask the owner to read it on its page (the link), test it and switch it on.",
+    link: adminLink(store, `/flows/${id}`),
+  };
+}
+
+/** Writes a new flow from the owner's sentence (M3.2), built and checked by code, saved off and untested. */
+export async function createFlowTool({ account, store }: Ctx, input: OwnerToolInput<"create_flow">) {
+  const built = await draftInput(store, input, null);
+  const saved = await saveFlow(store.id, account.id, null, { name: input.name, ...built });
+  if (!saved.ok) return fail(saved.problem);
+  return flowSaid(store, saved.id, `The flow "${input.name}" is written and saved, switched off and untested.`);
+}
+
+/** Changes one of the store's flows by its name (M3.2): a new version, off until tested again. */
+export async function changeFlowTool({ account, store }: Ctx, input: OwnerToolInput<"change_flow">) {
+  const wanted = input.flow.trim().toLowerCase();
+  const found = (await listFlows(store.id)).filter((f) => f.id === input.flow || f.name.trim().toLowerCase() === wanted);
+  if (found.length !== 1) return fail(found.length > 1 ? `Several flows are called "${input.flow}".` : `No flow "${input.flow}". Look with list_flows.`);
+  const kept = found[0];
+  const built = await draftInput(store, input, kept);
+  const saved = await saveFlow(store.id, account.id, kept.id, { name: input.name ?? kept.name, ...built });
+  if (!saved.ok) return fail(saved.problem);
+  return flowSaid(store, kept.id, `The flow "${input.name ?? kept.name}" is changed: a new version, switched off until the owner tests it again.`);
 }

@@ -655,6 +655,8 @@ export const assistantNb: AssistantMessages = {
     list_email_automations: "Ser på de automatiske e-postene",
     list_flows: "Ser på flytene",
     start_flow: "Starter flyten",
+    create_flow: "Skriver flyten",
+    change_flow: "Endrer flyten",
     switch_email_automation: "Forbereder bryteren",
     tell_customer_about_order: "Forbereder beskjeden til kunden",
     carry_out_address_change: "Endrer leveringsadressen",

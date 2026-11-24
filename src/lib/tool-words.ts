@@ -39,6 +39,8 @@ export const TOOL_WORDS: Record<string, string> = {
   list_email_automations: "Looking at email automations",
   list_flows: "Looking at the flows",
   start_flow: "Starting the flow",
+  create_flow: "Writing the flow",
+  change_flow: "Changing the flow",
   switch_email_automation: "Preparing the switch",
   tell_customer_about_order: "Preparing the customer's update",
   carry_out_address_change: "Changing the delivery address",

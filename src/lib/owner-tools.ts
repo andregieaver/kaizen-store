@@ -9,6 +9,7 @@ import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_M
 import { EXTENSION_NAMES, EXTENSION_TRIAL_DAYS, isExtensionId } from "./extensions";
 import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
+import { FLOW_TRIGGERS, SCHEDULE_EVERY } from "./flow-triggers";
 import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
 import { TOOL_GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
@@ -154,6 +155,37 @@ const supportRef = z.string().trim().min(8).max(64).describe("The conversation's
  * read a public page, keep findings with the addresses they rest on, and compare options with the totals worked out in code. What a search
  * or a page says is other people's words, read as data.
  */
+/** Conditions an email of a drafted flow may have (M3.2), as the canvas's conditions say them. */
+export const FLOW_DRAFT_CONDITIONS = ["has_ordered", "has_not_ordered", "pressed_a_link", "pressed_no_link"] as const;
+
+/** A flow as the AI manager drafts it from a sentence (M3.2): code turns it into steps (`draftSteps()`), never the model. */
+const flowDraftSchema = z.object({
+  trigger: z
+    .enum(FLOW_TRIGGERS)
+    .describe("What starts it: an event (such as subscriber.subscribed or order.sent), customer.lapsed, customer.browsed or subscriber.asleep with days, customer.birthday, segment.entered with a segment, or schedule with a time."),
+  days: z.number().int().min(1).max(730).optional().describe("For customer.lapsed (30 to 730), customer.browsed (1 to 5) or subscriber.asleep (90 to 180) only: how many days."),
+  segment: z.string().trim().min(1).max(120).optional().describe("A saved segment's name: required for segment.entered; for schedule, its readers (else everyone on the list)."),
+  schedule: z
+    .object({
+      at: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).describe("When, on the store's clock: YYYY-MM-DDTHH:MM."),
+      every_days: z.union([z.literal(SCHEDULE_EVERY[0]), z.literal(SCHEDULE_EVERY[1]), z.literal(SCHEDULE_EVERY[2])]).optional().describe("Repeat every 7, 14 or 30 days; leave out for once."),
+    })
+    .optional()
+    .describe("For schedule only."),
+  emails: z
+    .array(
+      z.object({
+        after_days: z.number().int().min(0).max(365).describe("Days after the one before (or after the start, for the first): 0 for the same day."),
+        subject: z.string().trim().min(1).max(200),
+        text: z.string().trim().min(1).max(2000).describe("The email's words, paragraphs split by a blank line."),
+        only_if: z.enum(FLOW_DRAFT_CONDITIONS).optional().describe("Only for those who have or have not ordered, or pressed or not pressed a link in its emails, since the flow began."),
+      }),
+    )
+    .min(1)
+    .max(6),
+  ends_on_order: z.boolean().optional().describe("Ends for a person when they order: true for a flow meant to bring an order."),
+});
+
 export const RESEARCH_TOOLS = [
   tool(
     "search_web",
@@ -2322,6 +2354,19 @@ const ALL_OWNER_TOOLS = [
     z.object({ goal: z.enum(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse", "sunset"]) }),
   ),
   tool(
+    "create_flow",
+    "Writes a new flow from what the owner asked for in their own words (email plan M3.2): what starts it and its emails in order, each the days after the one before and, if the owner said so, only for those who have or have not ordered or pressed a link since it began. Write the emails in the store's first language and voice, from facts a tool gave you: never a price, a stock level or a product no tool named. Code builds the flow, checks its words, counts who it would reach and saves it switched off and untested, so nothing is sent: the owner reads it as a story, tests it and switches it on on its page (the link). The store's contact policy holds every email it sends.",
+    flowDraftSchema.extend({ name: z.string().trim().min(1).max(120).describe("The flow's name, as the owner would call it.") }),
+  ),
+  tool(
+    "change_flow",
+    "Changes one of the store's flows (by its name from list_flows) as the owner asked: its name, what starts it, or its emails (given, they replace all of the flow's emails and their waits). Each change is a new version, switched off and untested until the owner tests it again on its page (the link), so nothing more is sent before they look. Words are checked as create_flow's are.",
+    flowDraftSchema.partial().extend({
+      flow: z.string().trim().min(1).max(120).describe("The flow's name, as list_flows gives it."),
+      name: z.string().trim().min(1).max(120).optional().describe("A new name, only if the owner asked for one."),
+    }),
+  ),
+  tool(
     "issue_gift_card",
     "Issues a gift card by hand (a goodwill gesture, a prize) and emails it to the person it is for: its code goes only in that email and is never shown here or kept. In a currency the store sells in, the store's main one unless said; the store's expiry applies. A card is money the store owes until it is spent. Needs the owner's approval.",
     z.object({
@@ -2404,7 +2449,7 @@ const ALL_OWNER_TOOLS = [
  * eval's replay among them, and a run can only be recorded once the tools are live: so they go live in a push without a migration, the eval
  * is run on Platform → AI, and its recording is committed. Empty but for that.
  */
-export const HELD_FOR_EVAL: ReadonlySet<string> = new Set<string>([]);
+export const HELD_FOR_EVAL: ReadonlySet<string> = new Set<string>(["create_flow", "change_flow"]);
 
 export const OWNER_TOOLS = ALL_OWNER_TOOLS.filter((t) => !HELD_FOR_EVAL.has(t.name));
 

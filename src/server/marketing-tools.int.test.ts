@@ -29,6 +29,7 @@ const { getStore } = await import("./stores");
 const ownerTools = await import("./owner-tools");
 const subs = await import("./marketing-subscribers");
 const { broadcastApprovalSummary, segmentApprovalSummary } = await import("./marketing-tools");
+const { getFlow } = await import("./flows");
 
 /**
  * The AI manager's marketing tools (PSI AGT-01): a broadcast drafted by the store's own writer (claims checked) and saved as a draft, sent or
@@ -220,6 +221,39 @@ describe("the marketing tools", () => {
     expect(after.flows).toEqual(expect.arrayContaining([expect.objectContaining({ on: false })]));
     expect(after.goals_without_a_flow.map((g) => g.goal)).not.toContain("win_back");
     await expect(run("start_flow", { goal: "win_back" })).rejects.toThrow(/already has a flow/);
+  });
+});
+
+describe("a flow from a sentence (email plan M3.2), held for the eval", () => {
+  it("writes one switched off from the manager's draft, refuses a claim, and changes it by name as a new version", async () => {
+    const { createFlowTool, changeFlowTool } = await import("./marketing-tools");
+    const made = (await createFlowTool(await ctx(), {
+      name: "Velkommen fra en setning",
+      trigger: "subscriber.subscribed",
+      emails: [
+        { after_days: 0, subject: "Velkommen!", text: "Hyggelig at du er her." },
+        { after_days: 3, subject: "Det andre liker best", text: "Se hva andre liker.", only_if: "has_not_ordered" },
+      ],
+      ends_on_order: true,
+    })) as { done: string; starts: string; emails: string[]; would_reach_in_30_days: number; contact_policy: string; link: string };
+    expect(made.done).toContain("switched off and untested");
+    expect(made.starts).toMatch(/^When someone joins your list:/);
+    expect(made.emails).toHaveLength(2);
+    expect(made.contact_policy).toContain("marketing messages a week");
+    const id = made.link.split("/").pop() ?? "";
+    expect(await getFlow(store.id, id)).toMatchObject({ enabled: false, trigger: "subscriber.subscribed", goals: [{ kind: "ordered" }] });
+    // A claim the store does not let AI make is refused, and nothing is saved.
+    await expect(
+      createFlowTool(await ctx(), { name: "Gratis", trigger: "order.sent", emails: [{ after_days: 0, subject: "Gratis frakt for alltid", text: "Garantert billigst." }] }),
+    ).rejects.toThrow(/claims/);
+    // Changed by its name: a new trigger, its emails kept, off until tested again.
+    const changed = (await changeFlowTool(await ctx(), { flow: "velkommen fra en setning", trigger: "order.sent" })) as { done: string };
+    expect(changed.done).toContain("new version");
+    const after = await getFlow(store.id, id);
+    expect(after).toMatchObject({ trigger: "order.sent", enabled: false, version: 2 });
+    expect(after?.steps).toHaveLength(3);
+    await expect(changeFlowTool(await ctx(), { flow: "No such flow", trigger: "order.sent" })).rejects.toThrow(/No flow/);
+    await expect(changeFlowTool(await ctx(), { flow: "Velkommen fra en setning", trigger: "schedule" })).rejects.toThrow(/schedule needs its time/);
   });
 });
 

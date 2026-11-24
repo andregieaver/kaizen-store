@@ -95,6 +95,11 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    Customise writes the whole flow in the store's voice with one press (*Write every email in your voice with AI*): each email from its own
    words, in the store's first language, through the broadcast writer (D330's voice, its claims checked), saved as one version, off until
    tested.
+5. **A flow from a sentence** (M3.2, 24 November 2026). The AI manager's `create_flow` takes the owner's sentence as the model's draft (what
+   starts it, its emails, each its days after the one before and for whom), and code builds the steps (`draftSteps()`,
+   `src/lib/flow-draft.ts`), checks every word for claims and the brand's words to avoid, finds the segment and the time on the store's
+   clock, and saves it off and untested; it answers with the story, who it would reach and the contact policy that holds it. `change_flow`
+   changes one by its name as a new version. Both are held out of the manager (`HELD_FOR_EVAL`) until the agents' eval is run with them.
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 
