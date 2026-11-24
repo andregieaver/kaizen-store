@@ -56,6 +56,7 @@ import { getStore, type Store } from "./stores";
 import { jobReport } from "./cache-events";
 import type { RedFlag } from "@/lib/register-facts";
 import { orgNumberSql } from "./register-sql";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -837,13 +838,16 @@ export async function sendTermsOverdueAlert(storeId: string, orderId: string, se
  * once per company, flag and recipient; the company as the store named it, the flag and its day, and a link to the company's page.
  */
 export async function sendCompanyFlagAlert(storeId: string, companyId: string, flag: RedFlag, send: typeof sendEmail = sendEmail): Promise<{ ok: boolean; sent: number } | null> {
-  const [[row], store, targets] = await Promise.all([
-    db().execute<Row>(sql`
-      select c.name, r.red_flag_on::text as day
-        from commerce.customer_companies c
-        left join commerce.register_companies r on r.organisation_number = ${orgNumberSql(sql`c.organisation_number`)}
-       where c.store_id = ${storeId}::uuid and c.id = ${companyId}::uuid
-    `),
+  const [row, store, targets] = await Promise.all([
+    typedRow(
+      z.object({ name: col.text, day: col.textOrNull }),
+      sql`
+        select c.name, r.red_flag_on::text as day
+          from commerce.customer_companies c
+          left join commerce.register_companies r on r.organisation_number = ${orgNumberSql(sql`c.organisation_number`)}
+         where c.store_id = ${storeId}::uuid and c.id = ${companyId}::uuid
+      `,
+    ),
     storeById(storeId),
     alertRecipients(storeId, "payment_overdue"),
   ]);
@@ -851,9 +855,9 @@ export async function sendCompanyFlagAlert(storeId: string, companyId: string, f
   if (targets.length === 0) return { ok: true, sent: 0 };
   const email = (lang: AdminLang): RenderedEmail => {
     const w = wordsOf(lang).companyFlagged;
-    const company = String(row.name);
+    const company = row.name;
     const flagWords = w.flags[flag];
-    const day = row.day ? dayWords(String(row.day), formatOf(lang)) : "";
+    const day = row.day ? dayWords(row.day, formatOf(lang)) : "";
     return renderEmail({
       subject: fillWords(w.subject, { company, flag: flagWords }),
       preview: fillWords(w.preview, { flag: flagWords }),

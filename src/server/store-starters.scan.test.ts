@@ -75,6 +75,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/plan-reminders.ts": "template",
   "src/server/platform-customers.ts": "real",
   "src/server/platform-briefing.ts": "real",
+  // The organisation numbers whose register facts are watched (D891): real stores' businesses, never a template's or a demo store's.
+  "src/server/register-facts.ts": "real",
   "src/server/platform-workflows.ts": "real",
   "src/server/platform-api.ts": "real",
   "src/server/platform-channels.ts": "real",
