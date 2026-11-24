@@ -75,5 +75,9 @@ describe("what starts a flow, as a label (M2.3)", () => {
     expect(triggerLabel("customer.lapsed", words, 120)).toBe("When someone has not ordered for 120 days");
     expect(triggerLabel("segment.entered", words, null)).toBe("When someone enters a segment");
     expect(triggerLabel("segment.entered", words, null, "VIP")).toBe("When someone enters VIP");
+    const browse = { ...words, triggers: { "customer.browsed": "{n} days after someone looked:" }, triggersOne: { "customer.browsed": "A day after someone looked:" } };
+    expect(triggerLabel("customer.browsed", browse, null)).toBe("A day after someone looked");
+    expect(triggerLabel("customer.browsed", browse, 3)).toBe("3 days after someone looked");
+    expect(storyLead("customer.browsed", [], { ...w, ...browse }, 1)).toBe("A day after someone looked:");
   });
 });

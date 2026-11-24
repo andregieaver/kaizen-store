@@ -11,6 +11,8 @@ export type StoryWords = {
   triggers: Record<string, string>;
   /** A segment trigger's segment before one is chosen (`{segment}`). */
   anySegment: string;
+  /** A date trigger's sentence for one day, where `{n}` days would read wrong ("1 days"). */
+  triggersOne?: Record<string, string>;
   sameDay: string;
   after: { hours: { one: string; many: string }; days: { one: string; many: string } };
   conditions: { ordered: { yes: string; no: string }; clicked: { yes: string; no: string }; segment: { yes: string; no: string }; split: { yes: string; no: string } };
@@ -108,13 +110,19 @@ export function storyLines(steps: readonly FlowStep[], w: StoryWords, segmentNam
  * What starts a flow as a label of its own (the canvas's trigger card and its choices): the story's sentence without its colon, a date
  * trigger's days filled in (its usual days when none are given).
  */
-export function triggerLabel(trigger: string, w: Pick<StoryWords, "triggers" | "anySegment">, days: number | null, segment: string | null = null): string {
+export function triggerLabel(trigger: string, w: Pick<StoryWords, "triggers" | "anySegment" | "triggersOne">, days: number | null, segment: string | null = null): string {
   const range = isDateTrigger(trigger) ? DATE_TRIGGER_DAYS[trigger] : null;
-  return fill(w.triggers[trigger] ?? trigger, { n: days ?? range?.start ?? "?", segment: segment ?? w.anySegment }).replace(/:$/, "");
+  return startWords(trigger, w, days ?? range?.start ?? null, segment).replace(/:$/, "");
+}
+
+/** What starts a flow as the story says it: the trigger's sentence with its days and segment, the one-day sentence for a single day. */
+function startWords(trigger: string, w: Pick<StoryWords, "triggers" | "anySegment" | "triggersOne">, days: number | null, segment: string | null): string {
+  const text = (days === 1 ? w.triggersOne?.[trigger] : undefined) ?? w.triggers[trigger] ?? trigger;
+  return fill(text, { n: days ?? "?", segment: segment ?? w.anySegment });
 }
 
 /** The story's first sentence: what starts it, and what ends it early. */
 export function storyLead(trigger: string, goals: readonly FlowGoal[], w: StoryWords, days: number | null = null, segment: string | null = null): string {
-  const start = fill(w.triggers[trigger] ?? trigger, { n: days ?? "?", segment: segment ?? w.anySegment });
+  const start = startWords(trigger, w, days, segment);
   return goals.length > 0 ? `${start} ${w.goal}` : start;
 }
