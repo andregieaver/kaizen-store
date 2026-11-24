@@ -305,3 +305,28 @@ test("on the canvas, a wait-until and a tag are added, and the story says the wa
   await expect(page.locator("[data-flow-story]")).toContainText("once they press a link, or 3 days later");
   if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT, fullPage: true });
 });
+
+test("a segment starts a flow: chosen under Customise and named in the story (M2.3, D887)", async ({ page }) => {
+  const sql = testDb();
+  const title = `VIP buyers ${RUN}`;
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
+    await sql`insert into commerce.segments (store_id, title, rules) values (${store.id}, ${title}, '{"match": "all", "conditions": []}')`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("group", { name: "Your own flow" }).getByRole("button", { name: "Start" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
+  const canvas = page.locator("[data-flow-canvas]");
+  await canvas.getByText("Customise", { exact: true }).click();
+  await canvas.locator("[data-board-trigger]").click();
+  const picker = canvas.getByLabel("When someone enters a segment");
+  await picker.selectOption({ label: title });
+  await picker.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/flow-segment-trigger.png", fullPage: true });
+  await picker.locator("xpath=ancestor::form").getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("[data-flow-story]")).toContainText(`When someone enters ${title}:`);
+});
