@@ -107,6 +107,11 @@ function* walk(steps: readonly FlowStep[], depth = 1): Generator<{ step: FlowSte
   }
 }
 
+/** Every email of a flow, in the order read, branches included (M3.1: the whole flow written in the store's voice at once). */
+export function emailSteps(steps: readonly FlowStep[]): Extract<FlowStep, { kind: "email" }>[] {
+  return [...walk(steps)].flatMap(({ step }) => (step.kind === "email" ? [step] : []));
+}
+
 /** What is wrong with a flow's steps, in words for the owner; empty when it may be saved. */
 export function checkFlow(steps: readonly FlowStep[]): string[] {
   const problems: string[] = [];

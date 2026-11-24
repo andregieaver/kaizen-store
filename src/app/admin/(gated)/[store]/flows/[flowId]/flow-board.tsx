@@ -15,6 +15,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition, type ReactNode } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { Button } from "@/components/admin/ui/button";
 import { Select } from "@/components/admin/ui/field";
 import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
 import { triggerLabel as triggerWordsOf, waitWords, type Schedule } from "@/lib/flow-story";
@@ -741,6 +742,9 @@ export function FlowBoard(p: Props) {
           {KINDS.map((k) => (
             <PaletteItem key={k} kind={k} p={p} />
           ))}
+          <Button size="dense" disabled={busy} onClick={() => run(() => writeFlowEmailAction(p.storeSlug, p.flowId, "*", p.languages[0] ?? "en-GB", ""))}>
+            {busy ? w.canvas.writingAll : w.canvas.writeAll}
+          </Button>
         </div>
         {said && (
           <p role="status" className={`text-sm ${said.ok ? "text-ink-2" : "text-danger-text"}`}>

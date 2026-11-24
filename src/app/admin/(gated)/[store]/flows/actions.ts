@@ -13,7 +13,7 @@ import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger, SCHEDULE_EVERY } from 
 import { localInstant } from "@/lib/follow-ups";
 import { zoneOf } from "@/lib/admin-date";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { findStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withLanguageCopy, withLanguageContent, withCondition, withEmailWords, withStepPicks, withTag, withUntil, withWaitDays, type FactBlock, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { emailSteps, type FactBlock, findStep, type FlowCondition, type FlowStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withCondition, withEmailWords, withLanguageContent, withLanguageCopy, withStepPicks, withTag, withUntil, withWaitDays } from "@/lib/flows";
 import { REWRITE_TONES, suggestionBlocks, type RewriteTone } from "@/lib/broadcasts";
 import { broadcastBlockSchema } from "@/lib/broadcasts-schema";
 import { earnedWords, flowAudience } from "@/lib/flow-audience";
@@ -281,6 +281,21 @@ export async function writeFlowEmailAction(storeSlug: string, flowId: string, st
   return saveTree(storeSlug, flowId, async (flow, _storeId, member) => {
     const problems = MARKETING_WORDS[adminLangOf(member.account.adminLocale)].problems;
     if (typeof brief !== "string" || typeof locale !== "string" || !member.store.localization.keptLocales.includes(locale)) return problems.storeLanguage;
+    // The whole flow at once (M3.1, "*"): each email written in the store's voice from its own words as the brief, in one new version.
+    if (stepId === "*") {
+      const earned = earnedWords(await flowReport(member.store.id, flow.id), flow.steps);
+      let steps = flow.steps;
+      for (const step of emailSteps(flow.steps)) {
+        const own = step.content[locale] ?? Object.values(step.content)[0];
+        const words = own ? [own.subject, ...own.blocks.flatMap((b) => ("text" in b && typeof b.text === "string" ? [b.text] : []))].join("\n") : "";
+        const audience = [flowAudience(flow.steps, step.id, flow.trigger, flow.triggerDays), earned].filter(Boolean).join(" ");
+        const suggested = await suggestBroadcast(member.store, member.account.id, words, locale, { audience });
+        if (!suggested.ok) return marketingProblem(suggested.problem, problems);
+        const s = suggested.suggestion;
+        steps = withLanguageContent(steps, step.id, locale, { subject: s.subject, preview: s.preview, blocks: suggestionBlocks(step.picks ? { ...s, products: [] } : s) });
+      }
+      return steps;
+    }
     const step = findStep(flow.steps, stepId);
     if (!step || step.kind !== "email") return null;
     // What its emails earned (M3.7): read before the writer suggests, the numbers counted in code.

@@ -78,6 +78,8 @@ export const flowsEn = {
   changeOff: "Saving a change switches the flow off until you test it again.",
   canvas: {
     startsWhen: "What starts it",
+    writeAll: "Write every email in your voice with AI",
+    writingAll: "Writing every email\u2026",
     schedule: { title: "On a schedule", at: "When", often: "How often", once: "Once", every: { "7": "Every week", "14": "Every 2 weeks", "30": "Every 30 days" }, who: "To" },
     picks: "Products for each reader",
     pickKinds: { none: "No products", cross_sell: "Bought together", replenish: "Buy again", browse: "Looked at", bought: "Their order" },

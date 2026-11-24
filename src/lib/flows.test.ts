@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { advance, checkFlow, nextPath, pathOf, pathText, stepAt, type FlowFacts, type FlowStep } from "./flows";
+import { advance, checkFlow, emailSteps, nextPath, pathOf, pathText, stepAt, type FlowFacts, type FlowStep } from "./flows";
 
 const email = (id: string, subject = "Hei"): FlowStep => ({
   id,
@@ -214,5 +214,17 @@ describe("wait until and tags (M2.1)", () => {
     expect(advance(clicked, [], ["1"], facts({ orderedSinceEntry: true }))).toMatchObject({ do: "hold" });
     expect(advance(clicked, [], ["1"], facts({ clickedFlowEmail: true }))).toMatchObject({ do: "email", step: { id: "b" } });
     expect(checkFlow(flow)).toEqual([]);
+  });
+});
+
+describe("every email of a flow (M3.1: the whole flow written at once)", () => {
+  it("reads them in order, branches included", () => {
+    const mail = (id: string): FlowStep => ({ id, kind: "email", content: { "en-GB": { subject: id, preview: "", blocks: [] } } });
+    const steps: FlowStep[] = [
+      mail("a"),
+      { id: "w", kind: "wait", hours: 24 },
+      { id: "q", kind: "if", condition: { kind: "ordered_since_entry" }, then: [mail("b")], else: [mail("c"), { id: "e", kind: "end" }] },
+    ];
+    expect(emailSteps(steps).map((s) => s.id)).toEqual(["a", "b", "c"]);
   });
 });
