@@ -78,6 +78,7 @@ export const flowsNb: FlowsMessages = {
   canvas: {
     startsWhen: "Hva som starter det",
     writeAll: "Skriv alle e-postene i butikkens stemme med AI",
+    tagName: "Merkelappen",
     writingAll: "Skriver alle e-postene\u2026",
     schedule: { title: "Etter en plan", at: "Når", often: "Hvor ofte", once: "Én gang", every: { "7": "Hver uke", "14": "Annenhver uke", "30": "Hver 30. dag" }, who: "Til" },
     picks: "Varer for hver leser",

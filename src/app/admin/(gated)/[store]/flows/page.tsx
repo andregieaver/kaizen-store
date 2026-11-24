@@ -6,7 +6,7 @@ import { AdminLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { countWords } from "@/lib/admin-fill";
 import { goalsMade, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
-import { scheduleOf, storyLead } from "@/lib/flow-story";
+import { scheduleOf, storyLead, triggerNameOf } from "@/lib/flow-story";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { getAutomations } from "@/server/automations";
 import { flowProposals, listFlows } from "@/server/flows";
@@ -47,7 +47,7 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
                     <AdminLink href={`/admin/${store.slug}/flows/${flow.id}`} className="text-body-strong text-ink underline-offset-2 hover:underline">
                       {flow.name}
                     </AdminLink>
-                    <span className="text-caption text-muted">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, flow.segmentName, scheduleOf(flow, member.store, lang))}</span>
+                    <span className="text-caption text-muted">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, triggerNameOf(flow), scheduleOf(flow, member.store, lang))}</span>
                   </span>
                   <Chip signal={flow.enabled ? "positive" : "neutral"} dot>
                     {flow.enabled ? w.statuses.on : w.statuses.off}

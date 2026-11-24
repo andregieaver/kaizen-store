@@ -18,7 +18,7 @@ import { TEST_FLOOR } from "@/lib/broadcast-test-sizes";
 import { fillWords } from "@/lib/admin-fill";
 import { FLOW_SPLITS_WORDS } from "@/lib/admin-words/flow-splits";
 import { languageName } from "@/lib/localization";
-import { scheduleOf, storyLead, storyLines } from "@/lib/flow-story";
+import { scheduleOf, storyLead, storyLines, triggerNameOf } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { drawFlowEmails, flowReach, flowStepFigures, flowStepPast, flowReport, getFlow } from "@/server/flows";
@@ -84,7 +84,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
   // A split test's ways side by side (M2.5, D868): read only when the flow splits.
   const splits = splitsOf(flow.steps);
   const [reach, report, past, stepFigures] = await Promise.all([
-    mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId) : Promise.resolve(0),
+    mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId, flow.triggerTag) : Promise.resolve(0),
     flowReport(store.id, flow.id),
     mayWrite ? flowStepPast(store.id, flow.id) : Promise.resolve(null),
     splits.length > 0 ? flowStepFigures(store.id, flow.id) : Promise.resolve(null),
@@ -121,7 +121,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
       )}
       <Card compact>
         <div className="flex flex-col gap-4" data-flow-story>
-          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, flow.segmentName, scheduleOf(flow, store, lang))}</p>
+          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, triggerNameOf(flow), scheduleOf(flow, store, lang))}</p>
           {/* A date trigger's days (slice 4), changed where they are said. */}
           {mayWrite && flow.triggerDays !== null && (
             <details className="text-sm">
@@ -234,7 +234,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           steps={flow.steps}
           trigger={flow.trigger}
           triggerDays={flow.triggerDays}
-          segmentName={flow.segmentName}
+          segmentName={triggerNameOf(flow)}
           schedule={scheduleOf(flow, store, lang)}
           scheduleLocal={flow.scheduleAt ? localText(flow.scheduleAt, store.timeZone) : ""}
           scheduleEvery={flow.scheduleEveryDays}

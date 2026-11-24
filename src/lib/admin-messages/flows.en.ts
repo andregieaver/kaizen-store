@@ -79,6 +79,7 @@ export const flowsEn = {
   canvas: {
     startsWhen: "What starts it",
     writeAll: "Write every email in your voice with AI",
+    tagName: "The tag",
     writingAll: "Writing every email\u2026",
     schedule: { title: "On a schedule", at: "When", often: "How often", once: "Once", every: { "7": "Every week", "14": "Every 2 weeks", "30": "Every 30 days" }, who: "To" },
     picks: "Products for each reader",

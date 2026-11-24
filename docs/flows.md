@@ -88,6 +88,10 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    at a time typed on the store's clock (`schedule_at`), once or every 7, 14 or 30 days (`enterScheduled()`); a time missed by more than a
    day (the flow was off) is skipped, never sent late. The story says when and to whom (*Every 7 days from 1 Dec, 09:00, to everyone on
    your list*).
+   *Part k, the same day:* a tag starts a flow (`tag.added`, `trigger_tag`): a person on the list given the flow's tag after it was switched
+   on (`enterTagged()`, by the tags' (store, key) index, at most three days back), once per time given. The AI manager's `create_flow`
+   does not set one yet (its tools stay as the eval recorded them). The Admin API has no events of its own for a flow to start from: that
+   part of M2.3 waits for an endpoint apps post events to.
    *Part j, the same day (M3.1):* the goal Get reviews (`reviews()`): two weeks after an order is sent, each buyer is shown what they bought
    (picks `bought`, the order's products still on sale, each linking to its page) and asked for a review. No automation did it, so it is a
    flow-only goal (`FLOW_ONLY_GOALS`, kept in `replaces`), and a store has it once. The goal Nurture business leads (`nurtureLeads()`) is

@@ -25,6 +25,7 @@ import {
   type FlowStep,
 } from "@/lib/flows";
 import { linkTarget } from "@/lib/broadcasts";
+import { tagKey } from "@/lib/order-tags";
 import { matches } from "@/lib/segments";
 import type { FlowReport } from "@/lib/flow-report";
 import { roomLeft } from "@/lib/limits";
@@ -87,6 +88,8 @@ export type FlowView = {
   /** A schedule trigger's next time and how often it repeats in days (null: once), or null (M2.3). */
   scheduleAt: string | null;
   scheduleEveryDays: number | null;
+  /** A tag trigger's tag as the owner wrote it (M2.3), or null. */
+  triggerTag: string | null;
   /** When the flow guard switched it off and what it counted (M3.9); null once switched on again. */
   guard: { at: string; sent: number; left: number } | null;
 };
@@ -104,6 +107,7 @@ const flowRow = z.object({
   segment_name: col.text.nullable(),
   schedule_at: col.timestampOrNull,
   schedule_every_days: z.number().int().nullable(),
+  trigger_tag: col.textOrNull,
   guard_paused_at: col.timestampOrNull,
   guard_counts: z.unknown(),
   steps: z.unknown(),
@@ -123,6 +127,7 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   segmentName: r.segment_name,
   scheduleAt: r.schedule_at,
   scheduleEveryDays: r.schedule_every_days,
+  triggerTag: r.trigger_tag,
   guard: (() => {
     const counts = guardCountsOf(r.guard_counts);
     return r.guard_paused_at && counts ? { at: r.guard_paused_at, ...counts } : null;
@@ -131,7 +136,7 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   goals: z.array(z.object({ kind: z.literal("ordered") })).parse(r.goals),
 });
 
-const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, f.trigger_segment_id, g.title as segment_name, f.schedule_at, f.schedule_every_days,
+const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, f.trigger_segment_id, g.title as segment_name, f.schedule_at, f.schedule_every_days, f.trigger_tag,
     f.guard_paused_at, f.guard_counts, v.steps, v.goals
   from commerce.flows f join commerce.flow_versions v on v.flow_id = f.id and v.version = f.version
   left join commerce.segments g on g.store_id = f.store_id and g.id = f.trigger_segment_id`;
@@ -162,17 +167,18 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
   const segment = parsed.data.triggerSegmentId ?? null;
   const scheduleAt = parsed.data.scheduleAt ?? null;
   const every = parsed.data.scheduleEveryDays ?? null;
+  const tag = parsed.data.triggerTag ?? null;
   const saved = await db().transaction(async (tx) => {
     const [raw] = id
       ? await tx.execute(sql`
           update commerce.flows set name = ${name}, trigger = ${trigger}, trigger_days = ${days}, trigger_segment_id = ${segment}::uuid, segment_checked_at = null,
-                 schedule_at = ${scheduleAt}::timestamptz, schedule_every_days = ${every}::int, schedule_fired_at = null,
+                 schedule_at = ${scheduleAt}::timestamptz, schedule_every_days = ${every}::int, schedule_fired_at = null, trigger_tag = ${tag},
                  enabled = false, version = version + 1, updated_at = now(),
                  replaces = case when trigger = ${trigger} then replaces end
            where store_id = ${storeId}::uuid and id = ${id}::uuid returning id, version`)
       : await tx.execute(sql`
-          insert into commerce.flows (store_id, name, trigger, trigger_days, trigger_segment_id, schedule_at, schedule_every_days, replaces)
-          values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${segment}::uuid, ${scheduleAt}::timestamptz, ${every}::int, ${replaces ?? null})
+          insert into commerce.flows (store_id, name, trigger, trigger_days, trigger_segment_id, schedule_at, schedule_every_days, trigger_tag, replaces)
+          values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${segment}::uuid, ${scheduleAt}::timestamptz, ${every}::int, ${tag}, ${replaces ?? null})
           returning id, version`);
     if (!raw) return null;
     const row = savedRow.parse(raw);
@@ -991,6 +997,34 @@ export async function enterScheduled(now = new Date()): Promise<number> {
 }
 
 /**
+ * Enters the people a tag flow is for (M2.3, `tag.added`): a subscribed person whose address was given the flow's tag (its key, `tagKey()`)
+ * after the flow was switched on, at most `LAPSE_CATCH_UP_DAYS` back, once per time it was given (`tag:{key}:{subscriber}:{time}`): taken
+ * off and given again, they start it again. One statement per switched-on tag flow, by the tags' (store, key) index. Returns how many runs began.
+ */
+export async function enterTagged(now = new Date()): Promise<number> {
+  const flows = await typedRows(
+    z.object({ id: col.uuid, store_id: col.uuid, version: col.int, tag: col.text, enabled_at: col.timestamp }),
+    sql`select id, store_id, version, trigger_tag as tag, enabled_at from commerce.flows where enabled and trigger = 'tag.added' and store_id is not null and trigger_tag is not null`,
+  );
+  let entered = 0;
+  for (const flow of flows) {
+    const key = tagKey(flow.tag);
+    if (!key) continue;
+    const rows = await db().execute(sql`
+      insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, path)
+      select ${flow.store_id}::uuid, ${flow.id}::uuid, ${flow.version}, m.id, 'tag:' || ${key} || ':' || m.id || ':' || extract(epoch from t.created_at)::bigint, '0'
+        from commerce.customer_tags t
+        join commerce.marketing_subscribers m on m.store_id = t.store_id and lower(m.email) = lower(t.email) and m.status = 'subscribed'
+       where t.store_id = ${flow.store_id}::uuid and t.key = ${key} and t.created_at >= ${flow.enabled_at}::timestamptz
+         and t.created_at > ${now.toISOString()}::timestamptz - make_interval(days => ${LAPSE_CATCH_UP_DAYS})
+      on conflict do nothing
+      returning id`);
+    entered += rows.length;
+  }
+  return entered;
+}
+
+/**
  * The every-minute job's turn: while no flow is switched on anywhere (one read), nothing more; else people enter from the event log and the
  * due runs move on, whose runs may still be going after their flow was switched off. Never throws.
  */
@@ -1008,6 +1042,7 @@ export async function tickFlows(): Promise<void> {
     await enterBirthdays();
     await enterSegments();
     await enterScheduled();
+    await enterTagged();
     await runFlows();
     // The sunset's end (M2.8): who finished it with no press is paused.
     await pauseSunsetRuns();
@@ -1102,9 +1137,19 @@ export const REACH_DAYS = 30;
  * segment, those in it now who joined the list in the last as many days; for the sunset, those on the list, not paused, whose
  * days without a press end by then (the already asleep among them). Read only; nothing is sent or entered.
  */
-export async function flowReach(storeId: string, trigger: string, triggerDays: number | null, segmentId: string | null = null): Promise<number> {
+export async function flowReach(storeId: string, trigger: string, triggerDays: number | null, segmentId: string | null = null, tag: string | null = null): Promise<number> {
   const store = sql`${storeId}::uuid`;
   const n = z.object({ n: col.int });
+  if (trigger === "tag.added") {
+    // Those on the list given the tag in the last as many days stand in for those who will be.
+    const key = tagKey(tag ?? "");
+    if (!key) return 0;
+    const row = await typedRow(n, sql`
+      select count(distinct m.id)::int as n from commerce.customer_tags t
+        join commerce.marketing_subscribers m on m.store_id = t.store_id and lower(m.email) = lower(t.email) and m.status = 'subscribed'
+       where t.store_id = ${store} and t.key = ${key} and t.created_at > now() - make_interval(days => ${REACH_DAYS})`);
+    return row?.n ?? 0;
+  }
   if (trigger === "schedule") {
     // A schedule reaches everyone on the list, or its segment, each time it comes.
     if (segmentId) {

@@ -80,7 +80,12 @@ export const flowInputSchema = z.object({
   /** A schedule trigger's next time (M2.3): required for `schedule`, refused for any other trigger; and how often it repeats (null: once). */
   scheduleAt: z.iso.datetime({ offset: true }).nullish(),
   scheduleEveryDays: z.union([z.literal(SCHEDULE_EVERY[0]), z.literal(SCHEDULE_EVERY[1]), z.literal(SCHEDULE_EVERY[2])]).nullish(),
+  /** A tag trigger's tag (M2.3): required for `tag.added`, refused for any other trigger. */
+  triggerTag: z.string().trim().min(1).max(TAG_MAX).nullish(),
 }).superRefine((f, ctx) => {
+  if ((f.trigger === "tag.added") !== Boolean(f.triggerTag)) {
+    ctx.addIssue({ code: "custom", path: ["triggerTag"], message: f.trigger === "tag.added" ? "Name the tag." : "Only a tag trigger has a tag." });
+  }
   if (f.trigger === "segment.entered" ? !f.triggerSegmentId : f.trigger !== "schedule" && f.triggerSegmentId) {
     ctx.addIssue({ code: "custom", path: ["triggerSegmentId"], message: f.trigger === "segment.entered" ? "Choose the segment." : "Only a segment trigger has a segment." });
   }

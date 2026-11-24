@@ -711,4 +711,30 @@ describe("wait until and tags (M2.1)", () => {
     const [order] = await db().execute<Row>(sql`select id from commerce.orders where store_id = ${storeId}::uuid and email = ${buyer}`);
     expect(await picksFor(storeId, "bought", String(order.id), buyer)).toEqual([]);
   });
+
+  it("enters who is given the flow's tag after it is switched on, once per time given, and again after it is given anew (M2.3)", async () => {
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+    const { tagFromForm } = await import("./segments");
+    const tag = `Stamkunde ${run}`;
+    const before = `for-${run}@example.com`;
+    const after = `etter-${run}@example.com`;
+    await subscriber(before);
+    const late = await subscriber(after);
+    await tagFromForm(storeId, before, [tag]);
+    await db().execute(sql`update commerce.customer_tags set created_at = now() - interval '1 hour' where store_id = ${storeId}::uuid and email = ${before}`);
+    const saved = await fl.saveFlow(storeId, owner, null, { name: tag, trigger: "tag.added", triggerTag: tag, steps: [email("e", "Hei")], goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    expect((await fl.getFlow(storeId, saved.id))?.triggerTag).toBe(tag);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    // Tagged before it was on: nobody; tagged after: they enter, once.
+    expect(await fl.enterTagged()).toBe(0);
+    await tagFromForm(storeId, after, [tag]);
+    expect(await fl.enterTagged()).toBe(1);
+    expect(await fl.enterTagged()).toBe(0);
+    const runs = await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(runs.map((r) => String(r.subscriber_id))).toEqual([late]);
+    expect(await fl.flowReach(storeId, "tag.added", null, null, tag)).toBeGreaterThanOrEqual(2);
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+  });
 });

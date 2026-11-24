@@ -36,7 +36,7 @@ import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type Sav
 import { storeById } from "./shopper-emails";
 import { flowProposals, flowReach, flowReport, getFlow, listFlows, saveFlow, startRecipeFlow, type FlowView } from "./flows";
 import { goalsMade, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
-import { scheduleOf, storyLead, storyLines } from "@/lib/flow-story";
+import { scheduleOf, storyLead, storyLines, triggerNameOf } from "@/lib/flow-story";
 import { flowStoryEn } from "@/lib/admin-words/flow-story-en";
 import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
@@ -664,7 +664,7 @@ export async function listFlowsTool({ store }: Ctx) {
     flows: flows.map((f, i) => ({
       name: f.name,
       on: f.enabled,
-      starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays, f.segmentName, scheduleOf(f, store, "en")),
+      starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays, triggerNameOf(f), scheduleOf(f, store, "en")),
       started_last_30_days: reports[i].entered,
       orders_after_last_30_days: reports[i].orders,
       // A split test worth trying (M2.5 slice 5, M3.9): enough people for each half; the owner adds the Split on the flow's page.
@@ -741,6 +741,8 @@ async function draftInput(store: Store, draft: Partial<OwnerToolInput<"create_fl
     triggerSegmentId: segmentId,
     scheduleAt,
     scheduleEveryDays: every,
+    // A tag flow keeps its tag while its trigger stays (the tool names no tag: the owner sets one on the canvas).
+    triggerTag: trigger === "tag.added" && !changed ? (kept?.triggerTag ?? null) : null,
     steps: draft.emails ? draftSteps(draft.emails, locale) : (kept?.steps ?? []),
     goals: draft.ends_on_order !== undefined ? draftGoals(draft.ends_on_order) : (kept?.goals ?? []),
   };
@@ -752,10 +754,10 @@ async function flowSaid(store: Store, id: string, done: string) {
   if (!flow) return fail("The flow could not be read back.");
   const w = flowStoryEn.story;
   const { getContactPolicy } = await import("./contact-policy");
-  const [reach, policy] = await Promise.all([flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId), getContactPolicy(store.id)]);
+  const [reach, policy] = await Promise.all([flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId, flow.triggerTag), getContactPolicy(store.id)]);
   return {
     done,
-    starts: storyLead(flow.trigger, flow.goals, w, flow.triggerDays, flow.segmentName, scheduleOf(flow, store, "en")),
+    starts: storyLead(flow.trigger, flow.goals, w, flow.triggerDays, triggerNameOf(flow), scheduleOf(flow, store, "en")),
     emails: storyLines(flow.steps, w).map((l) => `${l.when}${l.condition ? `, ${l.condition}` : ""}: ${l.subject}`),
     would_reach_in_30_days: reach,
     contact_policy: `Its emails go within the store's contact policy: at most ${policy.perWeek} marketing messages a week to one person${policy.quietHours ? ", in their daytime" : ""}.`,
