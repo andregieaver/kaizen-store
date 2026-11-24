@@ -894,6 +894,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D889 | **The AI manager writes and changes flows from a sentence (email plan M3.2)** | 2026-11-24 | [text](decisions/D889.md) |
 | D890 | **Which companies visited: company recognition on the visit counter, through Leadfeeder** | 2026-11-24 | [text](decisions/D890.md) |
 | D891 | **Company facts from Brønnøysund and a daily watch for bankruptcy and liquidation** | 2026-11-24 | [text](decisions/D891.md) |
+| D892 | **Legal reviews: drafts an outside lawyer reads and answers in the platform, with a Legal role that sees nothing else** | 2026-11-24 | [text](decisions/D892.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
