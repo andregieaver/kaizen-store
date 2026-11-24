@@ -137,6 +137,9 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   // leads view's and the *Today* card's), and blog comments `website:read` (the Comments page's).
   const dealIds = new Set(storeRows.filter((r) => r.deals_ext === true && featureOn(((r.features ?? []) as unknown[]).map(String), "sales")).map((r) => String(r.id)));
   const salesCustomerIds = customerIds.filter((id) => dealIds.has(id));
+  // Business customers flagged by the register (D891) are read only where the store sells to businesses (`business` on): a shop-only store's
+  // home never reads its companies (shop-journey.int.test.ts).
+  const businessIds = storeRows.filter((r) => featureOn(((r.features ?? []) as unknown[]).map(String), "business")).map((r) => String(r.id));
   // Flows losing readers (M3.8) are Email automation's (D748): asked only where the account has it, for those who may read marketing.
 
   const none = <T>() => Promise.resolve<T[]>([]);
@@ -292,13 +295,16 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
                 and exists (select 1 from commerce.order_events ev where ev.store_id = e.store_id and ev.order_id = e.order_id and ev.type = 'order.edit_refund_failed')
                 and ${EDIT_REFUND_OWED_SQL} > 0
             ) r on true
-            left join lateral (
+            left join lateral (${
+              businessIds.length === 0
+                ? sql`select 0 as companies_flagged, null::text as companies_flagged_first`
+                : sql`
               select count(*)::int as companies_flagged, min(cc.id::text) as companies_flagged_first
               from commerce.customer_companies cc
               join commerce.register_companies rc on rc.organisation_number = ${orgNumberSql(sql`cc.organisation_number`)}
-              where cc.store_id = s.id and cc.organisation_number <> '' and rc.red_flag is not null
-                and (cc.payment_terms is not null or rc.flagged_at > now() - make_interval(days => ${FLAG_NEWS_DAYS}))
-            ) k on true
+              where cc.store_id = s.id and s.id = any(${pgUuidArray(businessIds)}::uuid[]) and cc.organisation_number <> '' and rc.red_flag is not null
+                and (cc.payment_terms is not null or rc.flagged_at > now() - make_interval(days => ${FLAG_NEWS_DAYS}))`
+            }) k on true
           `,
         ),
     supportIds.length === 0 ? none<Row>() : db().execute<Row>(sql`

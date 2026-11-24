@@ -11,6 +11,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {} }));
 
 const { refreshRegisterCompany, registerFactsNow, watchRegister } = await import("./register-facts");
+const { controlCenter } = await import("./control-center");
 
 /**
  * Company facts from Brønnøysund (D891): a number is asked about once and kept, a sole trader keeps nothing but that it is one, the daily
@@ -142,6 +143,14 @@ describe("the daily watch", () => {
     // Still bankrupt the next day: not news, so nobody is told again.
     await watchRegister({ fetch: register(answers).fetch, now: NOW, alert: alert as never });
     expect(alerts).toHaveLength(1);
+
+    // The store's Home lists it while the store sells to businesses, and a store that does not never reads its companies.
+    const [owner] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`${slug}@example.com`}`);
+    const account = { id: String(owner.id), email: String(owner.email), name: null, platformAdmin: false } as never;
+    await db().execute(sql`update commerce.stores set features = array['shop', 'business'] where id = ${storeId}::uuid`);
+    expect((await controlCenter(account, slug)).stores[0]).toMatchObject({ companiesFlagged: { n: 1, first: String(company.id) } });
+    await db().execute(sql`update commerce.stores set features = array['shop'] where id = ${storeId}::uuid`);
+    expect((await controlCenter(account, slug)).stores[0]).not.toHaveProperty("companiesFlagged");
   });
 
   it("asks a register that does not answer only once a run", async () => {
