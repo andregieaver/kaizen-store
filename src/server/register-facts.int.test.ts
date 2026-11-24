@@ -89,6 +89,8 @@ beforeAll(async () => {
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Test', 'Test') returning id`);
   const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Register test', null) as id`);
   storeId = String(created.id);
+  // Sell to businesses on: a store tells its owners of a flagged company only while it sells to businesses.
+  await db().execute(sql`update commerce.stores set features = array['shop', 'business'] where id = ${storeId}::uuid`);
   await db().execute(sql`
     insert into commerce.customer_companies (store_id, name, organisation_number, payment_terms)
     values (${storeId}::uuid, 'Nordfjord Energi', ${`NO ${COMPANY.slice(0, 3)} ${COMPANY.slice(3, 6)} ${COMPANY.slice(6)} MVA`}, 'net_30'),

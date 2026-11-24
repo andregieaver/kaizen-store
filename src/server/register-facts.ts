@@ -327,7 +327,7 @@ export async function watchRegister(deps: RegisterDeps & { alert?: typeof sendCo
     if (done) out.accounts++;
   }
 
-  // 4. A company newly flagged: the stores that sell to it on payment terms are told, once per company and flag.
+  // 4. A company newly flagged: the stores that sell to it on payment terms, with Sell to businesses on, are told, once per company and flag.
   out.flagged = flagged.length;
   if (flagged.length > 0) {
     try {
@@ -336,7 +336,7 @@ export async function watchRegister(deps: RegisterDeps & { alert?: typeof sendCo
         sql`
           select c.store_id, c.id, ${orgNumberSql(sql`c.organisation_number`)} as number
           from commerce.customer_companies c join commerce.stores s on s.id = c.store_id and s.status = 'active'
-          where c.payment_terms is not null and ${orgNumberSql(sql`c.organisation_number`)} = any(${`{${flagged.map((f) => f.number).join(",")}}`}::text[])
+          where c.payment_terms is not null and commerce.feature_on(s.id, 'business') and ${orgNumberSql(sql`c.organisation_number`)} = any(${`{${flagged.map((f) => f.number).join(",")}}`}::text[])
         `,
       );
       for (const t of terms) {

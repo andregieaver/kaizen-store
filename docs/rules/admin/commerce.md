@@ -1000,6 +1000,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`registerFactsNow()`, `PAGE_TIMEOUT_MS`); a list reads rows only (`registerFacts()`). The daily `watchRegister()` fills, follows the feed and
   tells a store once (`sendCompanyFlagAlert()`, the `payment_overdue` recipients) when a company it sells to on payment terms is newly
   flagged; the Home's `companies_flagged` and the platform's `business_flagged` read `red_flag`/`flagged_at`, joined by `orgNumberSql()`.
+  A store's alert and Home item need Sell to businesses on (`feature_on(…, 'business')`, `businessIds`): a shop-only Home never reads companies.
 
 ## B2B in depth (wave 6 unit C, D321, `docs/wave-6-catalogue.md` C.4 to C.6)
 
