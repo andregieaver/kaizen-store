@@ -132,7 +132,7 @@ describe("what one order and one visit write", () => {
     const m = await measureTables(async () => {
       outcome = await recordVisit({ headers, body: { store: store.slug, path: `/s/${store.slug}/no` } });
     });
-    expect(outcome).toEqual({ recorded: true });
+    expect(outcome).toEqual({ recorded: true, company: null });
     measured.visit = writesOf(m);
     if (!WRITE) expect(compareWrites("visit", measured.visit, readKey<Held>("orderWrites")?.visit)).toEqual([]);
   }, 120_000);
@@ -339,7 +339,7 @@ describe("a placed order's ceilings", () => {
     const m = await measureTables(async () => {
       outcome = await recordVisit({ headers, body: { store: store.slug, path: `/s/${store.slug}/no` } });
     });
-    expect(outcome).toEqual({ recorded: true });
+    expect(outcome).toEqual({ recorded: true, company: null });
     const w = writesOf(m);
     expect(m.statements, `a counted visit sends ${m.statements} statements, ceiling ${VISIT.statements}: ${NEVER_RAISE}`).toBeLessThanOrEqual(VISIT.statements);
     expect(w.rowsInserted + w.rowsUpdated, `a counted visit writes ${w.rowsInserted + w.rowsUpdated} rows (${w.tables.join(", ")}), ceiling ${VISIT.rows}: ${NEVER_RAISE}`).toBeLessThanOrEqual(VISIT.rows);
