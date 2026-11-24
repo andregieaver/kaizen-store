@@ -81,12 +81,16 @@ export async function measure(run: () => Promise<unknown>): Promise<Measured> {
 
 /**
  * 10:23 UTC on the Wednesday nearest to today: off the hour (the hourly jobs run in its first five minutes), not seven in Oslo (the
- * platform's briefing), not a Monday (the weekly reports) and not past 20:00 anywhere in Europe (the analytics alerts).
+ * platform's briefing), not a Monday (the weekly reports) and not past 20:00 anywhere in Europe (the analytics alerts). Never one or two
+ * days ahead, which takes the Wednesday after: the database keeps its own clock, and the daily usage route measures the clock's day and
+ * the day before, so with the clock two days ahead its "yesterday" is the database's tomorrow and it read more (ci-red #47, a Monday's
+ * runs; the same commit was within its budget on the Sunday).
  */
 export function idleClock(today: Date = new Date()): Date {
   const day = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 10, 23));
   let offset = (3 - day.getUTCDay() + 7) % 7;
   if (offset > 3) offset -= 7;
+  if (offset === 1 || offset === 2) offset += 7;
   day.setUTCDate(day.getUTCDate() + offset);
   return day;
 }
