@@ -205,6 +205,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   recordings: RECORDING,
   "storage:recordings": RECORDING,
   product_views: "Antall visninger per produkt og dag; ingen person.",
+  company_lookups: "Et døgns svar fra bedriftsoppslaget (D890) under en nøkkelhash av UTC-døgnet og en adresse: adressen lagres aldri og kan ikke finnes fra den uten serverens hemmelighet, og en person kan ikke finnes fra den i det hele tatt; slettes etter to døgn.",
   experiment_exposures: PSEUDO,
   experiment_events: PSEUDO,
   experiment_carts: PSEUDO,

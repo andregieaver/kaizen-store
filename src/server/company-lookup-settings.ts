@@ -3,7 +3,6 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { db } from "@/db/client";
 import { decryptSecret } from "@/lib/secret-box";
 
 import { encryptionKey } from "./encryption-key";

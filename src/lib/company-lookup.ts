@@ -71,7 +71,6 @@ const obj = (value: unknown): Record<string, unknown> | null =>
 /** A trimmed text of at most `max` characters with no control characters, or null. */
 function text(value: unknown, max: number): string | null {
   if (typeof value !== "string") return null;
-  // eslint-disable-next-line no-control-regex
   const clean = value.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
   return clean === "" ? null : clean.slice(0, max);
 }
