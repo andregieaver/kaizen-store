@@ -1,6 +1,8 @@
 /**
  * The events of the log that may start a flow (D767, `docs/flows.md`), each naming a person on the list through its subject
- * (`emailOfSubject()`): slice 1's three, and slice 4's (M2.3). No imports: the schema reads it.
+ * (`emailOfSubject()`): slice 1's three, and slice 4's (M2.3): orders sent, subscriptions, forms, quotes and reviews, then (24 November
+ * 2026) refunds, returns asked for, support conversations ended or rated, deals made or won and contracts signed. A new one needs its
+ * person in `emailOfSubject()`, its words (the story's sentence) and its line in `flow-audience.ts`. No imports: the schema reads it.
  */
 export const EVENT_TRIGGERS = [
   "subscriber.subscribed",
