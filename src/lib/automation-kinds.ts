@@ -31,7 +31,7 @@ export const DELAY_RANGES: Record<LifecycleKind, { min: number; max: number; sta
 export const PICK_KINDS = ["cross_sell", "replenish", "browse", "bought"] as const;
 
 /** The goals a flow does that no automation did (M3.1): kept in a flow's `replaces` beside the automations' kinds, so a store has each once. */
-export const FLOW_ONLY_GOALS = ["reviews"] as const;
+export const FLOW_ONLY_GOALS = ["reviews", "leads"] as const;
 
 /**
  * How long a signed-in subscriber's product views are kept for browse abandonment (D691): only while they are signed in, subscribed and

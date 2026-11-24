@@ -346,7 +346,7 @@ export async function startRecipeFlow(store: Store, accountId: string, key: Reci
   if (key === "own") return saveFlow(store.id, accountId, null, ownFlow(locale));
   if (!(key in RECIPES)) return { ok: false, problem: "No such goal." };
   // Goals no automation did start from their recipe alone.
-  if (key === "sunset" || key === "reviews") return saveFlow(store.id, accountId, null, RECIPES[key](locale));
+  if (key === "sunset" || key === "reviews" || key === "leads") return saveFlow(store.id, accountId, null, RECIPES[key](locale));
   const own = await getAutomation(store, key);
   const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key](locale);
   return saveFlow(store.id, accountId, null, recipe);
@@ -359,7 +359,7 @@ export async function startRecipeFlow(store: Store, accountId: string, key: Reci
  */
 export async function flowProposals(storeId: string): Promise<Partial<Record<RecipeKey, number>>> {
   const row = await typedRow(
-    z.object({ joined: col.int, buyers: col.int, lapsed: col.int, repeat: col.int, asleep: col.int }),
+    z.object({ joined: col.int, buyers: col.int, lapsed: col.int, repeat: col.int, asleep: col.int, leads: col.int }),
     sql`
       with paid as (
         select lower(o.email) as email, max(o.placed_at) as last_at, count(*) as n from commerce.orders o
@@ -372,13 +372,15 @@ export async function flowProposals(storeId: string): Promise<Partial<Record<Rec
              count(*) filter (where p.n >= 2)::int as repeat,
              count(*) filter (where s.paused_at is null and greatest(s.consented_at, coalesce(
                (select max(c.clicked_at) from commerce.email_clicks c where c.store_id = s.store_id and c.subscriber_id = s.id), s.consented_at))
-               <= now() - make_interval(days => ${DATE_TRIGGER_DAYS["subscriber.asleep"].start}))::int as asleep
+               <= now() - make_interval(days => ${DATE_TRIGGER_DAYS["subscriber.asleep"].start}))::int as asleep,
+             count(*) filter (where exists (select 1 from commerce.form_responses r where r.store_id = s.store_id
+               and lower(r.contact_email) = lower(s.email) and r.created_at > now() - interval '30 days'))::int as leads
         from commerce.marketing_subscribers s left join paid p on p.email = lower(s.email)
        where s.store_id = ${storeId}::uuid and s.status = 'subscribed'
     `,
   );
   if (!row) return {};
-  return { welcome: row.joined, after_purchase: row.buyers, cross_sell: row.buyers, win_back: row.lapsed, replenish: row.repeat, reviews: row.buyers, sunset: row.asleep };
+  return { welcome: row.joined, after_purchase: row.buyers, cross_sell: row.buyers, win_back: row.lapsed, replenish: row.repeat, reviews: row.buyers, leads: row.leads, sunset: row.asleep };
 }
 
 /** The switched-on flow of a store that does an automation's work, by name; null for none (an automation stays off while one is on). */

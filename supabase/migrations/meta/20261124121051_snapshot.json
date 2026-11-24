@@ -1,6 +1,6 @@
 {
-  "id": "625837e4-5ea9-4dbc-b4e1-6cba6cf3b014",
-  "prevId": "63b2b8e5-91a9-4449-8927-04fe5de0b69c",
+  "id": "9b660ef1-9b87-440e-ba6f-46caa8759a7b",
+  "prevId": "625837e4-5ea9-4dbc-b4e1-6cba6cf3b014",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -37832,7 +37832,7 @@
         },
         "flows_replaces": {
           "name": "flows_replaces",
-          "value": "\"commerce\".\"flows\".\"replaces\" is null or \"commerce\".\"flows\".\"replaces\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse', 'back_in_stock', 'reviews')"
+          "value": "\"commerce\".\"flows\".\"replaces\" is null or \"commerce\".\"flows\".\"replaces\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse', 'back_in_stock', 'reviews', 'leads')"
         },
         "flows_name": {
           "name": "flows_name",

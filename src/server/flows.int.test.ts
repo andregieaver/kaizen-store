@@ -700,6 +700,11 @@ describe("wait until and tags (M2.1)", () => {
     expect(flow?.replaces).toBe("reviews");
     expect(flow?.steps.find((step) => step.kind === "email")).toMatchObject({ picks: "bought" });
     expect(goalsMade(await fl.listFlows(storeId)).has("reviews")).toBe(true);
+    // Nurture business leads: a form starts it, an order ends it.
+    const leads = await fl.saveFlow(storeId, owner, null, RECIPES.leads("nb-NO"));
+    if (!leads.ok) throw new Error(leads.problem);
+    expect(await fl.getFlow(storeId, leads.id)).toMatchObject({ trigger: "form.response", replaces: "leads", goals: [{ kind: "ordered" }] });
+    expect(goalsMade(await fl.listFlows(storeId)).has("leads")).toBe(true);
     // An order with no products to show picks nothing, so the email is not sent and the run goes on.
     const buyer = `anmelder-${run}@example.com`;
     await paidOrder(buyer, new Date());

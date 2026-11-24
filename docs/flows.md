@@ -90,7 +90,8 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    your list*).
    *Part j, the same day (M3.1):* the goal Get reviews (`reviews()`): two weeks after an order is sent, each buyer is shown what they bought
    (picks `bought`, the order's products still on sale, each linking to its page) and asked for a review. No automation did it, so it is a
-   flow-only goal (`FLOW_ONLY_GOALS`, kept in `replaces`), and a store has it once.
+   flow-only goal (`FLOW_ONLY_GOALS`, kept in `replaces`), and a store has it once. The goal Nurture business leads (`nurtureLeads()`) is
+   the second: when someone on the list sends a form, two days later how the store helps businesses, a week later one more, ended by an order.
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 

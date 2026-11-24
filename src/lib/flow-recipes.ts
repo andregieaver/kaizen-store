@@ -26,6 +26,9 @@ type Words = {
   stillWantButton: string;
   reviewsName: string;
   reviewAsk: [string, string];
+  leadsName: string;
+  leadHelp: [string, string];
+  leadFollow: [string, string];
 };
 
 const WORDS: Record<"nb" | "en", Words> = {
@@ -53,6 +56,9 @@ const WORDS: Record<"nb" | "en", Words> = {
     stillWantButton: "Ja, hold meg oppdatert",
     reviewsName: "Få anmeldelser",
     reviewAsk: ["Hva synes du?", "Nå har du hatt det du kjøpte en stund. Fortell andre hva du synes: skriv en anmeldelse på siden til varen."],
+    leadsName: "Følg opp bedriftskunder",
+    leadHelp: ["Takk for at du tok kontakt", "Her er hvordan vi hjelper bedrifter som din. Svar på denne e-posten, så finner vi det som passer for dere."],
+    leadFollow: ["Kan vi hjelpe?", "Vi følger opp henvendelsen din. Svar på denne e-posten med det dere trenger, så kommer vi tilbake med et forslag."],
   },
   en: {
     name: "Welcome series",
@@ -78,6 +84,9 @@ const WORDS: Record<"nb" | "en", Words> = {
     stillWantButton: "Yes, keep me posted",
     reviewsName: "Get reviews",
     reviewAsk: ["What do you think?", "You have had what you bought for a while now. Tell others what you think: write a review on its page."],
+    leadsName: "Nurture business leads",
+    leadHelp: ["Thank you for getting in touch", "Here is how we help businesses like yours. Reply to this email and we will find what suits you."],
+    leadFollow: ["Can we help?", "We are following up on your request. Reply to this email with what you need, and we will come back with a proposal."],
   },
 };
 
@@ -231,6 +240,26 @@ export function reviews(locale: string): Recipe {
   };
 }
 
+/**
+ * Nurture business leads (M3.1): when someone on the list sends a form (D705), two days later how the store helps businesses; a week later,
+ * to someone who has not ordered, one more. Ended by an order. A goal no automation did (`FLOW_ONLY_GOALS`).
+ */
+export function nurtureLeads(locale: string): Recipe {
+  const w = wordsFor(locale);
+  return {
+    name: w.leadsName,
+    trigger: "form.response",
+    replaces: "leads",
+    steps: [
+      { id: "wait-2d", kind: "wait", hours: 48 },
+      email("help", locale, w.leadHelp),
+      { id: "wait-7d", kind: "wait", hours: 7 * 24 },
+      email("follow", locale, w.leadFollow),
+    ],
+    goals: [{ kind: "ordered" }],
+  };
+}
+
 export const RECIPES = {
   welcome: welcomeSeries,
   after_purchase: afterPurchase,
@@ -239,6 +268,7 @@ export const RECIPES = {
   replenish: restock,
   browse: browseReminder,
   reviews,
+  leads: nurtureLeads,
   sunset,
 } as const;
 export type RecipeKey = keyof typeof RECIPES;

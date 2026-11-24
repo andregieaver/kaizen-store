@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."flows" DROP CONSTRAINT "flows_replaces";--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD CONSTRAINT "flows_replaces" CHECK ("commerce"."flows"."replaces" is null or "commerce"."flows"."replaces" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse', 'back_in_stock', 'reviews', 'leads'));
