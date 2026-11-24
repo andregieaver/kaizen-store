@@ -82,7 +82,7 @@ export function RegisterFactsCard({ view, words: w, lang, termsOn = false, lead,
           </div>
         ) : null}
         {rows.length > 0 ? (
-          <dl className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-6 gap-y-1 text-sm">
+          <dl className="grid grid-cols-[9rem_1fr] gap-x-6 gap-y-1 text-sm sm:grid-cols-[11rem_1fr]">
             {rows.map((row) => (
               <div key={row.label} className="contents">
                 <dt className="text-muted">{row.label}</dt>

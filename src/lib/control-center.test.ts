@@ -353,6 +353,19 @@ describe("support waiting (D216, step 14)", () => {
   });
 });
 
+describe("the control center and business customers the register flags (D891)", () => {
+  const items = (figures: Partial<StoreFigures>) => attentionFor([store(figures)], undefined, homeEn.attention);
+
+  it("opens the one company at once, the list for several, urgent; nothing when none or when sales are hidden", () => {
+    const one = items({ companiesFlagged: { n: 1, first: "c1" } });
+    expect(one.map((i) => `${i.text} -> ${i.href}`)).toEqual(["Kaffe: 1 business customer is bankrupt or being wound up, says Brønnøysund. -> /admin/kaffe/companies/c1"]);
+    expect(one[0]).toMatchObject({ kind: "companies_flagged", urgent: true, action: homeEn.attention.actions.openCompany });
+    expect(items({ companiesFlagged: { n: 3, first: "c1" } })[0]).toMatchObject({ href: "/admin/kaffe/companies", action: homeEn.attention.actions.openCompanies });
+    expect(items({ companiesFlagged: { n: 0, first: null } })).toEqual([]);
+    expect(items({ companiesFlagged: { n: 2, first: "c1" }, hides: ["sales"] })).toEqual([]);
+  });
+});
+
 describe("the control center and invoices on payment terms (D293)", () => {
   const texts = (figures: Partial<StoreFigures>) => attentionFor([store(figures)], undefined, homeEn.attention).map((i) => `${i.text} -> ${i.href}`);
 

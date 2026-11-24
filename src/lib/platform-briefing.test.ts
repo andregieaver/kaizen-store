@@ -58,6 +58,11 @@ describe("the platform's targets, alerts and briefing (D513)", () => {
     expect(platformAlertsFor(snapshot({ late: 3 }))[0]).toMatchObject({ id: "late_payments", severity: "urgent" });
   });
 
+  it("says when stores' own businesses are flagged in Brønnøysund (D891), leading to the stores", () => {
+    expect(platformAlertsFor(snapshot({ businessesFlagged: 2 }))).toEqual([{ id: "business_flagged", severity: "warning", values: { n: 2 }, href: "/admin/platform/stores" }]);
+    expect(platformAlertsFor(snapshot({ businessesFlagged: 0 }))).toEqual([]);
+  });
+
   it("is due once a period, at seven in the morning, weekly on Mondays", () => {
     const monday = { date: "2026-11-16", hour: 7, weekday: 1 };
     expect(briefingDue("off", null, monday)).toBeNull();

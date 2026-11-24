@@ -123,7 +123,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
 
       {(() => {
         const details = store.details.legalName || store.details.organisationNumber ? (
-          <dl className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-6 gap-y-1 text-sm">
+          <dl className="grid grid-cols-[9rem_1fr] gap-x-6 gap-y-1 text-sm sm:grid-cols-[11rem_1fr]">
             {store.details.legalName ? (
               <>
                 <dt className="text-muted">{rw.legalName}</dt>

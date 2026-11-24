@@ -222,7 +222,7 @@ export function revenueChange(accounts: Pick<RegisterAccounts, "revenueMinor" | 
 /** An amount in a few characters ("8,4 mill. kr", "NOK 8.4M"), for a card or a line. */
 export function compactMoney(amountMinor: number, currency: string, locale: string): string {
   try {
-    return new Intl.NumberFormat(locale, { style: "currency", currency, notation: "compact", maximumFractionDigits: 1 }).format(amountMinor / 100);
+    return new Intl.NumberFormat(locale, { style: "currency", currency, notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(amountMinor / 100);
   } catch {
     return `${currency} ${Math.round(amountMinor / 100)}`;
   }
