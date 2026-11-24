@@ -47,7 +47,7 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
                     <AdminLink href={`/admin/${store.slug}/flows/${flow.id}`} className="text-body-strong text-ink underline-offset-2 hover:underline">
                       {flow.name}
                     </AdminLink>
-                    <span className="text-caption text-muted">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays)}</span>
+                    <span className="text-caption text-muted">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, flow.segmentName)}</span>
                   </span>
                   <Chip signal={flow.enabled ? "positive" : "neutral"} dot>
                     {flow.enabled ? w.statuses.on : w.statuses.off}

@@ -15,6 +15,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition, type ReactNode } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { Select } from "@/components/admin/ui/field";
 import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
 import { triggerLabel as triggerWordsOf, waitWords } from "@/lib/flow-story";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
@@ -56,6 +57,8 @@ type Props = {
   steps: FlowStep[];
   trigger: string;
   triggerDays: number | null;
+  /** A segment trigger's segment by name (M2.3), or null. */
+  segmentName: string | null;
   w: FlowsMessages;
   segments: ReadonlyArray<{ id: string; name: string }>;
   /** The store's languages, its first first (M3.4: each written side by side). */
@@ -517,13 +520,32 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
       <>
         <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)}>
           <div role="group" aria-label={w.canvas.startsWhen} className="flex flex-wrap gap-2">
-            {FLOW_TRIGGERS.filter((t) => t !== p.trigger).map((t) => (
+            {FLOW_TRIGGERS.filter((t) => t !== p.trigger && t !== "segment.entered").map((t) => (
               <SubmitButton key={t} variant="secondary" name="trigger" value={t}>
                 {triggerWordsOf(t, w.story, null)}
               </SubmitButton>
             ))}
           </div>
         </ActionForm>
+        {p.segments.length > 0 && (
+          <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)} className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="trigger" value="segment.entered" />
+            <label className="flex flex-col gap-1 text-sm">
+              {triggerWordsOf("segment.entered", w.story, null)}
+              <Select name="segment" required defaultValue="" full>
+                <option value="" disabled>
+                  {w.story.anySegment}
+                </option>
+                {p.segments.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <SubmitButton variant="secondary">{w.save}</SubmitButton>
+          </ActionForm>
+        )}
         {range && p.triggerDays !== null && (
           <ActionForm action={changeFlowLapseAction.bind(null, p.storeSlug, p.flowId)} className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-sm">
@@ -671,7 +693,7 @@ export function FlowBoard(p: Props) {
     else if (id.startsWith("step:")) run(() => moveFlowStepAction(p.storeSlug, p.flowId, id.slice(5), place));
   };
 
-  const triggerLabel = triggerWordsOf(p.trigger, w.story, p.triggerDays);
+  const triggerLabel = triggerWordsOf(p.trigger, w.story, p.triggerDays, p.segmentName);
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <div className="flex flex-col gap-4" data-flow-board>

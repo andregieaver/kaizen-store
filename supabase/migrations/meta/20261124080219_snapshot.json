@@ -1,6 +1,6 @@
 {
-  "id": "336ecb08-9c9b-4e74-9a19-c660d2148955",
-  "prevId": "5bfc7de1-ec90-414a-8e3c-99835865adab",
+  "id": "3f0133ec-1164-498e-b488-cb2735a476bf",
+  "prevId": "336ecb08-9c9b-4e74-9a19-c660d2148955",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -37428,6 +37428,107 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.flow_segment_members": {
+      "name": "flow_segment_members",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "flow_id": {
+          "name": "flow_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subscriber_id": {
+          "name": "subscriber_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "since": {
+          "name": "since",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "flow_segment_members_subscriber_idx": {
+          "name": "flow_segment_members_subscriber_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subscriber_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "flow_segment_members_flow_fk": {
+          "name": "flow_segment_members_flow_fk",
+          "tableFrom": "flow_segment_members",
+          "tableTo": "flows",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "flow_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "flow_segment_members_subscriber_fk": {
+          "name": "flow_segment_members_subscriber_fk",
+          "tableFrom": "flow_segment_members",
+          "tableTo": "marketing_subscribers",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "subscriber_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "flow_segment_members_flow_id_subscriber_id_pk": {
+          "name": "flow_segment_members_flow_id_subscriber_id_pk",
+          "columns": [
+            "flow_id",
+            "subscriber_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "commerce.flow_versions": {
       "name": "flow_versions",
       "schema": "commerce",
@@ -37619,6 +37720,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "trigger_segment_id": {
+          "name": "trigger_segment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "segment_checked_at": {
+          "name": "segment_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -37687,6 +37800,10 @@
       },
       "policies": {},
       "checkConstraints": {
+        "flows_trigger_segment": {
+          "name": "flows_trigger_segment",
+          "value": "(\"commerce\".\"flows\".\"trigger\" = 'segment.entered') = (\"commerce\".\"flows\".\"trigger_segment_id\" is not null)"
+        },
         "flows_trigger_days": {
           "name": "flows_trigger_days",
           "value": "case \"commerce\".\"flows\".\"trigger\" when 'customer.lapsed' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 30 and 730, false) when 'customer.browsed' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 1 and 5, false) when 'subscriber.asleep' then coalesce(\"commerce\".\"flows\".\"trigger_days\" between 90 and 180, false) else \"commerce\".\"flows\".\"trigger_days\" is null end"
@@ -37701,7 +37818,7 @@
         },
         "flows_trigger": {
           "name": "flows_trigger",
-          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'order.refunded', 'return.requested', 'conversation.ended', 'conversation.rated', 'deal.created', 'deal.won', 'contract.signed', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep', 'customer.birthday')"
+          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'order.refunded', 'return.requested', 'conversation.ended', 'conversation.rated', 'deal.created', 'deal.won', 'contract.signed', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep', 'customer.birthday', 'segment.entered')"
         },
         "flows_on_when_tested": {
           "name": "flows_on_when_tested",

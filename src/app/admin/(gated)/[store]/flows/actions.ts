@@ -22,7 +22,7 @@ import { checkPermission } from "@/server/permissions";
 import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { adminLangOf } from "@/lib/admin-lang";
 import { flowReport, getFlow, saveFlow, startRecipeFlow, switchFlow, testFlow } from "@/server/flows";
-import { listSegments } from "@/server/segments";
+import { getSegment, listSegments } from "@/server/segments";
 import { storeAction } from "@/server/store-action";
 
 /**
@@ -89,7 +89,7 @@ export async function changeFlowEmailAction(storeSlug: string, flowId: string, s
     const text = String(form.get("text") ?? "").trim();
     if (!subject || !text) return refusal(w.problems.words);
     const steps = withEmailWords(flow.steps, stepId, locale, { subject: subject.slice(0, 200), text: text.slice(0, 5000) });
-    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, steps, goals: flow.goals });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, triggerSegmentId: flow.triggerSegmentId, steps, goals: flow.goals });
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
@@ -104,7 +104,7 @@ export async function changeFlowWaitAction(storeSlug: string, flowId: string, st
     if (!flow) return refusal(w.problems.missing);
     const days = Number(form.get("days"));
     if (!Number.isInteger(days) || days < 1 || days > 365) return refusal(w.problems.days);
-    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, steps: withWaitDays(flow.steps, stepId, days), goals: flow.goals });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, triggerSegmentId: flow.triggerSegmentId, steps: withWaitDays(flow.steps, stepId, days), goals: flow.goals });
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
@@ -118,7 +118,7 @@ async function saveTree(
   storeSlug: string,
   flowId: string,
   change: (flow: Flow, storeId: string, member: Parameters<Parameters<typeof storeAction>[1]>[0]) => Promise<FlowStep[] | string | null> | FlowStep[] | string | null,
-  over: { trigger?: string; triggerDays?: number | null } = {},
+  over: { trigger?: string; triggerDays?: number | null; triggerSegmentId?: string | null } = {},
 ): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
     const w = FLOWS_WORDS[lang];
@@ -132,6 +132,7 @@ async function saveTree(
       name: flow.name,
       trigger: over.trigger ?? flow.trigger,
       triggerDays: over.triggerDays !== undefined ? over.triggerDays : flow.triggerDays,
+      triggerSegmentId: over.triggerSegmentId !== undefined ? over.triggerSegmentId : flow.triggerSegmentId,
       steps,
       goals: flow.goals,
     });
@@ -179,12 +180,21 @@ export async function changeFlowLapseAction(storeSlug: string, flowId: string, _
   return saveTree(storeSlug, flowId, (flow) => flow.steps, { triggerDays: days });
 }
 
-/** Changes what starts a flow (slice 4, M2.3): one of `FLOW_TRIGGERS`; a date trigger starts at its days (`DATE_TRIGGER_DAYS`). A new version, off until tested. */
+/**
+ * Changes what starts a flow (slice 4, M2.3): one of `FLOW_TRIGGERS`; a date trigger starts at its days (`DATE_TRIGGER_DAYS`); a segment
+ * trigger names one of the store's saved segments (`segment`). A new version, off until tested.
+ */
 export async function changeFlowTriggerAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
   const trigger = FLOW_TRIGGERS.find((t) => t === form.get("trigger"));
   // No such trigger: the tree change is refused in the owner's words (`problems.step`).
   const days = trigger && isDateTrigger(trigger) ? DATE_TRIGGER_DAYS[trigger].start : null;
-  return saveTree(storeSlug, flowId, (flow) => (trigger ? flow.steps : null), trigger ? { trigger, triggerDays: days } : {});
+  const segmentId = trigger === "segment.entered" ? String(form.get("segment") ?? "") : null;
+  return saveTree(
+    storeSlug,
+    flowId,
+    async (flow, storeId) => (!trigger || (segmentId !== null && !(await getSegment(storeId, segmentId))) ? null : flow.steps),
+    trigger ? { trigger, triggerDays: days, triggerSegmentId: segmentId } : {},
+  );
 }
 
 /** Puts products picked for each reader in one email (slice 4, D653): `cross_sell`, `replenish`, `browse`, or `none`. A new version, off until tested. */

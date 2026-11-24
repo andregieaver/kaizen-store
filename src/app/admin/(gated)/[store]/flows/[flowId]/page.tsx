@@ -76,7 +76,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
   // A split test's ways side by side (M2.5, D868): read only when the flow splits.
   const splits = splitsOf(flow.steps);
   const [reach, report, past, stepFigures] = await Promise.all([
-    mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays) : Promise.resolve(0),
+    mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId) : Promise.resolve(0),
     flowReport(store.id, flow.id),
     mayWrite ? flowStepPast(store.id, flow.id) : Promise.resolve(null),
     splits.length > 0 ? flowStepFigures(store.id, flow.id) : Promise.resolve(null),
@@ -113,7 +113,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
       )}
       <Card compact>
         <div className="flex flex-col gap-4" data-flow-story>
-          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays)}</p>
+          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays, flow.segmentName)}</p>
           {/* A date trigger's days (slice 4), changed where they are said. */}
           {mayWrite && flow.triggerDays !== null && (
             <details className="text-sm">
@@ -226,6 +226,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           steps={flow.steps}
           trigger={flow.trigger}
           triggerDays={flow.triggerDays}
+          segmentName={flow.segmentName}
           w={w}
           segments={segmentList}
           languages={languages}

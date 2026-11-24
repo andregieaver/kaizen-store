@@ -5,6 +5,7 @@ import type { FlowStep } from "./flows";
 
 const w: StoryWords = {
   triggers: { "subscriber.subscribed": "When someone joins your list:" },
+  anySegment: "a segment",
   sameDay: "the same day",
   after: { hours: { one: "an hour later", many: "{n} hours later" }, days: { one: "a day later", many: "{n} days later" } },
   conditions: {
@@ -65,9 +66,14 @@ describe("a lapse flow's lead (slice 4)", () => {
 
 describe("what starts a flow, as a label (M2.3)", () => {
   it("is the story's sentence without its colon, a date trigger's usual days when none are given", () => {
-    const words = { triggers: { "order.refunded": "When an order is refunded:", "customer.lapsed": "When someone has not ordered for {n} days:" } };
+    const words = {
+      anySegment: "a segment",
+      triggers: { "order.refunded": "When an order is refunded:", "customer.lapsed": "When someone has not ordered for {n} days:", "segment.entered": "When someone enters {segment}:" },
+    };
     expect(triggerLabel("order.refunded", words, null)).toBe("When an order is refunded");
     expect(triggerLabel("customer.lapsed", words, null)).toBe("When someone has not ordered for 90 days");
     expect(triggerLabel("customer.lapsed", words, 120)).toBe("When someone has not ordered for 120 days");
+    expect(triggerLabel("segment.entered", words, null)).toBe("When someone enters a segment");
+    expect(triggerLabel("segment.entered", words, null, "VIP")).toBe("When someone enters VIP");
   });
 });

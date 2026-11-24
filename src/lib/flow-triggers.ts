@@ -39,8 +39,14 @@ export type DateTrigger = (typeof DATE_TRIGGERS)[number];
  */
 export const DAY_TRIGGERS = ["customer.birthday"] as const;
 
+/**
+ * The trigger read from a saved segment (M2.3): `segment.entered`, a person on the list who comes into the flow's segment (`trigger_segment_id`),
+ * found by an hourly read of the segment (`enterSegments()`); those in it when the flow is switched on are only noted, never emailed.
+ */
+export const SEGMENT_TRIGGERS = ["segment.entered"] as const;
+
 /** Every trigger a flow may have. */
-export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS, ...DAY_TRIGGERS] as const;
+export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS, ...DAY_TRIGGERS, ...SEGMENT_TRIGGERS] as const;
 
 /** The days a lapse trigger may wait, as the win-back automation's (D298). */
 export const LAPSE_DAYS = { min: 30, max: 730 } as const;

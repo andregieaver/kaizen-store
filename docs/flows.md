@@ -80,6 +80,10 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    *Part g, the same day:* a birthday starts a flow (`customer.birthday`, `DAY_TRIGGERS`): a person on the list whose customer gave a
    birthday (D401) at least 30 days before, as the birthday credit, enters on that day in the store's time zone, once a year
    (`enterBirthdays()`).
+   *Part h, the same day (D887):* a person entering one of the store's saved segments starts a flow (`segment.entered`,
+   `trigger_segment_id`). The segment is read once an hour per switched-on flow (`enterSegments()`) and who it held is kept
+   (`flow_segment_members`): a newcomer starts the flow, one who left is forgotten, and the first read after switching on only notes who is
+   in. Customise chooses the segment; the story names it.
 
 ## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
 

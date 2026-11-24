@@ -609,4 +609,40 @@ describe("wait until and tags (M2.1)", () => {
     expect(String(runs[0].entry_key)).toMatch(/^birthday:[0-9a-f-]{36}:\d{4}$/);
     await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
   });
+
+  it("enters who comes into a segment, never those in it when switched on, and again after leaving and coming back (M2.3, D887)", async () => {
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+    const { tagFromForm } = await import("./segments");
+    const tag = `Gull ${run}`;
+    const people = { early: `early-${run}@example.com`, later: `later-${run}@example.com` };
+    const early = await subscriber(people.early);
+    const later = await subscriber(people.later);
+    await tagFromForm(storeId, people.early, [tag]);
+    const [segment] = await db().execute<Row>(sql`
+      insert into commerce.segments (store_id, title, rules)
+      values (${storeId}::uuid, ${`Gull ${run}`}, ${JSON.stringify({ match: "all", conditions: [{ kind: "tag", tags: [tag] }] })}::jsonb) returning id`);
+    const segmentId = String(segment.id);
+    expect((await fl.saveFlow(storeId, owner, null, { name: `Gull ${run}`, trigger: "segment.entered", steps: [email("e", "Hei")], goals: [] })).ok).toBe(false);
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Gull ${run}`, trigger: "segment.entered", triggerSegmentId: segmentId, steps: [email("e", "Hei")], goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    expect((await fl.getFlow(storeId, saved.id))?.segmentName).toBe(`Gull ${run}`);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    const who = async () => (await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid order by entered_at`)).map((r) => String(r.subscriber_id));
+    const t = Date.now();
+    // The first read only notes who is in.
+    expect(await fl.enterSegments(new Date(t))).toBe(0);
+    // Within the hour nothing is read again; after it, the one who came in starts the flow.
+    await tagFromForm(storeId, people.later, [tag]);
+    expect(await fl.enterSegments(new Date(t + 10 * 60_000))).toBe(0);
+    expect(await fl.enterSegments(new Date(t + HOUR + 60_000))).toBe(1);
+    expect(await who()).toEqual([later]);
+    // The early one leaves and comes back: they start it then.
+    await db().execute(sql`delete from commerce.customer_tags where store_id = ${storeId}::uuid and email = ${people.early}`);
+    expect(await fl.enterSegments(new Date(t + 2 * HOUR + 120_000))).toBe(0);
+    await tagFromForm(storeId, people.early, [tag]);
+    expect(await fl.enterSegments(new Date(t + 3 * HOUR + 180_000))).toBe(1);
+    expect(await who()).toEqual([later, early]);
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+  });
 });

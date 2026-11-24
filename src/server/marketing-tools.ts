@@ -664,7 +664,7 @@ export async function listFlowsTool({ store }: Ctx) {
     flows: flows.map((f, i) => ({
       name: f.name,
       on: f.enabled,
-      starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays),
+      starts: storyLead(f.trigger, f.goals, w.story, f.triggerDays, f.segmentName),
       started_last_30_days: reports[i].entered,
       orders_after_last_30_days: reports[i].orders,
       // A split test worth trying (M2.5 slice 5, M3.9): enough people for each half; the owner adds the Split on the flow's page.

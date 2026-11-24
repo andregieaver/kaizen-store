@@ -8821,11 +8821,18 @@ export const flows = commerce.table(
     // what it counted (`{sent, left}`); cleared when the flow is switched on again.
     guardPausedAt: timestamp("guard_paused_at", { withTimezone: true }),
     guardCounts: jsonb("guard_counts"),
+    // A segment trigger's segment (M2.3, `segment.entered`): the store's saved segment a person entering starts the flow; null for any
+    // other trigger. No foreign key: a deleted segment holds nobody, as a broadcast's does.
+    triggerSegmentId: uuid("trigger_segment_id"),
+    // When the segment trigger last read its segment (`enterSegments()`, hourly); null until its first read after being switched on, which
+    // only notes who is in already, so switching one on never emails a whole segment.
+    segmentCheckedAt: timestamp("segment_checked_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("flows_store_id_key").on(t.storeId, t.id),
+    check("flows_trigger_segment", sql`(${t.trigger} = 'segment.entered') = (${t.triggerSegmentId} is not null)`),
     // DATE_TRIGGER_DAYS: a date trigger's days in its range, and no days for any other trigger.
     check(
       "flows_trigger_days",
@@ -8856,6 +8863,33 @@ export const flowVersions = commerce.table(
     foreignKey({ name: "flow_versions_flow_fk", columns: [t.storeId, t.flowId], foreignColumns: [flows.storeId, flows.id] }).onDelete("cascade"),
   ],
 );
+
+/**
+ * Who is in a segment trigger's segment (M2.3, `segment.entered`), as its last hourly read found them (`enterSegments()`): a person new to it
+ * starts the flow; one who left is forgotten, so coming back starts it again. A working list, never shown. Personal data (with the
+ * subscriber): deleted with the subscriber and with the flow; never exported or copied.
+ */
+export const flowSegmentMembers = commerce
+  .table(
+    "flow_segment_members",
+    {
+      storeId: storeId(),
+      flowId: uuid("flow_id").notNull(),
+      subscriberId: uuid("subscriber_id").notNull(),
+      since: timestamp("since", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.flowId, t.subscriberId] }),
+      index("flow_segment_members_subscriber_idx").on(t.storeId, t.subscriberId),
+      foreignKey({ name: "flow_segment_members_flow_fk", columns: [t.storeId, t.flowId], foreignColumns: [flows.storeId, flows.id] }).onDelete("cascade"),
+      foreignKey({
+        name: "flow_segment_members_subscriber_fk",
+        columns: [t.storeId, t.subscriberId],
+        foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+      }).onDelete("cascade"),
+    ],
+  )
+  .enableRLS();
 
 /**
  * One person's way through a flow (D767): the version they entered on, where they are (`path`, a place in the tree, `/`-joined), when they

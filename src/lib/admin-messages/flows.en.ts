@@ -60,7 +60,9 @@ export const flowsEn = {
       "customer.browsed": "{n} days after someone looked at products and did not buy:",
       "subscriber.asleep": "When someone on your list has pressed no link in {n} days:",
       "customer.birthday": "On a customer's birthday:",
+      "segment.entered": "When someone enters {segment}:",
     },
+    anySegment: "a segment",
     sameDay: "the same day",
     after: { hours: { one: "an hour later", many: "{n} hours later" }, days: { one: "a day later", many: "{n} days later" } },
     conditions: {

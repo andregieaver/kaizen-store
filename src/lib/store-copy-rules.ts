@@ -451,6 +451,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   flows: never("The original's flows (D767): slice 1 copies none; a copy starts from the recipes."),
   flow_versions: never("A flow's saved versions (D767), with its flow."),
   flow_runs: never("Who is in the original's flows (D767): people's data."),
+  flow_segment_members: never("Who was in the original's segments (M2.3): people's data, read again by the copy's own flows."),
   flow_run_steps: never("What the original's flows did for each person (D767): people's data."),
   contact_policies: never("How often people hear from the original (D764): a copy has no list yet and starts from the default policy."),
   sending_pauses: never("The sending guard's hold on the original's marketing email (D730): a copy has sent nothing."),

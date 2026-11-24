@@ -75,7 +75,12 @@ export const flowInputSchema = z.object({
   replaces: z.enum(AUTOMATION_KINDS).nullish(),
   /** A lapse trigger's days (slice 4): required for `customer.lapsed`, refused for any other trigger. */
   triggerDays: z.number().int().nullish(),
+  /** A segment trigger's segment (M2.3): required for `segment.entered`, refused for any other trigger. */
+  triggerSegmentId: z.uuid().nullish(),
 }).superRefine((f, ctx) => {
+  if ((f.trigger === "segment.entered") !== Boolean(f.triggerSegmentId)) {
+    ctx.addIssue({ code: "custom", path: ["triggerSegmentId"], message: f.trigger === "segment.entered" ? "Choose the segment." : "Only a segment trigger has a segment." });
+  }
   // A date trigger's days in its range (DATE_TRIGGER_DAYS), and none for any other trigger.
   const range = isDateTrigger(f.trigger) ? DATE_TRIGGER_DAYS[f.trigger] : null;
   const days = f.triggerDays ?? null;

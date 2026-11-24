@@ -169,6 +169,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "Hvem som trykket på hvilken lenke i en utsendelse eller en e-post i et forløp, og når (D754, D767), for en abonnent som fortsatt står på listen: listes i eksporten av markedsføringsopplysninger, og slettes med abonnenten når personens opplysninger slettes, og 180 dager etter trykket.",
   flow_runs:
     "En persons vei gjennom et forløp (D767): hvilket forløp, når de kom inn, hvor de er og hvordan de gikk ut: listes i eksporten av markedsføringsopplysninger, og slettes med abonnenten når personens opplysninger slettes, og 90 dager etter at det endte.",
+  flow_segment_members:
+    "Hvem som er i et segment som starter et forløp (M2.3), slik siste lesing hver time fant dem, så en nykommer starter det: en arbeidsliste med abonnent-id-er som aldri vises eller eksporteres; slettes med abonnenten når personens opplysninger slettes, og med forløpet.",
   flow_run_steps:
     "Hva hvert steg i et forløp gjorde for én person (D767), knyttet til dem gjennom forløpet: eksporteres med det og slettes med det.",
   product_reviews:
