@@ -90,8 +90,9 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    your list*).
    *Part k, the same day:* a tag starts a flow (`tag.added`, `trigger_tag`): a person on the list given the flow's tag after it was switched
    on (`enterTagged()`, by the tags' (store, key) index, at most three days back), once per time given. The AI manager's `create_flow`
-   does not set one yet (its tools stay as the eval recorded them). The Admin API has no events of its own for a flow to start from: that
-   part of M2.3 waits for an endpoint apps post events to.
+   does not set one yet (its tools stay as the eval recorded them). An app's own events start a flow too (`custom.event`, `trigger_event`): the store's app
+   sends one with the Admin API's `POST /events` (a name and a subscriber's address, kept in the log as `custom.{name}` with the
+   subscriber's id), and a flow naming it starts for them; the flows' log reader asks for the names switched-on flows wait for.
    *Part j, the same day (M3.1):* the goal Get reviews (`reviews()`): two weeks after an order is sent, each buyer is shown what they bought
    (picks `bought`, the order's products still on sale, each linking to its page) and asked for a review. No automation did it, so it is a
    flow-only goal (`FLOW_ONLY_GOALS`, kept in `replaces`), and a store has it once. The goal Nurture business leads (`nurtureLeads()`) is

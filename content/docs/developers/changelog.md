@@ -16,6 +16,12 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.57 — 2026-11-24
+
+`POST /events` sends an event from your app about a person on the store's subscriber list (email plan M2.3): `name` (lower-case
+letters, digits and `_`, such as `course_finished`) and their `email`. The store keeps it as `custom.{name}` with the subscriber's id,
+never the address, and a flow may start on it. It needs the scope `customers:manage`. An address no subscriber has is `not_found`.
+
 ## 1.56 — 2026-11-24
 
 Two MCP tools write flows (email plan M3.2): `create_flow` writes a new flow from the owner's words (what starts it, and its emails in order,

@@ -1,5 +1,5 @@
 {
- "version": "1.56",
+ "version": "1.57",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -1572,6 +1572,13 @@
   "admin POST /drafts/{id}/send -> data.link",
   "admin POST /drafts/{id}/send -> data.order_id",
   "admin POST /drafts/{id}/send -> data.order_number",
+  "admin POST /events",
+  "admin POST /events -> data",
+  "admin POST /events -> data.event",
+  "admin POST /events -> data.subscribed",
+  "admin POST /events -> data.subscriber_id",
+  "admin POST /events <- email (required)",
+  "admin POST /events <- name (required)",
   "admin POST /forms",
   "admin POST /forms -> data",
   "admin POST /forms -> data.draft",

@@ -84,7 +84,7 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
   // A split test's ways side by side (M2.5, D868): read only when the flow splits.
   const splits = splitsOf(flow.steps);
   const [reach, report, past, stepFigures] = await Promise.all([
-    mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId, flow.triggerTag) : Promise.resolve(0),
+    mayWrite ? flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId, flow.triggerTag ?? flow.triggerEvent) : Promise.resolve(0),
     flowReport(store.id, flow.id),
     mayWrite ? flowStepPast(store.id, flow.id) : Promise.resolve(null),
     splits.length > 0 ? flowStepFigures(store.id, flow.id) : Promise.resolve(null),

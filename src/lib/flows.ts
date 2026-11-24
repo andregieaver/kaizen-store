@@ -4,7 +4,7 @@ import { AUTOMATION_KINDS, FLOW_ONLY_GOALS, PICK_KINDS, type PickKind } from "./
 import type { AddedBlock } from "./flow-blocks";
 import type { BroadcastBlock, BroadcastContent } from "./broadcasts";
 import { broadcastContentSchema } from "./broadcasts-schema";
-import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger, SCHEDULE_EVERY } from "./flow-triggers";
+import { APP_EVENT_NAME, DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger, SCHEDULE_EVERY } from "./flow-triggers";
 
 /**
  * Flows (D767, `docs/flows.md`, email plan M2.1): a trigger, a tree of steps a person moves along, and goals that end it early. This file is
@@ -82,7 +82,12 @@ export const flowInputSchema = z.object({
   scheduleEveryDays: z.union([z.literal(SCHEDULE_EVERY[0]), z.literal(SCHEDULE_EVERY[1]), z.literal(SCHEDULE_EVERY[2])]).nullish(),
   /** A tag trigger's tag (M2.3): required for `tag.added`, refused for any other trigger. */
   triggerTag: z.string().trim().min(1).max(TAG_MAX).nullish(),
+  /** An app trigger's event name (M2.3): required for `custom.event`, refused for any other trigger. */
+  triggerEvent: z.string().trim().regex(APP_EVENT_NAME, "An event's name is lower-case letters, digits and _, starting with a letter.").nullish(),
 }).superRefine((f, ctx) => {
+  if ((f.trigger === "custom.event") !== Boolean(f.triggerEvent)) {
+    ctx.addIssue({ code: "custom", path: ["triggerEvent"], message: f.trigger === "custom.event" ? "Name the event your app sends." : "Only an app trigger has an event." });
+  }
   if ((f.trigger === "tag.added") !== Boolean(f.triggerTag)) {
     ctx.addIssue({ code: "custom", path: ["triggerTag"], message: f.trigger === "tag.added" ? "Name the tag." : "Only a tag trigger has a tag." });
   }

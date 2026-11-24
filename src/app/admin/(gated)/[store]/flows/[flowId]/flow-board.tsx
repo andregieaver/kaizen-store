@@ -527,12 +527,20 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
       <>
         <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)}>
           <div role="group" aria-label={w.canvas.startsWhen} className="flex flex-wrap gap-2">
-            {FLOW_TRIGGERS.filter((t) => t !== p.trigger && t !== "segment.entered" && t !== "schedule" && t !== "tag.added").map((t) => (
+            {FLOW_TRIGGERS.filter((t) => t !== p.trigger && t !== "segment.entered" && t !== "schedule" && t !== "tag.added" && t !== "custom.event").map((t) => (
               <SubmitButton key={t} variant="secondary" name="trigger" value={t}>
                 {triggerWordsOf(t, w.story, null)}
               </SubmitButton>
             ))}
           </div>
+        </ActionForm>
+        <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="trigger" value="custom.event" />
+          <label className="flex flex-col gap-1 text-sm">
+            {triggerWordsOf("custom.event", w.story, null)}
+            <input name="event" required maxLength={40} pattern="[a-z][a-z0-9_]{0,39}" placeholder={w.canvas.eventName} defaultValue={p.trigger === "custom.event" ? (p.segmentName ?? "") : ""} className={FIELD} />
+          </label>
+          <SubmitButton variant="secondary">{w.save}</SubmitButton>
         </ActionForm>
         <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="trigger" value="tag.added" />

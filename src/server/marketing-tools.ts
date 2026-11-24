@@ -743,6 +743,7 @@ async function draftInput(store: Store, draft: Partial<OwnerToolInput<"create_fl
     scheduleEveryDays: every,
     // A tag flow keeps its tag while its trigger stays (the tool names no tag: the owner sets one on the canvas).
     triggerTag: trigger === "tag.added" && !changed ? (kept?.triggerTag ?? null) : null,
+    triggerEvent: trigger === "custom.event" && !changed ? (kept?.triggerEvent ?? null) : null,
     steps: draft.emails ? draftSteps(draft.emails, locale) : (kept?.steps ?? []),
     goals: draft.ends_on_order !== undefined ? draftGoals(draft.ends_on_order) : (kept?.goals ?? []),
   };
@@ -754,7 +755,7 @@ async function flowSaid(store: Store, id: string, done: string) {
   if (!flow) return fail("The flow could not be read back.");
   const w = flowStoryEn.story;
   const { getContactPolicy } = await import("./contact-policy");
-  const [reach, policy] = await Promise.all([flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId, flow.triggerTag), getContactPolicy(store.id)]);
+  const [reach, policy] = await Promise.all([flowReach(store.id, flow.trigger, flow.triggerDays, flow.triggerSegmentId, flow.triggerTag ?? flow.triggerEvent), getContactPolicy(store.id)]);
   return {
     done,
     starts: storyLead(flow.trigger, flow.goals, w, flow.triggerDays, triggerNameOf(flow), scheduleOf(flow, store, "en")),

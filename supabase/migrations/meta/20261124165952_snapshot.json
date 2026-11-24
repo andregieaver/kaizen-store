@@ -1,6 +1,6 @@
 {
-  "id": "5da43856-c9a9-4d60-9164-f6b733cb5c26",
-  "prevId": "d200a7d9-7592-4665-9884-e053e877cefd",
+  "id": "72fc97e1-fad4-4589-90b0-13c2bc6f14d2",
+  "prevId": "5da43856-c9a9-4d60-9164-f6b733cb5c26",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -38109,6 +38109,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "trigger_event": {
+          "name": "trigger_event",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -38181,6 +38187,10 @@
           "name": "flows_trigger_segment",
           "value": "case \"commerce\".\"flows\".\"trigger\" when 'segment.entered' then \"commerce\".\"flows\".\"trigger_segment_id\" is not null when 'schedule' then true else \"commerce\".\"flows\".\"trigger_segment_id\" is null end"
         },
+        "flows_trigger_event": {
+          "name": "flows_trigger_event",
+          "value": "(\"commerce\".\"flows\".\"trigger\" = 'custom.event') = (\"commerce\".\"flows\".\"trigger_event\" is not null) and (\"commerce\".\"flows\".\"trigger_event\" is null or \"commerce\".\"flows\".\"trigger_event\" ~ '^[a-z][a-z0-9_]{0,39}$')"
+        },
         "flows_trigger_tag": {
           "name": "flows_trigger_tag",
           "value": "(\"commerce\".\"flows\".\"trigger\" = 'tag.added') = (\"commerce\".\"flows\".\"trigger_tag\" is not null) and (\"commerce\".\"flows\".\"trigger_tag\" is null or char_length(\"commerce\".\"flows\".\"trigger_tag\") between 1 and 40)"
@@ -38203,7 +38213,7 @@
         },
         "flows_trigger": {
           "name": "flows_trigger",
-          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'order.refunded', 'return.requested', 'conversation.ended', 'conversation.rated', 'deal.created', 'deal.won', 'contract.signed', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep', 'customer.birthday', 'segment.entered', 'schedule', 'tag.added')"
+          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'order.refunded', 'return.requested', 'conversation.ended', 'conversation.rated', 'deal.created', 'deal.won', 'contract.signed', 'customer.lapsed', 'customer.browsed', 'subscriber.asleep', 'customer.birthday', 'segment.entered', 'schedule', 'tag.added', 'custom.event')"
         },
         "flows_on_when_tested": {
           "name": "flows_on_when_tested",

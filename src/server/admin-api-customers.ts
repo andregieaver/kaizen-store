@@ -3,6 +3,7 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
+import { db } from "@/db/client";
 import { CUSTOMERS_API, SUBSCRIPTION_STATES_API } from "@/lib/admin-api-customers";
 import type { AdminAnswer, ApiRoute } from "@/lib/admin-api-routes";
 import { DISCOUNT_KINDS } from "@/lib/discounts";
@@ -223,6 +224,19 @@ export async function answerCustomers(caller: ApiCaller, route: CustomersRoute, 
   const storeId = caller.member.store.id;
   const params = new URL(request.url).searchParams;
   switch (route.name) {
+    case "events.create": {
+      // An app's event about a subscriber (email plan M2.3): kept in the log with the subscriber's id, never the address, for flows to start on.
+      const input = await readBody(route.name, request);
+      const [found] = await typedRows(
+        z.object({ id: col.uuid, status: col.text }),
+        sql`select id, status from commerce.marketing_subscribers where store_id = ${storeId}::uuid and lower(email) = lower(${input.email}) limit 1`,
+      );
+      if (!found) return fail("not_found", "No one on the store's subscriber list has that address.");
+      const event = `custom.${input.name}`;
+      await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, ${event}, ${found.id}::uuid)`);
+      await record(caller, "event_sent", { event }, { type: "marketing_subscriber", id: found.id });
+      return ok(route.name, { data: { event, subscriber_id: found.id, subscribed: found.status === "subscribed" } }, 201);
+    }
     case "customers.create": {
       const input = await readBody(route.name, request);
       const made = await createCustomer(caller.member, {

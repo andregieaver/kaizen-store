@@ -159,11 +159,36 @@ export const apiLoyalty = z.object({
   ),
 });
 
+// Events an app sends (email plan M2.3) -----------------------------------------------------
+
+/** A custom event's name as an app sends it: kept in the event log as `custom.{name}`, which a flow may start on. */
+export const CUSTOM_EVENT_NAME = /^[a-z][a-z0-9_]{0,39}$/;
+
+export const eventCreateBody = z.object({
+  name: z.string().trim().regex(CUSTOM_EVENT_NAME).describe("The event's name, such as course_finished: lower-case letters, digits and _, starting with a letter, at most 40."),
+  email: z.string().trim().min(3).max(254).describe("The address of the person it is about: someone on the store's subscriber list."),
+});
+
 // ---------------------------------------------------------------------------
 // The operations
 // ---------------------------------------------------------------------------
 
 export const CUSTOMERS_API = [
+  op({
+    name: "events.create",
+    method: "POST",
+    path: "/events",
+    scope: "customers:manage",
+    permission: "marketing:write",
+    tag: "Customers",
+    summary: "Send an event about a subscriber",
+    description:
+      "Tells the store that something happened to a person on its subscriber list in your app (a course finished, a trial ended). It is kept in the store's event log as `custom.{name}`, with the subscriber's id and never the address, and a flow may start on it. Refused as `not_found` when no subscriber has the address.",
+    body: eventCreateBody,
+    response: one(z.object({ event: z.string().describe("The name kept: custom.{name}."), subscriber_id: id, subscribed: z.boolean().describe("Whether they are subscribed now: only they enter flows.") })),
+    status: 201,
+    errors: ["invalid", "not_found", "conflict"],
+  }),
   op({
     name: "customers.create",
     method: "POST",

@@ -8840,6 +8840,8 @@ export const flows = commerce.table(
     scheduleFiredAt: timestamp("schedule_fired_at", { withTimezone: true }),
     // A tag trigger's tag as the owner wrote it (M2.3, `tag.added`), matched by its key (`tagKey()`); null for any other trigger.
     triggerTag: text("trigger_tag"),
+    // An app trigger's event name (M2.3, `custom.event`): the flow starts on `custom.{name}` in the log; null for any other trigger.
+    triggerEvent: text("trigger_event"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -8850,6 +8852,7 @@ export const flows = commerce.table(
       "flows_trigger_segment",
       sql`case ${t.trigger} when 'segment.entered' then ${t.triggerSegmentId} is not null when 'schedule' then true else ${t.triggerSegmentId} is null end`,
     ),
+    check("flows_trigger_event", sql`(${t.trigger} = 'custom.event') = (${t.triggerEvent} is not null) and (${t.triggerEvent} is null or ${t.triggerEvent} ~ '^[a-z][a-z0-9_]{0,39}$')`),
     check("flows_trigger_tag", sql`(${t.trigger} = 'tag.added') = (${t.triggerTag} is not null) and (${t.triggerTag} is null or char_length(${t.triggerTag}) between 1 and 40)`),
     check("flows_schedule", sql`(${t.trigger} = 'schedule') = (${t.scheduleAt} is not null) and (${t.scheduleEveryDays} is null or ${t.scheduleEveryDays} in (7, 14, 30))`),
     // DATE_TRIGGER_DAYS: a date trigger's days in its range, and no days for any other trigger.

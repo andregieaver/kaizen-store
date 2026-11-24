@@ -90,6 +90,8 @@ export type FlowView = {
   scheduleEveryDays: number | null;
   /** A tag trigger's tag as the owner wrote it (M2.3), or null. */
   triggerTag: string | null;
+  /** An app trigger's event name (M2.3, `custom.{name}`), or null. */
+  triggerEvent: string | null;
   /** When the flow guard switched it off and what it counted (M3.9); null once switched on again. */
   guard: { at: string; sent: number; left: number } | null;
 };
@@ -108,6 +110,7 @@ const flowRow = z.object({
   schedule_at: col.timestampOrNull,
   schedule_every_days: z.number().int().nullable(),
   trigger_tag: col.textOrNull,
+  trigger_event: col.textOrNull,
   guard_paused_at: col.timestampOrNull,
   guard_counts: z.unknown(),
   steps: z.unknown(),
@@ -128,6 +131,7 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   scheduleAt: r.schedule_at,
   scheduleEveryDays: r.schedule_every_days,
   triggerTag: r.trigger_tag,
+  triggerEvent: r.trigger_event,
   guard: (() => {
     const counts = guardCountsOf(r.guard_counts);
     return r.guard_paused_at && counts ? { at: r.guard_paused_at, ...counts } : null;
@@ -136,7 +140,7 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   goals: z.array(z.object({ kind: z.literal("ordered") })).parse(r.goals),
 });
 
-const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, f.trigger_segment_id, g.title as segment_name, f.schedule_at, f.schedule_every_days, f.trigger_tag,
+const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, f.trigger_segment_id, g.title as segment_name, f.schedule_at, f.schedule_every_days, f.trigger_tag, f.trigger_event,
     f.guard_paused_at, f.guard_counts, v.steps, v.goals
   from commerce.flows f join commerce.flow_versions v on v.flow_id = f.id and v.version = f.version
   left join commerce.segments g on g.store_id = f.store_id and g.id = f.trigger_segment_id`;
@@ -168,17 +172,18 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
   const scheduleAt = parsed.data.scheduleAt ?? null;
   const every = parsed.data.scheduleEveryDays ?? null;
   const tag = parsed.data.triggerTag ?? null;
+  const appEvent = parsed.data.triggerEvent ?? null;
   const saved = await db().transaction(async (tx) => {
     const [raw] = id
       ? await tx.execute(sql`
           update commerce.flows set name = ${name}, trigger = ${trigger}, trigger_days = ${days}, trigger_segment_id = ${segment}::uuid, segment_checked_at = null,
-                 schedule_at = ${scheduleAt}::timestamptz, schedule_every_days = ${every}::int, schedule_fired_at = null, trigger_tag = ${tag},
+                 schedule_at = ${scheduleAt}::timestamptz, schedule_every_days = ${every}::int, schedule_fired_at = null, trigger_tag = ${tag}, trigger_event = ${appEvent},
                  enabled = false, version = version + 1, updated_at = now(),
                  replaces = case when trigger = ${trigger} then replaces end
            where store_id = ${storeId}::uuid and id = ${id}::uuid returning id, version`)
       : await tx.execute(sql`
-          insert into commerce.flows (store_id, name, trigger, trigger_days, trigger_segment_id, schedule_at, schedule_every_days, trigger_tag, replaces)
-          values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${segment}::uuid, ${scheduleAt}::timestamptz, ${every}::int, ${tag}, ${replaces ?? null})
+          insert into commerce.flows (store_id, name, trigger, trigger_days, trigger_segment_id, schedule_at, schedule_every_days, trigger_tag, trigger_event, replaces)
+          values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${segment}::uuid, ${scheduleAt}::timestamptz, ${every}::int, ${tag}, ${appEvent}, ${replaces ?? null})
           returning id, version`);
     if (!raw) return null;
     const row = savedRow.parse(raw);
@@ -457,14 +462,19 @@ function emailOfSubjectAt(event: string, store: SQL, id: SQL) {
  * subscribed address its subject is about (`emailOfSubject()`). Returns how many runs began.
  */
 export async function enterFlows(): Promise<number> {
-  const batch = await readEventsAfter(READER, { events: EVENT_TRIGGERS, limit: 500 });
+  // The custom events switched-on flows wait for (M2.3): an app's events, `custom.{name}`, read beside the fixed ones.
+  const custom = await typedRows(
+    z.object({ event: col.text }),
+    sql`select distinct 'custom.' || trigger_event as event from commerce.flows where enabled and trigger = 'custom.event' and trigger_event is not null`,
+  );
+  const batch = await readEventsAfter(READER, { events: [...EVENT_TRIGGERS, ...custom.map((c) => c.event)], limit: 500 });
   if (!batch.claim) return 0;
   let entered = 0;
   for (const event of batch.events) {
     if (!event.storeId || !event.subjectId) continue;
     const email = emailOfSubject(event.event, event.storeId, event.subjectId);
     const person =
-      event.event === "subscriber.subscribed"
+      event.event === "subscriber.subscribed" || event.event.startsWith("custom.")
         ? sql`select s.id from commerce.marketing_subscribers s where s.store_id = ${event.storeId}::uuid and s.id = ${event.subjectId}::uuid`
         : email
           ? sql`select s.id from (${email}) e join commerce.marketing_subscribers s on s.store_id = ${event.storeId}::uuid and lower(s.email) = lower(e.email)`
@@ -475,7 +485,8 @@ export async function enterFlows(): Promise<number> {
       select f.store_id, f.id, f.version, p.id, ${String(event.id)}, '0'
         from commerce.flows f, (${person}) p
         join commerce.marketing_subscribers s on s.id = p.id and s.status = 'subscribed'
-       where f.store_id = ${event.storeId}::uuid and f.enabled and f.trigger = ${event.event}
+       where f.store_id = ${event.storeId}::uuid and f.enabled
+         and (f.trigger = ${event.event} or (f.trigger = 'custom.event' and 'custom.' || f.trigger_event = ${event.event}))
       on conflict do nothing
       returning id`);
     entered += rows.length;
@@ -1137,12 +1148,21 @@ export const REACH_DAYS = 30;
  * segment, those in it now who joined the list in the last as many days; for the sunset, those on the list, not paused, whose
  * days without a press end by then (the already asleep among them). Read only; nothing is sent or entered.
  */
-export async function flowReach(storeId: string, trigger: string, triggerDays: number | null, segmentId: string | null = null, tag: string | null = null): Promise<number> {
+export async function flowReach(storeId: string, trigger: string, triggerDays: number | null, segmentId: string | null = null, name: string | null = null): Promise<number> {
   const store = sql`${storeId}::uuid`;
   const n = z.object({ n: col.int });
+  if (trigger === "custom.event") {
+    // Those on the list the app sent the event about in the last as many days.
+    if (!name) return 0;
+    const row = await typedRow(n, sql`
+      select count(distinct s.id)::int as n from commerce.events e
+        join commerce.marketing_subscribers s on s.store_id = e.store_id and s.id = e.subject_id and s.status = 'subscribed'
+       where e.store_id = ${store} and e.event = ${`custom.${name}`} and e.at > now() - make_interval(days => ${REACH_DAYS})`);
+    return row?.n ?? 0;
+  }
   if (trigger === "tag.added") {
     // Those on the list given the tag in the last as many days stand in for those who will be.
-    const key = tagKey(tag ?? "");
+    const key = tagKey(name ?? "");
     if (!key) return 0;
     const row = await typedRow(n, sql`
       select count(distinct m.id)::int as n from commerce.customer_tags t

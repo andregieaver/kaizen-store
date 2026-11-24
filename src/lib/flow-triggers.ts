@@ -63,8 +63,17 @@ export const SCHEDULE_LATE_MS = 86_400_000;
  */
 export const TAG_TRIGGERS = ["tag.added"] as const;
 
+/**
+ * The trigger an app sends (M2.3): `custom.event`, an event the store's own app sent through the Admin API (`POST /events`) about a person
+ * on the list, kept in the log as `custom.{name}`; the flow names it (`trigger_event`).
+ */
+export const APP_TRIGGERS = ["custom.event"] as const;
+
+/** A custom event's name, as the Admin API takes it (`CUSTOM_EVENT_NAME` there). */
+export const APP_EVENT_NAME = /^[a-z][a-z0-9_]{0,39}$/;
+
 /** Every trigger a flow may have. */
-export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS, ...DAY_TRIGGERS, ...SEGMENT_TRIGGERS, ...SCHEDULE_TRIGGERS, ...TAG_TRIGGERS] as const;
+export const FLOW_TRIGGERS = [...EVENT_TRIGGERS, ...DATE_TRIGGERS, ...DAY_TRIGGERS, ...SEGMENT_TRIGGERS, ...SCHEDULE_TRIGGERS, ...TAG_TRIGGERS, ...APP_TRIGGERS] as const;
 
 /** The days a lapse trigger may wait, as the win-back automation's (D298). */
 export const LAPSE_DAYS = { min: 30, max: 730 } as const;

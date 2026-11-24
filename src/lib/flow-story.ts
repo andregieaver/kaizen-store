@@ -20,6 +20,8 @@ export type StoryWords = {
   everyone?: string;
   /** A tag trigger's tag before one is named (`{tag}`). */
   anyTag?: string;
+  /** An app trigger's event before one is named (`{event}`). */
+  anyEvent?: string;
   sameDay: string;
   after: { hours: { one: string; many: string }; days: { one: string; many: string } };
   conditions: { ordered: { yes: string; no: string }; clicked: { yes: string; no: string }; segment: { yes: string; no: string }; split: { yes: string; no: string } };
@@ -122,7 +124,7 @@ export function triggerLabel(trigger: string, w: StartWords, days: number | null
   return startWords(trigger, w, days ?? range?.start ?? null, segment, schedule).replace(/:$/, "");
 }
 
-type StartWords = Pick<StoryWords, "triggers" | "anySegment" | "triggersOne" | "scheduleEvery" | "everyone" | "anyTag">;
+type StartWords = Pick<StoryWords, "triggers" | "anySegment" | "triggersOne" | "scheduleEvery" | "everyone" | "anyTag" | "anyEvent">;
 
 /** A schedule trigger's time as the reader's admin shows it, and how often it repeats in days (null: once). */
 export type Schedule = { when: string; every: number | null };
@@ -142,11 +144,12 @@ function startWords(trigger: string, w: StartWords, days: number | null, segment
     return fill(text, { when: schedule?.when ?? "?", n: schedule?.every ?? "", who: segment ?? w.everyone ?? "" });
   }
   const text = (days === 1 ? w.triggersOne?.[trigger] : undefined) ?? w.triggers[trigger] ?? trigger;
-  return fill(text, { n: days ?? "?", segment: segment ?? w.anySegment, tag: segment ?? w.anyTag ?? "" });
+  return fill(text, { n: days ?? "?", segment: segment ?? w.anySegment, tag: segment ?? w.anyTag ?? "", event: segment ?? w.anyEvent ?? "" });
 }
 
-/** What a flow's trigger names, for its story (`{segment}` or `{tag}`): the segment's name or the tag; null for neither. */
-export const triggerNameOf = (flow: { segmentName: string | null; triggerTag: string | null }): string | null => flow.segmentName ?? flow.triggerTag;
+/** What a flow's trigger names, for its story (`{segment}`, `{tag}` or `{event}`): the segment's name, the tag or the app's event; null for none. */
+export const triggerNameOf = (flow: { segmentName: string | null; triggerTag: string | null; triggerEvent: string | null }): string | null =>
+  flow.segmentName ?? flow.triggerTag ?? flow.triggerEvent;
 
 /** The story's first sentence: what starts it, and what ends it early. */
 export function storyLead(

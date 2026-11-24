@@ -830,6 +830,20 @@ describe("customers and marketing (D440 C3)", () => {
     expect((await call("GET", `customers/${made.body.data.id}/store-credit`, marketer)).body.data).toEqual({ customer_id: made.body.data.id, cards: [], balances: [] });
   });
 
+  it("takes an app's event about a subscriber, keeps it in the log by the subscriber's id, and refuses an unknown address (M2.3)", async () => {
+    const email = `event-${Date.now()}@example.com`;
+    const [subscriber] = await db().execute<Answer>(sql`
+      insert into commerce.marketing_subscribers (store_id, email, locale, status, source, consent_text, consented_at, token)
+      values (${store.storeId}::uuid, ${email}, 'nb-NO', 'subscribed', 'account', 'Yes please', now(), ${`ev${Date.now()}`.padEnd(43, "e")}) returning id`);
+    const sent = await call("POST", "events", marketer, { name: "course_finished", email: email.toUpperCase() });
+    expect(sent.status).toBe(201);
+    expect(sent.body.data).toEqual({ event: "custom.course_finished", subscriber_id: String(subscriber.id), subscribed: true });
+    const [logged] = await db().execute<Answer>(sql`select count(*)::int as n from commerce.events where store_id = ${store.storeId}::uuid and event = 'custom.course_finished' and subject_id = ${String(subscriber.id)}::uuid`);
+    expect(logged.n).toBe(1);
+    expect((await call("POST", "events", marketer, { name: "Course Finished", email })).status).toBe(422);
+    expect((await call("POST", "events", marketer, { name: "course_finished", email: "nobody@example.com" })).status).toBe(404);
+  });
+
   it("reads segments with how many they hold, never who", async () => {
     const [segment] = await db().execute<Row>(sql`
       insert into commerce.segments (store_id, title, rules) values (${store.storeId}::uuid, ${`Everyone ${Date.now()}`}, '{"match": "all", "conditions": []}') returning id

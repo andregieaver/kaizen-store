@@ -737,4 +737,22 @@ describe("wait until and tags (M2.1)", () => {
     expect(await fl.flowReach(storeId, "tag.added", null, null, tag)).toBeGreaterThanOrEqual(2);
     await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
   });
+
+  it("enters the subscriber an app's event is about, only in a flow that names that event (M2.3)", async () => {
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+    const ida = await subscriber(`app-${run}@example.com`);
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Kurs ${run}`, trigger: "custom.event", triggerEvent: "course_finished", steps: [email("e", "Gratulerer")], goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    expect((await fl.getFlow(storeId, saved.id))?.triggerEvent).toBe("course_finished");
+    expect((await fl.saveFlow(storeId, owner, null, { name: "Bad", trigger: "custom.event", triggerEvent: "Course Finished", steps: [email("e", "x")], goals: [] })).ok).toBe(false);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'custom.trial_ended', ${ida}::uuid)`);
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'custom.course_finished', ${ida}::uuid)`);
+    await fl.enterFlows();
+    const runs = await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(runs.map((r) => String(r.subscriber_id))).toEqual([ida]);
+    expect(await fl.flowReach(storeId, "custom.event", null, null, "course_finished")).toBe(1);
+    await db().execute(sql`update commerce.flows set enabled = false where store_id = ${storeId}::uuid`);
+  });
 });
