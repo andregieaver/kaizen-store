@@ -128,7 +128,7 @@ export function CompaniesView({ base, lang, timeZone, state, owner, marketless, 
                       </p>
                     ) : null}
                   </div>
-                  <div className="text-right">
+                  <div className="sm:text-right">
                     <p className="text-body-strong text-ink">{s.visits === 1 ? w.visit : fillWords(w.visits, { n: formatCount(s.visits) })}</p>
                     <p className="text-sm text-muted">{s.days === 1 ? w.day : fillWords(w.days, { n: formatCount(s.days) })}</p>
                     <p className="text-caption text-muted">{fillWords(w.lastSeen, { date: adminDate(timeZone, s.lastSeen, "dayTime", lang) })}</p>

@@ -176,33 +176,24 @@ export async function setCompanyRecognitionAction(storeSlug: string, _state: For
   });
 }
 
-/** Saves Kaizena Flow's Leadfeeder connection (D890): a platform admin's alone; the key is kept encrypted and never shown again. */
+/**
+ * Saves Kaizena Flow's Leadfeeder connection (D890), or takes it away when the form says `intent` `remove` (lookups then stop at once): a
+ * platform admin's alone; the key is kept encrypted and never shown again. One action for both, as each server action is an entry in every
+ * route that loads it.
+ */
 export async function saveCompanyLookupAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "owner", action: "analytics.company_lookup", answer: (message) => failed([message]) }, async (member, lang) => {
     const w = COMPANIES_WORDS[lang].settings.connection;
+    const remove = form.get("intent") === "remove";
     try {
-      await saveCompanyLookupSettings(member.account, { apiKey: String(form.get("api_key") ?? ""), accountId: String(form.get("account_id") ?? "") });
+      if (remove) await removeCompanyLookupSettings(member.account);
+      else await saveCompanyLookupSettings(member.account, { apiKey: String(form.get("api_key") ?? ""), accountId: String(form.get("account_id") ?? "") });
     } catch (error) {
       if (error instanceof CompanyLookupError) return failed([w.problems[error.problem]]);
       throw error;
     }
     refresh();
-    return { status: "ok", messages: [w.saved] };
-  });
-}
-
-/** Takes Kaizena Flow's Leadfeeder connection away (D890): lookups stop at once. A platform admin's alone. */
-export async function removeCompanyLookupAction(storeSlug: string): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "owner", action: "analytics.company_lookup", answer: (message) => failed([message]) }, async (member, lang) => {
-    const w = COMPANIES_WORDS[lang].settings.connection;
-    try {
-      await removeCompanyLookupSettings(member.account);
-    } catch (error) {
-      if (error instanceof CompanyLookupError) return failed([w.problems[error.problem]]);
-      throw error;
-    }
-    refresh();
-    return { status: "ok", messages: [w.removed] };
+    return { status: "ok", messages: [remove ? w.removed : w.saved] };
   });
 }
 

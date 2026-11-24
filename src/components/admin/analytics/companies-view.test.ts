@@ -113,7 +113,7 @@ const settings = (over: Partial<CompaniesSettings> = {}): CompaniesSettings => (
   pageHref: "/admin/kaizenaflow/analytics/companies",
   ...over,
 });
-const actions = { set: action, saveConnection: action, removeConnection: action };
+const actions = { set: action, saveConnection: action };
 
 describe("the switch on Analytics → Settings (D890)", () => {
   it("off: says what it does and does not see, and offers to switch it on", () => {
@@ -146,6 +146,7 @@ describe("the switch on Analytics → Settings (D890)", () => {
     expect(admin).toContain("The saved key ends in …abcd");
     expect(admin).toContain('value="123456"');
     expect(admin).toContain(companiesEn.settings.connection.remove);
+    expect(admin).toMatch(/<input type="hidden" name="intent" value="remove"/);
     const owner = html(h(CompaniesSection, { companies: settings({ connection: { keyHint: "…abcd", accountId: "123456" } }), actions, words: companiesEn }));
     expect(owner).not.toContain("api_key");
     expect(owner).not.toContain("…abcd");

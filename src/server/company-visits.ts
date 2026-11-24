@@ -284,41 +284,48 @@ export async function hasCompanyVisits(storeId: string): Promise<boolean> {
 const BATCH = 5_000;
 const MAX_BATCHES = 40;
 
+const PRUNED = z.object({ lookups: col.int, days: col.int, companies: col.int });
+
 /**
  * The daily job's part (D890): the day's answers older than `LOOKUP_KEEP_DAYS`, a store's company days older than the visits' 25 months,
- * and companies no store's days point at any more. In batches; never throws, what it managed is returned.
+ * and companies no store's day or lookup points at (one a run's deletions free goes the next day: the statement reads one snapshot). One
+ * statement a batch; never throws, what it managed is returned.
  */
 export async function pruneCompanyVisits(now: Date = new Date()): Promise<{ lookups: number; days: number; companies: number }> {
   const done = { lookups: 0, days: 0, companies: 0 };
   try {
     const today = sql`(${now.toISOString()}::timestamptz at time zone 'UTC')::date`;
-    for (let batch = 0; batch < MAX_BATCHES; batch++) {
-      const gone = await db().execute(sql`
-        delete from commerce.company_lookups where key in (
-          select key from commerce.company_lookups where day < ${today} - ${LOOKUP_KEEP_DAYS}::int limit ${BATCH}
-        ) returning 1
-      `);
-      done.lookups += gone.length;
-      if (gone.length < BATCH) break;
-    }
     const cutoff = sql`(${today} - make_interval(months => ${RETENTION_MONTHS}))::date`;
     for (let batch = 0; batch < MAX_BATCHES; batch++) {
-      const gone = await db().execute(sql`
-        delete from commerce.company_visits where (store_id, day, company_id) in (
-          select store_id, day, company_id from commerce.company_visits where day < ${cutoff} limit ${BATCH}
-        ) returning 1
-      `);
-      done.days += gone.length;
-      if (gone.length < BATCH) break;
+      const gone = await typedRow(
+        PRUNED,
+        sql`
+          with l as (
+            delete from commerce.company_lookups where key in (
+              select key from commerce.company_lookups where day < ${today} - ${LOOKUP_KEEP_DAYS}::int limit ${BATCH}
+            ) returning 1
+          ),
+          v as (
+            delete from commerce.company_visits where (store_id, day, company_id) in (
+              select store_id, day, company_id from commerce.company_visits where day < ${cutoff} limit ${BATCH}
+            ) returning 1
+          ),
+          c as (
+            delete from commerce.visit_companies c
+            where not exists (select 1 from commerce.company_visits cv where cv.company_id = c.id)
+              and not exists (select 1 from commerce.company_lookups k where k.company_id = c.id)
+              and c.updated_at < ${now.toISOString()}::timestamptz - interval '7 days'
+            returning 1
+          )
+          select (select count(*) from l)::int as lookups, (select count(*) from v)::int as days, (select count(*) from c)::int as companies
+        `,
+      );
+      if (!gone) break;
+      done.lookups += gone.lookups;
+      done.days += gone.days;
+      done.companies += gone.companies;
+      if (gone.lookups < BATCH && gone.days < BATCH) break;
     }
-    const orphans = await db().execute(sql`
-      delete from commerce.visit_companies c
-      where not exists (select 1 from commerce.company_visits cv where cv.company_id = c.id)
-        and not exists (select 1 from commerce.company_lookups l where l.company_id = c.id)
-        and c.updated_at < ${now.toISOString()}::timestamptz - interval '7 days'
-      returning 1
-    `);
-    done.companies = orphans.length;
   } catch (error) {
     log("warn", "company_visits.prune_failed", {}, error);
   }

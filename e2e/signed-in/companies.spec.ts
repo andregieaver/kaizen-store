@@ -12,6 +12,8 @@ import { ADMIN, E2E_STORE, OWNER } from "./accounts";
  */
 
 const shots = process.env.COMPANY_SHOTS;
+// Screenshots for people are taken sharp; the checks themselves run as every other spec does.
+test.use({ deviceScaleFactor: shots ? 2 : 1 });
 const run = Date.now().toString(36);
 let houseId = "";
 let countedBefore = false;
@@ -25,7 +27,8 @@ test.beforeAll(async () => {
     const [house] = await sql`select id, visit_counting from commerce.stores where house`;
     houseId = String(house.id);
     countedBefore = Boolean(house.visit_counting);
-    await sql`update commerce.stores set visit_counting = true, company_recognition = false where id = ${houseId}`;
+    // Off, so the test switches visit counting on as an owner does (the store's cached facts follow the switch, not a write here).
+    await sql`update commerce.stores set visit_counting = false, company_recognition = false where id = ${houseId}`;
     // Three made-up companies and their days on the house store, as recordCompanyVisit() writes them.
     const companies = [
       { id: `lf-${run}-a`, name: "Nordfjord Energi AS", industry: "Production of electricity", employees: "101-500", city: "Bergen", domain: "nordfjord-energi.example", days: [[0, 2, 5, { "/no/pricing": 3, "/no": 2 }], [2, 1, 2, { "/no/pricing": 2 }], [5, 1, 3, { "/no/features": 3 }]] },
@@ -63,7 +66,12 @@ test.describe("as Kaizena Flow's platform admin", () => {
 
   test("switches company recognition on for Kaizena Flow's store and reads which companies visited", async ({ page }) => {
     await page.goto("/admin/kaizenaflow/analytics/settings#companies");
-    const card = page.locator("#companies");
+    const card = page.getByRole("region", { name: "Which companies visited" });
+    // It rides on visit counting: until that is on, the card says so and offers no switch.
+    await expect(card.getByText("Switch visit counting on first: companies are found from counted visits.")).toBeVisible();
+    await expect(card.getByRole("button", { name: "Switch company recognition on" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Turn on visit counting" }).first().click();
+    await expect(card.getByText("Switch visit counting on first", { exact: false })).toHaveCount(0);
     await expect(card.getByText("Looking up the companies behind counted visits.")).toHaveCount(0);
     await expect(card.getByText("Only the company is kept, with the day and the pages: never the visitor's address, and never a person")).toBeVisible();
     // The connection is a platform admin's: the key's field, never a key.
@@ -102,7 +110,7 @@ test.describe("as a store's owner", () => {
 
   test("is told company recognition is not available yet, and has no such page in the menu", async ({ page }) => {
     await page.goto(`/admin/${E2E_STORE}/analytics/settings#companies`);
-    const card = page.locator("#companies");
+    const card = page.getByRole("region", { name: "Which companies visited" });
     await expect(card.getByText("Not available for your store yet.")).toBeVisible();
     await expect(card.getByRole("button", { name: "Switch company recognition on" })).toHaveCount(0);
     await expect(card.getByLabel("API key")).toHaveCount(0);

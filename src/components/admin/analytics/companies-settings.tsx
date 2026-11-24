@@ -29,7 +29,8 @@ export type CompaniesSettings = {
   pageHref: string;
 };
 
-export type CompaniesActions = { set: FormAction; saveConnection: FormAction; removeConnection: FormAction };
+/** `saveConnection` also takes the connection away, for a form whose `intent` is `remove`. */
+export type CompaniesActions = { set: FormAction; saveConnection: FormAction };
 
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
@@ -86,7 +87,8 @@ export function CompaniesSection({ companies, actions, words }: { companies: Com
               </ActionForm>
             ) : null}
             {actions && companies.connection ? (
-              <ActionForm action={actions.removeConnection}>
+              <ActionForm action={actions.saveConnection}>
+                <input type="hidden" name="intent" value="remove" />
                 <SubmitButton variant="secondary">{c.remove}</SubmitButton>
               </ActionForm>
             ) : null}

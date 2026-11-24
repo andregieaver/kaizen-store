@@ -1,4 +1,5 @@
 import { CONSENT_CATEGORIES, type ConsentCategory, type OptionalCategory } from "@/lib/cookie-consent";
+import { cookieCompaniesText } from "@/lib/cookie-companies-text";
 import { t } from "@/lib/i18n";
 
 import { CookieSettingsButton } from "./cookie-settings-button";
@@ -66,7 +67,7 @@ export function CookiePolicy({
           />
         )}
         {visitCounting && <p className="max-w-2xl">{m.visitCounting}</p>}
-        {visitCounting && companies && <p className="max-w-2xl">{m.cookieCompanies}</p>}
+        {visitCounting && companies && <p className="max-w-2xl">{cookieCompaniesText(lang)}</p>}
         {heatmaps && <p className="max-w-2xl">{m.cookieHeatmaps}</p>}
         {recordings && <p className="max-w-2xl">{m.cookieRecordings}</p>}
         {recordings && store ? <DeleteRecordings store={store} lang={lang} /> : null}

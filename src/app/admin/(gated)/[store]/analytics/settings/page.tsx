@@ -23,7 +23,6 @@ import {
   saveAnalyticsSettingsAction,
   savePeriodTargetAction,
   saveTargetAction,
-  removeCompanyLookupAction,
   saveCompanyLookupAction,
   setCompanyRecognitionAction,
   setHeatmapsAction,
@@ -107,7 +106,6 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
                   setRecordings: setRecordingsAction.bind(null, store.slug),
                   setCompanyRecognition: setCompanyRecognitionAction.bind(null, store.slug),
                   saveCompanyLookup: saveCompanyLookupAction.bind(null, store.slug),
-                  removeCompanyLookup: removeCompanyLookupAction.bind(null, store.slug),
                   backfillCosts: backfillCostsAction.bind(null, store.slug),
                 }
               : null

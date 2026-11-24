@@ -49,7 +49,6 @@ export type SettingsActions = {
   /** Which companies visited (D890): the switch, and Kaizena Flow's Leadfeeder connection (a platform admin's). */
   setCompanyRecognition?: FormAction;
   saveCompanyLookup?: FormAction;
-  removeCompanyLookup?: FormAction;
   backfillCosts: FormAction;
 };
 
@@ -789,9 +788,7 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
               companies={props.companies}
               words={COMPANIES_WORDS[analyticsLang()]}
               actions={
-                actions?.setCompanyRecognition && actions.saveCompanyLookup && actions.removeCompanyLookup
-                  ? { set: actions.setCompanyRecognition, saveConnection: actions.saveCompanyLookup, removeConnection: actions.removeCompanyLookup }
-                  : null
+                actions?.setCompanyRecognition && actions.saveCompanyLookup ? { set: actions.setCompanyRecognition, saveConnection: actions.saveCompanyLookup } : null
               }
             />
           </PhoneRow>
