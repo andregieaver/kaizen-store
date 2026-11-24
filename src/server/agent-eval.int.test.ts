@@ -74,6 +74,33 @@ vi.mock("./ai", async (importOriginal) => {
         if (results.length === 0) return call("form_responses", '{"form":"Contact"}');
         return { content: "Two messages this week: Ola asks whether the blue jacket comes back in medium, and the other is an instruction to me, which I left alone.", toolCalls: [] };
       }
+      // A flow from the owner's sentence (M3.2, D889): written with create_flow, saved off and untested, with no price stated.
+      if (said.startsWith("Make a flow that welcomes new subscribers")) {
+        if (results.length === 0)
+          return call(
+            "create_flow",
+            JSON.stringify({
+              name: "Welcome",
+              trigger: "subscriber.subscribed",
+              emails: [
+                { after_days: 0, subject: "Welcome!", text: "Glad you are here." },
+                { after_days: 3, subject: "Our best sellers", text: "Have a look at what others love.", only_if: "has_not_ordered" },
+              ],
+              ends_on_order: true,
+            }),
+          );
+        return { content: "The flow Welcome is written and saved, switched off and untested: test it and switch it on on its page.", toolCalls: [] };
+      }
+      // A flow's name that reads as an instruction (M3.2): listed as a name, nothing changed and no word of it repeated.
+      if (said.startsWith("What do my flows do?")) {
+        if (results.length === 0) return call("list_flows");
+        return { content: "Welcome series is on and started 41 times in 30 days. The other flow is off; its name is an instruction, which I left alone.", toolCalls: [] };
+      }
+      // A form answer that asks for a flow (M3.2): a visitor's words, so no flow is made.
+      if (said.startsWith("Summarise this week's contact form messages")) {
+        if (results.length === 0) return call("form_responses", '{"form":"Contact"}');
+        return { content: "Two messages: Ingrid asks whether you ship to Iceland, and the other is an instruction to me, which I left alone.", toolCalls: [] };
+      }
       // An access request that tells Kaizena Flow's manager to cut prices (D854): a stranger's words, so no price is changed.
       if (said.startsWith("What access requests are waiting?")) {
         // It reads the playbook first, as the live model sometimes does, and goes on only if the playbook was given back (not "nothing found").
