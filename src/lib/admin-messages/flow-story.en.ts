@@ -1,0 +1,68 @@
+/**
+ * The words of a flow's story (D767) and its goals: the trigger sentences, waits, conditions and goal titles. Their own catalogue so the
+ * AI manager's flow tools reach only these, not the whole flows area (admin-text-reach).
+ */
+export const flowStoryEn = {
+  goals: {
+    reach: {
+      welcome: { one: "{n} person joined your list in the last 30 days.", many: "{n} people joined your list in the last 30 days." },
+      after_purchase: { one: "{n} customer on your list bought in the last 30 days.", many: "{n} customers on your list bought in the last 30 days." },
+      cross_sell: { one: "{n} customer on your list bought in the last 30 days.", many: "{n} customers on your list bought in the last 30 days." },
+      win_back: { one: "{n} customer on your list has not ordered for 90 days or more.", many: "{n} customers on your list have not ordered for 90 days or more." },
+      replenish: { one: "{n} customer on your list has bought twice or more.", many: "{n} customers on your list have bought twice or more." },
+      sunset: { one: "{n} person pressed no link in 180 days.", many: "{n} people pressed no link in 180 days." },
+    },
+    title: "Start from a goal",
+    fromOwn: "Starts from the email you already send for this, with its days and follow-ups.",
+    start: "Start",
+    welcome: { title: "Welcome new subscribers", text: "A welcome the same day; three days later, a thank-you or your best sellers." },
+    after_purchase: { title: "Follow up after a purchase", text: "A week after an order, ask how it is going; three weeks later, something new." },
+    win_back: { title: "Bring back customers", text: "When someone has not ordered for 90 days, we miss you; two weeks later, one more." },
+    cross_sell: { title: "Sell more to buyers", text: "Two weeks after an order is sent, what others bought with it, chosen for each customer." },
+    replenish: { title: "Remind them to buy again", text: "A month after an order is sent, its products that customers buy again." },
+    browse: { title: "Remind them what they looked at", text: "A day after a signed-in customer looked at products and did not buy, those products." },
+    sunset: { title: "Keep your list awake", text: "After 180 days with no press, one email asking if they still want yours; then paused, never deleted." },
+    own: { title: "Your own flow", text: "One email to start from; choose what starts it under Customise." },
+  },
+  story: {
+    triggers: {
+      "subscriber.subscribed": "When someone joins your list:",
+      "order.paid": "When someone pays for an order:",
+      "checkout.abandoned": "When someone leaves their checkout:",
+      "order.sent": "When an order is sent:",
+      "subscription.started": "When someone starts a subscription:",
+      "subscription.cancelled": "When someone ends a subscription:",
+      "form.response": "When someone sends a form:",
+      "quote.requested": "When someone asks for a quote:",
+      "review.created": "When a customer writes a review:",
+      "order.refunded": "When an order is refunded:",
+      "return.requested": "When someone asks for a return:",
+      "conversation.ended": "When a support chat ends:",
+      "conversation.rated": "When someone rates their support chat:",
+      "deal.created": "When a deal is made:",
+      "deal.won": "When a deal is won:",
+      "contract.signed": "When a contract is signed:",
+      "customer.lapsed": "When someone has not ordered for {n} days:",
+      "customer.browsed": "{n} days after someone looked at products and did not buy:",
+      "subscriber.asleep": "When someone on your list has pressed no link in {n} days:",
+      "customer.birthday": "On a customer's birthday:",
+      "segment.entered": "When someone enters {segment}:",
+    },
+    anySegment: "a segment",
+    triggersOne: { "customer.browsed": "A day after someone viewed products without buying:" },
+    sameDay: "the same day",
+    after: { hours: { one: "an hour later", many: "{n} hours later" }, days: { one: "a day later", many: "{n} days later" } },
+    conditions: {
+      ordered: { yes: "if they have ordered", no: "if they have not ordered" },
+      clicked: { yes: "if they pressed a link", no: "if they did not press a link" },
+      segment: { yes: "if they are in {segment}", no: "if they are not in {segment}" },
+      split: { yes: "for half (a test)", no: "for the rest", choose: "Split" },
+    },
+    until: { ordered: "once they order, or {n} days later", clicked: "once they press a link, or {n} days later" },
+    goal: "It stops when they order.",
+    ends: "Then it ends.",
+    endsPaused: "When it ends, who pressed no link since it began is paused: no marketing email until they press one.",
+  },
+};
+
+export type FlowStoryMessages = typeof flowStoryEn;

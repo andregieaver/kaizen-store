@@ -37,7 +37,7 @@ import { storeById } from "./shopper-emails";
 import { flowProposals, flowReport, listFlows, startRecipeFlow } from "./flows";
 import { goalsMade, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { storyLead } from "@/lib/flow-story";
-import { flowsEn } from "@/lib/admin-words/flows-en";
+import { flowStoryEn } from "@/lib/admin-words/flow-story-en";
 import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
 import { typedRow } from "./typed-rows";
@@ -659,7 +659,7 @@ export async function listFlowsTool({ store }: Ctx) {
   const goals = (Object.keys(RECIPES) as RecipeKey[]).filter((key) => !made.has(key));
   const [reports, reach] = await Promise.all([Promise.all(flows.map((f) => flowReport(store.id, f.id))), goals.length > 0 ? flowProposals(store.id) : Promise.resolve({})]);
   // The tools speak English to the model (D855): only that catalogue, so the pages that load the tools do not carry the Norwegian too.
-  const w = flowsEn;
+  const w = flowStoryEn;
   return {
     flows: flows.map((f, i) => ({
       name: f.name,
@@ -689,11 +689,11 @@ export async function listFlowsTool({ store }: Ctx) {
 /** A flow started from a goal (M3.9), switched off and untested: nothing is sent until the owner tests it and switches it on. */
 export async function startFlowTool({ account, store }: Ctx, { goal }: OwnerToolInput<"start_flow">) {
   const flows = await listFlows(store.id);
-  if (goalsMade(flows).has(goal)) return fail(`The store already has a flow for ${flowsEn.goals[goal].title.toLowerCase()}: see list_flows.`);
+  if (goalsMade(flows).has(goal)) return fail(`The store already has a flow for ${flowStoryEn.goals[goal].title.toLowerCase()}: see list_flows.`);
   const saved = await startRecipeFlow(store, account.id, goal);
   if (!saved.ok) return fail(saved.problem);
   return {
-    done: `${flowsEn.goals[goal].title} is started as a flow, switched off and untested: nothing is sent. The owner reads it, tests it and switches it on on its page.`,
+    done: `${flowStoryEn.goals[goal].title} is started as a flow, switched off and untested: nothing is sent. The owner reads it, tests it and switches it on on its page.`,
     link: adminLink(store, `/flows/${saved.id}`),
   };
 }
