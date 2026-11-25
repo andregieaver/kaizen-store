@@ -100,7 +100,7 @@ questionnaire) once C1 is live.
 |---|---|---|
 | F1 | **A Figma plugin**, *Send to my store*: it signs in to Kaizena Flow and sends the selected frames (boxes, text, picture bytes, styles and variables; plugins read variables on every plan, the REST API only on Enterprise). Needs a sign-in a plugin can use (it cannot take a redirect: the device grant, RFC 8628, or Figma's polling pattern) and CORS on the Admin API for the plugin's frame. | Built (25 November 2026, 8dc684d): owners, frames and pictures; variables with F3 |
 | F2 | **A page draft** from the frames through the page copy engine: an adapter from Figma's nodes to `PageCapture` (`src/lib/replicate-capture.ts`), so a frame gets `buildReplica()`'s grids, style model and refine passes, compared against Figma's own render of the frame. Fonts install where Google has them (D59); the summary names the rest. | Built (25 November 2026, 8dc684d): the computers' frame; the phone frame and the refine passes next |
-| F3 | **A look from the file**: colours and type as an installed look, checked by `themeWarnings()`, made live only by the owner. Admin API routes to read and write a look, text styles and saved colours. | Next |
+| F3 | **A look from the file**: colours and type as an installed look, checked by `themeWarnings()`, made live only by the owner. Admin API routes to read and write a look, text styles and saved colours. | Built (this change): colour styles and variables, typefaces, text styles; gradients and spacing later |
 | F4 | **A Figma REST app** for webhooks (*the design changed: bring it again?*). REST file reads are 20 a month on Starter and view seats, so it is never the main path. | Later |
 | F5 | **Back to Figma**: the same plugin draws a page and the theme as frames and variables. | Later |
 | F6 | **Our MCP in Figma's agent and Make** as a custom connector, registered as one of our developer apps. Figma's own MCP server takes only clients on its list (we join the waitlist), so the AI manager uses it later. | Later |
@@ -123,6 +123,23 @@ questionnaire) once C1 is live.
   the store's own library image is left out.
 - **The Admin API** sends CORS headers and answers a preflight: it reads only the `Authorization` header, never a cookie.
 
+### What F3 does
+
+- **The plugin's second action**, *Send colours and type*, reads the file's colour styles, its colour variables in every mode (an alias
+  followed to its colour) and its text styles, and sends them to `POST /api/admin/v1/themes/import`. The file keeps which look it made
+  for each store (`setPluginData`), so sending again brings that look up to date.
+- **The look** (`src/lib/figma-look.ts`, `src/server/figma-look.ts`): the colours named for the brand (*primary*, *brand*, *accent*),
+  the page (*background*, *bg*) and its text (*text*, *foreground*) are found by their names, never a state, a shade or text on the
+  brand; with no brand colour named, the most colourful is the accent and the answer says so. `designedTheme()` works them into both
+  palettes, every pair readable, and a dark mode's own page and text make the dark palette. The heading's and the body's typefaces are
+  the theme's fonts (installed from Google Fonts or the nearest stands in), each text style named for a heading level, a paragraph or a
+  button is that element's typography, brought down on tablets and phones, and every colour is a saved colour. `themeWarnings()` must
+  find nothing.
+- **Never live**: a new look in the theme library (`addOwnLook()`), tried and made live by the owner in Design settings. Sent again while
+  it is not live, it is brought up to date (`saveInstallLook()`); once live it is left alone and a new look is made beside it.
+- **The Admin API**: `GET /themes` and `GET /themes/{id}` (`content:read`) read the theme library and a look's palettes, typefaces,
+  text styles and saved colours; `POST /themes/import` (`content:write`) makes the look.
+
 ## 4. Miro
 
 | Step | What |
@@ -142,7 +159,7 @@ Miro has sent no events since December 2025: changes on a board are read when th
 |---|---|---|
 | A person's account at a tool | `design_connections` (C1) | Every step |
 | Apps inside the tools signing in | OAuth 2.1 server (D439), developer apps with secrets (D441) | C5, F1, F6, M5: plus a plugin sign-in and Admin API CORS for F1 |
-| The Admin API for designs | Page drafts and publishing, media uploads, products (D355, D440) | F3: a look, text styles, saved colours; F2: a page import route |
+| The Admin API for designs | Page drafts and publishing, media uploads, products (D355, D440); a page from a frame (F2); the theme library and a look from a file (F3) | F5: writing a look back |
 | One import engine | The page copy's `PageCapture` and `buildReplica()` (D150) | F2 |
 | The AI manager using outside MCP servers | Custom apps with a fixed token (D363) | C6, F6, M6: MCP OAuth |
 | A design shown on a page | YouTube and Vimeo load on a press after consent | An embed block for Figma prototypes, Miro boards and Canva designs |

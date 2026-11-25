@@ -1,8 +1,9 @@
 # Kaizena Flow for Figma
 
-The plugin behind *Send to my store* (D898 F1 and F2, `docs/design-tools.md`). A store's owner selects a frame in Figma and presses
+The plugin behind *Send to my store* (D898 F1 to F3, `docs/design-tools.md`). A store's owner selects a frame in Figma and presses
 **Send to my store**; it arrives in their store as a page draft, built by the same engine that copies web pages, with its pictures in the
-store's media library. Nothing is published by it.
+store's media library. **Send colours and type** brings the file's colour styles, colour variables and text styles as a look in the
+store's theme library, to try and make live in Design settings. Nothing is published by it, and no look is made live.
 
 ## Files
 
@@ -10,7 +11,8 @@ store's media library. Nothing is published by it.
 - `code.js`: runs in Figma's sandbox. Reads the selected frames (boxes, auto layout, fills, corners, shadows, text runs) and their pictures,
   and keeps the store's token in Figma's client storage. It never reaches the network.
 - `ui.html`: the plugin's window. Signs in, sends the pictures (`POST /api/admin/v1/media/uploads`, the bytes to the one-time address, then
-  `POST /api/admin/v1/media`) and the frames (`POST /api/admin/v1/pages/import`).
+  `POST /api/admin/v1/media`) and the frames (`POST /api/admin/v1/pages/import`), or the file's colours and text styles
+  (`POST /api/admin/v1/themes/import`). The file remembers the look it made for each store, so sending again updates that look.
 
 Plain JavaScript and HTML, so there is nothing to build.
 

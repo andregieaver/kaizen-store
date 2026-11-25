@@ -16,6 +16,16 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.63 — 2026-11-25
+
+The theme library in the Admin API (D898 F3). `GET /themes` lists the store's installed themes and own looks, the live one first; `GET
+/themes/{id}` reads one look: its colours for light and dark, its typefaces, the typography its headings, paragraphs and buttons are given,
+and its saved colours (`content:read`). `POST /themes/import` makes a look from a design file's colour styles, colour variables and text
+styles, as the Kaizena Flow plugin for Figma reads them (`content:write`): the colours named for the brand, the page and its text become
+both palettes, each made readable, a dark mode the dark palette, the typefaces are installed from Google Fonts or the nearest stands in,
+and every colour is saved. The look is never live: only the owner makes it live, in Design settings. With `install`, the look made before is
+brought up to date while it is still not live.
+
 ## 1.62 — 2026-11-25
 
 Two MCP tools for a store's rivals (D900 M2). `list_rivals` reads the shops the owner added as rivals on Analytics → Markets, per country,

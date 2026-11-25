@@ -6,6 +6,9 @@
   :root { color-scheme: light dark; --gap: 12px; }
   body { margin: 0; padding: 16px; font: 13px/1.5 Inter, system-ui, sans-serif; color: var(--figma-color-text, #1a1a1a); background: var(--figma-color-bg, #fff); }
   h1 { font-size: 15px; margin: 0 0 4px; }
+  h2 { font-size: 13px; margin: 0 0 4px; }
+  hr { border: 0; border-top: 1px solid var(--figma-color-border, #e6e6e6); margin: 16px 0; }
+  ul { margin: 0 0 var(--gap); padding-left: 18px; }
   p { margin: 0 0 var(--gap); }
   .muted { color: var(--figma-color-text-secondary, #6b6b6b); }
   .code { font: 600 24px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.18em; margin: 4px 0 var(--gap); }
@@ -23,7 +26,9 @@
 <!--
   Kaizena Flow's plugin window (D898 F1). Signs in as Figma's docs show for plugins: a sign-in from Kaizena Flow, its code shown here, the
   person's admin opened in the browser to approve it, and this window asking until it is given the store's token. *Send to my store* sends
-  the selection's pictures to the media library (one-time upload addresses) and then the frames as a page draft. Nothing is published.
+  the selection's pictures to the media library (one-time upload addresses) and then the frames as a page draft. *Send colours and type*
+  (D898 F3) sends the file's colour styles, colour variables and text styles, which become a look in the theme library. Nothing is published
+  and no look is made live.
 -->
 <section id="out">
   <h1>Send designs to your store</h1>
@@ -45,6 +50,13 @@
   <progress id="progress" hidden max="1" value="0"></progress>
   <p id="status" role="status"></p>
   <div class="row" id="done" hidden><button class="main" id="open-draft">Open the draft</button></div>
+  <hr />
+  <h2>Colours and type</h2>
+  <p class="muted">Bring this file's colour styles, colour variables and text styles as a look to try. Your site stays as it is until you make it live.</p>
+  <div class="row"><button id="send-look">Send colours and type</button></div>
+  <p id="look-status" role="status"></p>
+  <div class="row" id="look-done" hidden><button class="main" id="open-look">Try the look</button></div>
+  <ul class="muted" id="notes" hidden></ul>
   <p><button class="link muted" id="sign-out">Sign out</button></p>
 </section>
 
@@ -58,6 +70,7 @@
   let token = null;
   let signIn = null;
   let draftUrl = null;
+  let lookUrl = null;
   let polling = null;
 
   function show(which) {
@@ -123,7 +136,15 @@
     show("in");
     $("store").textContent = token.store.name;
     $("done").hidden = true;
+    $("look-done").hidden = true;
+    $("look-status").textContent = "";
+    notes([]);
     say("");
+  }
+
+  function notes(list) {
+    $("notes").replaceChildren(...list.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
+    $("notes").hidden = list.length === 0;
   }
 
   $("sign-out").onclick = () => {
@@ -177,6 +198,36 @@
 
   $("open-draft").onclick = () => draftUrl && send({ type: "open", url: draftUrl });
 
+  $("send-look").onclick = () => {
+    $("send-look").disabled = true;
+    $("look-done").hidden = true;
+    notes([]);
+    $("alert").textContent = "";
+    $("look-status").textContent = "Reading the file's colours and text styles…";
+    send({ type: "read-look", store: token.store.slug });
+  };
+
+  async function sendLook(look) {
+    try {
+      if (look.problem) throw new Error("Figma could not read the file's styles.");
+      if (look.colours.length === 0 && look.text.length === 0) throw new Error("This file has no colour styles, colour variables or text styles yet.");
+      $("look-status").textContent = "Making the look…";
+      const made = await post("/api/admin/v1/themes/import", { source: "figma", file: look.file, install: look.install, colours: look.colours, text: look.text }, true);
+      lookUrl = made.data.try_url;
+      send({ type: "look-made", store: token.store.slug, id: made.data.id });
+      $("look-status").textContent = made.data.summary;
+      notes(made.data.notes || []);
+      $("look-done").hidden = false;
+    } catch (error) {
+      $("look-status").textContent = "";
+      say(error.message, true);
+    } finally {
+      $("send-look").disabled = false;
+    }
+  }
+
+  $("open-look").onclick = () => lookUrl && send({ type: "open", url: lookUrl });
+
   window.onmessage = (event) => {
     const message = event.data && event.data.pluginMessage;
     if (!message) return;
@@ -189,6 +240,7 @@
       $("send").disabled = message.count === 0;
       $("hint").textContent = message.count === 0 ? "Select a frame to send. Add a second frame at phone width for the phone version." : message.count === 1 ? "One frame selected." : "Two frames: the wider is the computer's, the one at phone width the phone's.";
     } else if (message.type === "selection") sendSelection(message.value);
+    else if (message.type === "look") sendLook(message.value);
   };
 
   send({ type: "token-get" });

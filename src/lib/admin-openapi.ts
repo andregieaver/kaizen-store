@@ -93,6 +93,7 @@ const TAGS = [
   { name: "Blog", description: "The store's blog articles (D57, D341), as pages are." },
   { name: "Content", description: "Content types and their entries (D326)." },
   { name: "Menus", description: "The store's menus (D85), read." },
+  { name: "Themes", description: "The theme library (D241): its looks read, and a look made from a design file (D898 F3), never live." },
   { name: "Settings", description: "The store's settings, read." },
   { name: "Reports", description: "Saved reports (D345), run on the data as it is now." },
   { name: "A/B tests", description: "The store's A/B tests (D148), each as its page reads it: worked out by the store, read-only." },

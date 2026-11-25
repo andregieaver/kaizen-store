@@ -66,6 +66,74 @@ export const apiPageImport = z.object({
   notes: z.array(z.string()).describe("What was left out or made simpler, and the typefaces installed or stood in for."),
 });
 
+// Themes (D898 F3): the theme library read, and a look brought from a design file ------------------------------------------------
+
+export const apiTheme = z.object({
+  id,
+  title: z.string(),
+  live: z.boolean().describe("Whether visitors see it. Only the owner makes a look live, in Design settings."),
+  from_theme: z.boolean().describe("Installed from a theme of the theme store; false for the store's own looks."),
+  version: z.int().nullable().describe("The theme's version installed, when it came from one."),
+  installed_at: when,
+});
+
+const apiPalette = z.object({
+  background: z.string(),
+  surface: z.string().describe("Panels and cards."),
+  text: z.string(),
+  muted: z.string().describe("Secondary text."),
+  border: z.string(),
+  accent: z.string().describe("Buttons and highlights."),
+  accent_text: z.string().describe("Words on the accent."),
+});
+
+export const apiLook = apiTheme.omit({ installed_at: true }).extend({
+  mode: z.enum(["auto", "light", "dark"]).describe("auto follows the visitor's device."),
+  light: apiPalette,
+  dark: apiPalette,
+  fonts: z.object({ heading: z.string().nullable(), body: z.string().nullable() }).describe("Google Fonts families; null: the system's own."),
+  headings: z.object({ weight: z.string(), case: z.string() }),
+  text_styles: z
+    .array(
+      z.object({
+        element: z.string().describe("h1 to h6, p, list or button."),
+        family: z.string().nullable(),
+        weight: z.int().nullable(),
+        size: z.string().nullable().describe("CSS, such as 64px."),
+        line_height: z.string().nullable(),
+        letter_spacing: z.string().nullable(),
+        uppercase: z.boolean(),
+      }),
+    )
+    .describe("The typography the theme gives each element on computers (the page builder's Theme tab)."),
+  saved_colours: z.array(z.object({ name: z.string(), color: z.string() })).describe("Offered in every colour field of the page builder."),
+});
+
+/** A look from a design file (D898 F3): the colours and text styles the Kaizena Flow plugin read. */
+export const themeImportBody = z.object({
+  source: z.literal("figma").describe("Where the design comes from: `figma`, the Kaizena Flow plugin."),
+  file: z.string().trim().max(200).optional().describe("The design file's name: the new look is named after it."),
+  title: z.string().trim().max(80).optional().describe("The new look's name, over the file's."),
+  install: z.guid().nullable().optional().describe("The look made from this file before (its id): brought up to date while it is not live."),
+  colours: z
+    .array(z.record(z.string(), z.unknown()))
+    .max(300)
+    .describe("Colour styles and colour variables, at most 300: `name`, `color` (#rrggbb), and a variable's `mode` and whether it is its collection's first (`main`)."),
+  text: z
+    .array(z.record(z.string(), z.unknown()))
+    .max(100)
+    .describe("Text styles, at most 100: `name`, `family`, `style` (Regular, Semi Bold Italic), `size`, `line` and `tracking` in pixels, `upper`."),
+});
+
+export const apiThemeImport = z.object({
+  id,
+  title: z.string(),
+  created: z.boolean().describe("false: the look made before was brought up to date."),
+  try_url: z.string().describe("Where the owner tries the look and makes it live."),
+  summary: z.string().describe("What was made, in a sentence."),
+  notes: z.array(z.string()).describe("Colours made readable or guessed, typefaces stood in for, and what was left out."),
+});
+
 // Content types and entries (D326) -----------------------------------------------------------------
 
 export const apiContentType = z.object({
@@ -366,6 +434,48 @@ export const CONTENT_API = [
     errors: ["invalid", "conflict"],
   }),
   ...pageOps("articles", "blog article", "Blog"),
+  op({
+    name: "themes.list",
+    method: "GET",
+    path: "/themes",
+    scope: "content:read",
+    permission: "website:read",
+    tag: "Themes",
+    summary: "List the theme library",
+    description: "The store's installed themes and own looks (D241), the live one first. At most 20.",
+    response: all(apiTheme),
+    status: 200,
+    errors: [],
+  }),
+  op({
+    name: "themes.get",
+    method: "GET",
+    path: "/themes/{id}",
+    scope: "content:read",
+    permission: "website:read",
+    tag: "Themes",
+    summary: "Get a look",
+    description: "One look of the theme library: its colours for light and dark, its typefaces, the typography of its headings, paragraphs and buttons, and its saved colours.",
+    params: byId,
+    response: one(apiLook),
+    status: 200,
+    errors: ["not_found"],
+  }),
+  op({
+    name: "themes.import",
+    method: "POST",
+    path: "/themes/import",
+    scope: "content:write",
+    permission: "website:write",
+    tag: "Themes",
+    summary: "Make a look from a design file",
+    description:
+      "Makes a look in the theme library from a Figma file's colour styles, colour variables and text styles, as the Kaizena Flow plugin reads them (D898 F3): the colours named for the brand, the page and its text become both palettes, each made readable; a dark mode is the dark palette; the heading and body typefaces are installed from Google Fonts or stood in for by the nearest; the text styles named for headings, paragraphs and buttons are their typography; every colour is saved. Never live: the owner makes it live in Design settings. With `install`, the look made before is brought up to date while it is not live.",
+    body: themeImportBody,
+    response: one(apiThemeImport),
+    status: 201,
+    errors: ["invalid", "conflict"],
+  }),
   // Content types and entries (D326)
   op({
     name: "content.types",

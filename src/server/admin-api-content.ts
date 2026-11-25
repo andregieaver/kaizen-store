@@ -281,6 +281,28 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       await record(caller, "page_created", { source: "figma" }, { type: "page", id: made.id });
       return ok(route.name, { data: { id: made.id, title: made.title, edit_url: `${siteUrl()}/admin/${store.slug}/pages/${made.id}`, summary: made.summary, notes: made.notes } }, 201);
     }
+    case "themes.list": {
+      const { listInstalls } = await import("./theme-installs");
+      const installs = await listInstalls(storeId);
+      return ok(route.name, {
+        data: installs.map((i) => ({ id: i.id, title: i.title, live: i.live, from_theme: i.presetId !== null, version: i.version, installed_at: i.installedAt })),
+      });
+    }
+    case "themes.get": {
+      const [{ installLook }, { lookForApi }] = await Promise.all([import("./theme-installs"), import("./theme-look-api")]);
+      const install = await installLook(storeId, route.id);
+      return ok(route.name, { data: install ? lookForApi(install) : fail("not_found", "No such theme in this store's theme library.") });
+    }
+    case "themes.import": {
+      // A Figma file's colours and text styles the Kaizena Flow plugin read (D898 F3): a look in the theme library, never live.
+      const input = await readBody("themes.import", request);
+      const { importFigmaLook } = await import("./figma-look");
+      const made = await importFigmaLook({ account, storeId }, input);
+      if (!made.ok) return fail("invalid", made.problem);
+      await record(caller, made.created ? "theme_created" : "theme_updated", { source: "figma" }, { type: "theme_install", id: made.id });
+      const try_url = `${siteUrl()}/admin/${store.slug}/settings/design/themes/${made.id}`;
+      return ok(route.name, { data: { id: made.id, title: made.title, created: made.created, try_url, summary: made.summary, notes: made.notes } }, 201);
+    }
     case "pages.update":
     case "articles.update": {
       const type = pageType(route.name);

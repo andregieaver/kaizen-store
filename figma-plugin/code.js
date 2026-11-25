@@ -1,13 +1,18 @@
 /* global figma, __html__ */
 /**
- * Kaizena Flow's plugin for Figma (D898 F1, docs/design-tools.md): *Send to my store*. This file runs in Figma's sandbox: it reads the frames
- * the person selected (boxes, auto layout, fills, corners, shadows, text runs) and the bytes of their pictures, and keeps the store's token in
- * Figma's client storage. Its window (ui.html) signs in and talks to Kaizena Flow; nothing here reaches the network.
+ * Kaizena Flow's plugin for Figma (D898 F1 and F3, docs/design-tools.md): *Send to my store* and *Send colours and type*. This file runs in
+ * Figma's sandbox: it reads the frames the person selected (boxes, auto layout, fills, corners, shadows, text runs) and the bytes of their
+ * pictures, or the file's colour styles, colour variables and text styles, and keeps the store's token in Figma's client storage and, in the
+ * file, which look it made for each store. Its window (ui.html) signs in and talks to Kaizena Flow; nothing here reaches the network.
  */
 
 const NODES_MAX = 2000;
 const PICTURES_MAX = 60;
+const COLOURS_MAX = 300;
+const TEXT_STYLES_MAX = 100;
 const TOKEN_KEY = "kaizena-flow-token";
+/** The look made from this file for a store, kept in the file: sending again brings that look up to date. */
+const lookKey = (store) => `kaizena-look:${String(store).slice(0, 80)}`;
 
 figma.showUI(__html__, { width: 360, height: 520, themeColors: true });
 
@@ -172,6 +177,57 @@ async function readSelection() {
   };
 }
 
+const hexOf = (c) => `#${[c.r, c.g, c.b].map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, "0")).join("")}`;
+
+/** A variable's colour in a mode: an alias followed to the colour it names, in the same mode by its name or its collection's first. */
+async function resolved(value, modeName, depth) {
+  if (!value || depth > 5) return null;
+  if (value.type === "VARIABLE_ALIAS") {
+    const target = await figma.variables.getVariableByIdAsync(value.id);
+    if (!target) return null;
+    const collection = await figma.variables.getVariableCollectionByIdAsync(target.variableCollectionId);
+    if (!collection) return null;
+    const mode = collection.modes.find((m) => m.name === modeName) || collection.modes.find((m) => m.modeId === collection.defaultModeId);
+    return mode ? resolved(target.valuesByMode[mode.modeId], modeName, depth + 1) : null;
+  }
+  return typeof value.r === "number" ? value : null;
+}
+
+/** The file's colours and type, as a look is made of them (D898 F3): its colour styles, its colour variables in each mode, its text styles. */
+async function readLook(store) {
+  const colours = [];
+  for (const style of await figma.getLocalPaintStylesAsync()) {
+    const paint = style.paints.find((p) => p.visible !== false && p.type === "SOLID");
+    if (paint) colours.push({ name: style.name.slice(0, 120), color: hexOf(paint.color) });
+  }
+  if (figma.variables) {
+    const collections = await figma.variables.getLocalVariableCollectionsAsync();
+    const byId = new Map(collections.map((c) => [c.id, c]));
+    for (const variable of await figma.variables.getLocalVariablesAsync("COLOR")) {
+      if (colours.length >= COLOURS_MAX) break;
+      const collection = byId.get(variable.variableCollectionId);
+      if (!collection) continue;
+      for (const mode of collection.modes) {
+        const value = await resolved(variable.valuesByMode[mode.modeId], mode.name, 0);
+        if (value) colours.push({ name: variable.name.slice(0, 120), color: hexOf(value), mode: mode.name.slice(0, 60), main: mode.modeId === collection.defaultModeId });
+      }
+    }
+  }
+  const text = [];
+  for (const style of (await figma.getLocalTextStylesAsync()).slice(0, TEXT_STYLES_MAX)) {
+    text.push({
+      name: style.name.slice(0, 120),
+      family: style.fontName.family,
+      style: style.fontName.style,
+      size: style.fontSize,
+      line: lineHeight(style.lineHeight, style.fontSize),
+      tracking: round(spacing(style.letterSpacing, style.fontSize)),
+      upper: style.textCase === "UPPER" || undefined,
+    });
+  }
+  return { file: figma.root.name.slice(0, 120), install: figma.root.getPluginData(lookKey(store)) || null, colours: colours.slice(0, COLOURS_MAX), text };
+}
+
 figma.ui.onmessage = async (message) => {
   if (!message || typeof message.type !== "string") return;
   if (message.type === "open" && typeof message.url === "string") figma.openExternal(message.url);
@@ -182,6 +238,18 @@ figma.ui.onmessage = async (message) => {
       figma.ui.postMessage({ type: "selection", value: await readSelection() });
     } catch {
       figma.ui.postMessage({ type: "selection", value: { problem: "unreadable" } });
+    }
+  } else if (message.type === "read-look") {
+    try {
+      figma.ui.postMessage({ type: "look", value: await readLook(message.store) });
+    } catch {
+      figma.ui.postMessage({ type: "look", value: { problem: "unreadable" } });
+    }
+  } else if (message.type === "look-made" && typeof message.id === "string") {
+    try {
+      figma.root.setPluginData(lookKey(message.store), message.id);
+    } catch {
+      // A file the person may only view keeps nothing: the next send makes a new look.
     }
   } else if (message.type === "selected-ask") figma.ui.postMessage({ type: "selected", count: framesSelected() });
   else if (message.type === "close") figma.closePlugin();

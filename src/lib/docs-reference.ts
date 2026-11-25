@@ -32,6 +32,7 @@ export const TAG_AREAS: Record<string, DocArea> = {
   "Gift cards": "marketing",
   Content: "website",
   Menus: "website",
+  Themes: "website",
   Reports: "analytics",
   Settings: "settings",
   "Webhook endpoints": "webhooks",

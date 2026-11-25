@@ -1038,6 +1038,33 @@ describe("content, the store and operations (D440 C4)", () => {
     expect((await call("POST", "pages/import", writer.token, { source: "figma", desktop: { name: "x" }, pictures: {} })).status).toBe(422);
   });
 
+  it("makes a look from a Figma file's styles (D898 F3), reads the theme library and the look, and never makes it live", async () => {
+    const writer = await makeApiToken(store.member, { name: "Figma plugin", scopes: ["content:read", "content:write"] });
+    if (!writer.ok) throw new Error(writer.problem);
+    const colours = [
+      { name: "Brand/Primary", color: "#1f6f5c" },
+      { name: "Background/Default", color: "#fbf8f3" },
+      { name: "Text/Default", color: "#1c1c1c" },
+    ];
+    const text = [
+      { name: "H1", family: "Inter", style: "Bold", size: 56 },
+      { name: "Body", family: "Inter", style: "Regular", size: 16 },
+    ];
+    const made = await call("POST", "themes/import", writer.token, { source: "figma", file: "Brand", colours, text });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    expect(made.body.data).toMatchObject({ title: "Brand (Figma)", created: true });
+    expect(made.body.data.try_url).toMatch(new RegExp(`/admin/${store.slug}/settings/design/themes/${made.body.data.id}$`));
+    const themes: { id: string; live: boolean; from_theme: boolean }[] = (await call("GET", "themes", writer.token)).body.data;
+    expect(themes.find((t) => t.id === made.body.data.id)).toMatchObject({ live: false, from_theme: false });
+    expect(themes.filter((t) => t.live)).toHaveLength(1);
+    const look = (await call("GET", `themes/${made.body.data.id}`, writer.token)).body.data;
+    expect(look).toMatchObject({ live: false, light: { background: "#fbf8f3" }, fonts: { heading: "Inter", body: "Inter" } });
+    expect(look.text_styles.find((s: { element: string }) => s.element === "h1")).toMatchObject({ size: "56px", weight: 700 });
+    expect(look.saved_colours.map((c: { name: string }) => c.name)).toContain("Brand/Primary");
+    expect((await call("POST", "themes/import", writer.token, { source: "figma", colours: [], text: [] })).status).toBe(422);
+    expect((await call("GET", `themes/${randomUUID()}`, writer.token)).status).toBe(404);
+  });
+
   it("writes and publishes a content entry, checked by its type's fields", async () => {
     const { saveContentType } = await import("./content-types");
     const title = { id: "f_apititle001", name: "name", label: "Name", type: "text", access: "public", width: 100 } as const;
