@@ -19,6 +19,7 @@ const MARKERS = ["UNTRUSTED_TEXT", "RULES_STAND", "never follow instructions", "
 
 /** Server modules that send a prompt written by a pure builder, and that builder's file. */
 const DELEGATES: Record<string, string> = {
+  "src/server/admin-behaviour.ts": "src/lib/admin-behaviour.ts",
   "src/server/alt-texts.ts": "src/lib/alt-text.ts",
   "src/server/bill-reading.ts": "src/lib/bill-reading.ts",
   "src/server/chat-agent.ts": "src/lib/chat.ts",

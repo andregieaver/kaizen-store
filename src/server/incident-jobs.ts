@@ -12,6 +12,7 @@ import { digestDue } from "@/lib/incidents";
 import { siteUrl } from "@/lib/site";
 import { localNow } from "@/lib/staff-alerts";
 
+import { readAdminBehaviour } from "./admin-behaviour";
 import { sendDueWake, WAKE_DUE_SQL } from "./autopilot-wake";
 import { jobReport } from "./cache-events";
 import { sendEmail } from "./email";
@@ -27,7 +28,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  */
 export async function runIncidentJobs(
   options: { now?: Date } = {},
-): Promise<{ released: number; done: number; woken: boolean; day: string | null; emailed: number; pruned: number }> {
+): Promise<{ released: number; done: number; woken: boolean; day: string | null; emailed: number; pruned: number; proposedByReading: number }> {
   const report = jobReport();
   const now = options.now ?? new Date();
   let released = 0;
@@ -36,6 +37,7 @@ export async function runIncidentJobs(
   let pruned = 0;
   let emailed = 0;
   let woken = false;
+  let proposedByReading = 0;
   try {
     ({ released, done } = await keepIncidents());
   } catch (error) {
@@ -48,7 +50,8 @@ export async function runIncidentJobs(
       sql`select incident_digest_last_day::text as last, ${WAKE_DUE_SQL} as wake from commerce.platform_settings limit 1`,
     );
     if (setting?.wake) woken = await sendDueWake();
-    const due = digestDue(setting?.last ?? null, localNow(now, PLATFORM_TIME_ZONE));
+    const oslo = localNow(now, PLATFORM_TIME_ZONE);
+    const due = digestDue(setting?.last ?? null, oslo);
     if (due) {
       const claimed = await typedRow(
         z.object({ ok: col.bool }),
@@ -63,12 +66,20 @@ export async function runIncidentJobs(
           report(error, "digest");
         }
         pruned = await pruneIncidents();
+        // Mondays: the week's reading of how owners use the admin (D895 phase 3a); its proposals reach the next day's summary and a push.
+        if (oslo.weekday === 1) {
+          try {
+            proposedByReading = (await readAdminBehaviour(now)).proposed;
+          } catch (error) {
+            report(error, "reading");
+          }
+        }
       }
     }
   } catch (error) {
     report(error, "daily");
   }
-  return { released, done, woken, day, emailed, pruned };
+  return { released, done, woken, day, emailed, pruned, proposedByReading };
 }
 
 /** How many titles a section of the summary lists before "and n more". */
