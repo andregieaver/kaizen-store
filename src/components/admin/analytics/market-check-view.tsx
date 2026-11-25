@@ -62,7 +62,8 @@ function FindingCard({ finding, text, base, periodLabel, words }: { finding: Mar
     <li data-finding={finding.kind} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
       <StatusPill tone={TONE[finding.kind]}>{words.kinds[finding.kind]}</StatusPill>
       <p className="flex-1 text-body text-ink">{text}</p>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      {/* The button above its link in every card, so the three cards end alike whatever the link's words. */}
+      <div className="flex flex-col items-start gap-2">
         <AskAboutAlert
           message={askAboutFinding(text, inSentence(periodLabel), words.ask)}
           label={words.makePlan}
@@ -174,7 +175,7 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words 
             </ul>
           ) : null}
 
-          <AnalyticsSection id="market-countries" title={e.summary} description={e.description} level={3}>
+          <AnalyticsSection id="market-countries" title={e.title} description={e.description} level={3}>
             <DataTable caption={e.caption} columns={columns} rows={check.markets} rowKey={(m) => m.code} exportable={false} exportReason="markets.countries" />
             {counted ? <p className="text-xs text-muted">{fillWords(e.compared, { visits: formatCount(MIN_VISITS), orders: formatCount(MIN_ORDERS) })}</p> : null}
           </AnalyticsSection>

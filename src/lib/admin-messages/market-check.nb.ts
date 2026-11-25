@@ -19,11 +19,11 @@ export const marketCheckNb: MarketCheckMessages = {
   makePlan: "Lag en plan",
   makePlanFor: ": {text}",
   open: {
-    weak_market: "Se trafikk per land",
-    strong_market: "Se markedsføringen din",
-    unmet_demand: "Se hva kundene søker etter",
-    untranslated: "Oversett butikken",
-    unpriced: "Se produktene dine",
+    weak_market: "Se trafikk",
+    strong_market: "Se markedsføring",
+    unmet_demand: "Se søk",
+    untranslated: "Oversett",
+    unpriced: "Se produkter",
   },
   finding: {
     weak_market:
@@ -41,7 +41,8 @@ export const marketCheckNb: MarketCheckMessages = {
   },
   more: { one: "{n} funn til", many: "{n} funn til" },
   every: {
-    summary: "Alle land, side om side",
+    summary: "Se alle land og alle funn",
+    title: "Alle land, side om side",
     description: "Tallene bak funnene. Besøk og konvertering telles som på Trafikk-siden; ordrer og omsetning er de betalte ordrene lagt i hvert land, uten mva.",
     caption: "Landene dine side om side",
     country: "Land",

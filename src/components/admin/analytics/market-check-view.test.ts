@@ -70,7 +70,7 @@ const busy = check(
 describe("Analytics → Markets (D900 M1)", () => {
   it("opens on three findings of three kinds, each with Make a plan and the page that fixes it", () => {
     const out = html(h(MarketCheckView, props(busy)));
-    const todo = out.slice(out.indexOf("What to do in your markets"), out.indexOf("Every country, side by side"));
+    const todo = out.slice(out.indexOf("What to do in your markets"), out.indexOf("See every country and every finding"));
     expect(todo.match(/data-finding="/g)).toHaveLength(3);
     expect(todo).toContain('data-finding="weak_market"');
     expect(todo).toContain('data-finding="unmet_demand"');
@@ -85,7 +85,7 @@ describe("Analytics → Markets (D900 M1)", () => {
   it("keeps every country's figures and the rest of the findings one step away", () => {
     const out = html(h(MarketCheckView, props(busy)));
     expect(out).toContain("<details");
-    expect(out).toMatch(/Every country, side by side[\s\S]*more finding/);
+    expect(out).toMatch(/See every country and every finding[\s\S]*more finding[\s\S]*Every country, side by side/);
     expect(out).toContain('data-finding="unpriced"');
     // The countries' table: a country no longer offered is marked, and its prices do not apply.
     expect(out).toContain("Not offered now");
@@ -120,6 +120,7 @@ describe("Analytics → Markets (D900 M1)", () => {
     const out = html(h(MarketCheckView, props(busy, { lang: "nb", words: marketCheckNb })));
     expect(out).toContain("Hva du kan gjøre i markedene dine");
     expect(out).toContain("Besøkende i Germany kjøper mindre");
+    expect(out).toContain("Se alle land og alle funn");
     expect(out).toContain("Alle land, side om side");
   });
 });

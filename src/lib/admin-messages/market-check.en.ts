@@ -23,11 +23,11 @@ export const marketCheckEn = {
   makePlan: "Make a plan",
   makePlanFor: ": {text}",
   open: {
-    weak_market: "See traffic by country",
-    strong_market: "See your marketing",
-    unmet_demand: "See what shoppers search for",
-    untranslated: "Translate your store",
-    unpriced: "See your products",
+    weak_market: "See traffic",
+    strong_market: "See marketing",
+    unmet_demand: "See searches",
+    untranslated: "Translate",
+    unpriced: "See products",
   },
   finding: {
     weak_market:
@@ -45,7 +45,8 @@ export const marketCheckEn = {
   },
   more: { one: "{n} more finding", many: "{n} more findings" },
   every: {
-    summary: "Every country, side by side",
+    summary: "See every country and every finding",
+    title: "Every country, side by side",
     description: "The figures behind the findings. Visits and conversion are counted as on the Traffic page; orders and revenue are the paid orders placed in each country, without VAT.",
     caption: "Your countries side by side",
     country: "Country",

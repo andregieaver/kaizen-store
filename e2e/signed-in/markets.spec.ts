@@ -96,11 +96,11 @@ test.describe("as a store's owner", () => {
     await expect(cards.nth(2)).toHaveAttribute("data-finding", "untranslated");
     await expect(cards.nth(2)).toContainText("have no name in German");
     // Each finding links to the page that fixes it.
-    await expect(cards.nth(1).getByRole("link", { name: "See what shoppers search for" })).toHaveAttribute("href", `/admin/${slug}/search`);
+    await expect(cards.nth(1).getByRole("link", { name: "See searches" })).toHaveAttribute("href", `/admin/${slug}/search`);
     if (shots) await page.screenshot({ path: `${shots}/markets-computer.png` });
 
     // Lisa's step: the countries side by side, the findings past the three and the searches that found nothing in each country.
-    await page.getByText("Every country, side by side", { exact: false }).first().click();
+    await page.getByText("See every country and every finding").click();
     const table = page.getByRole("table", { name: "Your countries side by side" });
     await expect(table).toBeVisible();
     await expect(table.getByRole("row", { name: /Germany/ })).toContainText("900");
@@ -111,6 +111,7 @@ test.describe("as a store's owner", () => {
       await page.screenshot({ path: `${shots}/markets-every-country.png`, fullPage: true });
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`/admin/${slug}/analytics/markets?period=30d`);
+      await expect(page.getByRole("heading", { name: "Markets", level: 1 })).toBeVisible();
       await page.screenshot({ path: `${shots}/markets-phone.png`, fullPage: true });
     }
   });
@@ -123,7 +124,7 @@ test.describe("as Kaizena Flow's platform admin", () => {
     await page.goto("/admin/kaizenaflow/analytics/markets");
     await expect(page.getByRole("heading", { name: "Markets", level: 1 })).toBeVisible();
     await expect(page.getByText("Kaizena Flow sells plans, not goods", { exact: false })).toBeVisible();
-    await page.getByText("Every country, side by side", { exact: false }).first().click();
+    await page.getByText("See every country and every finding").click();
     await expect(page.getByRole("columnheader", { name: "Average order" })).toHaveCount(0);
     await expect(page.getByRole("columnheader", { name: "No price" })).toHaveCount(0);
   });
