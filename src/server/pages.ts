@@ -889,3 +889,14 @@ export async function listMenuPages(
     published: Boolean(row.published),
   }));
 }
+
+/** An address for a new page made from outside the editor (a copied page, D150; a Figma frame, D898 F2) that no page or reserved address has. */
+export async function freePageSlug(storeId: string, base: string): Promise<string> {
+  const taken = new Set((await typedRows(z.object({ slug: col.text }), sql`select slug from commerce.pages where store_id = ${storeId}::uuid and type = 'page'`)).map((r) => r.slug));
+  const reserved = new Set(reservedPageSlugs(storeId, "page"));
+  for (let n = 0; n < 50; n++) {
+    const slug = n === 0 ? base : `${base}-${n + 1}`;
+    if (!taken.has(slug) && !reserved.has(slug)) return slug;
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 6)}`;
+}

@@ -8,6 +8,7 @@ import { CONTENT_API } from "@/lib/admin-api-content";
 import type { AdminAnswer, ApiRoute } from "@/lib/admin-api-routes";
 import { entryStatus, type Entry } from "@/lib/content-types";
 import { moneyCurrencies } from "@/lib/field-money";
+import { siteUrl } from "@/lib/site";
 import { parseImportOptions } from "@/lib/product-import";
 import { issueId, type PageIssue } from "@/lib/page-a11y";
 import type { PageType } from "@/lib/page-content";
@@ -270,6 +271,15 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       if (!saved.ok) return pageRefusal(saved);
       await record(caller, `${type}_created`, {}, { type, id: saved.id });
       return ok(route.name, { data: await pageById(caller, saved.id, type) }, 201);
+    }
+    case "pages.import": {
+      // A Figma frame the Kaizena Flow plugin read (D898 F2): built by the page copy engine as a draft.
+      const input = await readBody("pages.import", request);
+      const { importFigmaPage } = await import("./figma-import");
+      const made = await importFigmaPage({ account, storeId }, input);
+      if (!made.ok) return fail("invalid", made.problem);
+      await record(caller, "page_created", { source: "figma" }, { type: "page", id: made.id });
+      return ok(route.name, { data: { id: made.id, title: made.title, edit_url: `${siteUrl()}/admin/${store.slug}/pages/${made.id}`, summary: made.summary, notes: made.notes } }, 201);
     }
     case "pages.update":
     case "articles.update": {

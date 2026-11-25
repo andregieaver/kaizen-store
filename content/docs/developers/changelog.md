@@ -9,12 +9,19 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D900]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.60 — 2026-11-25
+
+The Admin API answers browsers on any site (CORS, D898): it reads only the `Authorization` header, never a cookie, so a page elsewhere reaches
+nothing its own token does not, and a preflight (`OPTIONS`) is answered. A new operation, `POST /pages/import` (`content:write`, the staff
+permission `website:write`), builds a draft page from a Figma frame as the Kaizena Flow plugin reads it, with the library items sent for its
+pictures by `POST /media`; it answers the draft's id, where it opens in the page builder, and what was built or left out. Nothing is published.
 
 ## 1.59 — 2026-11-25
 

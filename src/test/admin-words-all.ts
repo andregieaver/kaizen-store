@@ -8,6 +8,7 @@ import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
 import { AUTOMATIC_WORDS } from "@/lib/admin-words/automatic";
 import { BACKDROPS_WORDS } from "@/lib/admin-words/backdrops";
 import { CANVA_WORDS } from "@/lib/admin-words/canva";
+import { PLUGINS_WORDS } from "@/lib/admin-words/plugins";
 import { CANVA_FIELD_WORDS } from "@/lib/admin-words/canva-field";
 import { CONSENT_LOOK_WORDS } from "@/lib/admin-words/consent-look";
 import { BILLING_WORDS } from "@/lib/admin-words/billing";
@@ -161,6 +162,7 @@ export const ALL_AREA_WORDS: { [A in AdminArea]: Record<AdminLang, AdminAreaMess
   storeParts: STORE_PARTS_WORDS,
   backdrops: BACKDROPS_WORDS,
   canva: CANVA_WORDS,
+  plugins: PLUGINS_WORDS,
   consentLook: CONSENT_LOOK_WORDS,
   animation: ANIMATION_WORDS,
   heatmaps: HEATMAPS_WORDS,
