@@ -380,6 +380,7 @@ export const assistantEn = {
         stockout_risk: "A product may run out",
         staff_request: "A customer asked to change an order",
         exchange_confirmed: "A customer confirmed an exchange",
+        rival_changed: "A rival changed its offer",
       },
       statuses: { pending: "Waiting", running: "Working", done: "Done", skipped: "Skipped", failed: "Failed" },
     },

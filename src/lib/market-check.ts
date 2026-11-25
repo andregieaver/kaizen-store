@@ -9,7 +9,7 @@
 import { fillWords } from "./admin-fill";
 import { formatCount, formatPercent, safeRatio } from "./analytics-core";
 import { twoProportionZ } from "./analytics-discounts";
-import { offerFresh, PRICE_GAP_MIN, priceGap, rivalGone, type RivalOfferFacts } from "./market-rivals";
+import { offerFresh, PRICE_GAP_MIN, priceGap, rivalGone, rivalMove, type RivalMove, type RivalOfferFacts } from "./market-rivals";
 import { englishMoney } from "./money";
 
 /** Visits a country, and the rest of the store, need before their conversion is compared. */
@@ -71,6 +71,7 @@ export type MarketFindingKind =
   | "weak_market"
   | "unmet_demand"
   | "rival_cheaper"
+  | "rival_move"
   | "untranslated"
   | "unpriced"
   | "rival_out"
@@ -82,6 +83,7 @@ export const FINDING_KINDS: readonly MarketFindingKind[] = [
   "weak_market",
   "unmet_demand",
   "rival_cheaper",
+  "rival_move",
   "untranslated",
   "unpriced",
   "rival_out",
@@ -95,7 +97,7 @@ export const SWOT_PARTS: readonly SwotPart[] = ["strengths", "weaknesses", "oppo
 
 /**
  * Where each kind of finding stands in the SWOT (D900 M2): the SWOT is only a way of drawing the findings, never a text of its own. Threats
- * are rivals' moves, which only watching them shows (M3), so no kind is one yet.
+ * are rivals' moves, which watching them shows (M3).
  */
 export const SWOT_OF: Record<MarketFindingKind, SwotPart> = {
   strong_market: "strengths",
@@ -106,6 +108,7 @@ export const SWOT_OF: Record<MarketFindingKind, SwotPart> = {
   unpriced: "weaknesses",
   unmet_demand: "opportunities",
   rival_out: "opportunities",
+  rival_move: "threats",
 };
 
 /** The findings in their SWOT parts, each part in the findings' own order. */
@@ -123,6 +126,7 @@ export const FIX_PATHS: Record<MarketFindingKind, string> = {
   rival_cheaper: "/products",
   rival_dearer: "/products",
   rival_out: "/marketing",
+  rival_move: "/products",
   untranslated: "/translate",
   unpriced: "/products",
 };
@@ -172,13 +176,15 @@ export type MarketFinding =
     }
   /** A rival's offer out of stock or discontinued on its own page, for a product the store has a price for there. */
   | { kind: "rival_out"; market: string; productName: string; rivalName: string; ownMinor: number; currency: string }
+  /** A rival's move against the store since its page was read before (D900 M3): a lower price, cheaper shipping or longer returns. */
+  | ({ kind: "rival_move"; market: string; productName: string; rivalName: string } & RivalMove)
   | { kind: "untranslated"; market: string; locale: string; products: number; of: number }
   | { kind: "unpriced"; market: string; products: number; of: number };
 
 /** The id of a finding, stable while its subject is: for a list key and the page's anchors. */
 export function findingId(f: MarketFinding): string {
   if (f.kind === "unmet_demand") return `${f.kind}:${f.term}`;
-  if (f.kind === "rival_cheaper" || f.kind === "rival_dearer" || f.kind === "rival_out") return `${f.kind}:${f.market}:${f.productName}:${f.rivalName}`;
+  if (f.kind === "rival_cheaper" || f.kind === "rival_dearer" || f.kind === "rival_out" || f.kind === "rival_move") return `${f.kind}:${f.market}:${f.productName}:${f.rivalName}`;
   return `${f.kind}:${f.market}`;
 }
 
@@ -192,6 +198,9 @@ function sizeOf(f: MarketFinding): number {
       return f.gap;
     case "rival_out":
       return f.ownMinor;
+    case "rival_move":
+      // A price cut first, by how far it fell; then shipping, then returns.
+      return f.move === "price" ? 2 + (f.before - f.after) / Math.max(f.before, 1) : f.move === "shipping" ? 1 : 0;
     case "unmet_demand":
       return f.misses;
     case "untranslated":
@@ -233,6 +242,9 @@ export function marketFindings(facts: MarketCheckFacts, now: Date = new Date()):
   // in the same currency, at least PRICE_GAP_MIN apart either way.
   for (const o of facts.rivalOffers) {
     if (!o.own || !offerFresh(o.readAt, now)) continue;
+    // A move since the page was read before is a threat whatever the prices stand at now (M3).
+    const move = rivalMove(o, now);
+    if (move) all.push({ kind: "rival_move", market: o.market, productName: o.productName, rivalName: o.rivalName, ...move });
     const about = { market: o.market, productName: o.productName, rivalName: o.rivalName, ownMinor: o.own.priceMinor };
     if (rivalGone(o.availability)) {
       all.push({ kind: "rival_out", ...about, currency: o.own.currency });
@@ -276,6 +288,9 @@ export type FindingWords = {
   rival_cheaper: string;
   rival_dearer: string;
   rival_out: string;
+  rival_move: string;
+  rivalShipping: string;
+  rivalReturns: string;
   untranslated: string;
   unpriced: string;
 };
@@ -325,6 +340,12 @@ export function findingText(
         yours: money(f.ownMinor, f.currency),
         gap: formatPercent(f.gap, 0),
       });
+    case "rival_move": {
+      const said = { rival: f.rivalName, product: f.productName, market: nameOf(names, f.market) };
+      if (f.move === "returns") return fillWords(words.rivalReturns, { ...said, before: formatCount(f.before), after: formatCount(f.after) });
+      const at = (minor: number) => money(minor, f.currency ?? "");
+      return fillWords(f.move === "price" ? words.rival_move : words.rivalShipping, { ...said, before: at(f.before), after: at(f.after) });
+    }
     case "rival_out":
       return fillWords(words.rival_out, { rival: f.rivalName, product: f.productName, market: nameOf(names, f.market), yours: money(f.ownMinor, f.currency) });
     case "untranslated":

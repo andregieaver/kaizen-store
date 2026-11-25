@@ -98,6 +98,9 @@ describe("a store's rivals (D900 M2)", () => {
     await rivals.readRivalOffer(actor(), { rival: "linnet.example", page }, { fetchPage: site({ "/p/linen-apron": offerPage("420.00") }) });
     const again = await rivals.rivalOffers(store, "nb-NO");
     expect(again.map((o) => [o.priceMinor, o.productName])).toEqual([[42000, "Forkle i lin"]]);
+    // The read that changed the price keeps what it was (D900 M3).
+    expect(again[0].previous).toMatchObject({ priceMinor: 40000, currency: "NOK", availability: "in_stock", returnDays: 30 });
+    expect(again[0].changedAt).toBe(again[0].readAt);
   });
 
   it("refuse a page off the rival's site, one with no offer data, and a product the store does not have", async () => {
@@ -140,6 +143,30 @@ describe("a store's rivals (D900 M2)", () => {
     const linnet = listed.rivals.find((r) => r.host === "linnet.example");
     expect(linnet?.offers[0]).toMatchObject({ their_product: "Linen apron", your_product: "Forkle i lin", difference: "the store is 15 % dearer", old: false });
     await expect(readRivalOfferTool({ account, store } as never, { rival: "Nobody", page: "https://x.example/p" })).rejects.toThrow("no such rival");
+  });
+
+  it("are read again by the watcher before they go old, keeping what moved, and a page that cannot be read waits (D900 M3)", async () => {
+    await db().execute(sql`update commerce.stores set status = 'active' where id = ${store.id}::uuid`);
+    const page = "https://www.linnet.example/p/linen-apron";
+    // Nothing is due while every offer is fresh.
+    expect(await rivals.watchRivals({ fetchPage: site({}) })).toEqual({ read: 0, changed: 0, failed: 0 });
+    await db().execute(sql`update commerce.rival_offers set read_at = now() - interval '40 days' where store_id = ${store.id}::uuid`);
+    const run = await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 });
+    // Linnet's page is read and its cut kept; Shop 1's page is gone, so it waits and goes old.
+    expect(run).toEqual({ read: 1, changed: 1, failed: 1 });
+    const linnet = (await rivals.rivalOffers(store, "nb-NO")).find((o) => o.address === page);
+    expect(linnet).toMatchObject({ priceMinor: 38000, previous: { priceMinor: 40000 } });
+    // The watcher just tried every due page: none is tried again within RIVAL_RETRY_DAYS, whatever it found.
+    expect(await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 })).toEqual({ read: 0, changed: 0, failed: 0 });
+    // A month on, read again unchanged: kept fresh, the change and what it was left as they were.
+    await db().execute(sql`update commerce.rival_offers set read_at = now() - interval '40 days', watched_at = now() - interval '8 days' where store_id = ${store.id}::uuid and address = ${page}`);
+    expect(await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 })).toEqual({ read: 1, changed: 0, failed: 0 });
+    const kept = (await rivals.rivalOffers(store, "nb-NO")).find((o) => o.address === page);
+    expect(kept).toMatchObject({ priceMinor: 38000, previous: { priceMinor: 40000 }, changedAt: linnet?.changedAt });
+    // The finding: a rival's cut is a threat in the SWOT.
+    const today = new Date().toISOString().slice(0, 10);
+    const check = await marketCheck(store, customPeriod(today, today), { now: new Date() });
+    expect(check.findings.find((f) => f.kind === "rival_move")).toMatchObject({ rivalName: "Linnet", move: "price", before: 40000, after: 38000 });
   });
 
   it("are removed with their offers", async () => {

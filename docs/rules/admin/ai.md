@@ -404,7 +404,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `planning.reacts` on, a customer waiting for a person, an A/B test that ended by itself and an urgent alert are rows of
   `commerce.autopilot_events` (written only by that module, once per store, kind and reference) answered by one headless turn with
   only `EVENT_TOOLS[kind]` and `EVENT_LINES[kind]`; a support event only leaves a staff note (never a word to the customer), a
-  gated call meets `autopilotDecision()`, and an alert's plan starts only by `startDecision()`. A new kind of event is a kind in
+  gated call meets `autopilotDecision()`, and an alert's plan starts only by `startDecision()`; a rival's change's (`rival_changed`, D900 M3)
+  never starts by itself. A new kind of event is a kind in
   `EVENT_KINDS` (and the table's check), its finder, its tools and lines, its facts in `eventMessage()`, its still-open check in
   `stillOpen()` and words in the `assistant` catalogues' `events`. Its finder is the event log's reader where its fact is an event the
   database logs (E4.2, D729: `LOGGED_EVENT_KINDS` and its query in `keepLogged()`, the autopilot's own cursor `AUTOPILOT_READER`, the

@@ -31,7 +31,7 @@ The parts already exist; the market check joins them:
 | **M1** | **Your markets side by side**: the store against itself, country by country, from its own data only. No rival is read. | Built (2026-11-25) |
 | M1b | Kaizena Flow's sign-ups by country. | Parked (25 November 2026): its site sells in one country, so it would be one row (3.5) |
 | M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built, deployed at `9dfeeb3` (25 November 2026): migration `20261125181441_previous_black_crow.sql`, advisors INFO only |
-| M3 | **Watching**: rivals' pages read again once a month in the goal reviews; a change is an autopilot event, never an action. | Planned |
+| M3 | **Watching**: rivals' pages read again before they go old; a change is kept, a threat in the SWOT and an autopilot event, never an action. | Built (25 November 2026) |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices, fees, EU features), shown beside `platform_pricing_facts` (D854). | Planned |
 
 ## 3. M1: your markets side by side (built)
@@ -136,13 +136,25 @@ minimum volume. A split worth having is by language (a sign-up already keeps its
 - **Staff only.** Like research notes, nothing of it is shown to shoppers. A store that publishes a comparison ("cheaper than X") must
   keep it objective and verifiable (Directive 2006/114/EC): the market check never writes one.
 
-## 5. M3: watching (planned)
+## 5. M3: watching (built 25 November 2026)
 
-A rival's pages are read again once a month in the goal reviews (D328), within the same limits; a changed hash is read for its facts again.
-A price, shipping or returns change is a row of `autopilot_events` of kind `rival_changed` (D331), answered as events are: a note, or a plan
-kept for a yes. **A store's price never follows a rival's by itself**: a price change in an answer to this event always waits for the
-owner's yes, whatever the autopilot's level. Prices that follow each other by algorithm are a live concern of EU competition law
-(the Commission's horizontal guidelines, 2023), and the fastest way to a race to the bottom.
+- **What moved is kept by every read.** `keepOffer()` (`src/server/market-rivals.ts`) is the one upsert of an offer: where a read differs
+  from what was kept in price, currency, availability, shipping or returns, what was kept becomes `previous` and `changed_at` is now. A
+  person's *Read the page*, the AI manager's `read_rival_offer` and the watcher alike keep it.
+- **The watcher.** The five-minute dispatcher's `rivalWatch` (`watchRivals()`) reads a few offers read longer ago than `RIVAL_WATCH_DAYS`
+  (28) again, oldest first, before they go old at 30 days: `WATCH_PER_RUN` (3) a run, at most `WATCH_PER_STORE_DAY` (30) a store a day,
+  within the store's 200 pages, as the person who added the rival (robots.txt first, kept as a source). A page it cannot read waits
+  `RIVAL_RETRY_DAYS` (7) and goes old. It is code, not AI, so it runs for every open store with rivals, not only in the goal reviews the
+  first plan named; Kaizena Flow's own store has none.
+- **A threat.** A fresh offer that changed within 30 days in the rival's favour is a finding of kind `rival_move` (`rivalMove()`): its price
+  down by `RIVAL_MOVE_MIN` (a twentieth) or more in one currency, else its shipping down, else its returns window longer. It is the SWOT's
+  threats part, after a rival being cheaper in the order. The rivals' table shows the price it was.
+- **An event, never an action.** For a store that reacts (`planning.reacts`), a change held against one of its products is a row of
+  `autopilot_events` of kind `rival_changed` (D331), found by a scan, since a rival's page is not an event the database queues; once per
+  change. Its turn has `list_rivals`, `market_check`, `get_product`, `list_products` and the review's planning tools, and may make one plan.
+  **A store's price never follows a rival's by itself**: that plan always waits for the owner's yes, whatever the autopilot's levels
+  (`runEvents()` never starts it). Prices that follow each other by algorithm are a live concern of EU competition law (the Commission's
+  horizontal guidelines, 2023), and the fastest way to a race to the bottom.
 
 ## 6. M4: the platform's rivals (planned)
 

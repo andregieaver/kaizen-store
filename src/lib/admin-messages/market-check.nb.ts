@@ -16,6 +16,7 @@ export const marketCheckNb: MarketCheckMessages = {
     rival_cheaper: "Konkurrentens pris",
     rival_dearer: "Billigere enn en konkurrent",
     rival_out: "Utsolgt hos en konkurrent",
+    rival_move: "Konkurrentens trekk",
     untranslated: "Språk",
     unpriced: "Priser",
   },
@@ -28,6 +29,7 @@ export const marketCheckNb: MarketCheckMessages = {
     rival_cheaper: "Se produkter",
     rival_dearer: "Se produkter",
     rival_out: "Se markedsføring",
+    rival_move: "Se produkter",
     untranslated: "Oversett",
     unpriced: "Se produkter",
   },
@@ -41,6 +43,9 @@ export const marketCheckNb: MarketCheckMessages = {
     rival_dearer: "Du selger {product} for {yours} i {market}, og {rival} tar {theirs}: du er {gap} billigere.",
     rival_out:
       "{rival} skriver på sin egen side at varen som svarer til {product} ikke kan kjøpes nå i {market}, der du selger din for {yours}. Det kan være verdt å fortelle kundene der.",
+    rival_move: "{rival} har satt ned prisen på varen som svarer til {product} i {market}, fra {before} til {after}, siden forrige lesing.",
+    rivalShipping: "{rival} har satt ned frakten på varen som svarer til {product} i {market}, fra {before} til {after}.",
+    rivalReturns: "{rival} gir nå {after} dager til å returnere varen som svarer til {product} i {market}, opp fra {before}.",
     untranslated: "{n} av de {of} produktene dine har ikke navn på {language}, så kunder i {market} leser dem på et annet språk.",
     unpriced: "{n} av de {of} produktene dine har ikke pris i {market}, så de kan ikke kjøpes der.",
   },
@@ -61,7 +66,7 @@ export const marketCheckNb: MarketCheckMessages = {
       threats: {
         title: "Trusler",
         hint: "Konkurrentenes trekk: et prisavslag, billigere frakt, lengre tid til å returnere varer.",
-        none: "Ikke fulgt med på ennå: konkurrentenes sider skal leses på nytt hver måned for å se hva som endrer seg.",
+        none: "Ingen konkurrent har satt ned pris eller frakt, eller gitt lengre tid til retur, siden sidene deres ble lest sist.",
       },
     },
     house: "Kaizena Flows konkurrenter er andre butikkplattformer: de sammenlignes ikke ennå.",
@@ -113,6 +118,7 @@ export const marketCheckNb: MarketCheckMessages = {
     difference: "Forskjell",
     readOn: "Lest",
     old: "Gammel",
+    was: "Var {price}",
     notComparable: "Kan ikke sammenlignes",
     problems: {
       market: "Velg et av landene dine.",

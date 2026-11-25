@@ -1,6 +1,6 @@
 {
-  "id": "58de6465-da5d-4175-889d-31e58cade87d",
-  "prevId": "ffc77c1e-60ad-4018-b572-6a8e925ed1c1",
+  "id": "b9c041b8-3a6f-4757-a45b-e11260319dd9",
+  "prevId": "58de6465-da5d-4175-889d-31e58cade87d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -8873,7 +8873,7 @@
       "checkConstraints": {
         "autopilot_events_kind": {
           "name": "autopilot_events_kind",
-          "value": "\"commerce\".\"autopilot_events\".\"kind\" in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request', 'test_answered', 'exchange_confirmed')"
+          "value": "\"commerce\".\"autopilot_events\".\"kind\" in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request', 'test_answered', 'exchange_confirmed', 'rival_changed')"
         },
         "autopilot_events_status": {
           "name": "autopilot_events_status",
@@ -78588,6 +78588,24 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "previous": {
+          "name": "previous",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "changed_at": {
+          "name": "changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "watched_at": {
+          "name": "watched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -78623,6 +78641,36 @@
             },
             {
               "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rival_offers_read_idx": {
+          "name": "rival_offers_read_idx",
+          "columns": [
+            {
+              "expression": "read_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rival_offers_changed_idx": {
+          "name": "rival_offers_changed_idx",
+          "columns": [
+            {
+              "expression": "changed_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -78695,6 +78743,10 @@
       },
       "policies": {},
       "checkConstraints": {
+        "rival_offers_previous": {
+          "name": "rival_offers_previous",
+          "value": "\"commerce\".\"rival_offers\".\"previous\" is null or jsonb_typeof(\"commerce\".\"rival_offers\".\"previous\") = 'object'"
+        },
         "rival_offers_address": {
           "name": "rival_offers_address",
           "value": "\"commerce\".\"rival_offers\".\"address\" ~ '^https://' and length(\"commerce\".\"rival_offers\".\"address\") <= 2000"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { offerFresh, onRivalSite, priceGap, rivalHost } from "./market-rivals";
+import { offerFresh, onRivalSite, priceGap, rivalHost, rivalMove, type OfferState } from "./market-rivals";
 
 /** A store's rivals, the pure parts (D900 M2): their hosts, their own pages and the price held against the store's. */
 describe("rivals (D900 M2)", () => {
@@ -34,5 +34,38 @@ describe("rivals (D900 M2)", () => {
     expect(offerFresh("2026-10-27T12:00:00Z", now)).toBe(true);
     expect(offerFresh("2026-10-25T12:00:00Z", now)).toBe(false);
     expect(offerFresh("not a date", now)).toBe(false);
+  });
+});
+
+/** Watching rivals (D900 M3): what a rival changed in its own favour between two reads of its page. */
+describe("a rival's move (D900 M3)", () => {
+  const now = new Date("2026-11-25T12:00:00Z");
+  const state: OfferState = { priceMinor: 46000, currency: "NOK", availability: "in_stock", shippingMinor: 9900, shippingCurrency: "NOK", returnDays: 14 };
+  const offer = (after: Partial<OfferState>, over: { previous?: (OfferState & { readAt: string }) | null; changedAt?: string | null; readAt?: string } = {}) => ({
+    ...state,
+    ...after,
+    previous: { ...state, readAt: "2026-10-28T12:00:00Z" },
+    changedAt: "2026-11-24T12:00:00Z",
+    readAt: "2026-11-24T12:00:00Z",
+    ...over,
+  });
+
+  it("is a price down by a twentieth or more in the same currency, else cheaper shipping, else longer returns", () => {
+    expect(rivalMove(offer({ priceMinor: 40000 }), now)).toEqual({ move: "price", before: 46000, after: 40000, currency: "NOK" });
+    // Under a twentieth is noise; a rise is no threat.
+    expect(rivalMove(offer({ priceMinor: 44000 }), now)).toBeNull();
+    expect(rivalMove(offer({ priceMinor: 50000 }), now)).toBeNull();
+    expect(rivalMove(offer({ priceMinor: 3000, currency: "EUR" }), now)).toBeNull();
+    expect(rivalMove(offer({ shippingMinor: 0 }), now)).toEqual({ move: "shipping", before: 9900, after: 0, currency: "NOK" });
+    expect(rivalMove(offer({ returnDays: 30 }), now)).toEqual({ move: "returns", before: 14, after: 30, currency: null });
+    expect(rivalMove(offer({ returnDays: null }), now)).toBeNull();
+    // A price cut and free shipping at once: the price is the move told.
+    expect(rivalMove(offer({ priceMinor: 40000, shippingMinor: 0 }), now)?.move).toBe("price");
+  });
+
+  it("is news only on a fresh offer changed within 30 days, and never without a read before", () => {
+    expect(rivalMove(offer({ priceMinor: 40000 }, { previous: null }), now)).toBeNull();
+    expect(rivalMove(offer({ priceMinor: 40000 }, { changedAt: "2026-10-01T12:00:00Z" }), now)).toBeNull();
+    expect(rivalMove(offer({ priceMinor: 40000 }, { readAt: "2026-10-01T12:00:00Z" }), now)).toBeNull();
   });
 });

@@ -87,6 +87,12 @@ test.beforeAll(async () => {
       values (${store.id}, ${rival.id}, ${tote.id}, 'https://linnet.example/p/tote', 'Canvas tote', ${Math.round(Number(tote.price) * 0.8)}, 'NOK', 'in_stock', now() - interval '1 day'),
         (${store.id}, ${rival.id}, ${second.id}, 'https://linnet.example/p/two', 'Linen two', ${Math.round(Number(second.price) * 1.5)}, 'NOK', 'in_stock', now() - interval '1 day'),
         (${store.id}, ${rival.id}, ${third.id}, 'https://linnet.example/p/three', 'Linen three', ${Number(third.price)}, 'NOK', 'out_of_stock', now() - interval '1 day')`;
+    // The watcher found the second one's price cut yesterday (D900 M3): it asked twice the store's price when its page was read before.
+    await sql`
+      update commerce.rival_offers set changed_at = read_at,
+        previous = jsonb_build_object('priceMinor', ${Number(second.price) * 2}::bigint, 'currency', 'NOK', 'availability', 'in_stock',
+          'shippingMinor', null, 'shippingCurrency', null, 'returnDays', null, 'readAt', now() - interval '31 days')
+      where store_id = ${store.id} and address = 'https://linnet.example/p/two'`;
   } finally {
     await sql.end();
   }
@@ -123,13 +129,14 @@ test.describe("as a store's owner", () => {
     await expect(page.locator('[data-rival="linnet.example"]')).toContainText("Linnet");
     await expect(page.getByRole("table", { name: "Rivals' offers" })).toContainText("+25 %");
     await expect(page.locator('[data-every-country] [data-finding="untranslated"]')).toContainText("have no name in German");
-    // Every finding drawn as a SWOT: the store cheaper than Linnet a strength, Linnet sold out an opportunity, no threat until rivals are watched.
+    // Every finding drawn as a SWOT: the store cheaper than Linnet a strength, Linnet sold out an opportunity, its price cut a threat (M3).
     const swot = (part: string) => page.locator(`[data-swot="${part}"]`);
     await expect(swot("strengths").locator('[data-finding="strong_market"]')).toContainText("Visitors in Norway buy more");
     await expect(swot("strengths").locator('[data-finding="rival_dearer"]')).toContainText("Linnet asks");
     await expect(swot("weaknesses").locator('[data-finding="rival_cheaper"]')).toContainText("Linnet sells");
     await expect(swot("opportunities").locator('[data-finding="rival_out"]')).toContainText("cannot be bought now in Norway");
-    await expect(swot("threats")).toContainText("Not watched yet");
+    await expect(swot("threats").locator('[data-finding="rival_move"]')).toContainText("Linnet cut its price");
+    await expect(page.getByRole("table", { name: "Rivals' offers" })).toContainText("Was ");
     if (shots) await page.locator('section[aria-labelledby="market-swot"]').screenshot({ path: `${shots}/markets-swot.png` });
     if (shots) await page.locator('section[aria-labelledby="market-rivals"]').screenshot({ path: `${shots}/markets-rivals.png` });
     if (shots) {

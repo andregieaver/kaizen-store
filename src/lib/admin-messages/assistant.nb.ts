@@ -370,6 +370,7 @@ export const assistantNb: AssistantMessages = {
         stockout_risk: "Et produkt kan bli utsolgt",
         staff_request: "En kunde ba om å endre en bestilling",
         exchange_confirmed: "En kunde bekreftet et bytte",
+        rival_changed: "En konkurrent endret tilbudet sitt",
       },
       statuses: { pending: "Venter", running: "Jobber", done: "Ferdig", skipped: "Hoppet over", failed: "Mislyktes" },
     },

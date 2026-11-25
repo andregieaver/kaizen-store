@@ -84,6 +84,16 @@ export type EventDeps = {
 
 export type EventRun = { found: number; done: number; planned: number; started: number; skipped: number; failed: number };
 
+/** A rival's offer as one read stated it (D900 M3): what `rival_changed` compares. */
+const OFFER_STATE = z.object({
+  priceMinor: z.number(),
+  currency: z.string(),
+  availability: z.string(),
+  shippingMinor: z.number().nullable(),
+  shippingCurrency: z.string().nullable(),
+  returnDays: z.number().nullable(),
+});
+
 const FACTS = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("support_waiting"), conversation: z.string(), waitedMinutes: z.number(), handoffReason: z.string().nullable() }),
   z.object({ kind: z.literal("test_ended"), experiment: z.string(), name: z.string(), stopReason: z.enum(["guardrail", "planned_end"]), stoppedAt: z.string() }),
@@ -98,6 +108,7 @@ const FACTS = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("staff_request"), request: z.string(), ask: z.enum(["change_address", "cancel_order"]), order: z.string() }),
   z.object({ kind: z.literal("test_answered"), experiment: z.string(), name: z.string(), answeredAt: z.string() }),
   z.object({ kind: z.literal("exchange_confirmed"), exchange: z.string(), return: z.string(), order: z.string() }),
+  z.object({ kind: z.literal("rival_changed"), offer: z.string(), changedAt: z.string(), rival: z.string(), market: z.string(), product: z.string(), before: OFFER_STATE, after: OFFER_STATE }),
 ]);
 
 /** The stores that react now: the switch on, not paused, the store open. */
@@ -131,7 +142,85 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);
-  return logged + tests.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps)) + (await detectStockoutRisks(now, deps));
+  return (
+    logged +
+    tests.length +
+    (await detectOrderEvents(now)) +
+    (await detectAlerts(now, deps)) +
+    (await detectStockoutRisks(now, deps)) +
+    (await detectRivalChanges(now))
+  );
+}
+
+/**
+ * Rivals' changes (D900 M3): a scan, because a rival's page is not an event the database queues (it is a page read by the watcher or a
+ * person, `keepOffer()`), and the change is kept on the offer's row. Each reacting store's offers held against one of its products whose
+ * last read changed them within `EVENT_STALE_HOURS`, kept once per change (`eventRef()`: the offer and when it changed).
+ */
+async function detectRivalChanges(now: Date): Promise<number> {
+  const rows = await typedRows(
+    z.object({
+      store_id: col.uuid,
+      offer: col.uuid,
+      // The database's own text, to the microsecond: `stillOpen()` compares it with the offer's `changed_at` as it is then.
+      changed_at: col.text,
+      rival: col.text,
+      market: col.text,
+      product: col.text,
+      previous: z.unknown(),
+      price_minor: col.minor,
+      currency: col.currency,
+      availability: col.text,
+      shipping_minor: col.minorOrNull,
+      shipping_currency: col.textOrNull,
+      return_days: col.minorOrNull,
+    }),
+    sql`
+      with reacting as (${REACTING})
+      select o.store_id, o.id as offer, o.changed_at::text as changed_at, r.name as rival, r.market_code::text as market, coalesce(nullif(btrim(t.title), ''), p.handle, o.name) as product,
+        o.previous, o.price_minor, o.currency::text as currency, o.availability, o.shipping_minor, o.shipping_currency::text as shipping_currency, o.return_days
+      from commerce.rival_offers o
+      join reacting x on x.store_id = o.store_id
+      join commerce.market_rivals r on r.store_id = o.store_id and r.id = o.rival_id
+      join commerce.products p on p.store_id = o.store_id and p.id = o.product_id
+      join commerce.stores s on s.id = o.store_id
+      left join commerce.product_translations t on t.store_id = p.store_id and t.product_id = p.id and t.locale = s.locales[1]
+      where o.previous is not null and o.changed_at > ${now.toISOString()}::timestamptz - make_interval(hours => ${EVENT_STALE_HOURS})
+      order by o.changed_at
+      limit 50
+    `,
+  );
+  const today = now.toISOString().slice(0, 10);
+  let found = 0;
+  for (const row of rows) {
+    const before = OFFER_STATE.safeParse(row.previous);
+    if (!before.success) continue;
+    const facts: EventFacts = {
+      kind: "rival_changed",
+      offer: row.offer,
+      changedAt: row.changed_at,
+      rival: row.rival,
+      market: row.market.trim(),
+      product: row.product,
+      before: { ...before.data, currency: before.data.currency.trim(), shippingCurrency: before.data.shippingCurrency?.trim() ?? null },
+      after: {
+        priceMinor: row.price_minor,
+        currency: row.currency,
+        availability: row.availability,
+        shippingMinor: row.shipping_minor,
+        shippingCurrency: row.shipping_currency?.trim() ?? null,
+        returnDays: row.return_days,
+      },
+    };
+    const inserted = await db().execute(sql`
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      values (${row.store_id}::uuid, 'rival_changed', ${eventRef(facts, today)}, ${JSON.stringify(facts)}::jsonb)
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `);
+    found += inserted.length;
+  }
+  return found;
 }
 
 /** The log's reader as a job of its own (`autopilot.event-log` in `commerce.cron_jobs`): a failure is kept and shown, the rest goes on. */
@@ -614,6 +703,13 @@ async function stillOpen(storeId: string, facts: EventFacts): Promise<string | n
     const row = await typedRow(z.object({ open: col.bool }), sql`select ${OPEN_ORDER(storeId, facts.sku)} as open`);
     return row?.open ? "A purchase order for it was made before the autopilot looked." : null;
   }
+  if (facts.kind === "rival_changed") {
+    const row = await typedRow(
+      z.object({ same: col.bool }),
+      sql`select changed_at = ${facts.changedAt}::timestamptz as same from commerce.rival_offers where id = ${facts.offer}::uuid and store_id = ${storeId}::uuid`,
+    );
+    return row?.same ? null : "The rival's offer was read again, changed again or removed before the autopilot looked.";
+  }
   return null;
 }
 
@@ -656,7 +752,9 @@ async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof auton
   }
 
   const conversationId = await eventConversation(p);
-  const goals = facts.kind === "alert" ? await activeGoals(event.store_id) : [];
+  // An alert's and a rival's change's turns may make one plan, tied to a goal it serves.
+  const plans = facts.kind === "alert" || facts.kind === "rival_changed";
+  const goals = plans ? await activeGoals(event.store_id) : [];
   // A waiting customer's event is kept when the desk's alert is logged and answered once the owner's minutes passed (E4.2): the turn is told
   // how long they have waited by now.
   const turnFacts: EventFacts = facts.kind === "support_waiting" ? { ...facts, waitedMinutes: await waitedMinutes(event.store_id, facts.conversation, facts.waitedMinutes) } : facts;
@@ -686,12 +784,13 @@ async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof auton
     return "failed";
   }
   const said = seen.answer.trim() || "Looked; nothing to add.";
-  if (facts.kind !== "alert") {
+  if (!plans) {
     await finish(event.id, "done", { outcome: said, ...who });
     return "done";
   }
 
-  // An alert's plan is a review's (D328): one kept, tied to nothing new, started or kept for a yes by the owner's setting.
+  // An alert's plan is a review's (D328): one kept, tied to nothing new, started or kept for a yes by the owner's setting. A rival's change's
+  // plan always waits for the owner's yes, whatever their levels (D900 M3): a store's price never follows a rival's by itself.
   const made = await typedRows(
     z.object({ id: col.uuid, title: col.text, version: col.int }),
     sql`
@@ -707,7 +806,7 @@ async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof auton
   const plan = made[made.length - 1];
   for (const extra of made.slice(0, -1)) await stopPlanIn(db(), extra.id, "draft");
   const actor: PlanActor = { account: p.account, store: p.store, holder };
-  const decision = startDecision(settings, await plansStartedThisWeek(event.store_id));
+  const decision = facts.kind === "rival_changed" ? { start: false } : startDecision(settings, await plansStartedThisWeek(event.store_id));
   if (decision.start && (await startPlanByAutopilot(actor, plan.id, plan.version))) {
     await finish(event.id, "done", { outcome: `Made and started "${plan.title}". ${said}`, planId: plan.id, started: true, ...who });
     return "started";

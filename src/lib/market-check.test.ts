@@ -123,7 +123,12 @@ describe("the market check's findings (D900 M1)", () => {
       currency: "NOK",
       own: { priceMinor: 46000, currency: "NOK" },
       availability: "in_stock",
+      shippingMinor: null,
+      shippingCurrency: null,
+      returnDays: null,
       readAt: "2026-11-20T10:00:00Z",
+      previous: null,
+      changedAt: null,
       ...over,
     });
     const found = marketFindings(
@@ -161,8 +166,57 @@ describe("the market check's findings (D900 M1)", () => {
     );
   });
 
-  it("draws the findings as a SWOT, each in the part its kind is, in their own order, with no threat until rivals are watched (D900 M2)", () => {
-    expect(new Set(Object.values(SWOT_OF))).toEqual(new Set(["strengths", "weaknesses", "opportunities"]));
+  it("finds a rival's move since its page was read before, a threat whatever the prices stand at now (D900 M3)", () => {
+    const now = new Date("2026-11-25T12:00:00Z");
+    const was = { priceMinor: 52000, currency: "NOK", availability: "in_stock", shippingMinor: 9900, shippingCurrency: "NOK", returnDays: 14, readAt: "2026-10-28T10:00:00Z" };
+    const moved = (over: Partial<MarketCheckFacts["rivalOffers"][number]>) => ({
+      rivalName: "Linnet",
+      market: "NO",
+      productName: "Linen apron",
+      priceMinor: 52000,
+      currency: "NOK",
+      own: { priceMinor: 46000, currency: "NOK" },
+      availability: "in_stock",
+      shippingMinor: 9900,
+      shippingCurrency: "NOK",
+      returnDays: 14,
+      readAt: "2026-11-24T10:00:00Z",
+      previous: was,
+      changedAt: "2026-11-24T10:00:00Z",
+      ...over,
+    });
+    const found = marketFindings(
+      facts([country("NO")], {
+        rivalOffers: [
+          // Cut from 520 to 480: still dearer than the store, but a move against it.
+          moved({ priceMinor: 48000 }),
+          moved({ productName: "Wool throw", shippingMinor: 0 }),
+          moved({ productName: "Mug", returnDays: 30 }),
+          moved({ productName: "Old move", changedAt: "2026-10-01T10:00:00Z" }),
+        ],
+      }),
+      now,
+    );
+    const moves = found.filter((f) => f.kind === "rival_move");
+    expect(moves.map((f) => (f.kind === "rival_move" ? [f.productName, f.move] : null))).toEqual([
+      ["Linen apron", "price"],
+      ["Wool throw", "shipping"],
+      ["Mug", "returns"],
+    ]);
+    expect(swotOf(found).threats).toHaveLength(3);
+    const [price, shipping, returns] = moves;
+    expect(findingText(price, marketCheckEn.finding, names, language)).toBe(
+      `Linnet cut its price for its match to your Linen apron in Norway, from ${englishMoney(52000, "NOK")} to ${englishMoney(48000, "NOK")}, since its page was read before.`,
+    );
+    expect(findingText(shipping, marketCheckEn.finding, names, language)).toBe(
+      `Linnet cut its shipping on its match to your Wool throw in Norway, from ${englishMoney(9900, "NOK")} to ${englishMoney(0, "NOK")}.`,
+    );
+    expect(findingText(returns, marketCheckEn.finding, names, language)).toBe("Linnet now gives 30 days to return its match to your Mug in Norway, up from 14.");
+  });
+
+  it("draws the findings as a SWOT, each in the part its kind is, in their own order; a rival's move is a threat (D900 M2, M3)", () => {
+    expect(new Set(Object.values(SWOT_OF))).toEqual(new Set(SWOT_PARTS));
+    expect(Object.entries(SWOT_OF).filter(([, part]) => part === "threats").map(([kind]) => kind)).toEqual(["rival_move"]);
     expect(Object.keys(SWOT_OF).sort()).toEqual([...FINDING_KINDS].sort());
     const found = marketFindings(
       facts(

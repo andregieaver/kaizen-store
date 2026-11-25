@@ -34,6 +34,8 @@ const offer = (over: Partial<KeptOffer> = {}): KeptOffer => ({
   deliveryDaysMax: null,
   returnDays: 30,
   readAt: "2026-11-24T10:00:00Z",
+  previous: null,
+  changedAt: null,
   own: { priceMinor: 46000, currency: "NOK" },
   ...over,
 });

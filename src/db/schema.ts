@@ -15277,6 +15277,15 @@ export const rivalOffers = commerce.table(
     deliveryDaysMax: integer("delivery_days_max"),
     returnDays: integer("return_days"),
     readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The facts before the last read that changed them (D900 M3): price, currency, availability, shipping and returns as they were, and when
+     * they were read. Kept by the one writer's upsert, so a person's read and the watcher's alike keep what moved.
+     */
+    previous: jsonb("previous"),
+    /** When a read last found the price, availability, shipping or returns changed; null until one does. */
+    changedAt: timestamp("changed_at", { withTimezone: true }),
+    /** When the watcher last tried to read the page again (D900 M3), whether or not it could: a failed page waits before the next try. */
+    watchedAt: timestamp("watched_at", { withTimezone: true }),
   },
   (t) => [
     unique("rival_offers_key").on(t.rivalId, t.address),
@@ -15284,6 +15293,10 @@ export const rivalOffers = commerce.table(
     productRef("rival_offers_product_fk", t),
     index("rival_offers_store_rival_idx").on(t.storeId, t.rivalId),
     index("rival_offers_store_product_idx").on(t.storeId, t.productId),
+    // The watcher's due offers and the event scan's recent changes, oldest read first.
+    index("rival_offers_read_idx").on(t.readAt),
+    index("rival_offers_changed_idx").on(t.changedAt),
+    check("rival_offers_previous", sql`${t.previous} is null or jsonb_typeof(${t.previous}) = 'object'`),
     check("rival_offers_address", sql`${t.address} ~ '^https://' and length(${t.address}) <= 2000`),
     check("rival_offers_name", sql`length(${t.name}) <= 300`),
     check("rival_offers_price", sql`${t.priceMinor} >= 0 and (${t.highPriceMinor} is null or ${t.highPriceMinor} >= ${t.priceMinor})`),
@@ -19999,7 +20012,7 @@ export const autopilotEvents = commerce.table(
     index("autopilot_events_account_idx").on(t.accountId),
     index("autopilot_events_conversation_idx").on(t.conversationId),
     index("autopilot_events_plan_idx").on(t.planId),
-    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request', 'test_answered', 'exchange_confirmed')`),
+    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request', 'test_answered', 'exchange_confirmed', 'rival_changed')`),
     check("autopilot_events_status", sql`${t.status} in ('pending', 'running', 'done', 'skipped', 'failed')`),
     check("autopilot_events_ref", sql`length(${t.ref}) between 1 and 200`),
     check("autopilot_events_facts", sql`jsonb_typeof(${t.facts}) = 'object'`),

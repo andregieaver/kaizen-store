@@ -44,7 +44,7 @@ const fakeTurn = async (input: TurnInput) => {
       note: "The customer asks where the parcel is; it was sent yesterday. Reply: it is on its way.",
     });
   }
-  if (kind === "alert") {
+  if (kind === "alert" || kind === "rival_changed") {
     await makePlanTool(
       { ...actor(owner), scheduled: true, turn: { conversationId: input.conversationId ?? "" }, autopilot: input.autopilot },
       { title: "Look at conversion", summary: "", steps: [{ key: "s1", title: "Look at the funnel", kind: "tool", tool: "sales_funnel", args: {}, after: [] }] },
@@ -174,6 +174,37 @@ describe("reacting to events", () => {
     // Checked once a day: the same alerts are not read again within it.
     await react();
     expect((await eventsOf()).filter((r) => r.kind === "alert")).toHaveLength(1);
+  });
+
+  it("makes a rival's change one event whose plan waits for the owner's yes, even where plans start by themselves (D900 M3)", async () => {
+    await settings({ reacts: true, waitMinutes: 15, starts: "auto", plansPerWeek: 5 });
+    const [product] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${store.id}::uuid and status = 'active' limit 1`);
+    const [rival] = await db().execute<Row>(sql`
+      insert into commerce.market_rivals (store_id, market_code, name, host, added_by) values (${store.id}::uuid, 'NO', 'Linnet', 'linnet.example', ${store.account.id}::uuid) returning id`);
+    // The watcher read the page again an hour ago and found the price cut and shipping free (`keepOffer()` kept what it was).
+    const [offer] = await db().execute<Row>(sql`
+      insert into commerce.rival_offers (store_id, rival_id, product_id, address, name, price_minor, currency, availability, shipping_minor, shipping_currency, read_at, changed_at, previous)
+      values (${store.id}::uuid, ${String(rival.id)}::uuid, ${String(product.id)}::uuid, 'https://linnet.example/p/apron', 'Linen apron', 48000, 'NOK', 'in_stock', 0, 'NOK',
+        now() - interval '1 hour', now() - interval '1 hour',
+        '{"priceMinor": 52000, "currency": "NOK", "availability": "in_stock", "shippingMinor": 9900, "shippingCurrency": "NOK", "returnDays": null, "readAt": "2026-10-28T10:00:00Z"}'::jsonb)
+      returning id`);
+    turns.length = 0;
+    await react();
+    const rows = (await eventsOf()).filter((r) => r.kind === "rival_changed");
+    expect(rows).toHaveLength(1);
+    expect(String(rows[0].ref)).toMatch(new RegExp(`^${String(offer.id)}:`));
+    expect(rows[0]).toMatchObject({ status: "done", started: false });
+    expect(String(rows[0].outcome)).toContain("waits for your yes");
+    const turn = turns.find((t) => t.autopilot?.event === "rival_changed");
+    expect(turn?.message).toContain("- price: ");
+    expect(turn?.autopilot?.tools).toContain("list_rivals");
+    const [kept] = await db().execute<Row>(sql`select * from commerce.assistant_approvals where tool = 'start_autopilot_plan' and args ->> 'plan' = ${String(rows[0].plan_id)}`);
+    expect(kept).toMatchObject({ status: "pending", category: "plan" });
+    // One event per change: read again, nothing new is kept.
+    await react();
+    expect((await eventsOf()).filter((r) => r.kind === "rival_changed")).toHaveLength(1);
+    await db().execute(sql`delete from commerce.market_rivals where id = ${String(rival.id)}::uuid`);
+    await settings({ reacts: true, waitMinutes: 15, starts: "ask" });
   });
 
   it("gives a test that ended by itself only the test's tools, and never touches another store", async () => {

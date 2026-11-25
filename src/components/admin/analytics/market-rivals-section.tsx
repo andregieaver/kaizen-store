@@ -56,7 +56,20 @@ export function MarketRivalsSection({ lang, locale, timeZone, words: w, rivals, 
         </a>
       ),
     },
-    { key: "theirs", label: w.theirs, align: "right", cell: (o) => <span className="tabular-nums">{money(o.priceMinor, o.currency)}</span> },
+    {
+      key: "theirs",
+      label: w.theirs,
+      align: "right",
+      cell: (o) => (
+        <span className="flex flex-col items-end">
+          <span className="tabular-nums">{money(o.priceMinor, o.currency)}</span>
+          {/* The price before the last read that changed it (D900 M3), while that change is fresh. */}
+          {o.previous && o.changedAt && offerFresh(o.changedAt, now) && o.previous.priceMinor !== o.priceMinor ? (
+            <span className="text-xs text-muted tabular-nums">{fillWords(w.was, { price: money(o.previous.priceMinor, o.previous.currency) })}</span>
+          ) : null}
+        </span>
+      ),
+    },
     { key: "product", label: w.product, cell: (o) => (o.productId ? <span>{o.productName}</span> : <span className="text-muted">{w.noProduct}</span>) },
     { key: "yours", label: w.yours, align: "right", cell: (o) => (o.own ? <span className="tabular-nums">{money(o.own.priceMinor, o.own.currency)}</span> : <span className="text-muted">—</span>) },
     {

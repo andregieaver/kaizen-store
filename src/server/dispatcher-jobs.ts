@@ -20,6 +20,7 @@ import { summarisePending } from "@/server/support-summary";
 import { reencryptSecrets } from "@/server/secret-rotation";
 import { expireAssistantApprovals } from "@/server/owner-assistant";
 import { refreshInstagramFeeds } from "@/server/instagram";
+import { watchRivals } from "@/server/market-rivals";
 import { refreshSocialInsights } from "@/server/social-insights";
 import { refreshFacebookInsights } from "@/server/facebook-pages";
 import { sendSocialReviews } from "@/server/social-review";
@@ -233,6 +234,8 @@ export const DISPATCHER_JOBS = {
   // Pages, articles, headers and footers to be published or put back, and themes to go live or back (D341, D340): what is due, in
   // the name of who scheduled it.
   schedules: () => runSchedules(),
+  // Rivals' offers (D900 M3): a few read longer ago than RIVAL_WATCH_DAYS read again from their own pages, what moved kept on the offer.
+  rivalWatch: () => watchRivals(),
   // The status page's checks (D360): each part measured, admins emailed once when one fails twice in a row.
   status: () => runStatusChecks(),
   // The domain watch (E4.2): a few active domains not asked for a day asked whether they still serve their store, and when one registered

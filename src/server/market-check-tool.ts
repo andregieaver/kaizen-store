@@ -112,6 +112,16 @@ export async function listRivalsTool({ store }: Ctx) {
             return_days: o.returnDays,
             read: o.readAt.slice(0, 10),
             old: !offerFresh(o.readAt, now),
+            // What it was before the last read that changed it (D900 M3): the change is the store's to answer, never to follow by itself.
+            last_change: o.previous && o.changedAt
+              ? {
+                  on: o.changedAt.slice(0, 10),
+                  price_before: englishMoney(o.previous.priceMinor, o.previous.currency),
+                  availability_before: o.previous.availability,
+                  shipping_before: o.previous.shippingMinor !== null && o.previous.shippingCurrency ? englishMoney(o.previous.shippingMinor, o.previous.shippingCurrency) : null,
+                  return_days_before: o.previous.returnDays,
+                }
+              : null,
           };
         }),
     })),

@@ -1,5 +1,5 @@
 {
-  "dispatcherJobs": 91,
+  "dispatcherJobs": 92,
   "minuteRoutes": 9,
   "pages": 612,
   "routeHandlers": 315,
@@ -632,6 +632,12 @@
       "count": "shopOnlyTools",
       "from": 272,
       "to": 274,
+      "decision": "D900"
+    },
+    {
+      "count": "dispatcherJobs",
+      "from": 91,
+      "to": 92,
       "decision": "D900"
     }
   ]

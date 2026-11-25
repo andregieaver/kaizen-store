@@ -18,6 +18,7 @@ import {
 import { isConsumerName } from "./event-log";
 import { isEvent } from "./integrations";
 import { MANAGER_TOOLS_BY_NAME } from "./manager-tools";
+import { englishMoney } from "./money";
 import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
 
 /** Reacting to events (D331, `docs/ai-autopilot.md` 15.5): the settings, the tools each event may use and the turn's message. */
@@ -132,6 +133,32 @@ describe("the staff_request event (B3, D640)", () => {
     expect(eventRef(request, "2026-11-16")).toBe("11111111-1111-4111-8111-111111111111");
     expect(EVENT_TOOLS.staff_request).toEqual(["get_order", "get_support_conversation", "carry_out_address_change", "cancel_order", "add_order_note"]);
     expect(EVENT_LINES.staff_request).toContain("Never write to the customer");
+  });
+});
+
+describe("a rival's change (D900 M3)", () => {
+  const changed: EventFacts = {
+    kind: "rival_changed",
+    offer: "o1",
+    changedAt: "2026-11-24T10:00:00.000Z",
+    rival: "Linnet",
+    market: "NO",
+    product: "Linen apron",
+    before: { priceMinor: 52000, currency: "NOK", availability: "in_stock", shippingMinor: 9900, shippingCurrency: "NOK", returnDays: 14 },
+    after: { priceMinor: 48000, currency: "NOK", availability: "in_stock", shippingMinor: 0, shippingCurrency: "NOK", returnDays: 14 },
+  };
+
+  it("is one event per change, says what moved with every figure written by code, and only reads and plans", () => {
+    expect(eventRef(changed, "2026-11-25")).toBe("o1:2026-11-24T10:00:00.000Z");
+    const message = eventMessage(changed, [{ id: "g1", title: "Grow in Norway" }]);
+    expect(message).toContain('the rival "Linnet" changed its offer for its match to the store\'s "Linen apron" in NO, read on 2026-11-24');
+    expect(message).toContain(`- price: ${englishMoney(52000, "NOK")} before, ${englishMoney(48000, "NOK")} now`);
+    expect(message).toContain(`- shipping: ${englishMoney(9900, "NOK")} before, ${englishMoney(0, "NOK")} now`);
+    expect(message).not.toContain("returns:");
+    expect(message).toContain('"Grow in Norway" (id g1)');
+    expect(EVENT_TOOLS.rival_changed).toEqual(["list_rivals", "market_check", "get_product", "list_products", "make_autopilot_plan", "list_goals", "list_autopilot_plans", "get_autopilot_plan"]);
+    expect(EVENT_LINES.rival_changed).toContain("Never follow a rival's price by itself");
+    expect(EVENT_LINES.rival_changed).toContain("it always waits for the owner's yes");
   });
 });
 
