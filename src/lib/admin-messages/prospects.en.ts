@@ -36,6 +36,16 @@ export const prospectsEn = {
   next: "Next",
   pageOf: "Page {page} of {pages}",
   how: "Only limited companies and the like are listed: never a sole trader, and none bankrupt or being wound up. Nothing is kept: the register is asked each time. Writing to them waits for a lawyer's reading of each country's rules.",
+  read: {
+    action: "Read their site",
+    criteria: "On their site, looking for: {criteria}",
+    fit: "Fits {fit}% of what you asked for",
+    door: "Their general address: {addresses}",
+    noDoor: "No general address on their front page.",
+    failed: "Their site could not be read.",
+    noAi: "Reading a site needs AI, which is not set up.",
+    how: "Read from their front page by AI, scored in code. Only an address on their own domain that belongs to the company (post@, kontakt@) is shown, never a person's. Nothing is kept.",
+  },
   dnc: {
     title: "Do not contact",
     lead: "Someone asked not to be contacted? Add their address or their company's domain. Every store and Kaizena Flow will skip it.",

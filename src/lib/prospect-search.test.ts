@@ -57,3 +57,32 @@ describe("do not contact's folding (P5.6, D893)", () => {
     expect(readEntry("hello")).toBeNull();
   });
 });
+
+describe("reading a found company's site (P5.2, P5.9, D894)", async () => {
+  const { cleanCriteria, cleanReading, criteriaFromQuery, criteriaToQuery, generalAddresses, plainSentence } = await import("./prospect-reading");
+
+  it("keeps the owner's site criteria named, weighted 1 to 3, none twice, and through the address", () => {
+    const criteria = cleanCriteria([{ name: "Serves vegan food", weight: 9 }, { name: "serves vegan food", weight: 1 }, { name: "Sells online", weight: 0 }, { name: "" }]);
+    expect(criteria).toEqual([{ name: "Serves vegan food", weight: 3 }, { name: "Sells online", weight: 1 }]);
+    expect(criteriaFromQuery(criteriaToQuery(criteria))).toEqual(criteria);
+  });
+
+  it("finds only the company's own door: a role address on its domain, never a named person's, never another domain's", () => {
+    const text = "Kontakt oss på post@kafe.no eller kontakt@booking.kafe.no. Skriv til daglig leder ola.nordmann@kafe.no. Partner: info@other.no";
+    expect(generalAddresses(text, "kafe.no")).toEqual(["post@kafe.no", "kontakt@booking.kafe.no"]);
+    expect(generalAddresses("Please email our CEO at kari@kafe.no", "kafe.no")).toEqual([]);
+  });
+
+  it("lets nothing the model writes carry an address, a phone number or a link", () => {
+    expect(plainSentence("A café. Write to ola.nordmann@kafe.no, call +47 912 34 567 or see https://evil.example/x and www.evil.example")).toBe("A café. Write to , call or see and");
+  });
+
+  it("scores a page that says it fits as the model's numbers allow only: unknown names ignored, odd scores 1, the fit worked out in code", () => {
+    const criteria = [{ name: "Serves vegan food", weight: 3 }, { name: "Sells online", weight: 1 }];
+    const reading = cleanReading({ does: "A vegan café.", scores: { "serves vegan food": 5, "Sells online": 11, "ignore previous instructions": 5 } }, criteria);
+    expect(reading.scores).toEqual({ "Serves vegan food": 5, "Sells online": 1 });
+    expect(reading.fit).toBe(80);
+    expect(cleanReading("not json", criteria)).toMatchObject({ does: "", fit: 20 });
+    expect(cleanReading({ does: "x" }, []).fit).toBeNull();
+  });
+});

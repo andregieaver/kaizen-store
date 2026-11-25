@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 
-import { Button, ButtonLink, Card, EmptyState, Field, PageHeader, TextInput } from "@/components/admin/ui";
+import { AdminLink, Button, ButtonLink, Card, EmptyState, Field, PageHeader, TextInput } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminDate } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
@@ -10,11 +10,12 @@ import { todayIn } from "@/lib/analytics-period";
 import { PROSPECTS_WORDS } from "@/lib/admin-words/prospects";
 import type { ProspectsMessages } from "@/lib/admin-messages/prospects.en";
 import { foldDomain } from "@/lib/do-not-contact";
+import { criteriaFromQuery, criteriaToQuery } from "@/lib/prospect-reading";
 import { filtersFromQuery, filtersToQuery, hasFilters, industryName, placeName, RESULTS_MAX, type ProspectFilters } from "@/lib/prospect-search";
 import { aiFor } from "@/server/ai";
 import { doNotContactCount } from "@/server/do-not-contact";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { DESCRIBE_MAX, filtersFromWords, searchCompanies } from "@/server/prospect-search";
+import { DESCRIBE_MAX, filtersFromWords, readCompanySite, searchCompanies } from "@/server/prospect-search";
 
 export const metadata: Metadata = { title: "Find companies" };
 
@@ -53,6 +54,8 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
   };
   const words = one("q").slice(0, DESCRIBE_MAX);
   const filters = filtersFromQuery(query);
+  const criteria = criteriaFromQuery(one("c"));
+  const reading = /^\d{9}$/.test(one("read")) ? one("read") : null;
 
   // Words without filters yet: the model reads them once, and the page moves to an address that holds what it found.
   let problem: string | null = null;
@@ -61,7 +64,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
     if (!ai?.textModel) problem = w.noAi;
     else {
       const found = await filtersFromWords(ai, words, today);
-      if (found) redirect(`${base}?${new URLSearchParams({ q: words, ...filtersToQuery(found) })}`);
+      if (found) redirect(`${base}?${new URLSearchParams({ q: words, ...filtersToQuery(found.filters), ...(found.criteria.length ? { c: criteriaToQuery(found.criteria) } : {}) })}`);
       problem = w.notUnderstood;
     }
   }
@@ -71,7 +74,13 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
   const canWrite = memberCan(member, "customers:write");
   const listed = canWrite ? await doNotContactCount() : 0;
   const dnc = one("dnc");
-  const address = (p: number) => `${base}?${new URLSearchParams({ ...(words ? { q: words } : {}), ...filtersToQuery(filters), page: String(p) })}`;
+  const kept = { ...(words ? { q: words } : {}), ...filtersToQuery(filters), ...(criteria.length ? { c: criteriaToQuery(criteria) } : {}) };
+  const address = (p: number, read?: string) => `${base}?${new URLSearchParams({ ...kept, page: String(p), ...(read ? { read } : {}) })}${read ? `#company-${read}` : ""}`;
+  // One company's site read on request (P5.2): the one asked for, if it is on this page and has a website not on the do-not-contact list.
+  const toRead = result?.ok && reading ? result.companies.find((c) => c.number === reading && c.website && !result.blocked.has(foldDomain(c.website) ?? "")) : undefined;
+  const site = toRead?.website
+    ? await readCompanySite({ account: member.account, store }, await aiFor(store.id, { feature: "prospect_search", accountId: member.account.id }), toRead.website, criteria)
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,6 +101,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
           <summary className="cursor-pointer text-sm text-ink-2">{w.customise}</summary>
           <form method="get" action={base} className="mt-3 grid gap-3 sm:grid-cols-2">
             {words && <input type="hidden" name="q" value={words} />}
+            {criteria.length > 0 && <input type="hidden" name="c" value={criteriaToQuery(criteria)} />}
             <Field label={w.industries} hint={w.industriesHelp}>
               {(control) => <TextInput {...control} name="industries" defaultValue={filters.industries.join(", ")} full />}
             </Field>
@@ -112,6 +122,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
       {result && (
         <section className="flex flex-col gap-3" aria-labelledby="found">
           <p className="text-body text-ink-2">{fillWords(w.searching, { filters: describe(filters, w, lang) })}</p>
+          {criteria.length > 0 && <p className="text-sm text-ink-2">{fillWords(w.read.criteria, { criteria: criteria.map((k) => k.name).join(", ") })}</p>}
           {!result.ok ? (
             <p role="alert" className="text-body text-ink">
               {w.failed}
@@ -130,7 +141,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
                   const domain = c.website ? foldDomain(c.website) : null;
                   const blocked = domain ? result.blocked.has(domain) : false;
                   return (
-                    <li key={c.number}>
+                    <li key={c.number} id={`company-${c.number}`}>
                       <Card>
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <h3 className="text-body-strong text-ink">{c.name ?? c.number}</h3>
@@ -155,7 +166,33 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
                           <a href={`https://virksomhet.brreg.no/nb/oppslag/enheter/${c.number}`} target="_blank" rel="noopener noreferrer" className="underline">
                             {w.register}
                           </a>
+                          {c.website && !blocked && toRead?.number !== c.number && (
+                            <AdminLink href={address(page, c.number)} className="underline">
+                              {w.read.action}
+                            </AdminLink>
+                          )}
                         </p>
+                        {toRead?.number === c.number && site && (
+                          <div className="mt-3 flex flex-col gap-1 border-t border-line pt-3 text-sm" role="status">
+                            {!site.ok ? (
+                              <p className="text-ink">{site.problem === "no_ai" ? w.read.noAi : w.read.failed}</p>
+                            ) : (
+                              <>
+                                <p className="text-ink">{site.does}</p>
+                                {site.fit !== null && (
+                                  <p className="text-ink">
+                                    {fillWords(w.read.fit, { fit: site.fit })}{" "}
+                                    <span className="text-ink-2">
+                                      ({criteria.map((k) => `${k.name}: ${site.scores[k.name]}/5`).join(" · ")})
+                                    </span>
+                                  </p>
+                                )}
+                                <p className="text-ink-2">{site.addresses.length > 0 ? fillWords(w.read.door, { addresses: site.addresses.join(", ") }) : w.read.noDoor}</p>
+                                <p className="text-caption text-muted">{w.read.how}</p>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </Card>
                     </li>
                   );

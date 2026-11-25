@@ -35,6 +35,16 @@ export const prospectsNb: ProspectsMessages = {
   next: "Neste",
   pageOf: "Side {page} av {pages}",
   how: "Bare aksjeselskaper og lignende vises: aldri et enkeltpersonforetak, og ingen som er konkurs eller under avvikling. Ingenting lagres: registeret spørres hver gang. Å skrive til dem venter på at en jurist har lest reglene for hvert land.",
+  read: {
+    action: "Les nettstedet deres",
+    criteria: "På nettstedet ser vi etter: {criteria}",
+    fit: "Passer {fit} % med det du ba om",
+    door: "Den generelle adressen deres: {addresses}",
+    noDoor: "Ingen generell adresse på forsiden deres.",
+    failed: "Nettstedet deres kunne ikke leses.",
+    noAi: "Å lese et nettsted krever KI, som ikke er satt opp.",
+    how: "Lest fra forsiden av KI, regnet ut i kode. Bare en adresse på deres eget domene som tilhører bedriften (post@, kontakt@) vises, aldri en persons. Ingenting lagres.",
+  },
   dnc: {
     title: "Ikke kontakt",
     lead: "Har noen bedt om ikke å bli kontaktet? Legg til adressen eller bedriftens domene. Alle butikker og Kaizena Flow hopper over den.",
