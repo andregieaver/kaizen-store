@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/admin/ui";
+import { SocialFactsCard } from "@/components/admin/social-facts-card";
 import { SocialInsightsCard } from "@/components/admin/social-insights-card";
 import { SocialPostCreator } from "@/components/admin/social-posts";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SOCIAL_WORDS } from "@/lib/admin-words/social";
 import { aiFor } from "@/server/ai";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { gatherSocialFacts } from "@/server/social-facts";
 import { insightsView } from "@/server/social-insights";
 import {
   listSocialPosts,
@@ -30,11 +32,12 @@ export default async function SocialPostsPage({
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = SOCIAL_WORDS[lang];
-  const [products, pages, posts, insights, ai] = await Promise.all([
+  const [products, pages, posts, insights, facts, ai] = await Promise.all([
     socialProducts(store),
     socialPages(store),
     listSocialPosts(store.id),
     houseOrStoreInsights(store),
+    gatherSocialFacts(store, member.account.id),
     aiFor(store.id, { feature: "social_posts" }).catch(() => null),
   ]);
 
@@ -60,6 +63,7 @@ export default async function SocialPostsPage({
         numberLocale={ADMIN_LANG_FACTS[lang].locale}
         timeZone={store.timeZone}
       />
+      <SocialFactsCard facts={facts} words={w.facts} locale={ADMIN_LANG_FACTS[lang].locale} />
     </div>
   );
 }
