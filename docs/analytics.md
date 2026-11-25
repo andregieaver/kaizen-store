@@ -239,7 +239,7 @@ then the next of each, each kind's largest first. The page shows the first three
 (the AI manager opened with the finding's words and figures, `askAboutFinding()`, sent by the person) and a link to the page that fixes it.
 
 Kaizena Flow's own store (`house`) sells plans, not goods: its orders, average order and prices are left out and the page says so; its
-conversion by country waits for a sign-up to keep its country (D900 M1b).
+site sells in one country, so it has no conversion by country to compare (D900 M1b, parked).
 
 ## Speed (D336, wave 7 unit B, `docs/wave-7-storefront.md` B)
 

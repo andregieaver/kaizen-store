@@ -450,7 +450,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `src/server/research.ts`)**: searches go only through `searchWeb()` to a `SEARCH_APIS` service at its one host
   (`searchHostOk()`), with the platform's key from `searchConnection()` (`commerce.search_settings`, written only by
   `src/server/web-search-settings.ts`), each recorded as `ai_usage` of kind `search` and priced only by `per_thousand_searches`;
-  pages are read only through `readWebPage()` (`safeFetch()`, never a plain `fetch` of an address a model chose); a note cites
+  pages are read only through `readWebPage()` (`safeFetch()`, never a plain `fetch` of an address a model chose), after the site's
+  robots.txt (`obeyRobots()`, `robotsVerdict()`, D900: a closed page or a robots.txt that cannot be heard is not read), and a product
+  page's offer only from its own JSON-LD (`readOfferPage()`, `pageOffers()`), never its words; a note cites
   only addresses in `research_sources` from the last 30 days; a comparison's totals are only `compareOptions()`. A new search
   service is an entry of `SEARCH_APIS` (request and reader), the `search_settings_provider` check widened, and its host in
   `SEARCH_HOSTS`.

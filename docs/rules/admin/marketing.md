@@ -44,7 +44,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   manager's `market_check` and *Make a plan* (`askAboutFinding()`, through `AskAboutAlert`, sent by the person) repeat them and never make a
   number. A new kind of finding is a kind in `FINDING_KINDS` with its rule in `marketFindings()`, its page in `FIX_PATHS`, its words in
   `market-check.en.ts` and `.nb.ts`, and its definition in `docs/analytics.md`. Kaizena Flow's own store reads no orders or prices (it sells
-  plans); its sign-ups by country wait for M1b. Reading rivals (M2) goes only through `readWebPage()`, honouring `robots.txt`, and a store's
+  plans); its sign-ups by country (M1b) are parked while its site sells in one country. Reading rivals (M2) goes only through `readWebPage()`, honouring `robots.txt`, and a store's
   price never follows a rival's by itself (M3).
 
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
@@ -575,6 +575,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   body fonts (C2b), fetched only by `fontFile()` (`src/server/font-outlines.ts`, `fonts.gstatic.com` alone, as brand marks), its logo the store's
   own (`navigation.logo`, `logoDark` on a dark theme), read as the photo is; a font or logo that cannot be read leaves the picture without it. The page, its routes, the Facebook
   callback, the AI manager's social tools and the weekly review are the paid extension `social` (D870 S1.6, €39 a month, plans chosen by the owner).
+  Edited in the person's own Canva (D898 C3, `canva-posts.ts`, `marketing:write`, the `social` extension), a post shows that copy instead, a
+  library item (`social_posts.picture_media_id`), until *Use the original picture*; the drawn one is never stored.
 
 ## The social calendar (D870 S2.4, `src/lib/social-calendar.ts` pure, `src/server/social-calendar.ts`)
 

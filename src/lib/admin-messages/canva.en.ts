@@ -43,6 +43,7 @@ export const canvaEn = {
     done: "The edited picture from Canva is in.",
     blocked: "The browser did not open a new tab. Allow pop-ups for Kaizena Flow and try again.",
     connectLead: "Connects your own Canva in a new tab; come back here when it is done.",
+    drawn: "Use the original picture",
   },
   // The tab Canva's Return lands in (C2), which hands the picture to the field and closes.
   back: {

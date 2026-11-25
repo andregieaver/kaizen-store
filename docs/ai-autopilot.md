@@ -925,7 +925,8 @@ add up; the model only chooses what to look for and writes the words of a note.
 
 ### 13.3 Reading a page
 
-`read_web_page` fetches one public address through `safeFetch()` (never a plain `fetch`: private networks refused, redirects checked,
+`read_web_page` fetches one public address through `safeFetch()`, after the site's robots.txt (D900: a page it closes is refused, and so
+is every page of a site whose robots.txt answers with a server error or not at all; a missing one allows all; read once an hour a site) (never a plain `fetch`: private networks refused, redirects checked,
 `PAGE_MAX_BYTES` 2 MB, 15 s), HTML or plain text only, and turns it into its title and readable text (`pageText()` in
 `src/lib/web-page-text.ts`, pure: scripts, styles, navigation, headers, footers and forms left out, entities decoded, at most
 `PAGE_TEXT_MAX` 12,000 characters, with whether it was cut). At most `PAGES_PER_DAY` (200) a store in 24 hours. It costs no AI and is not

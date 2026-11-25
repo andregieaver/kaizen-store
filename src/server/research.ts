@@ -14,6 +14,8 @@ import {
   SOURCE_DAYS,
   type CompareOptionsInput,
 } from "@/lib/research";
+import { pageOffers, type PageOffer } from "@/lib/offer-data";
+import { ROBOTS_MAX_BYTES, robotsVerdict, type RobotsAnswer } from "@/lib/robots";
 import { isReadableType, PAGE_MAX_BYTES, PAGES_PER_DAY, pageEmails, pageText } from "@/lib/web-page-text";
 import { SEARCH_APIS, SEARCH_MODEL, searchHostOk, SEARCHES_PER_DAY, type Freshness, type SearchResult } from "@/lib/web-search";
 
@@ -106,22 +108,63 @@ export async function searchWeb(a: ResearchActor, input: SearchInput, deps: Rese
   return { query: input.query, results };
 }
 
-/** A public page's title, description and readable text, through `safeFetch()`; kept as a source. */
-export async function readWebPage(
-  a: ResearchActor,
-  input: { url: string },
-  deps: ResearchDeps = {},
-): Promise<{ url: string; title: string; description: string; text: string; cut: boolean; emails: string[] }> {
-  if (!normaliseSource(input.url)) return fail("Give a page's full address, starting with https://.");
+/** A site's robots.txt answers, by origin, for an hour: one read of it per site, however many of its pages are read. */
+const ROBOTS_TTL_MS = 60 * 60 * 1000;
+const robotsSeen = new Map<string, { at: number; answer: RobotsAnswer }>();
+
+/**
+ * Refuses a page the site's robots.txt asks robots not to read, or any page of a site whose robots.txt cannot be heard (D900 M2,
+ * `robotsVerdict()`). Every page research reads passes here first: the AI manager's, a found company's (D899) and a rival's.
+ */
+async function obeyRobots(url: string, deps: ResearchDeps): Promise<void> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+  const now = Date.now();
+  let seen = robotsSeen.get(parsed.origin);
+  if (!seen || now - seen.at > ROBOTS_TTL_MS) {
+    const got = await (deps.fetchPage ?? safeFetch)(`${parsed.origin}/robots.txt`, { maxBytes: ROBOTS_MAX_BYTES, timeoutMs: 10_000, accept: "text/plain", maxRedirects: 5 });
+    // A file too large to read (a 2xx refused for its size) is a file that could not be heard.
+    const answer: RobotsAnswer = got.ok
+      ? { status: got.status, text: new TextDecoder("utf-8").decode(got.bytes) }
+      : got.status !== undefined && (got.status < 200 || got.status >= 300)
+        ? { status: got.status, text: "" }
+        : { failed: true };
+    seen = { at: now, answer };
+    robotsSeen.set(parsed.origin, seen);
+    if (robotsSeen.size > 500) robotsSeen.delete(robotsSeen.keys().next().value as string);
+  }
+  const verdict = robotsVerdict(seen.answer, `${parsed.pathname}${parsed.search}`);
+  if (verdict === "refused") fail("The site's robots.txt asks robots not to read that page, so it was not read.");
+  if (verdict === "unknown") fail("The site's robots.txt could not be read, so none of its pages are read for now: try again later.");
+}
+
+/** A public page through `safeFetch()`, after its robots.txt and within the day's pages: its final address and its HTML or text. */
+async function fetchReadable(a: ResearchActor, url: string, deps: ResearchDeps): Promise<{ url: string; body: string; contentType: string }> {
+  if (!normaliseSource(url)) return fail("Give a page's full address, starting with https://.");
   if ((await countToday(a, "page")) >= PAGES_PER_DAY) return fail(`The day's ${PAGES_PER_DAY} pages are read: try again tomorrow.`);
-  const fetched = await (deps.fetchPage ?? safeFetch)(input.url, {
+  await obeyRobots(url, deps);
+  const fetched = await (deps.fetchPage ?? safeFetch)(url, {
     maxBytes: PAGE_MAX_BYTES,
     timeoutMs: 15_000,
     accept: "text/html,application/xhtml+xml,text/plain;q=0.9",
   });
   if (!fetched.ok) return fail(`The page could not be read: ${fetched.problem}`);
   if (!isReadableType(fetched.contentType)) return fail(`That address is ${fetched.contentType || "a file"}, not a page that can be read.`);
-  const body = new TextDecoder("utf-8").decode(fetched.bytes);
+  return { url: fetched.url, body: new TextDecoder("utf-8").decode(fetched.bytes), contentType: fetched.contentType };
+}
+
+/** A public page's title, description and readable text, through `safeFetch()`; kept as a source. */
+export async function readWebPage(
+  a: ResearchActor,
+  input: { url: string },
+  deps: ResearchDeps = {},
+): Promise<{ url: string; title: string; description: string; text: string; cut: boolean; emails: string[] }> {
+  const fetched = await fetchReadable(a, input.url, deps);
+  const body = fetched.body;
   const page = pageText(body, fetched.contentType);
   const hash = createHash("sha256").update(page.text).digest("hex");
   // Both the address asked for and the one it ended at count as read.
@@ -129,6 +172,20 @@ export async function readWebPage(
   await keepSources(a, "page", read);
   // The addresses it shows, for code alone (D899): `readWebPageTool()` never passes them to a model.
   return { url: fetched.url, ...page, emails: pageEmails(body) };
+}
+
+/**
+ * The offers a product page states in its own machine-readable data (D900 M2, `pageOffers()`: schema.org `Product` and `Offer` in its
+ * JSON-LD), read as `readWebPage()` reads and kept as a source the same way. Its words are never read for a price: a page without such
+ * data gives no offer.
+ */
+export async function readOfferPage(a: ResearchActor, input: { url: string }, deps: ResearchDeps = {}): Promise<{ url: string; title: string; offers: PageOffer[] }> {
+  const fetched = await fetchReadable(a, input.url, deps);
+  const page = pageText(fetched.body, fetched.contentType);
+  // The same source as `readWebPage()` keeps: a hash of the page's readable text.
+  const hash = createHash("sha256").update(page.text).digest("hex");
+  await keepSources(a, "page", [...new Set([input.url, fetched.url])].map((url) => ({ url, title: page.title, hash })));
+  return { url: fetched.url, title: page.title, offers: fetched.contentType.includes("html") ? pageOffers(fetched.body) : [] };
 }
 
 /** Of the addresses given, those the store did not search or read within `SOURCE_DAYS`. */

@@ -33,7 +33,7 @@ Owners change pictures every week, *Edit in Canva* works on a free Canva account
 |---|---|---|
 | C1 | **Connect Canva** (a person's account, OAuth with PKCE, tokens sealed and refreshed under the row's lock, Canva's refresh tokens being single use), **Edit in Canva** and **Import from Canva** in the media library, for stores and Kaizena Flow's own library alike. The edited copy is a new library item beside the original (`made_by = 'canva'`, `edited_from`). | Built (25 November 2026, f78b932) |
 | C2 | *Edit in Canva* on every picture field: the page builder's picture fields (stores' and Kaizena Flow's own) and the product editor's photos, the edited copy put where the old one was (one Undo step in the builder, the product's own save in the editor). Canva opens in a tab of its own so the editor keeps its unsaved changes; *Return* lands on `/admin/account/canva-back`, which tells the field's tab and closes. | Built (25 November 2026, 198b8d8) |
-| C3 | Social post pictures into Canva. Today a post's picture is drawn on request and never stored (D870 C2); editing it keeps a copy in the library, which needs the owner's yes. | Waits for the owner |
+| C3 | Social post pictures into Canva: *Edit in Canva* on a post's card opens the post's picture in the person's Canva, and the edited copy, kept in the library, becomes the post's picture (the owner said yes to keeping it, 25 November 2026). | Built (this change) |
 | C4 | A product into a Canva brand template (Canva Pro and up: autofill), with its photo, name and the shop's price line worked out in code (`priceLines()`), never a model's. | Later |
 | C5 | A Canva app inside Canva: *Publish to Kaizena Flow* from Canva's share menu (the content publisher intent) and a panel of the store's pictures and products. Signs in as one of our developer apps; its own review at Canva, with EU trader checks. | Later |
 | C6 | The AI manager with Canva's MCP server: custom apps (D363) learn MCP's OAuth sign-in (discovery, PKCE, rotating refresh). | Later |
@@ -71,6 +71,16 @@ Owners change pictures every week, *Edit in Canva* works on a free Canva account
 - **Not connected.** The field offers *Connect Canva* in a new tab, which comes back to the same back page; the field then offers *Edit in
   Canva*. A product's photos go through `/admin/{store}/products/canva` (`products:write`, edit and bring back only); the builder through
   the library's route (`website:write`).
+
+### What C3 does
+
+- **Where.** Each post's card on Marketing → Social posts, for a member who may change the marketing (`marketing:write`), a store's posts and
+  Kaizena Flow's own alike (its posts are its house store's).
+- **How.** *Edit in Canva* opens a tab as a picture field does (C2). The first time, the post's picture drawn by code goes up to Canva in the
+  channel's shape (`PICTURE_SIZES`); after that, the person's own design of the post opens again where they left it, its layers intact (a
+  design Canva no longer opens for them is passed over for the picture itself). Brought back, the copy is a library item (`made_by =
+  'canva'`) and the post's picture (`social_posts.picture_media_id`): the card, its download and the picture route show it in place of the
+  drawn one. *Use the original picture* goes back to the drawn one; the copy stays in the library.
 
 ### What the owner sets up at Canva (once)
 

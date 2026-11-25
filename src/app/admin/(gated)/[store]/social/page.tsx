@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { CanvaFieldProvider } from "@/components/admin/canva-field";
 import { PageHeader } from "@/components/admin/ui";
 import { SocialAdviser } from "@/components/admin/social-adviser";
 import { SocialCalendar } from "@/components/admin/social-calendar";
@@ -10,8 +12,11 @@ import { SocialPostCreator } from "@/components/admin/social-posts";
 import { requireExtension } from "@/components/admin/extension-off";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SOCIAL_WORDS } from "@/lib/admin-words/social";
+import { areaTexts } from "@/lib/admin-area";
+import { CANVA_FIELD_WORDS } from "@/lib/admin-words/canva-field";
 import { todayIn } from "@/lib/analytics-period";
 import { aiFor } from "@/server/ai";
+import { canvaForField } from "@/server/canva";
 import { calendarOf } from "@/server/social-calendar";
 import { facebookAppOn, facebookView } from "@/server/facebook-pages";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -46,7 +51,7 @@ export default async function SocialPostsPage({
   const lang = adminLangOf(member.account.adminLocale);
   const w = SOCIAL_WORDS[lang];
   const done = (await searchParams).facebook;
-  const [products, pages, posts, insights, facebook, facts, advice, ai] = await Promise.all([
+  const [products, pages, posts, insights, facebook, facts, advice, ai, canva] = await Promise.all([
     socialProducts(store),
     socialPages(store),
     listSocialPosts(store.id),
@@ -55,6 +60,8 @@ export default async function SocialPostsPage({
     gatherSocialFacts(store, member.account.id),
     latestAdvice(store.id),
     aiFor(store.id, { feature: "social_posts" }).catch(() => null),
+    // A post's picture edited in the person's own Canva (D898 C3), for a member who may change the marketing.
+    canvaForField(`/admin/${store.slug}/social/canva`, store.slug, "marketing:write"),
   ]);
   // The adviser's two-week plan with the drafts written for its days (S2.4).
   const weeks = await calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []);
@@ -87,17 +94,21 @@ export default async function SocialPostsPage({
         dateLocale={ADMIN_LANG_FACTS[lang].locale}
         words={w.calendar}
       />
-      <SocialPostCreator
-        products={products}
-        pages={pages}
-        posts={posts}
-        mayWrite={memberCan(member, "marketing:write")}
-        hasAi={Boolean(ai?.textModel)}
-        timeZone={store.timeZone}
-        dateLocale={ADMIN_LANG_FACTS[lang].locale}
-        base={`/admin/${store.slug}/social`}
-        words={w}
-      />
+      <AdminTextScope texts={canva ? areaTexts(lang, { canvaField: CANVA_FIELD_WORDS }) : {}}>
+        <CanvaFieldProvider canva={canva}>
+          <SocialPostCreator
+            products={products}
+            pages={pages}
+            posts={posts}
+            mayWrite={memberCan(member, "marketing:write")}
+            hasAi={Boolean(ai?.textModel)}
+            timeZone={store.timeZone}
+            dateLocale={ADMIN_LANG_FACTS[lang].locale}
+            base={`/admin/${store.slug}/social`}
+            words={w}
+          />
+        </CanvaFieldProvider>
+      </AdminTextScope>
       <SocialInsightsCard
         view={insights.view}
         words={w.insights}

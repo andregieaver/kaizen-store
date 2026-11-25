@@ -35,8 +35,8 @@ export function CanvaFieldProvider({ canva, children }: { canva: CanvaField | nu
   return <FieldContext value={canva ?? null}>{children}</FieldContext>;
 }
 
-/** The picture a field takes from Canva. */
-type FromCanva = { url: string; thumbnailUrl: string | null; width: number; height: number };
+/** The picture a field takes from Canva: the library item kept for it, its address and size. */
+type FromCanva = { mediaId: string; url: string; thumbnailUrl: string | null; width: number; height: number };
 
 /** How long a field waits for Canva's *Return* before it stops asking. */
 const WAIT_MS = 60 * 60_000;
@@ -55,10 +55,55 @@ export function EditInCanvaButton({ current, onEdited, small = false }: { curren
   const canva = useContext(FieldContext);
   // Only where Canva is given: its words are handed to those editors alone.
   if (!canva || !current?.url) return null;
-  return <FieldButton canva={canva} url={current.url} onEdited={onEdited} compact={small} />;
+  return <FieldButton canva={canva} start={{ do: "edit", url: current.url, place: "field" }} onEdited={onEdited} compact={small} />;
 }
 
-function FieldButton({ canva, url, onEdited, compact }: { canva: CanvaField; url: string; onEdited: (picture: FromCanva) => void; compact: boolean }) {
+/**
+ * A social post's picture in Canva (D898 C3): *Edit in Canva* for the post (its earlier design, its picture from Canva or the one drawn by
+ * code), and *Use the drawn picture* while it shows one from Canva. `onChanged` gets the post's picture: the library item, or null.
+ */
+export function CanvaPostTools({ postId, fromCanva, onChanged }: { postId: string; fromCanva: boolean; onChanged: (mediaId: string | null) => void }) {
+  const canva = useContext(FieldContext);
+  if (!canva) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2" data-post-canva>
+      <FieldButton canva={canva} start={{ do: "edit-post", postId }} onEdited={(picture) => onChanged(picture.mediaId)} compact={false} />
+      {fromCanva && <DrawnAgain endpoint={canva.endpoint} postId={postId} onDone={() => onChanged(null)} />}
+    </div>
+  );
+}
+
+function DrawnAgain({ endpoint, postId, onDone }: { endpoint: string; postId: string; onDone: () => void }) {
+  const w = useAdminText("canvaField");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        disabled={busy}
+        className="w-fit px-1 py-2 text-sm underline disabled:opacity-60"
+        onClick={async () => {
+          setBusy(true);
+          setProblem(null);
+          const done = await ask<{ postId: string }>(endpoint, { do: "drawn-post", postId }, w.problems.failed);
+          setBusy(false);
+          if (done.ok) onDone();
+          else setProblem(done.problem);
+        }}
+      >
+        {w.field.drawn}
+      </button>
+      {problem && (
+        <p role="alert" className="basis-full text-xs text-danger-text">
+          {problem}
+        </p>
+      )}
+    </>
+  );
+}
+
+function FieldButton({ canva, start, onEdited, compact }: { canva: CanvaField; start: Record<string, string>; onEdited: (picture: FromCanva) => void; compact: boolean }) {
   const w = useAdminText("canvaField");
   const [connected, setConnected] = useState(canva.connected);
   const [phase, setPhase] = useState<Phase>({ at: "idle" });
@@ -82,7 +127,7 @@ function FieldButton({ canva, url, onEdited, compact }: { canva: CanvaField; url
       setPhase({ at: "bringing" });
       const brought = await ask<FromCanva>(endpoint, { do: "bring", editId: waitingFor }, w.problems.failed);
       if (brought.ok) {
-        handOver.current({ url: brought.url, thumbnailUrl: brought.thumbnailUrl, width: brought.width, height: brought.height });
+        handOver.current({ mediaId: brought.mediaId, url: brought.url, thumbnailUrl: brought.thumbnailUrl, width: brought.width, height: brought.height });
         setSaid({ ok: true, text: w.field.done });
       } else setSaid({ ok: false, text: brought.problem });
       setPhase({ at: "idle" });
@@ -130,7 +175,7 @@ function FieldButton({ canva, url, onEdited, compact }: { canva: CanvaField; url
     if (!tab) return setSaid({ ok: false, text: w.field.blocked });
     tab.opener = null;
     setPhase({ at: "opening" });
-    const started = await ask<{ url: string; editId: string }>(endpoint, { do: "edit", url, place: "field" }, w.problems.failed);
+    const started = await ask<{ url: string; editId: string }>(endpoint, start, w.problems.failed);
     if (!started.ok) {
       tab.close();
       if (started.reconnect) setConnected(false);
