@@ -156,13 +156,13 @@ page that needs a feature (D178) or a paid extension (D748) is in the menu only 
 | Products | `tag` | `/admin/{store}/products` | 6 pages, 3 in Basic |  |
 | Customers | `users` | `/admin/{store}/customers` | 10 pages, 6 in Basic |  |
 | Marketing | `megaphone` | `/admin/{store}/marketing`, its own page | 16 pages in 5 groups, 4 in Basic |  |
-| Analytics | `chart` | `/admin/{store}/analytics` | 18 pages in 4 groups, 2 in Basic |  |
+| Analytics | `chart` | `/admin/{store}/analytics` | 19 pages in 4 groups, 2 in Basic |  |
 | Website | `monitor` | `/admin/{store}/website`, its own page | 15 pages in 3 groups, 8 in Basic |  |
 | Bookings | `calendar` | `/admin/{store}/bookings` | 5 pages, 4 in Basic | Appointments or Stays and rentals |
 | Support | `chat` | `/admin/{store}/support` | 7 pages, 3 in Basic |  |
 | Settings | `cog` | `/admin/{store}/settings`, its own page | 36 pages in 5 groups, 12 in Basic |  |
 
-120 pages in 9 sections, 46 of them in Basic.
+121 pages in 9 sections, 46 of them in Basic.
 
 <!-- nav:generated:end store-tabs -->
 
@@ -425,7 +425,7 @@ Opens `/admin/{store}/marketing`, its own page. 16 pages in 5 groups, 4 in Basic
 
 ### Store › Analytics
 
-Opens `/admin/{store}/analytics`. 18 pages in 4 groups, 2 in Basic.
+Opens `/admin/{store}/analytics`. 19 pages in 4 groups, 2 in Basic.
 
 | Group | Page | Address | View | Needs |
 | --- | --- | --- | --- | --- |
@@ -442,6 +442,7 @@ Opens `/admin/{store}/analytics`. 18 pages in 4 groups, 2 in Basic.
 |  | Marketing analytics | `/admin/{store}/analytics/marketing` | Advanced | Online shop |
 |  | Sales | `/admin/{store}/analytics/sales` | Advanced | Deals; the Deals and contracts extension |
 | The site | Traffic | `/admin/{store}/analytics/traffic` | Advanced |  |
+|  | Markets | `/admin/{store}/analytics/markets` | Advanced |  |
 |  | Speed | `/admin/{store}/analytics/speed` | Advanced |  |
 |  | Heatmaps | `/admin/{store}/analytics/heatmaps` | Advanced |  |
 |  | Recordings | `/admin/{store}/analytics/recordings` | Advanced |  |

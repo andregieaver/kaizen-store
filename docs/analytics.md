@@ -205,6 +205,42 @@ Which companies' own networks a store's counted visits came from. It rides on vi
 - **Retention.** `pruneCompanyVisits()` in the daily run: lookups after two days, company days after 25 months (as visits), companies no
   day or lookup points at after a week.
 
+## Markets (D900, `docs/market-check.md` M1, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)
+
+The store against itself, country by country, over the period picked: where it sells well, where it sells badly, and what each country
+asked for and could not find. Its own data only; no rival is read (that is M2). Nothing new is kept: every figure is read when the page
+or the AI manager's `market_check` asks.
+
+A **country** is a country the store sells to (`store.markets`, one row per country whatever its language and currency views) or any
+other country a visit or a search of the period was in (a country no longer offered). The front door (a visit with no country) is no
+country and is left out.
+
+| Figure | Definition |
+|---|---|
+| Visits, conversion (per country) | The Traffic page's country table (`marketTraffic()`, the same reads as `trafficReport().byMarket`): visitor-days of the covered days by the visit's country, and paid orders from shoppers' checkouts on those days by the order's country, over them. Not known while visit counting is off or no day of the period is covered. |
+| Orders, revenue, average order (per country) | Sales by country (`geoReport()`): paid orders (`PAID`) placed in the country's market, revenue without VAT in the main currency, revenue ÷ orders. Known with visit counting off. |
+| Searches, found nothing (per country) | The store search's searches of the period with the country's `market_code`, and those that found nothing (`MISS`, as on the Traffic page). Searches are kept 90 days: a period before that is cut and says so. |
+| Terms that found nothing (per country) | The `MARKET_TERMS` (5) terms with the most misses in the country, the latest first on a tie. |
+| Products with no price | Active products, demo products left out, of which no variant has a price kept in the country (`kept_prices`) and that are not switched off there as a whole (`market_availability` without a variant). Only for a country the store sells to, and only with a shop. |
+| Products without a name in its language | Active products, demo products left out, with no title in the country's own language (no translation, or an empty one): shoppers there read them in the main language. Only when the country's own language is not the store's main one. |
+
+**Findings** (`marketFindings()`, pure; each with a minimum volume, an estimate says so):
+
+| Finding | When |
+|---|---|
+| A country buys less | Its conversion is under the rest's: at least `MIN_VISITS` (200) visits in it and in the rest, at least `MIN_ORDERS` (10) orders in the rest, and `twoProportionZ()` of the rest against it at −1.96 or lower. Its figure: the orders it would have had at the rest's rate, less those it had (an estimate). |
+| A country buys more | The same the other way round, at +1.96 or higher. |
+| Searched for, not found | A term with at least `MIN_MISSES` (5) misses in the period, its countries' misses added up; at most `DEMAND_TERMS` (10). |
+| Not in its language | A country whose own language is not the main one, with products without a name in it. |
+| No price there | A country the store sells to with products that have no price there. |
+
+The order is code's: one of each kind (a country that buys less, searched for, not in its language, no price, a country that buys more),
+then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
+(the AI manager opened with the finding's words and figures, `askAboutFinding()`, sent by the person) and a link to the page that fixes it.
+
+Kaizena Flow's own store (`house`) sells plans, not goods: its orders, average order and prices are left out and the page says so; its
+conversion by country waits for a sign-up to keep its country (D900 M1b).
+
 ## Speed (D336, wave 7 unit B, `docs/wave-7-storefront.md` B)
 
 How fast a store's pages are for the people who open them, measured in their browsers (field data), never a score from nothing.
@@ -249,6 +285,7 @@ How fast a store's pages are for the people who open them, measured in their bro
 | Marketing | channels: sessions, orders, revenue, conversion, CAC, ROAS, profit ROAS, LTV:CAC; spend entry; discounts and coupons |
 | Subscriptions | MRR and its movements, churn, failed renewals, subscribers |
 | Traffic | funnel, devices, geography, search, sales by weekday and hour; refunds and returns (D153) at the bottom |
+| Markets | the store's countries side by side and what to do in them (D900): conversion against the rest, searches that found nothing, prices and text per country |
 | Settings | costs, fees, fixed costs, lifespan, targets, visit counting |
 
 Common: a period (today, yesterday, 7 days, 30 days, this month, previous month, this year, custom) and a comparison

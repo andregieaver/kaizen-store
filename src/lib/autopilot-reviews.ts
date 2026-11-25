@@ -35,6 +35,8 @@ export const REVIEW_READ_TOOLS = [
   // The drop-ship suppliers' refused and late orders (C2): what holds the store's deliveries up.
   "list_supplier_orders",
   "analytics_alerts",
+  // The store's countries side by side and what to do in them (D900): a review can plan from a weak country or an unmet search.
+  "market_check",
   "explain_change",
   "report_catalogue",
   "run_report",

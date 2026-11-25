@@ -44,6 +44,7 @@ import type { HeatmapsMessages } from "./admin-messages/heatmaps.en";
 import type { SocialMessages } from "./admin-messages/social.en";
 import type { RecordingsMessages } from "./admin-messages/recordings.en";
 import type { CompaniesMessages } from "./admin-messages/companies.en";
+import type { MarketCheckMessages } from "./admin-messages/market-check.en";
 import type { RegisterFactsMessages } from "./admin-messages/register-facts.en";
 import type { PrivacyOfficerMessages } from "./admin-messages/privacy-officer.en";
 import type { FlowsMessages } from "./admin-messages/flows.en";
@@ -131,6 +132,7 @@ export type AdminAreaMessages = {
   social: SocialMessages;
   recordings: RecordingsMessages;
   companies: CompaniesMessages;
+  marketCheck: MarketCheckMessages;
   registerFacts: RegisterFactsMessages;
   privacyOfficer: PrivacyOfficerMessages;
   flows: FlowsMessages;
@@ -222,7 +224,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "registerFacts", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit", "social"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "marketCheck", "registerFacts", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit", "social"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;

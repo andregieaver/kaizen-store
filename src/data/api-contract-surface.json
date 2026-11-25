@@ -1,5 +1,5 @@
 {
- "version": "1.57",
+ "version": "1.58",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2562,6 +2562,8 @@
   "mcp mark_order_sent <- carrier (required)",
   "mcp mark_order_sent <- order (required)",
   "mcp mark_order_sent <- store (required)",
+  "mcp market_check",
+  "mcp market_check <- store (required)",
   "mcp market_price_rules",
   "mcp market_price_rules <- store (required)",
   "mcp moderate_blog_comment",

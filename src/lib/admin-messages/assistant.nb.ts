@@ -530,6 +530,7 @@ export const assistantNb: AssistantMessages = {
     profit_overview: "Regner ut fortjenesten",
     explain_change: "Finner ut hvorfor salget endret seg",
     analytics_alerts: "Sjekker hva som bør ses på",
+    market_check: "Sammenligner landene dine",
     report_catalogue: "Leser hva rapporter kan vise",
     run_report: "Kjører en rapport",
     save_report: "Lagrer en rapport",

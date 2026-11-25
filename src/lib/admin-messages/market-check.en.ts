@@ -1,0 +1,84 @@
+import type { Widen } from "./common.en";
+
+/**
+ * The owner's words for the market check (D900 M1, `docs/market-check.md` 3, `docs/analytics.md` "Markets"): Analytics → Markets. A finding's
+ * sentence is filled by `findingText()` and the AI manager's first message by `askAboutFinding()` (`src/lib/market-check.ts`), with figures
+ * written by code. Server-only (`SERVER_AREAS`): the page is drawn on the server.
+ */
+export const marketCheckEn = {
+  title: "Markets",
+  description: "Your countries side by side: where you sell well, where you sell badly, and what each one searched for and did not find.",
+  phoneLead: "Your countries side by side",
+  lead: { one: "{n} thing to look at in your countries in this period.", many: "{n} things to look at in your countries in this period." },
+  todoTitle: "What to do in your markets",
+  todoDescription: "Worked out from your own figures, the biggest first. Make a plan opens the AI manager with the finding written in; nothing changes until you say yes.",
+  nothingToDo: "Nothing stands out in this period: no country buys clearly more or less than the rest, and no search found nothing often enough to count.",
+  kinds: {
+    weak_market: "Buys less",
+    strong_market: "Buys more",
+    unmet_demand: "Searched for",
+    untranslated: "Language",
+    unpriced: "Prices",
+  },
+  makePlan: "Make a plan",
+  makePlanFor: ": {text}",
+  open: {
+    weak_market: "See traffic by country",
+    strong_market: "See your marketing",
+    unmet_demand: "See what shoppers search for",
+    untranslated: "Translate your store",
+    unpriced: "See your products",
+  },
+  finding: {
+    weak_market:
+      "Visitors in {market} buy less: {rate} of visits end in an order, against {rest} in your other countries. At that rate it would have had about {gap} more orders.",
+    strong_market: "Visitors in {market} buy more: {rate} of visits end in an order, against {rest} in your other countries. It may be worth more of your marketing.",
+    unmet_demand: "Shoppers searched for “{term}” {n} times and found nothing{where}.",
+    unmetIn: ", most of them in {market}",
+    untranslated: "{n} of your {of} products have no name in {language}, so shoppers in {market} read them in another language.",
+    unpriced: "{n} of your {of} products have no price in {market}, so they cannot be bought there.",
+  },
+  ask: {
+    message: "Analytics → Markets found this {period}: {finding} {plan}",
+    period: "for {period}",
+    plan: "Look into it with your tools and make a plan I can say yes to. Change nothing before I do.",
+  },
+  more: { one: "{n} more finding", many: "{n} more findings" },
+  every: {
+    summary: "Every country, side by side",
+    description: "The figures behind the findings. Visits and conversion are counted as on the Traffic page; orders and revenue are the paid orders placed in each country, without VAT.",
+    caption: "Your countries side by side",
+    country: "Country",
+    visits: "Visits",
+    conversion: "Conversion",
+    orders: "Orders",
+    revenue: "Revenue",
+    aov: "Average order",
+    searches: "Searches",
+    foundNothing: "Found nothing",
+    unpriced: "No price",
+    untranslated: "No name in its language",
+    notSold: "Not offered now",
+    notCounted: "Not counted",
+    notApplicable: "—",
+    compared: "A country is compared with the rest only when both have at least {visits} visits and the rest at least {orders} orders, and the difference is too large to be chance.",
+  },
+  terms: {
+    title: "Searched for, found nothing, by country",
+    description: "The searches that found nothing most often in each country. Often it is a word your products do not use: a synonym in Search fixes it. Otherwise it is something shoppers want that you do not sell.",
+    times: { one: "{n} time", many: "{n} times" },
+    none: "No search found nothing in this period.",
+    open: "Add synonyms in Search",
+  },
+  notes: {
+    countingOff: "Visits are not counted, so no country has a conversion.",
+    countingOffLink: "Switch visit counting on in Analytics settings",
+    partial: "Visits are counted from {date}: conversion covers only those days.",
+    searchesClamped: "Searches are kept 90 days, so they are counted from {date}.",
+    searchesEmpty: "No searches from this period are kept any more: searches are kept 90 days.",
+    house: "Kaizena Flow sells plans, not goods: orders and prices by country do not apply. Sign-ups are not counted by country yet.",
+    noShop: "The shop is off, so orders and prices by country are not shown.",
+  },
+};
+
+export type MarketCheckMessages = Widen<typeof marketCheckEn>;

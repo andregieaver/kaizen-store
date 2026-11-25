@@ -33,6 +33,20 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   read: the domain watch asks the world once a day, `src/server/domain-watch.ts`).
 
 
+## The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)
+
+- **The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)**:
+  the store against itself, country by country (M1), then its rivals (M2 to M4, planned). Facts are read by code from what the store
+  keeps, through the figures' one definition each (`docs/analytics.md` "Markets"): visits and conversion are `marketTraffic()` (the Traffic
+  page's countries, shared with `trafficReport()`), orders and revenue `geoReport()`, searches `searchesByMarket()` (its `MISS` and term),
+  products with no price or no name in a country's language are counted in `marketCheck()`. Findings are only `marketFindings()` (pure:
+  minimum volumes, `twoProportionZ()` for a country against the rest, a fixed order of kinds), worded only by `findingText()`; the AI
+  manager's `market_check` and *Make a plan* (`askAboutFinding()`, through `AskAboutAlert`, sent by the person) repeat them and never make a
+  number. A new kind of finding is a kind in `FINDING_KINDS` with its rule in `marketFindings()`, its page in `FIX_PATHS`, its words in
+  `market-check.en.ts` and `.nb.ts`, and its definition in `docs/analytics.md`. Kaizena Flow's own store reads no orders or prices (it sells
+  plans); its sign-ups by country wait for M1b. Reading rivals (M2) goes only through `readWebPage()`, honouring `robots.txt`, and a store's
+  price never follows a rival's by itself (M3).
+
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 
 - **Which companies visited (D890)**: a counted page view on a store with `stores.company_recognition` on is looked up after `/api/visit`

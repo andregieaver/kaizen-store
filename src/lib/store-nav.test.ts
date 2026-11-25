@@ -393,10 +393,11 @@ describe("the menu's cost (bloat review step 0.17)", () => {
     expect((performance.now() - start) / runs).toBeLessThan(20);
   });
 
-  // The menu of a store with everything on, as JSON, at the base `/admin/s` (docs/rules/budgets.md): 14,757 characters on 19 November 2026,
-  // 17,307 before each section's tab stopped repeating its sidebar's addresses (bloat review step 2.28, whose brief gave 14,000 for the menu
-  // of 12 November, six pages smaller). Lowered, never raised: a new page adds about 120.
-  const MENU_CHARS = 15_000;
+  // The menu of a store with everything on, as JSON, at the base `/admin/s` (docs/rules/budgets.md): 14,263 characters on 25 November 2026,
+  // once a sidebar stopped sending addresses another of its own covers (D900; 15,085 before, with Markets), 14,757 on 19 November, 17,307
+  // before each section's tab stopped repeating its sidebar's addresses (bloat review step 2.28, whose brief gave 14,000 for the menu of 12
+  // November, six pages smaller). Lowered, never raised: a new page adds about 120.
+  const MENU_CHARS = 14_500;
 
   it("sends each address once as a prefix: the menu of a store with everything on stays under its figure (bloat review step 2.28)", () => {
     const base = "/admin/s";

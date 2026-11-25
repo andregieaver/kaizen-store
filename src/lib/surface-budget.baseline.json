@@ -1,15 +1,15 @@
 {
   "dispatcherJobs": 89,
   "minuteRoutes": 9,
-  "pages": 608,
+  "pages": 609,
   "routeHandlers": 299,
-  "storeLinks": 120,
+  "storeLinks": 121,
   "storeLinksBySection": {
     "orders": 7,
     "products": 6,
     "customers": 10,
     "marketing": 16,
-    "analytics": 18,
+    "analytics": 19,
     "website": 15,
     "bookings": 5,
     "support": 7,
@@ -17,8 +17,8 @@
   },
   "basicLinks": 46,
   "platformLinks": 58,
-  "storeTools": 298,
-  "shopOnlyTools": 268,
+  "storeTools": 299,
+  "shopOnlyTools": 269,
   "managerTools": 28,
   "featureIds": 14,
   "tables": 560,
@@ -489,6 +489,36 @@
       "from": 559,
       "to": 560,
       "decision": "D870"
+    },
+    {
+      "count": "pages",
+      "from": 608,
+      "to": 609,
+      "decision": "D900"
+    },
+    {
+      "count": "storeLinks",
+      "from": 120,
+      "to": 121,
+      "decision": "D900"
+    },
+    {
+      "count": "storeTools",
+      "from": 298,
+      "to": 299,
+      "decision": "D900"
+    },
+    {
+      "count": "shopOnlyTools",
+      "from": 268,
+      "to": 269,
+      "decision": "D900"
+    },
+    {
+      "count": "storeLinksBySection.analytics",
+      "from": 18,
+      "to": 19,
+      "decision": "D900"
     }
   ]
 }

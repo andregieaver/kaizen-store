@@ -257,6 +257,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "The site",
         items: [
           item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours.", { area: "analytics", icon: "pointer" }),
+          item("/analytics/markets", "Markets", "Your countries side by side: where you sell well and badly, and what each searched for and did not find.", { area: "analytics", icon: "globe" }),
           item("/analytics/speed", "Speed", "How fast your pages load for your visitors, measured in their browsers, and what to fix.", { area: "analytics", icon: "gauge" }),
           item("/analytics/heatmaps", "Heatmaps", "Where visitors click, how far they scroll and what they look at, and where they get stuck.", { area: "analytics", icon: "flame" }),
           item("/analytics/recordings", "Recordings", "Watch visits to your pages, for visitors who allow it, to see where they get stuck.", { area: "analytics", icon: "video" }),
@@ -559,8 +560,31 @@ export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, co
   return tabsOf(base, storeSections(flags, canOpen), counts);
 }
 
+/**
+ * Each area's addresses without those another of its own already covers (D900): `/analytics/traffic` is inside `/analytics`, so sending
+ * it as a prefix too says nothing more. An address is dropped only where no other area has an address between the two (nor that address
+ * as a page of cards), so the area a page is deepest inside (`placeIndex()`, `currentIndex()`) is the same with it or without it.
+ */
+function withoutCovered(areas: StoreArea[]): StoreArea[] {
+  // `inside()` of `nav-current.ts`, written here: this module is in shoppers' routes, which must not reach one more file for a line.
+  const inside = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
+  return areas.map((area, i) => {
+    const others = areas.filter((_, j) => j !== i);
+    const kept: string[] = [];
+    for (const q of [...new Set(area.prefixes)].sort((a, b) => a.length - b.length)) {
+      const cover = kept.filter((p) => inside(q, p)).sort((a, b) => b.length - a.length)[0];
+      const between =
+        cover !== undefined &&
+        others.some((o) => o.prefixes.some((r) => inside(q, r) && r.length > cover.length) || (o.exact ?? []).includes(q));
+      if (cover === undefined || between) kept.push(q);
+    }
+    const keep = new Set(kept);
+    return { ...area, prefixes: area.prefixes.filter((p, k) => keep.has(p) && area.prefixes.indexOf(p) === k) };
+  });
+}
+
 function areasOf(base: string, sections: StoreSection[]): StoreArea[] {
-  return [
+  return withoutCovered([
     { section: "home", prefixes: HOME_PATHS.map((p) => `${base}${p}`), exact: [base], groups: [] },
     ...sections.map((s) => ({
       section: s.key,
@@ -577,7 +601,7 @@ function areasOf(base: string, sections: StoreSection[]): StoreArea[] {
         })),
       })),
     })),
-  ];
+  ]);
 }
 
 /** The sidebar of each section (none for Home), by the addresses inside it: a section's page of cards matches only itself. */

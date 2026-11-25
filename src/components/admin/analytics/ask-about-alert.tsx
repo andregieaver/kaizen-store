@@ -15,7 +15,8 @@ function watchMark(changed: () => void): () => void {
   return () => observer.disconnect();
 }
 
-export function AskAboutAlert({ message, label, srLabel }: { message: string; label: string; srLabel: string }) {
+/** `className` draws it as another kind of button (the market check's *Make a plan*, D900); left out, it reads as a link beside an alert. */
+export function AskAboutAlert({ message, label, srLabel, className }: { message: string; label: string; srLabel: string; className?: string }) {
   const here = useSyncExternalStore(watchMark, () => document.documentElement.dataset.aiManager === "on", () => false);
   if (!here) return null;
   return (
@@ -23,7 +24,7 @@ export function AskAboutAlert({ message, label, srLabel }: { message: string; la
       type="button"
       data-ask-alert
       onClick={() => window.dispatchEvent(new CustomEvent<AskDetail>(ASK_AI_MANAGER_EVENT, { detail: { message } }))}
-      className="font-medium text-(--brand-text) underline-offset-2 hover:underline"
+      className={className ?? "font-medium text-(--brand-text) underline-offset-2 hover:underline"}
     >
       {label}
       <span className="sr-only">{srLabel}</span>
