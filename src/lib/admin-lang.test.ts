@@ -38,7 +38,7 @@ describe("the admin's language (D312 A0)", () => {
     expect(COMMON_WORDS.en.accountMenu.yourAccount).toBe("Your account");
     expect(Object.keys(areaTexts("nb", { common: COMMON_WORDS }))).toEqual(["common"]);
     // Every area and cut has its module (bloat review step 2.25), with the same groups in both languages.
-    expect(Object.keys(ALL_AREA_WORDS)).toHaveLength(118);
+    expect(Object.keys(ALL_AREA_WORDS)).toHaveLength(119);
     for (const [area, words] of Object.entries(ALL_AREA_WORDS)) expect(Object.keys(words.nb).sort(), area).toEqual(Object.keys(words.en).sort());
   });
 });

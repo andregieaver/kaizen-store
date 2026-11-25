@@ -8,9 +8,9 @@ import { describe, expect, it } from "vitest";
  * replaced, in the same order, and each key is read from its own module (`builder: BUILDER_WORDS`).
  */
 const EDITOR = ["builder", "blocks", "fieldsEditor", "productsEditor", "designEditor", "blogEditor", "schedulesEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions"];
-const PLATFORM_SITE = ["designEditor", "builder", "blocks", "fieldsEditor", "productsEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions", "canva"];
+const PLATFORM_SITE = ["designEditor", "builder", "blocks", "fieldsEditor", "productsEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions"];
 /** A store's editor adds Canva on its picture fields (D898 C2); the sandbox has no Canva. */
-const STORE_EDITOR = [...EDITOR, "canva"];
+const STORE_EDITOR = [...EDITOR, "canvaField"];
 
 const CASES = [
   { file: "src/app/admin/(gated)/[store]/pages/editor-views.tsx", name: "EDITOR_AREA_WORDS", areas: STORE_EDITOR },

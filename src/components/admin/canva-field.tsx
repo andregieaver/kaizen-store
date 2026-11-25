@@ -59,7 +59,7 @@ export function EditInCanvaButton({ current, onEdited, small = false }: { curren
 }
 
 function FieldButton({ canva, url, onEdited, compact }: { canva: CanvaField; url: string; onEdited: (picture: FromCanva) => void; compact: boolean }) {
-  const w = useAdminText("canva");
+  const w = useAdminText("canvaField");
   const [connected, setConnected] = useState(canva.connected);
   const [phase, setPhase] = useState<Phase>({ at: "idle" });
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);

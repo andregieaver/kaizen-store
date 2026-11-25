@@ -30,7 +30,7 @@ import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
 import { SCHEDULES_EDITOR_WORDS } from "@/lib/admin-words/schedules-editor";
 import { STORE_PARTS_WORDS } from "@/lib/admin-words/store-parts";
 import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
-import { CANVA_WORDS } from "@/lib/admin-words/canva";
+import { CANVA_FIELD_WORDS } from "@/lib/admin-words/canva-field";
 import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { typeOfLayout } from "@/server/content-types";
 import { checkPageTypeAccess, memberCan, requirePageTypeAccess } from "@/server/permissions";
@@ -46,7 +46,7 @@ import { saveStagedPageAction } from "./staging-actions";
 import { requireExtension } from "@/components/admin/extension-off";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
-const EDITOR_AREA_WORDS = { builder: BUILDER_WORDS, blocks: BLOCKS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, designEditor: DESIGN_EDITOR_WORDS, blogEditor: BLOG_EDITOR_WORDS, schedulesEditor: SCHEDULES_EDITOR_WORDS, storeParts: STORE_PARTS_WORDS, backdrops: BACKDROPS_WORDS, animation: ANIMATION_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS, builderVersions: BUILDER_VERSIONS_WORDS, canva: CANVA_WORDS };
+const EDITOR_AREA_WORDS = { builder: BUILDER_WORDS, blocks: BLOCKS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, designEditor: DESIGN_EDITOR_WORDS, blogEditor: BLOG_EDITOR_WORDS, schedulesEditor: SCHEDULES_EDITOR_WORDS, storeParts: STORE_PARTS_WORDS, backdrops: BACKDROPS_WORDS, animation: ANIMATION_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS, builderVersions: BUILDER_VERSIONS_WORDS, canvaField: CANVA_FIELD_WORDS };
 
 /**
  * A store's page editor and preview (D53, D57), apart from its lists (`views.tsx`): a list's route loads every client component its

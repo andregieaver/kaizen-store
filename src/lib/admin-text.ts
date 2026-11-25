@@ -180,6 +180,8 @@ export type AdminAreaMessages = {
   /** Cuts (bloat review step 2.27, `cut()` in `src/lib/admin-area.ts`, each a module in `src/lib/admin-words`): some groups of an area, the same objects, for screens whose parts read only those. */
   builderText: Pick<BuilderMessages, "richText" | "textStyles" | "responsive">;
   websitePick: Pick<WebsiteMessages, "picker" | "pictureMaker">;
+  /** What a picture field's *Edit in Canva* reads (D898 C2). */
+  canvaField: Pick<CanvaMessages, "edit" | "opening" | "connect" | "field" | "outcome" | "problems">;
   /** The AI manager's button and notices, on every screen; the chat's words (`assistant`) come with its start call. */
   assistantBar: Pick<AssistantMessages, "name" | "launcher" | "notices">;
   homeDrafts: Pick<HomeMessages, "drafts">;
