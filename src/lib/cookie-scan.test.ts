@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cookieNoteInput, parseScannedItems, reviewFindings, sameSite, type ScannedItem } from "./cookie-scan";
+import { cookieNoteInput, parseScannedItems, reviewFindings, sameSite, scanSite, SCAN_BUDGET_MS, type ScannedItem, type ScanTarget } from "./cookie-scan";
 
 const item = (over: Partial<ScannedItem>): ScannedItem => ({
   kind: "cookie",
@@ -78,5 +78,66 @@ describe("the recorder's items in a scan (D656)", () => {
     const note = { kind: "cookie", name: "x", domain: "example.com", provider: "Me", purpose: "Mine." };
     expect(cookieNoteInput.safeParse({ ...note, category: "statistics" }).success).toBe(true);
     expect(cookieNoteInput.safeParse({ ...note, category: "recordings" }).success).toBe(false);
+  });
+});
+
+/**
+ * A scan's time (incident a3cdb94e, D895): the route has 120 seconds, Chromium included; a scan used to try up to twelve pages twice at up
+ * to 23 seconds each, and a page that failed did not count, so a site of broken links ran until Vercel killed it and nothing was kept.
+ */
+describe("a cookie scan's time", () => {
+  /** A browser whose pages take `cost` milliseconds on the fake clock to open, or fail after it. */
+  function fakeBrowser(clock: { t: number }, cost: number, opens: boolean) {
+    const calls: { url: string; timeout: number }[] = [];
+    const page = {
+      goto: async (url: string, options: { timeout: number }) => {
+        calls.push({ url, timeout: options.timeout });
+        clock.t += Math.min(cost, options.timeout);
+        if (!opens) throw new Error("Timeout");
+        return { status: () => 200 };
+      },
+      waitForLoadState: async () => {},
+      $$eval: async () => [],
+      frames: () => [],
+    };
+    const context = { addCookies: async () => {}, newPage: async () => page, cookies: async () => [], close: async () => {} };
+    return { browser: { newContext: async () => context } as never, calls };
+  }
+  const target = (maxPages: number, starts: number): ScanTarget => ({
+    origin: "https://shop.example",
+    starts: Array.from({ length: starts }, (_, n) => `/p${n}`),
+    within: () => true,
+    consent: { name: "consent", value: "all" },
+    maxPages,
+  });
+
+  it("stops opening pages at its budget, and never waits for a page past it", async () => {
+    const clock = { t: 0 };
+    const { browser, calls } = fakeBrowser(clock, 20_000, false);
+    await expect(scanSite(browser, target(12, 30), { now: () => clock.t })).rejects.toThrow(/None of the site's pages opened/);
+    expect(clock.t).toBeLessThanOrEqual(SCAN_BUDGET_MS);
+    expect(calls.length).toBeLessThan(6);
+    let spent = 0;
+    for (const call of calls) {
+      expect(call.timeout).toBeLessThanOrEqual(SCAN_BUDGET_MS - spent);
+      spent += Math.min(20_000, call.timeout);
+    }
+  });
+
+  it("counts failed pages, so a site of broken links ends after twice its pages", async () => {
+    const clock = { t: 0 };
+    const { browser, calls } = fakeBrowser(clock, 100, false);
+    await expect(scanSite(browser, target(6, 30), { now: () => clock.t })).rejects.toThrow();
+    expect(calls).toHaveLength(12);
+  });
+
+  it("keeps what it found when the second visit runs out of time", async () => {
+    const clock = { t: 0 };
+    // Six pages at ten seconds: the first visit takes 60 seconds, the second gets three pages before the budget ends.
+    const { browser, calls } = fakeBrowser(clock, 10_000, true);
+    const result = await scanSite(browser, target(6, 6), { now: () => clock.t });
+    expect(result.pages).toHaveLength(6);
+    expect(calls).toHaveLength(9);
+    expect(clock.t).toBeLessThanOrEqual(SCAN_BUDGET_MS);
   });
 });

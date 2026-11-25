@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { CANVA_CONNECT, CANVA_DISCONNECT } from "@/lib/canva";
 import type { CanvaDesignItem } from "@/server/canva";
 import type { MediaItem } from "@/server/media-library";
 
@@ -11,6 +12,7 @@ import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import { CARD_CLASS } from "@/components/admin/ui/card";
 import { EmptyState } from "@/components/admin/ui/empty-state";
+import { buttonClass } from "@/components/admin/ui/button";
 
 /**
  * Canva in the media library (D898, `docs/design-tools.md` C1): the person's own Canva, connected once. *Import from Canva* brings a design
@@ -22,8 +24,8 @@ export type CanvaTools = {
   endpoint: string;
   /** The person's Canva, or null while it is not connected. `problem`: Canva no longer takes the connection. */
   account: { name: string; problem: boolean } | null;
-  /** Starts connecting: the browser goes to Canva and comes back to this library. */
-  connect: () => Promise<{ ok: false; problem: string }>;
+  /** The admin page a connect comes back to (this library). */
+  back: string;
   /** The person's latest edit of each picture here, by the picture's id, to bring it back again. */
   edits: Record<string, string>;
   /** An edit Canva's *Return* just brought the person back from (`?canva=`), to bring into the library now. */
@@ -47,33 +49,16 @@ async function ask<T>(endpoint: string, body: unknown, failed: string): Promise<
 const button = "min-h-10 rounded-pill border border-edge px-4 text-sm font-medium disabled:opacity-50";
 const main = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink hover:bg-brand-hover disabled:opacity-50";
 
-/** *Connect Canva*: one press, to Canva's consent page and back. */
-function ConnectButton({ canva, primary = true }: { canva: CanvaTools; primary?: boolean }) {
+/** *Connect Canva*: one press, to Canva's consent page and back to `back`. A plain form, so it works before any script. */
+function ConnectButton({ back, primary = true }: { back: string; primary?: boolean }) {
   const w = useAdminText("canva");
-  const [pending, start] = useTransition();
-  const [problem, setProblem] = useState<string | null>(null);
   return (
-    <>
-      <button
-        type="button"
-        disabled={pending}
-        className={primary ? main : button}
-        onClick={() =>
-          start(async () => {
-            const result = await canva.connect();
-            if (result && !result.ok) setProblem(result.problem);
-          })
-        }
-        data-canva-connect
-      >
+    <form method="post" action={CANVA_CONNECT}>
+      <input type="hidden" name="back" value={back} />
+      <button type="submit" className={primary ? main : button} data-canva-connect>
         {w.connect}
       </button>
-      {problem && (
-        <p role="alert" className="w-full text-sm text-danger-text">
-          {problem}
-        </p>
-      )}
-    </>
+    </form>
   );
 }
 
@@ -130,7 +115,7 @@ export function CanvaPanel({ canva, basePath, onOpen }: { canva: CanvaTools; bas
               {w.import}
             </button>
           ) : (
-            <ConnectButton canva={canva} primary={false} />
+            <ConnectButton back={canva.back} primary={false} />
           )}
         </div>
       </div>
@@ -320,7 +305,7 @@ export function EditInCanva({ item, canva, onOpen }: { item: MediaItem; canva: C
             )}
           </>
         ) : (
-          <ConnectButton canva={canva} primary={false} />
+          <ConnectButton back={canva.back} primary={false} />
         )}
       </div>
       {problem && (
@@ -338,18 +323,16 @@ export function EditInCanva({ item, canva, onOpen }: { item: MediaItem; canva: C
  */
 export function CanvaAccountCard({
   account,
-  connect,
-  disconnect,
+  back,
   library,
 }: {
   account: { name: string; problem: boolean } | null;
-  connect: () => Promise<{ ok: false; problem: string }>;
-  disconnect: () => Promise<void>;
+  /** This page, to come back to after connecting or disconnecting. */
+  back: string;
   /** The media library to go to, with its words; none on the account's own page. */
   library?: { href: string; label: string };
 }) {
   const w = useAdminText("canva");
-  const [pending, start] = useTransition();
   const connected = account && !account.problem;
   return (
     <section aria-label={w.title} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`} data-canva-account>
@@ -364,16 +347,19 @@ export function CanvaAccountCard({
           {connected ? (
             <>
               {library && (
-                <a href={library.href} className={main}>
+                <a href={library.href} className={buttonClass("main")}>
                   {library.label}
                 </a>
               )}
-              <button type="button" disabled={pending} className={button} onClick={() => start(() => disconnect())}>
-                {w.disconnect}
-              </button>
+              <form method="post" action={CANVA_DISCONNECT}>
+                <input type="hidden" name="back" value={back} />
+                <button type="submit" className={button}>
+                  {w.disconnect}
+                </button>
+              </form>
             </>
           ) : (
-            <ConnectButton canva={{ endpoint: "", account, connect, edits: {}, returned: null, outcome: null }} />
+            <ConnectButton back={back} />
           )}
         </div>
       </div>

@@ -19,7 +19,6 @@ import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
 import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
 import { CANVA_WORDS } from "@/lib/admin-words/canva";
 
-import { connectCanvaAction } from "../../(owner)/account/connected/actions";
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
 import {
   compressibleMediaAction,
@@ -87,7 +86,7 @@ async function Library({ storeSlug, searchParams }: { storeSlug: string; searchP
         edit: ai?.image?.editModel && uploadsEnabled() ? `/admin/${store.slug}/media/edit` : null,
         settingsHref: `/admin/${store.slug}/settings/ai`,
       }}
-      canva={canva ? { ...canva, endpoint: `${library}/canva`, connect: connectCanvaAction.bind(null, library) } : null}
+      canva={canva ? { ...canva, endpoint: `${library}/canva`, back: library } : null}
       upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
       startVideo={uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null}
       actions={{

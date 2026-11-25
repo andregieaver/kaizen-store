@@ -704,7 +704,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 - **Canva (D898, `docs/design-tools.md` C1, `src/lib/canva.ts`, `src/server/canva.ts`, `src/server/canva-route.ts`)**: a person's own Canva,
   not a store's (Canva's edit links work only for the Canva user who owns the design): `commerce.design_connections`, one per account and
-  `provider`, written only by `canva.ts` (and deleted by `account-erasure.ts`), connected by anyone signed in (`connectCanvaAction`, from a
+  `provider`, written only by `canva.ts` (and deleted by `account-erasure.ts`), connected by anyone signed in (a plain form posted to `/api/integrations/canva/connect`, and `/disconnect`, never a server action, from a
   media library, a store's Integrations → Canva or Account → Connected apps) and used in a library only where the person may change its
   pictures (`website:write`, or a platform admin's `website` for Kaizena Flow's). Off without `CANVA_CLIENT_ID` and `CANVA_CLIENT_SECRET`
   (`canvaApp()`, `canvaOffered()`). Connect is Canva's authorization code with PKCE (S256) and only `CANVA_SCOPES`; the state, the person and
