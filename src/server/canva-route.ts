@@ -82,10 +82,13 @@ export async function storeProductCanvaRequest(request: Request, storeSlug: stri
   return answer(request, { storeId: member.store.id, storeSlug: member.store.slug, accountId: member.account.id }, member.account.adminLocale, FIELD_ONLY);
 }
 
-/** A social post's picture (C3): a member who may change the store's marketing (`marketing:write`), only for the post's own edit. */
+/**
+ * A social post's picture (C3): a member who may change the store's marketing (`marketing:write`), in a store with the social media manager
+ * (the paid extension `social`, D870 S1.6), only for the post's own edit.
+ */
 export async function storeSocialCanvaRequest(request: Request, storeSlug: string): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
-  const member = await checkPermission(storeSlug, "marketing:write");
+  const member = await checkPermission(storeSlug, "marketing:write", "social");
   if (!member) return new Response("Not found", { status: 404 });
   const owner = { storeId: member.store.id, storeSlug: member.store.slug, accountId: member.account.id };
   return answer(request, owner, member.account.adminLocale, POST_ONLY, { member, origin: new URL(request.url).origin });

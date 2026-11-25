@@ -43,7 +43,7 @@ export const DELEGATED_GUARDS: Record<string, string> = {
   storeCanvaRequest: "src/server/canva-route.ts",
   /** *Edit in Canva* on a product's photos (C2): `products:write`. */
   storeProductCanvaRequest: "src/server/canva-route.ts",
-  /** *Edit in Canva* on a social post's picture (C3): `marketing:write`. */
+  /** *Edit in Canva* on a social post's picture (C3): `marketing:write`, with the `social` extension. */
   storeSocialCanvaRequest: "src/server/canva-route.ts",
   /** *Change with AI* in the page builder (D351): `checkPageTypeAccess()` for the kind of page sent. */
   storeChangeRequest: "src/server/page-change-route.ts",
