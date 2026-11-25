@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { CANVA_CONNECT, CANVA_DISCONNECT } from "@/lib/canva";
+import { CANVA_CONNECT, CANVA_DISCONNECT } from "@/lib/canva-paths";
 import type { CanvaDesignItem } from "@/server/canva";
 import type { MediaItem } from "@/server/media-library";
 

@@ -31,9 +31,9 @@
     "shop|marketing": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 162168,
+      "toolChars": 159983,
       "alwaysSentChars": 36543,
-      "totalChars": 177829
+      "totalChars": 175644
     },
     "shop|analytics": {
       "promptChars": 15661,
@@ -122,9 +122,9 @@
     "all|marketing": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 158743,
+      "toolChars": 157527,
       "alwaysSentChars": 36573,
-      "totalChars": 175284
+      "totalChars": 174068
     },
     "all|analytics": {
       "promptChars": 16541,
@@ -221,10 +221,10 @@
     },
     "autopilot_event": {
       "promptChars": 17246,
-      "toolCount": 46,
-      "toolChars": 32305,
+      "toolCount": 47,
+      "toolChars": 32843,
       "alwaysSentChars": 0,
-      "totalChars": 49551,
+      "totalChars": 50089,
       "case": "review"
     },
     "platform": {
@@ -638,6 +638,8 @@
     "setup_progress": 668,
     "shipping_overview": 1216,
     "shopify_move": 1024,
+    "social_plan": 371,
+    "social_report": 537,
     "speed_report": 667,
     "start_autopilot_plan": 644,
     "start_dns_move_here": 819,
@@ -678,7 +680,8 @@
     "work_overview": 353,
     "write_cart_reminder": 1991,
     "write_email_automation": 2290,
-    "write_product_texts": 1848
+    "write_product_texts": 1848,
+    "write_social_posts": 1122
   },
   "limits": {
     "manager": {

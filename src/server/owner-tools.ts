@@ -1,5 +1,7 @@
 import "server-only";
 
+import { socialPlanTool, socialReportTool, writeSocialPostsTool } from "./social-tools";
+
 import type { shopifyMoveTool as ShopifyMoveTool } from "./shopify-move-tool";
 import type { marketCheckTool as MarketCheckTool } from "./market-check-tool";
 import { sql } from "drizzle-orm";
@@ -2606,6 +2608,9 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   tag_customer: tagCustomerTool,
   list_email_automations: listAutomationsTool,
   list_flows: listFlowsTool,
+  social_report: socialReportTool,
+  social_plan: socialPlanTool,
+  write_social_posts: writeSocialPostsTool,
   start_flow: startFlowTool,
   create_flow: createFlowTool,
   change_flow: changeFlowTool,

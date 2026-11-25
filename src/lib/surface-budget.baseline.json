@@ -17,8 +17,8 @@
   },
   "basicLinks": 46,
   "platformLinks": 58,
-  "storeTools": 299,
-  "shopOnlyTools": 269,
+  "storeTools": 302,
+  "shopOnlyTools": 272,
   "managerTools": 28,
   "featureIds": 14,
   "tables": 563,
@@ -527,6 +527,18 @@
       "decision": "D870"
     },
     {
+      "count": "storeTools",
+      "from": 298,
+      "to": 301,
+      "decision": "D870"
+    },
+    {
+      "count": "shopOnlyTools",
+      "from": 268,
+      "to": 271,
+      "decision": "D870"
+    },
+    {
       "count": "pages",
       "from": 609,
       "to": 610,
@@ -540,14 +552,14 @@
     },
     {
       "count": "storeTools",
-      "from": 298,
-      "to": 299,
+      "from": 301,
+      "to": 302,
       "decision": "D900"
     },
     {
       "count": "shopOnlyTools",
-      "from": 268,
-      "to": 269,
+      "from": 271,
+      "to": 272,
       "decision": "D900"
     },
     {

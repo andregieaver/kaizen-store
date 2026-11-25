@@ -63,6 +63,7 @@ export const REVIEW_READ_TOOLS = [
   "list_broadcasts",
   "list_email_automations",
   "list_flows",
+  "social_report",
   "list_text_messages",
   "list_themes",
   "legal_pages_status",

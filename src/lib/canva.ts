@@ -21,9 +21,6 @@ export const CANVA_KEYS = `${CANVA_API}/v1/connect/keys`;
 export const CANVA_SCOPES = ["asset:read", "asset:write", "design:meta:read", "design:content:read", "design:content:write", "profile:read"] as const;
 
 export const CANVA_CALLBACK = "/api/integrations/canva/callback";
-/** The forms that start and end a person's connection (plain posts, so they work before any script and add no server action). */
-export const CANVA_CONNECT = "/api/integrations/canva/connect";
-export const CANVA_DISCONNECT = "/api/integrations/canva/disconnect";
 export const CANVA_THUMBNAIL = "/api/integrations/canva/thumbnail";
 /** The state cookie: only sent to the integration's own paths, for a quarter of an hour. */
 export const CANVA_STATE_COOKIE = "kaizen_canva";

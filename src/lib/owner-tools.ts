@@ -2375,6 +2375,25 @@ const ALL_OWNER_TOOLS = [
     }),
   ),
   tool(
+    "social_report",
+    "The social media adviser's newest answer for the store (D870 S1.4): its three verdicts, its recommendations and the posts it planned for the next two weeks, with the figures it read (sales, social media's share, the products worth a post, the Instagram account summed up) and when it was written. Use it for questions about how the store does on social media, and say its figures as given. None yet: offer social_plan.",
+    z.object({}),
+  ),
+  tool(
+    "social_plan",
+    "Asks the social media adviser for a new answer from the store's figures now (D870 S1.4): three verdicts, recommendations and a two-week plan, kept for the Social posts page. It uses the store's AI. Only when the owner asks for new advice or none is kept.",
+    z.object({}),
+  ),
+  tool(
+    "write_social_posts",
+    "Writes social media posts with the store's post creator (D870 C1): a caption and hashtags per channel, a tagged link and a picture, kept on the Social posts page for the owner to copy into each channel by hand. Nothing is posted. About one product (its id from social_report's products), or a topic in the owner's words.",
+    z.object({
+      channels: z.array(z.enum(["instagram", "facebook", "pinterest", "tiktok", "linkedin"])).min(1).max(5).describe("The channels to write for."),
+      product_id: z.uuid().nullable().default(null).describe("A product's id from social_report, or null."),
+      topic: z.string().trim().max(500).default("").describe("What the posts are about, in a few words, when there is no product."),
+    }),
+  ),
+  tool(
     "issue_gift_card",
     "Issues a gift card by hand (a goodwill gesture, a prize) and emails it to the person it is for: its code goes only in that email and is never shown here or kept. In a currency the store sells in, the store's main one unless said; the store's expiry applies. A card is money the store owes until it is spent. Needs the owner's approval.",
     z.object({
