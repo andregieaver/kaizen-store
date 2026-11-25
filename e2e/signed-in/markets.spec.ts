@@ -147,7 +147,12 @@ test.describe("as a store's owner, keeping rivals", () => {
 
   test("adds a rival through the form and removes it again, both through the page's one server function", async ({ page }) => {
     await page.goto(`/admin/${slug}/analytics/markets?period=30d`);
+    // Once the page has woken up (as the a11y spec's first key): a click on the fold while it hydrates can be undone, and the forms
+    // answer only once they have hydrated.
+    await expect(page.getByRole("region", { name: "What to do in your markets" }).locator("[data-finding]")).toHaveCount(3);
+    await page.waitForLoadState("networkidle");
     await page.getByText("See every country and every finding").click();
+    await expect(page.locator("[data-every-country]")).toHaveAttribute("open", "");
     const rivals = page.locator('section[aria-labelledby="market-rivals"]');
     await rivals.getByLabel("Shop's name").fill("Vev");
     await rivals.getByLabel("Web address").fill("https://www.vev.example/om");
