@@ -1324,6 +1324,13 @@
       "when": 1795626865716,
       "tag": "20261125171425_social_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1795627914891,
+      "tag": "20261125173154_social_vision",
+      "breakpoints": true
     }
   ]
 }

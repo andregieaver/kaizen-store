@@ -110,9 +110,20 @@ manager's tools and the weekly review carry them. Pages of other businesses need
 |---|---|
 | S2.1 | Templates and the composer (picture from code + photo + made background) |
 | S2.2 | The caption writer per channel, with the filters and the tagged link |
-| S2.3 | The vision check |
-| S2.4 | The calendar screen, approval per post and per week. **Done 2026-11-25**: *Your posting plan* on Social posts (`socialCalendar()`, `src/server/social-calendar.ts`): the adviser's two weeks with their drafts (`social_posts.planned_for`), *Write this week's posts* then *Approve the week*; per post write, change the words (the claims filter again, the yes taken back), approve or take back (`approved_at`, `approved_by`). Swapping a post's picture comes with S2.1 |
+| S2.3 | The vision check. **Done 2026-11-25** (below) |
+| S2.4 | The calendar screen, approval per post and per week. **Done 2026-11-25** (below) |
 | S2.5 | Slideshow video |
+
+S2.4 as built: *Your posting plan* on Social posts (`socialCalendar()`, `src/server/social-calendar.ts`) lays the adviser's two weeks with
+their drafts (`social_posts.planned_for`); Homer writes the week's posts, then approves the week; Lisa writes, changes the words of (the
+claims filter again, the yes taken back), approves or takes back each post (`approved_at`, `approved_by`). Four columns and one route
+(`social/calendar`); no job, no table.
+
+S2.3 as built: each post written on the calendar has its picture (its Canva one, else drawn) looked at by the store's model that sees
+pictures (`checkSocialPosts()`, `src/server/social-vision.ts`; prompt and verdict in `src/lib/social-vision.ts`): readable words, the
+subject shown, nothing cut off, the shop's look. The verdict is kept on the post (`checked_at`, `check_problems`, `check_note`); a failed
+post is shown with its reason and left out of *Approve the week*, and *Check the picture* asks again. One vision call per post, metered as
+`social_posts`. A failed picture is not made again yet: a drawn picture is the same each time, so remaking comes with S2.1's made backgrounds.
 
 ## 6. Last: posting on a schedule
 
