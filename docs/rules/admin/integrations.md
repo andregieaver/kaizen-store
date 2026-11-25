@@ -722,3 +722,13 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `/api/integrations/canva/thumbnail`, which reads only addresses this server signed (`thumbnailAddress()`) from Canva's file hosts. Only
   what the person presses leaves: never a customer's data. A new tool is a `provider` in both tables' checks with its own module beside
   this one, through the same tables (`docs/design-tools.md` sections 3 and 4).
+- **Canva on picture fields (D898 C2, `src/components/admin/canva-field.tsx`, `canvaForField()`)**: every picture field under the page
+  builder (stores' and Kaizena Flow's) and each product photo offer *Edit in Canva* where `canvaForField()` gives one (Canva set up,
+  uploads on, the person allowed the route: `website:write` for the builder through the library's route, `products:write` for the product
+  editor's own `/admin/{store}/products/canva`, which takes only `edit`, `status` and `bring`). The field's picture is found by its address
+  among the site's own library rows (`url`, `thumbnail_url` or `medium_url`, `owned()`), never fetched from the address. The tab is opened
+  on the press and severed from its opener before it goes to Canva; the edit row keeps `place = 'field'`, so Canva's *Return* lands on
+  `CANVA_BACK` (`/admin/account/canva-back`), a page that shows nothing of the edit and only tells this site's tabs (`CANVA_CHANNEL`) the
+  edit's id, or how a connect ended. The field then asks its own signed-in route (`status`, every few seconds and when its tab is seen
+  again) and brings the copy in as C1 does; the field takes the new item's address, the original untouched. The words come from the
+  `canva` area, handed only by the editors that offer it, so a field without a provider draws nothing and loads no words.

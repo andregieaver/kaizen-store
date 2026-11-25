@@ -9,6 +9,7 @@ import type { CanvaDesignItem } from "@/server/canva";
 import type { MediaItem } from "@/server/media-library";
 
 import { useAdminText } from "./admin-text";
+import { ask } from "./canva-field";
 import { Modal } from "./modal";
 import { CARD_CLASS } from "@/components/admin/ui/card";
 import { EmptyState } from "@/components/admin/ui/empty-state";
@@ -33,18 +34,6 @@ export type CanvaTools = {
   /** How a connect just ended (`?canva=connected`, `declined` or `failed`). */
   outcome: "connected" | "declined" | "failed" | null;
 };
-
-type Answer<T> = ({ ok: true } & T) | { ok: false; problem: string; reconnect?: boolean };
-
-async function ask<T>(endpoint: string, body: unknown, failed: string): Promise<Answer<T>> {
-  try {
-    const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const json = (await response.json().catch(() => null)) as Answer<T> | null;
-    return json ?? { ok: false, problem: failed };
-  } catch {
-    return { ok: false, problem: failed };
-  }
-}
 
 const button = "min-h-10 rounded-pill border border-edge px-4 text-sm font-medium disabled:opacity-50";
 const main = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink hover:bg-brand-hover disabled:opacity-50";

@@ -1,6 +1,6 @@
 {
-  "id": "b3f551a3-caa9-4be8-b45f-e58fc3f4e68c",
-  "prevId": "72d1264d-0e03-49c3-872d-364e8d3d9d62",
+  "id": "3bab26a2-7e33-4d34-b7cb-c1f631b1de1a",
+  "prevId": "b3f551a3-caa9-4be8-b45f-e58fc3f4e68c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -27410,6 +27410,13 @@
           "notNull": true,
           "default": "'open'"
         },
+        "place": {
+          "name": "place",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'library'"
+        },
         "result_media_id": {
           "name": "result_media_id",
           "type": "uuid",
@@ -27601,6 +27608,10 @@
         "design_edits_status": {
           "name": "design_edits_status",
           "value": "\"commerce\".\"design_edits\".\"status\" in ('open', 'returned', 'brought')"
+        },
+        "design_edits_place": {
+          "name": "design_edits_place",
+          "value": "\"commerce\".\"design_edits\".\"place\" in ('library', 'field')"
         },
         "design_edits_design": {
           "name": "design_edits_design",

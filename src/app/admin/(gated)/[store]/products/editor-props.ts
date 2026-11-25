@@ -8,6 +8,7 @@ import type { Store } from "@/server/stores";
 import type { EditorContext } from "@/server/products";
 import { uploadsEnabled } from "@/server/media";
 import { canMakePictures } from "@/server/picture-maker";
+import { canvaForField } from "@/server/canva";
 
 /** The props every editor page passes along (D349: whether pictures can be made), besides the product itself; languages are named in the admin's language (D312 A5). */
 export async function editorProps(store: Store, context: EditorContext, lang: AdminLang = "en") {
@@ -20,6 +21,8 @@ export async function editorProps(store: Store, context: EditorContext, lang: Ad
     uploads: uploadsEnabled(),
     // *Make with AI* for the product's pictures (D349), only while the store's AI has a picture model.
     pictures: uploadsEnabled() && (await canMakePictures(store.id)) ? { endpoint: `/admin/${store.slug}/products/picture` } : null,
+    // *Edit in Canva* on the product's photos (D898 C2), through the products' own Canva route.
+    canva: await canvaForField(`/admin/${store.slug}/products/canva`, store.slug, "products:write"),
     // Full addresses once the store has its own host (P7), so siteOrigin is then empty.
     storefrontPath: store.markets[0] ? storeHref(store.slug, marketPath(store.slug, store.markets[0].slug)) : null,
     siteOrigin: storeOrigin(store.slug) ? "" : siteUrl(),

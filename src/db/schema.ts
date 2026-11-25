@@ -11826,6 +11826,11 @@ export const designEdits = commerce.table(
     correlationHash: text("correlation_hash").notNull(),
     /** `open` (sent to the tool), `returned` (the person came back from it), `brought` (brought into the library at least once). */
     status: text("status").notNull().default("open"),
+    /**
+     * Where the edit started (C2): `library` (the media library, which Canva's *Return* comes back to) or `field` (a picture field in the
+     * page builder or the product editor, which opened Canva in a tab of its own and waits for the design while its page stays open).
+     */
+    place: text("place").notNull().default("library"),
     resultMediaId: uuid("result_media_id").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
     broughtAt: timestamp("brought_at", { withTimezone: true }),
@@ -11842,6 +11847,7 @@ export const designEdits = commerce.table(
     index("design_edits_result_idx").on(t.resultMediaId),
     check("design_edits_provider", sql`${t.provider} in ('canva')`),
     check("design_edits_status", sql`${t.status} in ('open', 'returned', 'brought')`),
+    check("design_edits_place", sql`${t.place} in ('library', 'field')`),
     check("design_edits_design", sql`${t.designId} ~ '^[A-Za-z0-9_-]{1,100}$'`),
     check("design_edits_correlation", sql`${t.correlationHash} ~ '^[0-9a-f]{64}$'`),
     check("design_edits_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),

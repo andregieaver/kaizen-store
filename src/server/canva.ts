@@ -40,18 +40,21 @@ import {
   thumbnailAddress,
   type CanvaKey,
 } from "@/lib/canva";
+import { CANVA_BACK, type CanvaField } from "@/lib/canva-paths";
+import type { PermissionKey } from "@/lib/permissions";
 import { canvaApp } from "@/lib/env";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 
 import { shrinkPicture } from "./ai-pictures";
-import { audit } from "./auth";
+import { audit, getAccount, getMembership, platformCan } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import { storageRefusal } from "./limits";
 import { log } from "./log";
-import { downloadStoredFile } from "./media";
+import { downloadStoredFile, uploadsEnabled } from "./media";
 import { storePicture } from "./media-library";
 import { owned } from "./owned";
+import { memberCan } from "./permissions";
 import { loadSharp } from "./sharp-load";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -95,6 +98,12 @@ export const canvaOffered = (deps: CanvaDeps = {}): boolean => appOf(deps) !== n
 /** What went wrong, as a key the route says in the person's language. `canva` carries Canva's own words. */
 export type CanvaProblem = "off" | "not_connected" | "reconnect" | "gone" | "unreadable" | "unreachable" | "slow" | "license" | "busy" | "storage" | "canva";
 export type CanvaOutcome<T> = ({ ok: true } & T) | { ok: false; problem: CanvaProblem; detail?: string };
+
+/** Where an edit started: the media library, or a picture field that waits for it in its own tab (C2). */
+export type EditPlace = "library" | "field";
+
+/** A picture from Canva as kept in the library: its row, its address and small copy, and its size, so a picture field can take it. */
+export type BroughtPicture = { mediaId: string; url: string; thumbnailUrl: string | null; width: number; height: number };
 
 /** Whose library: a store's (its id and slug), or Kaizena Flow's (both null), and the person working in it. */
 export type CanvaOwner = { storeId: string | null; storeSlug: string | null; accountId: string };
@@ -355,12 +364,21 @@ async function pollJob<T extends { job: { status: string } }>(
  * design of its size is made with it, and an edit row keeps the design and a one-time correlation. The answer is the design's edit link
  * carrying that correlation, for the browser to go to.
  */
-export async function startCanvaEdit(owner: CanvaOwner, mediaId: string, deps: CanvaDeps = {}): Promise<CanvaOutcome<{ url: string; editId: string }>> {
+export async function startCanvaEdit(
+  owner: CanvaOwner,
+  target: string | { mediaId?: string; url?: string },
+  deps: CanvaDeps = {},
+  place: EditPlace = "library",
+): Promise<CanvaOutcome<{ url: string; editId: string }>> {
   if (!canvaOffered(deps)) return { ok: false, problem: "off" };
-  if (!z.uuid().safeParse(mediaId).success) return { ok: false, problem: "gone" };
+  const { mediaId, url } = typeof target === "string" ? { mediaId: target, url: undefined } : target;
+  if (mediaId ? !z.uuid().safeParse(mediaId).success : !url || url.length > 1000 || !/^https?:\/\//.test(url)) return { ok: false, problem: "gone" };
+  // A picture field holds only its picture's address: the picture must be one the site's own library holds (by its file or its small copy).
   const picture = await typedRow(
     z.object({ id: col.uuid, bucket: col.text, path: col.text, file_name: col.text, width: z.number().int().nullable(), height: z.number().int().nullable() }),
-    sql`select id, bucket, path, file_name, width, height from commerce.media where id = ${mediaId}::uuid and kind = 'image' and ${owned(owner.storeId)}`,
+    sql`select id, bucket, path, file_name, width, height from commerce.media
+        where ${mediaId ? sql`id = ${mediaId}::uuid` : sql`(url = ${url ?? ""} or thumbnail_url = ${url ?? ""} or medium_url = ${url ?? ""})`} and kind = 'image' and ${owned(owner.storeId)}
+        limit 1`,
   );
   if (!picture) return { ok: false, problem: "gone" };
   const bytes = await downloadStoredFile(picture.bucket, picture.path);
@@ -403,8 +421,8 @@ export async function startCanvaEdit(owner: CanvaOwner, mediaId: string, deps: C
   if (!url) return { ok: false, problem: "canva" };
   const row = await typedRow(
     z.object({ id: col.uuid }),
-    sql`insert into commerce.design_edits (store_id, account_id, provider, design_id, source_media_id, correlation_hash)
-        values (${owner.storeId}::uuid, ${owner.accountId}::uuid, 'canva', ${design.data.design.id}, ${picture.id}::uuid, ${hash}) returning id`,
+    sql`insert into commerce.design_edits (store_id, account_id, provider, design_id, source_media_id, correlation_hash, place)
+        values (${owner.storeId}::uuid, ${owner.accountId}::uuid, 'canva', ${design.data.design.id}, ${picture.id}::uuid, ${hash}, ${place}) returning id`,
   );
   if (!row) return { ok: false, problem: "canva" };
   return { ok: true, url, editId: row.id };
@@ -444,8 +462,8 @@ export async function canvaReturned(params: URLSearchParams, deps: CanvaDeps = {
   }
   const { designId, correlation, userId, teamId } = read.value;
   const edit = await typedRow(
-    z.object({ id: col.uuid, account_id: col.uuid, slug: col.textOrNull, store_id: col.textOrNull, user_id: col.textOrNull, team_id: col.textOrNull }),
-    sql`select e.id, e.account_id, s.slug, e.store_id, c.external_user_id as user_id, c.external_team_id as team_id
+    z.object({ id: col.uuid, account_id: col.uuid, slug: col.textOrNull, store_id: col.textOrNull, user_id: col.textOrNull, team_id: col.textOrNull, place: col.text }),
+    sql`select e.id, e.account_id, s.slug, e.store_id, c.external_user_id as user_id, c.external_team_id as team_id, e.place
         from commerce.design_edits e
         left join commerce.stores s on s.id = e.store_id
         left join commerce.design_connections c on c.account_id = e.account_id and c.provider = 'canva'
@@ -458,7 +476,17 @@ export async function canvaReturned(params: URLSearchParams, deps: CanvaDeps = {
     update commerce.design_edits set status = case when status = 'open' then 'returned' else status end, returned_at = now(), updated_at = now()
     where id = ${edit.id}::uuid and ${owned(edit.store_id)}
   `);
-  return `${library}?canva=${edit.id}`;
+  return edit.place === "field" ? `${CANVA_BACK}?edit=${edit.id}` : `${library}?canva=${edit.id}`;
+}
+
+/** Where a person's edit stands, for a picture field waiting on it in another tab: `open` until Canva's *Return*, then `returned`. */
+export async function canvaEditStatus(owner: CanvaOwner, editId: string): Promise<CanvaOutcome<{ status: "open" | "returned" | "brought" }>> {
+  if (!z.uuid().safeParse(editId).success) return { ok: false, problem: "gone" };
+  const row = await typedRow(
+    z.object({ status: z.enum(["open", "returned", "brought"]) }),
+    sql`select status from commerce.design_edits where id = ${editId}::uuid and account_id = ${owner.accountId}::uuid and provider = 'canva' and ${owned(owner.storeId)}`,
+  );
+  return row ? { ok: true, status: row.status } : { ok: false, problem: "gone" };
 }
 
 /** Exports a design's first page as PNG and reads the file from Canva's export host. */
@@ -498,7 +526,7 @@ async function keepInLibrary(
   bytes: Uint8Array,
   fileName: string,
   editedFrom: string | null,
-): Promise<{ ok: true; mediaId: string } | { ok: false; problem: CanvaProblem; detail?: string }> {
+): Promise<({ ok: true } & BroughtPicture) | { ok: false; problem: CanvaProblem; detail?: string }> {
   let shrunk: Awaited<ReturnType<typeof shrinkPicture>>;
   try {
     shrunk = await shrinkPicture(bytes);
@@ -521,14 +549,14 @@ async function keepInLibrary(
     },
   );
   if (!stored.ok || !stored.id) return { ok: false, problem: "storage", ...(!stored.ok ? { detail: stored.problem } : {}) };
-  return { ok: true, mediaId: stored.id };
+  return { ok: true, mediaId: stored.id, url: stored.url, thumbnailUrl: stored.thumbnailUrl ?? null, width: shrunk.width, height: shrunk.height };
 }
 
 /**
  * Brings an edit back from Canva into the library (after *Return*, or again later): the person's own edit in this library, its design's
  * first page exported and kept as a new picture edited from the original, which stays as it was. The edit row names the latest copy.
  */
-export async function bringBackFromCanva(owner: CanvaOwner, editId: string, deps: CanvaDeps = {}): Promise<CanvaOutcome<{ mediaId: string }>> {
+export async function bringBackFromCanva(owner: CanvaOwner, editId: string, deps: CanvaDeps = {}): Promise<CanvaOutcome<BroughtPicture>> {
   if (!canvaOffered(deps)) return { ok: false, problem: "off" };
   if (!z.uuid().safeParse(editId).success) return { ok: false, problem: "gone" };
   const edit = await typedRow(
@@ -550,7 +578,7 @@ export async function bringBackFromCanva(owner: CanvaOwner, editId: string, deps
     where id = ${edit.id}::uuid and ${owned(owner.storeId)}
   `);
   await audit(owner.accountId, owner.storeId, owner.storeId ? "store.media_canva_edited" : "platform.media_canva_edited", { mediaId: kept.mediaId, from: edit.source });
-  return { ok: true, mediaId: kept.mediaId };
+  return kept;
 }
 
 /** The person's latest edit of each picture in this library, so a picture can be brought back from Canva again: by the picture's id. */
@@ -599,7 +627,7 @@ export async function listCanvaDesigns(
 }
 
 /** *Import from Canva*: one of the person's designs, its first page exported and kept in the library as a new picture. */
-export async function importCanvaDesign(owner: CanvaOwner, designId: unknown, deps: CanvaDeps = {}): Promise<CanvaOutcome<{ mediaId: string }>> {
+export async function importCanvaDesign(owner: CanvaOwner, designId: unknown, deps: CanvaDeps = {}): Promise<CanvaOutcome<BroughtPicture>> {
   if (!canvaOffered(deps)) return { ok: false, problem: "off" };
   if (typeof designId !== "string" || !CANVA_ID.test(designId)) return { ok: false, problem: "gone" };
   const read = await canvaCall(owner.accountId, "GET", `/v1/designs/${encodeURIComponent(designId)}`, {}, deps);
@@ -611,7 +639,7 @@ export async function importCanvaDesign(owner: CanvaOwner, designId: unknown, de
   const kept = await keepInLibrary(owner, exported.bytes, importedFileName(design.data.design.title), null);
   if (!kept.ok) return kept;
   await audit(owner.accountId, owner.storeId, owner.storeId ? "store.media_canva_imported" : "platform.media_canva_imported", { mediaId: kept.mediaId });
-  return { ok: true, mediaId: kept.mediaId };
+  return kept;
 }
 
 /** One of Canva's thumbnails through our signed address (`/api/integrations/canva/thumbnail`): only Canva's file hosts, only links handed out here. */
@@ -644,4 +672,16 @@ export async function canvaForLibrary(
   const returned = typeof value === "string" && z.uuid().safeParse(value).success ? value : null;
   const outcome = value === "connected" || value === "declined" || value === "failed" ? value : null;
   return { account: account ? { name: account.name, problem: account.problem !== null } : null, edits, returned, outcome };
+}
+
+/**
+ * *Edit in Canva* for an editor's picture fields (C2): offered where Canva is set up, pictures can be kept and the signed-in person may use
+ * the route (`key` in a store, the website area on Kaizena Flow's own); null elsewhere, and the field draws nothing.
+ */
+export async function canvaForField(endpoint: string, storeSlug: string | null, key: PermissionKey): Promise<CanvaField | null> {
+  if (!canvaOffered() || !uploadsEnabled()) return null;
+  const person = storeSlug ? ((m) => (m && memberCan(m, key) ? m.account : null))(await getMembership(storeSlug)) : await getAccount();
+  if (!person || (!storeSlug && !platformCan(person, "website"))) return null;
+  const account = await canvaAccount(person.id);
+  return { endpoint, connected: account !== null && account.problem === null };
 }

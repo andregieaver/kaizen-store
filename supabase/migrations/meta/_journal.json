@@ -1275,6 +1275,13 @@
       "when": 1795607091930,
       "tag": "20261125114451_social_advice",
       "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1795611962512,
+      "tag": "20261125130602_omniscient_satana",
+      "breakpoints": true
     }
   ]
 }

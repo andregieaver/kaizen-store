@@ -6,6 +6,7 @@ import { BLOCKS_WORDS } from "@/lib/admin-words/blocks";
 import { BUILDER_WORDS } from "@/lib/admin-words/builder";
 import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
 import { BUILDER_VERSIONS_WORDS } from "@/lib/admin-words/builder-versions";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
 import { DESIGN_EDITOR_WORDS } from "@/lib/admin-words/design-editor";
 import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
 import { PRODUCTS_EDITOR_WORDS } from "@/lib/admin-words/products-editor";
@@ -18,4 +19,4 @@ import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
  * (bloat review step 2.27). Apart from `platform-site-words.ts`, so the pages and actions that only read the site's words do not load
  * the builder's.
  */
-export const PLATFORM_SITE_AREA_WORDS = { designEditor: DESIGN_EDITOR_WORDS, builder: BUILDER_WORDS, blocks: BLOCKS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, storeParts: STORE_PARTS_WORDS, backdrops: BACKDROPS_WORDS, animation: ANIMATION_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS, builderVersions: BUILDER_VERSIONS_WORDS };
+export const PLATFORM_SITE_AREA_WORDS = { designEditor: DESIGN_EDITOR_WORDS, builder: BUILDER_WORDS, blocks: BLOCKS_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, storeParts: STORE_PARTS_WORDS, backdrops: BACKDROPS_WORDS, animation: ANIMATION_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS, builderVersions: BUILDER_VERSIONS_WORDS, canva: CANVA_WORDS };

@@ -60,6 +60,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Pages, blog (one), content types, media, menus, headers, footers, fonts, design | Website | Website (a twin: `platform_theme_installs`, `platform_page_roles`) |
 | Templates, themes | Website, Design | Themes, Templates |
 | Canva in the media library: *Edit in Canva*, *Import from Canva* (D898; a person's own Canva, used in every library they work in) | Website → Media, Integrations → Canva | Website → Media, Account → Connected apps |
+| *Edit in Canva* on picture fields (D898 C2): the page builder's, and a product's photos (Kaizena Flow sells plans: no product editor) | The page builder, Products → a product | Kaizena Flow's page builder |
 | The AI manager and autopilot | AI manager | Settings → AI manager |
 | Support desk and chat assistant | Support | Support (a store's handoff requests do not apply: Kaizena Flow's AI never acts on a store, `docs/support.md` 2.8) |
 | Speed | Analytics → Speed | Usage and limits → speed (`own_speed_samples`) |
