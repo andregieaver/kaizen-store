@@ -49,6 +49,30 @@ describe("reading a company's site (D894)", () => {
     expect(asked[0].user).toContain("Vegansk kafé");
   });
 
+  it("finds the company's door in a mailto link in the footer, else on its contact page (D899)", async () => {
+    const connection = { textModel: "m", provider: "openai", source: "platform", apiUrl: "https://ai.example", apiKey: "k", space: null } as never;
+    const actor = { account: store.account, store: { id: store.id } as never };
+    const html = (body: string) => `<html><body><main><h1>Kafé</h1><p>${"Vi lager kaffe i Oslo. ".repeat(15)}</p></main>${body}</body></html>`;
+    const fetched: string[] = [];
+    const site = (pages: Record<string, string>) =>
+      (async (url: string): Promise<Fetched> => {
+        fetched.push(new URL(url).pathname);
+        const body = pages[new URL(url).pathname];
+        return body === undefined ? ({ ok: false, url, problem: "404" } as never) : { ok: true, url, status: 200, contentType: "text/html", bytes: new TextEncoder().encode(body) };
+      }) as never;
+
+    const footer = await readCompanySite(actor, connection, "kafe-door.no", [], { fetchPage: site({ "/": html(`<footer><a href="mailto:post@kafe-door.no">Skriv til oss</a></footer>`) }) });
+    expect(footer).toMatchObject({ ok: true, addresses: ["post@kafe-door.no"] });
+    expect(fetched).toEqual(["/"]);
+
+    fetched.length = 0;
+    const contact = await readCompanySite(actor, connection, "kafe-door.no", [], {
+      fetchPage: site({ "/": html(""), "/contact": html(`<p>kontakt@kafe-door.no · daglig leder kari@kafe-door.no</p>`) }),
+    });
+    expect(contact).toMatchObject({ ok: true, addresses: ["kontakt@kafe-door.no"] });
+    expect(fetched).toEqual(["/", "/kontakt", "/contact"]);
+  });
+
   it("says so when there is no AI or the page cannot be read", async () => {
     expect(await readCompanySite({ account: store.account, store: { id: store.id } as never }, null, "kafe.no", [])).toEqual({ ok: false, problem: "no_ai" });
     const broken = (async (url: string): Promise<Fetched> => ({ ok: false, url, problem: "it did not answer" }) as never) as never;

@@ -14,7 +14,7 @@ import {
   SOURCE_DAYS,
   type CompareOptionsInput,
 } from "@/lib/research";
-import { isReadableType, PAGE_MAX_BYTES, PAGES_PER_DAY, pageText } from "@/lib/web-page-text";
+import { isReadableType, PAGE_MAX_BYTES, PAGES_PER_DAY, pageEmails, pageText } from "@/lib/web-page-text";
 import { SEARCH_APIS, SEARCH_MODEL, searchHostOk, SEARCHES_PER_DAY, type Freshness, type SearchResult } from "@/lib/web-search";
 
 import { currentActor } from "./actor";
@@ -111,7 +111,7 @@ export async function readWebPage(
   a: ResearchActor,
   input: { url: string },
   deps: ResearchDeps = {},
-): Promise<{ url: string; title: string; description: string; text: string; cut: boolean }> {
+): Promise<{ url: string; title: string; description: string; text: string; cut: boolean; emails: string[] }> {
   if (!normaliseSource(input.url)) return fail("Give a page's full address, starting with https://.");
   if ((await countToday(a, "page")) >= PAGES_PER_DAY) return fail(`The day's ${PAGES_PER_DAY} pages are read: try again tomorrow.`);
   const fetched = await (deps.fetchPage ?? safeFetch)(input.url, {
@@ -121,12 +121,14 @@ export async function readWebPage(
   });
   if (!fetched.ok) return fail(`The page could not be read: ${fetched.problem}`);
   if (!isReadableType(fetched.contentType)) return fail(`That address is ${fetched.contentType || "a file"}, not a page that can be read.`);
-  const page = pageText(new TextDecoder("utf-8").decode(fetched.bytes), fetched.contentType);
+  const body = new TextDecoder("utf-8").decode(fetched.bytes);
+  const page = pageText(body, fetched.contentType);
   const hash = createHash("sha256").update(page.text).digest("hex");
   // Both the address asked for and the one it ended at count as read.
   const read = [...new Set([input.url, fetched.url])].map((url) => ({ url, title: page.title, hash }));
   await keepSources(a, "page", read);
-  return { url: fetched.url, ...page };
+  // The addresses it shows, for code alone (D899): `readWebPageTool()` never passes them to a model.
+  return { url: fetched.url, ...page, emails: pageEmails(body) };
 }
 
 /** Of the addresses given, those the store did not search or read within `SOURCE_DAYS`. */

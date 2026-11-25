@@ -58,6 +58,31 @@ export function pageText(body: string, contentType: string, max = PAGE_TEXT_MAX)
   return cutText({ title: title.slice(0, 300), description: description.slice(0, 500), text }, max);
 }
 
+/** The most addresses `pageEmails()` gives back. */
+export const PAGE_EMAILS_MAX = 30;
+
+/**
+ * The email addresses a page shows anywhere, footers and `mailto:` links included (which `pageText()` leaves out), folded to lower case,
+ * once each. For code to choose from (a found company's own door, D899), never given to a model.
+ */
+export function pageEmails(body: string): string[] {
+  const html = body.replace(/<!--[\s\S]*?-->/g, " ");
+  const found = new Set<string>();
+  const add = (raw: string) => {
+    const address = raw.trim().toLowerCase().replace(/\.$/, "");
+    if (/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(address) && found.size < PAGE_EMAILS_MAX) found.add(address);
+  };
+  for (const m of decodeEntities(html).matchAll(/mailto:([^"'?#\s>]+)/gi)) {
+    try {
+      add(decodeURIComponent(m[1]));
+    } catch {
+      add(m[1]);
+    }
+  }
+  for (const m of decodeEntities(html.replace(/<[^>]*>/g, " ")).matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)) add(m[0]);
+  return [...found];
+}
+
 function cutText(page: Omit<PageText, "cut">, max: number): PageText {
   if (page.text.length <= max) return { ...page, cut: false };
   const head = page.text.slice(0, max);

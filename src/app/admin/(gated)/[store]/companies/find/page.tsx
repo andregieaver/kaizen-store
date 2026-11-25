@@ -89,7 +89,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
   // One company's site read on request (P5.2): the one asked for, if it is on this page and has a website not on the do-not-contact list.
   const toRead = result?.ok && reading ? result.companies.find((c) => c.number === reading && c.website && !result.blocked.has(foldDomain(c.website) ?? "")) : undefined;
   const site = toRead?.website
-    ? await readCompanySite({ account: member.account, store }, await aiFor(store.id, { feature: "prospect_search", accountId: member.account.id }), toRead.website, criteria)
+    ? await readCompanySite({ account: member.account, store }, await aiFor(store.id, { feature: "prospect_search", accountId: member.account.id }), toRead.website, criteria, {}, toRead.country)
     : null;
 
   return (
