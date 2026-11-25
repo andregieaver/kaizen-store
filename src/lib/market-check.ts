@@ -9,6 +9,8 @@
 import { fillWords } from "./admin-fill";
 import { formatCount, formatPercent, safeRatio } from "./analytics-core";
 import { twoProportionZ } from "./analytics-discounts";
+import { offerFresh, PRICE_GAP_MIN, priceGap, type RivalOfferFacts } from "./market-rivals";
+import { englishMoney } from "./money";
 
 /** Visits a country, and the rest of the store, need before their conversion is compared. */
 export const MIN_VISITS = 200;
@@ -61,18 +63,21 @@ export type MarketCheckFacts = {
   products: number;
   /** Terms with at least `MIN_MISSES` misses, most first, at most `DEMAND_TERMS`. */
   demand: DemandTerm[];
+  /** The rivals' offers held against the store's own products (D900 M2): every one kept, old ones too. */
+  rivalOffers: RivalOfferFacts[];
 };
 
-export type MarketFindingKind = "weak_market" | "unmet_demand" | "untranslated" | "unpriced" | "strong_market";
+export type MarketFindingKind = "weak_market" | "unmet_demand" | "rival_cheaper" | "untranslated" | "unpriced" | "strong_market";
 
 /** The order in which kinds take turns (`docs/market-check.md` 3.2): what to fix before what to grow. */
-export const FINDING_KINDS: readonly MarketFindingKind[] = ["weak_market", "unmet_demand", "untranslated", "unpriced", "strong_market"];
+export const FINDING_KINDS: readonly MarketFindingKind[] = ["weak_market", "unmet_demand", "rival_cheaper", "untranslated", "unpriced", "strong_market"];
 
 /** Where each kind of finding is fixed, after the store's admin address: the page's link and the AI manager's `page`. */
 export const FIX_PATHS: Record<MarketFindingKind, string> = {
   weak_market: "/analytics/traffic",
   strong_market: "/analytics/marketing",
   unmet_demand: "/search",
+  rival_cheaper: "/products",
   untranslated: "/translate",
   unpriced: "/products",
 };
@@ -98,12 +103,25 @@ export type ConversionFinding = {
 export type MarketFinding =
   | ConversionFinding
   | { kind: "unmet_demand"; term: string; misses: number; markets: { code: string; misses: number }[] }
+  | {
+      kind: "rival_cheaper";
+      market: string;
+      productName: string;
+      rivalName: string;
+      ownMinor: number;
+      rivalMinor: number;
+      currency: string;
+      /** How much dearer the store is (0.15: 15 %), worked out by `priceGap()`. */
+      gap: number;
+    }
   | { kind: "untranslated"; market: string; locale: string; products: number; of: number }
   | { kind: "unpriced"; market: string; products: number; of: number };
 
 /** The id of a finding, stable while its subject is: for a list key and the page's anchors. */
 export function findingId(f: MarketFinding): string {
-  return f.kind === "unmet_demand" ? `${f.kind}:${f.term}` : `${f.kind}:${f.market}`;
+  if (f.kind === "unmet_demand") return `${f.kind}:${f.term}`;
+  if (f.kind === "rival_cheaper") return `${f.kind}:${f.market}:${f.productName}:${f.rivalName}`;
+  return `${f.kind}:${f.market}`;
 }
 
 /** The size a kind's findings are ranked by among themselves, largest first. */
@@ -111,6 +129,7 @@ function sizeOf(f: MarketFinding): number {
   switch (f.kind) {
     case "weak_market":
     case "strong_market":
+    case "rival_cheaper":
       return f.gap;
     case "unmet_demand":
       return f.misses;
@@ -146,9 +165,15 @@ function conversionFindings(markets: readonly MarketFacts[]): ConversionFinding[
  * What the facts mean, in the order code fixes (`docs/market-check.md` 3.2): one finding of each kind in `FINDING_KINDS`' order, then the
  * next of each, each kind's largest first (ties by the country or term, so the order never depends on how the rows were read).
  */
-export function marketFindings(facts: MarketCheckFacts): MarketFinding[] {
+export function marketFindings(facts: MarketCheckFacts, now: Date = new Date()): MarketFinding[] {
   const all: MarketFinding[] = [...conversionFindings(facts.markets)];
   for (const d of facts.demand) if (d.misses >= MIN_MISSES) all.push({ kind: "unmet_demand", term: d.term, misses: d.misses, markets: d.markets });
+  // A rival's offer read within OFFER_FRESH_DAYS, in the same currency, at least PRICE_GAP_MIN cheaper than the store's own price there.
+  for (const o of facts.rivalOffers) {
+    const gap = priceGap(o.own, o);
+    if (gap === null || gap < PRICE_GAP_MIN || !o.own || !offerFresh(o.readAt, now)) continue;
+    all.push({ kind: "rival_cheaper", market: o.market, productName: o.productName, rivalName: o.rivalName, ownMinor: o.own.priceMinor, rivalMinor: o.priceMinor, currency: o.currency, gap });
+  }
   for (const m of facts.markets) {
     if (m.locale && m.untranslated !== null && m.untranslated > 0) {
       all.push({ kind: "untranslated", market: m.code, locale: m.locale, products: m.untranslated, of: facts.products });
@@ -179,6 +204,7 @@ export type FindingWords = {
   strong_market: string;
   unmet_demand: string;
   unmetIn: string;
+  rival_cheaper: string;
   untranslated: string;
   unpriced: string;
 };
@@ -196,7 +222,13 @@ const quoted = (term: string) => (term.length > 60 ? `${term.slice(0, 59)}…` :
  * One finding in one sentence, with its figures written by code: what the page shows and what the AI manager is handed. `languageName`
  * names a language code in the reader's language.
  */
-export function findingText(f: MarketFinding, words: FindingWords, names: ReadonlyMap<string, string>, languageName: (locale: string) => string): string {
+export function findingText(
+  f: MarketFinding,
+  words: FindingWords,
+  names: ReadonlyMap<string, string>,
+  languageName: (locale: string) => string,
+  money: (minor: number, currency: string) => string = englishMoney,
+): string {
   switch (f.kind) {
     case "weak_market":
     case "strong_market":
@@ -212,6 +244,15 @@ export function findingText(f: MarketFinding, words: FindingWords, names: Readon
       const where = top && f.markets.length > 0 ? fillWords(words.unmetIn, { market: nameOf(names, top.code) }) : "";
       return fillWords(words.unmet_demand, { term: quoted(f.term), n: formatCount(f.misses), where });
     }
+    case "rival_cheaper":
+      return fillWords(words.rival_cheaper, {
+        rival: f.rivalName,
+        product: f.productName,
+        market: nameOf(names, f.market),
+        theirs: money(f.rivalMinor, f.currency),
+        yours: money(f.ownMinor, f.currency),
+        gap: formatPercent(f.gap, 0),
+      });
     case "untranslated":
       return fillWords(words.untranslated, { market: nameOf(names, f.market), language: languageName(f.locale), n: formatCount(f.products), of: formatCount(f.of) });
     case "unpriced":

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { adminDay } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
@@ -36,7 +38,14 @@ import { AnalyticsSection, Note } from "./section";
  * the findings past the three and the searches that found nothing in each country. Nothing here reads data or works out a figure.
  */
 
-const TONE: Record<MarketFindingKind, PillTone> = { weak_market: "warning", unmet_demand: "info", untranslated: "info", unpriced: "warning", strong_market: "good" };
+const TONE: Record<MarketFindingKind, PillTone> = {
+  weak_market: "warning",
+  unmet_demand: "info",
+  rival_cheaper: "warning",
+  untranslated: "info",
+  unpriced: "warning",
+  strong_market: "good",
+};
 
 const linkClass = "text-sm font-medium text-(--brand-text) underline-offset-2 hover:underline";
 
@@ -49,6 +58,8 @@ export type MarketCheckViewProps = {
   /** The period's own words ("Last 30 days"), for the AI manager's message. */
   periodLabel: string;
   words: MarketCheckMessages;
+  /** The rivals' section (`MarketRivalsSection`), drawn by the page with its forms; left out where prices do not apply. */
+  rivals?: ReactNode;
 };
 
 /** A language code's name in the reader's language: `de-DE` is "German". */
@@ -83,11 +94,12 @@ function cell(value: number | null, write: (n: number) => string, missing: strin
   return value === null ? <span className="text-muted">{missing}</span> : <span className="tabular-nums">{write(value)}</span>;
 }
 
-export function MarketCheckView({ base, lang, locale, check, periodLabel, words }: MarketCheckViewProps) {
+export function MarketCheckView({ base, lang, locale, check, periodLabel, words, rivals }: MarketCheckViewProps) {
   const w = words;
   const names = new Map(check.markets.map((m) => [m.code, m.name]));
   const languageName = languageOf(lang);
-  const findings = check.findings.map((f) => ({ f, text: findingText(f, w.finding, names, languageName) }));
+  const amount = (minor: number, currency: string) => formatAmount(minor, currency, locale);
+  const findings = check.findings.map((f) => ({ f, text: findingText(f, w.finding, names, languageName, amount) }));
   const first = findings.slice(0, FINDINGS_SHOWN);
   const rest = findings.slice(FINDINGS_SHOWN);
   const counted = check.coverage.counting && check.coverage.days > 0;
@@ -179,6 +191,8 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words 
             <DataTable caption={e.caption} columns={columns} rows={check.markets} rowKey={(m) => m.code} exportable={false} exportReason="markets.countries" />
             {counted ? <p className="text-xs text-muted">{fillWords(e.compared, { visits: formatCount(MIN_VISITS), orders: formatCount(MIN_ORDERS) })}</p> : null}
           </AnalyticsSection>
+
+          {rivals}
 
           <AnalyticsSection
             id="market-terms"

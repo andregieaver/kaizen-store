@@ -1,6 +1,6 @@
 {
-  "id": "44ad0d8e-cc92-4153-ab48-8a33a0e1efd8",
-  "prevId": "4e0f2288-9cde-4599-84c6-8785a4a081fc",
+  "id": "d6a88dd2-5116-40ce-a1a7-a635d38d7ae3",
+  "prevId": "afa4780c-e016-43b1-8bb1-e3080500e65a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -48381,6 +48381,139 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.market_rivals": {
+      "name": "market_rivals",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market_code": {
+          "name": "market_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "host": {
+          "name": "host",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "market_rivals_added_by_idx": {
+          "name": "market_rivals_added_by_idx",
+          "columns": [
+            {
+              "expression": "added_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "market_rivals_store_id_stores_id_fk": {
+          "name": "market_rivals_store_id_stores_id_fk",
+          "tableFrom": "market_rivals",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "market_rivals_added_by_accounts_id_fk": {
+          "name": "market_rivals_added_by_accounts_id_fk",
+          "tableFrom": "market_rivals",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "added_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "market_rivals_store_id_key": {
+          "name": "market_rivals_store_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "id"
+          ]
+        },
+        "market_rivals_key": {
+          "name": "market_rivals_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "market_code",
+            "host"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "market_rivals_market": {
+          "name": "market_rivals_market",
+          "value": "\"commerce\".\"market_rivals\".\"market_code\" ~ '^[A-Z]{2}$'"
+        },
+        "market_rivals_name": {
+          "name": "market_rivals_name",
+          "value": "length(\"commerce\".\"market_rivals\".\"name\") between 1 and 120"
+        },
+        "market_rivals_host": {
+          "name": "market_rivals_host",
+          "value": "length(\"commerce\".\"market_rivals\".\"host\") between 3 and 253 and \"commerce\".\"market_rivals\".\"host\" ~ '^[a-z0-9][a-z0-9.-]*[a-z0-9]$'"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.marketing_consent_events": {
       "name": "marketing_consent_events",
       "schema": "commerce",
@@ -78112,6 +78245,245 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.rival_offers": {
+      "name": "rival_offers",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rival_id": {
+          "name": "rival_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_minor": {
+          "name": "price_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "high_price_minor": {
+          "name": "high_price_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "availability": {
+          "name": "availability",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shipping_minor": {
+          "name": "shipping_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shipping_currency": {
+          "name": "shipping_currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_days_min": {
+          "name": "delivery_days_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_days_max": {
+          "name": "delivery_days_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "return_days": {
+          "name": "return_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "rival_offers_store_rival_idx": {
+          "name": "rival_offers_store_rival_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "rival_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rival_offers_store_product_idx": {
+          "name": "rival_offers_store_product_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rival_offers_store_id_stores_id_fk": {
+          "name": "rival_offers_store_id_stores_id_fk",
+          "tableFrom": "rival_offers",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rival_offers_rival_fk": {
+          "name": "rival_offers_rival_fk",
+          "tableFrom": "rival_offers",
+          "tableTo": "market_rivals",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "rival_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rival_offers_product_fk": {
+          "name": "rival_offers_product_fk",
+          "tableFrom": "rival_offers",
+          "tableTo": "products",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "product_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rival_offers_key": {
+          "name": "rival_offers_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "rival_id",
+            "address"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "rival_offers_address": {
+          "name": "rival_offers_address",
+          "value": "\"commerce\".\"rival_offers\".\"address\" ~ '^https://' and length(\"commerce\".\"rival_offers\".\"address\") <= 2000"
+        },
+        "rival_offers_name": {
+          "name": "rival_offers_name",
+          "value": "length(\"commerce\".\"rival_offers\".\"name\") <= 300"
+        },
+        "rival_offers_price": {
+          "name": "rival_offers_price",
+          "value": "\"commerce\".\"rival_offers\".\"price_minor\" >= 0 and (\"commerce\".\"rival_offers\".\"high_price_minor\" is null or \"commerce\".\"rival_offers\".\"high_price_minor\" >= \"commerce\".\"rival_offers\".\"price_minor\")"
+        },
+        "rival_offers_currency": {
+          "name": "rival_offers_currency",
+          "value": "\"commerce\".\"rival_offers\".\"currency\" ~ '^[A-Z]{3}$' and (\"commerce\".\"rival_offers\".\"shipping_currency\" is null or \"commerce\".\"rival_offers\".\"shipping_currency\" ~ '^[A-Z]{3}$')"
+        },
+        "rival_offers_availability": {
+          "name": "rival_offers_availability",
+          "value": "\"commerce\".\"rival_offers\".\"availability\" in ('in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited', 'discontinued', 'unknown')"
+        },
+        "rival_offers_shipping": {
+          "name": "rival_offers_shipping",
+          "value": "(\"commerce\".\"rival_offers\".\"shipping_minor\" is null) = (\"commerce\".\"rival_offers\".\"shipping_currency\" is null) and coalesce(\"commerce\".\"rival_offers\".\"shipping_minor\", 0) >= 0"
+        },
+        "rival_offers_days": {
+          "name": "rival_offers_days",
+          "value": "coalesce(\"commerce\".\"rival_offers\".\"delivery_days_min\", 0) between 0 and 365 and coalesce(\"commerce\".\"rival_offers\".\"delivery_days_max\", 0) between 0 and 365 and coalesce(\"commerce\".\"rival_offers\".\"return_days\", 0) between 0 and 3650"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.sandboxes": {
       "name": "sandboxes",

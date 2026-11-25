@@ -222,6 +222,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   explain_change: "analytics:read",
   analytics_alerts: "analytics:read",
   market_check: "analytics:read",
+  list_rivals: "analytics:read",
+  read_rival_offer: "analytics:write",
   speed_report: "analytics:read",
   page_behaviour: "analytics:read",
   version_behaviour: "analytics:read",

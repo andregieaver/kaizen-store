@@ -193,6 +193,8 @@ export const TOOL_WORDS: Record<string, string> = {
   explain_change: "Working out why sales changed",
   analytics_alerts: "Checking what needs a look",
   market_check: "Comparing your countries",
+  list_rivals: "Looking at your rivals",
+  read_rival_offer: "Reading a rival's page",
   report_catalogue: "Reading what reports can show",
   run_report: "Running a report",
   save_report: "Saving a report",

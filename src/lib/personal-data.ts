@@ -366,6 +366,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   register_companies: "What Brønnøysundregistrene says of the organisation numbers stores hold (D891): a business's public facts and accounts; a sole trader, whose entry is a person's, keeps only that it is one.",
   visit_companies: "Companies the company lookup named for visits' networks (D890): a business's public facts (name, legal form, website, industry, size, place, register number) from Leadfeeder; a sole trader, whose company is a person, is never kept.",
   company_visits: "A company's visits to a store per day (D890): visitor-days, page views and the pages' shapes; no visitor, address or person, and never tied to a visit, cart, order or customer.",
+  market_rivals: "A store's rivals per country (D900 M2): a shop's name and web host the owner added, and the account that added it (an id); no person's data.",
+  rival_offers: "Offers read from rivals' own product pages (D900 M2): a shop's product name, price, availability, shipping and returns as its page's data states them; no person's data.",
   company_lookup_settings: "Kaizena Flow's Leadfeeder connection (D890): the key encrypted, its hint, the account's number and the account that saved it (an id); no person's data.",
   page_heat_days: "Heatmaps' totals per page, day, device and A/B version (D656): page views, how far they scrolled in 5 % steps, folds, time on screen per band and click counts; no address beyond the page's shape, no visitor, IP address or user agent.",
   click_cells: "Click counts per part of a page and cell of its box, per day, device and A/B version (D656); no visitor, IP address or user agent.",

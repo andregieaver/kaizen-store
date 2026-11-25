@@ -30,7 +30,7 @@ The parts already exist; the market check joins them:
 |---|---|---|
 | **M1** | **Your markets side by side**: the store against itself, country by country, from its own data only. No rival is read. | Built (2026-11-25) |
 | M1b | Kaizena Flow's sign-ups by country. | Parked (25 November 2026): its site sells in one country, so it would be one row (3.5) |
-| M2 | **Rivals**: 3 to 8 per market, confirmed by the owner, with facts read by code from their own pages. The SWOT as a view of M1 and M2. | Reading built (robots.txt, a page's offer data); rivals in progress |
+| M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built but the SWOT view (25 November 2026) |
 | M3 | **Watching**: rivals' pages read again once a month in the goal reviews; a change is an autopilot event, never an action. | Planned |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices, fees, EU features), shown beside `platform_pricing_facts` (D854). | Planned |
 
@@ -99,23 +99,33 @@ country is NO (153 in 30 days) and a sign-up's country would be the same one row
 minimum volume. A split worth having is by language (a sign-up already keeps its `locale`), and it is taken up when the site has at least
 `MIN_ORDERS` (10) sign-ups a month, or when Kaizena Flow sells in a second country.
 
-## 4. M2: rivals (planned)
+## 4. M2: rivals (built 25 November 2026, but the SWOT view)
 
-- **Who they are.** The AI manager proposes rivals per market from `search_web` (a product's words, the country); the owner confirms each.
-  A rival the owner does not recognise is not one. `commerce.market_rivals` (store, country, name, address, confirmed by, when), at most
-  8 per country.
-- **What is read, and how.** Only through `readWebPage()` (`safeFetch()`), which first honours the site's `robots.txt` (added to
-  `readWebPage()` in this step), at most `RIVAL_PAGES` (10) pages per rival per month, never behind a sign-in, never a whole catalogue
-  (the EU database right, Directive 96/9/EC). Facts are taken from what the page says in a machine-readable form where it has one
-  (schema.org `Product` and `Offer`: price, currency, availability; `OfferShippingDetails`, `MerchantReturnPolicy`), else not taken.
-  The model never reads a price off a page's text.
-- **What is kept.** A fact is a row with its source (`research_sources`), the day it was read and the page's text hash: a price for a
-  product the owner matched to their own, the shipping cost and time to that country, the free-shipping threshold, the returns window,
-  the languages. A fact older than 30 days is shown as old.
-- **What is compared.** By code: a price index per matched product (theirs over ours, VAT included as shoppers see both), delivery
-  against delivery, returns against returns. **The SWOT** is drawn from M1 and M2 together, every line pointing at its fact: strengths and
-  weaknesses where the store beats or trails its rivals and its own other markets, opportunities in searches that found nothing and gaps
-  rivals leave, threats in rivals' moves (M3).
+- **Who they are.** The owner adds each rival on Analytics → Markets, by country, name and web address: adding it is the owner's own act,
+  so a rival is always one they recognise (the AI manager may suggest shops it found with `search_web`, never add one).
+  `commerce.market_rivals` (store, country, name, host without `www.`, who added it, when), at most `RIVALS_PER_MARKET` (8) a country,
+  written only by `src/server/market-rivals.ts`.
+- **What is read, and how.** A rival's product page is read by `readOfferPage()` (`src/server/research.ts`): `safeFetch()`, the site's
+  robots.txt first (`obeyRobots()`: a page it closes is refused; so is every page of a site whose robots.txt answers with a server error or
+  not at all), the day's page limit, the page kept as a research source. Only a page on the rival's own host (`onRivalSite()`). The offer
+  is taken from the page's own JSON-LD (`pageOffers()`: schema.org `Product` and `Offer` or `AggregateOffer`, `OfferShippingDetails`,
+  `MerchantReturnPolicy`), else nothing is kept and the reader says so; the model never reads a price off a page's words. One page at a
+  time, by a person on the page (*Read the page*) or the AI manager (`read_rival_offer`), at most `OFFERS_PER_RIVAL` (50) a rival; never
+  behind a sign-in and never a whole catalogue (the EU database right, Directive 96/9/EC).
+- **What is kept.** `commerce.rival_offers`: the page, the rival's product name, its price and currency (an `AggregateOffer`'s lowest and
+  highest), availability, the cheapest shipping stated and its currency, delivery days, the returns window, when it was read, and the
+  store's own product it is held against (by handle). Reading a page again replaces its row. An offer read over `OFFER_FRESH_DAYS` (30)
+  ago is shown as old and makes no finding.
+- **What is compared.** By code (`priceGap()`): the store's price for the product in the rival's country (the lowest of its variants'
+  current prices there, VAT included as shoppers see it) against the rival's, only in one currency, never converted. A rival at least
+  `PRICE_GAP_MIN` (a tenth) cheaper on a fresh offer is a finding of kind `rival_cheaper`, in the market check's order after the searches
+  that found nothing. Delivery and returns are kept and shown; they are not compared yet.
+- **Where it is seen.** Lisa's part of Analytics → Markets, *Your rivals*: the rivals with their country and *Remove*, *Add rival*, *Read
+  the page*, and the offers' table (theirs, yours, the difference, when read). Homer sees a rival only as a finding among the three. The AI
+  manager reads them with `list_rivals`. Kaizena Flow's own store has no rivals here: its rivals are other platforms (M4).
+- **Still to come in M2.** The SWOT as a view of M1 and M2 together, every line pointing at its fact: strengths and weaknesses where the
+  store beats or trails its rivals and its own other markets, opportunities in searches that found nothing and gaps rivals leave, threats
+  in rivals' moves (M3).
 - **Staff only.** Like research notes, nothing of it is shown to shoppers. A store that publishes a comparison ("cheaper than X") must
   keep it objective and verifiable (Directive 2006/114/EC): the market check never writes one.
 

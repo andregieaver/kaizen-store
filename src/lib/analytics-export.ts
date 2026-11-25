@@ -243,6 +243,7 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = Object.freeze({
   "oss.left_out": "Sales left out of the return: the OSS file's reconciliation (D161).",
   "oss.rates": "Euro rates used: the OSS file (D161).",
   "oss.conversions": "The conversions behind the return: the OSS detail file (D161).",
+  "markets.rivals": "Rivals' offers are a few pages read one at a time, each with its source; no file of them yet (D900 M2).",
   "markets.countries": "The countries side by side come from the Traffic page's countries and sales by country, which are in its files; no file of the check itself yet (D900).",
 });
 

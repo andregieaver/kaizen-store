@@ -233,8 +233,9 @@ country and is left out.
 | Searched for, not found | A term with at least `MIN_MISSES` (5) misses in the period, its countries' misses added up; at most `DEMAND_TERMS` (10). |
 | Not in its language | A country whose own language is not the main one, with products without a name in it. |
 | No price there | A country the store sells to with products that have no price there. |
+| A rival is cheaper | An offer read from a rival's own product page (D900 M2) within 30 days, in the currency of the store's own price for the product it is held against in that country (the lowest of its variants' current prices there, VAT included), at least a tenth cheaper. Never converted between currencies. |
 
-The order is code's: one of each kind (a country that buys less, searched for, not in its language, no price, a country that buys more),
+The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, not in its language, no price, a country that buys more),
 then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
 (the AI manager opened with the finding's words and figures, `askAboutFinding()`, sent by the person) and a link to the page that fixes it.
 

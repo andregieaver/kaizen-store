@@ -31,7 +31,7 @@ const country = (code: string, name: string, over: Partial<MarketFacts> = {}): M
 });
 
 function check(markets: MarketFacts[], over: Partial<MarketCheck> = {}, demand: MarketCheckFacts["demand"] = []): MarketCheck {
-  const facts: MarketCheckFacts = { markets, products: 40, demand };
+  const facts: MarketCheckFacts = { markets, products: 40, demand, rivalOffers: [] };
   return {
     ...facts,
     findings: marketFindings(facts),
@@ -43,6 +43,8 @@ function check(markets: MarketFacts[], over: Partial<MarketCheck> = {}, demand: 
     searchesFrom: "2026-08-28",
     sells: true,
     house: false,
+    rivals: [],
+    offers: [],
     ...over,
   };
 }

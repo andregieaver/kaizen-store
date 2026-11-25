@@ -1,5 +1,5 @@
 {
- "version": "1.59",
+ "version": "1.60",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2507,6 +2507,8 @@
   "mcp list_research_notes <- store (required)",
   "mcp list_returns",
   "mcp list_returns <- store (required)",
+  "mcp list_rivals",
+  "mcp list_rivals <- store (required)",
   "mcp list_scheduled_changes",
   "mcp list_scheduled_changes <- store (required)",
   "mcp list_segments",
@@ -2636,6 +2638,10 @@
   "mcp publish_page",
   "mcp publish_page <- page (required)",
   "mcp publish_page <- store (required)",
+  "mcp read_rival_offer",
+  "mcp read_rival_offer <- page (required)",
+  "mcp read_rival_offer <- rival (required)",
+  "mcp read_rival_offer <- store (required)",
   "mcp read_web_page",
   "mcp read_web_page <- store (required)",
   "mcp read_web_page <- url (required)",

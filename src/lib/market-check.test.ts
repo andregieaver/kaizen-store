@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { marketCheckEn } from "./admin-messages/market-check.en";
+import { englishMoney } from "./money";
 import {
   askAboutFinding,
   conversionOf,
@@ -31,7 +32,7 @@ const country = (code: string, over: Partial<MarketFacts> = {}): MarketFacts => 
   ...over,
 });
 
-const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): MarketCheckFacts => ({ markets, products: 100, demand: [], ...over });
+const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): MarketCheckFacts => ({ markets, products: 100, demand: [], rivalOffers: [], ...over });
 const names = new Map([
   ["NO", "Norway"],
   ["DE", "Germany"],
@@ -106,6 +107,37 @@ describe("the market check's findings (D900 M1)", () => {
     expect(found[1]).toMatchObject({ kind: "unmet_demand", term: "linen" });
     expect(found[2]).toMatchObject({ kind: "untranslated", market: "SE" });
     expect(found.slice(5).map((f) => f.kind)).toEqual(["weak_market", "unmet_demand", "untranslated"]);
+  });
+
+  it("finds a rival a tenth or more cheaper, in the same currency and read within 30 days, and nothing else (D900 M2)", () => {
+    const now = new Date("2026-11-25T12:00:00Z");
+    const offer = (over: Partial<MarketCheckFacts["rivalOffers"][number]>) => ({
+      rivalName: "Linnet",
+      market: "NO",
+      productName: "Linen apron",
+      priceMinor: 40000,
+      currency: "NOK",
+      own: { priceMinor: 46000, currency: "NOK" },
+      readAt: "2026-11-20T10:00:00Z",
+      ...over,
+    });
+    const found = marketFindings(
+      facts([country("NO")], {
+        rivalOffers: [
+          offer({}),
+          offer({ productName: "Close call", own: { priceMinor: 43900, currency: "NOK" } }),
+          offer({ productName: "Old", readAt: "2026-10-01T10:00:00Z" }),
+          offer({ productName: "Other currency", currency: "EUR", priceMinor: 3000 }),
+          offer({ productName: "Not held", own: null }),
+          offer({ productName: "Cheaper here", own: { priceMinor: 35000, currency: "NOK" } }),
+        ],
+      }),
+      now,
+    );
+    expect(found).toEqual([{ kind: "rival_cheaper", market: "NO", productName: "Linen apron", rivalName: "Linnet", ownMinor: 46000, rivalMinor: 40000, currency: "NOK", gap: 0.15 }]);
+    expect(findingText(found[0], marketCheckEn.finding, names, language)).toBe(
+      `Linnet sells Linen apron for ${englishMoney(40000, "NOK")} in Norway, and you ask ${englishMoney(46000, "NOK")}: 15 % more.`,
+    );
   });
 
   it("works out rates only from what is known", () => {

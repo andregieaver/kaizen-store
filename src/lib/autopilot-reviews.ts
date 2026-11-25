@@ -37,6 +37,7 @@ export const REVIEW_READ_TOOLS = [
   "analytics_alerts",
   // The store's countries side by side and what to do in them (D900): a review can plan from a weak country or an unmet search.
   "market_check",
+  "list_rivals",
   "explain_change",
   "report_catalogue",
   "run_report",

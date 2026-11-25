@@ -3,7 +3,7 @@ import "server-only";
 import type { socialPlanTool as SocialPlanTool, socialReportTool as SocialReportTool, writeSocialPostsTool as WriteSocialPostsTool } from "./social-tools";
 
 import type { shopifyMoveTool as ShopifyMoveTool } from "./shopify-move-tool";
-import type { marketCheckTool as MarketCheckTool } from "./market-check-tool";
+import type { listRivalsTool as ListRivalsTool, marketCheckTool as MarketCheckTool, readRivalOfferTool as ReadRivalOfferTool } from "./market-check-tool";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -2561,6 +2561,9 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   analytics_alerts: analyticsAlertsTool,
   // Loaded when called: its words (the market check's, D900) stay out of every admin page that reaches this map.
   market_check: async (...args: Parameters<typeof MarketCheckTool>) => (await import("./market-check-tool")).marketCheckTool(...args),
+  // The market check's rivals (D900 M2), in the same module, loaded when called.
+  list_rivals: async (...args: Parameters<typeof ListRivalsTool>) => (await import("./market-check-tool")).listRivalsTool(...args),
+  read_rival_offer: async (...args: Parameters<typeof ReadRivalOfferTool>) => (await import("./market-check-tool")).readRivalOfferTool(...args),
   report_catalogue: reportCatalogueTool,
   run_report: runReportTool,
   save_report: saveReportTool,

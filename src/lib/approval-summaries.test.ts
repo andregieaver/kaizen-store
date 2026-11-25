@@ -163,6 +163,7 @@ function sample(s: Schema, key: string): unknown {
 /** Inputs written by hand where a schema alone does not make one that reads (rules beyond the shape), or to read closer to life. */
 const BY_HAND: Record<string, Record<string, unknown>> = {
   add_order_note: { order: "1042", note: "Customer asked for gift wrap." },
+  read_rival_offer: { rival: "Linnet", page: "https://linnet.example/p/linen-apron", product: "linen-apron" },
   tag_orders: { orders: ["1042", "1043"], add: ["vip", "gift-wrap"], remove: ["rush"] },
   create_draft_order: { email: "ann@example.com", lines: [{ sku: "MUG-1", quantity: 2 }], market: "no" },
   add_redirect: { from: "/collections/shoes", to: "/p/shoes" },

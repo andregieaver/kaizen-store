@@ -51,11 +51,12 @@ export function jsonLdBlocks(html: string): unknown[] {
 type Node = Record<string, unknown>;
 
 const isNode = (v: unknown): v is Node => typeof v === "object" && v !== null && !Array.isArray(v);
-const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : v === undefined || v === null ? [] : [v]);
+/** A JSON-LD value that may be one thing or many, as many. */
+const asMany = (v: unknown): unknown[] => (Array.isArray(v) ? v : v === undefined || v === null ? [] : [v]);
 
 /** A node's types, without the schema.org prefix. */
 function typesOf(node: Node): string[] {
-  return list(node["@type"]).map((t) => String(t).replace(/^https?:\/\/schema\.org\//, ""));
+  return asMany(node["@type"]).map((t) => String(t).replace(/^https?:\/\/schema\.org\//, ""));
 }
 
 /** Every node in the blocks, nested ones and `@graph` members included, at most `limit` (a page with thousands is cut). */
@@ -126,8 +127,8 @@ function days(v: unknown): { min: number; max: number } | null {
 }
 
 function countries(v: unknown): string[] {
-  return list(v)
-    .flatMap((d) => (isNode(d) ? list(d.addressCountry) : [d]))
+  return asMany(v)
+    .flatMap((d) => (isNode(d) ? asMany(d.addressCountry) : [d]))
     .map((c) => (isNode(c) ? text(c) : typeof c === "string" ? c : null))
     .filter((c): c is string => c !== null && /^[A-Za-z]{2}$/.test(c))
     .map((c) => c.toUpperCase());
@@ -136,8 +137,8 @@ function countries(v: unknown): string[] {
 /** The cheapest shipping a list of `OfferShippingDetails` states, with its countries and delivery days. */
 function shippingOf(details: unknown): Pick<PageOffer, "shippingMinor" | "shippingCurrency" | "shippingCountries" | "deliveryDaysMin" | "deliveryDaysMax"> {
   let best: { minor: number; currency: string; countries: string[]; min: number | null; max: number | null } | null = null;
-  for (const d of list(details).filter(isNode)) {
-    const rate = list(d.shippingRate).find(isNode);
+  for (const d of asMany(details).filter(isNode)) {
+    const rate = asMany(d.shippingRate).find(isNode);
     const currency = rate && typeof rate.currency === "string" && isCurrency(rate.currency.toUpperCase()) ? rate.currency.toUpperCase() : null;
     const minor = rate && currency ? amountMinor(rate.value, currency) : null;
     const delivery = isNode(d.deliveryTime) ? d.deliveryTime : null;
@@ -154,7 +155,7 @@ function shippingOf(details: unknown): Pick<PageOffer, "shippingMinor" | "shippi
 }
 
 function returnDaysOf(policy: unknown): number | null {
-  const p = list(policy).find(isNode);
+  const p = asMany(policy).find(isNode);
   if (!p) return null;
   const category = String(p.returnPolicyCategory ?? "").toLowerCase();
   if (category.endsWith("merchantreturnnotpermitted")) return 0;
@@ -164,9 +165,9 @@ function returnDaysOf(policy: unknown): number | null {
 
 /** The offer of one `Product` node, or null when it states no price in a known currency. */
 function offerOf(product: Node): PageOffer | null {
-  for (const offer of list(product.offers).filter(isNode)) {
+  for (const offer of asMany(product.offers).filter(isNode)) {
     const types = typesOf(offer);
-    const spec = list(offer.priceSpecification).find(isNode);
+    const spec = asMany(offer.priceSpecification).find(isNode);
     const currencyRaw = (offer.priceCurrency ?? spec?.priceCurrency) as unknown;
     const currency = typeof currencyRaw === "string" ? currencyRaw.toUpperCase() : "";
     if (!isCurrency(currency)) continue;

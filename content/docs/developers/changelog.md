@@ -16,6 +16,15 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.60 — 2026-11-25
+
+Two MCP tools for a store's rivals (D900 M2). `list_rivals` reads the shops the owner added as rivals on Analytics → Markets, per country,
+with the offers read from their own product pages: their product and price, the store's own product and price there, and how much dearer
+or cheaper the store is, worked out by the store's code and only in one currency. `read_rival_offer` reads one product page of such a rival
+(`rival` by name or web host, `page` on the rival's own site, `product` the store's own by handle) and keeps its offer. The price is taken
+only from the page's own schema.org data, never its words, and only where the site's robots.txt allows. It needs the scope
+`analytics:write`. Rivals themselves are added by the owner, not through the API.
+
 ## 1.59 — 2026-11-25
 
 A new MCP tool, `market_check` (D900), reads the store's countries side by side over the last 7 to 90 days (`days`, 30 by default): each

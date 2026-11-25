@@ -161,6 +161,9 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   speed_samples: "record",
   // Which companies visited (D890): counts of a store's visits by company, and Kaizena Flow's Leadfeeder key.
   company_visits: "record",
+  // The market check's rivals (D900 M2): the shops the owner added and the offers read of their pages.
+  market_rivals: "record",
+  rival_offers: "record",
   platform_do_not_contact: "record",
   company_lookup_settings: "secret",
   staff_alert_recipients: "people",

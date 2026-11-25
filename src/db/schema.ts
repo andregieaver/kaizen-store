@@ -15183,6 +15183,83 @@ export const companyVisits = commerce.table(
 ).enableRLS();
 
 /**
+ * A store's rivals in one of its countries (D900 M2, `docs/market-check.md` 4): a shop the owner added by its name and web host, so a rival
+ * is always one the owner recognises. Written only by `src/server/market-rivals.ts`; staff-only, never shown to shoppers. At most
+ * `RIVALS_PER_MARKET` a country.
+ */
+export const marketRivals = commerce.table(
+  "market_rivals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    name: text("name").notNull(),
+    /** The shop's web host, lower case and without `www.`: its pages are read only there. */
+    host: text("host").notNull(),
+    addedBy: uuid("added_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("market_rivals_store_id_key").on(t.storeId, t.id),
+    unique("market_rivals_key").on(t.storeId, t.marketCode, t.host),
+    index("market_rivals_added_by_idx").on(t.addedBy),
+    check("market_rivals_market", sql`${t.marketCode} ~ '^[A-Z]{2}$'`),
+    check("market_rivals_name", sql`length(${t.name}) between 1 and 120`),
+    check("market_rivals_host", sql`length(${t.host}) between 3 and 253 and ${t.host} ~ '^[a-z0-9][a-z0-9.-]*[a-z0-9]$'`),
+  ],
+).enableRLS();
+
+/**
+ * A rival's offer as its own product page states it in machine-readable data (D900 M2, `pageOffers()`), never read off its words: the
+ * page, the price as the rival asks it, availability, the cheapest stated shipping, delivery days and the returns window, and when it was
+ * read. Held against one of the store's products when the owner or the AI manager names it (`product_id`). One row a page, replaced when
+ * it is read again; written only by `src/server/market-rivals.ts`; staff-only.
+ */
+export const rivalOffers = commerce.table(
+  "rival_offers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    rivalId: uuid("rival_id").notNull(),
+    productId: uuid("product_id"),
+    /** The page it was read from, on the rival's host. */
+    address: text("address").notNull(),
+    name: text("name").notNull(),
+    priceMinor: bigint("price_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** An `AggregateOffer`'s highest price: a range over the product's variants. */
+    highPriceMinor: bigint("high_price_minor", { mode: "number" }),
+    availability: text("availability").notNull(),
+    shippingMinor: bigint("shipping_minor", { mode: "number" }),
+    shippingCurrency: char("shipping_currency", { length: 3 }),
+    deliveryDaysMin: integer("delivery_days_min"),
+    deliveryDaysMax: integer("delivery_days_max"),
+    returnDays: integer("return_days"),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("rival_offers_key").on(t.rivalId, t.address),
+    foreignKey({ name: "rival_offers_rival_fk", columns: [t.storeId, t.rivalId], foreignColumns: [marketRivals.storeId, marketRivals.id] }).onDelete("cascade"),
+    productRef("rival_offers_product_fk", t),
+    index("rival_offers_store_rival_idx").on(t.storeId, t.rivalId),
+    index("rival_offers_store_product_idx").on(t.storeId, t.productId),
+    check("rival_offers_address", sql`${t.address} ~ '^https://' and length(${t.address}) <= 2000`),
+    check("rival_offers_name", sql`length(${t.name}) <= 300`),
+    check("rival_offers_price", sql`${t.priceMinor} >= 0 and (${t.highPriceMinor} is null or ${t.highPriceMinor} >= ${t.priceMinor})`),
+    check("rival_offers_currency", sql`${t.currency} ~ '^[A-Z]{3}$' and (${t.shippingCurrency} is null or ${t.shippingCurrency} ~ '^[A-Z]{3}$')`),
+    check(
+      "rival_offers_availability",
+      sql`${t.availability} in ('in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited', 'discontinued', 'unknown')`,
+    ),
+    check("rival_offers_shipping", sql`(${t.shippingMinor} is null) = (${t.shippingCurrency} is null) and coalesce(${t.shippingMinor}, 0) >= 0`),
+    check(
+      "rival_offers_days",
+      sql`coalesce(${t.deliveryDaysMin}, 0) between 0 and 365 and coalesce(${t.deliveryDaysMax}, 0) between 0 and 365 and coalesce(${t.returnDays}, 0) between 0 and 3650`,
+    ),
+  ],
+).enableRLS();
+
+/**
  * What Brønnøysundregistrene says of a Norwegian organisation number we hold (D891): a store's business customer's, a store's own business's,
  * or a visiting company's. The platform's, one row per number, written only by `src/server/register-facts.ts` from the open Enhetsregisteret
  * and Regnskapsregisteret (NLOD). A sole trader's row keeps only that it is one (`status` `sole_trader`): its entry is a person's, so no

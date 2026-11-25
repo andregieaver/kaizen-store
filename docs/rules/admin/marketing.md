@@ -44,8 +44,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   manager's `market_check` and *Make a plan* (`askAboutFinding()`, through `AskAboutAlert`, sent by the person) repeat them and never make a
   number. A new kind of finding is a kind in `FINDING_KINDS` with its rule in `marketFindings()`, its page in `FIX_PATHS`, its words in
   `market-check.en.ts` and `.nb.ts`, and its definition in `docs/analytics.md`. Kaizena Flow's own store reads no orders or prices (it sells
-  plans); its sign-ups by country (M1b) are parked while its site sells in one country. Reading rivals (M2) goes only through `readWebPage()`, honouring `robots.txt`, and a store's
-  price never follows a rival's by itself (M3).
+  plans); its sign-ups by country (M1b) are parked while its site sells in one country. Rivals (M2) are added only by a person (the owner's
+  own act), and `commerce.market_rivals` and `rival_offers` are written only by `src/server/market-rivals.ts`; an offer is read only by
+  `readOfferPage()` (robots.txt first, the page's JSON-LD only, on the rival's own host) and compared only by `priceGap()`, in one currency.
+  A store's price never follows a rival's by itself (M3).
 
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 

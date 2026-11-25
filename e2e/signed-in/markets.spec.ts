@@ -73,6 +73,17 @@ test.beforeAll(async () => {
     await sql`
       insert into commerce.search_queries (store_id, market_code, query, results, meaning_results, created_at)
       select ${store.id}, 'NO', 'kopp', 4, 0, now() - interval '1 day' from generate_series(1, 30)`;
+    // A rival in Norway (D900 M2) and an offer read of its own product page yesterday: a fifth cheaper than the store's tote bag there.
+    const [rival] = await sql`
+      insert into commerce.market_rivals (store_id, market_code, name, host) values (${store.id}, 'NO', 'Linnet', 'linnet.example') returning id`;
+    const [tote] = await sql`
+      select p.id, min(cp.amount_minor) as price from commerce.products p
+      join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id
+      join commerce.current_prices cp on cp.store_id = v.store_id and cp.variant_id = v.id and cp.market_code = 'NO'
+      where p.store_id = ${store.id} and p.status = 'active' group by p.id order by min(cp.amount_minor) desc limit 1`;
+    await sql`
+      insert into commerce.rival_offers (store_id, rival_id, product_id, address, name, price_minor, currency, availability, read_at)
+      values (${store.id}, ${rival.id}, ${tote.id}, 'https://linnet.example/p/tote', 'Canvas tote', ${Math.round(Number(tote.price) * 0.8)}, 'NOK', 'in_stock', now() - interval '1 day')`;
   } finally {
     await sql.end();
   }
@@ -90,8 +101,9 @@ test.describe("as a store's owner", () => {
     await expect(cards.nth(0)).toHaveAttribute("data-finding", "weak_market");
     await expect(cards.nth(0)).toContainText("Visitors in Germany buy less: 0.4 % of visits end in an order, against 3.7 % in your other countries.");
     await expect(cards.nth(1)).toContainText("Shoppers searched for “leinen” 25 times and found nothing, most of them in Germany.");
-    await expect(cards.nth(2)).toHaveAttribute("data-finding", "untranslated");
-    await expect(cards.nth(2)).toContainText("have no name in German");
+    // A rival a fifth cheaper (D900 M2) comes before the missing German names, which wait past the three.
+    await expect(cards.nth(2)).toHaveAttribute("data-finding", "rival_cheaper");
+    await expect(cards.nth(2)).toContainText("Linnet sells");
     // Each finding links to the page that fixes it.
     await expect(cards.nth(1).getByRole("link", { name: "See searches" })).toHaveAttribute("href", `/admin/${slug}/search`);
     if (shots) await page.screenshot({ path: `${shots}/markets-computer.png` });
@@ -104,6 +116,11 @@ test.describe("as a store's owner", () => {
     await expect(page.locator('[data-every-country] [data-finding="unpriced"]')).toContainText("have no price in Germany");
     await expect(page.locator('[data-every-country] [data-finding="strong_market"]')).toContainText("Visitors in Norway buy more");
     await expect(page.locator('[data-market-terms="DE"]')).toContainText("leinen");
+    // The rival and its offer, a fifth cheaper: the store 25 % dearer, worked out by code.
+    await expect(page.locator('[data-rival="linnet.example"]')).toContainText("Linnet");
+    await expect(page.getByRole("table", { name: "Rivals' offers" })).toContainText("+25 %");
+    await expect(page.locator('[data-every-country] [data-finding="untranslated"]')).toContainText("have no name in German");
+    if (shots) await page.locator('section[aria-labelledby="market-rivals"]').screenshot({ path: `${shots}/markets-rivals.png` });
     if (shots) {
       await page.screenshot({ path: `${shots}/markets-every-country.png`, fullPage: true });
       await page.setViewportSize({ width: 390, height: 844 });

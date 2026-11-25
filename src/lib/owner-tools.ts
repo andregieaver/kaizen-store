@@ -1314,6 +1314,20 @@ const ALL_OWNER_TOOLS = [
     z.object({ days: z.number().int().min(7).max(90).default(30) }),
   ),
   tool(
+    "list_rivals",
+    "The shops the owner added as rivals in each country (D900, Analytics → Markets) and the offers read from their own product pages: their product, their price, the store's own product and price there, and how much dearer or cheaper the store is, worked out in code (only in one currency), with when each was read (old after 30 days). Quote it; never compare prices yourself.",
+    z.object({}),
+  ),
+  tool(
+    "read_rival_offer",
+    "Reads one product page of a rival the owner added and keeps its offer: the price, availability, shipping and returns the page states in its own machine-readable data, never its words, and only where its robots.txt allows. Name the rival (its name or web host), the page (on the rival's own site) and, to compare, the store's own product by its handle. Find pages with search_web. A page without such data keeps nothing, and says so. Rivals themselves are added by the owner on Analytics → Markets.",
+    z.object({
+      rival: z.string().trim().min(1).max(200).describe("The rival's name or web host, from list_rivals."),
+      page: z.string().trim().url().max(2000).describe("The rival's product page, https, on its own site."),
+      product: z.string().trim().min(1).max(200).optional().describe("The store's own product it is compared with, by its handle."),
+    }),
+  ),
+  tool(
     "report_catalogue",
     "What a report can be asked for (D345): every figure run_report counts, what it means, and the cuts each figure allows, in the Reports page's own words, with the period presets and the comparisons. Call it before run_report when unsure what a question maps to.",
     z.object({}),
@@ -2525,6 +2539,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return quoteToolSummary(name, input) ?? inputSummary(name, input);
     case "change_form":
       return changeFormSummary(input);
+    // A rival's page read and kept (D900 M2): staff-only, nothing shoppers see changes.
+    case "read_rival_offer":
+      return `Read the product page ${text("page") || "given"} of the rival ${text("rival") || "named"} and keep its price${input.product ? `, compared with your product ${text("product")}` : ""}.`;
     // The contract's title and the signer are put in by the server (`remindApprovalWords()`).
     case "remind_contract_signer":
       return remindSummary(null, input);

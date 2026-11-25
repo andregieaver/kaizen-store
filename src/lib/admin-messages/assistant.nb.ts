@@ -531,6 +531,8 @@ export const assistantNb: AssistantMessages = {
     explain_change: "Finner ut hvorfor salget endret seg",
     analytics_alerts: "Sjekker hva som bør ses på",
     market_check: "Sammenligner landene dine",
+    list_rivals: "Ser på konkurrentene dine",
+    read_rival_offer: "Leser en konkurrents side",
     report_catalogue: "Leser hva rapporter kan vise",
     run_report: "Kjører en rapport",
     save_report: "Lagrer en rapport",
