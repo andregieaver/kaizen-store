@@ -559,6 +559,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   body fonts (C2b), fetched only by `fontFile()` (`src/server/font-outlines.ts`, `fonts.gstatic.com` alone, as brand marks), its logo the store's
   own (`navigation.logo`, `logoDark` on a dark theme), read as the photo is; a font or logo that cannot be read leaves the picture without it.
 
+## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
+
+- **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram
+  feed's connection (D560) asks `instagram_business_manage_insights` beside `instagram_business_basic`, and `instagram_accounts.insights` says
+  whether the token carries it (`grantsInsights()` over the exchange's permissions; an account connected before is asked to connect again).
+  `social_post_insights` is written only by `refreshSocialInsights()` (the dispatcher's `socialInsights` job, never throws): once a day per
+  account, its posts of the last `INSIGHTS_DAYS` from `/me/media` and each one's totals (`METRICS` per kind, reach alone where a kind refuses
+  them), kept 400 days; Instagram's refusal is the account's `insights_problem`. Only the account's own posts and their counts are read, never
+  who liked or saw them. The owner reads them on Social posts (`insightsView()`); Kaizena Flow's own store shows the platform's account while it
+  has none of its own.
+
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 
 - **Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)**: what a shopper does

@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import { authorizeUrl, keptPosts, parsePosts, postsDue, tokenDue, type InstagramPost } from "@/lib/instagram";
+import { grantsInsights } from "@/lib/social-insights";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 
@@ -21,14 +22,15 @@ import { jobReport } from "./cache-events";
 
 /**
  * The Instagram feed's connection (D560, pure parts in `src/lib/instagram.ts`): Kaizena Flow's Instagram app (`INSTAGRAM_APP_ID`,
- * `INSTAGRAM_APP_SECRET`), Instagram Login with the one scope `instagram_business_basic`, a long-lived token per owner (a store, or Kaizena
+ * `INSTAGRAM_APP_SECRET`), Instagram Login with the scope `instagram_business_basic` (and `instagram_business_manage_insights` for the posts' figures,
+ * D870 S1.2, `social-insights.ts`), a long-lived token per owner (a store, or Kaizena
  * Flow with a null store) kept encrypted, refreshed by the dispatcher before it runs out, and the account's latest posts read hourly and kept
  * in the row. A page reads the kept posts (`instagramPosts()`, cached under `instagramTag()`), never Instagram, so a visitor costs no call
  * and tells Meta nothing; the pictures come through `/api/instagram/…`.
  */
 
 const TIMEOUT_MS = 10_000;
-const GRAPH = "https://graph.instagram.com";
+export const GRAPH = "https://graph.instagram.com";
 const FIELDS = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp";
 
 export const INSTAGRAM_COOKIE = "kaizen_instagram_connect";
@@ -76,7 +78,8 @@ export function instagramStarted(cookie: string | undefined, params: URLSearchPa
   return { owner, accountId };
 }
 
-async function call(url: string, init: RequestInit = {}): Promise<Record<string, unknown>> {
+/** One call to Instagram's API: its JSON, or `InstagramError` with Instagram's own words (never a person's data). */
+export async function call(url: string, init: RequestInit = {}): Promise<Record<string, unknown>> {
   let response: Response;
   try {
     response = await fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" });
@@ -116,6 +119,8 @@ export async function connectInstagram(accountId: string, storeId: string | null
     body: new URLSearchParams({ client_id: app.appId, client_secret: app.appSecret, grant_type: "authorization_code", redirect_uri: `${siteUrl()}${INSTAGRAM_CALLBACK}`, code }),
   });
   if (typeof short.access_token !== "string") throw new InstagramError("Instagram gave no token.");
+  // Whether the owner granted the posts' figures too (D870 S1.2): the exchange names the permissions the token carries.
+  const insights = grantsInsights(short.permissions);
   const long = await call(`${GRAPH}/access_token?${new URLSearchParams({ grant_type: "ig_exchange_token", client_secret: app.appSecret, access_token: short.access_token })}`);
   if (typeof long.access_token !== "string") throw new InstagramError("Instagram gave no lasting token.");
   const token = long.access_token;
@@ -126,13 +131,14 @@ export async function connectInstagram(accountId: string, storeId: string | null
   if (!/^[0-9]{1,40}$/.test(userId) || !username) throw new InstagramError("Instagram did not say which account this is.");
   const posts = await readPosts(token);
   await db().execute(sql`
-    insert into commerce.instagram_accounts (store_id, ig_user_id, username, token_encrypted, token_expires_at, posts, posts_fetched_at, problem, connected_by)
-    values (${storeId}::uuid, ${userId}, ${username}, ${encryptSecret(token, key)}, ${expiresAt.toISOString()}, ${JSON.stringify(posts)}::jsonb, now(), null, ${accountId}::uuid)
+    insert into commerce.instagram_accounts (store_id, ig_user_id, username, token_encrypted, token_expires_at, posts, posts_fetched_at, problem, connected_by, insights)
+    values (${storeId}::uuid, ${userId}, ${username}, ${encryptSecret(token, key)}, ${expiresAt.toISOString()}, ${JSON.stringify(posts)}::jsonb, now(), null, ${accountId}::uuid, ${insights})
     on conflict on constraint instagram_accounts_store_key do update set ig_user_id = excluded.ig_user_id, username = excluded.username,
       token_encrypted = excluded.token_encrypted, token_expires_at = excluded.token_expires_at, posts = excluded.posts,
-      posts_fetched_at = excluded.posts_fetched_at, problem = null, connected_by = excluded.connected_by, updated_at = now()
+      posts_fetched_at = excluded.posts_fetched_at, problem = null, connected_by = excluded.connected_by,
+      insights = excluded.insights, insights_fetched_at = null, insights_problem = null, updated_at = now()
   `);
-  await audit(accountId, storeId, storeId ? "store.instagram_connected" : "platform.instagram_connected", { username, posts: posts.length });
+  await audit(accountId, storeId, storeId ? "store.instagram_connected" : "platform.instagram_connected", { username, posts: posts.length, insights });
   refreshTag(instagramTag(storeId));
   return { username };
 }

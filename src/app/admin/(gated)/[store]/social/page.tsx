@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/admin/ui";
+import { SocialInsightsCard } from "@/components/admin/social-insights-card";
 import { SocialPostCreator } from "@/components/admin/social-posts";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SOCIAL_WORDS } from "@/lib/admin-words/social";
 import { aiFor } from "@/server/ai";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { insightsView } from "@/server/social-insights";
 import {
   listSocialPosts,
   socialPages,
@@ -28,10 +30,11 @@ export default async function SocialPostsPage({
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = SOCIAL_WORDS[lang];
-  const [products, pages, posts, ai] = await Promise.all([
+  const [products, pages, posts, insights, ai] = await Promise.all([
     socialProducts(store),
     socialPages(store),
     listSocialPosts(store.id),
+    houseOrStoreInsights(store),
     aiFor(store.id, { feature: "social_posts" }).catch(() => null),
   ]);
 
@@ -49,6 +52,25 @@ export default async function SocialPostsPage({
         base={`/admin/${store.slug}/social`}
         words={w}
       />
+      <SocialInsightsCard
+        view={insights.view}
+        words={w.insights}
+        connectHref={insights.platform ? "/admin/platform/instagram" : `/admin/${store.slug}/integrations/instagram`}
+        mayConnect={memberCan(member, "settings:write")}
+        numberLocale={ADMIN_LANG_FACTS[lang].locale}
+        timeZone={store.timeZone}
+      />
     </div>
   );
 }
+
+/**
+ * The account whose figures the page shows: the store's own Instagram; for Kaizena Flow's own store (C1b), Kaizena Flow's account on
+ * Platform, Instagram while the store has none of its own.
+ */
+async function houseOrStoreInsights(store: { id: string; house?: boolean }) {
+  const own = await insightsView(store.id);
+  if (own.state !== "none" || !store.house) return { view: own, platform: false };
+  return { view: await insightsView(null), platform: true };
+}
+

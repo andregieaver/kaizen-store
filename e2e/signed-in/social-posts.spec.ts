@@ -115,3 +115,39 @@ test("a store's page is a subject too, and a post about it links to it (C1b: Kai
   await page.screenshot({ path: "test-results/social-posts-page.png", fullPage: true });
 });
 
+
+test("how the store's own Instagram posts did, newest first, once the account granted insights (D870 S1.2)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const card = page.getByRole("region", { name: "How your Instagram posts did" });
+  await expect(card).toContainText("Connect your Instagram account to see how each post does.");
+  await expect(card.getByRole("link", { name: "Connect Instagram" })).toHaveAttribute("href", `/admin/${SLUG}/integrations/instagram`);
+
+  const sql = testDb();
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${SLUG}`;
+    const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!;
+    const [account] = await sql`
+      insert into commerce.instagram_accounts (store_id, ig_user_id, username, token_encrypted, token_expires_at, insights, insights_fetched_at)
+      values (${store.id}, '17841400000000001', 'keramikkverkstedet', ${encryptSecret("stand-in", key)}, now() + interval '50 days', true, now())
+      returning id`;
+    const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    for (const [id, kind, at, caption, reach, likes, saves, shares] of [
+      ["2001", "feed", day(2), "Nye krus fra ovnen i dag, glasert i små serier.", 1840, 132, 27, 9],
+      ["2002", "reel", day(6), "Slik dreier vi en bolle, fra leire til glasur.", 5210, 388, 61, 44],
+      ["2003", "story", day(9), "", 610, null, null, 3],
+    ] as const) {
+      await sql`
+        insert into commerce.social_post_insights (account_id, store_id, media_id, kind, posted_at, caption, permalink, reach, likes, saves, shares)
+        values (${account.id}, ${store.id}, ${id}, ${kind}, ${at}, ${caption}, ${`https://www.instagram.com/p/${id}/`}, ${reach}, ${likes}, ${saves}, ${shares})`;
+    }
+  } finally {
+    await sql.end();
+  }
+  await page.reload();
+  await expect(card.getByRole("listitem")).toHaveCount(3);
+  await expect(card.getByRole("listitem").first()).toContainText("Nye krus fra ovnen i dag");
+  await expect(card.getByRole("listitem").first()).toContainText("1,840");
+  await expect(card.getByRole("listitem").nth(2)).toContainText("(no caption)");
+  await card.scrollIntoViewIfNeeded();
+  await card.screenshot({ path: "test-results/social-insights.png" });
+});

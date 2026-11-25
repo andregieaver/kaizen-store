@@ -63,7 +63,7 @@ describe("connecting and upkeep", () => {
   it("asks Instagram for the one scope that reads the account's own posts", () => {
     const url = new URL(authorizeUrl("123", "https://kaizenaflow.com/api/integrations/instagram/callback", "s"));
     expect(url.host).toBe("www.instagram.com");
-    expect(url.searchParams.get("scope")).toBe("instagram_business_basic");
+    expect(url.searchParams.get("scope")).toBe("instagram_business_basic,instagram_business_manage_insights");
     expect(url.searchParams.get("state")).toBe("s");
   });
 

@@ -20,6 +20,7 @@ import { summarisePending } from "@/server/support-summary";
 import { reencryptSecrets } from "@/server/secret-rotation";
 import { expireAssistantApprovals } from "@/server/owner-assistant";
 import { refreshInstagramFeeds } from "@/server/instagram";
+import { refreshSocialInsights } from "@/server/social-insights";
 import { expireDrafts } from "@/server/draft-orders";
 import { expireApprovals } from "@/server/company-approvals";
 import { archiveFinishedOrders } from "@/server/order-archive";
@@ -143,6 +144,8 @@ export const DISPATCHER_JOBS = {
   affiliates: () => runAffiliateJobs(),
   // Instagram feeds (D560, never throws): tokens refreshed before their 60 days run out, and each account's posts read again hourly.
   instagram: () => refreshInstagramFeeds(),
+  // How each connected Instagram account's own posts did (D870 S1.2): read once a day for accounts that granted the figures, ten a run.
+  socialInsights: () => refreshSocialInsights(),
   experiments: () => runExperimentJobs(),
   returns: () => runReturnJobs(),
   invoices: () => invoiceJobs(),

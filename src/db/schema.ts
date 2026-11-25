@@ -11779,6 +11779,14 @@ export const instagramAccounts = commerce.table(
     postsFetchedAt: timestamp("posts_fetched_at", { withTimezone: true }),
     /** What went wrong at the last refresh, in the owner's words; null when it went well. */
     problem: text("problem"),
+    /**
+     * The token carries `instagram_business_manage_insights` (D870 S1.2): its posts' figures are read daily into `social_post_insights`.
+     * False for an account connected before, until the owner connects again.
+     */
+    insights: boolean("insights").notNull().default(false),
+    insightsFetchedAt: timestamp("insights_fetched_at", { withTimezone: true }),
+    /** What went wrong reading the figures, in the owner's words; null when it went well. */
+    insightsProblem: text("insights_problem"),
     connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -11790,8 +11798,49 @@ export const instagramAccounts = commerce.table(
     check("instagram_accounts_username", sql`char_length(${t.username}) between 1 and 60`),
     check("instagram_accounts_posts", sql`jsonb_typeof(${t.posts}) = 'array' and octet_length(${t.posts}::text) < 400000`),
     check("instagram_accounts_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+    check("instagram_accounts_insights_problem", sql`${t.insightsProblem} is null or char_length(${t.insightsProblem}) <= 300`),
   ],
 );
+
+/**
+ * How each of a connected Instagram account's own posts did (D870 S1.2, `src/lib/social-insights.ts`, `src/server/social-insights.ts`): the
+ * post (its id, kind, when, its caption's start and its address) and its totals as Instagram counts them, read again daily while the post is
+ * under 90 days old, kept 400 days. A store's or, with no store, Kaizena Flow's own (as `instagram_accounts`). Never who liked or saw it.
+ */
+export const socialPostInsights = commerce
+  .table(
+    "social_post_insights",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      accountId: uuid("account_id")
+        .notNull()
+        .references(() => instagramAccounts.id, { onDelete: "cascade" }),
+      storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+      channel: text("channel").notNull().default("instagram"),
+      mediaId: text("media_id").notNull(),
+      kind: text("kind").notNull(),
+      mediaType: text("media_type").notNull().default(""),
+      postedAt: timestamp("posted_at", { withTimezone: true }).notNull(),
+      caption: text("caption").notNull().default(""),
+      permalink: text("permalink").notNull().default(""),
+      reach: integer("reach"),
+      views: integer("views"),
+      likes: integer("likes"),
+      comments: integer("comments"),
+      saves: integer("saves"),
+      shares: integer("shares"),
+      interactions: integer("interactions"),
+      fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      unique("social_post_insights_media_key").on(t.accountId, t.mediaId),
+      index("social_post_insights_list_idx").on(t.storeId, t.postedAt),
+      check("social_post_insights_channel", sql`${t.channel} in ('instagram')`),
+      check("social_post_insights_kind", sql`${t.kind} in ('feed', 'reel', 'story')`),
+      check("social_post_insights_media", sql`${t.mediaId} ~ '^[0-9]{1,40}$' and char_length(${t.caption}) <= 300 and char_length(${t.permalink}) <= 300`),
+    ],
+  )
+  .enableRLS();
 
 /**
  * A site's chat agent (D81): Kaizen's (`store_id` null) or a store's. It
