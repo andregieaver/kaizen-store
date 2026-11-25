@@ -174,6 +174,65 @@ test("how the store's own Instagram posts did, newest first, once the account gr
   await facts.screenshot({ path: "test-results/social-facts.png" });
 });
 
+test("how the store's Facebook Page's posts did, from choosing the Page to its figures, and disconnecting it (D870 S1.2b)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const card = page.getByRole("region", { name: "How your Facebook Page's posts did" });
+  await expect(card).toContainText("Connect your shop's Facebook Page to see how each post does.");
+  // This build has no Facebook app: the card says so rather than offering a button that cannot work.
+  await expect(card).toContainText("Facebook cannot be connected here yet.");
+
+  const sql = testDb();
+  const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!;
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${SLUG}`;
+    await sql`
+      insert into commerce.facebook_pages (store_id, user_token_encrypted, choices, insights)
+      values (${store.id}, ${encryptSecret("stand-in", key)}, ${JSON.stringify([{ id: "5550001", name: "Keramikkverkstedet" }, { id: "5550002", name: "Eva's other shop" }])}::jsonb, true)`;
+  } finally {
+    await sql.end();
+  }
+  await page.reload();
+  await expect(card.getByLabel("Which Page is your shop's?")).toContainText("Eva's other shop");
+  await expect(card.getByRole("button", { name: "Use this Page" })).toBeVisible();
+
+  const sql2 = testDb();
+  try {
+    const [store] = await sql2`select id from commerce.stores where slug = ${SLUG}`;
+    const [fb] = await sql2`
+      update commerce.facebook_pages set page_id = '5550001', page_name = 'Keramikkverkstedet', page_token_encrypted = ${encryptSecret("stand-in", key)},
+        user_token_encrypted = null, choices = '[]'::jsonb, fetched_at = now()
+      where store_id = ${store.id} returning id`;
+    const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    for (const [id, at, caption, reach, likes, comments, shares] of [
+      ["5550001_1", day(1), "Julemarked i verkstedet lørdag: kom innom for gløgg og nye boller.", 2310, 84, 19, 12],
+      ["5550001_2", day(5), "Nye krus fra ovnen i dag.", 960, 41, 6, 2],
+      ["5550001_3", day(12), "", 430, 12, 1, 0],
+    ] as const) {
+      await sql2`
+        insert into commerce.social_post_insights (page_id, store_id, channel, media_id, kind, posted_at, caption, permalink, reach, likes, comments, shares, interactions)
+        values (${fb.id}, ${store.id}, 'facebook', ${id}, 'feed', ${at}, ${caption}, ${`https://www.facebook.com/5550001/posts/${id.split("_")[1]}`}, ${reach}, ${likes}, ${comments}, ${shares}, ${likes + comments + shares})`;
+    }
+  } finally {
+    await sql2.end();
+  }
+  await page.reload();
+  await expect(card.getByRole("listitem")).toHaveCount(3);
+  await expect(card.getByRole("listitem").first()).toContainText("Julemarked i verkstedet");
+  await expect(card.getByRole("listitem").first()).toContainText("2,310");
+  await expect(card.getByRole("listitem").nth(2)).toContainText("A post without words");
+  await card.scrollIntoViewIfNeeded();
+  await card.screenshot({ path: "test-results/social-facebook.png" });
+
+  await page.locator("summary", { hasText: "What the adviser reads" }).click();
+  const facts = page.locator("details", { hasText: "What the adviser reads" });
+  await expect(facts).toContainText("Keramikkverkstedet: 3 posts");
+  await expect(facts).toContainText("Average per post: reach 1,233");
+
+  await card.getByRole("button", { name: "Disconnect" }).click();
+  await expect(card).toContainText("The Page is disconnected.");
+  await expect(card).toContainText("Connect your shop's Facebook Page");
+});
+
 test("the adviser says how the store stands in three verdicts, and its one button writes the main recommendation's posts (D870 S1.4)", async ({ page }) => {
   await page.goto(`/admin/${SLUG}/social`);
   const adviser = page.getByRole("region", { name: "Your social media adviser" });

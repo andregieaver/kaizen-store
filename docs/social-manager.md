@@ -75,6 +75,7 @@ the first copy of each is noted. Lisa's theme (the link's campaign) and the pric
 |---|---|---|
 | S1.1 | Tagged links on every link the platform builds for social (bio, posts), and attribution of visits and orders to a post | A test order from a tagged link shows on its post. **Done 2026-11-23**: `utm_content` kept on `visits.content`, `postLink()` (`src/lib/post-links.ts`), `postReport()` and `postRows()`, `docs/analytics.md` "Post"; `analytics-posts.int.test.ts` |
 | S1.2 | Social accounts: one table for connected channels (Meta first), insights fetched by the dispatcher | A connected account's last 90 days of posts and insights are kept. **Done 2026-11-25** for Instagram (below); Facebook Pages are S1.2b |
+| S1.2b | A store's Facebook Page: connected by Facebook Login, its posts' figures read daily beside Instagram's | A chosen Page's last 90 days of posts and their totals are kept and reach the adviser. **Done 2026-11-25**: `facebook_pages`, `refreshFacebookInsights()` (the dispatcher's `facebookInsights`), the card on Social posts; `facebook-pages.int.test.ts` |
 | S1.3 | The adviser's facts (`socialFacts()`): store and channel figures in one typed object, by code | The facts test covers an empty, a quiet and a busy account. **Done 2026-11-25**: `socialFacts()` (`src/lib/social-facts.ts`), gathered by `gatherSocialFacts()`; shown under *What the adviser reads* on Social posts |
 | S1.4 | The report, recommendations and content plan as manager tools (`social_report`, `social_plan`), the plan as autopilot steps | Homer sees three verdicts and one button; Lisa sees every figure. **Done 2026-11-25** on the page: `writeSocialAdvice()` (`src/server/social-advice.ts`, answer checked by `parseAdvice()`), kept in `social_advice`; the manager tools and the plan as autopilot steps are S1.4b |
 | S1.4b | `social_report` and `social_plan` as AI manager tools, and a recommendation started as an autopilot plan on the owner's yes | The AI manager answers "how is my social media doing?" from the kept advice and its facts. **Done 2026-11-25**: `social_report`, `social_plan` and `write_social_posts` (`src/server/social-tools.ts`); a plan with a `write_social_posts` step starts only on the owner's yes, as every autopilot plan |
@@ -84,6 +85,13 @@ the first copy of each is noted. Lisa's theme (the link's campaign) and the pric
 S1.2 as built: the Instagram feed's connection (D560) asks `instagram_business_manage_insights` too; the dispatcher's `socialInsights` job
 reads each post's totals daily into `social_post_insights` (`src/server/social-insights.ts`), shown on Social posts. Other businesses'
 accounts need Meta's App Review for that permission, which is the owner's to submit in Meta's console.
+
+S1.2b as built: Kaizena Flow's Facebook app (`FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`) signs the owner in with Facebook Login
+(`pages_show_list`, `pages_read_engagement`, `read_insights`) from the Facebook card on Social posts; one Page is kept at once, several are
+offered to choose among, and only the chosen Page's token is kept (`src/server/facebook-pages.ts`). The dispatcher's `facebookInsights` job
+reads its posts of 90 days with their reactions, comments and shares, and with `read_insights` each post's reach and views (Meta's newer
+media-view metrics, the older impressions where a Page refuses them), into `social_post_insights` (channel `facebook`). The facts, the
+manager's tools and the weekly review carry them. Pages of other businesses need Meta's App Review for these permissions, the owner's to submit.
 
 ## 5. Copy and graphics, in depth
 

@@ -42,6 +42,8 @@ export type InstagramPostInput = {
   shares: number | null;
 };
 
+export type FacebookPostInput = { postedAt: string; caption: string; reach: number | null; interactions: number | null };
+
 export type SocialFactsInput = {
   store: { name: string; currency: string; timeZone: string };
   now: string;
@@ -55,6 +57,8 @@ export type SocialFactsInput = {
   /** Posts written in the creator in the last 90 days, and how many were copied. */
   creator: { written: number; copied: number };
   instagram: { state: "none" | "reconnect" | "waiting" } | { state: "ready"; username: string; posts: InstagramPostInput[] };
+  /** The store's Facebook Page (S1.2b); absent where none was gathered. */
+  facebook?: { state: "none" | "choose" | "waiting" } | { state: "ready"; name: string; posts: FacebookPostInput[] };
 };
 
 export type SocialFacts = {
@@ -93,6 +97,21 @@ export type SocialFacts = {
         bestWeekday: number | null;
         top: { kind: string; postedAt: string; caption: string; reach: number | null; saves: number | null }[];
       };
+  facebook:
+    | { state: "none" | "choose" | "waiting" }
+    | {
+        state: "ready";
+        name: string;
+        posts: number;
+        postsPerWeek: number;
+        daysSinceLastPost: number | null;
+        /** Over the posts Facebook gave it for; null with none (reach needs `read_insights`). */
+        averageReach: number | null;
+        /** Reactions, comments and shares per post. */
+        averageInteractions: number | null;
+        bestWeekday: number | null;
+        top: { postedAt: string; caption: string; reach: number | null; interactions: number | null }[];
+      };
 };
 
 const round = (n: number, places = 2) => Math.round(n * 10 ** places) / 10 ** places;
@@ -104,6 +123,47 @@ const average = (values: number[]) => (values.length > 0 ? Math.round(values.red
 export function weekdayIn(iso: string, timeZone: string): number {
   const name = new Date(iso).toLocaleDateString("en-GB", { weekday: "short", timeZone });
   return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(name) + 1;
+}
+
+/** The weekday whose posts did best on average (Monday is 1), among days with `WEEKDAY_MIN_POSTS` posts; null without one. */
+function bestDay(posts: { postedAt: string; score: number | null }[], timeZone: string): number | null {
+  const days = new Map<number, number[]>();
+  for (const p of posts) {
+    if (p.score === null) continue;
+    const day = weekdayIn(p.postedAt, timeZone);
+    days.set(day, [...(days.get(day) ?? []), p.score]);
+  }
+  const eligible = [...days.entries()].filter(([, scores]) => scores.length >= WEEKDAY_MIN_POSTS);
+  const best = eligible.sort((a, b) => average(b[1])! - average(a[1])! || a[0] - b[0])[0];
+  return best ? best[0] : null;
+}
+
+const daysSince = (posts: { postedAt: string }[], now: Date): number | null => {
+  const newest = posts.reduce<number | null>((max, p) => Math.max(max ?? 0, Date.parse(p.postedAt)), null);
+  return newest === null ? null : Math.floor((now.getTime() - newest) / 86_400_000);
+};
+
+function facebookFacts(input: SocialFactsInput, now: Date): SocialFacts["facebook"] {
+  const fb = input.facebook ?? { state: "none" as const };
+  if (fb.state !== "ready") return { state: fb.state };
+  const posts = fb.posts;
+  const anyReach = posts.some((p) => p.reach !== null);
+  return {
+    state: "ready",
+    name: fb.name,
+    posts: posts.length,
+    postsPerWeek: round((posts.length / 90) * 7, 1),
+    daysSinceLastPost: daysSince(posts, now),
+    averageReach: average(posts.flatMap((p) => (p.reach === null ? [] : [p.reach]))),
+    averageInteractions: average(posts.flatMap((p) => (p.interactions === null ? [] : [p.interactions]))),
+    // Reach where Facebook gave it, else what people did with the post.
+    bestWeekday: bestDay(posts.map((p) => ({ postedAt: p.postedAt, score: anyReach ? p.reach : p.interactions })), input.store.timeZone),
+    top: [...posts]
+      .filter((p) => (anyReach ? p.reach : p.interactions) !== null)
+      .sort((a, b) => (anyReach ? (b.reach ?? 0) - (a.reach ?? 0) : (b.interactions ?? 0) - (a.interactions ?? 0)) || b.postedAt.localeCompare(a.postedAt))
+      .slice(0, TOP_MAX)
+      .map((p) => ({ postedAt: p.postedAt, caption: p.caption.slice(0, 120), reach: p.reach, interactions: p.interactions })),
+  };
 }
 
 function instagramFacts(input: SocialFactsInput, now: Date): SocialFacts["instagram"] {
@@ -120,24 +180,16 @@ function instagramFacts(input: SocialFactsInput, now: Date): SocialFacts["instag
   const withBoth = posts.filter((p) => p.reach !== null && p.reach > 0 && p.saves !== null);
   const reached = withBoth.reduce((s, p) => s + (p.reach ?? 0), 0);
   const saved = withBoth.reduce((s, p) => s + (p.saves ?? 0), 0);
-  const days = new Map<number, number[]>();
-  for (const p of posts) {
-    if (p.reach === null || p.kind === "story") continue;
-    const day = weekdayIn(p.postedAt, input.store.timeZone);
-    days.set(day, [...(days.get(day) ?? []), p.reach]);
-  }
-  const eligible = [...days.entries()].filter(([, reaches]) => reaches.length >= WEEKDAY_MIN_POSTS);
-  const best = eligible.sort((a, b) => average(b[1])! - average(a[1])! || a[0] - b[0])[0];
-  const newest = posts.reduce<number | null>((max, p) => Math.max(max ?? 0, Date.parse(p.postedAt)), null);
+  const best = bestDay(posts.filter((p) => p.kind !== "story").map((p) => ({ postedAt: p.postedAt, score: p.reach })), input.store.timeZone);
   return {
     state: "ready",
     username: ig.username,
     posts: posts.length,
     postsPerWeek: round((posts.length / 90) * 7, 1),
-    daysSinceLastPost: newest === null ? null : Math.floor((now.getTime() - newest) / 86_400_000),
+    daysSinceLastPost: daysSince(posts, now),
     byKind,
     savesPer100Reach: reached > 0 ? round((saved / reached) * 100, 1) : null,
-    bestWeekday: best ? best[0] : null,
+    bestWeekday: best,
     top: [...posts]
       .filter((p) => p.reach !== null)
       .sort((a, b) => (b.reach ?? 0) - (a.reach ?? 0) || b.postedAt.localeCompare(a.postedAt))
@@ -182,5 +234,6 @@ export function socialFacts(input: SocialFactsInput): SocialFacts {
     taggedPosts: [...input.taggedPosts].sort((a, b) => b.revenueMinor - a.revenueMinor || b.sessions - a.sessions).slice(0, TOP_MAX),
     creator: input.creator,
     instagram: instagramFacts(input, now),
+    facebook: facebookFacts(input, now),
   };
 }

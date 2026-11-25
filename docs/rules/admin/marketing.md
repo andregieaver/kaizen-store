@@ -586,6 +586,19 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   who liked or saw them. The owner reads them on Social posts (`insightsView()`); Kaizena Flow's own store shows the platform's account while it
   has none of its own.
 
+## A store's Facebook Page (D870 S1.2b, `src/lib/facebook-pages.ts` pure, `src/server/facebook-pages.ts`)
+
+- **A store's Facebook Page (D870 S1.2b, `src/lib/facebook-pages.ts` pure, `src/server/facebook-pages.ts`)**: connected from the Facebook card
+  on Social posts (plain forms posted to `/admin/{store}/social/facebook`, `marketing:write`, same site), through Facebook Login with
+  `pages_show_list`, `pages_read_engagement` and `read_insights`, back at `/api/integrations/facebook/callback` (state in an httpOnly cookie,
+  the same person). The person's token is made long-lived and their Pages listed: one is kept at once; with several, the person's token and
+  the Pages' ids and names wait in `facebook_pages` until the owner chooses, then only the Page's own token is kept (encrypted, as payment
+  secrets). `refreshFacebookInsights()` (the dispatcher's `facebookInsights`, never throws) reads each chosen Page once a day: its posts of
+  `INSIGHTS_DAYS` from `published_posts` with reactions, comments and shares, and with `read_insights` each post's reach and views
+  (`PAGE_METRICS`, the newer names first), into `social_post_insights` with channel `facebook` and `page_id`; Facebook's refusal is the
+  Page's `problem`. A new connection or a disconnect removes the old Page's figures. Only the Page's own posts and their counts are read,
+  never who reacted or saw them. The adviser's facts (`facebook`), the manager's `social_report` and the weekly review carry them.
+
 ## The social media adviser's facts (D870 S1.3, `src/lib/social-facts.ts` pure, `src/server/social-facts.ts`)
 
 - **The social media adviser's facts (D870 S1.3, `src/lib/social-facts.ts` pure, `src/server/social-facts.ts`)**: what the adviser is told is

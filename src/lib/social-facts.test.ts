@@ -29,6 +29,7 @@ describe("the adviser's facts (D870 S1.3)", () => {
       taggedPosts: [],
       creator: { written: 0, copied: 0 },
       instagram: { state: "none" },
+      facebook: { state: "none" },
     });
   });
 
@@ -88,6 +89,28 @@ describe("the adviser's facts (D870 S1.3)", () => {
     // Saves over reach for the posts that have both: 100 of 12 400.
     expect(ig.savesPer100Reach).toBe(0.8);
     expect(ig.top.map((p) => p.caption)).toEqual(["Throwing a bowl", "Glazing", "Bowls"]);
+  });
+
+  it("sums up the Facebook Page: posts a week, average reach and what people did, the best weekday and posts (D870 S1.2b)", () => {
+    const facts = socialFacts({
+      ...base,
+      facebook: {
+        state: "ready",
+        name: "Keramikkverkstedet",
+        posts: [
+          { postedAt: day(2), caption: "Bowls", reach: 900, interactions: 40 },
+          { postedAt: day(9), caption: "Mugs", reach: 300, interactions: 10 },
+          { postedAt: day(16), caption: "Vases", reach: 700, interactions: 25 },
+        ],
+      },
+    });
+    expect(facts.facebook).toMatchObject({ state: "ready", posts: 3, postsPerWeek: 0.2, daysSinceLastPost: 2, averageReach: 633, averageInteractions: 25 });
+    expect(facts.facebook.state === "ready" && facts.facebook.top.map((p) => p.caption)).toEqual(["Bowls", "Vases", "Mugs"]);
+    // Without read_insights there is no reach: the best posts are those people did most with.
+    const noReach = socialFacts({ ...base, facebook: { state: "ready", name: "K", posts: [{ postedAt: day(2), caption: "A", reach: null, interactions: 3 }, { postedAt: day(3), caption: "B", reach: null, interactions: 9 }] } });
+    expect(noReach.facebook).toMatchObject({ averageReach: null, averageInteractions: 6 });
+    expect(noReach.facebook.state === "ready" && noReach.facebook.top.map((p) => p.caption)).toEqual(["B", "A"]);
+    expect(socialFacts({ ...base, facebook: { state: "choose" } }).facebook).toEqual({ state: "choose" });
   });
 
   it("tells weekdays in the store's time zone", () => {

@@ -25,12 +25,18 @@ export type ReviewFacts = {
   /** Visits, orders and sales from tagged posts; null where the store does not count visits. */
   tagged: { week: WeekFigures; before: WeekFigures } | null;
   instagram: { posts: number; bestReach: number | null } | null;
+  /** The Facebook Page's posts of the week (S1.2b); null without a chosen Page. */
+  facebook?: { posts: number; bestReach: number | null } | null;
   advice: { date: string; verdicts: string[]; planned: { day: string; channel: PostChannel; idea: string }[] } | null;
 };
 
-/** Whether the week has anything to say: a post written, a tagged visit, an Instagram post or advice to show. */
+/** Whether the week has anything to say: a post written, a tagged visit, an Instagram or Facebook post or advice to show. */
 export const reviewWorthSending = (facts: ReviewFacts): boolean =>
-  facts.posts.written > 0 || (facts.tagged !== null && facts.tagged.week.visits > 0) || (facts.instagram?.posts ?? 0) > 0 || facts.advice !== null;
+  facts.posts.written > 0 ||
+  (facts.tagged !== null && facts.tagged.week.visits > 0) ||
+  (facts.instagram?.posts ?? 0) > 0 ||
+  (facts.facebook?.posts ?? 0) > 0 ||
+  facts.advice !== null;
 
 export function socialReviewEmail(
   facts: ReviewFacts,
@@ -58,6 +64,12 @@ export function socialReviewEmail(
       ? [
           { label: w.instagram, value: n(facts.instagram.posts) },
           ...(facts.instagram.bestReach !== null ? [{ label: w.bestReach, value: n(facts.instagram.bestReach) }] : []),
+        ]
+      : []),
+    ...(facts.facebook
+      ? [
+          { label: w.facebook, value: n(facts.facebook.posts) },
+          ...(facts.facebook.bestReach !== null ? [{ label: w.facebookBest, value: n(facts.facebook.bestReach) }] : []),
         ]
       : []),
   ];

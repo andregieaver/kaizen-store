@@ -80,6 +80,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   google_places: "record",
   idempotency_keys: "secret",
   instagram_accounts: "secret",
+  facebook_pages: "secret",
   inventory_levels: "catalogue",
   inventory_locations: "catalogue",
   inventory_movements: "catalogue",

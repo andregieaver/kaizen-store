@@ -381,6 +381,8 @@ export const staffEmailsEn = {
     notCounted: "Not known: the shop does not count visits",
     instagram: "Instagram posts this week",
     bestReach: "Most reached post",
+    facebook: "Facebook posts this week",
+    facebookBest: "Most reached Facebook post",
     verdicts: "What the adviser said on {date}",
     planned: "Planned for the coming week",
     button: "Open Social posts",

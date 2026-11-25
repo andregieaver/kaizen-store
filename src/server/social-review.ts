@@ -50,7 +50,7 @@ async function factsOf(store: Store, weekStart: string, now: Date): Promise<Revi
   const lastDay = addDays(weekStart, -1);
   const week = customPeriod(addDays(lastDay, -6), lastDay);
   const before = customPeriod(addDays(lastDay, -13), addDays(lastDay, -7));
-  const [counts, tagged, taggedBefore, instagram, advice] = await Promise.all([
+  const [counts, tagged, taggedBefore, instagram, facebook, advice] = await Promise.all([
     typedRow(
       COUNTS,
       sql`
@@ -65,7 +65,17 @@ async function factsOf(store: Store, weekStart: string, now: Date): Promise<Revi
       sql`
       select count(*)::int as posts, max(i.reach)::int as best
       from commerce.social_post_insights i
-      where i.store_id = ${store.id}::uuid and i.posted_at >= ${week.from}::date and i.posted_at < ${weekStart}::date
+      where i.store_id = ${store.id}::uuid and i.channel = 'instagram' and i.posted_at >= ${week.from}::date and i.posted_at < ${weekStart}::date
+    `,
+    ),
+    typedRow(
+      INSTAGRAM,
+      sql`
+      select count(i.id)::int as posts, max(i.reach)::int as best
+      from commerce.facebook_pages p
+      left join commerce.social_post_insights i on i.page_id = p.id and i.store_id = p.store_id and i.posted_at >= ${week.from}::date and i.posted_at < ${weekStart}::date
+      where p.store_id = ${store.id}::uuid and p.page_id is not null
+      group by p.id
     `,
     ),
     latestAdvice(store.id),
@@ -78,6 +88,7 @@ async function factsOf(store: Store, weekStart: string, now: Date): Promise<Revi
     posts: { written: counts?.written ?? 0, copied: counts?.copied ?? 0 },
     tagged: tagged.counting ? { week: sum(tagged.rows), before: sum(taggedBefore.rows) } : null,
     instagram: (hasInstagram?.n ?? 0) > 0 ? { posts: instagram?.posts ?? 0, bestReach: instagram?.best ?? null } : null,
+    facebook: facebook ? { posts: facebook.posts, bestReach: facebook.best } : null,
     advice: advice
       ? {
           date: advice.createdAt.slice(0, 10),

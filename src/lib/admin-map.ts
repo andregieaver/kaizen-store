@@ -634,7 +634,7 @@ const PAGES: readonly MapEntry[] = [
     tasks: ["Send purchases to Meta from the server", "Connect TikTok's Events API"],
   }),
   store("social", "/social", "Social posts", "Social posts: posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn written by the store's AI in its brand, from a product (its words, its price set by the shop, its link) or a topic of the owner's, to copy into each channel by hand. Each post carries a tagged link, so its visits and orders are counted. The posts written before, newest first, and whether each was copied.", {
-    keywords: ["social media", "instagram post", "facebook post", "pinterest pin", "tiktok caption", "linkedin post", "caption", "hashtags", "content", "sosiale medier"],
+    keywords: ["social media", "instagram post", "facebook post", "pinterest pin", "tiktok caption", "linkedin post", "caption", "hashtags", "content", "sosiale medier", "facebook page insights", "facebook reach"],
     tasks: ["Write an Instagram post for a product", "Make posts for my social media"],
   }),
   store("feeds", "/feeds", "Product feeds", "Product feeds: the store's products as Google Merchant Center, Meta, TikTok and Pinterest files at a secret address, one per country and channel, with price as shown (with VAT), stock, GTIN, brand, pictures and the flat shipping rate. Lists the products left out and why. Make a new address to stop the old one.", {

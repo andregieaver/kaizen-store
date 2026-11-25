@@ -11,6 +11,7 @@ const facts: ReviewFacts = {
   posts: { written: 3, copied: 2 },
   tagged: { week: { visits: 140, orders: 3, revenueMinor: 179_700 }, before: { visits: 90, orders: 1, revenueMinor: 59_900 } },
   instagram: { posts: 4, bestReach: 5210 },
+  facebook: { posts: 2, bestReach: 830 },
   advice: {
     date: "2026-11-27",
     verdicts: ["Your posts reach people, but few come to the shop from them.", "Reels reach far more than pictures.", "The new bowl has not been shown yet."],
@@ -27,6 +28,8 @@ describe("the weekly social media review (D870 S1.5)", () => {
     expect(lines).toContainEqual({ label: "Visits from your tagged posts", value: "140 (week before: 90)" });
     expect(lines).toContainEqual({ label: "Sales from your tagged posts", value: "1797.00 kr (week before: 599.00 kr)" });
     expect(lines).toContainEqual({ label: "Most reached post", value: "5,210" });
+    expect(lines).toContainEqual({ label: "Facebook posts this week", value: "2" });
+    expect(lines).toContainEqual({ label: "Most reached Facebook post", value: "830" });
     expect(lines.map((l) => l.label)).toContain("Reels reach far more than pictures.");
     expect(lines).toContainEqual({ label: "Tuesday 1 December · Instagram", value: "A reel of a bowl taking shape on the wheel." });
     expect(email.blocks.filter((b) => b.type === "button")).toHaveLength(1);
@@ -40,7 +43,8 @@ describe("the weekly social media review (D870 S1.5)", () => {
   });
 
   it("sends nothing for a week with nothing to say", () => {
-    expect(reviewWorthSending({ ...facts, posts: { written: 0, copied: 0 }, tagged: null, instagram: null, advice: null })).toBe(false);
+    expect(reviewWorthSending({ ...facts, posts: { written: 0, copied: 0 }, tagged: null, instagram: null, facebook: null, advice: null })).toBe(false);
     expect(reviewWorthSending({ ...facts, posts: { written: 0, copied: 0 }, tagged: null, instagram: { posts: 1, bestReach: 10 }, advice: null })).toBe(true);
+    expect(reviewWorthSending({ ...facts, posts: { written: 0, copied: 0 }, tagged: null, instagram: null, facebook: { posts: 1, bestReach: null }, advice: null })).toBe(true);
   });
 });

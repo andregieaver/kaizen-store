@@ -27,6 +27,8 @@ const link = (store: Store) => `/admin/${store.slug}/social`;
 /** The figures the manager may say, from the facts the advice was written from; no caption, no free text from outside. */
 function figuresOf(facts: SocialFacts) {
   const ig = facts.instagram;
+  // Advice kept before S1.2b has no Facebook facts.
+  const fb = facts.facebook ?? { state: "none" as const };
   return {
     as_of: facts.asOf,
     currency: facts.store.currency,
@@ -52,6 +54,22 @@ function figuresOf(facts: SocialFacts) {
           ? "not connected"
           : ig.state === "reconnect"
             ? "connected without insights: the owner connects it again"
+            : "connected; the first reading comes within a day",
+    facebook:
+      fb.state === "ready"
+        ? {
+            page: fb.name,
+            posts_last_90_days: fb.posts,
+            posts_a_week: fb.postsPerWeek,
+            days_since_last_post: fb.daysSinceLastPost,
+            average_reach: fb.averageReach,
+            average_reactions_comments_and_shares: fb.averageInteractions,
+            best_weekday: fb.bestWeekday,
+          }
+        : fb.state === "none"
+          ? "not connected"
+          : fb.state === "choose"
+            ? "connected; the owner still chooses which Page is the shop's"
             : "connected; the first reading comes within a day",
   };
 }

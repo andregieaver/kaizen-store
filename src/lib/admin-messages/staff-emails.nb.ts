@@ -371,6 +371,8 @@ export const staffEmailsNb: StaffEmailsMessages = {
     notCounted: "Ikke kjent: butikken teller ikke besøk",
     instagram: "Instagram-innlegg denne uka",
     bestReach: "Innlegget som nådde flest",
+    facebook: "Facebook-innlegg denne uka",
+    facebookBest: "Facebook-innlegget som nådde flest",
     verdicts: "Det rådgiveren sa {date}",
     planned: "Planlagt for uka som kommer",
     button: "Åpne Innlegg i sosiale medier",

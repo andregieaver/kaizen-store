@@ -1,6 +1,6 @@
 {
-  "id": "ce29f6e6-fdc9-4f82-a182-f6ac7356faa4",
-  "prevId": "b3f551a3-caa9-4be8-b45f-e58fc3f4e68c",
+  "id": "6e466785-bf1e-40ed-bfc8-6012b81fba64",
+  "prevId": "ce29f6e6-fdc9-4f82-a182-f6ac7356faa4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -36615,6 +36615,177 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.facebook_pages": {
+      "name": "facebook_pages",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page_id": {
+          "name": "page_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "page_name": {
+          "name": "page_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "page_token_encrypted": {
+          "name": "page_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_token_encrypted": {
+          "name": "user_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "choices": {
+          "name": "choices",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "insights": {
+          "name": "insights",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "connected_by": {
+          "name": "connected_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "facebook_pages_connected_by_idx": {
+          "name": "facebook_pages_connected_by_idx",
+          "columns": [
+            {
+              "expression": "connected_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "facebook_pages_store_id_stores_id_fk": {
+          "name": "facebook_pages_store_id_stores_id_fk",
+          "tableFrom": "facebook_pages",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "facebook_pages_connected_by_accounts_id_fk": {
+          "name": "facebook_pages_connected_by_accounts_id_fk",
+          "tableFrom": "facebook_pages",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "connected_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "facebook_pages_store_key": {
+          "name": "facebook_pages_store_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "facebook_pages_page": {
+          "name": "facebook_pages_page",
+          "value": "\"commerce\".\"facebook_pages\".\"page_id\" is null or \"commerce\".\"facebook_pages\".\"page_id\" ~ '^[0-9]{1,40}$'"
+        },
+        "facebook_pages_name": {
+          "name": "facebook_pages_name",
+          "value": "char_length(\"commerce\".\"facebook_pages\".\"page_name\") <= 100"
+        },
+        "facebook_pages_chosen": {
+          "name": "facebook_pages_chosen",
+          "value": "\"commerce\".\"facebook_pages\".\"page_id\" is null or \"commerce\".\"facebook_pages\".\"page_token_encrypted\" is not null"
+        },
+        "facebook_pages_choices": {
+          "name": "facebook_pages_choices",
+          "value": "jsonb_typeof(\"commerce\".\"facebook_pages\".\"choices\") = 'array' and octet_length(\"commerce\".\"facebook_pages\".\"choices\"::text) < 20000"
+        },
+        "facebook_pages_problem": {
+          "name": "facebook_pages_problem",
+          "value": "\"commerce\".\"facebook_pages\".\"problem\" is null or char_length(\"commerce\".\"facebook_pages\".\"problem\") <= 300"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.feed_settings": {
       "name": "feed_settings",
@@ -84133,7 +84304,13 @@
           "name": "account_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "page_id": {
+          "name": "page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "store_id": {
           "name": "store_id",
@@ -84275,6 +84452,20 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
+        "social_post_insights_page_id_facebook_pages_id_fk": {
+          "name": "social_post_insights_page_id_facebook_pages_id_fk",
+          "tableFrom": "social_post_insights",
+          "tableTo": "facebook_pages",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "social_post_insights_store_id_stores_id_fk": {
           "name": "social_post_insights_store_id_stores_id_fk",
           "tableFrom": "social_post_insights",
@@ -84299,13 +84490,25 @@
             "account_id",
             "media_id"
           ]
+        },
+        "social_post_insights_page_media_key": {
+          "name": "social_post_insights_page_media_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "page_id",
+            "media_id"
+          ]
         }
       },
       "policies": {},
       "checkConstraints": {
         "social_post_insights_channel": {
           "name": "social_post_insights_channel",
-          "value": "\"commerce\".\"social_post_insights\".\"channel\" in ('instagram')"
+          "value": "\"commerce\".\"social_post_insights\".\"channel\" in ('instagram', 'facebook')"
+        },
+        "social_post_insights_owner": {
+          "name": "social_post_insights_owner",
+          "value": "(\"commerce\".\"social_post_insights\".\"channel\" = 'instagram' and \"commerce\".\"social_post_insights\".\"account_id\" is not null and \"commerce\".\"social_post_insights\".\"page_id\" is null) or (\"commerce\".\"social_post_insights\".\"channel\" = 'facebook' and \"commerce\".\"social_post_insights\".\"page_id\" is not null and \"commerce\".\"social_post_insights\".\"account_id\" is null)"
         },
         "social_post_insights_kind": {
           "name": "social_post_insights_kind",
@@ -84313,7 +84516,7 @@
         },
         "social_post_insights_media": {
           "name": "social_post_insights_media",
-          "value": "\"commerce\".\"social_post_insights\".\"media_id\" ~ '^[0-9]{1,40}$' and char_length(\"commerce\".\"social_post_insights\".\"caption\") <= 300 and char_length(\"commerce\".\"social_post_insights\".\"permalink\") <= 300"
+          "value": "\"commerce\".\"social_post_insights\".\"media_id\" ~ '^[0-9]{1,40}(_[0-9]{1,40})?$' and char_length(\"commerce\".\"social_post_insights\".\"caption\") <= 300 and char_length(\"commerce\".\"social_post_insights\".\"permalink\") <= 300"
         }
       },
       "isRLSEnabled": true
