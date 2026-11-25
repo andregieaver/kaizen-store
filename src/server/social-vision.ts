@@ -62,7 +62,8 @@ export async function checkSocialPosts(
   if (!connection) return { ok: false, problem: "Checking pictures needs the store's AI with a model that sees pictures, set up under Settings." };
   const posts = await typedRows(
     POST,
-    sql`select id, channel, product_id, page_id, topic from commerce.social_posts where store_id = ${store.id}::uuid and id = any(${`{${ids.data.join(",")}}`}::uuid[])`,
+    sql`select id, channel, product_id, page_id, topic from commerce.social_posts where store_id = ${store.id}::uuid and id = any(${`{${ids.data.join(",")}}`}::uuid[])
+      order by array_position(${`{${ids.data.join(",")}}`}::uuid[], id)`,
   );
   const palette = paletteOf(store);
   const picture =
