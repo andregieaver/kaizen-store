@@ -53,12 +53,16 @@ const TONE: Record<MarketFindingKind, PillTone> = {
   rival_dearer: "good",
 };
 
-/** Each SWOT part's rule along its top, in the charts' colours every admin scheme defines: good and bad news, and the first series for chances. */
+/**
+ * Each SWOT part's rule along its top, in the charts' colours every admin scheme defines: good and bad news, and the first series for
+ * chances. Drawn as a style, not classes: the admin and the storefront share one stylesheet, whose budget a class used only here would spend
+ * (`e2e/performance.spec.ts`).
+ */
 const SWOT_RULE: Record<SwotPart, string> = {
-  strengths: "border-t-(--chart-good)",
-  weaknesses: "border-t-(--chart-warn)",
-  opportunities: "border-t-(--chart-1)",
-  threats: "border-t-(--chart-bad)",
+  strengths: "4px solid var(--chart-good)",
+  weaknesses: "4px solid var(--chart-warn)",
+  opportunities: "4px solid var(--chart-1)",
+  threats: "4px solid var(--chart-bad)",
 };
 
 const linkClass = "text-sm font-medium text-(--brand-text) underline-offset-2 hover:underline";
@@ -211,7 +215,7 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words,
                 const p = w.swot.parts[part];
                 const none = part === "threats" && check.house ? w.swot.house : p.none;
                 return (
-                  <section key={part} aria-labelledby={`swot-${part}`} data-swot={part} className={`flex flex-col border-t-4 ${SWOT_RULE[part]} ${CARD_CLASS}`}>
+                  <section key={part} aria-labelledby={`swot-${part}`} data-swot={part} className={`flex flex-col ${CARD_CLASS}`} style={{ borderTop: SWOT_RULE[part] }}>
                     <div className="px-4 pt-3 pb-2">
                       <h4 id={`swot-${part}`} className="text-body-strong text-ink">
                         {p.title}
