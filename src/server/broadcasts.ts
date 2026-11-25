@@ -851,17 +851,17 @@ type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 async function setOwnHours(tx: Tx, storeId: string, id: string, zone: string): Promise<void> {
   const hourOf = sql`extract(hour from c.clicked_at at time zone ${zone})::int`;
   const hours = z.array(z.number().int()).catch([]);
-  const [people, all, recipients] = await Promise.all([
-    typedRows(
-      z.object({ subscriber_id: col.uuid, hours }),
-      sql`select c.subscriber_id, array_agg(${hourOf}) as hours from commerce.email_clicks c
-           where c.store_id = ${storeId}::uuid and c.subscriber_id in (select subscriber_id from commerce.broadcast_recipients where broadcast_id = ${id}::uuid)
-           group by c.subscriber_id`,
-      tx,
-    ),
-    typedRow(z.object({ hours }), sql`select coalesce(array_agg(${hourOf}), '{}') as hours from commerce.email_clicks c where c.store_id = ${storeId}::uuid`, tx),
-    typedRows(z.object({ subscriber_id: col.uuid }), sql`select subscriber_id from commerce.broadcast_recipients where broadcast_id = ${id}::uuid`, tx),
-  ]);
+  // One after another: a transaction is one connection, and node-postgres warns of (and pg 9 refuses) a query sent while one runs
+  // (incident 89b8c856, D895).
+  const people = await typedRows(
+    z.object({ subscriber_id: col.uuid, hours }),
+    sql`select c.subscriber_id, array_agg(${hourOf}) as hours from commerce.email_clicks c
+         where c.store_id = ${storeId}::uuid and c.subscriber_id in (select subscriber_id from commerce.broadcast_recipients where broadcast_id = ${id}::uuid)
+         group by c.subscriber_id`,
+    tx,
+  );
+  const all = await typedRow(z.object({ hours }), sql`select coalesce(array_agg(${hourOf}), '{}') as hours from commerce.email_clicks c where c.store_id = ${storeId}::uuid`, tx);
+  const recipients = await typedRows(z.object({ subscriber_id: col.uuid }), sql`select subscriber_id from commerce.broadcast_recipients where broadcast_id = ${id}::uuid`, tx);
   const storeHour = bestHour(all?.hours ?? [], STORE_PRESSES_MIN);
   const own = new Map(people.map((r) => [r.subscriber_id, bestHour(r.hours, PERSON_PRESSES_MIN)]));
   const byHour = new Map<number, string[]>();
