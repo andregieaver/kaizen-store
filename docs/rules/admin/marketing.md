@@ -499,6 +499,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   one on the do-not-contact list; the front page through `readWebPage()`; the model says what the company does and scores the owner's site
   criteria (`c=` in the address, from the filter prompt), and the fit is `compareOptions()` in code. Contact shown is `generalAddresses()`
   only (a role name on the company's own domain); the model's sentence goes through `plainSentence()`. Nothing is kept.
+  The addresses come from the whole page (`pageEmails()`, footers and `mailto:` links, returned by `readWebPage()` as `emails`, never
+  passed to a model by `readWebPageTool()`), else from the contact page (`CONTACT_PATHS`, at most two reads) (D899).
 
 ## A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
 

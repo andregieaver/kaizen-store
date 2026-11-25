@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cleanFilters, EMPTY_FILTERS, industryCatalogue, readSearch, searchUrl, type ProspectFilters, type SearchPage } from "@/lib/prospect-search";
+import { cleanFilters, EMPTY_FILTERS, industryCatalogue, readSearch, searchUrl, type ProspectCountry, type ProspectFilters, type SearchPage } from "@/lib/prospect-search";
 import { cleanCriteria, cleanReading, CRITERIA_MAX, generalAddresses, type SiteCriterion, type SiteReading } from "@/lib/prospect-reading";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 import { parseModelJson } from "@/lib/query-understanding";
@@ -112,11 +112,15 @@ export function siteSystemPrompt(criteria: readonly SiteCriterion[]): string {
   ].join("\n");
 }
 
+/** A company's contact page, at the addresses sites in the country use most; at most two are tried, each a page of the day's limit. */
+export const CONTACT_PATHS: Record<ProspectCountry, readonly string[]> = { NO: ["/kontakt", "/contact"], FI: ["/yhteystiedot", "/contact"] };
+
 export type SiteResult = ({ ok: true; url: string; addresses: string[] } & SiteReading) | { ok: false; problem: string };
 
 /**
  * Reads one found company's front page (`readWebPage()`: the safe fetch, the day's page limit, kept as a source) and says what the company
- * does and how it fits the owner's criteria. Its general addresses are found in code on its own domain; nothing is kept here.
+ * does and how it fits the owner's criteria. Its general addresses are found in code on its own domain, on the front page or its contact
+ * page (D899); nothing is kept here.
  */
 export async function readCompanySite(
   actor: ResearchActor,
@@ -124,6 +128,7 @@ export async function readCompanySite(
   website: string,
   criteria: readonly SiteCriterion[],
   deps: ResearchDeps = {},
+  country: ProspectCountry = "NO",
 ): Promise<SiteResult> {
   if (!connection?.textModel) return { ok: false, problem: "no_ai" };
   let page: Awaited<ReturnType<typeof readWebPage>>;
@@ -133,7 +138,17 @@ export async function readCompanySite(
     if (error instanceof OwnerToolError) return { ok: false, problem: "unreadable" };
     throw error;
   }
-  const addresses = generalAddresses(page.text, website);
+  // Its own door (D899): on the page anywhere, footer and mailto links included; else on its contact page, by the usual addresses.
+  let addresses = generalAddresses(page.emails.join(" "), website);
+  for (const path of addresses.length === 0 ? CONTACT_PATHS[country] : []) {
+    try {
+      const contact = await readWebPage(actor, { url: `https://${website}${path}` }, deps);
+      addresses = generalAddresses(contact.emails.join(" "), website);
+    } catch (error) {
+      if (!(error instanceof OwnerToolError)) throw error;
+    }
+    if (addresses.length > 0) break;
+  }
   try {
     const reply = await completeText(
       connection,
