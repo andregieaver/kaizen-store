@@ -38,7 +38,8 @@ Evidence is marked so nobody builds on a guess:
    6. Microsoft 365 before Gmail for mailbox sync, as S5 already planned (Gmail's restricted scopes need Google's yearly assessment).
       If Human Web's mail is Gmail, the owner says so and the order swaps (section 14).
    7. Nobody is subscribed by a move. One deliberate *Do you still want our emails?* message is offered, which adds only those who confirm.
-   8. HubSpot after Pipedrive, on the same engine (section 11).
+   8. HubSpot on the same engine. Since the owner's later word, it comes straight after Pipedrive's own parts rather than after the pilot
+      (section 11).
    9. EU data: Connect says once, plainly, that the store's data goes to the owner's own Pipedrive under the owner's agreement with
       Pipedrive, and shows where the account is hosted when Pipedrive tells us. Nothing blocks (Pipedrive is the store's processor, not ours).
 4. **The four qualities are rules, not wishes** (section 3): ease of use for Homer, flexibility for Lisa, versatility of the one engine,
@@ -151,8 +152,9 @@ A team that has never used Pipedrive finds a CRM with nothing missing (section 9
   * OAuth with the uninstall flow.
 
   A private app is shared by an unlisted link without review. Neither can become the other.
-* **Not found**: whether the API says where an account is hosted (S6); a "changed since" filter on v2 lists (S2; `recents` exists);
-  the uninstall callback's details (S8).
+* **What the spikes found** (section 12, 25 November 2026): v2 lists take `updated_since` (S2); a webhook's `meta` says only `app` or `api`
+  as its source, and a merge arrives as a delete with `merged_to_id` (S3); no answer says where an account is hosted (S6); no header gives
+  the daily budget left (S9); and the API cannot list web forms, Scheduler links, LeadBooster or automations (S10).
 
 ---
 
@@ -195,7 +197,8 @@ A team that has never used Pipedrive finds a CRM with nothing missing (section 9
 * **Every currency.** A deal in a currency the platform does not keep keeps Pipedrive's figure in its note and is never counted as zero
   (D464's rule). Every language the admin speaks.
 * **Three ways in**: the app (default), the API token, the export file.
-* **A second CRM on the same engine.** HubSpot is a `source`, a client and a mapping, not a new engine (section 11).
+* **A second CRM on the same engine.** HubSpot is a `source`, a client and a mapping, not a new engine. It comes straight after
+  Pipedrive's own parts (section 11).
 
 ### 3.4 Reliability (rules the code holds)
 
@@ -215,8 +218,11 @@ A team that has never used Pipedrive finds a CRM with nothing missing (section 9
    * A delivery that equals what we last wrote (its hash on the link) is dropped (S3).
 4. **One owner per field** (6.4). A conflict is counted and shown to Lisa, never decided twice in two directions.
 5. **Within Pipedrive's limits.**
-   * The daily budget is read from Pipedrive's answers and kept to our share. Bursts stay under the plan's limit.
-   * Search is avoided (the link table answers first), and a 429 is waited out.
+   * No answer says how much of the daily budget is left (S9), so the engine counts its own spend at Pipedrive's published costs (v2: a
+     read 1, a list page 10, a create or update 5, a delete 3; v1 about twice that; a search 20 to 40) and keeps to its share of the
+     budget worked out from the plan and seats. Bursts stay under the plan's limit, read from `x-ratelimit-remaining`.
+   * Search is avoided (the link table answers first), and a 429 is waited out: Pipedrive answers a client that ignores 429s with a 403
+     from its firewall.
    * When the share is spent, what waits goes after Pipedrive's midnight, and the card says so: *140 changes wait for Pipedrive's
      allowance; they go tonight.*
 6. **A grant that stays.**
@@ -331,7 +337,10 @@ things: it refreshes grants, checks webhooks, and sweeps changes in both directi
 ### 5.3 Uninstall
 
 Uninstalling in Pipedrive, or pressing **Disconnect** here, stops the engine and keeps the links, so connecting again resumes without
-doubling (S8). *Forget the links* is Lisa's, behind a confirmation.
+doubling. Pipedrive tells an uninstall as a `DELETE` to the app's callback, with HTTP Basic auth of the client id and secret (checked in
+constant time) and a body of `client_id`, `company_id`, `user_id` and `timestamp`; it does not read the answer. The app then revokes the
+refresh token at `oauth.pipedrive.com/oauth/revoke`, which is what marks it uninstalled (S8). **Disconnect** here revokes it the same way.
+*Forget the links* is Lisa's, behind a confirmation.
 
 ### 5.4 Inside Pipedrive
 
@@ -494,7 +503,8 @@ is counted. Today's *Bring over what's new*, which brings only new records, beco
 3. **Email.** Pipedrive's Smart BCC address is replaced by our filing address, with a copy button and how-to for Gmail and Outlook. Each
    member's mailbox follows once P21 or P22 is built.
 4. **Where new leads arrive.** Pipedrive's web forms, LeadBooster chatbot and Scheduler links are replaced by our forms (D705), chat and
-   booking links (P18). We name the ones Pipedrive's API can list (S10) and give each its replacement to paste.
+   booking links (P18). Pipedrive's API cannot list them (S10), so the screen asks which he uses (three ticks) and gives each its
+   replacement to paste.
 5. **Zaps and Make scenarios** on Pipedrive point to our events with the same meaning (*Deal won* is `deal.won`), listed side by side.
 6. **Pipedrive's automations** become our workflows (P24). The common ones are made in one press (*when a deal is won, add a task*).
 7. **Reminders on.** Copied activities due from today get their push; they were marked told while copying.
@@ -625,11 +635,20 @@ Email reads are spread across `src/server`. The change is staged so that running
 
 | When | Ground | Move | Keep | Parity |
 |---|---|---|---|---|
-| **Now** | **G0**: the spikes (section 12); Human Web's real check with today's token import, writing nothing; the app registered (21-day review clock) | — | — | **P29** (small, and useful at once) |
+| **Now** | **G0**: the spikes (section 12, answered from the docs on 25 November 2026); Human Web's real check with today's token import, writing nothing; the app registered (21-day review clock) | — | — | **P29** (built, D902) |
 | **Next** | **G1** the app and Connect; **G2** the engine (queues, links, budget, webhooks, stand-in Pipedrive) | **M1** everything comes over, with what exists; **M2** the team | — | **P1, P2, P4, P9, P10, P15** (what the copy needs) |
 | **Then** | — | **M3** both in step; **M4** switch day; **M5** after, and undo | **K1** here → Pipedrive; **K3** the panel | **P6, P7, P11, P16, P17** (feed), **P18, P20, P24, P30** |
-| **Then** | — | Human Web switches; a month of use; the exit (10.3); `sales` opens to all | **K2** won deals → quotes; **K4** products; a second pilot store; **K5** the listing | **P13** before `sales` opens; **P14** |
-| **Later** | — | **M6** email and files; **M7** files | HubSpot (section 11) | P3, P5, P8, P12, P19, P21, P22, P23, P25, P26, P27, P28 |
+| **Then** | — | Human Web switches; a month of use; the exit (10.3); `sales` opens to all | **K2** won deals → quotes; **K4** products; a second pilot store | **P13** before `sales` opens; **P14** |
+| **Later** | — | **M6** email and files; **M7** files | **K5** the listing | P3, P5, P8, P12, P19, P21, P22, P23, P25, P26, P27, P28 |
+
+**HubSpot** (section 11) runs beside these rows on the same engine:
+
+| When | HubSpot |
+|---|---|
+| **Next** | **H0**: its app on HubSpot's developer platform and its spikes. G2's stand-in of HubSpot proves the shared contract. |
+| **Then** | **H1** Connect and **H2** the move, once Pipedrive's M1 has proved the engine. |
+| **Then** | **H3** Keep and **H4** the app card. |
+| **After that** | **H5** the listing, after three stores have used it. |
 
 ### 10.2 Why this order
 
@@ -652,35 +671,88 @@ Email reads are spread across `src/server`. The change is staged so that running
 
 ---
 
-## 11. HubSpot after
+## 11. HubSpot, right behind Pipedrive
 
-The same engine: `source` `hubspot`, its own OAuth app, client and mapping, and its export file through M7's reader. A listing in
-HubSpot's marketplace follows. It does not start before the move's pilot exit.
+The owner (25 November 2026): "Keep in mind that we will need to do the same journey for HubSpot next, so if it's easier to do Pipedrive
+and HubSpot together, then we'll do that. Your choice."
+
+**The choice: one engine and one door for both from the first line, Pipedrive's own parts first, HubSpot's straight after on that engine.**
+HubSpot no longer waits for the pilot's exit.
+
+* **Shared, built once and for both:**
+  * the connection and the links, with `source` `pipedrive` or `hubspot`;
+  * the queues, the budget, the reconciliation, the switch day and the screens;
+  * one contract each source fills: a client that reads pages and changes since a time, writes records and checks a webhook, and a mapping
+    both ways.
+
+  G2's tests run a stand-in of each, so the contract is proven by two sources before either ships.
+* **Each its own:** the client, the mapping, the app and its review, the panel (Pipedrive's JSON panel, HubSpot's app card) and the pilot.
+* **Why not both apps at once:**
+  * Human Web, the pilot, uses Pipedrive.
+  * HubSpot lists an app only after three active installs by unaffiliated accounts [docs], so its pilot needs three stores, not one.
+  * Two reviews and two pilots at once would double the slowest part, while the shared code is built once either way.
+
+**What HubSpot's own pages say** [docs, read 25 November 2026]:
+
+| Question | HubSpot |
+|---|---|
+| Apps | Since 23 June 2026 a new app is made on HubSpot's developer platform (projects); legacy public apps can no longer be made. An app may be installed by allowlisted accounts before it is listed. |
+| Listing | Three active installs by unaffiliated production accounts in the last 30 days; OAuth only; only the scopes used; support contact, terms and privacy policy; a manual review answered within 10 business days, the whole within 60 days |
+| OAuth | Token at `api.hubapi.com/oauth/v1/token`; access tokens short-lived (`expires_in`, 1 800 s in the example); required and optional scopes; the v1 token-information API is deprecated on 16 February 2027 |
+| Limits | 110 requests every 10 seconds per installing account for a listed app; search 5 a second; headers `X-HubSpot-RateLimit-*` (none on search) |
+| Changes since a time | CRM search on `hs_lastmodifieddate` (one sort, 200 a page, at most 10 000 results a query, so the sweep walks by time windows) |
+| Webhooks | Creation, deletion, merge, restore, property and association changes; up to 100 events a request; signed (`X-HubSpot-Signature-v3`: HMAC-SHA256 with the client secret over method, address, body and timestamp; older than 5 minutes refused) |
+| Inside HubSpot | App cards on records; data from our backend, each request signed (`X-HubSpot-Signature` v2) |
+| Hosting | `GET /account-info/…/details` answers `dataHostingLocation` (`eu1`, `na1`): Connect can say where the account is hosted |
+| Consent | The communication preferences API answers each subscription's status with its legal basis, its explanation, its source and when: evidence, so the Shopify move's Decision 1 (6.2 there) applies |
+| Bulk | Batch create, update, read and upsert of 100; upsert by a unique custom property (`kaizena_flow_id`, `hasUniqueValue`), the idempotent write Pipedrive lacks; imports and exports (30 exports a day) |
+
+**HubSpot's units** (each its own decision when it starts):
+
+* **H0.** The app on HubSpot's developer platform and the spikes left: authorise address, refresh token's life, GDPR deletion, scopes for
+  engagements.
+* **H1.** Connect through the one door.
+* **H2.** The move (M1 to M5 with HubSpot's client and mapping).
+* **H3.** Keep (K1, K2 with batch upsert by `kaizena_flow_id`).
+* **H4.** The app card.
+* **H5.** The listing, after three stores.
 
 ---
 
 ## 12. Spikes before code
 
-| Spike | Question | How |
+Answered from Pipedrive's own pages on 25 November 2026 (G0) unless marked open.
+
+| Spike | Question | Answer |
 |---|---|---|
-| S1 | Can a public app under review be installed by our own and the pilot's companies? Can an install leave a scope out (`mail:read`)? | Developer Hub, a sandbox company |
-| S2 | The cheapest way to list what changed since a time: an `updated_since` on v2 lists, or `/v1/recents?since_timestamp=` | The v2 OpenAPI file; a sandbox |
-| S3 | Does a v2 webhook's `meta` say a change came from our own app? What does a merge send? | A sandbox, our app writing |
-| S4 | What Pipedrive's API gives of a person's marketing status and its evidence (when, how) | The v2 persons with `marketing_status`; a sandbox with Campaigns |
-| S5 | Whose mail `/v1/mailbox` returns to an app: the connecting user's only, or the company's? | A sandbox with two users |
-| S6 | Does any answer say where the company's data is hosted? | `users/me`, the token answer, company settings |
-| S7 | Leads, lead labels and sources (v1), and a deal's stage history (`/v1/deals/{id}/flow` or v2) | The OpenAPI files |
-| S8 | The uninstall flow: what Pipedrive calls, and what it expects back | `pipedrive.readme.io/docs/app-uninstallation` |
-| S9 | Which answers carry the budget's headers, and the token cost of v2 creates and updates | A sandbox, counting |
-| S10 | Can the API list web forms, Scheduler links, LeadBooster and automations, so switch day can name them? | The OpenAPI files |
-| S11 | Human Web's account: plan, seats, users, record counts, custom fields, people without an email, files | G0's real check |
-| S12 | Legal reads: a lead's message sent to the owner's own CRM (6.1); the *still want our emails?* message (7.3); open tracking in one-to-one email (P20) | A lawyer, with the Shopify plan's section 12 |
+| S1 | Can a public app under review be installed by our own and the pilot's companies? Can an install leave a scope out (`mail:read`)? | **Open**: Developer Hub and a sandbox company, once the owner has made the account (section 14). |
+| S2 | The cheapest way to list what changed since a time | v2 lists of deals, persons, organizations and activities take `updated_since` and `updated_until` (RFC 3339) and `sort_by=update_time`; products `updated_since` only. Leads (v1 only) take `updated_since`. `/v1/recents?since_timestamp=` covers most kinds but not leads, at 20 a page. The sweep reads each kind's v2 list by `updated_since`. |
+| S3 | Does a webhook's `meta` say a change came from our own app? What does a merge send? | `meta.change_source` is only `app` or `api`, with no client id: echoes are dropped by the link's hash, as planned. A merge is a `delete` with `merged_to_id` and a `change` with `merged_from_id`; `is_bulk_edit` marks a list's bulk change. |
+| S4 | A person's marketing status and its evidence | `marketing_status` (`no_consent`, `unsubscribed`, `subscribed`, `archived`), only with Campaigns, through `include_fields`. No consent time on the person; `/v1/persons/{id}/flow` (cost 40) lists `marketing_status_change` items. **Open**: whether those say when and how, which decides between Decision 1 and the *still want our emails?* message (7.3). |
+| S5 | Whose mail `/v1/mailbox` returns to an app | **Open**: the page does not say; a sandbox with two users. |
+| S6 | Does any answer say where the company's data is hosted? | No: `users/me` gives the company's id, name and domain only. Connect says once that the data goes to the owner's own Pipedrive (choice 9) and names no region. |
+| S7 | Leads, labels, sources, stage history, participants, followers | Leads: `GET /v1/leads` (`updated_since`), archived ones apart (`/v1/leads/archived`); no v2 list. Labels: `/v1/leadLabels`. A deal's history: `/v1/deals/{id}/flow` (cost 40), no v2. Participants: v1 only. Followers: `/api/v2/deals/{id}/followers`. |
+| S8 | The uninstall flow | A `DELETE` to the callback with Basic auth of client id and secret, body `client_id`, `company_id`, `user_id`, `timestamp`; the app revokes the refresh token at `/oauth/revoke` (5.3). |
+| S9 | The budget's headers and v2 costs | Burst only: `x-ratelimit-limit`, `-remaining`, `-reset`. No header for the daily budget (`x-daily-requests-left` is for API tokens' writes). v2 costs: read 1, list 10, create 5, update 5, delete 3; v1 about double. The engine counts its own spend (3.4). |
+| S10 | Can the API list web forms, Scheduler links, LeadBooster or automations? | No endpoint found: switch day asks (7.4). |
+| S11 | Human Web's account: plan, seats, users, record counts, custom fields, people without an email, files | **Open**: G0's real check, the owner's press (section 14). |
+| S12 | Legal reads: a lead's message sent to the owner's own CRM (6.1); the *still want our emails?* message (7.3); open tracking in one-to-one email (P20) | **Open**: a lawyer, with the Shopify plan's section 12. |
+
+Field shapes found on the way: v2 persons' `emails` and `phones` are lists of `value`, `primary` and `label`. An organisation's `address`
+is one object (`value`, `country`, `locality`, `postal_code`, `route`, `street_number` and more). `custom_fields` is keyed by 40-character
+hashes, read up to 15 at a time.
 
 ---
 
 ## 13. What is built
 
-Nothing of this plan yet (25 November 2026). Built before it: D477, the move by API token (2.1).
+* **Before this plan:** D477, the move by API token (2.1).
+* **P29 (D902, 25 November 2026).**
+  * Deals', activities' and leads' events reach Zapier and Make; Slack is told of deals.
+  * The Admin API reads pipelines, deals, activities, leads and companies, and a customer names their company.
+  * Writing deals and activities over the API comes with a scope of its own.
+* **G0 (25 November 2026).** The spikes that Pipedrive's and HubSpot's own pages answer (section 12, section 11). Left: S1, S4's evidence,
+  S5, S11 and S12.
 
 ---
 
@@ -688,8 +760,8 @@ Nothing of this plan yet (25 November 2026). Built before it: D477, the move by 
 
 1. **Human Web's check.** Connect Human Web's Pipedrive (Settings → Moving in, with an admin's API token from Pipedrive's *Personal
    preferences → API*) and press **See what comes over**. Nothing comes until **Bring it over** is pressed.
-2. **The app.** Make Kaizena Flow's account on Pipedrive's Developer Hub, sign the Developer Partner Agreement, and choose the listing's
-   support contact.
+2. **The apps.** Make Kaizena Flow's account on Pipedrive's Developer Hub and sign its Developer Partner Agreement. Make one on
+   HubSpot's developer platform too (H0). Choose the listings' support contact.
 3. **Keep's pilot.** Name a store that will keep Pipedrive.
 4. **Mail.** Say whether Human Web's mail is Microsoft 365 or Gmail (choice 6).
 5. **The legal reads** of S12.
@@ -721,3 +793,16 @@ Read 25 November 2026:
 * Pipedrive, custom panels: https://pipedrive.readme.io/docs/custom-ui-extensions-panels
 * Pipedrive, creating an app (public and private): https://pipedrive.readme.io/docs/marketplace-creating-a-proper-app
 * Pipedrive, app approval: https://pipedrive.readme.io/docs/marketplace-app-approval-process
+* Pipedrive, app uninstallation: https://pipedrive.readme.io/docs/app-uninstallation
+* Pipedrive, API reference pages for Recents, Mailbox, Users, Leads, LeadLabels, Persons, Deals, Organizations and Products:
+  https://developers.pipedrive.com/docs/api/v1
+* HubSpot, public apps (legacy) and the developer platform: https://developers.hubspot.com/docs/apps/legacy-apps/public-apps/overview.md
+* HubSpot, listing requirements: https://developers.hubspot.com/docs/apps/developer-platform/list-apps/listing-your-app/app-marketplace-listing-requirements.md
+* HubSpot, OAuth tokens: https://developers.hubspot.com/docs/api/oauth/tokens
+* HubSpot, usage limits: https://developers.hubspot.com/docs/api/usage-details
+* HubSpot, CRM search: https://developers.hubspot.com/docs/api/crm/search
+* HubSpot, webhooks: https://developers.hubspot.com/docs/apps/developer-platform/add-features/configure-webhooks.md
+* HubSpot, request validation: https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/request-validation.md
+* HubSpot, account information: https://developers.hubspot.com/docs/api-reference/latest/account/account-information/guide.md
+* HubSpot, communication preferences: https://developers.hubspot.com/docs/api-reference/legacy/communication-preferences/guide.md
+* HubSpot, properties: https://developers.hubspot.com/docs/api/crm/properties

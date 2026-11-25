@@ -37,6 +37,10 @@ export const TAG_AREAS: Record<string, DocArea> = {
   "Webhook endpoints": "webhooks",
   Forms: "website",
   Contracts: "customers",
+  Deals: "customers",
+  Activities: "customers",
+  Leads: "customers",
+  Companies: "customers",
 };
 
 /** What a webhook topic is about, as the docs' areas. */

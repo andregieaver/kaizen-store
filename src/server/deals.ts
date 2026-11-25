@@ -352,7 +352,17 @@ const dealRow = z.object({
 });
 
 /** Which deals: of a pipeline (the board), a person, a company; closed ones only since a time. At most 500, the newest first. */
-export type DealFilter = { pipelineId?: string; customerId?: string; companyId?: string; closedSince?: Date; id?: string };
+export type DealFilter = {
+  pipelineId?: string;
+  customerId?: string;
+  companyId?: string;
+  closedSince?: Date;
+  id?: string;
+  /** These deals only, whatever their state (the Admin API's page, D902, D901 P29); ids it did not check are never passed. */
+  ids?: readonly string[];
+};
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DEALS_MAX = 500;
 
@@ -373,6 +383,7 @@ export async function listDeals(store: Store, filter: DealFilter = {}): Promise<
       left join commerce.accounts a on a.id = d.owner_id
       where d.store_id = ${store.id}::uuid
         and (${filter.id ?? null}::uuid is null or d.id = ${filter.id ?? null}::uuid)
+        and (${filter.ids ? `{${filter.ids.filter((x) => UUID.test(x)).join(",")}}` : null}::uuid[] is null or d.id = any(${filter.ids ? `{${filter.ids.filter((x) => UUID.test(x)).join(",")}}` : null}::uuid[]))
         and (${filter.pipelineId ?? null}::uuid is null or d.pipeline_id = ${filter.pipelineId ?? null}::uuid)
         and (${filter.customerId ?? null}::uuid is null or d.customer_id = ${filter.customerId ?? null}::uuid)
         and (${filter.companyId ?? null}::uuid is null or d.company_id = ${filter.companyId ?? null}::uuid)

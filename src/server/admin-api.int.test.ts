@@ -1285,6 +1285,14 @@ describe("every operation's answer (D438)", () => {
     if (!contract.ok) throw new Error(contract.problem);
     expect((await call("GET", "contracts", full)).status).toBe(200);
     expect((await call("GET", `contracts/${contract.id}`, full)).status).toBe(200);
+    // The CRM (D902, D901 P29), read with customers:read; its own cases are admin-api-crm.int.test.ts.
+    const task = await (await import("./activities")).createActivity(store.member, { kind: "task", title: "API task", dealId: deal.id, dueOn: "2026-12-01" });
+    if (!task.ok) throw new Error("activity");
+    const [company] = await db().execute<{ id: string }>(sql`
+      insert into commerce.customer_companies (store_id, name) values (${store.storeId}::uuid, ${`API company ${Date.now()}`}) returning id`);
+    for (const path of ["pipelines", "deals", `deals/${deal.id}`, "activities", `activities/${task.id}`, "leads", "companies", `companies/${company.id}`]) {
+      expect((await call("GET", path, full)).status).toBe(200);
+    }
     expect([...parsed].sort()).toEqual(Object.keys(ADMIN_API_BY_NAME).sort());
   });
 });

@@ -1109,7 +1109,7 @@ export const notificationsEn = {
       "orders:read": "Read orders, with their addresses, refunds and notes, draft orders, returns and subscriptions",
       "orders:write": "Record parcels with tracking",
       "orders:manage": "Make and change draft orders, and note and tag orders",
-      "customers:read": "Read customers, their store credit and bonus credits, and segments",
+      "customers:read": "Read customers, their store credit and bonus credits, and segments; companies; and with Deals, deals, activities, leads and contracts",
       "customers:write": "Tag customers",
       "customers:manage": "Add customers and change their name, phone and addresses, never their email",
       "discounts:read": "Read discount codes",

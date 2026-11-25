@@ -267,6 +267,11 @@ export const TOPIC_EXTENSIONS: Readonly<Record<string, ExtensionId>> = {
   "deal.stage_changed": "deals",
   "deal.won": "deals",
   "deal.lost": "deals",
+  // D902, D901 P29: activities and leads are the Deals extension's too (D468, D475), offered with it.
+  "activity.created": "deals",
+  "activity.done": "deals",
+  "lead.dismissed": "deals",
+  "lead.deal_made": "deals",
 };
 
 /** The topic is offered to the store: the shop's own, or its extension works for the store's account. */

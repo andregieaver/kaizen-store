@@ -177,5 +177,31 @@ export function slackMessage(payload: Data, locale: string): SlackMessage | null
       unfurl_media: false,
     };
   }
+  if (event.startsWith("deal.") && payload.deal) return dealMessage(event, payload.deal as Data, store, locale);
   return null;
+}
+
+/**
+ * A deal opened, moved, won or lost (D902, D901 P29), as the team reads it in a channel: its title (staff wrote it, escaped), its worth and where
+ * it stands, with the deal's page. Who it is about stays in the admin, as an order's buyer does; a lost deal's reason is never in the payload.
+ */
+function dealMessage(event: string, deal: Data, store: Data, locale: string): SlackMessage | null {
+  const what: Record<string, string> = { "deal.created": "New deal", "deal.stage_changed": "Deal moved", "deal.won": "Deal won", "deal.lost": "Deal lost" };
+  const verb = what[event];
+  if (!verb) return null;
+  const title = str(deal.title).trim() || "Untitled deal";
+  const worth = deal.value == null ? "" : money(deal.value, str(deal.currency), locale);
+  const pipeline = (deal.pipeline ?? {}) as Data;
+  const stage = (deal.stage ?? {}) as Data;
+  const where = event === "deal.created" || event === "deal.stage_changed" ? [str(pipeline.name), str(stage.name)].filter(Boolean).join(" → ") : "";
+  const facts = [worth, where].filter(Boolean).join(" · ");
+  return {
+    text: escapeSlack(`${verb}: ${title}${facts ? ` · ${facts}` : ""}`),
+    blocks: [
+      section(`*${verb}: ${slackLink(deal.admin_url, title)}*${facts ? `\n${escapeSlack(facts)}` : ""}`),
+      footer(store, deal.admin_url, "Open the deal in Kaizena Flow"),
+    ],
+    unfurl_links: false,
+    unfurl_media: false,
+  };
 }
