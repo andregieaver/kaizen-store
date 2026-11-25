@@ -881,6 +881,8 @@ export const marketingNb: MarketingMessages = {
     copiedAt: "Kopiert {date}",
     notCopied: "Ikke kopiert ennå",
     about: "Om: {what}",
+    downloadPicture: "Last ned bilde",
+    pictureAlt: "Bildet til {channel}, {shape}",
   },
   sms: {
     leadNotSet: "SMS er ikke satt opp.",

@@ -80,7 +80,15 @@ test("the owner writes posts for two channels from a product and copies one", as
   // Instagram opens no link in a caption: the link is its own, to copy apart; Facebook's is in the text.
   await expect(instagram).toContainText("does not open links in posts");
   await expect(facebook).toContainText("utm_source=facebook&utm_medium=social");
+  // Each post's picture is drawn by the server in the channel's shape, and offered to download under the channel's name.
+  const picture = instagram.getByRole("img", { name: "The Instagram picture, 4:5" });
+  await expect(picture).toBeVisible();
+  await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1080);
+  await expect(instagram.getByRole("link", { name: "Download picture" })).toHaveAttribute("href", /\/social\/picture\/[0-9a-f-]{36}\?download=1$/);
   await page.screenshot({ path: "test-results/social-posts.png", fullPage: true });
+  const download = await page.request.get((await instagram.getByRole("link", { name: "Download picture" }).getAttribute("href"))!);
+  expect(download.headers()["content-type"]).toBe("image/png");
+  expect(download.headers()["content-disposition"]).toMatch(/^attachment; filename="instagram-[a-z0-9]{12}-4x5\.png"$/);
 
   await facebook.getByRole("button", { name: "Copy text" }).click();
   await expect(facebook.getByRole("button", { name: "Copied" })).toBeVisible();

@@ -109,3 +109,31 @@ describe("the social post creator", () => {
     expect(await markSocialPostCopied(member, "00000000-0000-4000-8000-000000000000")).toBe(false);
   });
 });
+
+describe("a social post's picture (D870 C2)", () => {
+  it("is drawn in the channel's shape, with the product's photo read from the store's own files only", async () => {
+    const { socialPicture } = await import("./social-pictures");
+    const sharp = (await import("sharp")).default;
+    const posts = await listSocialPosts(member.store.id);
+    const ig = posts.find((p) => p.channel === "instagram" && p.productId)!;
+    const asked: string[] = [];
+    const fakeFetch = (async (url: URL | string) => {
+      asked.push(String(url));
+      const png = await sharp({ create: { width: 40, height: 40, channels: 3, background: "#c0ffee" } }).png().toBuffer();
+      return new Response(new Uint8Array(png), { status: 200 });
+    }) as typeof fetch;
+    const result = await socialPicture(member, ig.id, "http://localhost:3000", { fetch: fakeFetch });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.fileName).toBe(`instagram-${ig.ref}-4x5.png`);
+    const meta = await sharp(Buffer.from(await result.response.arrayBuffer())).metadata();
+    expect([meta.width, meta.height]).toEqual([1080, 1350]);
+    expect(asked.every((u) => u.startsWith("http://localhost:3000/") || u.includes("/storage/v1/object/public/"))).toBe(true);
+
+    const topic = posts.find((p) => p.channel === "linkedin" && !p.productId)!;
+    const drawn = await socialPicture(member, topic.id, "http://localhost:3000", { fetch: fakeFetch });
+    expect(drawn.ok && (await sharp(Buffer.from(await drawn.response.arrayBuffer())).metadata()).width).toBe(1200);
+
+    expect((await socialPicture(member, "00000000-0000-4000-8000-000000000000", "http://localhost:3000")).ok).toBe(false);
+  }, 60_000);
+});

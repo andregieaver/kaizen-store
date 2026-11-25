@@ -828,6 +828,8 @@ export const marketingEn = {
     copiedAt: "Copied {date}",
     notCopied: "Not copied yet",
     about: "About: {what}",
+    downloadPicture: "Download picture",
+    pictureAlt: "The {channel} picture, {shape}",
   },
   sms: {
     /** Before connecting, drawn for Homer (round 13, D639). */

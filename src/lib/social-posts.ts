@@ -173,3 +173,32 @@ export function copyText(post: CopyInput): string {
   const tags = post.hashtags.map((t) => `#${t}`).join(" ");
   return [parts.join("\n\n"), tags].filter(Boolean).join("\n\n");
 }
+
+/**
+ * Each channel's picture (D870 C2): the shape its feed shows best, in pixels. Instagram and Facebook 4:5, Pinterest 2:3, TikTok 9:16 (a
+ * Story's shape too), LinkedIn 1:1.
+ */
+export const PICTURE_SIZES: Record<PostChannel, { width: number; height: number; shape: string }> = {
+  instagram: { width: 1080, height: 1350, shape: "4:5" },
+  facebook: { width: 1080, height: 1350, shape: "4:5" },
+  pinterest: { width: 1000, height: 1500, shape: "2:3" },
+  tiktok: { width: 1080, height: 1920, shape: "9:16" },
+  linkedin: { width: 1200, height: 1200, shape: "1:1" },
+};
+
+export const HEADLINE_MAX = 90;
+
+/**
+ * The words on a picture with no product: a Pin's title, else the caption's first sentence, cut at a word to `HEADLINE_MAX`. Both already
+ * passed `postClaims()`.
+ */
+export function pictureHeadline(post: Pick<WrittenPost, "title" | "caption">): string {
+  const first = post.title || post.caption.split(/(?<=[.!?])\s|\n/)[0] || post.caption;
+  const text = first.trim();
+  if (text.length <= HEADLINE_MAX) return text;
+  const cut = text.slice(0, HEADLINE_MAX);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 40 ? cut.lastIndexOf(" ") : HEADLINE_MAX).trim()}…`;
+}
+
+/** The picture's file name: the channel, the post's reference and its shape. */
+export const pictureFileName = (channel: PostChannel, ref: string) => `${channel}-${ref}-${PICTURE_SIZES[channel].shape.replace(":", "x")}.png`;

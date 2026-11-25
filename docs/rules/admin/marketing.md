@@ -545,7 +545,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   reference per batch (`newPostRef()`), so each channel's visits and orders are the post's (S1.1); every caption, title and hashtag passes
   `postClaims()` (the claims filter and the brand's words to avoid) or nothing is kept. What the owner copies is `copyText()`; a channel that
   opens no link in a post (`linkInCaption: false`) gets its link to copy apart. A new channel is a key in `POST_CHANNELS` (and the table's check)
-  with its `CHANNEL_SPECS`.
+  with its `CHANNEL_SPECS`. A post's picture (C2) is only `socialPicture()` (`src/server/social-pictures.tsx`), drawn by code on request and
+  never stored or made by a picture model: the product's own photo (read only from the store's own site or Supabase Storage's public files, with a
+  time limit and a size cap), its title, the price line the post was written with and the store's name, in the live theme's colours
+  (`paletteOf()`) and the channel's shape (`PICTURE_SIZES`); a post without a product shows `pictureHeadline()`.
 
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 

@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { socialPosts } from "@/db/schema";
 import { AVOIDED_LABEL, brandGuide } from "@/lib/brand";
 import { CLAIM_LABELS } from "@/lib/claims";
 import { marketUrl } from "@/lib/paths";
@@ -158,26 +157,23 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
     if (!link) throw new Error(`social post link refused for ${post.channel}`);
     return { ...post, link: link.url };
   });
-  const saved = await db()
-    .insert(socialPosts)
-    .values(
-      rows.map((row) => ({
-        storeId: store.id,
-        channel: row.channel,
-        ref,
-        productId: product?.id ?? null,
-        topic: input.topic,
-        campaign: input.campaign,
-        locale,
-        title: row.title,
-        caption: row.caption,
-        hashtags: row.hashtags,
-        link: row.link,
-        priceLine,
-        createdBy: member.account.id,
-      })),
-    )
-    .returning({ id: socialPosts.id, channel: socialPosts.channel });
+  const saved = await db().transaction(async (tx) => {
+    const kept: { id: string; channel: string }[] = [];
+    for (const row of rows) {
+      const [r] = await typedRows(
+        SAVED_ROW,
+        sql`
+        insert into commerce.social_posts (store_id, channel, ref, product_id, topic, campaign, locale, title, caption, hashtags, link, price_line, created_by)
+        values (${store.id}::uuid, ${row.channel}, ${ref}, ${product?.id ?? null}::uuid, ${input.topic}, ${input.campaign}, ${locale}, ${row.title}, ${row.caption},
+          ${`{${row.hashtags.join(",")}}`}::text[], ${row.link}, ${priceLine}, ${member.account.id}::uuid)
+        returning id, channel
+      `,
+        tx,
+      );
+      kept.push(r);
+    }
+    return kept;
+  });
   const idOf = new Map(saved.map((r) => [r.channel, r.id]));
   await audit(member.account.id, store.id, "store.social_posts_written", { ref, channels, product: product?.id ?? null });
   const now = new Date().toISOString();
@@ -200,6 +196,8 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
     })),
   };
 }
+
+const SAVED_ROW = z.object({ id: col.uuid, channel: col.text });
 
 const POST_ROW = z.object({
   id: col.uuid,

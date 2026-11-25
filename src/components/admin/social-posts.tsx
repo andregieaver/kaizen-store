@@ -3,10 +3,11 @@
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { EmptyState, Field, Select, TextInput } from "@/components/admin/ui";
+import { EmptyState } from "@/components/admin/ui/empty-state";
+import { Field, Select, TextInput } from "@/components/admin/ui/field";
 import { hint, label, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { CHANNEL_SPECS, POST_CHANNELS, type PostChannel } from "@/lib/social-posts";
+import { CHANNEL_SPECS, PICTURE_SIZES, POST_CHANNELS, type PostChannel } from "@/lib/social-posts";
 
 /**
  * The social post creator's screen (D870 C1). Homer chooses a product (or writes what the posts are about), keeps the channels ticked and
@@ -35,6 +36,7 @@ export function SocialPostCreator({
   hasAi,
   timeZone,
   dateLocale,
+  pictureBase,
   write,
   copied,
 }: {
@@ -44,6 +46,8 @@ export function SocialPostCreator({
   hasAi: boolean;
   timeZone: string;
   dateLocale: string;
+  /** Where a post's picture is drawn: `{pictureBase}/{id}`. */
+  pictureBase: string;
   write: (input: unknown) => Promise<Result>;
   copied: (id: string) => Promise<boolean>;
 }) {
@@ -156,7 +160,7 @@ export function SocialPostCreator({
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {batch.map((post) => (
-                    <PostCard key={post.id} post={post} copied={copied} date={date} />
+                    <PostCard key={post.id} post={post} copied={copied} date={date} picture={`${pictureBase}/${post.id}`} />
                   ))}
                 </div>
               </div>
@@ -168,7 +172,7 @@ export function SocialPostCreator({
   );
 }
 
-function PostCard({ post, copied, date }: { post: Post; copied: (id: string) => Promise<boolean>; date: (iso: string) => string }) {
+function PostCard({ post, copied, date, picture }: { post: Post; copied: (id: string) => Promise<boolean>; date: (iso: string) => string; picture: string }) {
   const w = useAdminText("marketing").social;
   const [done, setDone] = useState<"text" | "link" | null>(null);
   const [copiedAt, setCopiedAt] = useState(post.copiedAt);
@@ -191,6 +195,15 @@ function PostCard({ post, copied, date }: { post: Post; copied: (id: string) => 
         <h3 className="text-body-strong text-ink">{spec.label}</h3>
         <span className="text-caption text-ink-2">{copiedAt ? fillWords(w.copiedAt, { date: date(copiedAt) }) : w.notCopied}</span>
       </div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- drawn by the server for this post, private to the admin */}
+      <img
+        src={picture}
+        alt={fillWords(w.pictureAlt, { channel: spec.label, shape: PICTURE_SIZES[post.channel].shape })}
+        width={PICTURE_SIZES[post.channel].width}
+        height={PICTURE_SIZES[post.channel].height}
+        loading="lazy"
+        className="h-auto max-h-80 w-auto self-start rounded-md border border-line"
+      />
       <p className="whitespace-pre-line text-body text-ink [overflow-wrap:anywhere]">{post.text}</p>
       {!spec.linkInCaption && (
         <p className={hint}>
@@ -206,6 +219,9 @@ function PostCard({ post, copied, date }: { post: Post; copied: (id: string) => 
             {done === "link" ? w.copied : w.copyLink}
           </button>
         )}
+        <a href={`${picture}?download=1`} download className={secondary}>
+          {w.downloadPicture}
+        </a>
       </div>
     </article>
   );

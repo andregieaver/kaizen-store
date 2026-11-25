@@ -57,3 +57,16 @@ describe("the social post creator's parts (D870 C1)", () => {
     expect(brief).toContain("facebook: about 300 characters, 0 to 2 hashtags.");
   });
 });
+
+describe("the social post creator's pictures (D870 C2)", () => {
+  it("takes a Pin's title, else the caption's first sentence, cut at a word", async () => {
+    const { pictureHeadline, pictureFileName, PICTURE_SIZES } = await import("./social-posts");
+    expect(pictureHeadline({ title: "Late opening", caption: "We are open." })).toBe("Late opening");
+    expect(pictureHeadline({ title: "", caption: "Open late on Thursdays. Come by!" })).toBe("Open late on Thursdays.");
+    const long = pictureHeadline({ title: "", caption: "word ".repeat(40) });
+    expect(long.length).toBeLessThanOrEqual(91);
+    expect(long.endsWith("…")).toBe(true);
+    expect(pictureFileName("tiktok", "abcdef123456")).toBe("tiktok-abcdef123456-9x16.png");
+    expect(PICTURE_SIZES.instagram).toMatchObject({ width: 1080, height: 1350 });
+  });
+});

@@ -36,6 +36,7 @@ export default async function SocialPostsPage({ params }: PageProps<"/admin/[sto
           hasAi={Boolean(ai?.textModel)}
           timeZone={store.timeZone}
           dateLocale={ADMIN_LANG_FACTS[lang].locale}
+          pictureBase={`/admin/${store.slug}/social/picture`}
           write={writeSocialPostsAction.bind(null, store.slug)}
           copied={socialPostCopiedAction.bind(null, store.slug)}
         />

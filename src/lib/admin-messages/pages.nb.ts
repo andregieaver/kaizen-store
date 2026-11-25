@@ -351,6 +351,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Annonser og konverteringer",
     keywords: ["konverteringer", "conversions api", "meta-piksel", "facebook-piksel", "tiktok", "pinterest", "sporing på serveren", "annonsesporing"],
   },
+  "store:social": {
+    title: "Innlegg i sosiale medier",
+    keywords: ["sosiale medier", "instagram-innlegg", "facebook-innlegg", "pinterest-pin", "tiktok-tekst", "linkedin-innlegg", "bildetekst", "emneknagger", "innhold"],
+  },
   "store:feeds": {
     title: "Produktfeeder",
     keywords: ["produktfeed", "google shopping", "merchant center", "meta-katalog", "facebook-butikk", "instagram shopping", "tiktok-katalog", "pinterest-katalog", "xml-feed", "csv-feed"],
