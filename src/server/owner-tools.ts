@@ -3,6 +3,7 @@ import "server-only";
 import { socialPlanTool, socialReportTool, writeSocialPostsTool } from "./social-tools";
 
 import type { shopifyMoveTool as ShopifyMoveTool } from "./shopify-move-tool";
+import type { marketCheckTool as MarketCheckTool } from "./market-check-tool";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -2558,6 +2559,8 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   profit_overview: profitOverviewTool,
   explain_change: explainChangeTool,
   analytics_alerts: analyticsAlertsTool,
+  // Loaded when called: its words (the market check's, D900) stay out of every admin page that reaches this map.
+  market_check: async (...args: Parameters<typeof MarketCheckTool>) => (await import("./market-check-tool")).marketCheckTool(...args),
   report_catalogue: reportCatalogueTool,
   run_report: runReportTool,
   save_report: saveReportTool,

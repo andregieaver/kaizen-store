@@ -22,16 +22,16 @@ import type { Store } from "./stores";
  * sends, publishes or spends, so none is gated. Served to Kaizen Life's assistant through the store's MCP server like every owner tool.
  */
 
-type Ctx = { store: Store };
+export type Ctx = { store: Store };
 
-const mainLocale = (store: Store) => store.markets[0]?.locale ?? "en";
-const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
+export const mainLocale = (store: Store) => store.markets[0]?.locale ?? "en";
+export const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
 
 /** A period as the model is told it: its words and its first and last day (inclusive). */
-const periodWords = (p: AnalyticsPeriod) => ({ label: p.label, from: p.from, to: addDays(p.to, -1) });
+export const periodWords = (p: AnalyticsPeriod) => ({ label: p.label, from: p.from, to: addDays(p.to, -1) });
 
 /** What the figures are, said once so the model repeats it. */
-const BASIS = "Amounts are in the store's main currency, without VAT, counted from paid orders. Refunds made in the payment provider's own dashboard are counted once the provider reports them.";
+export const BASIS = "Amounts are in the store's main currency, without VAT, counted from paid orders. Refunds made in the payment provider's own dashboard are counted once the provider reports them.";
 
 /**
  * The store's figures for a period with their changes (`overviewData()`'s own cards), what is missing for the rest and where to add it.

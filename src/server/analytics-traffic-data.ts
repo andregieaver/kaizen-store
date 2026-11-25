@@ -396,6 +396,43 @@ export async function funnelCounts(store: Store, range: Range): Promise<FunnelCo
   };
 }
 
+/** Visitor-days of a range per market: the market's code, or `''` for the front door (a visit with no country). */
+async function marketSessionsIn(store: Store, range: Range): Promise<Map<string, number>> {
+  const rows = await typedRows(
+    z.object({ k: col.text, n: col.minor }),
+    sql`select coalesce(v.market_code, '') as k, count(*) as n from commerce.visits v where ${visitsIn(store, range)} group by 1`,
+  );
+  return new Map(rows.map((r) => [r.k, r.n]));
+}
+
+/** The countries' rows of the Traffic page: sessions by the visit's market, orders and revenue by the order's own; the front door has sessions only. */
+function marketSegments(store: Store, sessions: ReadonlyMap<string, number>, orders: readonly KeyedMoney[]): SegmentRow[] {
+  const markets = foldByKey(store, orders);
+  const keys = new Set<string>([...sessions.keys(), ...markets.keys()]);
+  return [...keys]
+    .map((k) =>
+      k === ""
+        ? segment("front_door", "Front door (country chooser)", sessions.get(k) ?? 0, undefined)
+        : segment(k, store.markets.find((m) => m.code === k)?.name ?? k, sessions.get(k) ?? 0, markets.get(k)),
+    )
+    .sort((a, b) => (b.sessions ?? 0) - (a.sessions ?? 0) || b.revenueMinor - a.revenueMinor || a.key.localeCompare(b.key));
+}
+
+/** The Traffic page's countries alone, with what they cover (D900, the market check): no row while visits are not counted. */
+export type MarketTraffic = { coverage: Coverage; byMarket: SegmentRow[] };
+
+/**
+ * The countries of `trafficReport()` (its `byMarket`, the same reads and the same coverage) without the rest of its report: the market
+ * check's visits and conversion per country (D900, `docs/analytics.md` "Markets").
+ */
+export async function marketTraffic(store: Store, period: AnalyticsPeriod, now: Date): Promise<MarketTraffic> {
+  const firstDay = store.visitCounting ? await firstCountedDay(store) : null;
+  const { coverage, range } = coverageOf(store, period, firstDay, now);
+  if (!range) return { coverage, byMarket: [] };
+  const [sessions, { market }] = await Promise.all([marketSessionsIn(store, range), ordersByKeys(store, range, { market: sql`o.market_code` })]);
+  return { coverage, byMarket: marketSegments(store, sessions, market) };
+}
+
 /**
  * The traffic page's figures for a period (docs/analytics.md, "Traffic"): the funnel from a visit to a purchase, devices,
  * countries and landing pages, and the paid orders that no visit explains. With counting off, or no covered day, the
@@ -426,7 +463,7 @@ export async function trafficReport(store: Store, period: AnalyticsPeriod, now: 
   const [counts, deviceSessions, marketSessions, topPaths, { device: deviceOrders, market: marketOrders }, staff, exchanges] = await Promise.all([
     funnelCounts(store, range),
     db().execute<Row>(sql`select v.device as k, count(*) as n from commerce.visits v where ${visitsIn(store, range)} group by 1`),
-    db().execute<Row>(sql`select coalesce(v.market_code, '') as k, count(*) as n from commerce.visits v where ${visitsIn(store, range)} group by 1`),
+    marketSessionsIn(store, range),
     db().execute<Row>(sql`
       select v.landing_path as k, count(*) as n from commerce.visits v where ${visitsIn(store, range)}
       group by 1 order by n desc, k limit ${LANDING_LIMIT + 1}
@@ -443,16 +480,7 @@ export async function trafficReport(store: Store, period: AnalyticsPeriod, now: 
   const byDevice = [...DEVICES.map((d) => segment(d.key, d.label, deviceCounts.get(d.key) ?? 0, devices.get(d.key)))];
   if (unknown.orders > 0) byDevice.push(segment("unknown", "Unknown", null, unknown));
 
-  const markets = foldByKey(store, marketOrders);
-  const marketCounts = count(marketSessions, "k");
-  const marketKeys = new Set<string>([...marketCounts.keys(), ...markets.keys()]);
-  const byMarket = [...marketKeys]
-    .map((k) =>
-      k === ""
-        ? segment("front_door", "Front door (country chooser)", marketCounts.get(k) ?? 0, undefined)
-        : segment(k, store.markets.find((m) => m.code === k)?.name ?? k, marketCounts.get(k) ?? 0, markets.get(k)),
-    )
-    .sort((a, b) => (b.sessions ?? 0) - (a.sessions ?? 0) || b.revenueMinor - a.revenueMinor || a.key.localeCompare(b.key));
+  const byMarket = marketSegments(store, marketSessions, marketOrders);
 
   const landingTruncated = topPaths.length > LANDING_LIMIT;
   const paths = topPaths.slice(0, LANDING_LIMIT).map((r) => String(r.k));

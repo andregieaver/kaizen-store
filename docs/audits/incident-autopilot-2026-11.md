@@ -337,11 +337,18 @@ These are the owner's to write (legal texts are never written by a model, D656 s
 
 - [ ] **IA-14** The owner's and the lawyer's part first (section 8.3): the DPIA addition drafted for review, the privacy notice
       paragraph written by the owner, the lawyer's answer. Nothing of IA-15 runs on production before these.
-- [ ] **IA-15** Admin heatmaps and recordings: the choice (asked once, in account settings after), the masking and blocked screens with a
+      Drafted 25 November 2026: `docs/dpia-admin-use.md`, a separate assessment (Kaizena Flow controller), with the notice's paragraph
+      proposed in its section 6 and seven questions, under Platform → Legal reviews (*Heatmaps and recordings of how owners use the
+      admin*). Left: the owner's acceptance and notice paragraph, the lawyer's answers.
+- [ ] **IA-15** (phase 3b, after IA-14) Admin heatmaps and recordings: the choice (asked once, in account settings after), the masking and blocked screens with a
       scan test like `marks.test.ts` for admin screens, the platform tables and bucket, the 30 days, Platform → Analytics → Admin use with
       its viewing log; signed-in e2e; screenshots to the owner.
-- [ ] **IA-16** `admin-behaviour.ts` (the weekly figures, minimum volumes, the masked event summaries) and the platform AI's weekly
-      reading into `proposed` entries with evidence, checked against the figures; the eval recorded again for the new prompt (D391).
+- [x] **IA-16a** (phase 3a) `admin-behaviour.ts` on the signals already kept as counts (the AI manager's tool calls, failures and
+      thumbs; the admin's slow screens) and the platform AI's weekly reading into `proposed` entries with evidence, checked against the
+      figures. Done 25 November 2026: Mondays in the `incidents` job's daily step; the prompt is no agent's, so its cases are tests in code
+      with the model played (`admin-behaviour.int.test.ts`), as D894's; owners' own app tools are left out.
+- [ ] **IA-16b** (phase 3b, after IA-15) The admin heatmaps' figures and the masked event summaries of up to five recordings added to the
+      reading.
 
 ### Later
 

@@ -1309,6 +1309,11 @@ const ALL_OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "market_check",
+    "The store's countries side by side over the last days (D900), counted in code from its own figures: visits and conversion, paid orders, revenue and the average order, searches and those that found nothing with the terms most missed, products with no price there and products with no name in the country's language. Then the findings, worked out in code with minimum volumes, most pressing first: a country that buys clearly less or more than the rest, searches that found nothing, missing names and prices. Use it to find gaps and plan where to grow; quote it, and never compare, add up or estimate figures yourself.",
+    z.object({ days: z.number().int().min(7).max(90).default(30) }),
+  ),
+  tool(
     "report_catalogue",
     "What a report can be asked for (D345): every figure run_report counts, what it means, and the cuts each figure allows, in the Reports page's own words, with the period presets and the comparisons. Call it before run_report when unsure what a question maps to.",
     z.object({}),

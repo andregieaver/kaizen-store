@@ -9,12 +9,19 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D900]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.59 — 2026-11-25
+
+A new MCP tool, `market_check` (D900), reads the store's countries side by side over the last 7 to 90 days (`days`, 30 by default): each
+country's visits and conversion, paid orders, revenue and average order, its searches and those that found nothing, and its products with
+no price there or no name in its language. Then `findings`, worked out by the store's own code: a country that buys clearly less or more
+than the rest, searches that found nothing, missing names and prices. It changes nothing and needs the scope `analytics:read`.
 
 ## 1.58 — 2026-11-25
 
