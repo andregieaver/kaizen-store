@@ -1310,6 +1310,13 @@
       "when": 1795621129408,
       "tag": "20261125153849_social_extension",
       "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1795624984429,
+      "tag": "20261125164304_social_calendar",
+      "breakpoints": true
     }
   ]
 }

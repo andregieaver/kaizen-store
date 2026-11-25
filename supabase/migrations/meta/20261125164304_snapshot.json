@@ -1,6 +1,6 @@
 {
-  "id": "44ad0d8e-cc92-4153-ab48-8a33a0e1efd8",
-  "prevId": "4e0f2288-9cde-4599-84c6-8785a4a081fc",
+  "id": "86f61ce4-dcf6-484b-a468-f5ae496d2479",
+  "prevId": "afa4780c-e016-43b1-8bb1-e3080500e65a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -84631,6 +84631,30 @@
           "primaryKey": false,
           "notNull": false
         },
+        "planned_for": {
+          "name": "planned_for",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "edited_at": {
+          "name": "edited_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -84646,6 +84670,42 @@
         }
       },
       "indexes": {
+        "social_posts_planned_idx": {
+          "name": "social_posts_planned_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "planned_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_approved_by_idx": {
+          "name": "social_posts_approved_by_idx",
+          "columns": [
+            {
+              "expression": "approved_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "social_posts_ref_idx": {
           "name": "social_posts_ref_idx",
           "columns": [
@@ -84776,6 +84836,20 @@
           "schemaTo": "commerce",
           "columnsFrom": [
             "page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_approved_by_accounts_id_fk": {
+          "name": "social_posts_approved_by_accounts_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "approved_by"
           ],
           "columnsTo": [
             "id"

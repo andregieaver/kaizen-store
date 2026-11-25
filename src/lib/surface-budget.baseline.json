@@ -1,8 +1,8 @@
 {
   "dispatcherJobs": 91,
   "minuteRoutes": 9,
-  "pages": 610,
-  "routeHandlers": 309,
+  "pages": 611,
+  "routeHandlers": 311,
   "storeLinks": 121,
   "storeLinksBySection": {
     "orders": 7,

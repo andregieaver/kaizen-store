@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/admin/ui";
 import { SocialAdviser } from "@/components/admin/social-adviser";
+import { SocialCalendar } from "@/components/admin/social-calendar";
 import { SocialFacebookCard } from "@/components/admin/social-facebook-card";
 import { SocialFactsCard } from "@/components/admin/social-facts-card";
 import { SocialInsightsCard } from "@/components/admin/social-insights-card";
@@ -9,7 +10,9 @@ import { SocialPostCreator } from "@/components/admin/social-posts";
 import { requireExtension } from "@/components/admin/extension-off";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SOCIAL_WORDS } from "@/lib/admin-words/social";
+import { todayIn } from "@/lib/analytics-period";
 import { aiFor } from "@/server/ai";
+import { calendarOf } from "@/server/social-calendar";
 import { facebookAppOn, facebookView } from "@/server/facebook-pages";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { mainRecommendation } from "@/lib/social-advice";
@@ -53,13 +56,19 @@ export default async function SocialPostsPage({
     latestAdvice(store.id),
     aiFor(store.id, { feature: "social_posts" }).catch(() => null),
   ]);
+  // The adviser's two-week plan with the drafts written for its days (S2.4).
+  const weeks = await calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []);
+  const titles = Object.fromEntries([
+    ...products.map((p) => [p.id, p.title]),
+    ...[...facts.push, ...facts.newProducts, ...(advice ? [...advice.facts.push, ...advice.facts.newProducts] : [])].map((p) => [p.id, p.title]),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.description} />
       <SocialAdviser
         kept={advice ? { advice: advice.advice, main: mainRecommendation(advice.advice), createdAt: advice.createdAt } : null}
-        titles={Object.fromEntries([...facts.push, ...facts.newProducts, ...(advice ? [...advice.facts.push, ...advice.facts.newProducts] : [])].map((p) => [p.id, p.title]))}
+        titles={titles}
         base={`/admin/${store.slug}/social`}
         mayWrite={memberCan(member, "marketing:write")}
         hasAi={Boolean(ai?.textModel)}
@@ -68,6 +77,15 @@ export default async function SocialPostsPage({
         dateLocale={ADMIN_LANG_FACTS[lang].locale}
         timeZone={store.timeZone}
         words={w.adviser}
+      />
+      <SocialCalendar
+        weeks={weeks}
+        titles={titles}
+        base={`/admin/${store.slug}/social`}
+        mayWrite={memberCan(member, "marketing:write")}
+        hasAi={Boolean(ai?.textModel)}
+        dateLocale={ADMIN_LANG_FACTS[lang].locale}
+        words={w.calendar}
       />
       <SocialPostCreator
         products={products}
