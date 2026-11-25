@@ -17,9 +17,6 @@ test.use({ deviceScaleFactor: shots ? 2 : 1 });
 const run = Date.now().toString(36);
 let slug = "";
 
-/** A day `n` days before today (the test runs in UTC). */
-const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
-
 test.beforeAll(async () => {
   // Germany is added before anything of the store is cached, and visits are counted from the start.
   const store = await testStore("markets", ["countries"]);
