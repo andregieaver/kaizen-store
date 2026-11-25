@@ -1612,6 +1612,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   a new place that draws a library picture does the same, and changes call
   `updateTag()` for the pages and catalogue tags. Uses carry `siteUrl`, the
   address on the site.
+  Pictures from a person's Canva (D898, *Canva* in `docs/rules/admin/integrations.md`) come in as new items with
+  `made_by = 'canva'` (an edited copy names `edited_from`), through `storePicture()` like any other.
 
 ## Kaizen's own header and footer (`/admin/platform/navigation`) use the store's `NavigationEditor` (logos, icon, which menus, and business details);…
 

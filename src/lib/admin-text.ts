@@ -38,6 +38,7 @@ import type { DealsMessages } from "./admin-messages/deals.en";
 import type { ScreensMessages } from "./admin-messages/screens.en";
 import type { StorePartsMessages } from "./admin-messages/store-parts.en";
 import type { BackdropsMessages } from "./admin-messages/backdrops.en";
+import type { CanvaMessages } from "./admin-messages/canva.en";
 import type { ConsentLookMessages } from "./admin-messages/consent-look.en";
 import type { AnimationMessages } from "./admin-messages/animation.en";
 import type { HeatmapsMessages } from "./admin-messages/heatmaps.en";
@@ -126,6 +127,7 @@ export type AdminAreaMessages = {
   screens: ScreensMessages;
   storeParts: StorePartsMessages;
   backdrops: BackdropsMessages;
+  canva: CanvaMessages;
   consentLook: ConsentLookMessages;
   animation: AnimationMessages;
   heatmaps: HeatmapsMessages;

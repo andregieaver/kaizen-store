@@ -333,6 +333,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   hosts: OWN,
   blog_authors: "Forfatterne av butikkens artikler (D341), navngitt og beskrevet av butikken for dens egen blogg. " + OWN,
   wordpress_connections: "Et WordPress-nettsted en eier koblet til (D169): adressen og navnet, en hash av tokenet, aldri selve tokenet. " + OWN,
+  design_connections: "En persons egen Canva-konto (D898): navnet og ID-ene Canva gir, og tokenene kryptert; slettes når personen kobler fra eller kontoen deres slettes. " + OWN,
+  design_edits: "Hvilket bilde i biblioteket en person sendte til sin Canva for redigering, og designet det ble (D898), aldri en kunde. " + OWN,
   referral_entries: "Vervekreditt mellom butikkeiere (D131). " + OWN,
   return_settings: "Butikkens egen returadresse. " + OWN,
   store_locations: "Butikkens egne steder. " + OWN,

@@ -64,7 +64,7 @@ export type MediaItem = {
   altSource: "ai" | "staff" | null;
   /** When it was compressed until it was as small as it could be while it looked the same (D213); null for files from before. */
   compressedAt: string | null;
-  /** Who made the file (D349): an upload, the site's picture model, or its edit model from another library picture. */
+  /** Who made the file (D349): an upload, the site's picture model, its edit model from another library picture, or the person's Canva (D898). */
   madeBy: MediaMadeBy;
   /** The picture an edited one was made from, while it is in the library. */
   editedFrom: string | null;
@@ -72,7 +72,7 @@ export type MediaItem = {
   uses: MediaUse[];
 };
 
-export type MediaMadeBy = "person" | "ai_made" | "ai_edited";
+export type MediaMadeBy = "person" | "ai_made" | "ai_edited" | "canva";
 
 export type MediaOwner = { storeId: string | null; storeSlug: string | null };
 
@@ -147,7 +147,7 @@ export async function storePicture(
       ${uploaded.stored.path}, ${uploaded.stored.thumbnailPath}, ${uploaded.stored.mediumPath ?? null}, ${cleanName(details.fileName, "picture")},
       ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid,
       ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}, ${details.compressed ? sql`now()` : null},
-      ${details.madeBy ?? "person"}, ${details.madeBy === "ai_edited" ? (details.editedFrom ?? null) : null}::uuid,
+      ${details.madeBy ?? "person"}, ${details.madeBy === "ai_edited" || details.madeBy === "canva" ? (details.editedFrom ?? null) : null}::uuid,
       -- An AI's picture whose files shrinkPicture() marked (AI Act Art. 50(2)): the aiPictureMarks job leaves it alone.
       ${details.aiMarked && details.madeBy && details.madeBy !== "person" ? sql`now()` : null}
     )
@@ -539,7 +539,7 @@ const toItem = (row: Row): Omit<MediaItem, "uses"> => ({
   altTranslations: stringRecord(row.alt_translations),
   altSource: row.alt_source === "ai" || row.alt_source === "staff" ? row.alt_source : null,
   compressedAt: row.compressed_at ? new Date(String(row.compressed_at)).toISOString() : null,
-  madeBy: row.made_by === "ai_made" || row.made_by === "ai_edited" ? row.made_by : "person",
+  madeBy: row.made_by === "ai_made" || row.made_by === "ai_edited" || row.made_by === "canva" ? row.made_by : "person",
   editedFrom: row.edited_from ? String(row.edited_from) : null,
   createdAt: new Date(String(row.created_at)).toISOString(),
 });

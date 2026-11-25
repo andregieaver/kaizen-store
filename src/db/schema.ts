@@ -10361,14 +10361,17 @@ export const media = commerce.table(
      * again, so a picture cannot lose a little more each time.
      */
     compressedAt: timestamp("compressed_at", { withTimezone: true }),
-    /** Who made the file (D349): `person` (an upload), `ai_made` (by the site's picture model from a description) or `ai_edited` (a library picture changed by its edit model). */
+    /**
+     * Who made the file (D349): `person` (an upload), `ai_made` (by the site's picture model from a description), `ai_edited` (a library picture
+     * changed by its edit model) or `canva` (brought from the person's Canva, D898: imported, or a library picture edited there).
+     */
     madeBy: text("made_by").notNull().default("person"),
     /**
      * When an AI's picture was known to carry IPTC's digital source type in its file's XMP (AI Act Art. 50(2), `docs/ai-act.md`): set when
      * it is made or edited (`shrinkPicture()` marks it), and by the `aiPictureMarks` job for the ones made before that. Null for a person's.
      */
     aiMarkedAt: timestamp("ai_marked_at", { withTimezone: true }),
-    /** The library picture an `ai_edited` one was made from; the original is never overwritten. */
+    /** The library picture an `ai_edited` or `canva` one was made from; the original is never overwritten. */
     editedFrom: uuid("edited_from").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
@@ -10377,8 +10380,8 @@ export const media = commerce.table(
   (t) => [
     unique("media_url_key").on(t.url),
     index("media_edited_from_idx").on(t.editedFrom),
-    check("media_made_by", sql`${t.madeBy} in ('person', 'ai_made', 'ai_edited')`),
-    check("media_edited", sql`(${t.madeBy} = 'ai_edited') or ${t.editedFrom} is null`),
+    check("media_made_by", sql`${t.madeBy} in ('person', 'ai_made', 'ai_edited', 'canva')`),
+    check("media_edited", sql`${t.madeBy} in ('ai_edited', 'canva') or ${t.editedFrom} is null`),
     // The site finds a picture's alt text by either address (D89).
     index("media_thumbnail_url_idx").on(t.thumbnailUrl),
     index("media_store_created_idx").on(t.storeId, t.createdAt),
@@ -11759,6 +11762,91 @@ export const googlePlaces = commerce.table(
     check("google_places_place_named", sql`(${t.placeId} is null) = (${t.placeName} is null)`),
   ],
 );
+
+/**
+ * A person's own account at a design tool (D898, `docs/design-tools.md`): Canva now, Figma and Miro later. The person's, not a store's: a
+ * tool's edit links work only for the user who owns the design, so each owner or staff member connects their own once, and it serves every
+ * store they work in and Kaizena Flow's admin. The tokens are encrypted like payment secrets, refreshed under the row's lock (Canva's refresh
+ * tokens work once) and never logged; erasing the account deletes the row. Written only by `src/server/canva.ts`.
+ */
+export const designConnections = commerce.table(
+  "design_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    /** The person's user and team at the tool, as it names them (Canva's `user_id` and `team_id`). */
+    externalUserId: text("external_user_id").notNull(),
+    externalTeamId: text("external_team_id"),
+    /** The name the tool shows for them, to say whose account is connected. */
+    displayName: text("display_name").notNull().default(""),
+    accessTokenEncrypted: text("access_token_encrypted").notNull(),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }).notNull(),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    /** The scopes the tool granted, as it wrote them. */
+    scopes: text("scopes").notNull().default(""),
+    /** What went wrong last, in the person's words; null when it went well. */
+    problem: text("problem"),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("design_connections_account_key").on(t.accountId, t.provider),
+    check("design_connections_provider", sql`${t.provider} in ('canva')`),
+    check(
+      "design_connections_ids",
+      sql`char_length(${t.externalUserId}) between 1 and 200 and (${t.externalTeamId} is null or char_length(${t.externalTeamId}) between 1 and 200)`,
+    ),
+    check("design_connections_name", sql`char_length(${t.displayName}) <= 120`),
+    check("design_connections_scopes", sql`char_length(${t.scopes}) <= 1000`),
+    check("design_connections_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+  ],
+).enableRLS();
+
+/**
+ * A library picture sent to a design tool to be edited (D898): the store whose library it is (null for Kaizena Flow's), the person, the design
+ * at the tool and the picture it came from. The tool hands back a one-time correlation (Canva's `correlation_state`, inside a JWT it signs),
+ * kept here only as its SHA-256. Each time the design is brought back it becomes a new library picture (`media.made_by = 'canva'`,
+ * `edited_from` the source), the latest named in `result_media_id`. Written only by `src/server/canva.ts`.
+ */
+export const designEdits = commerce.table(
+  "design_edits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    designId: text("design_id").notNull(),
+    sourceMediaId: uuid("source_media_id").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
+    correlationHash: text("correlation_hash").notNull(),
+    /** `open` (sent to the tool), `returned` (the person came back from it), `brought` (brought into the library at least once). */
+    status: text("status").notNull().default("open"),
+    resultMediaId: uuid("result_media_id").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    broughtAt: timestamp("brought_at", { withTimezone: true }),
+    /** What went wrong the last time it was brought back, in the person's words; null when it went well. */
+    problem: text("problem"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("design_edits_correlation_idx").on(t.correlationHash),
+    index("design_edits_store_created_idx").on(t.storeId, t.createdAt),
+    index("design_edits_account_idx").on(t.accountId),
+    index("design_edits_source_idx").on(t.sourceMediaId),
+    index("design_edits_result_idx").on(t.resultMediaId),
+    check("design_edits_provider", sql`${t.provider} in ('canva')`),
+    check("design_edits_status", sql`${t.status} in ('open', 'returned', 'brought')`),
+    check("design_edits_design", sql`${t.designId} ~ '^[A-Za-z0-9_-]{1,100}$'`),
+    check("design_edits_correlation", sql`${t.correlationHash} ~ '^[0-9a-f]{64}$'`),
+    check("design_edits_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+  ],
+).enableRLS();
 
 /**
  * An Instagram professional account connected for a feed (D560): a store's, or Kaizena Flow's with a null store, connected through Instagram

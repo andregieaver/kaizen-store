@@ -54,14 +54,18 @@ Your session's link names you in every write (`session`): get it from the `get_s
    the wake's text names it and its id (`reason run_now … Wake id …`); the scheduled time is `nightly`; a person's `/incidents` is `manual`.
 2. **Main first.** Look for an open `ci-red` issue (`gh api -X GET search/issues -f q='repo:andregieaver/kaizen-store label:ci-red is:issue
    is:open'`). If one is open, ingest it (`source: "ci"`, `kind: "error"`, fingerprint `ci:{failing test file}`) and work it first, as D803
-   says.
+   says, unless a comment on the issue says the session that broke it is fixing it: then note that on the entry and leave it to them
+   (two sessions on one red run push over each other). It closes itself when `main` is green.
 3. **Bring the log up to date.**
    - Production's runtime errors since the last run (the Vercel tools: `get_runtime_errors` for the project, production). Group them: one
      entry per fingerprint `runtime:{route}:{error name}:{first frame of ours}`, `kind: "error"`, facts the route, the error's name and
      message cut to 300 characters, the count and the deployment. Never a person's name, email or address in a title or a fact.
    - The nightly run, and any run that pushed a migration: the Supabase advisors (security and performance) for project
-     `ybsozesfuxuitoacntfo`. One entry per finding, `kind: "warning"`, `source: "advisor"`, fingerprint `advisor:{name}:{table or object}`.
-     This replaces writing the line in `docs/audits/psi-followups.md` by hand.
+     `ybsozesfuxuitoacntfo`. Only findings at level **WARN or ERROR** become entries: one per object, `kind: "warning"` (`"error"` for
+     ERROR), `source: "advisor"`, fingerprint `advisor:{name}:{table or object}`. INFO findings are the standing lists (every commerce table
+     has row level security and no policy on purpose; hundreds of indexes are unused until their reads come; unindexed foreign keys are
+     noted per migration in `docs/audits/psi-followups.md`), so they are left out: the first run by hand (25 November 2026) found 822 and
+     40 of them.
    - Ingest in batches of up to 50. A repeat only counts; a fixed problem that came back reopens itself.
 4. **Pick.** `GET $API`. In this order: red CI, then `open` errors by occurrences, then `open` warnings, then at most one `approved`
    improvement; at most 3 in all. Claim each before you start on it; a `409` means another session has it: pick the next.

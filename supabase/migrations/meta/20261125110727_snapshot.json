@@ -1,6 +1,6 @@
 {
-  "id": "ecf15b80-648e-406c-a627-5b7083b16e55",
-  "prevId": "ddca4f56-315e-465d-9d04-eec090844ef6",
+  "id": "72d1264d-0e03-49c3-872d-364e8d3d9d62",
+  "prevId": "ecf15b80-648e-406c-a627-5b7083b16e55",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -27209,6 +27209,414 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.design_connections": {
+      "name": "design_connections",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_user_id": {
+          "name": "external_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_team_id": {
+          "name": "external_team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "access_token_encrypted": {
+          "name": "access_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_expires_at": {
+          "name": "access_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token_encrypted": {
+          "name": "refresh_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scopes": {
+          "name": "scopes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "design_connections_account_id_accounts_id_fk": {
+          "name": "design_connections_account_id_accounts_id_fk",
+          "tableFrom": "design_connections",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "design_connections_account_key": {
+          "name": "design_connections_account_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "account_id",
+            "provider"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "design_connections_provider": {
+          "name": "design_connections_provider",
+          "value": "\"commerce\".\"design_connections\".\"provider\" in ('canva')"
+        },
+        "design_connections_ids": {
+          "name": "design_connections_ids",
+          "value": "char_length(\"commerce\".\"design_connections\".\"external_user_id\") between 1 and 200 and (\"commerce\".\"design_connections\".\"external_team_id\" is null or char_length(\"commerce\".\"design_connections\".\"external_team_id\") between 1 and 200)"
+        },
+        "design_connections_name": {
+          "name": "design_connections_name",
+          "value": "char_length(\"commerce\".\"design_connections\".\"display_name\") <= 120"
+        },
+        "design_connections_scopes": {
+          "name": "design_connections_scopes",
+          "value": "char_length(\"commerce\".\"design_connections\".\"scopes\") <= 1000"
+        },
+        "design_connections_problem": {
+          "name": "design_connections_problem",
+          "value": "\"commerce\".\"design_connections\".\"problem\" is null or char_length(\"commerce\".\"design_connections\".\"problem\") <= 300"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "commerce.design_edits": {
+      "name": "design_edits",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "design_id": {
+          "name": "design_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_media_id": {
+          "name": "source_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "correlation_hash": {
+          "name": "correlation_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "result_media_id": {
+          "name": "result_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "returned_at": {
+          "name": "returned_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "brought_at": {
+          "name": "brought_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "design_edits_correlation_idx": {
+          "name": "design_edits_correlation_idx",
+          "columns": [
+            {
+              "expression": "correlation_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "design_edits_store_created_idx": {
+          "name": "design_edits_store_created_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "design_edits_account_idx": {
+          "name": "design_edits_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "design_edits_source_idx": {
+          "name": "design_edits_source_idx",
+          "columns": [
+            {
+              "expression": "source_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "design_edits_result_idx": {
+          "name": "design_edits_result_idx",
+          "columns": [
+            {
+              "expression": "result_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "design_edits_store_id_stores_id_fk": {
+          "name": "design_edits_store_id_stores_id_fk",
+          "tableFrom": "design_edits",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "design_edits_account_id_accounts_id_fk": {
+          "name": "design_edits_account_id_accounts_id_fk",
+          "tableFrom": "design_edits",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "design_edits_source_media_id_media_id_fk": {
+          "name": "design_edits_source_media_id_media_id_fk",
+          "tableFrom": "design_edits",
+          "tableTo": "media",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "source_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "design_edits_result_media_id_media_id_fk": {
+          "name": "design_edits_result_media_id_media_id_fk",
+          "tableFrom": "design_edits",
+          "tableTo": "media",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "result_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "design_edits_provider": {
+          "name": "design_edits_provider",
+          "value": "\"commerce\".\"design_edits\".\"provider\" in ('canva')"
+        },
+        "design_edits_status": {
+          "name": "design_edits_status",
+          "value": "\"commerce\".\"design_edits\".\"status\" in ('open', 'returned', 'brought')"
+        },
+        "design_edits_design": {
+          "name": "design_edits_design",
+          "value": "\"commerce\".\"design_edits\".\"design_id\" ~ '^[A-Za-z0-9_-]{1,100}$'"
+        },
+        "design_edits_correlation": {
+          "name": "design_edits_correlation",
+          "value": "\"commerce\".\"design_edits\".\"correlation_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "design_edits_problem": {
+          "name": "design_edits_problem",
+          "value": "\"commerce\".\"design_edits\".\"problem\" is null or char_length(\"commerce\".\"design_edits\".\"problem\") <= 300"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.design_preset_uses": {
       "name": "design_preset_uses",
       "schema": "commerce",
@@ -49699,11 +50107,11 @@
       "checkConstraints": {
         "media_made_by": {
           "name": "media_made_by",
-          "value": "\"commerce\".\"media\".\"made_by\" in ('person', 'ai_made', 'ai_edited')"
+          "value": "\"commerce\".\"media\".\"made_by\" in ('person', 'ai_made', 'ai_edited', 'canva')"
         },
         "media_edited": {
           "name": "media_edited",
-          "value": "(\"commerce\".\"media\".\"made_by\" = 'ai_edited') or \"commerce\".\"media\".\"edited_from\" is null"
+          "value": "\"commerce\".\"media\".\"made_by\" in ('ai_edited', 'canva') or \"commerce\".\"media\".\"edited_from\" is null"
         },
         "media_kind": {
           "name": "media_kind",

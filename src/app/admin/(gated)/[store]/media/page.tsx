@@ -3,7 +3,8 @@ import { Suspense } from "react";
 
 import { MediaLibrary } from "@/components/admin/media-library";
 import { mediaQuery } from "@/lib/media-query";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
+import { canvaForLibrary } from "@/server/canva";
 import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
@@ -16,6 +17,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
 import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
 
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
 import {
@@ -42,7 +44,7 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
   const lang = adminLangOf(account.adminLocale);
   const w = WEBSITE_WORDS[lang].mediaPage;
   return (
-    <AdminTextScope texts={areaTexts(lang, { websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS })}>
+    <AdminTextScope texts={areaTexts(lang, { websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS, canva: CANVA_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={<><span className="sm:hidden">{fillWords(w.lead, { store: store.name })}</span><span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span></>} />
       {/* The search in the address is read per request. */}
@@ -55,16 +57,21 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
 }
 
 async function Library({ storeSlug, searchParams }: { storeSlug: string; searchParams: PageProps<"/admin/[store]/media">["searchParams"] }) {
-  const { store } = await requirePermission(storeSlug, "website:read");
-  const query = mediaQuery(await searchParams);
+  const member = await requirePermission(storeSlug, "website:read");
+  const { store } = member;
+  const given = await searchParams;
+  const query = mediaQuery(given);
   const owner = { storeId: store.id, storeSlug: store.slug };
-  const [{ items, total, searched }, ai, site, altMissing, waiting] = await Promise.all([
+  const [{ items, total, searched }, ai, site, altMissing, waiting, canva] = await Promise.all([
     listMedia(owner, query),
     aiFor(store.id),
     altSite(owner),
     missingAltTexts(owner),
     compressibleCount(owner),
+    // The person's own Canva (D898), for those who may change the site's pictures.
+    memberCan(member, "website:write") && uploadsEnabled() ? canvaForLibrary({ ...owner, accountId: member.account.id }, given.canva) : null,
   ]);
+  const library = `/admin/${store.slug}/media`;
   return (
     <MediaLibrary
       items={items}
@@ -79,6 +86,7 @@ async function Library({ storeSlug, searchParams }: { storeSlug: string; searchP
         edit: ai?.image?.editModel && uploadsEnabled() ? `/admin/${store.slug}/media/edit` : null,
         settingsHref: `/admin/${store.slug}/settings/ai`,
       }}
+      canva={canva ? { ...canva, endpoint: `${library}/canva`, back: library } : null}
       upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
       startVideo={uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null}
       actions={{
