@@ -363,7 +363,7 @@ export const CONTENT_API = [
     body: pageImportBody,
     response: one(apiPageImport),
     status: 201,
-    errors: ["invalid"],
+    errors: ["invalid", "conflict"],
   }),
   ...pageOps("articles", "blog article", "Blog"),
   // Content types and entries (D326)
