@@ -38,6 +38,22 @@ export const LEGAL_REVIEWS: readonly LegalReview[] = [
       { key: "overall", label: "Anything else" },
     ],
   },
+  {
+    slug: "admin-use",
+    title: "Heatmaps and recordings of how owners use the admin",
+    summary: "Kaizena Flow reading how store owners use the admin, to improve it (D895 phase 3): nothing runs until this is answered.",
+    file: "docs/dpia-admin-use.md",
+    items: [
+      { key: "q1", label: "Question 1: shopper data kept out" },
+      { key: "q2", label: "Question 2: consent from business users" },
+      { key: "q3", label: "Question 3: store staff" },
+      { key: "q4", label: "Question 4: identifiability" },
+      { key: "q5", label: "Question 5: retention" },
+      { key: "q6", label: "Question 6: the notice" },
+      { key: "q7", label: "Question 7: this assessment" },
+      { key: "overall", label: "Anything else" },
+    ],
+  },
 ];
 
 /** A review by its slug, or null. */

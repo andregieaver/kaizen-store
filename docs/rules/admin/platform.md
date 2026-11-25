@@ -731,7 +731,13 @@ under *What the router fetches ahead*.
   `docs/runbooks/incident-autopilot.md`. The app wakes it only through `src/server/autopilot-wake.ts`: `requestWake()` records a wish (a new
   or returning problem, an Approve, an idea, *Run now*; only while the switch is on), and the `incidents` job sends it through the scheduled
   task's API trigger once the owner's gap since the last run's start has passed (*Run now* at once); the body names a reason and a count,
-  never an error's text. Without `AUTOPILOT_FIRE_TOKEN` and `AUTOPILOT_TRIGGER_ID` no wake goes and the nightly run covers everything. Sources inside the app call `logIncident()`: a failing job (`alertFailingJob()`), a stopped scheduler
+  never an error's text. Without `AUTOPILOT_FIRE_TOKEN` and `AUTOPILOT_TRIGGER_ID` no wake goes and the nightly run covers everything.
+  On Mondays the job's daily step runs the reading of how owners use the admin (`src/server/admin-behaviour.ts`, `src/lib/admin-behaviour.ts`):
+  the week's figures from counts the platform already keeps (the AI manager's tools: calls, failures and thumbs, never a message's words or
+  an owner's own `app__` tool; the admin's slow screens), above minimum volumes, to the platform's AI (`admin_reading`), whose answer
+  `checkReading()` keeps only where it names a subject it was given and cites one of that subject's numbers, at most three, each a
+  `platform_ai` proposal waiting for the owner's Approve. Admin heatmaps and recordings are not built: they wait for `docs/dpia-admin-use.md`
+  to be accepted and answered under Legal reviews. Sources inside the app call `logIncident()`: a failing job (`alertFailingJob()`), a stopped scheduler
   (`runWatchdog()`) and a status part failed twice in a row (`runStatusChecks()`). A new source names its fingerprint with
   `fingerprintOf()` and never puts a person's data in it.
 
