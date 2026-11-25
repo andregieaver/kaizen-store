@@ -17,7 +17,7 @@ import { marketCheck } from "@/server/market-check";
 import { rivalProductChoices } from "@/server/market-rivals";
 import { countryName } from "@/lib/vat-text";
 
-import { addRivalAction, readRivalOfferAction, removeRivalAction } from "./actions";
+import { rivalsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Markets" };
 
@@ -50,7 +50,7 @@ export default async function MarketsPage({ params, searchParams }: PageProps<"/
       products={products}
       actions={
         ctx.canExport
-          ? { add: addRivalAction.bind(null, store.slug), remove: removeRivalAction.bind(null, store.slug), read: readRivalOfferAction.bind(null, store.slug) }
+          ? { add: rivalsAction.bind(null, store.slug, "add"), remove: rivalsAction.bind(null, store.slug, "remove"), read: rivalsAction.bind(null, store.slug, "read") }
           : null
       }
       now={now}
