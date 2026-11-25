@@ -36,5 +36,6 @@ run in CI's signed-in job; each task counts what is pressed and typed against a 
 
 ## Follow-ups
 
-- The manager's flow tool takes a goal's days and an offer (pass mark 2).
-- A recipe's first words written in the store's voice when the store has AI set up, in the background after *Start* (pass mark 1).
+- The manager's flow tool takes a goal's days and an offer (pass mark 2): done 24 November 2026 with `create_flow` (D889).
+- A recipe's first words written in the store's voice when the store has AI set up, in the background after *Start* (pass mark 1): done 25
+  November 2026 (D897).

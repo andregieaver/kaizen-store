@@ -39,6 +39,7 @@ export const flowsEn = {
     personal_field: "A personal field in “{subject}” ({language}) has no fallback, or is not one the store has. Write it as {first_name|there} or {company|your team}.",
   },
   stepReach: { measured: "About {n} would get it in the next 30 days, judged from who got it before.", all: "About {n} would get it in the next 30 days.", up_to: "Up to {n} would get it in the next 30 days, by which way they go." },
+  voice: { writing: "Writing these emails in your store's voice. Reload in a minute to see them; change anything now and your words are kept.", written: "Written in your store's voice. Change any word in place, then test it and switch it on." },
   guard: { paused: "Switched off on {date}: {left} of the {sent} people who got its emails in the week before left your list within two days of one. Look at its emails and how often they go, then test it and switch it on again." },
   reach: {
     none: "Nobody would have started it in the last 30 days.",

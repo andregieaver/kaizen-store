@@ -38,6 +38,7 @@ export const flowsNb: FlowsMessages = {
     personal_field: "Et personlig felt i «{subject}» ({language}) mangler reserve, eller finnes ikke i butikken. Skriv det som {first_name|du} eller {company|dere}.",
   },
   stepReach: { measured: "Omtrent {n} ville fått den de neste 30 dagene, ut fra hvem som fikk den før.", all: "Omtrent {n} ville fått den de neste 30 dagene.", up_to: "Opptil {n} ville fått den de neste 30 dagene, etter hvilken vei de går." },
+  voice: { writing: "Skriver disse e-postene med butikkens stemme. Last inn siden på nytt om et minutt for å se dem; endrer du noe nå, beholdes ordene dine.", written: "Skrevet med butikkens stemme. Endre et ord der det står, test den og slå den på." },
   guard: { paused: "Slått av {date}: {left} av de {sent} som fikk e-postene uken før, meldte seg av listen innen to dager etter en av dem. Se på e-postene og hvor ofte de går, test den og slå den på igjen." },
   reach: {
     none: "Ingen ville ha startet det de siste 30 dagene.",

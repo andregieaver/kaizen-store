@@ -267,6 +267,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   moves each due run on one step a turn (`tickFlows()`, one read while no flow is on); an email goes through the sending guard, the
   plan's room, quiet hours and the contact policy, a held one never later. The owner reads a flow as a story (`storyLines()`); the tree is
   one step away, under Customise, drawn as a chart and dragged and dropped (`flow-board.tsx`). A flow that `replaces` an automation switches it off when switched on, and keeps it off. Runs are personal data: exported, erased, gone 90 days after they end.
+- **A recipe in the store's voice (D897, `src/server/flows-voice.ts`)**: after *Start* answers, a flow made from a recipe's ready-made
+  words (never the owner's own automation's) is rewritten by `suggestBroadcast()` per email, saved only through `saveFlow(…, { onlyAtVersion: 1 })`
+  so an owner's change made meanwhile wins; the flow's page says it is writing (`?voice=1`).
 
 ## The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)
 

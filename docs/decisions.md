@@ -899,6 +899,8 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D894 | **Reading a found company's site: what it does, a fit worked out in code, and only its own door (email plan P5.2, P5.9)** | 2026-11-25 | [text](decisions/D894.md) |
 | D895 | **The incident log and its autopilot: one log of errors, warnings and enhancements, worked by Claude Code on the owner's s** | 2026-11-25 | [text](decisions/D895.md) |
 | D896 | **Find companies in Finland too, from PRH's open register (email plan P5.1)** | 2026-11-25 | [text](decisions/D896.md) |
+| D897 | **A recipe's first words in the store's voice, written after Start (email plan M3.10)** | 2026-11-25 | [text](decisions/D897.md) |
+| D898 | **Figma, Miro and Canva: one connection per tool, Canva first with Edit in Canva** | 2026-11-25 | [text](decisions/D898.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

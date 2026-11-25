@@ -110,6 +110,12 @@ export default async function FlowPage({ params, searchParams }: PageProps<"/adm
           </Chip>
         }
       />
+      {/* A recipe's words in the store's voice (D897), written after Start answered: said while it writes, and once written. */}
+      {query.voice === "1" && (
+        <p role="status" className="rounded-panel border border-line bg-card px-4 py-3 text-body text-ink" data-flow-voice>
+          {flow.version === 1 ? w.voice.writing : w.voice.written}
+        </p>
+      )}
       {/* The flow guard (M3.9): why it is off, in numbers counted by code; Switch on below starts it again. */}
       {flow.guard && !flow.enabled && (
         <div role="alert" className="rounded-panel border border-danger-line bg-danger-soft px-4 py-3 text-body text-ink" data-flow-guard>

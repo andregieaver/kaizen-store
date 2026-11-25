@@ -19,7 +19,6 @@ import {
   INCIDENT_STATUSES,
   QUIET_HOURS,
   REPEAT_WRITE_SECONDS,
-  statusAfterRepeat,
   workableStatus,
   type IncidentKind,
   type IncidentSource,
@@ -87,7 +86,7 @@ async function writeEvent(
 
 /**
  * Puts a problem or a proposal in the log, met by its fingerprint: a new one starts as `firstStatus()`; a repeat counts (at most once every
- * `REPEAT_WRITE_SECONDS`) and reopens a fixed or done problem (`statusAfterRepeat()`); a dismissed or won't-fix one only counts. Never throws:
+ * `REPEAT_WRITE_SECONDS`) and reopens a fixed or done problem; a dismissed or won't-fix one only counts. Never throws:
  * a failure is logged and gives null, so a broken log never breaks the request that met the problem.
  */
 export async function logIncident(input: IncidentInput): Promise<LoggedIncident | null> {
@@ -102,48 +101,45 @@ async function writeIncident(input: IncidentInput): Promise<LoggedIncident | nul
   const title = cleanTitle(input.title);
   if (!fingerprint || !title) return null;
   try {
-    return await db().transaction(async (tx) => {
-      const facts = JSON.stringify(cleanFacts(input.facts));
-      const evidence = JSON.stringify(cleanFacts(input.evidence));
-      const status = firstStatus(input.kind, input.source);
-      const inserted = await typedRow(
-        z.object({ id: col.uuid }),
-        sql`
-          insert into commerce.platform_incidents (kind, source, fingerprint, title, facts, evidence, about_store_id, status)
+    const facts = JSON.stringify(cleanFacts(input.facts));
+    const evidence = JSON.stringify(cleanFacts(input.evidence));
+    const status = firstStatus(input.kind, input.source);
+    // One statement, so it is atomic without a transaction (a dispatcher job that logs opens none): `prev` is the row as it stood, `up`
+    // inserts or counts it (a repeat within REPEAT_WRITE_SECONDS writes nothing; a fixed or done problem reopens, a proposal only counts),
+    // `ev` writes the event of a new entry or a reopened one.
+    const row = await typedRow(
+      z.object({ id: col.uuid, status: statusCol, created: col.bool, reopened: col.bool }),
+      sql`
+        with prev as (
+          select id, status from commerce.platform_incidents where fingerprint = ${fingerprint}
+        ),
+        up as (
+          insert into commerce.platform_incidents as i (kind, source, fingerprint, title, facts, evidence, about_store_id, status)
           values (${input.kind}, ${input.source}, ${fingerprint}, ${title}, ${facts}::jsonb, ${evidence}::jsonb, ${input.storeId ?? null}::uuid, ${status})
-          on conflict (fingerprint) do nothing
-          returning id
-        `,
-        tx,
-      );
-      if (inserted) {
-        await writeEvent(tx, inserted.id, null, { from: null, to: status }, null);
-        return { id: inserted.id, status, created: true, reopened: false };
-      }
-      const row = await typedRow(
-        z.object({ id: col.uuid, kind: z.enum(["error", "warning", "enhancement"]), status: statusCol, recent: col.bool }),
-        sql`
-          select id, kind, status, last_seen_at > now() - make_interval(secs => ${REPEAT_WRITE_SECONDS}) as recent
-          from commerce.platform_incidents where fingerprint = ${fingerprint} for update
-        `,
-        tx,
-      );
-      if (!row) return null;
-      // A proposal made again is the same idea: it only counts. A problem that comes back after a fix reopens.
-      const after = row.kind === "enhancement" ? row.status : statusAfterRepeat(row.kind, row.status);
-      const reopened = after !== row.status;
-      if (row.recent && !reopened) return { id: row.id, status: row.status, created: false, reopened: false };
-      await tx.execute(sql`
-        update commerce.platform_incidents
-           set occurrences = occurrences + 1, last_seen_at = now(), status = ${after},
-               reopened_count = reopened_count + ${reopened ? 1 : 0},
-               facts = case when ${reopened} then ${facts}::jsonb else facts end,
-               done_at = case when ${reopened} then null else done_at end
-         where id = ${row.id}::uuid
-      `);
-      if (reopened) await writeEvent(tx, row.id, null, { from: row.status, to: after }, "Happened again");
-      return { id: row.id, status: after, created: false, reopened };
-    });
+          on conflict (fingerprint) do update set
+            occurrences = i.occurrences + 1,
+            last_seen_at = now(),
+            status = case when i.kind <> 'enhancement' and i.status in ('fixed', 'done') then 'open' else i.status end,
+            reopened_count = i.reopened_count + case when i.kind <> 'enhancement' and i.status in ('fixed', 'done') then 1 else 0 end,
+            facts = case when i.kind <> 'enhancement' and i.status in ('fixed', 'done') then excluded.facts else i.facts end,
+            done_at = case when i.kind <> 'enhancement' and i.status in ('fixed', 'done') then null else i.done_at end
+          where (i.kind <> 'enhancement' and i.status in ('fixed', 'done'))
+             or i.last_seen_at <= now() - make_interval(secs => ${REPEAT_WRITE_SECONDS})
+          returning i.id, i.status, (xmax = 0) as created
+        ),
+        ev as (
+          insert into commerce.platform_incident_events (incident_id, from_status, to_status, note)
+          select up.id, prev.status, up.status, case when prev.id is null then null else 'Happened again' end
+          from up left join prev on prev.id = up.id
+          where prev.id is null or prev.status is distinct from up.status
+          returning 1
+        )
+        select coalesce(up.id, prev.id) as id, coalesce(up.status, prev.status) as status, coalesce(up.created, false) as created,
+               coalesce(prev.status is distinct from up.status and prev.id is not null and up.id is not null, false) as reopened
+        from prev full join up on up.id = prev.id
+      `,
+    );
+    return row;
   } catch (error) {
     log("error", "incidents.log_failed", { source: input.source, kind: input.kind }, error);
     return null;
@@ -296,34 +292,36 @@ export async function addIdea(accountId: string, title: string, note: string | n
  * event. Returns the counts.
  */
 export async function keepIncidents(): Promise<{ released: number; done: number }> {
-  return db().transaction(async (tx) => {
-    const released = await typedRows(
-      z.object({ id: col.uuid, kind: z.enum(["error", "warning", "enhancement"]) }),
-      sql`
-        select id, kind from commerce.platform_incidents
-         where status = 'claimed' and claim_expires_at < now() for update skip locked
-      `,
-      tx,
-    );
-    for (const entry of released) {
-      const to = workableStatus(entry.kind);
-      await tx.execute(sql`
-        update commerce.platform_incidents set status = ${to}, claimed_by = null, claim_expires_at = null where id = ${entry.id}::uuid
-      `);
-      await writeEvent(tx, entry.id, null, { from: "claimed", to }, "The claim ran out");
-    }
-    const done = await typedRows(
-      z.object({ id: col.uuid }),
-      sql`
+  // Each is one statement with its events written in the same one (a data-modifying CTE): an idle tick opens no transaction (the
+  // dispatcher's jobs, idle, open none: `shop-journey.int.test.ts`).
+  const released = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`
+      with gone as (
+        update commerce.platform_incidents
+           set status = case when kind = 'enhancement' then 'approved' else 'open' end, claimed_by = null, claim_expires_at = null
+         where status = 'claimed' and claim_expires_at < now()
+        returning id, status
+      )
+      insert into commerce.platform_incident_events (incident_id, from_status, to_status, note)
+      select id, 'claimed', status, 'The claim ran out' from gone
+      returning incident_id as id
+    `,
+  );
+  const done = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`
+      with quiet as (
         update commerce.platform_incidents set status = 'done', done_at = now()
          where status = 'fixed' and fixed_at < now() - make_interval(hours => ${QUIET_HOURS})
         returning id
-      `,
-      tx,
-    );
-    for (const entry of done) await writeEvent(tx, entry.id, null, { from: "fixed", to: "done" }, `Quiet for ${QUIET_HOURS} hours`);
-    return { released: released.length, done: done.length };
-  });
+      )
+      insert into commerce.platform_incident_events (incident_id, from_status, to_status, note)
+      select id, 'fixed', 'done', ${`Quiet for ${QUIET_HOURS} hours`} from quiet
+      returning incident_id as id
+    `,
+  );
+  return { released: released.length, done: done.length };
 }
 
 /** Closed entries (and so the memory of a dismissed proposal) and old runs go after `INCIDENT_KEEP_DAYS`. Once a day, with the summary. */

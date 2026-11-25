@@ -4,6 +4,7 @@ import { keepWay } from "@/lib/flow-split";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { RecipeKey } from "@/lib/flow-recipes";
@@ -13,7 +14,7 @@ import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger, SCHEDULE_EVERY } from 
 import { localInstant } from "@/lib/follow-ups";
 import { zoneOf } from "@/lib/admin-date";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { emailSteps, type FactBlock, findStep, type FlowCondition, type FlowStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withCondition, withEmailWords, withLanguageContent, withLanguageCopy, withStepPicks, withTag, withUntil, withWaitDays, TAG_MAX } from "@/lib/flows";
+import { type FactBlock, findStep, type FlowCondition, type FlowStep, insertStep, moveStep, newStep, removeStep, withBlockAt, withBlockText, withCondition, withEmailWords, withLanguageContent, withLanguageCopy, withStepPicks, withTag, withUntil, withWaitDays, TAG_MAX } from "@/lib/flows";
 import { REWRITE_TONES, suggestionBlocks, type RewriteTone } from "@/lib/broadcasts";
 import { broadcastBlockSchema } from "@/lib/broadcasts-schema";
 import { earnedWords, flowAudience } from "@/lib/flow-audience";
@@ -25,6 +26,9 @@ import { FLOWS_WORDS } from "@/lib/admin-words/flows";
 import { adminLangOf } from "@/lib/admin-lang";
 import { flowReport, getFlow, saveFlow, startRecipeFlow, switchFlow, testFlow } from "@/server/flows";
 import { getSegment, listSegments } from "@/server/segments";
+import { aiFor } from "@/server/ai";
+import { flowInVoice, writeRecipeInVoice } from "@/server/flows-voice";
+import { log } from "@/server/log";
 import { storeAction } from "@/server/store-action";
 
 /**
@@ -40,10 +44,23 @@ export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey | 
     { store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" },
     async (member) => {
       const saved = await startRecipeFlow(member.store, member.account.id, key);
-      return saved.ok ? { status: "ok" as const, messages: [saved.id] } : refusal(saved.problem);
+      if (!saved.ok) return refusal(saved.problem);
+      // The recipe's ready-made words in the store's voice, after the answer (D897): Start stays instant, and the page says it is coming.
+      if (saved.readyWords && (await aiFor(member.store.id, { feature: "marketing_email", accountId: member.account.id }))?.textModel) {
+        const { store, account } = member;
+        after(async () => {
+          try {
+            await writeRecipeInVoice(store, account.id, saved.id);
+          } catch (error) {
+            log("warn", "flows.voice_failed", { storeId: store.id, flowId: saved.id }, error);
+          }
+        });
+        return { status: "ok" as const, messages: [saved.id, "voice"] };
+      }
+      return { status: "ok" as const, messages: [saved.id] };
     },
   );
-  if (made.status === "ok" && made.messages[0]) redirect(`/admin/${storeSlug}/flows/${made.messages[0]}`);
+  if (made.status === "ok" && made.messages[0]) redirect(`/admin/${storeSlug}/flows/${made.messages[0]}${made.messages[1] === "voice" ? "?voice=1" : ""}`);
   return made;
 }
 
@@ -291,18 +308,8 @@ export async function writeFlowEmailAction(storeSlug: string, flowId: string, st
     if (typeof brief !== "string" || typeof locale !== "string" || !member.store.localization.keptLocales.includes(locale)) return problems.storeLanguage;
     // The whole flow at once (M3.1, "*"): each email written in the store's voice from its own words as the brief, in one new version.
     if (stepId === "*") {
-      const earned = earnedWords(await flowReport(member.store.id, flow.id), flow.steps);
-      let steps = flow.steps;
-      for (const step of emailSteps(flow.steps)) {
-        const own = step.content[locale] ?? Object.values(step.content)[0];
-        const words = own ? [own.subject, ...own.blocks.flatMap((b) => ("text" in b && typeof b.text === "string" ? [b.text] : []))].join("\n") : "";
-        const audience = [flowAudience(flow.steps, step.id, flow.trigger, flow.triggerDays), earned].filter(Boolean).join(" ");
-        const suggested = await suggestBroadcast(member.store, member.account.id, words, locale, { audience });
-        if (!suggested.ok) return marketingProblem(suggested.problem, problems);
-        const s = suggested.suggestion;
-        steps = withLanguageContent(steps, step.id, locale, { subject: s.subject, preview: s.preview, blocks: suggestionBlocks(step.picks ? { ...s, products: [] } : s) });
-      }
-      return steps;
+      const written = await flowInVoice(member.store, member.account.id, flow, locale, earnedWords(await flowReport(member.store.id, flow.id), flow.steps));
+      return written.ok ? written.steps : marketingProblem(written.problem, problems);
     }
     const step = findStep(flow.steps, stepId);
     if (!step || step.kind !== "email") return null;
