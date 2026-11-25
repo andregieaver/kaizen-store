@@ -12,7 +12,8 @@ import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { AUTOPILOT_GAPS, incidentGroup } from "@/lib/incidents";
 import { requirePlatformReader } from "@/server/auth";
-import { autopilotSettings, incidentBoard, type IncidentEntry } from "@/server/incidents";
+import { autopilotWakeEnv } from "@/lib/env";
+import { autopilotSettings, incidentBoard, lastAutopilotRun, type IncidentEntry } from "@/server/incidents";
 
 import { IncidentNotice, INCIDENT_ACT } from "./notice";
 
@@ -29,7 +30,19 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = PLATFORM_WORDS[lang].incidents;
-  const [board, settings, query] = await Promise.all([incidentBoard(), autopilotSettings(), searchParams]);
+  const [board, settings, lastRun, query] = await Promise.all([incidentBoard(), autopilotSettings(), lastAutopilotRun(), searchParams]);
+  const connected = (() => {
+    try {
+      return autopilotWakeEnv() !== null;
+    } catch {
+      return false;
+    }
+  })();
+  const runLine = !lastRun
+    ? w.autopilot.noRun
+    : lastRun.finishedAt
+      ? fillWords(w.autopilot.lastRun, { at: adminDate(PLATFORM_TIME_ZONE, lastRun.finishedAt, "dayTime", lang), summary: lastRun.summary ?? "" })
+      : fillWords(w.autopilot.lastRunGoing, { at: adminDate(PLATFORM_TIME_ZONE, lastRun.startedAt, "dayTime", lang) });
   const needsYou = board.filter((e) => incidentGroup(e.status) === "needs_you");
   const working = board.filter((e) => incidentGroup(e.status) === "being_fixed" || incidentGroup(e.status) === "waiting");
   const fixed = board.filter((e) => incidentGroup(e.status) === "fixed");
@@ -144,11 +157,17 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
                 )}
               </Field>
               <p className="text-sm text-muted">{w.autopilot.nightly}</p>
-              <p className="text-sm text-muted">{w.autopilot.setup}</p>
-              <div>
+              {!connected && <p className="text-sm text-muted">{w.autopilot.setup}</p>}
+              <p className="text-sm text-ink-2">{runLine}</p>
+              <div className="flex flex-wrap gap-2">
                 <SubmitButton name="intent" value="settings" variant="secondary">
                   {w.autopilot.save}
                 </SubmitButton>
+                {settings.on && connected && (
+                  <SubmitButton name="intent" value="run_now" variant="secondary" skipValidation>
+                    {w.autopilot.runNow}
+                  </SubmitButton>
+                )}
               </div>
             </form>
           </Card>

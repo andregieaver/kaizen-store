@@ -42,18 +42,21 @@ const LANGUAGE_NAMES: Record<string, string> = { nb: "Norwegian (Bokmål)", nn: 
 const writeInput = z
   .object({
     productId: z.uuid().nullable().default(null),
+    pageId: z.uuid().nullable().default(null),
     topic: z.string().trim().max(TOPIC_MAX).default(""),
     campaign: z.string().trim().max(THEME_MAX).default(""),
     channels: z.array(z.enum(POST_CHANNELS)).min(1, "Choose at least one channel.").max(POST_CHANNELS.length),
     withPrice: z.boolean().default(true),
   })
-  .refine((v) => v.productId !== null || v.topic.length >= 5, { message: "Choose a product, or say in a few words what the post is about." });
+  .refine((v) => v.productId !== null || v.pageId !== null || v.topic.length >= 5, { message: "Choose a product or a page, or say in a few words what the post is about." })
+  .refine((v) => v.productId === null || v.pageId === null, { message: "Choose a product or a page, not both." });
 
 export type SocialPost = {
   id: string;
   channel: PostChannel;
   ref: string;
   productId: string | null;
+  pageId: string | null;
   topic: string;
   title: string;
   caption: string;
@@ -69,6 +72,39 @@ export type SocialPost = {
 export type WriteResult = { ok: true; posts: SocialPost[] } | { ok: false; problem: string };
 
 type ProductFacts = { id: string; title: string; summary: string; price: string; address: string };
+
+const PAGE_ROW = z.object({ id: col.uuid, slug: col.text, title: col.text, about: col.text, front: col.bool });
+
+/**
+ * The store's published pages the creator offers to write about (C1b: Kaizena Flow's own site is its house store's pages, with no products),
+ * the front page first, then the newest; each with what search engines are told it is about.
+ */
+export async function socialPages(store: Membership["store"]): Promise<{ id: string; title: string }[]> {
+  return (await pageRows(store.id, null)).map((p) => ({ id: p.id, title: p.title }));
+}
+
+async function pageRows(storeId: string, pageId: string | null) {
+  return typedRows(
+    PAGE_ROW,
+    sql`
+    select p.id, p.slug, coalesce(nullif(p.published ->> 'title', ''), p.slug) as title,
+      coalesce(nullif(p.published -> 'seo' ->> 'description', ''), nullif(p.published -> 'seo' ->> 'title', ''), '') as about,
+      (s.front_page_id is not distinct from p.id) as front
+    from commerce.pages p join commerce.stores s on s.id = p.store_id
+    where p.store_id = ${storeId}::uuid and p.type = 'page' and p.published is not null
+      and (${pageId}::uuid is null or p.id = ${pageId}::uuid)
+    order by (s.front_page_id is not distinct from p.id) desc, p.updated_at desc, p.id
+    limit 48
+  `,
+  );
+}
+
+async function pageFacts(store: Membership["store"], pageId: string): Promise<{ id: string; title: string; summary: string; address: string } | null> {
+  const market = store.markets[0];
+  const [page] = await pageRows(store.id, pageId);
+  if (!page || !market) return null;
+  return { id: page.id, title: page.title, summary: page.about.slice(0, 600), address: marketUrl(store.slug, market.code.toLowerCase(), page.front ? "" : `/${page.slug}`) };
+}
 
 /** The products the creator offers to write about: the newest the shop offers in its main market, with a price there. */
 export async function socialProducts(store: Membership["store"]): Promise<{ id: string; title: string }[]> {
@@ -102,6 +138,8 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
   if (!market) return { ok: false, problem: "The shop sells in no country yet." };
   const product = input.productId ? await productFacts(store, input.productId) : null;
   if (input.productId && !product) return { ok: false, problem: "That product is not on sale in the shop's main country." };
+  const page = input.pageId ? await pageFacts(store, input.pageId) : null;
+  if (input.pageId && !page) return { ok: false, problem: "That page is not published on the site." };
   const connection = await aiFor(store.id, { feature: "social_posts", accountId: member.account.id });
   if (!connection?.textModel) return { ok: false, problem: "No AI with a text model is set up for this store." };
 
@@ -110,14 +148,22 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
   const brand = await brandOf(store.id);
   const guide = brandGuide(brand);
   const channels = POST_CHANNELS.filter((c) => input.channels.includes(c));
-  const facts = product ? `<product>${JSON.stringify({ title: product.title, about: product.summary })}</product>` : "";
+  const facts = product
+    ? `<product>${JSON.stringify({ title: product.title, about: product.summary })}</product>`
+    : page
+      ? `<page>${JSON.stringify({ title: page.title, about: page.summary })}</page>`
+      : "";
   const topic = input.topic ? `<staff-words>${input.topic.replace(/</g, "‹")}</staff-words>` : "";
   const messages: ToolChatMessage[] = [
     {
       role: "system",
       content: [
         `You write social media posts for the shop "${store.name}", in ${language}, one for each channel asked for.`,
-        product ? "Each post is about the product given: write only from its title and description and what the shop's staff add." : "Write only from what the shop's staff say the post is about.",
+        product
+          ? "Each post is about the product given: write only from its title and description and what the shop's staff add."
+          : page
+            ? "Each post invites people to the page of the shop's site given: write only from its title and description and what the shop's staff add."
+            : "Write only from what the shop's staff say the post is about.",
         "Never write a price, a discount, an amount off, a stock level, a delivery time or a link: the shop adds its price and link itself. Never name a product or an offer you were not given.",
         "No urgency or scarcity (no 'only today', 'last chance', 'few left'), no best or lowest price claims, no environmental claims such as sustainable or eco-friendly.",
         RULES_STAND,
@@ -149,7 +195,7 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
   }
 
   const ref = options.ref ?? newPostRef();
-  const address = product?.address ?? marketUrl(store.slug, market.code.toLowerCase(), "");
+  const address = product?.address ?? page?.address ?? marketUrl(store.slug, market.code.toLowerCase(), "");
   const own = [new URL(address).origin];
   const priceLine = product && input.withPrice && product.price ? `${product.title} · ${product.price}` : null;
   const rows = written.map((post) => {
@@ -163,8 +209,8 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
       const [r] = await typedRows(
         SAVED_ROW,
         sql`
-        insert into commerce.social_posts (store_id, channel, ref, product_id, topic, campaign, locale, title, caption, hashtags, link, price_line, created_by)
-        values (${store.id}::uuid, ${row.channel}, ${ref}, ${product?.id ?? null}::uuid, ${input.topic}, ${input.campaign}, ${locale}, ${row.title}, ${row.caption},
+        insert into commerce.social_posts (store_id, channel, ref, product_id, page_id, topic, campaign, locale, title, caption, hashtags, link, price_line, created_by)
+        values (${store.id}::uuid, ${row.channel}, ${ref}, ${product?.id ?? null}::uuid, ${page?.id ?? null}::uuid, ${input.topic}, ${input.campaign}, ${locale}, ${row.title}, ${row.caption},
           ${`{${row.hashtags.join(",")}}`}::text[], ${row.link}, ${priceLine}, ${member.account.id}::uuid)
         returning id, channel
       `,
@@ -184,6 +230,7 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
       channel: row.channel,
       ref,
       productId: product?.id ?? null,
+      pageId: page?.id ?? null,
       topic: input.topic,
       title: row.title,
       caption: row.caption,
@@ -204,6 +251,7 @@ const POST_ROW = z.object({
   channel: z.enum(POST_CHANNELS),
   ref: col.text,
   product_id: z.string().nullable(),
+  page_id: z.string().nullable(),
   topic: col.text,
   title: col.text,
   caption: col.text,
@@ -219,7 +267,7 @@ export async function listSocialPosts(storeId: string, limit = 60): Promise<Soci
   const rows = await typedRows(
     POST_ROW,
     sql`
-    select id, channel, ref, product_id, topic, title, caption, hashtags, link, price_line, copied_at, created_at
+    select id, channel, ref, product_id, page_id, topic, title, caption, hashtags, link, price_line, copied_at, created_at
     from commerce.social_posts where store_id = ${storeId}::uuid
     order by created_at desc, ref, channel limit ${limit}
   `,
@@ -229,6 +277,7 @@ export async function listSocialPosts(storeId: string, limit = 60): Promise<Soci
     channel: r.channel,
     ref: r.ref,
     productId: r.product_id,
+    pageId: r.page_id,
     topic: r.topic,
     title: r.title,
     caption: r.caption,

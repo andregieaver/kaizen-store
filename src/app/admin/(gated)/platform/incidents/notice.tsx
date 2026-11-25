@@ -9,16 +9,8 @@ export const INCIDENT_ACT = "/admin/platform/incidents/act";
 export function IncidentNotice({ query, w }: { query: Record<string, string | string[] | undefined>; w: W }) {
   const done = typeof query.done === "string" ? query.done : null;
   const problem = typeof query.problem === "string" ? query.problem : null;
-  const said =
-    done === "idea"
-      ? w.idea.saved
-      : done === "settings"
-        ? w.autopilot.saved
-        : done === "moved"
-          ? w.moved
-          : problem && problem in w.problems
-            ? w.problems[problem as keyof W["problems"]]
-            : null;
+  const done_: Record<string, string> = { idea: w.idea.saved, settings: w.autopilot.saved, moved: w.moved, run_now: w.autopilot.runNowDone };
+  const said = (done && done_[done]) || (problem && problem in w.problems ? w.problems[problem as keyof W["problems"]] : null);
   if (!said) return null;
   return (
     <p role="status" className={`rounded-panel border border-line bg-card p-4 text-sm ${problem ? "text-danger-text" : "text-ink"}`}>

@@ -499,6 +499,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   one on the do-not-contact list; the front page through `readWebPage()`; the model says what the company does and scores the owner's site
   criteria (`c=` in the address, from the filter prompt), and the fit is `compareOptions()` in code. Contact shown is `generalAddresses()`
   only (a role name on the company's own domain); the model's sentence goes through `plainSentence()`. Nothing is kept.
+  The addresses come from the whole page (`pageEmails()`, footers and `mailto:` links, returned by `readWebPage()` as `emails`, never
+  passed to a model by `readWebPageTool()`), else from the contact page (`CONTACT_PATHS`, at most two reads) (D899).
 
 ## A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
 
@@ -546,7 +548,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 - **The social post creator (D870 C1, `src/lib/social-posts.ts` pure, `src/server/social-posts.ts`, `/admin/{store}/social`)**: posts to copy by
   hand, one per channel of `POST_CHANNELS`, written only by `writeSocialPosts()` (`marketing:write`, AI feature `social_posts`) from a product's
-  facts in the store's main market or the owner's topic, in the store's main language with `brandGuide()`, and kept only in `social_posts`. The
+  facts in the store's main market, a published page of its site (`socialPages()`, C1b: its title and search description, linking to it;
+  Kaizena Flow's own posts are its store's, from kaizenaflow.com's pages) or the owner's topic, in the store's main language with `brandGuide()`, and kept only in `social_posts`. The
   model never writes a price, a stock level or a link: the price line is the shop's price (`priceLines()`) and the link is `postLink()`'s, one
   reference per batch (`newPostRef()`), so each channel's visits and orders are the post's (S1.1); every caption, title and hashtag passes
   `postClaims()` (the claims filter and the brand's words to avoid) or nothing is kept. What the owner copies is `copyText()`; a channel that

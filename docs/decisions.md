@@ -901,6 +901,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D896 | **Find companies in Finland too, from PRH's open register (email plan P5.1)** | 2026-11-25 | [text](decisions/D896.md) |
 | D897 | **A recipe's first words in the store's voice, written after Start (email plan M3.10)** | 2026-11-25 | [text](decisions/D897.md) |
 | D898 | **Figma, Miro and Canva: one connection per tool, Canva first with Edit in Canva** | 2026-11-25 | [text](decisions/D898.md) |
+| D899 | **A found company's door from its whole page and its contact page (email plan P5.2)** | 2026-11-25 | [text](decisions/D899.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

@@ -23,6 +23,23 @@ export function serverEnv(
 }
 
 /**
+ * The incident autopilot's wake (D895): the scheduled Claude Code task's API trigger id and that task's own token, made by the owner in
+ * claude.ai (it can start that one task and nothing else). Null without both: the app then sends no wakes and the nightly run covers all.
+ */
+export function autopilotWakeEnv(
+  source: Record<string, string | undefined> = {
+    AUTOPILOT_FIRE_TOKEN: process.env.AUTOPILOT_FIRE_TOKEN,
+    AUTOPILOT_TRIGGER_ID: process.env.AUTOPILOT_TRIGGER_ID,
+  },
+): { token: string; triggerId: string } | null {
+  const token = source.AUTOPILOT_FIRE_TOKEN?.trim();
+  const triggerId = source.AUTOPILOT_TRIGGER_ID?.trim();
+  if (!token || !triggerId) return null;
+  if (!/^[A-Za-z0-9_-]{4,128}$/.test(triggerId)) throw new Error("AUTOPILOT_TRIGGER_ID must be the scheduled task's trigger id (letters, digits, _ and -).");
+  return { token, triggerId };
+}
+
+/**
  * Vercel's log drain for usage (D314, `docs/capacity.md` step 1.4): the secret it signs with and the sampling rate it was made with
  * (1 unless set, between 0 and 1). Null without a secret: the drain route is then off.
  */

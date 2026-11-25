@@ -66,6 +66,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | SEO, cookies, Google reviews, emails, languages | Settings | Settings |
 | The language switcher's look by screen size (D479) | Header and footer, *Languages* | Header and footer, *Languages* |
 | Legal pages | Settings → Legal pages | Pages → *Write the legal pages* (terms, privacy, DPA, D408) |
+| Social posts (D870 C1b) | Marketing → Social posts, from a product, a page or a topic | Kaizena Flow's store, Marketing → Social posts: from a page of kaizenaflow.com or a topic (it sells no products) |
 | Payments | Settings → Payments (Stripe Connect) | Settings → Stripe (Stripe Billing) |
 | Referrals and affiliates | Affiliates | Plans → Referrals (creators: referrers with a commission) |
 | Abandoned checkout reminders | Cart reminders | Plans → Reminders |

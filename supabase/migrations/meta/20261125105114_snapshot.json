@@ -1,6 +1,6 @@
 {
-  "id": "0c79b93b-7763-47ee-85f4-22151536076b",
-  "prevId": "bc691d73-afe5-4b7c-a476-38d8b361d762",
+  "id": "8de70fa9-54e1-491b-87d3-fc2b6f1f0cf1",
+  "prevId": "ddca4f56-315e-465d-9d04-eec090844ef6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -84008,6 +84008,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "page_id": {
+          "name": "page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "topic": {
           "name": "topic",
           "type": "text",
@@ -84144,6 +84150,21 @@
           "method": "btree",
           "with": {}
         },
+        "social_posts_page_idx": {
+          "name": "social_posts_page_idx",
+          "columns": [
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "social_posts_created_by_idx": {
           "name": "social_posts_created_by_idx",
           "columns": [
@@ -84182,6 +84203,20 @@
           "schemaTo": "commerce",
           "columnsFrom": [
             "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_page_id_pages_id_fk": {
+          "name": "social_posts_page_id_pages_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "pages",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "page_id"
           ],
           "columnsTo": [
             "id"

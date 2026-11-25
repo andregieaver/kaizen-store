@@ -28,6 +28,7 @@ const POST = z.object({
   channel: z.enum(POST_CHANNELS),
   ref: col.text,
   product_id: z.string().nullable(),
+  page_id: z.string().nullable(),
   title: col.text,
   caption: col.text,
   price_line: col.textOrNull,
@@ -147,14 +148,27 @@ export async function socialPicture(member: Membership, postId: string, origin: 
   const { store } = member;
   const [post] = await typedRows(
     POST,
-    sql`select channel, ref, product_id, title, caption, price_line from commerce.social_posts where store_id = ${store.id}::uuid and id = ${postId}::uuid`,
+    sql`select channel, ref, product_id, page_id, title, caption, price_line from commerce.social_posts where store_id = ${store.id}::uuid and id = ${postId}::uuid`,
   );
   if (!post) return { ok: false };
   const size = PICTURE_SIZES[post.channel as PostChannel];
   const palette = paletteOf(store);
   const market = store.markets[0];
-  const product =
+  const found =
     post.product_id && market ? (await listGridProducts(store.id, market, { categoryIds: [], tagIds: [], sort: "given", limit: 1, ids: [post.product_id] }))[0] ?? null : null;
+  // What the picture shows: the product, or the page of the site (its title and its own picture, C1b); none, the headline alone.
+  const [page] = post.page_id
+    ? await typedRows(
+        z.object({ title: col.text, picture: col.textOrNull }),
+        sql`select coalesce(nullif(published ->> 'title', ''), slug) as title, published -> 'thumbnail' ->> 'url' as picture
+          from commerce.pages where store_id = ${store.id}::uuid and id = ${post.page_id}::uuid and published is not null`,
+      )
+    : [];
+  const product: { title: string; image: { url: string } | null } | null = found
+    ? { title: found.title, image: found.image ? { url: found.image.url } : null }
+    : page?.picture
+      ? { title: page.title, image: { url: page.picture } }
+      : null;
 
   const pad = Math.round(size.width * 0.06);
   const band = Math.round(size.height * 0.24);
@@ -169,7 +183,7 @@ export async function socialPicture(member: Membership, postId: string, origin: 
     product ? logoOf((scheme === "dark" ? navigation.logoDark ?? navigation.logo : navigation.logo)?.url ?? null, origin, Math.round(64 * scaleOf), deps) : Promise.resolve(null),
     fontsOf(store, deps),
   ]);
-  const price = post.price_line && product ? post.price_line.slice(product.title.length).replace(/^\s*·\s*/, "") : null;
+  const price = post.price_line && found ? post.price_line.slice(found.title.length).replace(/^\s*·\s*/, "") : null;
   const scale = scaleOf;
   const px = (n: number) => Math.round(n * scale);
   // A family only where it was loaded: next/og cannot read an empty one.

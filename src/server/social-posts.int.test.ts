@@ -12,7 +12,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 
 process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 
-const { writeSocialPosts, listSocialPosts, markSocialPostCopied, socialProducts } = await import("./social-posts");
+const { writeSocialPosts, listSocialPosts, markSocialPostCopied, socialProducts, socialPages } = await import("./social-posts");
 const { getStore } = await import("./stores");
 const { encryptSecret, parseKey } = await import("@/lib/secret-box");
 
@@ -84,6 +84,21 @@ describe("the social post creator", () => {
     if (result.ok) expect(result.posts[0]).toMatchObject({ productId: null, priceLine: null });
   });
 
+  it("writes about a page of the site, linking to it, with no price (C1b: Kaizena Flow's own site has pages, not products)", async () => {
+    const [page] = await socialPages(member.store);
+    expect(page).toBeDefined();
+    const result = await writeSocialPosts(
+      member,
+      { pageId: page.id, channels: ["linkedin"] },
+      { complete: answer([{ channel: "linkedin", caption: "Everything you need to start selling, in one place.", hashtags: ["ecommerce"] }]) },
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.posts[0]).toMatchObject({ pageId: page.id, productId: null, priceLine: null });
+    expect(result.posts[0].link).toContain("utm_source=linkedin");
+    expect(await writeSocialPosts(member, { pageId: page.id, productId, channels: ["linkedin"] })).toEqual({ ok: false, problem: "Choose a product or a page, not both." });
+  });
+
   it("keeps nothing when the AI writes a price or urgency", async () => {
     const before = (await listSocialPosts(member.store.id)).length;
     const result = await writeSocialPosts(
@@ -96,7 +111,7 @@ describe("the social post creator", () => {
   });
 
   it("refuses without a product or a topic, without a channel, and for a product of another store", async () => {
-    expect(await writeSocialPosts(member, { channels: ["instagram"] })).toEqual({ ok: false, problem: "Choose a product, or say in a few words what the post is about." });
+    expect(await writeSocialPosts(member, { channels: ["instagram"] })).toEqual({ ok: false, problem: "Choose a product or a page, or say in a few words what the post is about." });
     expect(await writeSocialPosts(member, { productId, channels: [] })).toEqual({ ok: false, problem: "Choose at least one channel." });
     expect(await writeSocialPosts(member, { productId: "00000000-0000-4000-8000-000000000000", channels: ["instagram"] })).toMatchObject({ ok: false });
   });

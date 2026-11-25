@@ -28,7 +28,7 @@ that knows the store's goals and its performance, in three phases:
 | Comments and DMs | **Out of scope** of these three phases (a fourth, with the support desk's rules) |
 | Paid boosting | Out of scope; a later step on the ad accounts of D585 and their limits |
 | Pricing | **A paid extension** (the sixth in D748): bought on its own, and may be included in a plan as a grant. Hidden until opted in, 14-day trial, read-only after grace, as every extension |
-| The platform | Kaizena Flow's own accounts get the same feature from `/admin/platform` in the same change (parity rule); the platform always has every extension. The creator's first slice (C1) is the stores'; the platform's creator, writing from a topic or a page of kaizenaflow.com since it sells no products, is its next step (C1b) |
+| The platform | Kaizena Flow's own accounts get the same feature from `/admin/platform` in the same change (parity rule); the platform always has every extension. Kaizena Flow's creator is its own store's (C1b, Marketing → Social posts there), writing from a page of kaizenaflow.com or a topic since it sells no products |
 | Order (25 November) | **The post creator first**, for posting by hand, then the adviser, then posting by itself. Its words (C1) before its pictures (C2) |
 
 ## 3. First: the post creator (posting by hand)
@@ -43,7 +43,7 @@ the first copy of each is noted. Lisa's theme (the link's campaign) and the pric
 |---|---|---|
 | C1 | The words: `/admin/{store}/social`, `writeSocialPosts()` (`src/server/social-posts.ts`, pure parts `src/lib/social-posts.ts`), the claims filter and the brand's avoided words over every caption and hashtag | An owner copies a post with its tagged link. **Done 2026-11-25** |
 | C2b | The store's own type and logo on the picture: its heading font at its heading weight and its body font (`fontFile()`, Google Fonts' TrueType files, Inter where the theme names none), and its logo (the dark-background one on a dark theme) | A picture is set in the store's fonts with its logo. **Done 2026-11-25** |
-| C1b | The platform's creator at `/admin/platform/social`, from a topic or one of kaizenaflow.com's pages | Kaizena Flow's own posts are written and kept as a store's are |
+| C1b | Kaizena Flow's own creator: posts about a page of the site (any store's, and kaizenaflow.com's in Kaizena Flow's store, which has pages and no products), its title and description as the facts, its own picture on the post's picture, linking to it | Kaizena Flow's own posts are written and kept as a store's are. **Done 2026-11-25**: in Kaizena Flow's store (`/admin/kaizenaflow/social`), as Find companies is, not a page of `/admin/platform` |
 | C2 | Pictures: the product's own photo in a template of the store's look, each channel's shape (1:1, 4:5, 9:16), the price set by code; *Download picture* | A post has a picture to download beside its words. **Done 2026-11-25**: `socialPicture()` (`src/server/social-pictures.tsx`, next/og), `/admin/{store}/social/picture/{id}`; then C2b (below) |
 
 ## 4. Then: the adviser
