@@ -1,5 +1,5 @@
 {
- "version": "1.57",
+ "version": "1.58",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2908,6 +2908,10 @@
   "mcp shipping_overview <- store (required)",
   "mcp shopify_move",
   "mcp shopify_move <- store (required)",
+  "mcp social_plan",
+  "mcp social_plan <- store (required)",
+  "mcp social_report",
+  "mcp social_report <- store (required)",
   "mcp speed_report",
   "mcp speed_report <- store (required)",
   "mcp start_dns_move_here",
@@ -3018,6 +3022,9 @@
   "mcp write_product_texts",
   "mcp write_product_texts <- product (required)",
   "mcp write_product_texts <- store (required)",
+  "mcp write_social_posts",
+  "mcp write_social_posts <- channels (required)",
+  "mcp write_social_posts <- store (required)",
   "storefront DELETE /{store}/carts/{cart}/lines/{variantId}",
   "storefront DELETE /{store}/carts/{cart}/lines/{variantId} -> cart",
   "storefront DELETE /{store}/carts/{cart}/lines/{variantId} -> count",
