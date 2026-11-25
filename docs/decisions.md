@@ -896,6 +896,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D891 | **Company facts from Brønnøysund and a daily watch for bankruptcy and liquidation** | 2026-11-24 | [text](decisions/D891.md) |
 | D892 | **Legal reviews: drafts an outside lawyer reads and answers in the platform, with a Legal role that sees nothing else** | 2026-11-24 | [text](decisions/D892.md) |
 | D893 | **Finding companies from the register and one do-not-contact list (email plan P5.1, P5.6)** | 2026-11-25 | [text](decisions/D893.md) |
+| D894 | **Reading a found company's site: what it does, a fit worked out in code, and only its own door (email plan P5.2, P5.9)** | 2026-11-25 | [text](decisions/D894.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
