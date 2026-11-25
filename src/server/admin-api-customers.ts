@@ -42,15 +42,15 @@ export type CustomersRoute = Extract<ApiRoute, { name: CustomersName }>;
 /** A customer as `GET /customers/{id}` answers it. */
 async function customerById(storeId: string, id: string) {
   const [r] = await typedRows(
-    z.object({ id: col.uuid, email: col.text, name: col.textOrNull, phone: col.textOrNull, created_at: col.timestamp, updated_at: col.timestamp, verified: col.bool, tags: z.array(z.string()) }),
+    z.object({ id: col.uuid, email: col.text, name: col.textOrNull, phone: col.textOrNull, company_id: col.uuid.nullable(), created_at: col.timestamp, updated_at: col.timestamp, verified: col.bool, tags: z.array(z.string()) }),
     sql`
-      select c.id, c.email, c.name, c.phone, c.created_at, c.updated_at, c.email_verified_at is not null as verified,
+      select c.id, c.email, c.name, c.phone, c.company_id, c.created_at, c.updated_at, c.email_verified_at is not null as verified,
         coalesce((select array_agg(t.label order by t.label) from commerce.customer_tags t where t.store_id = c.store_id and t.email = lower(c.email)), '{}') as tags
       from commerce.customers c where c.store_id = ${storeId}::uuid and c.id = ${id}::uuid and c.copied_from is null
     `,
   );
   if (!r) return fail("not_found", "No such customer in this store.");
-  return { id: r.id, email: r.email, name: r.name ?? "", phone: r.phone ?? "", email_verified: r.verified, tags: r.tags, created_at: r.created_at, updated_at: r.updated_at };
+  return { id: r.id, email: r.email, name: r.name ?? "", phone: r.phone ?? "", email_verified: r.verified, tags: r.tags, company_id: r.company_id, created_at: r.created_at, updated_at: r.updated_at };
 }
 
 function customerRefusal(problem: StaffProblem): never {

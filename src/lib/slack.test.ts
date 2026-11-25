@@ -123,3 +123,41 @@ describe("someone waiting in support (D216, step 14)", () => {
     expect(slackMessage({ event: "support.waiting", store }, "nb-NO")).toBeNull();
   });
 });
+
+describe("deals in a channel (D902, D901 P29)", () => {
+  const deal = {
+    id: "d1",
+    title: "Coffee for <!channel> & the office",
+    status: "open",
+    pipeline: { id: "p1", name: "Sales" },
+    stage: { id: "s2", name: "Quote sent", position: 2 },
+    value: 12500,
+    currency: "NOK",
+    customer_id: "c1",
+    company_id: null,
+    owner_id: null,
+    admin_url: "https://kaizenaflow.com/admin/kaffe/deals/d1",
+  };
+
+  it("tells of a deal opened or moved with its worth and stage, linked to it", () => {
+    const moved = slackMessage({ event: "deal.stage_changed", store, deal }, "nb-NO");
+    expect(moved?.text).toContain("Deal moved: Coffee for &lt;!channel&gt; &amp; the office");
+    expect(moved?.text).toContain("Sales → Quote sent");
+    expect(moved?.text).toMatch(/12\s?500/);
+    expect(JSON.stringify(moved?.blocks)).toContain("https://kaizenaflow.com/admin/kaffe/deals/d1");
+    expect(JSON.stringify(moved?.blocks)).not.toContain("<!channel>");
+    expect(slackMessage({ event: "deal.created", store, deal }, "en-GB")?.text).toMatch(/^New deal: /);
+  });
+
+  it("tells of a deal won or lost without its stage, and of one with no worth", () => {
+    const won = slackMessage({ event: "deal.won", store, deal: { ...deal, status: "won" } }, "en-GB");
+    expect(won?.text).toMatch(/^Deal won: /);
+    expect(won?.text).not.toContain("Quote sent");
+    const lost = slackMessage({ event: "deal.lost", store, deal: { ...deal, status: "lost", value: null } }, "en-GB");
+    expect(lost?.text).toBe("Deal lost: Coffee for &lt;!channel&gt; &amp; the office");
+  });
+
+  it("says nothing of a deal event it does not know", () => {
+    expect(slackMessage({ event: "deal.merged", store, deal }, "en-GB")).toBeNull();
+  });
+});

@@ -9,8 +9,8 @@ features: []
 plans: []
 admin: /admin/{store}/integrations/endpoints
 order: 10
-checked: 2026-11-04
-sources: [D354, D438, D440]
+checked: 2026-11-25
+sources: [D354, D438, D440, D901]
 operations: [webhooks.list, webhooks.create, webhooks.update, webhooks.delete, webhooks.deliveries, webhooks.resend]
 ---
 
@@ -47,8 +47,9 @@ An endpoint gets the topics its owner chose for it, at least one. [The topics](/
 every one with what it means and who it is sent to, and each topic's page has its payload and an example. The same catalogue is published
 as JSON at `/api/webhooks/v1/topics.json`, and in the Admin API's OpenAPI document under `webhooks`.
 
-Some topics also go to Zapier, Make and Slack; the others go to your own endpoints only. The admin offers the subscription topics only when
-the store has subscriptions switched on.
+Some topics also go to Zapier, Make and Slack; the others go to your own endpoints only. Deals', activities' and leads' topics go to
+Zapier and Make too, and Slack is told of deals but not of each activity or lead. The admin offers the subscription topics only when the
+store has subscriptions switched on, and the deals', activities' and leads' only while it has Deals.
 
 ## What a delivery holds {#delivery}
 

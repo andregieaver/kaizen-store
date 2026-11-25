@@ -24,7 +24,7 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   {
     id: "zapier",
     name: "Zapier",
-    summary: "Send orders, customers and subscriptions to thousands of apps, such as Google Sheets, Slack, Mailchimp or your accounts.",
+    summary: "Send orders, customers, subscriptions and deals to thousands of apps, such as Google Sheets, a CRM like Pipedrive or HubSpot, or your accounts.",
     steps: [
       "In Zapier, make a new Zap.",
       "Choose Webhooks by Zapier as the trigger, and Catch Hook as the event.",
@@ -37,7 +37,7 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   {
     id: "make",
     name: "Make",
-    summary: "Send orders, customers and subscriptions to your Make scenarios, and on to the apps you use.",
+    summary: "Send orders, customers, subscriptions and deals to your Make scenarios, and on to the apps you use, such as a CRM.",
     steps: [
       "In Make, make a new scenario.",
       "Add the Webhooks module Custom webhook as the first step, and add a webhook.",
@@ -50,7 +50,7 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   {
     id: "slack",
     name: "Slack",
-    summary: "Get a message in a Slack channel when an order is paid, sent, cancelled or refunded, and for new customers and subscriptions.",
+    summary: "Get a message in a Slack channel when an order is paid, sent, cancelled or refunded, for new customers and subscriptions, and when a deal opens, moves, is won or lost.",
     steps: [
       "At api.slack.com/apps, choose Create New App, From scratch, and pick your workspace.",
       "Under Incoming Webhooks, switch them on and choose Add New Webhook to Workspace.",
@@ -265,11 +265,7 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "contract.sent",
   "contract.signed",
   "contract.declined",
-  // Ecosystem plan E3.2 (D718): Zapier, Make and Slack keep the eight they had.
-  "deal.created",
-  "deal.stage_changed",
-  "deal.won",
-  "deal.lost",
+  // Ecosystem plan E3.2 (D718): Zapier, Make and Slack keep the eight they had. Deals reach them since D902, D901 P29 (below).
   "subscriber.subscribed",
   "subscriber.unsubscribed",
   "conversation.ended",
@@ -286,11 +282,7 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "email.complained",
   "broadcast.sent",
   "marketing.paused",
-  // Ecosystem plan E5.1 (D757).
-  "activity.created",
-  "activity.done",
-  "lead.dismissed",
-  "lead.deal_made",
+  // Ecosystem plan E5.1 (D757). Activities and leads reach Zapier and Make since D902, D901 P29.
   "domain.failing",
   "domain.recovered",
 ]);
@@ -299,6 +291,18 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
 export const SERVICE_EVENTS = EVENTS.filter((event) => !ENDPOINT_ONLY.has(event.id));
 
 export const isServiceEvent = (value: string): value is IntegrationEvent => isEvent(value) && !ENDPOINT_ONLY.has(value);
+
+/**
+ * What Zapier and Make get but Slack does not (D902, D901 P29): a channel is told what the team wants to read together (a deal opened, moved, won
+ * or lost: `slackMessage()`), not each person's calls and tasks or each lead set aside, which Zapier and Make carry on to another CRM.
+ */
+const NOT_TO_SLACK: ReadonlySet<IntegrationEvent> = new Set(["activity.created", "activity.done", "lead.dismissed", "lead.deal_made"]);
+
+/** The events this service may be sent: `SERVICE_EVENTS`, less what Slack has no message for. */
+export const serviceEventsOf = (provider: Provider) => SERVICE_EVENTS.filter((event) => provider !== "slack" || !NOT_TO_SLACK.has(event.id));
+
+export const isServiceEventOf = (provider: Provider, value: string): value is IntegrationEvent =>
+  isServiceEvent(value) && (provider !== "slack" || !NOT_TO_SLACK.has(value));
 
 /**
  * The address, if it is one of the service's own webhook addresses: https,

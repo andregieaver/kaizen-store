@@ -9,12 +9,24 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900, D901, D902]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.61 — 2026-11-25
+
+The CRM in the Admin API, read with `customers:read` (D902, D901 P29), so another CRM such as Pipedrive or HubSpot can be kept in step:
+`GET /pipelines` (each with its stages in order), `GET /deals` and `GET /deals/{id}` (a deal's worth as the deals board has it, its stage,
+person, company and owner; narrowed by `status`, `pipeline_id`, `stage_id`, `owner_id`, `customer_id` and `company_id`),
+`GET /activities` and `GET /activities/{id}` (narrowed by `done`, `deal_id`, `customer_id`, `company_id` and `assignee_id`), `GET /leads`
+(the leads inbox: who asked for what, never their words) and `GET /companies` and `GET /companies/{id}`. Deals, activities and leads
+answer `feature_off` without Deals. Lists take `updated_after` and page as every list does. Never a lost deal's reason, an activity's note
+or a lead's message. A customer's answer gains `company_id`, and `customers:read` says it reads these. The webhook topics `deal.created`,
+`deal.stage_changed`, `deal.won`, `deal.lost`, `activity.created`, `activity.done`, `lead.dismissed` and `lead.deal_made` now reach Zapier
+and Make as well as an owner's own endpoints (the `services` receiver), and the four deal topics are told to Slack as messages.
 
 ## 1.60 — 2026-11-25
 
