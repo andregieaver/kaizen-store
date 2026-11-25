@@ -99,7 +99,8 @@ test("the owner writes posts for two channels from a product and copies one", as
   const picture = instagram.getByRole("img", { name: "The Instagram picture, 4:5" });
   await expect(picture).toBeVisible();
   await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1080);
-  await expect(instagram.getByRole("link", { name: "Download picture" })).toHaveAttribute("href", /\/social\/picture\/[0-9a-f-]{36}\?download=1$/);
+  // The address names the picture it shows (`v`: the drawn one, or the post's own from Canva, D898 C3), so a new one is never an old one cached.
+  await expect(instagram.getByRole("link", { name: "Download picture" })).toHaveAttribute("href", /\/social\/picture\/[0-9a-f-]{36}\?v=drawn&download=1$/);
   await page.screenshot({ path: "test-results/social-posts.png", fullPage: true });
   const download = await page.request.get((await instagram.getByRole("link", { name: "Download picture" }).getAttribute("href"))!);
   expect(download.headers()["content-type"]).toBe("image/png");
