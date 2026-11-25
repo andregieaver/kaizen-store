@@ -49,17 +49,15 @@ describe("the adviser's facts, gathered", () => {
 
   it("join the store's products and stock, the creator's posts and the Instagram figures", async () => {
     const store = (await getStore(slug))!;
-    // The store's seeded products, with stock on one of them; a post written and copied; an account with two posts' figures.
+    // The store's seeded products, a post written and copied, and an account with two posts' figures.
+    // A variant the seed already stocks (a shipped good, never a bundle or a download): its level set to 40 at its first location.
     const [variant] = await db().execute<Row>(sql`
-      select v.id, v.product_id from commerce.product_variants v join commerce.products p on p.id = v.product_id
-      where v.store_id = ${storeId}::uuid and p.status = 'active' limit 1`);
+      select l.variant_id as id, v.product_id, l.location_id from commerce.inventory_levels l
+      join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+      join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+      where l.store_id = ${storeId}::uuid and p.status = 'active' order by l.variant_id, l.location_id limit 1`);
     if (variant) {
-      const [location] = await db().execute<Row>(sql`select id from commerce.inventory_locations where store_id = ${storeId}::uuid limit 1`);
-      if (location) {
-        await db().execute(sql`
-          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values (${storeId}::uuid, ${String(variant.id)}::uuid, ${String(location.id)}::uuid, 40)
-          on conflict (variant_id, location_id) do update set on_hand = 40`);
-      }
+      await db().execute(sql`update commerce.inventory_levels set on_hand = 40 where store_id = ${storeId}::uuid and variant_id = ${String(variant.id)}::uuid and location_id = ${String(variant.location_id)}::uuid`);
     }
     await db().execute(sql`
       insert into commerce.social_posts (store_id, channel, ref, topic, locale, caption, link, copied_at)
@@ -77,8 +75,12 @@ describe("the adviser's facts, gathered", () => {
     const facts = await gatherSocialFacts(store, accountId);
     expect(facts.creator).toEqual({ written: 2, copied: 1 });
     expect(facts.instagram).toMatchObject({ state: "ready", username: "facts", posts: 2, daysSinceLastPost: 3, savesPer100Reach: 1 });
-    // Nothing sold in 28 days, so nothing is pushed; a seeded product made today is new, with its stock (the 40 added, and the seed's).
+    // Nothing sold in 28 days, so nothing is pushed; the seeded products, made today, are new.
     expect(facts.push).toEqual([]);
-    if (variant) expect(facts.newProducts.find((p) => p.id === String(variant.product_id))?.stock).toBeGreaterThanOrEqual(40);
+    // At most three new products are offered, alphabetically: the stocked one may be past them, but where it is shown its stock is the 40 set.
+    expect(facts.newProducts.length).toBeGreaterThan(0);
+    for (const p of facts.newProducts) expect(p.stock === null || p.stock > 3).toBe(true);
+    const shown = variant ? facts.newProducts.find((p) => p.id === String(variant.product_id)) : undefined;
+    if (shown) expect(shown.stock).toBeGreaterThanOrEqual(40);
   });
 });
