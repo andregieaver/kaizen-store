@@ -30,7 +30,7 @@ The parts already exist; the market check joins them:
 |---|---|---|
 | **M1** | **Your markets side by side**: the store against itself, country by country, from its own data only. No rival is read. | Built (2026-11-25) |
 | M1b | Kaizena Flow's sign-ups by country. | Parked (25 November 2026): its site sells in one country, so it would be one row (3.5) |
-| M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built (25 November 2026) |
+| M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built, deployed at `9dfeeb3` (25 November 2026): migration `20261125181441_previous_black_crow.sql`, advisors INFO only |
 | M3 | **Watching**: rivals' pages read again once a month in the goal reviews; a change is an autopilot event, never an action. | Planned |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices, fees, EU features), shown beside `platform_pricing_facts` (D854). | Planned |
 
