@@ -159,6 +159,8 @@
     "src/db/schema.ts#dealLinks",
     "src/db/schema.ts#dealMoves",
     "src/db/schema.ts#deliveryQuotes",
+    "src/db/schema.ts#designConnections",
+    "src/db/schema.ts#designEdits",
     "src/db/schema.ts#designPresetUses",
     "src/db/schema.ts#designVariations",
     "src/db/schema.ts#developers",

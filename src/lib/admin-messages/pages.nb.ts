@@ -655,6 +655,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   },
   "store:integrations.instagram": { title: "Instagram", keywords: ["instagram", "instagram-feed", "emneknagg", "sosiale medier", "bilder fra instagram"] },
   "store:integrations.google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "vurdering"] },
+  "store:integrations.canva": { title: "Canva", keywords: ["canva", "design", "rediger i canva", "hent fra canva", "bannere", "grafikk"] },
   "store:integrations.tripletex": { title: "Tripletex", keywords: ["tripletex", "regnskap", "bokføring", "bilag", "regnskapsfører", "faktura", "kreditnota"] },
   "store:books": { title: "Regnskap", keywords: ["regnskap", "hovedbok", "saldobalanse", "bilag", "bokføring", "resultat", "lås periode", "regnskapsfører"] },
   "store:books.vat": { title: "Mva-melding", keywords: ["mva-melding", "mva", "merverdiavgift", "termin", "skatteetaten", "altinn", "mva å betale", "regnskapsfører"] },

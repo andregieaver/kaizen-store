@@ -10,6 +10,7 @@ import type { MediaItem } from "@/server/media-library";
 import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import { CARD_CLASS } from "@/components/admin/ui/card";
+import { EmptyState } from "@/components/admin/ui/empty-state";
 
 /**
  * Canva in the media library (D898, `docs/design-tools.md` C1): the person's own Canva, connected once. *Import from Canva* brings a design
@@ -48,7 +49,7 @@ const main = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand
 
 /** *Connect Canva*: one press, to Canva's consent page and back. */
 function ConnectButton({ canva, primary = true }: { canva: CanvaTools; primary?: boolean }) {
-  const w = useAdminText("websiteMedia").media.canva;
+  const w = useAdminText("canva");
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   return (
@@ -81,7 +82,7 @@ function ConnectButton({ canva, primary = true }: { canva: CanvaTools; primary?:
  * edited design brought in (once) with a way to open it.
  */
 export function CanvaPanel({ canva, basePath, onOpen }: { canva: CanvaTools; basePath: string; onOpen: (id: string) => void }) {
-  const w = useAdminText("websiteMedia").media.canva;
+  const w = useAdminText("canva");
   const router = useRouter();
   const [picking, setPicking] = useState(false);
   const [back, setBack] = useState<{ state: "working" } | { state: "done"; mediaId: string } | { state: "failed"; problem: string } | null>(canva.returned ? { state: "working" } : null);
@@ -92,11 +93,11 @@ export function CanvaPanel({ canva, basePath, onOpen }: { canva: CanvaTools; bas
     asked.current = true;
     void ask<{ mediaId: string }>(canva.endpoint, { do: "bring", editId: canva.returned }, w.problems.failed).then((answer) => {
       setBack(answer.ok ? { state: "done", mediaId: answer.mediaId } : { state: "failed", problem: answer.problem });
-      // The address loses `canva=`, so a reload does not bring the design in a second time.
+      // The address loses `canva=`, so a reload does not bring the design in a second time; the new picture opens.
       router.replace(basePath);
-      if (answer.ok) router.refresh();
+      if (answer.ok) onOpen(answer.mediaId);
     });
-  }, [canva.returned, canva.endpoint, basePath, router, w.problems.failed]);
+  }, [canva.returned, canva.endpoint, basePath, router, onOpen, w.problems.failed]);
 
   const connected = canva.account && !canva.account.problem;
   return (
@@ -140,7 +141,6 @@ export function CanvaPanel({ canva, basePath, onOpen }: { canva: CanvaTools; bas
           onClose={() => setPicking(false)}
           onImported={(mediaId) => {
             setPicking(false);
-            router.refresh();
             onOpen(mediaId);
           }}
         />
@@ -151,7 +151,7 @@ export function CanvaPanel({ canva, basePath, onOpen }: { canva: CanvaTools; bas
 
 /** *Import from Canva*: the person's designs, latest first or searched; a press brings a design's first page in as a picture. */
 function CanvaPicker({ endpoint, onClose, onImported }: { endpoint: string; onClose: () => void; onImported: (mediaId: string) => void }) {
-  const w = useAdminText("websiteMedia").media.canva;
+  const w = useAdminText("canva");
   const id = useId();
   const [query, setQuery] = useState("");
   const [designs, setDesigns] = useState<CanvaDesignItem[] | null>(null);
@@ -227,7 +227,7 @@ function CanvaPicker({ endpoint, onClose, onImported }: { endpoint: string; onCl
             {w.loading}
           </p>
         ) : designs.length === 0 ? (
-          <p className="text-sm text-muted">{w.none}</p>
+          <EmptyState compact title={w.none} />
         ) : (
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3" data-canva-designs>
             {designs.map((design) => (
@@ -265,14 +265,12 @@ function CanvaPicker({ endpoint, onClose, onImported }: { endpoint: string; onCl
  * *Edit in Canva* in a picture's details: opens it in the person's Canva (the browser goes there; Canva's *Return* comes back to the
  * library), or brings the latest version of an earlier edit in again. Without a connection, *Connect Canva*.
  */
-export function EditInCanva({ item, canva }: { item: MediaItem; canva: CanvaTools }) {
-  const w = useAdminText("websiteMedia").media.canva;
+export function EditInCanva({ item, canva, onOpen }: { item: MediaItem; canva: CanvaTools; onOpen: (id: string) => void }) {
+  const w = useAdminText("canva");
   const id = useId();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
-  const [brought, setBrought] = useState(false);
   const connected = canva.account && !canva.account.problem;
   const earlier = canva.edits[item.id] ?? null;
   return (
@@ -311,10 +309,9 @@ export function EditInCanva({ item, canva }: { item: MediaItem; canva: CanvaTool
                   start(async () => {
                     setProblem(null);
                     const answer = await ask<{ mediaId: string }>(canva.endpoint, { do: "bring", editId: earlier }, w.problems.failed);
-                    if (answer.ok) {
-                      setBrought(true);
-                      router.refresh();
-                    } else setProblem(answer.problem);
+                    // The new picture opens in place of this one, which stays as it was.
+                    if (answer.ok) onOpen(answer.mediaId);
+                    else setProblem(answer.problem);
                   })
                 }
               >
@@ -326,7 +323,6 @@ export function EditInCanva({ item, canva }: { item: MediaItem; canva: CanvaTool
           <ConnectButton canva={canva} primary={false} />
         )}
       </div>
-      {brought && <p role="status">{w.returned}</p>}
       {problem && (
         <p role="alert" className="text-danger-text">
           {problem}
@@ -352,7 +348,7 @@ export function CanvaAccountCard({
   /** The media library to go to, with its words; none on the account's own page. */
   library?: { href: string; label: string };
 }) {
-  const w = useAdminText("websiteMedia").media.canva;
+  const w = useAdminText("canva");
   const [pending, start] = useTransition();
   const connected = account && !account.problem;
   return (

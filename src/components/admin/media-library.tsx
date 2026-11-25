@@ -157,6 +157,11 @@ export function MediaLibrary({
     setChosen(new Set());
   };
   const selected = items.filter((item) => chosen.has(item.id));
+  /** Opens a file the server just made (an AI edit, a picture from Canva), with the list read again so it is there. */
+  const openFresh = (id: string) => {
+    setOpenId(id);
+    router.refresh();
+  };
 
   // Files kept before the library have no measurements yet: the browser measures them once.
   useEffect(() => {
@@ -198,16 +203,7 @@ export function MediaLibrary({
         </PictureMakerProvider>
       )}
 
-      {canva && (
-        <CanvaPanel
-          canva={canva}
-          basePath={basePath}
-          onOpen={(id) => {
-            setOpenId(id);
-            router.refresh();
-          }}
-        />
-      )}
+      {canva && <CanvaPanel canva={canva} basePath={basePath} onOpen={openFresh} />}
 
       {/* Round 52 (D788): on a phone the alt texts and the search are rows of one card, each saying what it holds; from `sm` up as before. */}
       <PhoneRows>
@@ -428,10 +424,7 @@ export function MediaLibrary({
           altAi={altAi}
           pictures={pictures}
           canva={canva ?? null}
-          onOpen={(id) => {
-            setOpenId(id);
-            router.refresh();
-          }}
+          onOpen={openFresh}
           onCompressed={() => router.refresh()}
           onClose={() => setOpenId(null)}
           onDeleted={() => {
@@ -651,7 +644,7 @@ function Details({
           {item.editedFrom && <p className="text-sm text-muted">{w.editedFrom}</p>}
           {compress && <CompressOne item={item} compress={compress} onCompressed={onCompressed} />}
           {item.kind === "image" && pictures && <EditWithAi item={item} pictures={pictures} onOpen={onOpen} />}
-          {item.kind === "image" && canva && <EditInCanva item={item} canva={canva} />}
+          {item.kind === "image" && canva && <EditInCanva item={item} canva={canva} onOpen={onOpen} />}
           {item.kind === "image" && <AltTextForm item={item} languages={languages} altAi={altAi} actions={actions} />}
         </div>
       </Modal>

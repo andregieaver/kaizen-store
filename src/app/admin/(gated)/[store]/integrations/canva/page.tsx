@@ -6,11 +6,11 @@ import { PageHeader } from "@/components/admin/ui";
 import { areaTexts } from "@/lib/admin-area";
 import { adminLangOf } from "@/lib/admin-lang";
 import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
-import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
 import { canvaAccount, canvaOffered } from "@/server/canva";
 import { requirePermission } from "@/server/permissions";
 
-import { connectCanvaAction, disconnectCanvaAction } from "../../../(owner)/account/connected/canva-actions";
+import { connectCanvaAction, disconnectCanvaAction } from "../../../(owner)/account/connected/actions";
 
 export const metadata: Metadata = { title: "Canva" };
 
@@ -28,12 +28,12 @@ export default async function StoreCanvaPage({ params, searchParams }: PageProps
   const here = `/admin/${store.slug}/integrations/canva`;
   const connected = canvaOffered() ? await canvaAccount(account.id) : null;
   return (
-    <AdminTextScope texts={areaTexts(lang, { websiteMedia: WEBSITE_MEDIA_WORDS })}>
+    <AdminTextScope texts={areaTexts(lang, { canva: CANVA_WORDS })}>
       <div className="flex max-w-3xl flex-col gap-6">
         <PageHeader back={{ href: `/admin/${store.slug}/integrations`, label: w.canvaPage.back }} title={w.canvaTitle} description={<>{w.canvaPage.description}</>} />
         {said && (
           <p role="status" className={`text-sm ${said === "connected" ? "text-positive-text" : "text-danger-text"}`}>
-            {WEBSITE_MEDIA_WORDS[lang].media.canva.outcome[said]}
+            {CANVA_WORDS[lang].outcome[said]}
           </p>
         )}
         {canvaOffered() ? (

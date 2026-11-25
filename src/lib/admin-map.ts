@@ -1018,6 +1018,10 @@ const PAGES: readonly MapEntry[] = [
     keywords: ["instagram", "instagram feed", "hashtag", "social feed", "photos from instagram"],
     tasks: ["Connect the store's Instagram account", "See the latest posts read from Instagram", "Disconnect Instagram"],
   }),
+  store("integrations.canva", "/integrations/canva", "Canva", "Connects the person's own Canva (D898), which Edit in Canva and Import from Canva in the media library use; each person connects their own.", {
+    keywords: ["canva", "design", "edit in canva", "import from canva", "banners", "graphics"],
+    tasks: ["Connect your Canva", "Disconnect Canva"],
+  }),
   store("integrations.tripletex", "/integrations/tripletex", "Tripletex", "Connects the store's Tripletex company with one pasted token and books its invoices and credit notes there; where they are booked, what needs the owner, Try again.", {
     keywords: ["tripletex", "accounting", "bookkeeping", "regnskap", "bokføring", "vouchers", "bilag", "accountant"],
   }),

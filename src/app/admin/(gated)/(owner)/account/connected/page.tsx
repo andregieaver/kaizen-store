@@ -19,11 +19,10 @@ import { grantsOfAccount } from "@/server/oauth";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { CanvaAccountCard } from "@/components/admin/canva-media";
 import { areaTexts } from "@/lib/admin-area";
-import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
 import { canvaAccount, canvaOffered } from "@/server/canva";
 
-import { disconnectGrantAction, switchAssistantsAction, takeBackLifeTaskAction, unlinkKaizenLifeAction } from "./actions";
-import { connectCanvaAction, disconnectCanvaAction } from "./canva-actions";
+import { connectCanvaAction, disconnectCanvaAction, disconnectGrantAction, switchAssistantsAction, takeBackLifeTaskAction, unlinkKaizenLifeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Connected apps and assistants" };
 
@@ -53,7 +52,7 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
     <div className="flex flex-col gap-8">
       <PageHeader title={w.connected.title} description={w.connected.description} />
       {canvaOffered() && (
-        <AdminTextScope texts={areaTexts(lang, { websiteMedia: WEBSITE_MEDIA_WORDS })}>
+        <AdminTextScope texts={areaTexts(lang, { canva: CANVA_WORDS })}>
           <div id="canva" className="max-w-3xl">
             <CanvaAccountCard
               account={canva ? { name: canva.name, problem: canva.problem !== null } : null}

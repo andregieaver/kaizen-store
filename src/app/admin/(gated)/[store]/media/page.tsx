@@ -17,8 +17,9 @@ import { areaTexts } from "@/lib/admin-area";
 import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
 import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
 
-import { connectCanvaAction } from "../../(owner)/account/connected/canva-actions";
+import { connectCanvaAction } from "../../(owner)/account/connected/actions";
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
 import {
   compressibleMediaAction,
@@ -44,7 +45,7 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
   const lang = adminLangOf(account.adminLocale);
   const w = WEBSITE_WORDS[lang].mediaPage;
   return (
-    <AdminTextScope texts={areaTexts(lang, { websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS })}>
+    <AdminTextScope texts={areaTexts(lang, { websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS, canva: CANVA_WORDS })}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={<><span className="sm:hidden">{fillWords(w.lead, { store: store.name })}</span><span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span></>} />
       {/* The search in the address is read per request. */}

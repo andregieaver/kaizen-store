@@ -8,9 +8,7 @@ import {
   CANVA_API,
   CANVA_CALLBACK,
   CANVA_KEYS,
-  CANVA_RETURN,
   CANVA_REVOKE,
-  CANVA_SCOPES,
   CANVA_TOKEN,
   CANVA_ID,
   assetName,
@@ -631,11 +629,6 @@ export async function canvaThumbnail(params: URLSearchParams, deps: CanvaDeps = 
     return null;
   }
 }
-
-/** The scopes Kaizena Flow asks Canva for, as the connect screen lists them. */
-export const canvaScopes = (): readonly string[] => CANVA_SCOPES;
-/** Where Canva's *Return* comes back to, for the setup note. */
-export const canvaReturnUrl = (): string => `${siteUrl()}${CANVA_RETURN}`;
 
 /**
  * What a media library hands its Canva parts (D898): the person's connection, their latest edit of each picture here, and from the address

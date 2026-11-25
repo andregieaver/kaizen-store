@@ -21,7 +21,6 @@ export const CANVA_KEYS = `${CANVA_API}/v1/connect/keys`;
 export const CANVA_SCOPES = ["asset:read", "asset:write", "design:meta:read", "design:content:read", "design:content:write", "profile:read"] as const;
 
 export const CANVA_CALLBACK = "/api/integrations/canva/callback";
-export const CANVA_RETURN = "/api/integrations/canva/return";
 export const CANVA_THUMBNAIL = "/api/integrations/canva/thumbnail";
 /** The state cookie: only sent to the integration's own paths, for a quarter of an hour. */
 export const CANVA_STATE_COOKIE = "kaizen_canva";
@@ -40,12 +39,6 @@ const BACK = /^\/admin(\/[A-Za-z0-9_~-][A-Za-z0-9._~-]{0,80}){0,6}$/;
 export const CANVA_ID = /^[A-Za-z0-9_-]{1,100}$/;
 /** The correlation we hand Canva (at most 50 characters, URL safe): 32 characters of base64url. */
 const CORRELATION = /^[A-Za-z0-9_-]{32}$/;
-
-const sameText = (a: string, b: string): boolean => {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
-};
 
 /** A fresh nonce or PKCE verifier: 64 characters of base64url, inside both rules. */
 export const randomToken = (): string => randomBytes(48).toString("base64url");
@@ -80,6 +73,12 @@ export type CanvaState = { state: string; account: string; back: string; verifie
 
 const derive = (secret: Buffer, label: string) => createHmac("sha256", secret).update(label).digest();
 const sign = (secret: Buffer, label: string, body: string) => createHmac("sha256", derive(secret, label)).update(body).digest("base64url");
+/** Whether `given` is this server's signature of `body` under `label`, compared in constant time. */
+function signedHere(secret: Buffer, label: string, body: string, given: string): boolean {
+  const want = Buffer.from(sign(secret, label, body));
+  const got = Buffer.from(given);
+  return want.length === got.length && timingSafeEqual(want, got);
+}
 
 export function sealCanvaState(secret: Buffer, value: Omit<CanvaState, "expires">, now = Date.now()): string {
   const body = Buffer.from(JSON.stringify({ ...value, expires: now + CANVA_STATE_MINUTES * 60_000 })).toString("base64url");
@@ -90,7 +89,7 @@ export function sealCanvaState(secret: Buffer, value: Omit<CanvaState, "expires"
 export function openCanvaState(secret: Buffer, sealed: string | null | undefined, now = Date.now()): CanvaState | null {
   if (typeof sealed !== "string" || sealed.length > 2000) return null;
   const [body, given, ...rest] = sealed.split(".");
-  if (!body || !given || rest.length > 0 || !sameText(sign(secret, "kaizen:canva-connect", body), given)) return null;
+  if (!body || !given || rest.length > 0 || !signedHere(secret, "kaizen:canva-connect", body, given)) return null;
   let value: Partial<CanvaState>;
   try {
     value = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Partial<CanvaState>;
@@ -116,7 +115,6 @@ export const canvaTokens = z.object({
   expires_in: z.number().int().positive(),
   scope: z.string().max(1000).optional(),
 });
-export type CanvaTokens = z.infer<typeof canvaTokens>;
 
 export const canvaMe = z.object({ team_user: z.object({ user_id: z.string().regex(CANVA_ID), team_id: z.string().regex(CANVA_ID).optional() }) });
 export const canvaProfile = z.object({ profile: z.object({ display_name: z.string().max(500).optional() }) });
@@ -329,7 +327,7 @@ export function readThumbnailAddress(secret: Buffer, params: URLSearchParams, no
   const e = params.get("e") ?? "";
   const s = params.get("s") ?? "";
   if (!/^[A-Za-z0-9_-]{1,4000}$/.test(u) || !/^[0-9]{1,12}$/.test(e) || !/^[A-Za-z0-9_-]{43}$/.test(s)) return null;
-  if (!sameText(sign(secret, "kaizen:canva-thumbnail", `${u}.${e}`), s)) return null;
+  if (!signedHere(secret, "kaizen:canva-thumbnail", `${u}.${e}`, s)) return null;
   const end = Number(e);
   const seconds = Math.floor(now / 1000);
   if (end < seconds || end - seconds > THUMBNAIL_MINUTES * 60) return null;

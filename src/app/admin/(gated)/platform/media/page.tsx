@@ -7,6 +7,7 @@ import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { mediaQuery } from "@/lib/media-query";
 import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
 import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { canvaForLibrary } from "@/server/canva";
 import { aiFor } from "@/server/ai";
@@ -15,7 +16,7 @@ import { uploadsEnabled } from "@/server/media";
 import { compressibleCount, listMedia } from "@/server/media-library";
 import { PageHeader } from "@/components/admin/ui";
 
-import { connectCanvaAction } from "../../(owner)/account/connected/canva-actions";
+import { connectCanvaAction } from "../../(owner)/account/connected/actions";
 import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../upload-actions";
 import {
   compressiblePlatformMediaAction,
@@ -41,7 +42,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
   await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
-    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS }}>
+    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS, canva: CANVA_WORDS }}>
     <>
       <PageHeader
         title={w.misc.media.title}
