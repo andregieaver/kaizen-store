@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { Button, ButtonLink, Card, EmptyState, Field, PageHeader, TextInput } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminDate } from "@/lib/admin-date";
-import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { todayIn } from "@/lib/analytics-period";
 import { PROSPECTS_WORDS } from "@/lib/admin-words/prospects";
 import type { ProspectsMessages } from "@/lib/admin-messages/prospects.en";
@@ -122,7 +122,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
                 <EmptyState title={w.found.none} compact />
               ) : (
                 <h2 id="found" className="text-title text-ink">
-                  {result.total >= RESULTS_MAX ? w.tooMany : countWords(result.total, w.found)}
+                  {result.total >= RESULTS_MAX ? w.tooMany : countWords(result.total, w.found, { n: new Intl.NumberFormat(ADMIN_LANG_FACTS[lang].locale).format(result.total) })}
                 </h2>
               )}
               <ul className="flex flex-col gap-2">
@@ -148,7 +148,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
                         </p>
                         <p className="mt-1 flex flex-wrap gap-4 text-sm">
                           {c.website && !blocked && (
-                            <a href={c.website} target="_blank" rel="noopener noreferrer nofollow" className="underline">
+                            <a href={`https://${c.website}`} target="_blank" rel="noopener noreferrer nofollow" className="underline">
                               {w.website}
                             </a>
                           )}
