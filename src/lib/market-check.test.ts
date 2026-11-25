@@ -5,12 +5,16 @@ import { englishMoney } from "./money";
 import {
   askAboutFinding,
   conversionOf,
+  FINDING_KINDS,
   findingText,
   marketFindings,
   MIN_MISSES,
   MIN_ORDERS,
   MIN_VISITS,
   missRateOf,
+  SWOT_OF,
+  SWOT_PARTS,
+  swotOf,
   type MarketCheckFacts,
   type MarketFacts,
 } from "./market-check";
@@ -109,7 +113,7 @@ describe("the market check's findings (D900 M1)", () => {
     expect(found.slice(5).map((f) => f.kind)).toEqual(["weak_market", "unmet_demand", "untranslated"]);
   });
 
-  it("finds a rival a tenth or more cheaper, in the same currency and read within 30 days, and nothing else (D900 M2)", () => {
+  it("finds a rival a tenth or more cheaper or dearer, or unable to sell, on an offer read within 30 days, and nothing else (D900 M2)", () => {
     const now = new Date("2026-11-25T12:00:00Z");
     const offer = (over: Partial<MarketCheckFacts["rivalOffers"][number]>) => ({
       rivalName: "Linnet",
@@ -118,6 +122,7 @@ describe("the market check's findings (D900 M1)", () => {
       priceMinor: 40000,
       currency: "NOK",
       own: { priceMinor: 46000, currency: "NOK" },
+      availability: "in_stock",
       readAt: "2026-11-20T10:00:00Z",
       ...over,
     });
@@ -130,14 +135,49 @@ describe("the market check's findings (D900 M1)", () => {
           offer({ productName: "Other currency", currency: "EUR", priceMinor: 3000 }),
           offer({ productName: "Not held", own: null }),
           offer({ productName: "Cheaper here", own: { priceMinor: 35000, currency: "NOK" } }),
+          offer({ productName: "Close the other way", own: { priceMinor: 36500, currency: "NOK" } }),
+          // Out of stock at the rival: a gap it leaves, whatever the prices, and in any currency the store has a price in.
+          offer({ productName: "Sold out there", availability: "out_of_stock", currency: "EUR", priceMinor: 3000 }),
+          offer({ productName: "Gone and old", availability: "discontinued", readAt: "2026-10-01T10:00:00Z" }),
+          offer({ productName: "Gone, not held", availability: "discontinued", own: null }),
         ],
       }),
       now,
     );
-    expect(found).toEqual([{ kind: "rival_cheaper", market: "NO", productName: "Linen apron", rivalName: "Linnet", ownMinor: 46000, rivalMinor: 40000, currency: "NOK", gap: 0.15 }]);
-    expect(findingText(found[0], marketCheckEn.finding, names, language)).toBe(
+    expect(found).toEqual([
+      { kind: "rival_cheaper", market: "NO", productName: "Linen apron", rivalName: "Linnet", ownMinor: 46000, rivalMinor: 40000, currency: "NOK", gap: 0.15 },
+      { kind: "rival_out", market: "NO", productName: "Sold out there", rivalName: "Linnet", ownMinor: 46000, currency: "NOK" },
+      { kind: "rival_dearer", market: "NO", productName: "Cheaper here", rivalName: "Linnet", ownMinor: 35000, rivalMinor: 40000, currency: "NOK", gap: 0.125 },
+    ]);
+    const [cheaper, out, dearer] = found;
+    expect(findingText(cheaper, marketCheckEn.finding, names, language)).toBe(
       `Linnet sells Linen apron for ${englishMoney(40000, "NOK")} in Norway, and you ask ${englishMoney(46000, "NOK")}: 15 % more.`,
     );
+    expect(findingText(dearer, marketCheckEn.finding, names, language)).toBe(
+      `You sell Cheaper here for ${englishMoney(35000, "NOK")} in Norway, and Linnet asks ${englishMoney(40000, "NOK")}: you are 13 % cheaper.`,
+    );
+    expect(findingText(out, marketCheckEn.finding, names, language)).toBe(
+      `Linnet's own page says its match for your Sold out there cannot be bought now in Norway, where you sell yours for ${englishMoney(46000, "NOK")}. It may be worth telling shoppers there.`,
+    );
+  });
+
+  it("draws the findings as a SWOT, each in the part its kind is, in their own order, with no threat until rivals are watched (D900 M2)", () => {
+    expect(new Set(Object.values(SWOT_OF))).toEqual(new Set(["strengths", "weaknesses", "opportunities"]));
+    expect(Object.keys(SWOT_OF).sort()).toEqual([...FINDING_KINDS].sort());
+    const found = marketFindings(
+      facts(
+        [
+          country("NO", { visits: 3000, visitOrders: 150 }),
+          country("SE", { visits: 1000, visitOrders: 35 }),
+          country("DE", { visits: 1000, visitOrders: 5, locale: "de-DE", untranslated: 4 }),
+        ],
+        {
+          demand: [{ term: "linen", misses: 9, markets: [{ code: "DE", misses: 9 }] }],
+        },
+      ),
+    );
+    const swot = swotOf(found);
+    expect(SWOT_PARTS.map((p) => swot[p].map((f) => f.kind))).toEqual([["strong_market"], ["weak_market", "untranslated"], ["unmet_demand"], []]);
   });
 
   it("works out rates only from what is known", () => {

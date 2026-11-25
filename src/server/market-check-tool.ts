@@ -5,7 +5,7 @@ import { formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { addDays, customPeriod, todayIn } from "@/lib/analytics-period";
 import { languageNames } from "@/lib/legal-admin-words";
-import { conversionOf, findingText, FIX_PATHS, MIN_ORDERS, MIN_VISITS } from "@/lib/market-check";
+import { conversionOf, findingText, FIX_PATHS, MIN_ORDERS, MIN_VISITS, SWOT_OF } from "@/lib/market-check";
 import { OFFERS_PER_RIVAL, offerFresh, priceGap, RIVALS_PER_MARKET } from "@/lib/market-rivals";
 import { englishMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
@@ -57,6 +57,8 @@ export async function marketCheckTool({ store }: Ctx, { days }: OwnerToolInput<"
     })),
     findings: check.findings.map((f) => ({
       kind: f.kind,
+      // Where the finding stands in a SWOT (D900 M2): a SWOT asked for is these lines sorted, never one written from memory.
+      swot: SWOT_OF[f.kind],
       text: findingText(f, w.finding, names, languageName, (minor, currency) => formatAmount(minor, currency, locale)),
       page: adminLink(store, FIX_PATHS[f.kind]),
     })),
@@ -64,6 +66,7 @@ export async function marketCheckTool({ store }: Ctx, { days }: OwnerToolInput<"
       check.house ? w.notes.house : !check.sells ? w.notes.noShop : null,
       `A country is compared with the rest only when both have at least ${MIN_VISITS} visits and the rest at least ${MIN_ORDERS} orders, and the difference is too large to be chance.`,
       check.findings.length === 0 ? w.nothingToDo : null,
+      "No finding is a threat yet: rivals' moves need their pages read again over time, which comes later.",
     ].filter((n): n is string => n !== null),
     page: adminLink(store, `/analytics/markets?period=custom&from=${period.from}&to=${addDays(period.to, -1)}`),
   };

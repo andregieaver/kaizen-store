@@ -89,6 +89,13 @@ describe("Analytics → Markets (D900 M1)", () => {
     expect(out).toContain("<details");
     expect(out).toMatch(/See every country and every finding[\s\S]*more finding[\s\S]*Every country, side by side/);
     expect(out).toContain('data-finding="unpriced"');
+    // Every finding drawn as a SWOT (D900 M2), the three shown first included; no threat until rivals are watched.
+    const part = (name: string) => out.slice(out.indexOf(`data-swot="${name}"`), out.indexOf("</section>", out.indexOf(`data-swot="${name}"`)));
+    expect(part("strengths")).toContain("Nothing stands out yet.");
+    expect(part("weaknesses").match(/data-finding="/g)).toHaveLength(3);
+    expect(part("weaknesses")).toContain('data-finding="unpriced"');
+    expect(part("opportunities")).toContain("Shoppers searched for “linen” 39 times");
+    expect(part("threats")).toContain("Not watched yet");
     // The countries' table: a country no longer offered is marked, and its prices do not apply.
     expect(out).toContain("Not offered now");
     expect(out).toContain("Average order");
@@ -116,6 +123,7 @@ describe("Analytics → Markets (D900 M1)", () => {
     expect(out).toContain("Kaizena Flow sells plans, not goods");
     expect(out).not.toContain("Average order");
     expect(out).not.toContain("No price");
+    expect(out).toContain("Kaizena Flow's rivals are other store platforms");
   });
 
   it("reads in Norwegian", () => {

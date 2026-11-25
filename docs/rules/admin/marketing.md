@@ -36,7 +36,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)
 
 - **The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)**:
-  the store against itself, country by country (M1), then its rivals (M2 to M4, planned). Facts are read by code from what the store
+  the store against itself, country by country (M1), then its rivals (M2; M3 and M4 planned). Facts are read by code from what the store
   keeps, through the figures' one definition each (`docs/analytics.md` "Markets"): visits and conversion are `marketTraffic()` (the Traffic
   page's countries, shared with `trafficReport()`), orders and revenue `geoReport()`, searches `searchesByMarket()` (its `MISS` and term),
   products with no price or no name in a country's language are counted in `marketCheck()`. Findings are only `marketFindings()` (pure:
@@ -47,7 +47,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   plans); its sign-ups by country (M1b) are parked while its site sells in one country. Rivals (M2) are added only by a person (the owner's
   own act), and `commerce.market_rivals` and `rival_offers` are written only by `src/server/market-rivals.ts`; an offer is read only by
   `readOfferPage()` (robots.txt first, the page's JSON-LD only, on the rival's own host) and compared only by `priceGap()`, in one currency.
-  A store's price never follows a rival's by itself (M3).
+  The SWOT is only the findings drawn by `SWOT_OF`, never a text a model writes. A store's price never follows a rival's by itself (M3).
 
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 

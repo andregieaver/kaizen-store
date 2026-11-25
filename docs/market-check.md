@@ -30,7 +30,7 @@ The parts already exist; the market check joins them:
 |---|---|---|
 | **M1** | **Your markets side by side**: the store against itself, country by country, from its own data only. No rival is read. | Built (2026-11-25) |
 | M1b | Kaizena Flow's sign-ups by country. | Parked (25 November 2026): its site sells in one country, so it would be one row (3.5) |
-| M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built but the SWOT view (25 November 2026) |
+| M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built (25 November 2026) |
 | M3 | **Watching**: rivals' pages read again once a month in the goal reviews; a change is an autopilot event, never an action. | Planned |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices, fees, EU features), shown beside `platform_pricing_facts` (D854). | Planned |
 
@@ -99,7 +99,7 @@ country is NO (153 in 30 days) and a sign-up's country would be the same one row
 minimum volume. A split worth having is by language (a sign-up already keeps its `locale`), and it is taken up when the site has at least
 `MIN_ORDERS` (10) sign-ups a month, or when Kaizena Flow sells in a second country.
 
-## 4. M2: rivals (built 25 November 2026, but the SWOT view)
+## 4. M2: rivals and the SWOT (built 25 November 2026)
 
 - **Who they are.** The owner adds each rival on Analytics → Markets, by country, name and web address: adding it is the owner's own act,
   so a rival is always one they recognise (the AI manager may suggest shops it found with `search_web`, never add one).
@@ -119,13 +119,20 @@ minimum volume. A split worth having is by language (a sign-up already keeps its
 - **What is compared.** By code (`priceGap()`): the store's price for the product in the rival's country (the lowest of its variants'
   current prices there, VAT included as shoppers see it) against the rival's, only in one currency, never converted. A rival at least
   `PRICE_GAP_MIN` (a tenth) cheaper on a fresh offer is a finding of kind `rival_cheaper`, in the market check's order after the searches
-  that found nothing. Delivery and returns are kept and shown; they are not compared yet.
+  that found nothing; one a tenth dearer is `rival_dearer`, kept last. A fresh offer whose page says it cannot be bought now (out of stock or
+  discontinued, `rivalGone()`), for a product the store has a price for there, is `rival_out`, a gap the rival leaves; no price is compared
+  then. Delivery and returns are kept and shown; they are not compared yet.
 - **Where it is seen.** Lisa's part of Analytics → Markets, *Your rivals*: the rivals with their country and *Remove*, *Add rival*, *Read
   the page*, and the offers' table (theirs, yours, the difference, when read). Homer sees a rival only as a finding among the three. The AI
   manager reads them with `list_rivals`. Kaizena Flow's own store has no rivals here: its rivals are other platforms (M4).
-- **Still to come in M2.** The SWOT as a view of M1 and M2 together, every line pointing at its fact: strengths and weaknesses where the
-  store beats or trails its rivals and its own other markets, opportunities in searches that found nothing and gaps rivals leave, threats
-  in rivals' moves (M3).
+- **The SWOT.** Every finding of M1 and M2 drawn in one of four parts by its kind (`SWOT_OF`, `swotOf()`), each line the finding's own
+  sentence with its page and *Make a plan*: **strengths** where the store beats its own other countries (`strong_market`) or a rival
+  (`rival_dearer`); **weaknesses** where it trails them (`weak_market`, `rival_cheaper`) or lacks a price or a name (`unpriced`,
+  `untranslated`); **opportunities** in searches that found nothing (`unmet_demand`) and gaps rivals leave (`rival_out`); **threats** in
+  rivals' moves, which only watching them shows (M3): the part is empty until then and says so. It sits in Lisa's part of the page, above
+  the countries' table; Homer still sees three findings. `market_check` names each finding's part, so a SWOT the AI manager is asked for
+  is these lines sorted, never one written from memory. Kaizena Flow's own store gets the same SWOT of its own findings; its threats part
+  says its rivals are other platforms (M4).
 - **Staff only.** Like research notes, nothing of it is shown to shoppers. A store that publishes a comparison ("cheaper than X") must
   keep it objective and verifiable (Directive 2006/114/EC): the market check never writes one.
 

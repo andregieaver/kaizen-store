@@ -208,8 +208,8 @@ Which companies' own networks a store's counted visits came from. It rides on vi
 ## Markets (D900, `docs/market-check.md` M1, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)
 
 The store against itself, country by country, over the period picked: where it sells well, where it sells badly, and what each country
-asked for and could not find. Its own data only; no rival is read (that is M2). Nothing new is kept: every figure is read when the page
-or the AI manager's `market_check` asks.
+asked for and could not find, and, where the owner added rivals (M2), how their offers stand against the store's prices. Nothing new is
+kept for it but those offers: every figure is read when the page or the AI manager's `market_check` asks.
 
 A **country** is a country the store sells to (`store.markets`, one row per country whatever its language and currency views) or any
 other country a visit or a search of the period was in (a country no longer offered). The front door (a visit with no country) is no
@@ -234,10 +234,17 @@ country and is left out.
 | Not in its language | A country whose own language is not the main one, with products without a name in it. |
 | No price there | A country the store sells to with products that have no price there. |
 | A rival is cheaper | An offer read from a rival's own product page (D900 M2) within 30 days, in the currency of the store's own price for the product it is held against in that country (the lowest of its variants' current prices there, VAT included), at least a tenth cheaper. Never converted between currencies. |
+| A rival is dearer | The same offer the other way round: the store at least a tenth cheaper. |
+| Sold out at a rival | An offer read within 30 days whose own page says it cannot be bought now (`out_of_stock` or `discontinued`), held against a product of the store's with a price in that country: a gap the rival leaves. No price is compared. |
 
-The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, not in its language, no price, a country that buys more),
-then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
+The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, not in its language, no price, sold out
+at a rival, a country that buys more, a rival is dearer), then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
 (the AI manager opened with the finding's words and figures, `askAboutFinding()`, sent by the person) and a link to the page that fixes it.
+
+The **SWOT** (`SWOT_OF`, `swotOf()`) draws every finding in one of four parts by its kind, never a text of its own: **strengths** (a country
+that buys more, a rival is dearer), **weaknesses** (a country that buys less, a rival is cheaper, not in its language, no price),
+**opportunities** (searched for, sold out at a rival) and **threats** (rivals' moves, none until their pages are watched, M3: the part says
+so). `market_check` names each finding's part.
 
 Kaizena Flow's own store (`house`) sells plans, not goods: its orders, average order and prices are left out and the page says so; its
 site sells in one country, so it has no conversion by country to compare (D900 M1b, parked).

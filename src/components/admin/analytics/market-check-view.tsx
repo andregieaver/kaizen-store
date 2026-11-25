@@ -17,9 +17,12 @@ import {
   MIN_ORDERS,
   MIN_VISITS,
   missRateOf,
+  SWOT_PARTS,
+  swotOf,
   type MarketFacts,
   type MarketFinding,
   type MarketFindingKind,
+  type SwotPart,
 } from "@/lib/market-check";
 import type { MarketCheck } from "@/server/market-check";
 
@@ -35,7 +38,8 @@ import { AnalyticsSection, Note } from "./section";
  * Analytics → Markets (D900 M1, `docs/market-check.md` 3.3), drawn on the server from the check as read. Homer gets *What to do in your
  * markets*: the first three findings, each one sentence with its figures, *Make a plan* (the AI manager opened with the finding written in
  * by code, sent by the person) and a link to the page that fixes it. Lisa opens *Every country, side by side* for the figures behind them,
- * the findings past the three and the searches that found nothing in each country. Nothing here reads data or works out a figure.
+ * every finding drawn as a SWOT (D900 M2: only a way of drawing the findings, never a text of its own), and the searches that found nothing
+ * in each country. Nothing here reads data or works out a figure.
  */
 
 const TONE: Record<MarketFindingKind, PillTone> = {
@@ -44,7 +48,17 @@ const TONE: Record<MarketFindingKind, PillTone> = {
   rival_cheaper: "warning",
   untranslated: "info",
   unpriced: "warning",
+  rival_out: "info",
   strong_market: "good",
+  rival_dearer: "good",
+};
+
+/** Each SWOT part's rule along its top, in the charts' colours every admin scheme defines: good and bad news, and the first series for chances. */
+const SWOT_RULE: Record<SwotPart, string> = {
+  strengths: "border-t-(--chart-good)",
+  weaknesses: "border-t-(--chart-warn)",
+  opportunities: "border-t-(--chart-1)",
+  threats: "border-t-(--chart-bad)",
 };
 
 const linkClass = "text-sm font-medium text-(--brand-text) underline-offset-2 hover:underline";
@@ -90,6 +104,24 @@ function FindingCard({ finding, text, base, periodLabel, words }: { finding: Mar
 }
 
 /** A figure that may not be known: the words for *not counted* or *does not apply* instead of a zero. */
+type Line = { kind: MarketFindingKind; f: MarketFinding; text: string };
+
+/** One finding as a line of the SWOT: its kind, its sentence, the page that fixes it and *Make a plan*. */
+function FindingLine({ f, text, base, periodLabel, words }: Line & Pick<MarketCheckViewProps, "base" | "periodLabel" | "words">) {
+  return (
+    <li data-finding={f.kind} className="flex flex-col items-start gap-2 px-4 py-3 text-sm">
+      <StatusPill tone={TONE[f.kind]}>{words.kinds[f.kind]}</StatusPill>
+      <span className="text-ink">{text}</span>
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <AdminLink href={`${base}${FIX_PATHS[f.kind]}`} className={linkClass}>
+          {words.open[f.kind]}
+        </AdminLink>
+        <AskAboutAlert message={askAboutFinding(text, inSentence(periodLabel), words.ask)} label={words.makePlan} srLabel={fillWords(words.makePlanFor, { text })} />
+      </span>
+    </li>
+  );
+}
+
 function cell(value: number | null, write: (n: number) => string, missing: string) {
   return value === null ? <span className="text-muted">{missing}</span> : <span className="tabular-nums">{write(value)}</span>;
 }
@@ -99,9 +131,10 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words,
   const names = new Map(check.markets.map((m) => [m.code, m.name]));
   const languageName = languageOf(lang);
   const amount = (minor: number, currency: string) => formatAmount(minor, currency, locale);
-  const findings = check.findings.map((f) => ({ f, text: findingText(f, w.finding, names, languageName, amount) }));
+  const findings: Line[] = check.findings.map((f) => ({ kind: f.kind, f, text: findingText(f, w.finding, names, languageName, amount) }));
   const first = findings.slice(0, FINDINGS_SHOWN);
-  const rest = findings.slice(FINDINGS_SHOWN);
+  const rest = findings.length - first.length;
+  const swot = swotOf(findings);
   const counted = check.coverage.counting && check.coverage.days > 0;
   const money = (n: number) => formatAmount(n, check.currency, locale);
   const e = w.every;
@@ -169,23 +202,38 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words,
       <details className="group flex flex-col gap-6" data-every-country>
         <summary className="cursor-pointer select-none text-body-strong text-ink">
           {e.summary}
-          {rest.length > 0 ? <span className="ml-2 text-sm font-normal text-muted">{countWords(rest.length, w.more, { n: formatCount(rest.length) })}</span> : null}
+          {rest > 0 ? <span className="ml-2 text-sm font-normal text-muted">{countWords(rest, w.more, { n: formatCount(rest) })}</span> : null}
         </summary>
         <div className="mt-4 flex flex-col gap-8">
-          {rest.length > 0 ? (
-            <ul className={`divide-y divide-line ${CARD_CLASS}`}>
-              {rest.map(({ f, text }) => (
-                <li key={findingId(f)} data-finding={f.kind} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
-                  <StatusPill tone={TONE[f.kind]}>{w.kinds[f.kind]}</StatusPill>
-                  <span className="min-w-[14rem] flex-1 basis-56">{text}</span>
-                  <AdminLink href={`${base}${FIX_PATHS[f.kind]}`} className={linkClass}>
-                    {w.open[f.kind]}
-                  </AdminLink>
-                  <AskAboutAlert message={askAboutFinding(text, inSentence(periodLabel), w.ask)} label={w.makePlan} srLabel={fillWords(w.makePlanFor, { text })} />
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <AnalyticsSection id="market-swot" title={w.swot.title} description={w.swot.description} level={3}>
+            <div className="grid gap-3 md:grid-cols-2">
+              {SWOT_PARTS.map((part) => {
+                const p = w.swot.parts[part];
+                const none = part === "threats" && check.house ? w.swot.house : p.none;
+                return (
+                  <section key={part} aria-labelledby={`swot-${part}`} data-swot={part} className={`flex flex-col border-t-4 ${SWOT_RULE[part]} ${CARD_CLASS}`}>
+                    <div className="px-4 pt-3 pb-2">
+                      <h4 id={`swot-${part}`} className="text-body-strong text-ink">
+                        {p.title}
+                      </h4>
+                      <p className="text-xs text-muted">{p.hint}</p>
+                    </div>
+                    {swot[part].length > 0 ? (
+                      <ul className="divide-y divide-line border-t border-line">
+                        {swot[part].map((line) => (
+                          <FindingLine key={findingId(line.f)} {...line} base={base} periodLabel={periodLabel} words={w} />
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="px-4 pb-4">
+                        <EmptyState compact title={none} />
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          </AnalyticsSection>
 
           <AnalyticsSection id="market-countries" title={e.title} description={e.description} level={3}>
             <DataTable caption={e.caption} columns={columns} rows={check.markets} rowKey={(m) => m.code} exportable={false} exportReason="markets.countries" />

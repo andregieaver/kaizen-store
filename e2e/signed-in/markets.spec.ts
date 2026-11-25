@@ -73,17 +73,20 @@ test.beforeAll(async () => {
     await sql`
       insert into commerce.search_queries (store_id, market_code, query, results, meaning_results, created_at)
       select ${store.id}, 'NO', 'kopp', 4, 0, now() - interval '1 day' from generate_series(1, 30)`;
-    // A rival in Norway (D900 M2) and an offer read of its own product page yesterday: a fifth cheaper than the store's tote bag there.
+    // A rival in Norway (D900 M2) and offers read of its own product pages yesterday: a fifth cheaper than the store's dearest product there,
+    // half as dear again as the next, and the third sold out.
     const [rival] = await sql`
       insert into commerce.market_rivals (store_id, market_code, name, host) values (${store.id}, 'NO', 'Linnet', 'linnet.example') returning id`;
-    const [tote] = await sql`
+    const [tote, second, third] = await sql`
       select p.id, min(cp.amount_minor) as price from commerce.products p
       join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id
       join commerce.current_prices cp on cp.store_id = v.store_id and cp.variant_id = v.id and cp.market_code = 'NO'
-      where p.store_id = ${store.id} and p.status = 'active' group by p.id order by min(cp.amount_minor) desc limit 1`;
+      where p.store_id = ${store.id} and p.status = 'active' group by p.id order by min(cp.amount_minor) desc, p.id limit 3`;
     await sql`
       insert into commerce.rival_offers (store_id, rival_id, product_id, address, name, price_minor, currency, availability, read_at)
-      values (${store.id}, ${rival.id}, ${tote.id}, 'https://linnet.example/p/tote', 'Canvas tote', ${Math.round(Number(tote.price) * 0.8)}, 'NOK', 'in_stock', now() - interval '1 day')`;
+      values (${store.id}, ${rival.id}, ${tote.id}, 'https://linnet.example/p/tote', 'Canvas tote', ${Math.round(Number(tote.price) * 0.8)}, 'NOK', 'in_stock', now() - interval '1 day'),
+        (${store.id}, ${rival.id}, ${second.id}, 'https://linnet.example/p/two', 'Linen two', ${Math.round(Number(second.price) * 1.5)}, 'NOK', 'in_stock', now() - interval '1 day'),
+        (${store.id}, ${rival.id}, ${third.id}, 'https://linnet.example/p/three', 'Linen three', ${Number(third.price)}, 'NOK', 'out_of_stock', now() - interval '1 day')`;
   } finally {
     await sql.end();
   }
@@ -120,6 +123,14 @@ test.describe("as a store's owner", () => {
     await expect(page.locator('[data-rival="linnet.example"]')).toContainText("Linnet");
     await expect(page.getByRole("table", { name: "Rivals' offers" })).toContainText("+25 %");
     await expect(page.locator('[data-every-country] [data-finding="untranslated"]')).toContainText("have no name in German");
+    // Every finding drawn as a SWOT: the store cheaper than Linnet a strength, Linnet sold out an opportunity, no threat until rivals are watched.
+    const swot = (part: string) => page.locator(`[data-swot="${part}"]`);
+    await expect(swot("strengths").locator('[data-finding="strong_market"]')).toContainText("Visitors in Norway buy more");
+    await expect(swot("strengths").locator('[data-finding="rival_dearer"]')).toContainText("Linnet asks");
+    await expect(swot("weaknesses").locator('[data-finding="rival_cheaper"]')).toContainText("Linnet sells");
+    await expect(swot("opportunities").locator('[data-finding="rival_out"]')).toContainText("cannot be bought now in Norway");
+    await expect(swot("threats")).toContainText("Not watched yet");
+    if (shots) await page.locator('section[aria-labelledby="market-swot"]').screenshot({ path: `${shots}/markets-swot.png` });
     if (shots) await page.locator('section[aria-labelledby="market-rivals"]').screenshot({ path: `${shots}/markets-rivals.png` });
     if (shots) {
       await page.screenshot({ path: `${shots}/markets-every-country.png`, fullPage: true });
@@ -128,6 +139,24 @@ test.describe("as a store's owner", () => {
       await expect(page.getByRole("heading", { name: "Markets", level: 1 })).toBeVisible();
       await page.screenshot({ path: `${shots}/markets-phone.png`, fullPage: true });
     }
+  });
+});
+
+test.describe("as a store's owner, keeping rivals", () => {
+  test.use({ storageState: OWNER.state, viewport: { width: 1280, height: 900 } });
+
+  test("adds a rival through the form and removes it again, both through the page's one server function", async ({ page }) => {
+    await page.goto(`/admin/${slug}/analytics/markets?period=30d`);
+    await page.getByText("See every country and every finding").click();
+    const rivals = page.locator('section[aria-labelledby="market-rivals"]');
+    await rivals.getByLabel("Shop's name").fill("Vev");
+    await rivals.getByLabel("Web address").fill("https://www.vev.example/om");
+    await rivals.getByRole("button", { name: "Add rival" }).click();
+    await expect(rivals).toContainText("Vev is added.");
+    const vev = rivals.locator('[data-rival="vev.example"]');
+    await expect(vev).toContainText("Vev");
+    await vev.getByRole("button", { name: "Remove Vev" }).click();
+    await expect(vev).toHaveCount(0);
   });
 });
 

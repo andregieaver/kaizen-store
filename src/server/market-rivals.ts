@@ -38,7 +38,6 @@ export type KeptOffer = RivalOfferFacts & {
   name: string;
   productId: string | null;
   highPriceMinor: number | null;
-  availability: string;
   shippingMinor: number | null;
   shippingCurrency: string | null;
   deliveryDaysMin: number | null;

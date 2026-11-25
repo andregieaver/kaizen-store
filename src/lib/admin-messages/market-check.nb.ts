@@ -14,6 +14,8 @@ export const marketCheckNb: MarketCheckMessages = {
     strong_market: "Kjøper mer",
     unmet_demand: "Søkt etter",
     rival_cheaper: "Konkurrentens pris",
+    rival_dearer: "Billigere enn en konkurrent",
+    rival_out: "Utsolgt hos en konkurrent",
     untranslated: "Språk",
     unpriced: "Priser",
   },
@@ -24,6 +26,8 @@ export const marketCheckNb: MarketCheckMessages = {
     strong_market: "Se markedsføring",
     unmet_demand: "Se søk",
     rival_cheaper: "Se produkter",
+    rival_dearer: "Se produkter",
+    rival_out: "Se markedsføring",
     untranslated: "Oversett",
     unpriced: "Se produkter",
   },
@@ -34,6 +38,9 @@ export const marketCheckNb: MarketCheckMessages = {
     unmet_demand: "Kunder søkte etter «{term}» {n} ganger uten å finne noe{where}.",
     unmetIn: ", de fleste i {market}",
     rival_cheaper: "{rival} selger {product} for {theirs} i {market}, og du tar {yours}: {gap} mer.",
+    rival_dearer: "Du selger {product} for {yours} i {market}, og {rival} tar {theirs}: du er {gap} billigere.",
+    rival_out:
+      "{rival} skriver på sin egen side at varen som svarer til {product} ikke kan kjøpes nå i {market}, der du selger din for {yours}. Det kan være verdt å fortelle kundene der.",
     untranslated: "{n} av de {of} produktene dine har ikke navn på {language}, så kunder i {market} leser dem på et annet språk.",
     unpriced: "{n} av de {of} produktene dine har ikke pris i {market}, så de kan ikke kjøpes der.",
   },
@@ -43,6 +50,22 @@ export const marketCheckNb: MarketCheckMessages = {
     plan: "Se nærmere på det med verktøyene dine og lag en plan jeg kan si ja til. Ikke endre noe før jeg gjør det.",
   },
   more: { one: "{n} funn til", many: "{n} funn til" },
+  swot: {
+    title: "Styrker, svakheter, muligheter og trusler",
+    description:
+      "Alle funnene sortert i fire (en SWOT): hva du gjør godt og mindre godt, og hva markedet rundt deg byr på og truer med. Hver linje er regnet ut fra dine egne tall og konkurrentenes egne sider.",
+    parts: {
+      strengths: { title: "Styrker", hint: "Der du selger bedre enn i de andre landene dine, eller billigere enn en konkurrent.", none: "Ingenting skiller seg ut ennå." },
+      weaknesses: { title: "Svakheter", hint: "Der du selger mindre, tar mer enn en konkurrent, eller mangler en pris eller et navn.", none: "Ingenting skiller seg ut ennå." },
+      opportunities: { title: "Muligheter", hint: "Det kundene søkte etter uten å finne, og det konkurrentene ikke kan selge nå.", none: "Ingenting skiller seg ut ennå." },
+      threats: {
+        title: "Trusler",
+        hint: "Konkurrentenes trekk: et prisavslag, billigere frakt, lengre tid til å returnere varer.",
+        none: "Ikke fulgt med på ennå: konkurrentenes sider skal leses på nytt hver måned for å se hva som endrer seg.",
+      },
+    },
+    house: "Kaizena Flows konkurrenter er andre butikkplattformer: de sammenlignes ikke ennå.",
+  },
   every: {
     summary: "Se alle land og alle funn",
     title: "Alle land, side om side",

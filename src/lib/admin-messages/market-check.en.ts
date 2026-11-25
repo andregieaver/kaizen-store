@@ -18,6 +18,8 @@ export const marketCheckEn = {
     strong_market: "Buys more",
     unmet_demand: "Searched for",
     rival_cheaper: "A rival's price",
+    rival_dearer: "Cheaper than a rival",
+    rival_out: "Sold out at a rival",
     untranslated: "Language",
     unpriced: "Prices",
   },
@@ -28,6 +30,8 @@ export const marketCheckEn = {
     strong_market: "See marketing",
     unmet_demand: "See searches",
     rival_cheaper: "See products",
+    rival_dearer: "See products",
+    rival_out: "See marketing",
     untranslated: "Translate",
     unpriced: "See products",
   },
@@ -38,6 +42,9 @@ export const marketCheckEn = {
     unmet_demand: "Shoppers searched for “{term}” {n} times and found nothing{where}.",
     unmetIn: ", most of them in {market}",
     rival_cheaper: "{rival} sells {product} for {theirs} in {market}, and you ask {yours}: {gap} more.",
+    rival_dearer: "You sell {product} for {yours} in {market}, and {rival} asks {theirs}: you are {gap} cheaper.",
+    rival_out:
+      "{rival}'s own page says its match for your {product} cannot be bought now in {market}, where you sell yours for {yours}. It may be worth telling shoppers there.",
     untranslated: "{n} of your {of} products have no name in {language}, so shoppers in {market} read them in another language.",
     unpriced: "{n} of your {of} products have no price in {market}, so they cannot be bought there.",
   },
@@ -47,6 +54,18 @@ export const marketCheckEn = {
     plan: "Look into it with your tools and make a plan I can say yes to. Change nothing before I do.",
   },
   more: { one: "{n} more finding", many: "{n} more findings" },
+  swot: {
+    title: "Strengths, weaknesses, opportunities and threats",
+    description:
+      "Every finding sorted into four (a SWOT): what you do well and less well, and what the market around you offers and threatens. Each line is worked out from your own figures and your rivals' own pages.",
+    parts: {
+      strengths: { title: "Strengths", hint: "Where you sell better than in your other countries, or cheaper than a rival.", none: "Nothing stands out yet." },
+      weaknesses: { title: "Weaknesses", hint: "Where you sell less, ask more than a rival, or lack a price or a name.", none: "Nothing stands out yet." },
+      opportunities: { title: "Opportunities", hint: "What shoppers searched for and did not find, and what rivals cannot sell now.", none: "Nothing stands out yet." },
+      threats: { title: "Threats", hint: "Rivals' moves: a price cut, cheaper shipping, longer returns.", none: "Not watched yet: rivals' pages will be read again each month to see what changes." },
+    },
+    house: "Kaizena Flow's rivals are other store platforms: they are not compared yet.",
+  },
   every: {
     summary: "See every country and every finding",
     title: "Every country, side by side",

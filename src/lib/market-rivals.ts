@@ -51,8 +51,13 @@ export type RivalOfferFacts = {
   priceMinor: number;
   currency: string;
   own: OwnPrice | null;
+  /** As `pageOffers()` read it: `in_stock`, `out_of_stock`, `discontinued`, … or `unknown`. */
+  availability: string;
   readAt: string;
 };
+
+/** A rival's offer it cannot sell now: out of stock or discontinued on its own page (a gap it leaves, D900 M2). */
+export const rivalGone = (availability: string) => availability === "out_of_stock" || availability === "discontinued";
 
 /**
  * How much dearer the store's price is than the rival's (0.15 is 15 % dearer, negative cheaper), or null when there is no own price or the

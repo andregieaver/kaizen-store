@@ -30,12 +30,12 @@ let account: { id: string };
 let rival: Awaited<ReturnType<typeof rivals.addRival>>;
 const actor = () => ({ account, store });
 
-const offerPage = (price: string, name = "Linen apron") =>
+const offerPage = (price: string, name = "Linen apron", availability = "InStock") =>
   `<html><head><title>${name}</title><script type="application/ld+json">${JSON.stringify({
     "@context": "https://schema.org",
     "@type": "Product",
     name,
-    offers: { "@type": "Offer", price, priceCurrency: "NOK", availability: "https://schema.org/InStock", hasMerchantReturnPolicy: { merchantReturnDays: 30 } },
+    offers: { "@type": "Offer", price, priceCurrency: "NOK", availability: `https://schema.org/${availability}`, hasMerchantReturnPolicy: { merchantReturnDays: 30 } },
   })}</script></head><body><p>Only 9 kr!</p></body></html>`;
 
 /** A site whose robots.txt is missing (404) and whose pages are the ones given. */
@@ -125,6 +125,12 @@ describe("a store's rivals (D900 M2)", () => {
     await rivals.readRivalOffer(actor(), { rival: "Linnet", page: "https://www.linnet.example/p/linen-apron" }, { fetchPage: site({ "/p/linen-apron": offerPage("400.00") }) });
     const check = await marketCheck(store, customPeriod(today, today), { now });
     expect(check.findings.find((f) => f.kind === "rival_cheaper")).toMatchObject({ rivalName: "Linnet", productName: "Forkle i lin", ownMinor: 46000, rivalMinor: 40000 });
+    // Another rival out of stock on its match for the apron: a gap it leaves, an opportunity in the SWOT.
+    await rivals.readRivalOffer(actor(), { rival: "shop1.example", page: "https://shop1.example/p/apron", product: "apron" }, {
+      fetchPage: site({ "/p/apron": offerPage("390.00", "Apron", "OutOfStock") }),
+    });
+    const gaps = (await marketCheck(store, customPeriod(today, today), { now })).findings.filter((f) => f.kind === "rival_out");
+    expect(gaps).toEqual([{ kind: "rival_out", market: "NO", productName: "Forkle i lin", rivalName: "Shop 1", ownMinor: 46000, currency: "NOK" }]);
     const house = await marketCheck({ ...store, house: true }, customPeriod(today, today), { now });
     expect([house.rivals, house.offers, house.findings.filter((f) => f.kind === "rival_cheaper")]).toEqual([[], [], []]);
   });
@@ -140,7 +146,7 @@ describe("a store's rivals (D900 M2)", () => {
     expect(await rivals.removeRival(actor(), rival.id)).toBe(true);
     expect(await rivals.removeRival(actor(), rival.id)).toBe(false);
     expect(await rivals.removeRival(actor(), "not-an-id")).toBe(false);
-    const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.rival_offers where store_id = ${store.id}::uuid`);
+    const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.rival_offers where store_id = ${store.id}::uuid and rival_id = ${rival.id}::uuid`);
     expect(left.n).toBe(0);
   });
 });
