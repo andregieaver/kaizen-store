@@ -37,7 +37,8 @@ import { col, typedRows } from "./typed-rows";
  * hashtag passes the claims filter and the brand's words to avoid before anything is kept. The owner copies the posts by hand.
  */
 
-const LANGUAGE_NAMES: Record<string, string> = { nb: "Norwegian (Bokmål)", nn: "Norwegian (Nynorsk)", sv: "Swedish", da: "Danish", en: "English", de: "German", fi: "Finnish", fr: "French", nl: "Dutch", es: "Spanish", it: "Italian", pl: "Polish" };
+/** The language a writer is told to write in, by a locale's first two letters. */
+export const LANGUAGE_NAMES: Record<string, string> = { nb: "Norwegian (Bokmål)", nn: "Norwegian (Nynorsk)", sv: "Swedish", da: "Danish", en: "English", de: "German", fi: "Finnish", fr: "French", nl: "Dutch", es: "Spanish", it: "Italian", pl: "Polish" };
 
 const writeInput = z
   .object({

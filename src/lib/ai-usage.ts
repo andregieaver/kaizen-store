@@ -54,6 +54,7 @@ export const AI_FEATURES = {
   product_taxonomy: "Product categories",
   marketing_email: "Marketing emails",
   social_posts: "Social posts",
+  social_adviser: "Social media adviser",
   support_tone: "Support tone",
   support_summary: "Support summaries",
   content_moderation: "Notices of illegal content",

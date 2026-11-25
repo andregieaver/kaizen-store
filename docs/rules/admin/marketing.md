@@ -595,6 +595,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`insightsView()`). A product with `LOW_STOCK` or fewer in stock is never offered to push; a figure that cannot be known is null, never 0. The
   owner reads the same object under *What the adviser reads* on Social posts. A new fact is a field of `SocialFacts` with its test.
 
+## The social media adviser (D870 S1.4, `src/lib/social-advice.ts` pure, `src/server/social-advice.ts`)
+
+- **The social media adviser (D870 S1.4, `src/lib/social-advice.ts` pure, `src/server/social-advice.ts`)**: written only by
+  `writeSocialAdvice()` (`marketing:write`, AI feature `social_adviser`, the route `/admin/{store}/social/advise`): the store's AI is given
+  `socialFacts()` as data and nothing else about the store, with `ADVISER_RULES`, `RULES_STAND`, `UNTRUSTED_TEXT` and the brand, and answers
+  three verdicts, recommendations and a two-week calendar. `parseAdvice()` keeps only sentences with no digit, no claim and no avoided word
+  (`checkedWords()`), products the facts offered, days of the next two weeks and recommendations that can be acted on; fewer than three verdicts
+  keeps nothing. `social_advice` holds the answer with the facts it read (the figures shown beside its words), the newest twenty per store.
+  Homer's one button writes the main recommendation's posts through the creator's own route; every other button is Lisa's, one step away.
+
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 
 - **Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)**: what a shopper does

@@ -1,6 +1,6 @@
 {
-  "id": "72d1264d-0e03-49c3-872d-364e8d3d9d62",
-  "prevId": "ecf15b80-648e-406c-a627-5b7083b16e55",
+  "id": "b3f551a3-caa9-4be8-b45f-e58fc3f4e68c",
+  "prevId": "72d1264d-0e03-49c3-872d-364e8d3d9d62",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -83995,6 +83995,128 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.social_advice": {
+      "name": "social_advice",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "facts": {
+          "name": "facts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "advice": {
+          "name": "advice",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "social_advice_list_idx": {
+          "name": "social_advice_list_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_advice_created_by_idx": {
+          "name": "social_advice_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "social_advice_store_id_stores_id_fk": {
+          "name": "social_advice_store_id_stores_id_fk",
+          "tableFrom": "social_advice",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "social_advice_created_by_accounts_id_fk": {
+          "name": "social_advice_created_by_accounts_id_fk",
+          "tableFrom": "social_advice",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "social_advice_size": {
+          "name": "social_advice_size",
+          "value": "octet_length(\"commerce\".\"social_advice\".\"facts\"::text) < 100000 and octet_length(\"commerce\".\"social_advice\".\"advice\"::text) < 50000"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.social_post_insights": {
       "name": "social_post_insights",

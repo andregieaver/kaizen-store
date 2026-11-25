@@ -90,6 +90,26 @@ export const socialEn = {
     weekdays: { 1: "Mondays", 2: "Tuesdays", 3: "Wednesdays", 4: "Thursdays", 5: "Fridays", 6: "Saturdays", 7: "Sundays" },
     unknown: "not known",
   },
+  adviser: {
+    title: "Your social media adviser",
+    lead: "It reads your shop's figures and your posts, then says how you stand and what to post next. Every figure it works from is under What the adviser reads.",
+    ask: "Ask the adviser",
+    asking: "Reading your figures…",
+    askAgain: "Ask again",
+    writtenAt: "Advice from {date}",
+    writeMain: "Write posts: {title}",
+    writing: "Writing…",
+    written: "Written. The posts are below.",
+    failed: "That did not work. Try again.",
+    more: "All recommendations and the two-week plan",
+    recommendations: "Recommendations",
+    plan: "The next two weeks",
+    write: "Write posts",
+    connectInstagram: "Connect Instagram",
+    countVisits: "Count visits",
+    noPlan: "No posts planned.",
+    noProduct: "No product",
+  },
 };
 
 export type SocialMessages = typeof socialEn;

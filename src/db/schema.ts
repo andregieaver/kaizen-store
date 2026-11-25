@@ -18087,6 +18087,30 @@ export const socialPosts = commerce
   .enableRLS();
 
 /**
+ * The social media adviser's answers (D870 S1.4, `src/lib/social-advice.ts`, `src/server/social-advice.ts`): the facts it was given
+ * (`socialFacts()`, so every figure beside its words is the one it read) and its checked answer (verdicts, recommendations, calendar). Written
+ * only by `writeSocialAdvice()`; the newest twenty per store are kept. Never a person.
+ */
+export const socialAdvice = commerce
+  .table(
+    "social_advice",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      facts: jsonb("facts").notNull(),
+      advice: jsonb("advice").notNull(),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      index("social_advice_list_idx").on(t.storeId, t.createdAt),
+      index("social_advice_created_by_idx").on(t.createdBy),
+      check("social_advice_size", sql`octet_length(${t.facts}::text) < 100000 and octet_length(${t.advice}::text) < 50000`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * A marketing text (D565): its words, who it is for (every SMS subscriber, or a segment's), and what it cost. A draft is sent once: its
  * messages are made at the start, each waiting for its recipient's hours. Written only by `src/server/sms.ts`.
  */
