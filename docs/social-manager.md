@@ -80,7 +80,7 @@ the first copy of each is noted. Lisa's theme (the link's campaign) and the pric
 | S1.4 | The report, recommendations and content plan as manager tools (`social_report`, `social_plan`), the plan as autopilot steps | Homer sees three verdicts and one button; Lisa sees every figure. **Done 2026-11-25** on the page: `writeSocialAdvice()` (`src/server/social-advice.ts`, answer checked by `parseAdvice()`), kept in `social_advice`; the manager tools and the plan as autopilot steps are S1.4b |
 | S1.4b | `social_report` and `social_plan` as AI manager tools, and a recommendation started as an autopilot plan on the owner's yes | The AI manager answers "how is my social media doing?" from the kept advice and its facts. **Done 2026-11-25**: `social_report`, `social_plan` and `write_social_posts` (`src/server/social-tools.ts`); a plan with a `write_social_posts` step starts only on the owner's yes, as every autopilot plan |
 | S1.5 | The weekly review | It arrives once per week per store, claimed before sending. **Done 2026-11-25**: `sendSocialReviews()` (the dispatcher's `socialReviews`), from Monday 08:00 to who asked the adviser in 60 days; no model asked |
-| S1.6 | The extension: an id in `EXTENSION_IDS`, its price rows and plan grants, markers and trial | Hidden for an account without it; the platform has it |
+| S1.6 | The extension: an id in `EXTENSION_IDS`, its price rows and plan grants, markers and trial | Hidden for an account without it; the platform has it. **Done 2026-11-25**: `social` (store only), €39 a month, no founding price, in the Everything bundle and in no plan; the owner sets price and plans at Platform → Plans → Extensions |
 
 S1.2 as built: the Instagram feed's connection (D560) asks `instagram_business_manage_insights` too; the dispatcher's `socialInsights` job
 reads each post's totals daily into `social_post_insights` (`src/server/social-insights.ts`), shown on Social posts. Other businesses'
@@ -162,13 +162,13 @@ before the price is set.
 |---|---|---|---|---|
 | Social media manager | €39 | **€29** | 30 published posts a month, all channels, the adviser | €0.50 per post |
 
-Plan grants proposed: included in **Plus**; Advanced gets the adviser (phase 1) only, or nothing. The owner decides when S1.6 starts.
+Set by the owner on 25 November 2026: **€39 a month**, no founding price and no included-post limit for now; which plans include it is chosen at Platform → Plans → Extensions, where the price is changed too (no plan includes it at launch).
 
 ## 9. Still open
 
 Settled by the owner when the step that needs it starts:
 
-1. The price and the plan grants (section 8). Until the extension exists (S1.6), the creator is open to every store, its AI metered as any feature's.
+1. ~~The price and the plan grants~~: settled 25 November 2026 (section 8); the plan grants are the owner's in the platform admin.
 2. Whether the adviser alone (phase 1) is a lower tier of the extension, so owners can start cheaply.
 3. The owner's default rules for *Post on its own*: posts per day per channel, quiet hours.
 4. Which comparable brands, if any, the adviser follows by default for Kaizena Flow's own accounts.

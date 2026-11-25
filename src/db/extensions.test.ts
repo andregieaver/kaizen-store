@@ -35,11 +35,11 @@ const sizeOf = async (extension: string, position = 0) =>
   (await one<{ id: string }>("select id from commerce.extension_sizes where extension_id = $1 and position = $2", [extension, position])).id;
 
 describe("the extension catalogue (D748 E2)", () => {
-  it("has the five extensions in code's order, A/B testing only with a store and the other four also on their own", async () => {
+  it("has the six extensions in code's order, A/B testing and the social media manager only with a store and the other four also on their own", async () => {
     const found = await rows<{ id: string; standalone: boolean; store_only: boolean }>("select id, standalone, store_only from commerce.extensions order by position");
     expect(found.map((e) => e.id)).toEqual([...EXTENSION_IDS]);
     expect(found.filter((e) => e.standalone).map((e) => e.id)).toEqual(["support_desk", "email_automation", "work", "deals"]);
-    expect(found.filter((e) => e.store_only).map((e) => e.id)).toEqual(["ab_testing"]);
+    expect(found.filter((e) => e.store_only).map((e) => e.id)).toEqual(["ab_testing", "social"]);
     // A workspace (D748 E7) is never offered one: the code's list is the catalogue's.
     expect(found.filter((e) => e.store_only).map((e) => e.id)).toEqual([...STORE_ONLY_EXTENSIONS]);
   });
@@ -58,6 +58,7 @@ describe("the extension catalogue (D748 E2)", () => {
       ["email_automation", 5900],
       ["email_automation", 11900],
       ["email_automation", 19900],
+      ["social", 3900],
       ["support_desk", 3900],
       ["work", 3500],
     ]);
@@ -82,7 +83,7 @@ describe("the extension catalogue (D748 E2)", () => {
     );
     expect(bundles).toEqual([
       { name: "Customers", members: ["deals", "email_automation", "support_desk"], eur: 8500 },
-      { name: "Everything", members: ["ab_testing", "deals", "email_automation", "support_desk", "work"], eur: 11900 },
+      { name: "Everything", members: ["ab_testing", "deals", "email_automation", "social", "support_desk", "work"], eur: 11900 },
     ]);
   });
 

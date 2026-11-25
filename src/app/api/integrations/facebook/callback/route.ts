@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   }
   const back = (status: string) => NextResponse.redirect(new URL(`/admin/${started.store}/social?facebook=${status}#social-facebook`, request.url));
   if (started.accountId !== account.id) return back("failed");
-  const member = await checkPermission(started.store, "marketing:write");
+  const member = await checkPermission(started.store, "marketing:write", "social");
   if (!member) return back("failed");
   try {
     const { choose } = await connectFacebook(account.id, member.store.id, params);

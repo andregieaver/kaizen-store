@@ -199,6 +199,10 @@ export const TOOL_EXTENSIONS: Partial<Record<OwnerToolName, ExtensionId>> = {
   create_flow: "email_automation",
   change_flow: "email_automation",
   write_email_automation: "email_automation",
+  // The social media manager (D870 S1.6).
+  social_report: "social",
+  social_plan: "social",
+  write_social_posts: "social",
   // Work (D122).
   work_overview: "work",
   list_work_clients: "work",

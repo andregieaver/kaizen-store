@@ -18,8 +18,12 @@ export const EXTENSION_WORDS_NB: Record<string, string> = {
     "Kunder, timer, fakturaer og regnskapet: hovedboken, mva-meldingen, SAF-T og årsoppgjøret.",
   "Deals and contracts": "Avtaler og kontrakter",
   "Leads, deals on a board, activities, and contracts signed online.": "Leads, avtaler på en tavle, aktiviteter og kontrakter signert på nett.",
+  "Social media manager": "Sosiale medier-assistent",
+  "Posts and pictures for every channel in your brand, an adviser that reads your figures, and a weekly review.":
+    "Innlegg og bilder til hver kanal i din merkevare, en rådgiver som leser tallene dine, og en ukentlig gjennomgang.",
   // Sizes.
   "Unlimited tests": "Ubegrenset antall tester",
+  "Every channel": "Alle kanaler",
   "3 people": "3 personer",
   "10 people": "10 personer",
   "Up to 2,500 contacts": "Opptil 2 500 kontakter",

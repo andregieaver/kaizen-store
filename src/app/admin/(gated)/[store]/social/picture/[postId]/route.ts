@@ -9,7 +9,7 @@ import { socialPicture } from "@/server/social-pictures";
  */
 export async function GET(request: NextRequest, { params }: RouteContext<"/admin/[store]/social/picture/[postId]">) {
   const { store: slug, postId } = await params;
-  const member = await checkPermission(slug, "marketing:read");
+  const member = await checkPermission(slug, "marketing:read", "social");
   if (!member) return new NextResponse("Not found", { status: 404 });
   const result = await socialPicture(member, postId, request.nextUrl.origin);
   if (!result.ok) return new NextResponse("Not found", { status: 404 });

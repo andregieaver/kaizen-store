@@ -573,9 +573,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   time limit and a size cap), its title, the price line the post was written with and the store's name, in the live theme's colours
   (`paletteOf()`) and the channel's shape (`PICTURE_SIZES`); a post without a product shows `pictureHeadline()`. Its type is the store's heading and
   body fonts (C2b), fetched only by `fontFile()` (`src/server/font-outlines.ts`, `fonts.gstatic.com` alone, as brand marks), its logo the store's
-  own (`navigation.logo`, `logoDark` on a dark theme), read as the photo is; a font or logo that cannot be read leaves the picture without it.
-  Edited in the person's own Canva (D898 C3, `canva-posts.ts`, `marketing:write`), a post shows that copy instead, a library item
-  (`social_posts.picture_media_id`), until *Use the original picture*; the drawn one is never stored.
+  own (`navigation.logo`, `logoDark` on a dark theme), read as the photo is; a font or logo that cannot be read leaves the picture without it. The page, its routes, the Facebook
+  callback, the AI manager's social tools and the weekly review are the paid extension `social` (D870 S1.6, €39 a month, plans chosen by the owner).
+  Edited in the person's own Canva (D898 C3, `canva-posts.ts`, `marketing:write`, the `social` extension), a post shows that copy instead, a
+  library item (`social_posts.picture_media_id`), until *Use the original picture*; the drawn one is never stored.
 
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 

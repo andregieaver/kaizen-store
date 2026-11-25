@@ -31,6 +31,7 @@ export const commonNb: CommonMessages = {
       email_automation: "Send nyhetsbrev og e-poster som går av seg selv i riktig øyeblikk.",
       work: "Kunder, timer, fakturaer og regnskapet, på ett sted.",
       deals: "Følg hver avtale fra første henvendelse til signert kontrakt.",
+      social: "Innlegg og bilder til hver kanal, skrevet i din merkevare, og en rådgiver som sier hva du bør poste nå ut fra tallene dine.",
     },
     tryFree: "Prøv gratis i {days} dager",
     trialStarted: "Prøveperioden har startet.",
@@ -53,6 +54,7 @@ export const commonNb: CommonMessages = {
       email_automation: "E-postautomatisering",
       work: "Work",
       deals: "Avtaler og kontrakter",
+      social: "Sosiale medier-assistent",
     },
   },
   features: {

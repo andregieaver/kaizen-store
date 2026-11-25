@@ -195,7 +195,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Channels",
         items: [
           item("/ads", "Ads and conversions", "Checkouts and purchases sent to your ad platforms from the server, for shoppers who allowed marketing.", { area: "marketing", icon: "target" }),
-          item("/social", "Social posts", "Posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn, written in your brand from a product, to copy into each channel.", { area: "marketing", icon: "share" }),
+          item("/social", "Social posts", "Posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn, written in your brand from a product, to copy into each channel.", { area: "marketing", extension: "social", icon: "share" }),
           item("/feeds", "Product feeds", "Your products for Google Shopping, Meta, TikTok and Pinterest, at a secret address.", { area: "marketing", icon: "rss" }),
           item("/creators", "Creators", "People with a channel who sell your goods with a code of their own, and the commission they earn.", { area: "marketing", feature: "shop", icon: "video" }),
         ],
