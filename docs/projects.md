@@ -236,9 +236,15 @@ Status: Planned, Building, Done (date and commit).
 
 | Id | Step | Status |
 |---|---|---|
-| P5.1 | Life's tools as AI manager tools (`list_projects`, `create_project`, `update_project`, `set_project_status`, `review_project`, `link_checklist_to_project`, `delete_project`, `add_task_to_project`, `list_checklists`, `get_checklist`, `create_checklist`, `update_checklist`, `archive_checklist`, `delete_checklist`, `add_checklist_item`, `update_checklist_item`, `toggle_checklist_item`, `delete_checklist_item`, `move_checklist_item`, `add_checklist_separator`, `update_checklist_separator`, `organize_checklist`, `complete_subtask`), held for the eval as `.claude/rules/ai-prompts.md` says | Planned |
+| P5.1 | Life's project and checklist tools as AI manager tools (listed below), held for the eval as `.claude/rules/ai-prompts.md` says | Planned |
 | P5.2 | Events in `commerce.events` (project created, status changed; list created, archived; item done, assigned), workflow triggers and webhook topics | Planned |
 | P5.3 | Tasks the AI manager works on (Life: assigned to the assistant) | Planned |
+
+Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set_project_status`, `review_project`,
+`link_checklist_to_project`, `delete_project`, `add_task_to_project`, `list_checklists`, `get_checklist`, `create_checklist`,
+`update_checklist`, `archive_checklist`, `delete_checklist`, `add_checklist_item`, `update_checklist_item`, `toggle_checklist_item`,
+`delete_checklist_item`, `move_checklist_item`, `add_checklist_separator`, `update_checklist_separator`, `organize_checklist`,
+`complete_subtask`.
 
 ### P6: joins with the rest of Flow
 
