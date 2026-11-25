@@ -18166,11 +18166,19 @@ export const socialPosts = commerce
        */
       pictureMediaId: uuid("picture_media_id").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
       copiedAt: timestamp("copied_at", { withTimezone: true }),
+      /** The day the post is planned for on the calendar (D870 S2.4), in the store's time; null for a post written outside the plan. */
+      plannedFor: date("planned_for"),
+      /** A person's yes (S2.4): ready to post. Editing the caption takes it back. Phase 3 publishes only approved posts. */
+      approvedAt: timestamp("approved_at", { withTimezone: true }),
+      approvedBy: uuid("approved_by").references(() => accounts.id, { onDelete: "set null" }),
+      editedAt: timestamp("edited_at", { withTimezone: true }),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },
     (t) => [
       unique("social_posts_store_id_key").on(t.storeId, t.id),
+      index("social_posts_planned_idx").on(t.storeId, t.plannedFor),
+      index("social_posts_approved_by_idx").on(t.approvedBy),
       uniqueIndex("social_posts_ref_idx").on(t.storeId, t.ref, t.channel),
       index("social_posts_list_idx").on(t.storeId, t.createdAt),
       index("social_posts_product_idx").on(t.productId),

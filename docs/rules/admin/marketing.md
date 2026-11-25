@@ -578,6 +578,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   Edited in the person's own Canva (D898 C3, `canva-posts.ts`, `marketing:write`, the `social` extension), a post shows that copy instead, a
   library item (`social_posts.picture_media_id`), until *Use the original picture*; the drawn one is never stored.
 
+## The social calendar (D870 S2.4, `src/lib/social-calendar.ts` pure, `src/server/social-calendar.ts`)
+
+- **The social calendar (D870 S2.4, `src/lib/social-calendar.ts` pure, `src/server/social-calendar.ts`)**: *Your posting plan* on Social posts
+  lays the newest advice's plan over this week and next (from today's Monday, `socialCalendar()`), each slot with the newest draft planned for
+  its day and channel (`social_posts.planned_for`, written by `writeSocialPosts()` with `plannedFor`); a draft no slot names shows on its own.
+  Homer's one button a week (`weekAction()`, worked out on the server): write the slots from today on that have no draft (one `/write` each),
+  then approve the week's drafts. Lisa writes, approves or takes back one post, and changes its words (`editSocialPost()`: the channel's
+  length, `postClaims()` with the brand's words to avoid, the yes taken back, `edited_at` asking for its picture again). `approveSocialPosts()`
+  and `editSocialPost()` are the only writers of `approved_at`, `approved_by` and `edited_at`, through `social/calendar` (`marketing:write`,
+  the extension `social`), each audited; phase 3 publishes approved posts only.
+
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 
 - **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram

@@ -140,6 +140,8 @@ win (median and mean).
 customers (D366's rules: no password, email not proven, nothing emailed, nobody subscribed), deals with their pipelines and stages,
 activities, notes, products matched by name or SKU. A dry run first, then a count of what came and what did not. [U: each service's
 current export and API limits.]
+*Built by API token (D477); taken over, with keeping Pipedrive beside Kaizena Flow and the CRM units a Pipedrive team needs, by
+`docs/pipedrive.md` (D901, 25 November 2026).*
 
 **AI that the others cannot do.** The AI manager sees orders, payments, stock and Work hours: "who should I call today", a deal's summary
 from its timeline, a follow-up email drafted from the facts, a company whose orders came every 30 days and stopped 90 days ago. New
@@ -148,7 +150,8 @@ tools need the eval run and its recording (CLAUDE.md).
 ### 3.3 The pilot's exit
 
 Human Web's sales data imported (S7) and checked by the owner; one full month of selling with Pipedrive unused; nothing the team needed
-was missing, or what was missing is built. Then `sales` opens to every store, EU-wide.
+was missing, or what was missing is built. Then `sales` opens to every store, EU-wide. *Made concrete in `docs/pipedrive.md` 10.3 (D901): the
+reconciliation green, both kept in step for 14 days, the switch day, then the month.*
 
 ## 4. Books: replacing Tripletex (Norway first)
 
@@ -380,7 +383,8 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 5. Account-information providers: DNB business accounts (ENK and AS), the KID in the transaction data, consent length, payment
    initiation, price. DNB's bank integration: the terms for an accounting system, the messages a small business gets, lead time.
 6. Gmail's security assessment: cost and time.
-7. Pipedrive's and HubSpot's export and API limits for S7.
+7. Pipedrive's and HubSpot's export and API limits for S7. *Pipedrive's answered 25 November 2026 in `docs/pipedrive.md` 2.3 (D901);
+   HubSpot's with its unit (that plan's section 11).*
 8. Is the owner's wife an authorised accountant, and does keeping a spouse's books need the authorisation if it is unpaid?
 9. The conversion (section 4.5): by when in 2027 the AS must be founded to keep the 1 January effect; whether the contribution in kind
    needs an auditor's confirmation; the AS's VAT registration date; whether the AS may continue the ENK's invoice series; what Stripe

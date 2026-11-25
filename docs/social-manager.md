@@ -111,7 +111,7 @@ manager's tools and the weekly review carry them. Pages of other businesses need
 | S2.1 | Templates and the composer (picture from code + photo + made background) |
 | S2.2 | The caption writer per channel, with the filters and the tagged link |
 | S2.3 | The vision check |
-| S2.4 | The calendar screen, approval per post and per week |
+| S2.4 | The calendar screen, approval per post and per week. **Done 2026-11-25**: *Your posting plan* on Social posts (`socialCalendar()`, `src/server/social-calendar.ts`): the adviser's two weeks with their drafts (`social_posts.planned_for`), *Write this week's posts* then *Approve the week*; per post write, change the words (the claims filter again, the yes taken back), approve or take back (`approved_at`, `approved_by`). Swapping a post's picture comes with S2.1 |
 | S2.5 | Slideshow video |
 
 ## 6. Last: posting on a schedule

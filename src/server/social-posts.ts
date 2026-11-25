@@ -48,6 +48,8 @@ const writeInput = z
     campaign: z.string().trim().max(THEME_MAX).default(""),
     channels: z.array(z.enum(POST_CHANNELS)).min(1, "Choose at least one channel.").max(POST_CHANNELS.length),
     withPrice: z.boolean().default(true),
+    /** The calendar's day the post is written for (D870 S2.4), or null for a post written outside the plan. */
+    plannedFor: z.iso.date().nullable().default(null),
   })
   .refine((v) => v.productId !== null || v.pageId !== null || v.topic.length >= 5, { message: "Choose a product or a page, or say in a few words what the post is about." })
   .refine((v) => v.productId === null || v.pageId === null, { message: "Choose a product or a page, not both." });
@@ -212,9 +214,9 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
       const [r] = await typedRows(
         SAVED_ROW,
         sql`
-        insert into commerce.social_posts (store_id, channel, ref, product_id, page_id, topic, campaign, locale, title, caption, hashtags, link, price_line, created_by)
+        insert into commerce.social_posts (store_id, channel, ref, product_id, page_id, topic, campaign, locale, title, caption, hashtags, link, price_line, planned_for, created_by)
         values (${store.id}::uuid, ${row.channel}, ${ref}, ${product?.id ?? null}::uuid, ${page?.id ?? null}::uuid, ${input.topic}, ${input.campaign}, ${locale}, ${row.title}, ${row.caption},
-          ${`{${row.hashtags.join(",")}}`}::text[], ${row.link}, ${priceLine}, ${member.account.id}::uuid)
+          ${`{${row.hashtags.join(",")}}`}::text[], ${row.link}, ${priceLine}, ${input.plannedFor}::date, ${member.account.id}::uuid)
         returning id, channel
       `,
         tx,
