@@ -12,20 +12,22 @@ import { digestDue } from "@/lib/incidents";
 import { siteUrl } from "@/lib/site";
 import { localNow } from "@/lib/staff-alerts";
 
+import { sendDueWake, WAKE_DUE_SQL } from "./autopilot-wake";
 import { jobReport } from "./cache-events";
 import { sendEmail } from "./email";
 import { keepIncidents, pruneIncidents, pushMorning } from "./incidents";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * The dispatcher's `incidents` job (D895): the log's upkeep every run (claims past their time released, quiet fixes done), and once a day
+ * The dispatcher's `incidents` job (D895): the log's upkeep every run (claims past their time released, quiet fixes done, a waiting wake of
+ * the autopilot sent once its gap allows, `autopilot-wake.ts`), and once a day
  * from seven in Oslo, the day claimed in `platform_settings.incident_digest_last_day` first so it happens once: the summary emailed to each
  * platform admin in their language and the morning push (what waits for them, the night's proposals among them, the owner's answer of 20
  * November 2026), then closed entries and old runs past their 180 days pruned. Never throws; each part's error is reported and the others run.
  */
 export async function runIncidentJobs(
   options: { now?: Date } = {},
-): Promise<{ released: number; done: number; day: string | null; emailed: number; pruned: number }> {
+): Promise<{ released: number; done: number; woken: boolean; day: string | null; emailed: number; pruned: number }> {
   const report = jobReport();
   const now = options.now ?? new Date();
   let released = 0;
@@ -33,13 +35,19 @@ export async function runIncidentJobs(
   let day: string | null = null;
   let pruned = 0;
   let emailed = 0;
+  let woken = false;
   try {
     ({ released, done } = await keepIncidents());
   } catch (error) {
     report(error, "keep");
   }
   try {
-    const setting = await typedRow(z.object({ last: col.textOrNull }), sql`select incident_digest_last_day::text as last from commerce.platform_settings limit 1`);
+    // One read for the tick: the day last summarised, and whether a wake waits (so an idle tick asks nothing more).
+    const setting = await typedRow(
+      z.object({ last: col.textOrNull, wake: col.bool }),
+      sql`select incident_digest_last_day::text as last, ${WAKE_DUE_SQL} as wake from commerce.platform_settings limit 1`,
+    );
+    if (setting?.wake) woken = await sendDueWake();
     const due = digestDue(setting?.last ?? null, localNow(now, PLATFORM_TIME_ZONE));
     if (due) {
       const claimed = await typedRow(
@@ -60,7 +68,7 @@ export async function runIncidentJobs(
   } catch (error) {
     report(error, "daily");
   }
-  return { released, done, day, emailed, pruned };
+  return { released, done, woken, day, emailed, pruned };
 }
 
 /** How many titles a section of the summary lists before "and n more". */

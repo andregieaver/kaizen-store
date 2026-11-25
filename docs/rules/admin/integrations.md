@@ -174,7 +174,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   written only by `platform-api-tokens.ts` for a platform owner (the settings area, D510); a call is `GET /api/platform/v1/{resource}` read by
   `platformApiCaller()` (the maker read again: still an owner of the platform, the account active), routed by `platformRouteOf()` with the one
   scope each needs, budgeted by `takeBudget()` (`api`, no store) and answered by `runPlatformApiRoute()`. It never writes; a write is a new
-  decision. A store it lists is an owner's only (never a demo store, a template, a sandbox or the house store). It is not part of the
+  decision. The one exception is the scope `incidents` (D895): the incident log only, at `/api/platform/v1/incidents/…`
+  (`src/lib/incident-api.ts`, `src/server/incident-api.ts`), for the autopilot's Claude Code session; its writes go through
+  `src/server/incidents.ts`, so the log's moves and the owner's Approve hold there too. A store it lists is an owner's only (never a demo store, a template, a sandbox or the house store). It is not part of the
   stores' API contract.
 ## Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)
 

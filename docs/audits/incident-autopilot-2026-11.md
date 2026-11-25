@@ -317,15 +317,19 @@ These are the owner's to write (legal texts are never written by a model, D656 s
 
 ### Phase 2: the autopilot
 
-- [ ] **IA-8** The `incidents` scope on the platform API, its endpoints (with `GET /incidents/due` and `propose`) and tests; a token made
+- [x] **IA-8** The `incidents` scope on the platform API, its endpoints (with `GET /incidents/due` and `propose`) and tests; a token made
       for the autopilot.
-- [ ] **IA-9** The ingest for Vercel runtime errors, the advisors and `ci-red`, with the fingerprint rules.
-- [ ] **IA-10** `docs/runbooks/incident-autopilot.md`: the runs of section 5 (both kinds, and the nightly proposals) and the guardrails of
+      Done 25 November 2026: `src/lib/incident-api.ts`, `src/server/incident-api.ts`, the route `/api/platform/v1/incidents/[[...path]]`; the token is made on the platform's API page with the scope *Work the incident log*.
+- [x] **IA-9** The ingest for Vercel runtime errors, the advisors and `ci-red`, with the fingerprint rules.
+      Done 25 November 2026: the fingerprints and sources are in the runbook (step 3); the API takes `runtime`, `ci` and `advisor`.
+- [x] **IA-10** `docs/runbooks/incident-autopilot.md`: the runs of section 5 (both kinds, and the nightly proposals) and the guardrails of
       section 6; and a `/incidents` command in `.claude/` so the owner or any session can work the log by hand with the same runbook.
+      Done 25 November 2026: `docs/runbooks/incident-autopilot.md` and `.claude/skills/incidents/SKILL.md`.
 - [ ] **IA-11** A dry run: one session follows the runbook by hand while the owner watches; adjust the runbook.
 - [ ] **IA-12** Go live: the owner saves the API token on the environment and creates the scheduled task (nightly at 03:00 Oslo, plus its
       API trigger, whose token the owner puts in Vercel); then `src/server/autopilot-wake.ts`: wake on new work, the gap, Run now, the
       retry, with tests.
+      The code is done 25 November 2026 (`src/server/autopilot-wake.ts`, *Run now*); the owner's three steps remain (the runbook's last section).
 - [ ] **IA-13** Review after two weeks: entries fixed, reopened, reverted and sent to the owner; proposals approved and dismissed; how
       much of the subscription's allowance the runs used; adjust the gap and the limits.
 

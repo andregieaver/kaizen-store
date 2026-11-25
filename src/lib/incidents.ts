@@ -84,6 +84,7 @@ export const DEFAULT_AUTOPILOT_GAP = 4;
 
 /** Why a run started (`platform_autopilot_runs.reason`). */
 export const AUTOPILOT_REASONS = ["nightly", "work", "approve", "idea", "run_now", "manual"] as const;
+export type AutopilotReason = (typeof AUTOPILOT_REASONS)[number];
 
 /** How long a claim holds before another run may take the entry (the plan's section 5.2). */
 export const CLAIM_HOURS = 3;
