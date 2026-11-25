@@ -22,18 +22,20 @@ const SEARCH_TIMEOUT_MS = 6000;
 
 export function prospectSystemPrompt(): string {
   return [
-    "You turn a business owner's description of the companies they want to reach in Norway into search filters for Norway's public company register (Enhetsregisteret).",
+    "You turn a business owner's description of the companies they want to reach into search filters for a public company register: Norway's (Enhetsregisteret) or Finland's (PRH).",
     "",
     "Rules:",
     `- ${RULES_STAND}`,
     "- Choose industries ONLY from the list below, by code: a two-digit division (\"56\") or a group (\"56.1\"). Pick the narrowest codes that fit, at most six. Never invent a code.",
-    "- Places are Norwegian municipalities or counties, written as their Norwegian names (\"Oslo\", \"Bergen\", \"Vestland\"). Leave places empty when none is named.",
+    '- country is "NO" or "FI": Finland when the owner names Finland or a Finnish place, else Norway.',
+    "- Places: in Norway, municipalities or counties by their Norwegian names (\"Oslo\", \"Bergen\", \"Vestland\"); in Finland, one municipality by its Finnish name (\"Helsinki\", \"Turku\"). Leave places empty when none is named.",
+    "- In Finland choose one industry only; Finland's register has no headcount, so leave employeesMin and employeesMax null there.",
     "- employeesMin and employeesMax are whole numbers of employees, or null when the owner said nothing about size. \"Small\" means 1 to 10, \"medium\" 10 to 100.",
     "- foundedFrom and foundedTo are days (YYYY-MM-DD) the company was registered, or null. \"New companies\" means registered in the last two years.",
     `- siteCriteria are what the owner asked for that only a company's own website can show, not industry, place, size or age (\"serves vegan food\", \"sells online\", \"has outdoor seating\"): at most ${CRITERIA_MAX}, each a short phrase with a weight from 1 (nice to have) to 3 (what matters most). Leave it empty when there is none.`,
     "- Never answer anything else, and never name a company or a person.",
     "",
-    'Answer with JSON only: {"industries": ["56.1"], "placeNames": ["Oslo"], "employeesMin": 5, "employeesMax": 50, "foundedFrom": null, "foundedTo": null, "siteCriteria": [{"name": "serves vegan food", "weight": 3}]}',
+    'Answer with JSON only: {"country": "NO", "industries": ["56.1"], "placeNames": ["Oslo"], "employeesMin": 5, "employeesMax": 50, "foundedFrom": null, "foundedTo": null, "siteCriteria": [{"name": "serves vegan food", "weight": 3}]}',
     "",
     "Industries (code, Norwegian / English):",
     industryCatalogue(),
@@ -83,7 +85,7 @@ export async function searchCompanies(filters: ProspectFilters, page: number, de
       log("warn", "prospects.search_refused", { status: response.status });
       return { ok: false };
     }
-    const result = readSearch(await response.json(), deps.today);
+    const result = readSearch(await response.json(), deps.today, filters.country, page);
     return { ok: true, ...result, blocked: await blockedDomains(result.companies.map((c) => c.website)) };
   } catch (error) {
     log("warn", "prospects.search_failed", {}, error);

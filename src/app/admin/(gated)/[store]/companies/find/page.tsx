@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 
-import { AdminLink, Button, ButtonLink, Card, EmptyState, Field, PageHeader, TextInput } from "@/components/admin/ui";
+import { AdminLink, Button, ButtonLink, Card, EmptyState, Field, PageHeader, Select, TextInput } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminDate } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
@@ -11,7 +11,17 @@ import { PROSPECTS_WORDS } from "@/lib/admin-words/prospects";
 import type { ProspectsMessages } from "@/lib/admin-messages/prospects.en";
 import { foldDomain } from "@/lib/do-not-contact";
 import { criteriaFromQuery, criteriaToQuery } from "@/lib/prospect-reading";
-import { filtersFromQuery, filtersToQuery, hasFilters, industryName, placeName, RESULTS_MAX, type ProspectFilters } from "@/lib/prospect-search";
+import {
+  filtersFromQuery,
+  filtersToQuery,
+  hasFilters,
+  industryName,
+  isCompanyNumber,
+  placeName,
+  registerLink,
+  RESULTS_MAX,
+  type ProspectFilters,
+} from "@/lib/prospect-search";
 import { aiFor } from "@/server/ai";
 import { doNotContactCount } from "@/server/do-not-contact";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -29,7 +39,7 @@ function describe(f: ProspectFilters, w: ProspectsMessages, lang: AdminLang): st
         : f.employeesMax !== null
           ? fillWords(w.employeesAtMost, { max: f.employeesMax })
           : null;
-  return [...f.industries.map((c) => industryName(c, lang)), ...f.places.map(placeName), size].filter(Boolean).join(" · ");
+  return [w.countries[f.country], ...f.industries.map((c) => industryName(c, lang)), ...f.places.map((p) => placeName(p, f.country)), size].filter(Boolean).join(" · ");
 }
 
 /**
@@ -55,7 +65,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
   const words = one("q").slice(0, DESCRIBE_MAX);
   const filters = filtersFromQuery(query);
   const criteria = criteriaFromQuery(one("c"));
-  const reading = /^\d{9}$/.test(one("read")) ? one("read") : null;
+  const reading = isCompanyNumber(one("read")) ? one("read") : null;
 
   // Words without filters yet: the model reads them once, and the page moves to an address that holds what it found.
   let problem: string | null = null;
@@ -102,6 +112,14 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
           <form method="get" action={base} className="mt-3 grid gap-3 sm:grid-cols-2">
             {words && <input type="hidden" name="q" value={words} />}
             {criteria.length > 0 && <input type="hidden" name="c" value={criteriaToQuery(criteria)} />}
+            <Field label={w.country} className="sm:col-span-2">
+              {(control) => (
+                <Select {...control} name="country" defaultValue={filters.country}>
+                  <option value="NO">{w.countries.NO}</option>
+                  <option value="FI">{w.countries.FI}</option>
+                </Select>
+              )}
+            </Field>
             <Field label={w.industries} hint={w.industriesHelp}>
               {(control) => <TextInput {...control} name="industries" defaultValue={filters.industries.join(", ")} full />}
             </Field>
@@ -122,6 +140,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
       {result && (
         <section className="flex flex-col gap-3" aria-labelledby="found">
           <p className="text-body text-ink-2">{fillWords(w.searching, { filters: describe(filters, w, lang) })}</p>
+          {filters.country === "FI" && <p className="text-sm text-ink-2">{w.finland}</p>}
           {criteria.length > 0 && <p className="text-sm text-ink-2">{fillWords(w.read.criteria, { criteria: criteria.map((k) => k.name).join(", ") })}</p>}
           {!result.ok ? (
             <p role="alert" className="text-body text-ink">
@@ -163,7 +182,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
                               {w.website}
                             </a>
                           )}
-                          <a href={`https://virksomhet.brreg.no/nb/oppslag/enheter/${c.number}`} target="_blank" rel="noopener noreferrer" className="underline">
+                          <a href={registerLink(c)} target="_blank" rel="noopener noreferrer" className="underline">
                             {w.register}
                           </a>
                           {c.website && !blocked && toRead?.number !== c.number && (
