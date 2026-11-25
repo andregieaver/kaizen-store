@@ -1,5 +1,5 @@
 {
-  "dispatcherJobs": 89,
+  "dispatcherJobs": 90,
   "minuteRoutes": 9,
   "pages": 609,
   "routeHandlers": 307,
@@ -21,7 +21,7 @@
   "shopOnlyTools": 271,
   "managerTools": 28,
   "featureIds": 14,
-  "tables": 563,
+  "tables": 564,
   "platformTables": 26,
   "hot": {
     "orders": {
@@ -536,6 +536,18 @@
       "count": "shopOnlyTools",
       "from": 268,
       "to": 271,
+      "decision": "D870"
+    },
+    {
+      "count": "dispatcherJobs",
+      "from": 89,
+      "to": 90,
+      "decision": "D870"
+    },
+    {
+      "count": "tables",
+      "from": 563,
+      "to": 564,
       "decision": "D870"
     }
   ]

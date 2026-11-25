@@ -142,6 +142,7 @@ export async function sendSocialReviews(deps: ReviewDeps = {}): Promise<{ sent: 
         });
         await db().execute(sql`update commerce.social_reviews set sent_at = now() where id = ${claimed.id}::uuid and store_id = ${r.store_id}::uuid`);
       } catch (error) {
+        report(error, "email");
         log("error", "social.review_email_failed", { review: claimed.id }, error);
       }
       sent += 1;

@@ -591,6 +591,15 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   keeps nothing. `social_advice` holds the answer with the facts it read (the figures shown beside its words), the newest twenty per store.
   Homer's one button writes the main recommendation's posts through the creator's own route; every other button is Lisa's, one step away.
 
+## The social media adviser's weekly review (D870 S1.5, `src/lib/social-review.ts` pure, `src/server/social-review.ts`)
+
+- **The social media adviser's weekly review (D870 S1.5, `src/lib/social-review.ts` pure, `src/server/social-review.ts`)**: sent only by
+  `sendSocialReviews()` (the dispatcher's `socialReviews`, email kind `social.weekly`), the only writer of `social_reviews`: to each person who
+  asked the adviser in a store within `REVIEW_ACTIVE_DAYS` (asking is the opt-in), their membership and `marketing:read` read again, from
+  Monday `REVIEW_HOUR` in the store's time, once a week (the row claimed before the email goes), when `reviewWorthSending()`. Its figures are
+  code's (posts written and copied, tagged posts' visits, orders and sales against the week before, Instagram posts and the best reach), and
+  its only words from a model are the newest advice's verdicts and the coming week's plan, checked when written. No model is asked.
+
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 
 - **Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)**: what a shopper does
