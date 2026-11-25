@@ -358,6 +358,23 @@ export const staffEmailsNb: StaffEmailsMessages = {
       "{name} ble åpnet igjen{by}. Butikken tar imot bestillinger igjen. Hvis du hadde stengt den, legger du til butikkens egne domener igjen under Innstillinger, Domener, og sjekker at Kaizena Flow-abonnementet fortsatt er aktivt.",
   },
   /** The autopilot's daily digest and weekly report (D309): counts, the plans' step titles and the store's figures; never a customer. */
+  social: {
+    subject: "Uka di i sosiale medier i {store}",
+    preview: "Hva innleggene dine gjorde, og hva rådgiveren planlegger videre.",
+    heading: "Uka di i sosiale medier",
+    written: "Innlegg skrevet",
+    copied: "Innlegg kopiert inn i en kanal",
+    visits: "Besøk fra de merkede innleggene dine",
+    orders: "Ordrer fra de merkede innleggene dine",
+    sales: "Salg fra de merkede innleggene dine",
+    before: "{now} (uka før: {before})",
+    notCounted: "Ikke kjent: butikken teller ikke besøk",
+    instagram: "Instagram-innlegg denne uka",
+    bestReach: "Innlegget som nådde flest",
+    verdicts: "Det rådgiveren sa {date}",
+    planned: "Planlagt for uka som kommer",
+    button: "Åpne Innlegg i sosiale medier",
+  },
   autopilot: {
     where: " i {store}",
     digestSubject: "Det autopiloten gjorde{where}",

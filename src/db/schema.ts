@@ -18111,6 +18111,34 @@ export const socialAdvice = commerce
   .enableRLS();
 
 /**
+ * The social media adviser's weekly review (D870 S1.5, `src/lib/social-review.ts`, `src/server/social-review.ts`): one row per store, person
+ * and week, claimed before its email goes so each is sent once, with the figures it said (written by code). Written only by
+ * `sendSocialReviews()`; a store's people who asked the adviser in the last 60 days get it.
+ */
+export const socialReviews = commerce
+  .table(
+    "social_reviews",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      accountId: uuid("account_id")
+        .notNull()
+        .references(() => accounts.id, { onDelete: "cascade" }),
+      /** The Monday of the week, in the store's time zone. */
+      weekStart: date("week_start").notNull(),
+      facts: jsonb("facts").notNull(),
+      sentAt: timestamp("sent_at", { withTimezone: true }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      unique("social_reviews_week_key").on(t.storeId, t.accountId, t.weekStart),
+      index("social_reviews_account_idx").on(t.accountId),
+      check("social_reviews_size", sql`octet_length(${t.facts}::text) < 20000`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * A marketing text (D565): its words, who it is for (every SMS subscriber, or a segment's), and what it cost. A draft is sent once: its
  * messages are made at the start, each waiting for its recipient's hours. Written only by `src/server/sms.ts`.
  */

@@ -1,6 +1,6 @@
 {
-  "id": "b3f551a3-caa9-4be8-b45f-e58fc3f4e68c",
-  "prevId": "72d1264d-0e03-49c3-872d-364e8d3d9d62",
+  "id": "ce29f6e6-fdc9-4f82-a182-f6ac7356faa4",
+  "prevId": "b3f551a3-caa9-4be8-b45f-e58fc3f4e68c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -84608,6 +84608,123 @@
         "social_posts_texts": {
           "name": "social_posts_texts",
           "value": "char_length(\"commerce\".\"social_posts\".\"caption\") between 1 and 3000 and char_length(\"commerce\".\"social_posts\".\"title\") <= 100 and char_length(\"commerce\".\"social_posts\".\"topic\") <= 500 and char_length(\"commerce\".\"social_posts\".\"campaign\") <= 80 and cardinality(\"commerce\".\"social_posts\".\"hashtags\") <= 30"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "commerce.social_reviews": {
+      "name": "social_reviews",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "week_start": {
+          "name": "week_start",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "facts": {
+          "name": "facts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "social_reviews_account_idx": {
+          "name": "social_reviews_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "social_reviews_store_id_stores_id_fk": {
+          "name": "social_reviews_store_id_stores_id_fk",
+          "tableFrom": "social_reviews",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "social_reviews_account_id_accounts_id_fk": {
+          "name": "social_reviews_account_id_accounts_id_fk",
+          "tableFrom": "social_reviews",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "social_reviews_week_key": {
+          "name": "social_reviews_week_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "account_id",
+            "week_start"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "social_reviews_size": {
+          "name": "social_reviews_size",
+          "value": "octet_length(\"commerce\".\"social_reviews\".\"facts\"::text) < 20000"
         }
       },
       "isRLSEnabled": true
