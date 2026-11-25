@@ -42,6 +42,30 @@ export const pagePublishBody = z.object({
     .describe("The checker's blocking issues (their ids) the owner has seen and publishes with; a publish with an issue not named is refused as `conflict` with the issues."),
 });
 
+/** A page made from a design (D898 F2): the frame as the Kaizena Flow plugin reads it, and the library items it sent for its pictures. */
+export const pageImportBody = z.object({
+  source: z.literal("figma").describe("Where the design comes from: `figma`, the Kaizena Flow plugin."),
+  file: z.string().trim().max(200).optional().describe("The design file's name, for the page's notes."),
+  desktop: z
+    .record(z.string(), z.unknown())
+    .describe("The frame for computers as the plugin reads it: its name, size and tree (boxes, auto layout, fills, corners, shadows, text runs, picture keys)."),
+  mobile: z.record(z.string(), z.unknown()).nullable().optional().describe("A frame at phone width. Read and checked; the draft is built from the computers' frame for now."),
+  pictures: z
+    .record(
+      z.string().max(120),
+      z.object({ id: z.guid().describe("The library item (`POST /media`)."), url: z.string().max(2000), width: z.int().nullable(), height: z.int().nullable() }),
+    )
+    .describe("The library items sent for the frame's pictures and drawn shapes, by the plugin's keys (`image:{hash}`, `shot:{node}`)."),
+});
+
+export const apiPageImport = z.object({
+  id,
+  title: z.string(),
+  edit_url: z.string().describe("Where the draft opens in the page builder."),
+  summary: z.string().describe("What was built, in a sentence."),
+  notes: z.array(z.string()).describe("What was left out or made simpler, and the typefaces installed or stood in for."),
+});
+
 // Content types and entries (D326) -----------------------------------------------------------------
 
 export const apiContentType = z.object({
@@ -326,6 +350,21 @@ const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, 
 
 export const CONTENT_API = [
   ...pageOps("pages", "page", "Pages"),
+  op({
+    name: "pages.import",
+    method: "POST",
+    path: "/pages/import",
+    scope: "content:write",
+    permission: "website:write",
+    tag: "Pages",
+    summary: "Make a draft page from a design",
+    description:
+      "Builds a draft page from a Figma frame the Kaizena Flow plugin read (D898): the page copy engine lays it out as rows, columns and blocks in the store's builder, its pictures are the library items sent with `POST /media`, and its typefaces are installed from Google Fonts or stood in for by the nearest one. Nothing is on the site until it is published.",
+    body: pageImportBody,
+    response: one(apiPageImport),
+    status: 201,
+    errors: ["invalid"],
+  }),
   ...pageOps("articles", "blog article", "Blog"),
   // Content types and entries (D326)
   op({

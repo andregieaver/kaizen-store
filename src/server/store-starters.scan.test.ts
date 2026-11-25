@@ -115,6 +115,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/app/admin/(gated)/[store]/settings/design/share/page.tsx": "real",
   "src/server/vat-admin.ts": "real",
   "src/server/wordpress.ts": "real",
+  "src/server/plugin-sign-in.ts": "real",
 };
 
 function sources(dir: string, out: string[] = []): string[] {
@@ -265,6 +266,7 @@ const HOUSE_COUNTS: Record<string, string> = {
   "src/server/style-reading.ts": "The style text its own store adds is read as any store's (step 1.23); Kaizena Flow's site is the row besides.",
   "src/server/vat-admin.ts": "A country its market is in is in use, as any store's.",
   "src/server/wordpress.ts": AS_ANY_STORE,
+  "src/server/plugin-sign-in.ts": "The stores a person may connect the Figma plugin to: Kaizena Flow's store, for its own pages, as any store (D898 F1).",
 };
 
 describe("Kaizena Flow's own store is not a customer (D466)", () => {

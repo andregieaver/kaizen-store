@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { color-scheme: light dark; --gap: 12px; }
+  body { margin: 0; padding: 16px; font: 13px/1.5 Inter, system-ui, sans-serif; color: var(--figma-color-text, #1a1a1a); background: var(--figma-color-bg, #fff); }
+  h1 { font-size: 15px; margin: 0 0 4px; }
+  p { margin: 0 0 var(--gap); }
+  .muted { color: var(--figma-color-text-secondary, #6b6b6b); }
+  .code { font: 600 24px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.18em; margin: 4px 0 var(--gap); }
+  button { font: inherit; border-radius: 999px; padding: 9px 16px; border: 1px solid var(--figma-color-border, #d9d9d9); background: transparent; color: inherit; cursor: pointer; }
+  button.main { background: var(--figma-color-bg-brand, #0d99ff); border-color: transparent; color: var(--figma-color-text-onbrand, #fff); font-weight: 600; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: var(--gap); }
+  .link { border: 0; padding: 0; text-decoration: underline; border-radius: 0; }
+  .alert { color: var(--figma-color-text-danger, #c4320a); }
+  progress { width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<!--
+  Kaizena Flow's plugin window (D898 F1). Signs in as Figma's docs show for plugins: a sign-in from Kaizena Flow, its code shown here, the
+  person's admin opened in the browser to approve it, and this window asking until it is given the store's token. *Send to my store* sends
+  the selection's pictures to the media library (one-time upload addresses) and then the frames as a page draft. Nothing is published.
+-->
+<section id="out">
+  <h1>Send designs to your store</h1>
+  <p class="muted">Sign in to Kaizena Flow once. Then select a frame (and its phone version, if you have one) and send it as a page draft.</p>
+  <div class="row"><button class="main" id="sign-in">Sign in to Kaizena Flow</button></div>
+</section>
+
+<section id="waiting" hidden>
+  <h1>Check the code</h1>
+  <p class="muted">Kaizena Flow opened in your browser. Press Connect Figma there if it shows this code:</p>
+  <p class="code" id="code"></p>
+  <div class="row"><button id="reopen">Open Kaizena Flow again</button><button class="link" id="cancel">Cancel</button></div>
+</section>
+
+<section id="in" hidden>
+  <h1>Send to <span id="store"></span></h1>
+  <p class="muted" id="hint">Select a frame to send. Add a second frame at phone width for the phone version.</p>
+  <div class="row"><button class="main" id="send" disabled>Send to my store</button></div>
+  <progress id="progress" hidden max="1" value="0"></progress>
+  <p id="status" role="status"></p>
+  <div class="row" id="done" hidden><button class="main" id="open-draft">Open the draft</button></div>
+  <p><button class="link muted" id="sign-out">Sign out</button></p>
+</section>
+
+<p class="alert" id="alert" role="alert"></p>
+
+<script>
+  // Kaizena Flow's address; a development copy of the plugin can point at a local server.
+  const BASE = "https://kaizenaflow.com";
+  const $ = (id) => document.getElementById(id);
+  const send = (message) => parent.postMessage({ pluginMessage: message }, "*");
+  let token = null;
+  let signIn = null;
+  let draftUrl = null;
+  let polling = null;
+
+  function show(which) {
+    for (const id of ["out", "waiting", "in"]) $(id).hidden = id !== which;
+    $("alert").textContent = "";
+  }
+
+  function say(text, alert) {
+    $(alert ? "alert" : "status").textContent = text;
+  }
+
+  async function post(path, body, auth) {
+    const response = await fetch(`${BASE}${path}`, {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, auth ? { Authorization: `Bearer ${token.token}` } : {}),
+      body: JSON.stringify(body),
+    });
+    const json = await response.json().catch(() => null);
+    if (response.status === 401 && auth) {
+      // The token was revoked in the store's admin: sign in again.
+      token = null;
+      send({ type: "token-set", value: null });
+      show("out");
+      throw new Error("Kaizena Flow no longer takes this sign-in. Sign in again.");
+    }
+    if (!response.ok) throw new Error((json && json.error && (json.error.message || json.error)) || `Kaizena Flow answered ${response.status}.`);
+    return json;
+  }
+
+  $("sign-in").onclick = async () => {
+    try {
+      signIn = await post("/api/plugin/sign-in", { tool: "figma" });
+      $("code").textContent = `${signIn.code.slice(0, 4)}-${signIn.code.slice(4)}`;
+      show("waiting");
+      send({ type: "open", url: signIn.url });
+      const ends = Date.now() + signIn.expiresIn * 1000;
+      polling = setInterval(async () => {
+        if (Date.now() > ends) return stop("The sign-in ended. Press Sign in again.");
+        const answer = await post("/api/plugin/sign-in/poll", { readKey: signIn.readKey }).catch(() => null);
+        if (!answer || answer.status === "waiting") return;
+        if (answer.status === "ready") {
+          clearInterval(polling);
+          token = { token: answer.token, store: answer.store };
+          send({ type: "token-set", value: token });
+          signedIn();
+        } else stop(answer.status === "declined" ? "Figma was not connected." : "The sign-in ended. Press Sign in again.");
+      }, 2000);
+    } catch (error) {
+      say(error.message, true);
+    }
+  };
+
+  function stop(text) {
+    clearInterval(polling);
+    show("out");
+    say(text, true);
+  }
+
+  $("reopen").onclick = () => signIn && send({ type: "open", url: signIn.url });
+  $("cancel").onclick = () => stop("");
+
+  function signedIn() {
+    show("in");
+    $("store").textContent = token.store.name;
+    $("done").hidden = true;
+    say("");
+  }
+
+  $("sign-out").onclick = () => {
+    token = null;
+    send({ type: "token-set", value: null });
+    show("out");
+  };
+
+  /** Sends one picture to the store's library: an upload address, the bytes, then keeping it. */
+  async function upload(picture) {
+    const started = await post("/api/admin/v1/media/uploads", { content_type: picture.type, size_bytes: picture.bytes.length }, true);
+    const put = await fetch(started.data.upload_url, { method: "PUT", headers: started.data.headers, body: picture.bytes });
+    if (!put.ok) throw new Error("A picture could not be sent to the store.");
+    const kept = await post("/api/admin/v1/media", { upload_id: started.data.upload_id, file_name: `figma-${picture.key.replace(/[^A-Za-z0-9]+/g, "-").slice(0, 60)}` }, true);
+    return { id: kept.data.id, url: kept.data.url, width: kept.data.width, height: kept.data.height };
+  }
+
+  $("send").onclick = () => {
+    $("send").disabled = true;
+    $("done").hidden = true;
+    say("Reading the frames…");
+    send({ type: "read" });
+  };
+
+  async function sendSelection(selection) {
+    try {
+      if (selection.problem) throw new Error(selection.problem === "none" ? "Select a frame first." : "Figma could not read the selection.");
+      const pictures = {};
+      $("progress").hidden = false;
+      $("progress").max = selection.pictures.length + 1;
+      let done = 0;
+      for (const picture of selection.pictures) {
+        say(`Sending pictures: ${done + 1} of ${selection.pictures.length}…`);
+        pictures[picture.key] = await upload(picture);
+        $("progress").value = ++done;
+      }
+      say("Building the page draft…");
+      const made = await post("/api/admin/v1/pages/import", { source: "figma", file: selection.file, desktop: selection.desktop, mobile: selection.mobile, pictures }, true);
+      $("progress").value = $("progress").max;
+      draftUrl = made.data.edit_url;
+      say(made.data.summary || "The page draft is ready.");
+      $("done").hidden = false;
+    } catch (error) {
+      say("");
+      say(error.message, true);
+    } finally {
+      $("progress").hidden = true;
+      $("send").disabled = false;
+    }
+  }
+
+  $("open-draft").onclick = () => draftUrl && send({ type: "open", url: draftUrl });
+
+  window.onmessage = (event) => {
+    const message = event.data && event.data.pluginMessage;
+    if (!message) return;
+    if (message.type === "token") {
+      token = message.value;
+      if (token) signedIn();
+      else show("out");
+      send({ type: "selected-ask" });
+    } else if (message.type === "selected") {
+      $("send").disabled = message.count === 0;
+      $("hint").textContent = message.count === 0 ? "Select a frame to send. Add a second frame at phone width for the phone version." : message.count === 1 ? "One frame selected." : "Two frames: the wider is the computer's, the one at phone width the phone's.";
+    } else if (message.type === "selection") sendSelection(message.value);
+  };
+
+  send({ type: "token-get" });
+</script>
+</body>
+</html>

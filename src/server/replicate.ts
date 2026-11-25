@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
-import { newPageContent, pageInput, reservedPageSlugs } from "@/lib/page-content";
+import { newPageContent, pageInput } from "@/lib/page-content";
 import { ITERATIONS, type LogLevel, type ReplicaJob, type ReplicaNote, type ReplicaPass, type ReplicaSummary } from "@/lib/replicate";
 import { backdropKey, buildReplica, type BuildInput } from "@/lib/replicate-build";
 import { calibrate, calibrationWords } from "@/lib/replicate-calibrate";
@@ -60,7 +60,7 @@ import {
   type ReplicaRow,
   type ReplicaWork,
 } from "./replicate-store";
-import { savePage } from "./pages";
+import { freePageSlug, savePage } from "./pages";
 import { loadSharp } from "./sharp-load";
 
 type Row = Record<string, unknown>;
@@ -478,16 +478,7 @@ async function stepAssets(tick: Tick): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /** A slug for the copy that is not taken. */
-async function freeSlug(storeId: string, title: string, host: string): Promise<string> {
-  const base = slugify(`copy-${title || host}`, 60) || "copy-of-page";
-  const taken = new Set((await db().execute<Row>(sql`select slug from commerce.pages where store_id = ${storeId}::uuid and type = 'page'`)).map((r) => String(r.slug)));
-  const reserved = new Set(reservedPageSlugs(storeId, "page"));
-  for (let n = 0; n < 50; n++) {
-    const slug = n === 0 ? base : `${base}-${n + 1}`;
-    if (!taken.has(slug) && !reserved.has(slug)) return slug;
-  }
-  return `${base}-${randomUUID().slice(0, 6)}`;
-}
+const freeSlug = (storeId: string, title: string, host: string): Promise<string> => freePageSlug(storeId, slugify(`copy-${title || host}`, 60) || "copy-of-page");
 
 /** What the converter is given: the capture, the assets kept for it, and the grids a pass has already sent back to columns. */
 function buildInputOf(work: ReplicaWork, capture: { desktop: PageCapture; mobile: PageCapture | null }): BuildInput {

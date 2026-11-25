@@ -63,9 +63,9 @@ const ACCOUNT_START = { start: "/account" };
 
 /**
  * Addresses inside the Account section besides its pages: Kaizen Life's sign-in return, deleting one's account (D377), changing one's email
- * (D836), and where the theme store's *Try it in your store* lands.
+ * (D836), where the theme store's *Try it in your store* lands, and approving the Figma plugin's sign-in (D898 F1).
  */
-export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/delete", "/account/email"];
+export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/delete", "/account/email", "/account/plugin"];
 
 type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; advanced?: true };
 /** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */

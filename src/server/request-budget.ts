@@ -111,6 +111,11 @@ export const BUDGETS = {
   // hour for one account (the visitor is the account's id; a platform admin's sends count on the person's) and a ceiling for the whole site,
   // under no store. A failed count refuses, as the form must not become a way to send mail from Kaizena Flow's address.
   email_change: { window: "hour", visitor: 5, store: 300 },
+  // A design tool's app asking to sign in (D898 F1): each makes a row that waits ten minutes, so a few an hour from one address and a
+  // ceiling for the whole site, under no store. A failed count refuses.
+  plugin_sign_in: { window: "hour", visitor: 30, store: 3000 },
+  // The app asking whether its sign-in was approved, every two seconds while the owner looks: a minute's worth from one address and more.
+  plugin_poll: { window: "minute", visitor: 60, store: 6000 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;
@@ -121,7 +126,7 @@ export type BudgetEndpoint = keyof typeof BUDGETS;
  * unmetered (D443: each search may embed its words; D444: each message to the guide asks its text model), nor the sandbox a way to copy
  * stores or call the AI unmetered (D457), nor a change of email a way to send links to any address (D836).
  */
-export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox", "sandbox_ai", "rec", "email_change"]);
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox", "sandbox_ai", "rec", "email_change", "plugin_sign_in"]);
 
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {

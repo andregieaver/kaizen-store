@@ -9282,6 +9282,42 @@ export const apiTokens = commerce.table(
 );
 
 /**
+ * A sign-in from an app inside a design tool (D898 F1, `src/server/plugin-sign-in.ts`, its only writer): a Figma plugin cannot take a redirect,
+ * so it asks for one here, shows its `code`, and opens the owner's admin, where the owner checks the code and presses Connect; the plugin
+ * asks (with the secret only it holds, kept as its SHA-256) until it is given the token made for it, once. Ten minutes, then gone.
+ */
+export const pluginSignIns = commerce.table(
+  "plugin_sign_ins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tool: text("tool").notNull(),
+    readHash: text("read_hash").notNull(),
+    /** What the plugin shows and the admin page asks the owner to check: eight letters and digits, without the ones read alike. */
+    code: text("code").notNull(),
+    /** `waiting` for the owner, `approved` (a token waits for the plugin, sealed), `taken`, or `declined`. */
+    status: text("status").notNull().default("waiting"),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "cascade" }),
+    /** The API token made for the plugin, encrypted, from Connect until the plugin takes it. */
+    tokenSealed: text("token_sealed"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("plugin_sign_ins_read_idx").on(t.readHash),
+    uniqueIndex("plugin_sign_ins_code_idx").on(t.code),
+    index("plugin_sign_ins_store_idx").on(t.storeId),
+    index("plugin_sign_ins_account_idx").on(t.accountId),
+    index("plugin_sign_ins_expires_idx").on(t.expiresAt),
+    check("plugin_sign_ins_tool", sql`${t.tool} in ('figma')`),
+    check("plugin_sign_ins_status", sql`${t.status} in ('waiting', 'approved', 'taken', 'declined')`),
+    check("plugin_sign_ins_code", sql`${t.code} ~ '^[A-HJ-NP-Z2-9]{8}$'`),
+    check("plugin_sign_ins_read", sql`${t.readHash} ~ '^[0-9a-f]{64}$'`),
+    check("plugin_sign_ins_token", sql`${t.tokenSealed} is null or ${t.status} = 'approved'`),
+  ],
+).enableRLS();
+
+/**
  * A picture an Admin API caller is sending (wave 14 unit C1, D440, `src/server/api-uploads.ts`, its only writer): `POST /media/uploads` makes
  * the row and a one-time address in the private `imports` bucket; `POST /media` checks the file there, keeps it in the media library and
  * marks the row used. Never a file name or anything a person wrote; rows and their files go a day after they end (`pruneApiUploads()`).

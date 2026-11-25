@@ -1,0 +1,14 @@
+{
+  "name": "Kaizena Flow",
+  "id": "REPLACE-WITH-THE-ID-FIGMA-GIVES",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["https://kaizenaflow.com", "https://ybsozesfuxuitoacntfo.supabase.co"],
+    "devAllowedDomains": ["http://localhost:3000"],
+    "reasoning": "Signs in to the person's Kaizena Flow store and sends the frames they select there as a page draft; their pictures go to the store's media library through a one-time upload address on Kaizena Flow's file storage."
+  }
+}
