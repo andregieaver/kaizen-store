@@ -96,7 +96,7 @@ A team that has never used Pipedrive finds a CRM with nothing missing (section 9
 
 | Part | Where | Note for this plan |
 |---|---|---|
-| Moving in from Pipedrive by API token: a check, then the import, then *Bring over what's new* | D477, `src/server/pipedrive.ts`, `src/lib/pipedrive.ts`, `commerce.crm_moves`, `commerce.crm_move_links` | Read only. Tested against a stand-in only. Skips a person without an email, and with them their deals (without an organisation), activities and notes. Brings no custom fields, labels, leads, products, files, email, participants or stage history. A second run brings only new records, never changes. |
+| Moving in from Pipedrive by API token: a check, then the import, then *Bring over what's new* | D477, `src/server/pipedrive.ts`, `crm_moves`, `crm_move_links` | Read only, tested against a stand-in only. What it leaves behind is listed in section 7.2. A second run brings only new records, never changes. |
 | Deals, pipelines, stage chance, deals won by payment, quotes moving deals | D464 | One person and one company per deal; lost reason is free text |
 | Activities, *Today*, push when due | D468 | Call, meeting, task only |
 | The leads inbox (derived from requests, no table of its own) | D475 | |
