@@ -882,6 +882,7 @@ export const marketingNb: MarketingMessages = {
     notCopied: "Ikke kopiert ennå",
     about: "Om: {what}",
     downloadPicture: "Last ned bilde",
+    failed: "Innleggene kunne ikke skrives. Prøv igjen.",
     pictureAlt: "Bildet til {channel}, {shape}",
   },
   sms: {

@@ -10,8 +10,6 @@ import { aiFor } from "@/server/ai";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSocialPosts, socialProducts } from "@/server/social-posts";
 
-import { socialPostCopiedAction, writeSocialPostsAction } from "./actions";
-
 export const metadata: Metadata = { title: "Social posts" };
 
 /**
@@ -36,9 +34,7 @@ export default async function SocialPostsPage({ params }: PageProps<"/admin/[sto
           hasAi={Boolean(ai?.textModel)}
           timeZone={store.timeZone}
           dateLocale={ADMIN_LANG_FACTS[lang].locale}
-          pictureBase={`/admin/${store.slug}/social/picture`}
-          write={writeSocialPostsAction.bind(null, store.slug)}
-          copied={socialPostCopiedAction.bind(null, store.slug)}
+          base={`/admin/${store.slug}/social`}
         />
       </div>
     </AdminTextScope>

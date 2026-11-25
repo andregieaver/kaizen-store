@@ -29,6 +29,12 @@ type Post = {
 
 type Result = { ok: true; posts: Post[] } | { ok: false; problem: string };
 
+/** A JSON POST to one of the screen's routes, its answer read as JSON. */
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  return (await response.json()) as T;
+}
+
 export function SocialPostCreator({
   products,
   posts: initial,
@@ -36,9 +42,7 @@ export function SocialPostCreator({
   hasAi,
   timeZone,
   dateLocale,
-  pictureBase,
-  write,
-  copied,
+  base,
 }: {
   products: { id: string; title: string }[];
   posts: Post[];
@@ -46,10 +50,8 @@ export function SocialPostCreator({
   hasAi: boolean;
   timeZone: string;
   dateLocale: string;
-  /** Where a post's picture is drawn: `{pictureBase}/{id}`. */
-  pictureBase: string;
-  write: (input: unknown) => Promise<Result>;
-  copied: (id: string) => Promise<boolean>;
+  /** The screen's address: posts are written at `{base}/write`, a copy noted at `{base}/copied/{id}`, a picture drawn at `{base}/picture/{id}`. */
+  base: string;
 }) {
   const w = useAdminText("marketing").social;
   const [productId, setProductId] = useState(products[0]?.id ?? "");
@@ -65,7 +67,8 @@ export function SocialPostCreator({
   const submit = () =>
     start(async () => {
       setMessage(null);
-      const result = await write({ productId: productId || null, topic, campaign, channels, withPrice });
+      const result = await postJson<Result>(`${base}/write`, { productId: productId || null, topic, campaign, channels, withPrice }).catch(() => null);
+      if (!result) return setMessage({ tone: "problem", text: w.failed });
       if (!result.ok) return setMessage({ tone: "problem", text: result.problem });
       setPosts((list) => [...result.posts, ...list]);
       setMessage({ tone: "ok", text: w.written });
@@ -160,7 +163,7 @@ export function SocialPostCreator({
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {batch.map((post) => (
-                    <PostCard key={post.id} post={post} copied={copied} date={date} picture={`${pictureBase}/${post.id}`} />
+                    <PostCard key={post.id} post={post} copied={() => postJson(`${base}/copied/${post.id}`, {}).catch(() => null)} date={date} picture={`${base}/picture/${post.id}`} />
                   ))}
                 </div>
               </div>
@@ -172,7 +175,7 @@ export function SocialPostCreator({
   );
 }
 
-function PostCard({ post, copied, date, picture }: { post: Post; copied: (id: string) => Promise<boolean>; date: (iso: string) => string; picture: string }) {
+function PostCard({ post, copied, date, picture }: { post: Post; copied: () => Promise<unknown>; date: (iso: string) => string; picture: string }) {
   const w = useAdminText("marketing").social;
   const [done, setDone] = useState<"text" | "link" | null>(null);
   const [copiedAt, setCopiedAt] = useState(post.copiedAt);
@@ -186,7 +189,7 @@ function PostCard({ post, copied, date, picture }: { post: Post; copied: (id: st
     setDone(what);
     if (!copiedAt) {
       setCopiedAt(new Date().toISOString());
-      void copied(post.id);
+      void copied();
     }
   };
   return (

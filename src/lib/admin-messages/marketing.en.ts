@@ -829,6 +829,7 @@ export const marketingEn = {
     notCopied: "Not copied yet",
     about: "About: {what}",
     downloadPicture: "Download picture",
+    failed: "The posts could not be written. Try again.",
     pictureAlt: "The {channel} picture, {shape}",
   },
   sms: {
