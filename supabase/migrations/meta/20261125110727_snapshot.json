@@ -1,6 +1,6 @@
 {
-  "id": "8de70fa9-54e1-491b-87d3-fc2b6f1f0cf1",
-  "prevId": "ddca4f56-315e-465d-9d04-eec090844ef6",
+  "id": "72d1264d-0e03-49c3-872d-364e8d3d9d62",
+  "prevId": "ecf15b80-648e-406c-a627-5b7083b16e55",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -41992,6 +41992,25 @@
           "primaryKey": false,
           "notNull": false
         },
+        "insights": {
+          "name": "insights",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "insights_fetched_at": {
+          "name": "insights_fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "insights_problem": {
+          "name": "insights_problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "connected_by": {
           "name": "connected_by",
           "type": "uuid",
@@ -42087,6 +42106,10 @@
         "instagram_accounts_problem": {
           "name": "instagram_accounts_problem",
           "value": "\"commerce\".\"instagram_accounts\".\"problem\" is null or char_length(\"commerce\".\"instagram_accounts\".\"problem\") <= 300"
+        },
+        "instagram_accounts_insights_problem": {
+          "name": "instagram_accounts_insights_problem",
+          "value": "\"commerce\".\"instagram_accounts\".\"insights_problem\" is null or char_length(\"commerce\".\"instagram_accounts\".\"insights_problem\") <= 300"
         }
       },
       "isRLSEnabled": false
@@ -83972,6 +83995,206 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.social_post_insights": {
+      "name": "social_post_insights",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'instagram'"
+        },
+        "media_id": {
+          "name": "media_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "media_type": {
+          "name": "media_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "posted_at": {
+          "name": "posted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "caption": {
+          "name": "caption",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "permalink": {
+          "name": "permalink",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "reach": {
+          "name": "reach",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "views": {
+          "name": "views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "likes": {
+          "name": "likes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comments": {
+          "name": "comments",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "saves": {
+          "name": "saves",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shares": {
+          "name": "shares",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interactions": {
+          "name": "interactions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "social_post_insights_list_idx": {
+          "name": "social_post_insights_list_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "posted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "social_post_insights_account_id_instagram_accounts_id_fk": {
+          "name": "social_post_insights_account_id_instagram_accounts_id_fk",
+          "tableFrom": "social_post_insights",
+          "tableTo": "instagram_accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "social_post_insights_store_id_stores_id_fk": {
+          "name": "social_post_insights_store_id_stores_id_fk",
+          "tableFrom": "social_post_insights",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "social_post_insights_media_key": {
+          "name": "social_post_insights_media_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "account_id",
+            "media_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "social_post_insights_channel": {
+          "name": "social_post_insights_channel",
+          "value": "\"commerce\".\"social_post_insights\".\"channel\" in ('instagram')"
+        },
+        "social_post_insights_kind": {
+          "name": "social_post_insights_kind",
+          "value": "\"commerce\".\"social_post_insights\".\"kind\" in ('feed', 'reel', 'story')"
+        },
+        "social_post_insights_media": {
+          "name": "social_post_insights_media",
+          "value": "\"commerce\".\"social_post_insights\".\"media_id\" ~ '^[0-9]{1,40}$' and char_length(\"commerce\".\"social_post_insights\".\"caption\") <= 300 and char_length(\"commerce\".\"social_post_insights\".\"permalink\") <= 300"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.social_posts": {
       "name": "social_posts",

@@ -74,11 +74,15 @@ the first copy of each is noted. Lisa's theme (the link's campaign) and the pric
 | Step | What | Done when |
 |---|---|---|
 | S1.1 | Tagged links on every link the platform builds for social (bio, posts), and attribution of visits and orders to a post | A test order from a tagged link shows on its post. **Done 2026-11-23**: `utm_content` kept on `visits.content`, `postLink()` (`src/lib/post-links.ts`), `postReport()` and `postRows()`, `docs/analytics.md` "Post"; `analytics-posts.int.test.ts` |
-| S1.2 | Social accounts: one table for connected channels (Meta first), tokens encrypted as `ad_connections`, insights fetched by the dispatcher | A connected account's last 90 days of posts and insights are kept |
+| S1.2 | Social accounts: one table for connected channels (Meta first), insights fetched by the dispatcher | A connected account's last 90 days of posts and insights are kept. **Done 2026-11-25** for Instagram (below); Facebook Pages are S1.2b |
 | S1.3 | The adviser's facts (`socialFacts()`): store and channel figures in one typed object, by code | The facts test covers an empty, a quiet and a busy account |
 | S1.4 | The report, recommendations and content plan as manager tools (`social_report`, `social_plan`), the plan as autopilot steps | Homer sees three verdicts and one button; Lisa sees every figure |
 | S1.5 | The weekly review | It arrives once per week per store, claimed before sending |
 | S1.6 | The extension: an id in `EXTENSION_IDS`, its price rows and plan grants, markers and trial | Hidden for an account without it; the platform has it |
+
+S1.2 as built: the Instagram feed's connection (D560) asks `instagram_business_manage_insights` too; the dispatcher's `socialInsights` job
+reads each post's totals daily into `social_post_insights` (`src/server/social-insights.ts`), shown on Social posts. Other businesses'
+accounts need Meta's App Review for that permission, which is the owner's to submit in Meta's console.
 
 ## 5. Copy and graphics, in depth
 

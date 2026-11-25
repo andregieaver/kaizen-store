@@ -40,6 +40,27 @@ export const socialEn = {
   downloadPicture: "Download picture",
   failed: "The posts could not be written. Try again.",
   pictureAlt: "The {channel} picture, {shape}",
+  insights: {
+    title: "How your Instagram posts did",
+    lead: "The last 90 days, read once a day.",
+    none: "Connect your Instagram account to see how each post does.",
+    connect: "Connect Instagram",
+    reconnect: "@{username} is connected for the Instagram feed. Connect it again and allow insights, so Kaizena Flow can read how your posts do.",
+    reconnectButton: "Connect again",
+    waiting: "Reading how @{username}'s posts did. This takes up to a day.",
+    askOwner: "Someone who may change the store's settings can connect it under Integrations, Instagram.",
+    empty: "No posts in the last 90 days.",
+    problem: "The last reading failed: {problem}",
+    readAt: "Read {date}",
+    posted: "Posted",
+    post: "Post",
+    reach: "Reach",
+    likes: "Likes",
+    saves: "Saves",
+    shares: "Shares",
+    kinds: { feed: "Post", reel: "Reel", story: "Story" },
+    noCaption: "(no caption)",
+  },
 };
 
 export type SocialMessages = typeof socialEn;
