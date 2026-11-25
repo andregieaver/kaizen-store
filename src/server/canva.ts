@@ -99,8 +99,8 @@ export const canvaOffered = (deps: CanvaDeps = {}): boolean => appOf(deps) !== n
 export type CanvaProblem = "off" | "not_connected" | "reconnect" | "gone" | "unreadable" | "unreachable" | "slow" | "license" | "busy" | "storage" | "canva";
 export type CanvaOutcome<T> = ({ ok: true } & T) | { ok: false; problem: CanvaProblem; detail?: string };
 
-/** Where an edit started: the media library, or a picture field that waits for it in its own tab (C2). */
-export type EditPlace = "library" | "field";
+/** Where an edit started: the media library, a picture field (C2) or a social post (C3), the last two waiting for it in their own tab. */
+export type EditPlace = "library" | "field" | "post";
 
 /** A picture from Canva as kept in the library: its row, its address and small copy, and its size, so a picture field can take it. */
 export type BroughtPicture = { mediaId: string; url: string; thumbnailUrl: string | null; width: number; height: number };
