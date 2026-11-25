@@ -31,6 +31,7 @@ export async function requireLegalReader(): Promise<Account> {
  */
 const TEXTS: Record<string, () => string> = {
   "outreach-rules": () => readFileSync(path.join(process.cwd(), "docs/outreach-rules.md"), "utf8"),
+  "admin-use": () => readFileSync(path.join(process.cwd(), "docs/dpia-admin-use.md"), "utf8"),
 };
 
 export function reviewText(slug: string): string | null {

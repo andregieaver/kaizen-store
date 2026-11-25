@@ -12,6 +12,7 @@ import { marketingReport, postReport } from "./analytics-traffic-data";
 import { productsReport } from "./analytics-products-data";
 import { goalsWithProgress } from "./autopilot-goals";
 import { listGridProducts } from "./catalog";
+import { facebookView } from "./facebook-pages";
 import { insightsView } from "./social-insights";
 import type { Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
@@ -20,7 +21,7 @@ import { col, typedRows } from "./typed-rows";
  * Gathers the social media adviser's facts for a store (D870 S1.3, the pure work in `src/lib/social-facts.ts`): the last 28 days' sales
  * against the 28 before (`periodTotals()`), its goals and their progress (`goalsWithProgress()`), its products with margin and stock
  * (`productsReport()` and the stock levels), social channels' visits and sales (`marketingReport()`), its tagged posts of 90 days
- * (`postReport()`), the creator's posts and the Instagram account's figures (`insightsView()`; Kaizena Flow's store reads the platform's
+ * (`postReport()`), the creator's posts, the Facebook Page's figures (`facebookView()`, S1.2b) and the Instagram account's (`insightsView()`; Kaizena Flow's store reads the platform's
  * account while it has none). Read only, every figure the analytics' own.
  */
 
@@ -34,7 +35,7 @@ export async function gatherSocialFacts(store: Store, accountId: string, now = n
   const ninety = customPeriod(addDays(today, -90), today);
 
   const market = store.markets[0];
-  const [totals, previous, goals, products, offered, marketing, posts, creator, ownInsights] = await Promise.all([
+  const [totals, previous, goals, products, offered, marketing, posts, creator, ownInsights, facebook] = await Promise.all([
     periodTotals(store, last),
     periodTotals(store, before),
     goalsWithProgress({ account: { id: accountId }, store }, { now }),
@@ -50,6 +51,7 @@ export async function gatherSocialFacts(store: Store, accountId: string, now = n
     `,
     ),
     insightsView(store.id),
+    facebookView(store.id),
   ]);
   const insights = ownInsights.state === "none" && store.house ? await insightsView(null) : ownInsights;
 
@@ -120,6 +122,14 @@ export async function gatherSocialFacts(store: Store, accountId: string, now = n
             })),
           }
         : { state: insights.state },
+    facebook:
+      facebook.state === "ready"
+        ? {
+            state: "ready",
+            name: facebook.name,
+            posts: facebook.posts.map((p) => ({ postedAt: p.postedAt, caption: p.caption, reach: p.figures.reach, interactions: p.figures.interactions })),
+          }
+        : { state: facebook.state },
   };
   return socialFacts(input);
 }

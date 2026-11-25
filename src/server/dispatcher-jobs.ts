@@ -21,6 +21,8 @@ import { reencryptSecrets } from "@/server/secret-rotation";
 import { expireAssistantApprovals } from "@/server/owner-assistant";
 import { refreshInstagramFeeds } from "@/server/instagram";
 import { refreshSocialInsights } from "@/server/social-insights";
+import { refreshFacebookInsights } from "@/server/facebook-pages";
+import { sendSocialReviews } from "@/server/social-review";
 import { expireDrafts } from "@/server/draft-orders";
 import { expireApprovals } from "@/server/company-approvals";
 import { archiveFinishedOrders } from "@/server/order-archive";
@@ -146,6 +148,10 @@ export const DISPATCHER_JOBS = {
   instagram: () => refreshInstagramFeeds(),
   // How each connected Instagram account's own posts did (D870 S1.2): read once a day for accounts that granted the figures, ten a run.
   socialInsights: () => refreshSocialInsights(),
+  // How each store's Facebook Page's own posts did (D870 S1.2b): read once a day for each chosen Page, ten a run.
+  facebookInsights: () => refreshFacebookInsights(),
+  // The social media adviser's weekly review (D870 S1.5): from Monday 08:00 in each store's time, once a week, to who asked the adviser lately.
+  socialReviews: () => sendSocialReviews(),
   experiments: () => runExperimentJobs(),
   returns: () => runReturnJobs(),
   invoices: () => invoiceJobs(),

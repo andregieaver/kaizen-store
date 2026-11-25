@@ -634,7 +634,7 @@ const PAGES: readonly MapEntry[] = [
     tasks: ["Send purchases to Meta from the server", "Connect TikTok's Events API"],
   }),
   store("social", "/social", "Social posts", "Social posts: posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn written by the store's AI in its brand, from a product (its words, its price set by the shop, its link) or a topic of the owner's, to copy into each channel by hand. Each post carries a tagged link, so its visits and orders are counted. The posts written before, newest first, and whether each was copied.", {
-    keywords: ["social media", "instagram post", "facebook post", "pinterest pin", "tiktok caption", "linkedin post", "caption", "hashtags", "content", "sosiale medier"],
+    keywords: ["social media", "instagram post", "facebook post", "pinterest pin", "tiktok caption", "linkedin post", "caption", "hashtags", "content", "sosiale medier", "facebook page insights", "facebook reach"],
     tasks: ["Write an Instagram post for a product", "Make posts for my social media"],
   }),
   store("feeds", "/feeds", "Product feeds", "Product feeds: the store's products as Google Merchant Center, Meta, TikTok and Pinterest files at a secret address, one per country and channel, with price as shown (with VAT), stock, GTIN, brand, pictures and the flat shipping rate. Lists the products left out and why. Make a new address to stop the old one.", {
@@ -823,6 +823,10 @@ const PAGES: readonly MapEntry[] = [
     keywords: ["mrr", "arr", "churn", "recurring"], feature: "subscriptions" }),
   store("analytics.traffic", "/analytics/traffic", "Traffic", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
     keywords: ["traffic analytics", "visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "busiest hours", "refunds", "return rate", "returns analytics", "return reasons"],
+  }),
+  store("analytics.markets", "/analytics/markets", "Markets", "The market check (D900): the store's countries side by side over a period, from its own figures (visits, conversion, orders, revenue, average order, searches that found nothing, products with no price there or no name in the country's language), and what to do in them, worked out in code: a country that buys clearly less or more than the rest, searches that found nothing, missing prices and translations. Each finding opens the AI manager to make a plan.", {
+    keywords: ["markets", "countries", "market check", "competitor analysis", "swot", "gap analysis", "positioning", "market gaps", "where to sell", "conversion by country", "searched but not found", "unmet demand"],
+    tasks: ["Compare my countries", "Find gaps in my markets", "See what shoppers searched for and did not find"],
   }),
   store("analytics.reports", "/analytics/reports", "Reports", "Reports an owner builds and saves from a fixed list of figures (revenue, gross sales, discounts, refunds, orders, units sold, average order value, customers, gross profit, VAT) cut by day, week, month or quarter, product, variant and SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method or new and returning customers, with filters, a comparison, a chart and a CSV; ten ready reports to start from.", {
     keywords: ["report", "custom report", "report builder", "saved report", "sales by product", "sales by variant", "sku", "sales by category", "sales by country", "sales by currency", "payment method", "shopifyql", "export"],

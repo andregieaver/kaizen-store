@@ -77,13 +77,14 @@ export function parseMediaPage(json: unknown, since: Date): { items: MediaItem[]
   return { items, next: !older && typeof next === "string" && next.startsWith("https://graph.instagram.com/") ? next : null };
 }
 
-/** A post's insights as counts: each metric's value (`values[0].value`, or `total_value.value`), null for one not given. */
-export function parseInsights(json: unknown): PostFigures {
+/** A post's insights as counts: each metric's value (`values[0].value`, or `total_value.value`), null for one not given; `fields` names
+ * which figure each metric is (Instagram's by default, a Facebook Page's in `src/lib/facebook-pages.ts`). */
+export function parseInsights(json: unknown, fields: Record<string, keyof PostFigures> = FIELD_OF): PostFigures {
   const out: PostFigures = { ...NO_FIGURES };
   const data = (json as { data?: unknown })?.data;
   if (!Array.isArray(data)) return out;
   for (const metric of data as Record<string, unknown>[]) {
-    const field = typeof metric?.name === "string" ? FIELD_OF[metric.name] : undefined;
+    const field = typeof metric?.name === "string" && Object.hasOwn(fields, metric.name) ? fields[metric.name] : undefined;
     if (!field) continue;
     const values = metric.values as { value?: unknown }[] | undefined;
     const value = Array.isArray(values) ? values[0]?.value : (metric.total_value as { value?: unknown } | undefined)?.value;

@@ -26,6 +26,7 @@ async function account(email: string, platformAdmin: boolean, platformRole: stri
 describe("Legal reviews (D892)", () => {
   it("reads the draft from the repository", () => {
     expect(reviewText("outreach-rules")).toContain("Contacting businesses by country");
+    expect(reviewText("admin-use")).toContain("Questions for the lawyer");
     expect(reviewText("nothing")).toBeNull();
   });
 

@@ -1,0 +1,81 @@
+import type { MarketCheckMessages } from "./market-check.en";
+
+/** Bokmål for `market-check.en.ts` (D900). */
+export const marketCheckNb: MarketCheckMessages = {
+  title: "Markeder",
+  description: "Landene dine side om side: hvor du selger godt, hvor du selger dårlig, og hva hvert land søkte etter uten å finne.",
+  phoneLead: "Landene dine side om side",
+  lead: { one: "{n} ting å se på i landene dine i denne perioden.", many: "{n} ting å se på i landene dine i denne perioden." },
+  todoTitle: "Hva du kan gjøre i markedene dine",
+  todoDescription: "Regnet ut fra dine egne tall, det største først. Lag en plan åpner AI-sjefen med funnet skrevet inn; ingenting endres før du sier ja.",
+  nothingToDo: "Ingenting skiller seg ut i denne perioden: ingen land kjøper tydelig mer eller mindre enn resten, og ingen søk fant ingenting ofte nok til å telle.",
+  kinds: {
+    weak_market: "Kjøper mindre",
+    strong_market: "Kjøper mer",
+    unmet_demand: "Søkt etter",
+    untranslated: "Språk",
+    unpriced: "Priser",
+  },
+  makePlan: "Lag en plan",
+  makePlanFor: ": {text}",
+  open: {
+    weak_market: "Se trafikk",
+    strong_market: "Se markedsføring",
+    unmet_demand: "Se søk",
+    untranslated: "Oversett",
+    unpriced: "Se produkter",
+  },
+  finding: {
+    weak_market:
+      "Besøkende i {market} kjøper mindre: {rate} av besøkene ender i en ordre, mot {rest} i de andre landene dine. Med den raten ville landet hatt omtrent {gap} flere ordrer.",
+    strong_market: "Besøkende i {market} kjøper mer: {rate} av besøkene ender i en ordre, mot {rest} i de andre landene dine. Det kan være verdt mer av markedsføringen din.",
+    unmet_demand: "Kunder søkte etter «{term}» {n} ganger uten å finne noe{where}.",
+    unmetIn: ", de fleste i {market}",
+    untranslated: "{n} av de {of} produktene dine har ikke navn på {language}, så kunder i {market} leser dem på et annet språk.",
+    unpriced: "{n} av de {of} produktene dine har ikke pris i {market}, så de kan ikke kjøpes der.",
+  },
+  ask: {
+    message: "Analyse → Markeder fant dette {period}: {finding} {plan}",
+    period: "for {period}",
+    plan: "Se nærmere på det med verktøyene dine og lag en plan jeg kan si ja til. Ikke endre noe før jeg gjør det.",
+  },
+  more: { one: "{n} funn til", many: "{n} funn til" },
+  every: {
+    summary: "Se alle land og alle funn",
+    title: "Alle land, side om side",
+    description: "Tallene bak funnene. Besøk og konvertering telles som på Trafikk-siden; ordrer og omsetning er de betalte ordrene lagt i hvert land, uten mva.",
+    caption: "Landene dine side om side",
+    country: "Land",
+    visits: "Besøk",
+    conversion: "Konvertering",
+    orders: "Ordrer",
+    revenue: "Omsetning",
+    aov: "Snittordre",
+    searches: "Søk",
+    foundNothing: "Fant ingenting",
+    unpriced: "Uten pris",
+    untranslated: "Uten navn på landets språk",
+    notSold: "Ikke tilbudt nå",
+    notCounted: "Ikke telt",
+    notApplicable: "—",
+    compared:
+      "Et land sammenlignes med resten bare når begge har minst {visits} besøk og resten minst {orders} ordrer, og forskjellen er for stor til å være tilfeldig.",
+  },
+  terms: {
+    title: "Søkt etter, fant ingenting, per land",
+    description:
+      "Søkene som oftest fant ingenting i hvert land. Ofte er det et ord produktene dine ikke bruker: et synonym under Søk løser det. Ellers er det noe kundene vil ha som du ikke selger.",
+    times: { one: "{n} gang", many: "{n} ganger" },
+    none: "Ingen søk fant ingenting i denne perioden.",
+    open: "Legg til synonymer under Søk",
+  },
+  notes: {
+    countingOff: "Besøk telles ikke, så ingen land har en konvertering.",
+    countingOffLink: "Slå på telling av besøk i analyseinnstillingene",
+    partial: "Besøk telles fra {date}: konverteringen gjelder bare de dagene.",
+    searchesClamped: "Søk lagres i 90 dager, så de telles fra {date}.",
+    searchesEmpty: "Ingen søk fra denne perioden er lagret lenger: søk lagres i 90 dager.",
+    house: "Kaizena Flow selger planer, ikke varer: ordrer og priser per land gjelder ikke. Påmeldinger telles ikke per land ennå.",
+    noShop: "Butikken er slått av, så ordrer og priser per land vises ikke.",
+  },
+};

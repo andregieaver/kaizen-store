@@ -711,29 +711,18 @@ under *What the router fetches ahead*.
 ## The incident log (D895, `docs/audits/incident-autopilot-2026-11.md`, `src/lib/incidents.ts`, `src/server/incidents.ts`)
 
 - **The incident log (D895, `docs/audits/incident-autopilot-2026-11.md`, `src/lib/incidents.ts`, `src/server/incidents.ts`)**: one log of
-  the platform's errors, warnings and enhancements, worked by Claude Code sessions on the owner's subscription (never Anthropic API
-  billing). `commerce.platform_incidents` and its events are written only by `src/server/incidents.ts`: `logIncident()` (one row per
-  `fingerprint`, a repeat counted at most once every `REPEAT_WRITE_SECONDS`, a fixed or done problem reopened, a dismissed or won't-fix one
-  only counted; never throws), `moveIncident()` and `addIdea()`. The statuses and every allowed move are `INCIDENT_MOVES`, held by the
-  trigger `platform_incidents_move` (`incidents.test.ts` compares the two): **a proposal is never claimed before the owner's Approve**
-  (`proposed` only becomes `approved` or `dismissed`); the owner's own idea starts `approved`. A fix needs its commit, a hand-over
-  (`needs_owner`, `wont_fix`) its note, a claim a session. `facts` and `evidence` are ids and counts (as `log()`'s fields), cut to their
-  limits. The dispatcher's `incidents` job (`src/server/incident-jobs.ts`) releases claims past `CLAIM_HOURS` and closes fixes quiet for
-  `QUIET_HOURS`; from seven in Oslo, once a day (`incident_digest_last_day` claimed first), it prunes closed entries and runs after
-  `INCIDENT_KEEP_DAYS`, after the daily summary email (`platform.incident_digest`, each platform admin in their language: what was fixed, what
-  needs them, what is being fixed and what is new) and the morning push of what waits. A push goes at once (`sendPlatformPush()`) for a new
-  proposal of the platform's AI and an entry set to `needs_owner`; the nightly run's proposals wait for the morning. The page
-  `/admin/platform/incidents` (the settings area; its forms post to the route `incidents/act`, never a server action, so it adds no manifest entry) shows Needs you (Approve, Dismiss, Send back), Being fixed
-  and Fixed lately, with *Add an idea* and the autopilot's switch and gap one step away; each owner's decision (`decideIncident()`) is in
-  the change log. It is left out of the AI manager's map (`NOT_YET_IN_PROMPT`) until the autopilot has run for a while. The autopilot's
-  session reaches the log only through Kaizena Flow's API with the `incidents` scope (`src/server/incident-api.ts`: a session holds at most
-  `MAX_CLAIMS_PER_SESSION`, only the claiming session marks a fix, `MAX_PROPOSALS_PER_NIGHT` proposals a night) and follows
-  `docs/runbooks/incident-autopilot.md`. The app wakes it only through `src/server/autopilot-wake.ts`: `requestWake()` records a wish (a new
-  or returning problem, an Approve, an idea, *Run now*; only while the switch is on), and the `incidents` job sends it through the scheduled
-  task's API trigger once the owner's gap since the last run's start has passed (*Run now* at once); the body names a reason and a count,
-  never an error's text. Without `AUTOPILOT_FIRE_TOKEN` and `AUTOPILOT_TRIGGER_ID` no wake goes and the nightly run covers everything. Sources inside the app call `logIncident()`: a failing job (`alertFailingJob()`), a stopped scheduler
-  (`runWatchdog()`) and a status part failed twice in a row (`runStatusChecks()`). A new source names its fingerprint with
-  `fingerprintOf()` and never puts a person's data in it.
+  the platform's errors, warnings and enhancements, worked by Claude Code sessions on the owner's subscription (never API billing).
+  `platform_incidents` and its events are written only by `src/server/incidents.ts` (`logIncident()`: one row per `fingerprint`, a
+  repeat counted, a fixed problem reopened, never throws; `moveIncident()`, `decideIncident()`, `addIdea()`). The moves are
+  `INCIDENT_MOVES`, held by the trigger `platform_incidents_move`: **a proposal is never claimed before the owner's Approve**; the owner's
+  own idea starts approved. Facts and evidence are ids and counts. The dispatcher's `incidents` job (`incident-jobs.ts`) opens no
+  transaction when idle: it releases expired claims, closes quiet fixes, sends a due wake (`autopilot-wake.ts`), and once a day from seven
+  in Oslo sends the summary email and morning push, prunes, and on Mondays runs the reading of how owners use the admin
+  (`admin-behaviour.ts`: counts the platform already keeps, `checkReading()` keeps only proposals citing the figures). The page
+  `/admin/platform/incidents` posts to `incidents/act` (no server action). The session reaches the log only through the platform API's
+  `incidents` scope (`incident-api.ts`) and follows `docs/runbooks/incident-autopilot.md`. Sources inside the app (`alertFailingJob()`,
+  `runWatchdog()`, `runStatusChecks()`) name a fingerprint with `fingerprintOf()`, never a person's data. Admin heatmaps and recordings
+  are not built until `docs/dpia-admin-use.md` is accepted and answered under Legal reviews.
 
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 

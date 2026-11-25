@@ -135,16 +135,22 @@ const CLICKED = sql`exists (select 1 from commerce.search_clicks sc where sc.sto
 const MISS = sql`(q.results = 0 and q.meaning_results = 0 and not q.redirected)`;
 
 /** Pass `now` in tests; it decides which days are still kept. */
-export async function searchReport(store: Store, period: Pick<AnalyticsPeriod, "from" | "to" | "days">, now: Date = new Date()): Promise<SearchReport> {
-  const requested = { from: period.from, to: period.to, days: period.days };
-  // Rows older than 90 days are deleted, so the oldest day that is whole is the one after the cutoff's.
+/**
+ * The part of a period whose searches are still kept: rows older than 90 days are deleted, so the oldest day that is whole is the one
+ * after the cutoff's. `empty` when no day of the period is.
+ */
+function searchWindow(store: Store, period: Pick<AnalyticsPeriod, "from" | "to">, now: Date) {
   const cutoff = new Date(now.getTime() - SEARCH_LOG_DAYS * 86_400_000);
   const availableFrom = addDays(todayIn(cutoff, store.timeZone), 1);
   const from = period.from < availableFrom ? availableFrom : period.from;
-  const clamped = from !== period.from;
   const to = period.to;
   const empty = from >= to;
-  const read = { from, to, days: empty ? 0 : daysBetween(from, to) };
+  return { availableFrom, from, to, empty, clamped: from !== period.from, read: { from, to, days: empty ? 0 : daysBetween(from, to) } };
+}
+
+export async function searchReport(store: Store, period: Pick<AnalyticsPeriod, "from" | "to" | "days">, now: Date = new Date()): Promise<SearchReport> {
+  const requested = { from: period.from, to: period.to, days: period.days };
+  const { availableFrom, from, to, empty, clamped, read } = searchWindow(store, period, now);
 
   const base = { requested, period: read, clamped, retentionDays: SEARCH_LOG_DAYS, availableFrom };
   if (empty) {
@@ -291,5 +297,92 @@ function termRow(r: Row): SearchTermRow {
     clicked: num(r, "clicked"),
     clickThrough: safeRatio(num(r, "clicked"), num(r, "searches")),
     ...(r.orders !== undefined ? { orders: num(r, "orders") } : {}),
+  };
+}
+
+/** One country's searches (D900, `docs/analytics.md` "Markets"): all of them, those that found nothing, and its most missed terms. */
+export type MarketSearches = { searches: number; misses: number; terms: { term: string; misses: number }[] };
+
+export type SearchesByMarket = {
+  /** No searched day of the period is still kept: nothing is known, and every country's searches are null. */
+  empty: boolean;
+  /** The period was cut to the days still kept. */
+  clamped: boolean;
+  availableFrom: string;
+  /** By the country's code (the search's `market_code`). */
+  markets: Map<string, MarketSearches>;
+  /** Terms with at least `minMisses` misses in the whole store, most first, with the countries they were missed in. */
+  demand: { term: string; misses: number; markets: { code: string; misses: number }[] }[];
+};
+
+const MARKET_SEARCH_ROW = z.object({ market: col.text, searches: col.minor, misses: col.minor });
+const MARKET_MISS_ROW = z.object({ term: col.text, market: col.text, misses: col.minor, in_market: col.minor, term_rank: col.minor });
+
+/**
+ * The searches of a period by the country they were made in, for the market check (D900): `MISS` and the tidied term exactly as the
+ * Traffic page counts them, the period cut to the days still kept as `searchReport()` cuts it. Two reads over the store's searches of the
+ * period (indexed by store and time): the counts per country, and each missed term per country, kept when it is one of the country's
+ * `perMarket` most missed or one of the store's `demandTerms` terms missed at least `minMisses` times.
+ */
+export async function searchesByMarket(
+  store: Store,
+  period: Pick<AnalyticsPeriod, "from" | "to">,
+  limits: { perMarket: number; minMisses: number; demandTerms: number },
+  now: Date = new Date(),
+): Promise<SearchesByMarket> {
+  const { availableFrom, from, to, empty, clamped } = searchWindow(store, period, now);
+  if (empty) return { empty, clamped, availableFrom, markets: new Map(), demand: [] };
+  const where = sql`q.store_id = ${store.id}::uuid and ${inPeriod(store, sql`q.created_at`, { from, to })}`;
+  const [counts, missed] = await Promise.all([
+    typedRows(
+      MARKET_SEARCH_ROW,
+      sql`
+        select q.market_code::text as market, count(*) as searches, count(*) filter (where ${MISS}) as misses
+        from commerce.search_queries q where ${where} group by 1
+      `,
+    ),
+    typedRows(
+      MARKET_MISS_ROW,
+      sql`
+        with t as (
+          select ${TERM} as term, q.market_code::text as market, count(*) as misses, max(q.created_at) as last_at
+          from commerce.search_queries q where ${where} and ${MISS} group by 1, 2
+        ),
+        r as (
+          select t.*, row_number() over (partition by t.market order by t.misses desc, t.last_at desc, t.term) as in_market,
+            sum(t.misses) over (partition by t.term) as total, max(t.last_at) over (partition by t.term) as term_last
+          from t
+        ),
+        k as (
+          select d.term, row_number() over (order by d.total desc, d.term_last desc, d.term) as n
+          from (select distinct r.term, r.total, r.term_last from r where r.total >= ${limits.minMisses}) d
+        )
+        select r.term, r.market, r.misses, r.in_market, coalesce(k.n, 0) as term_rank
+        from r left join k on k.term = r.term
+        where r.in_market <= ${limits.perMarket} or (k.n is not null and k.n <= ${limits.demandTerms})
+        order by r.market, r.in_market
+      `,
+    ),
+  ]);
+  const markets = new Map<string, MarketSearches>(counts.map((c) => [c.market.trim(), { searches: c.searches, misses: c.misses, terms: [] }]));
+  const demand = new Map<string, { rank: number; term: string; misses: number; markets: { code: string; misses: number }[] }>();
+  for (const row of missed) {
+    const code = row.market.trim();
+    if (row.in_market <= limits.perMarket) markets.get(code)?.terms.push({ term: row.term, misses: row.misses });
+    if (row.term_rank > 0 && row.term_rank <= limits.demandTerms) {
+      const entry = demand.get(row.term) ?? { rank: row.term_rank, term: row.term, misses: 0, markets: [] };
+      entry.misses += row.misses;
+      entry.markets.push({ code, misses: row.misses });
+      demand.set(row.term, entry);
+    }
+  }
+  return {
+    empty,
+    clamped,
+    availableFrom,
+    markets,
+    demand: [...demand.values()]
+      .sort((a, b) => a.rank - b.rank)
+      .map(({ term, misses, markets: m }) => ({ term, misses, markets: m.sort((a, b) => b.misses - a.misses || a.code.localeCompare(b.code)) })),
   };
 }

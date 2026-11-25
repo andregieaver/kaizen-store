@@ -28,6 +28,20 @@ export function SocialFactsCard({ facts, words: w, locale }: { facts: SocialFact
       ...(ig.bestWeekday === null ? [] : [fillWords(w.igBestDay, { day: w.weekdays[ig.bestWeekday as keyof typeof w.weekdays] })]),
     ];
   };
+  const fb = facts.facebook ?? { state: "none" as const };
+  const facebookLines = (): string[] => {
+    if (fb.state !== "ready") return [fb.state === "none" ? w.fbNone : fb.state === "choose" ? w.fbChoose : w.fbWaiting];
+    return [
+      fillWords(w.fbLine, {
+        name: fb.name,
+        posts: number(fb.posts),
+        perWeek: fb.postsPerWeek.toLocaleString(locale),
+        days: fb.daysSinceLastPost === null ? w.unknown : number(fb.daysSinceLastPost),
+      }),
+      fillWords(w.fbAverages, { reach: reach(fb.averageReach), interactions: reach(fb.averageInteractions) }),
+      ...(fb.bestWeekday === null ? [] : [fillWords(w.igBestDay, { day: w.weekdays[fb.bestWeekday as keyof typeof w.weekdays] })]),
+    ];
+  };
   const rows: { label: string; lines: string[] }[] = [
     {
       label: fillWords(w.sales, { days: String(facts.sales.days) }),
@@ -71,6 +85,7 @@ export function SocialFactsCard({ facts, words: w, locale }: { facts: SocialFact
       label: w.instagram,
       lines: instagramLines(),
     },
+    { label: w.facebook, lines: facebookLines() },
   ];
   return (
     <details className="rounded-panel bg-sunken p-4">

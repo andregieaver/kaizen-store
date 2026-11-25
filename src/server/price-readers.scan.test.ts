@@ -25,6 +25,7 @@ const KEPT_PRICES: Record<string, string> = {
   "src/server/admin-api-kit.ts": "the Admin API's products (D355, D440) carry every price the admin keeps, as the product editor shows them",
   "src/server/live-drills.ts": "the AI manager's pilot (consolidation 5) checks the price a draft product was given, as the product editor keeps it",
   "src/server/dream-factory.ts": "the Dream Factory (D409) checks every product has a price in every country it sells to, as the product editor keeps them",
+  "src/server/market-check.ts": "the market check (D900) counts the products with no price kept in a country, as the product editor keeps them; a product switched off there is left out",
   "src/server/dream-showcase.ts": "the Dream Factory's page (D419) shows the owner each product the run made with its price in the first market, as the product editor keeps it",
 };
 

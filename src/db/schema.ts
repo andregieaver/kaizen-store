@@ -11897,18 +11897,61 @@ export const instagramAccounts = commerce.table(
 );
 
 /**
+ * A Facebook Page connected for its posts' figures (D870 S1.2b, `src/server/facebook-pages.ts`): one per store, connected through Facebook
+ * Login (`pages_show_list`, `pages_read_engagement`, `read_insights`; it reads the Page's own posts and their totals, nothing else). The
+ * signed-in person's long-lived token is kept only while they choose which of their Pages it is (`choices`: ids and names); once chosen, the
+ * Page's own token (one that does not run out) is kept instead. Both encrypted like payment secrets.
+ */
+export const facebookPages = commerce
+  .table(
+    "facebook_pages",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: uuid("store_id")
+        .notNull()
+        .references(() => stores.id, { onDelete: "cascade" }),
+      /** The chosen Page; null while the owner chooses among `choices`. */
+      pageId: text("page_id"),
+      pageName: text("page_name").notNull().default(""),
+      pageTokenEncrypted: text("page_token_encrypted"),
+      /** The person's token, only until a Page is chosen. */
+      userTokenEncrypted: text("user_token_encrypted"),
+      choices: jsonb("choices").notNull().default(sql`'[]'::jsonb`),
+      /** The token carries `read_insights`: reach and views are read, not only reactions, comments and shares. */
+      insights: boolean("insights").notNull().default(false),
+      fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+      /** What went wrong at the last reading, in Facebook's words; null when it went well. */
+      problem: text("problem"),
+      connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("facebook_pages_store_key").on(t.storeId),
+      index("facebook_pages_connected_by_idx").on(t.connectedBy),
+      check("facebook_pages_page", sql`${t.pageId} is null or ${t.pageId} ~ '^[0-9]{1,40}$'`),
+      check("facebook_pages_name", sql`char_length(${t.pageName}) <= 100`),
+      check("facebook_pages_chosen", sql`${t.pageId} is null or ${t.pageTokenEncrypted} is not null`),
+      check("facebook_pages_choices", sql`jsonb_typeof(${t.choices}) = 'array' and octet_length(${t.choices}::text) < 20000`),
+      check("facebook_pages_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * How each of a connected Instagram account's own posts did (D870 S1.2, `src/lib/social-insights.ts`, `src/server/social-insights.ts`): the
  * post (its id, kind, when, its caption's start and its address) and its totals as Instagram counts them, read again daily while the post is
- * under 90 days old, kept 400 days. A store's or, with no store, Kaizena Flow's own (as `instagram_accounts`). Never who liked or saw it.
+ * under 90 days old, kept 400 days. A store's or, with no store, Kaizena Flow's own (as `instagram_accounts`); a Facebook Page's posts too
+ * (`channel` facebook, `page_id`, D870 S1.2b). Never who liked or saw it.
  */
 export const socialPostInsights = commerce
   .table(
     "social_post_insights",
     {
       id: uuid("id").primaryKey().defaultRandom(),
-      accountId: uuid("account_id")
-        .notNull()
-        .references(() => instagramAccounts.id, { onDelete: "cascade" }),
+      /** The Instagram account's post; null for a Facebook Page's (`page_id`, D870 S1.2b). */
+      accountId: uuid("account_id").references(() => instagramAccounts.id, { onDelete: "cascade" }),
+      pageId: uuid("page_id").references(() => facebookPages.id, { onDelete: "cascade" }),
       storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
       channel: text("channel").notNull().default("instagram"),
       mediaId: text("media_id").notNull(),
@@ -11929,9 +11972,14 @@ export const socialPostInsights = commerce
     (t) => [
       unique("social_post_insights_media_key").on(t.accountId, t.mediaId),
       index("social_post_insights_list_idx").on(t.storeId, t.postedAt),
-      check("social_post_insights_channel", sql`${t.channel} in ('instagram')`),
+      unique("social_post_insights_page_media_key").on(t.pageId, t.mediaId),
+      check("social_post_insights_channel", sql`${t.channel} in ('instagram', 'facebook')`),
+      check(
+        "social_post_insights_owner",
+        sql`(${t.channel} = 'instagram' and ${t.accountId} is not null and ${t.pageId} is null) or (${t.channel} = 'facebook' and ${t.pageId} is not null and ${t.accountId} is null)`,
+      ),
       check("social_post_insights_kind", sql`${t.kind} in ('feed', 'reel', 'story')`),
-      check("social_post_insights_media", sql`${t.mediaId} ~ '^[0-9]{1,40}$' and char_length(${t.caption}) <= 300 and char_length(${t.permalink}) <= 300`),
+      check("social_post_insights_media", sql`${t.mediaId} ~ '^[0-9]{1,40}(_[0-9]{1,40})?$' and char_length(${t.caption}) <= 300 and char_length(${t.permalink}) <= 300`),
     ],
   )
   .enableRLS();
@@ -18112,6 +18160,34 @@ export const socialAdvice = commerce
       index("social_advice_list_idx").on(t.storeId, t.createdAt),
       index("social_advice_created_by_idx").on(t.createdBy),
       check("social_advice_size", sql`octet_length(${t.facts}::text) < 100000 and octet_length(${t.advice}::text) < 50000`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * The social media adviser's weekly review (D870 S1.5, `src/lib/social-review.ts`, `src/server/social-review.ts`): one row per store, person
+ * and week, claimed before its email goes so each is sent once, with the figures it said (written by code). Written only by
+ * `sendSocialReviews()`; a store's people who asked the adviser in the last 60 days get it.
+ */
+export const socialReviews = commerce
+  .table(
+    "social_reviews",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      accountId: uuid("account_id")
+        .notNull()
+        .references(() => accounts.id, { onDelete: "cascade" }),
+      /** The Monday of the week, in the store's time zone. */
+      weekStart: date("week_start").notNull(),
+      facts: jsonb("facts").notNull(),
+      sentAt: timestamp("sent_at", { withTimezone: true }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      unique("social_reviews_week_key").on(t.storeId, t.accountId, t.weekStart),
+      index("social_reviews_account_idx").on(t.accountId),
+      check("social_reviews_size", sql`octet_length(${t.facts}::text) < 20000`),
     ],
   )
   .enableRLS();

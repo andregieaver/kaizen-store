@@ -33,6 +33,20 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   read: the domain watch asks the world once a day, `src/server/domain-watch.ts`).
 
 
+## The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)
+
+- **The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)**:
+  the store against itself, country by country (M1), then its rivals (M2 to M4, planned). Facts are read by code from what the store
+  keeps, through the figures' one definition each (`docs/analytics.md` "Markets"): visits and conversion are `marketTraffic()` (the Traffic
+  page's countries, shared with `trafficReport()`), orders and revenue `geoReport()`, searches `searchesByMarket()` (its `MISS` and term),
+  products with no price or no name in a country's language are counted in `marketCheck()`. Findings are only `marketFindings()` (pure:
+  minimum volumes, `twoProportionZ()` for a country against the rest, a fixed order of kinds), worded only by `findingText()`; the AI
+  manager's `market_check` and *Make a plan* (`askAboutFinding()`, through `AskAboutAlert`, sent by the person) repeat them and never make a
+  number. A new kind of finding is a kind in `FINDING_KINDS` with its rule in `marketFindings()`, its page in `FIX_PATHS`, its words in
+  `market-check.en.ts` and `.nb.ts`, and its definition in `docs/analytics.md`. Kaizena Flow's own store reads no orders or prices (it sells
+  plans); its sign-ups by country wait for M1b. Reading rivals (M2) goes only through `readWebPage()`, honouring `robots.txt`, and a store's
+  price never follows a rival's by itself (M3).
+
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 
 - **Which companies visited (D890)**: a counted page view on a store with `stores.company_recognition` on is looked up after `/api/visit`
@@ -572,6 +586,19 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   who liked or saw them. The owner reads them on Social posts (`insightsView()`); Kaizena Flow's own store shows the platform's account while it
   has none of its own.
 
+## A store's Facebook Page (D870 S1.2b, `src/lib/facebook-pages.ts` pure, `src/server/facebook-pages.ts`)
+
+- **A store's Facebook Page (D870 S1.2b, `src/lib/facebook-pages.ts` pure, `src/server/facebook-pages.ts`)**: connected from the Facebook card
+  on Social posts (plain forms posted to `/admin/{store}/social/facebook`, `marketing:write`, same site), through Facebook Login with
+  `pages_show_list`, `pages_read_engagement` and `read_insights`, back at `/api/integrations/facebook/callback` (state in an httpOnly cookie,
+  the same person). The person's token is made long-lived and their Pages listed: one is kept at once; with several, the person's token and
+  the Pages' ids and names wait in `facebook_pages` until the owner chooses, then only the Page's own token is kept (encrypted, as payment
+  secrets). `refreshFacebookInsights()` (the dispatcher's `facebookInsights`, never throws) reads each chosen Page once a day: its posts of
+  `INSIGHTS_DAYS` from `published_posts` with reactions, comments and shares, and with `read_insights` each post's reach and views
+  (`PAGE_METRICS`, the newer names first), into `social_post_insights` with channel `facebook` and `page_id`; Facebook's refusal is the
+  Page's `problem`. A new connection or a disconnect removes the old Page's figures. Only the Page's own posts and their counts are read,
+  never who reacted or saw them. The adviser's facts (`facebook`), the manager's `social_report` and the weekly review carry them.
+
 ## The social media adviser's facts (D870 S1.3, `src/lib/social-facts.ts` pure, `src/server/social-facts.ts`)
 
 - **The social media adviser's facts (D870 S1.3, `src/lib/social-facts.ts` pure, `src/server/social-facts.ts`)**: what the adviser is told is
@@ -590,6 +617,15 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`checkedWords()`), products the facts offered, days of the next two weeks and recommendations that can be acted on; fewer than three verdicts
   keeps nothing. `social_advice` holds the answer with the facts it read (the figures shown beside its words), the newest twenty per store.
   Homer's one button writes the main recommendation's posts through the creator's own route; every other button is Lisa's, one step away.
+
+## The social media adviser's weekly review (D870 S1.5, `src/lib/social-review.ts` pure, `src/server/social-review.ts`)
+
+- **The social media adviser's weekly review (D870 S1.5, `src/lib/social-review.ts` pure, `src/server/social-review.ts`)**: sent only by
+  `sendSocialReviews()` (the dispatcher's `socialReviews`, email kind `social.weekly`), the only writer of `social_reviews`: to each person who
+  asked the adviser in a store within `REVIEW_ACTIVE_DAYS` (asking is the opt-in), their membership and `marketing:read` read again, from
+  Monday `REVIEW_HOUR` in the store's time, once a week (the row claimed before the email goes), when `reviewWorthSending()`. Its figures are
+  code's (posts written and copied, tagged posts' visits, orders and sales against the week before, Instagram posts and the best reach), and
+  its only words from a model are the newest advice's verdicts and the coming week's plan, checked when written. No model is asked.
 
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 

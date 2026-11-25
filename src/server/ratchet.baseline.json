@@ -36,7 +36,7 @@
     "src/server/analytics-speed.ts": 1,
     "src/server/analytics-subscriptions-data.ts": 1,
     "src/server/analytics-totals.ts": 3,
-    "src/server/analytics-traffic-data.ts": 7,
+    "src/server/analytics-traffic-data.ts": 6,
     "src/server/analytics-visits.ts": 9,
     "src/server/api-carts.ts": 5,
     "src/server/api-tokens.ts": 2,

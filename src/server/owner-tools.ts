@@ -1,8 +1,9 @@
 import "server-only";
 
-import { socialPlanTool, socialReportTool, writeSocialPostsTool } from "./social-tools";
+import type { socialPlanTool as SocialPlanTool, socialReportTool as SocialReportTool, writeSocialPostsTool as WriteSocialPostsTool } from "./social-tools";
 
 import type { shopifyMoveTool as ShopifyMoveTool } from "./shopify-move-tool";
+import type { marketCheckTool as MarketCheckTool } from "./market-check-tool";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -2558,6 +2559,8 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   profit_overview: profitOverviewTool,
   explain_change: explainChangeTool,
   analytics_alerts: analyticsAlertsTool,
+  // Loaded when called: its words (the market check's, D900) stay out of every admin page that reaches this map.
+  market_check: async (...args: Parameters<typeof MarketCheckTool>) => (await import("./market-check-tool")).marketCheckTool(...args),
   report_catalogue: reportCatalogueTool,
   run_report: runReportTool,
   save_report: saveReportTool,
@@ -2605,9 +2608,10 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   tag_customer: tagCustomerTool,
   list_email_automations: listAutomationsTool,
   list_flows: listFlowsTool,
-  social_report: socialReportTool,
-  social_plan: socialPlanTool,
-  write_social_posts: writeSocialPostsTool,
+  // Loaded when called (D870 S1.4b): the adviser and the creator would put the AI's and the pictures' modules in every route that lists the tools.
+  social_report: async (...args: Parameters<typeof SocialReportTool>) => (await import("./social-tools")).socialReportTool(...args),
+  social_plan: async (...args: Parameters<typeof SocialPlanTool>) => (await import("./social-tools")).socialPlanTool(...args),
+  write_social_posts: async (...args: Parameters<typeof WriteSocialPostsTool>) => (await import("./social-tools")).writeSocialPostsTool(...args),
   start_flow: startFlowTool,
   create_flow: createFlowTool,
   change_flow: changeFlowTool,

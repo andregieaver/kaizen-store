@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/admin/ui";
 import { SocialAdviser } from "@/components/admin/social-adviser";
+import { SocialFacebookCard } from "@/components/admin/social-facebook-card";
 import { SocialFactsCard } from "@/components/admin/social-facts-card";
 import { SocialInsightsCard } from "@/components/admin/social-insights-card";
 import { SocialPostCreator } from "@/components/admin/social-posts";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SOCIAL_WORDS } from "@/lib/admin-words/social";
 import { aiFor } from "@/server/ai";
+import { facebookAppOn, facebookView } from "@/server/facebook-pages";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { mainRecommendation } from "@/lib/social-advice";
 import { latestAdvice } from "@/server/social-advice";
@@ -27,6 +29,7 @@ export const metadata: Metadata = { title: "Social posts" };
  */
 export default async function SocialPostsPage({
   params,
+  searchParams,
 }: PageProps<"/admin/[store]/social">) {
   const member = await requirePermission(
     (await params).store,
@@ -35,11 +38,13 @@ export default async function SocialPostsPage({
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = SOCIAL_WORDS[lang];
-  const [products, pages, posts, insights, facts, advice, ai] = await Promise.all([
+  const done = (await searchParams).facebook;
+  const [products, pages, posts, insights, facebook, facts, advice, ai] = await Promise.all([
     socialProducts(store),
     socialPages(store),
     listSocialPosts(store.id),
     houseOrStoreInsights(store),
+    facebookView(store.id),
     gatherSocialFacts(store, member.account.id),
     latestAdvice(store.id),
     aiFor(store.id, { feature: "social_posts" }).catch(() => null),
@@ -76,6 +81,16 @@ export default async function SocialPostsPage({
         words={w.insights}
         connectHref={insights.platform ? "/admin/platform/instagram" : `/admin/${store.slug}/integrations/instagram`}
         mayConnect={memberCan(member, "settings:write")}
+        numberLocale={ADMIN_LANG_FACTS[lang].locale}
+        timeZone={store.timeZone}
+      />
+      <SocialFacebookCard
+        view={facebook}
+        words={w.facebook}
+        action={`/admin/${store.slug}/social/facebook`}
+        mayConnect={memberCan(member, "marketing:write")}
+        appOn={facebookAppOn()}
+        done={typeof done === "string" ? done : null}
         numberLocale={ADMIN_LANG_FACTS[lang].locale}
         timeZone={store.timeZone}
       />

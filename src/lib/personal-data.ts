@@ -408,8 +408,9 @@ export const NOT_PERSONAL: Record<string, string> = {
   product_groups: "A store's combined listing (D566): the name of the option its products share, by language; never a person.",
   sms_campaigns: "A store's marketing text (D565): its name, its words and the segment it was for; never a person (who got it is in `sms_messages`).",
   social_posts: "A store's social post (D870 C1): its channel, caption, hashtags, tagged link and the product or topic it was about; never a person.",
+  social_reviews: "The social media adviser's weekly review to a store's person (D870 S1.5): who it went to, the week and its figures; never a customer.",
   social_advice: "The social media adviser's answers to a store (D870 S1.4): the store's figures it read and its verdicts, recommendations and calendar; never a person.",
-  social_post_insights: "How a store's own Instagram posts did (D870 S1.2): each post's id, kind, date, caption's start, address and totals (reach, likes, saves); never who liked or saw it.",
+  social_post_insights: "How a store's own Instagram or Facebook Page posts did (D870 S1.2, S1.2b): each post's id, kind, date, caption's start, address and totals (reach, likes or reactions, saves, comments, shares); never who liked or saw it.",
   sms_settings: "A store's 46elks account for marketing texts (D565): its API username, an encrypted password, the sender name, the store's reply number, its hours and the month's cap, and the staff account that changed them; never a shopper's data.",
   broadcasts: "A store's broadcast (D297): its name, its words in each language and who it was for in words (a segment's name and rules); never a person.",
   automations: "A store's automation settings (D298): whether each is on, its days and its words in each language; never a person.",
@@ -487,6 +488,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   content_entries: "The owner's own content (D326): entries of their types for their site, no shopper's data (a type is never on customers or orders).",
   field_search: "A search index over public fields the store wrote itself.",
   font_files: "A font's files.",
+  facebook_pages: "A store's Facebook Page connected for its posts' figures (D870 S1.2b): the Page's id and name, its encrypted token (and the connecting person's, only until a Page is chosen), the names of their Pages to choose among and the staff account that connected it; never a shopper's data.",
   google_places: "A business place's address, the store's own.",
   inventory_locations: "The name of a stock location.",
   inventory_movements: "Stock counts and the staff account that changed them (an id, never a name); the note is staff text about stock, and a movement holds no shopper's data.",
@@ -685,6 +687,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "autopilot.digest": "staff",
   "autopilot.weekly": "staff",
   "autopilot.monthly": "staff",
+  /** The social media adviser's weekly review (D870 S1.5): the store's post figures and the adviser's words, never a customer. */
+  "social.weekly": "staff",
   /** The autopilot's own AI budget near (80 %) or spent (PSI AST-07): the store's name and the dollar figures, never a customer. */
   "autopilot.budget_near": "staff",
   "autopilot.budget_reached": "staff",
