@@ -161,7 +161,13 @@ const savedRow = z.object({ id: col.uuid, version: col.int });
 export type SaveFlowResult = { ok: true; id: string; version: number } | { ok: false; problem: string };
 
 /** Saves a flow as a new version, switched off until that version is tested. A new trigger ends what it replaced (it no longer does that work). */
-export async function saveFlow(storeId: string, accountId: string | null, id: string | null, input: unknown): Promise<SaveFlowResult> {
+export async function saveFlow(
+  storeId: string,
+  accountId: string | null,
+  id: string | null,
+  input: unknown,
+  options: { onlyAtVersion?: number } = {},
+): Promise<SaveFlowResult> {
   const parsed = flowInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false, problem: parsed.error.issues[0]?.message ?? "Check the flow." };
   const problems = checkFlow(parsed.data.steps);
@@ -180,7 +186,9 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
                  schedule_at = ${scheduleAt}::timestamptz, schedule_every_days = ${every}::int, schedule_fired_at = null, trigger_tag = ${tag}, trigger_event = ${appEvent},
                  enabled = false, version = version + 1, updated_at = now(),
                  replaces = case when trigger = ${trigger} then replaces end
-           where store_id = ${storeId}::uuid and id = ${id}::uuid returning id, version`)
+           where store_id = ${storeId}::uuid and id = ${id}::uuid
+             ${options.onlyAtVersion !== undefined ? sql`and version = ${options.onlyAtVersion} and not enabled and tested_version is null` : sql``}
+           returning id, version`)
       : await tx.execute(sql`
           insert into commerce.flows (store_id, name, trigger, trigger_days, trigger_segment_id, schedule_at, schedule_every_days, trigger_tag, trigger_event, replaces)
           values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${segment}::uuid, ${scheduleAt}::timestamptz, ${every}::int, ${tag}, ${appEvent}, ${replaces ?? null})
@@ -352,15 +360,16 @@ export async function guardFlows(options: { now?: Date; everyRun?: boolean } = {
  * M2.2); else the recipe; "own" is one email to start from. Saved off and untested, as every new flow. The Flows page's Start and the AI
  * manager's `start_flow` (M3.9) both come here.
  */
-export async function startRecipeFlow(store: Store, accountId: string, key: RecipeKey | "own"): Promise<SaveFlowResult> {
+export async function startRecipeFlow(store: Store, accountId: string, key: RecipeKey | "own"): Promise<SaveFlowResult & { readyWords?: boolean }> {
   const locale = store.localization.locales[0] ?? "en-GB";
   if (key === "own") return saveFlow(store.id, accountId, null, ownFlow(locale));
   if (!(key in RECIPES)) return { ok: false, problem: "No such goal." };
   // Goals no automation did start from their recipe alone.
-  if (key === "sunset" || key === "reviews" || key === "leads") return saveFlow(store.id, accountId, null, RECIPES[key](locale));
+  if (key === "sunset" || key === "reviews" || key === "leads") return { ...(await saveFlow(store.id, accountId, null, RECIPES[key](locale))), readyWords: true };
   const own = await getAutomation(store, key);
-  const recipe = (own?.saved ? flowFromAutomation(key, own, locale) : null) ?? RECIPES[key](locale);
-  return saveFlow(store.id, accountId, null, recipe);
+  const fromOwn = own?.saved ? flowFromAutomation(key, own, locale) : null;
+  // `readyWords`: the recipe's ready-made words, which the store's voice may replace (D897); the owner's own automation's words stay.
+  return { ...(await saveFlow(store.id, accountId, null, fromOwn ?? RECIPES[key](locale))), readyWords: !fromOwn };
 }
 
 /**
