@@ -1,186 +1,186 @@
 {
   "manager": {
     "shop|none": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172355
+      "totalChars": 172383
     },
     "shop|orders": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172355
+      "totalChars": 172383
     },
     "shop|products": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172355
+      "totalChars": 172383
     },
     "shop|customers": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172355
+      "totalChars": 172383
     },
     "shop|marketing": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 162168,
       "alwaysSentChars": 36543,
-      "totalChars": 177772
+      "totalChars": 177800
     },
     "shop|analytics": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 154270,
       "alwaysSentChars": 36510,
-      "totalChars": 169874
+      "totalChars": 169902
     },
     "shop|website": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 162966,
       "alwaysSentChars": 36547,
-      "totalChars": 178570
+      "totalChars": 178598
     },
     "shop|bookings": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172355
+      "totalChars": 172383
     },
     "shop|support": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 155705,
       "alwaysSentChars": 36483,
-      "totalChars": 171309
+      "totalChars": 171337
     },
     "shop|settings": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 134591,
       "alwaysSentChars": 36572,
-      "totalChars": 150195
+      "totalChars": 150223
     },
     "shop|billing": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 155181,
       "alwaysSentChars": 36483,
-      "totalChars": 170785
+      "totalChars": 170813
     },
     "shop|staff": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 155943,
       "alwaysSentChars": 36487,
-      "totalChars": 171547
+      "totalChars": 171575
     },
     "shop|books": {
-      "promptChars": 15604,
+      "promptChars": 15632,
       "toolCount": 128,
       "toolChars": 156751,
       "alwaysSentChars": 36511,
-      "totalChars": 172355
+      "totalChars": 172383
     },
     "all|none": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169117
+      "totalChars": 169145
     },
     "all|orders": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169117
+      "totalChars": 169145
     },
     "all|products": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169117
+      "totalChars": 169145
     },
     "all|customers": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 157775,
       "alwaysSentChars": 36572,
-      "totalChars": 174259
+      "totalChars": 174287
     },
     "all|marketing": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 158743,
       "alwaysSentChars": 36573,
-      "totalChars": 175227
+      "totalChars": 175255
     },
     "all|analytics": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 152109,
       "alwaysSentChars": 36541,
-      "totalChars": 168593
+      "totalChars": 168621
     },
     "all|website": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 161609,
       "alwaysSentChars": 36577,
-      "totalChars": 178093
+      "totalChars": 178121
     },
     "all|bookings": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 152252,
       "alwaysSentChars": 36544,
-      "totalChars": 168736
+      "totalChars": 168764
     },
     "all|support": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 150973,
       "alwaysSentChars": 36546,
-      "totalChars": 167457
+      "totalChars": 167485
     },
     "all|settings": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 132069,
       "alwaysSentChars": 36602,
-      "totalChars": 148553
+      "totalChars": 148581
     },
     "all|billing": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 151480,
       "alwaysSentChars": 36546,
-      "totalChars": 167964
+      "totalChars": 167992
     },
     "all|staff": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 152242,
       "alwaysSentChars": 36550,
-      "totalChars": 168726
+      "totalChars": 168754
     },
     "all|books": {
-      "promptChars": 16484,
+      "promptChars": 16512,
       "toolCount": 128,
       "toolChars": 152633,
       "alwaysSentChars": 36574,
-      "totalChars": 169117
+      "totalChars": 169145
     }
   },
   "fixed": {
@@ -220,11 +220,11 @@
       "totalChars": 2995
     },
     "autopilot_event": {
-      "promptChars": 17189,
+      "promptChars": 17217,
       "toolCount": 45,
       "toolChars": 31507,
       "alwaysSentChars": 0,
-      "totalChars": 48696,
+      "totalChars": 48724,
       "case": "review"
     },
     "platform": {

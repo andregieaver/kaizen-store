@@ -371,6 +371,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   form_submissions: never("What visitors wrote in forms is personal data of the original."),
   google_places: never("Holds an API key."),
   instagram_accounts: never("Holds the Instagram account's token (D560); a copy connects its own account."),
+  design_edits: never("Which of the original's pictures a person sent to their own Canva (D898): about their designs, not the store's settings."),
   shipping_carriers: never("Holds the original's agreements and API keys with its carriers."),
   tripletex_connections: never("The original's connection to its Tripletex company (D453): a token, and one company belongs to one store."),
   tripletex_sync: never("What the original sent to its Tripletex company (D453): the copy's documents are its own and start unsent."),

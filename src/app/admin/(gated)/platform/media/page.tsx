@@ -7,13 +7,16 @@ import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { mediaQuery } from "@/lib/media-query";
 import { WEBSITE_MEDIA_WORDS } from "@/lib/admin-words/website-media";
 import { WEBSITE_PICK_WORDS } from "@/lib/admin-words/website-pick";
-import { requirePlatformReader } from "@/server/auth";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
+import { platformCan, requirePlatformReader } from "@/server/auth";
+import { canvaForLibrary } from "@/server/canva";
 import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
 import { compressibleCount, listMedia } from "@/server/media-library";
 import { PageHeader } from "@/components/admin/ui";
 
+import { connectCanvaAction } from "../../(owner)/account/connected/actions";
 import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../upload-actions";
 import {
   compressiblePlatformMediaAction,
@@ -39,7 +42,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
   await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
-    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS }}>
+    <AdminAreas areas={{ websitePick: WEBSITE_PICK_WORDS, websiteMedia: WEBSITE_MEDIA_WORDS, canva: CANVA_WORDS }}>
     <>
       <PageHeader
         title={w.misc.media.title}
@@ -55,15 +58,18 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
 }
 
 async function Library({ searchParams }: { searchParams: PageProps<"/admin/platform/media">["searchParams"] }) {
-  await requirePlatformReader();
-  const query = mediaQuery(await searchParams);
+  const account = await requirePlatformReader();
+  const given = await searchParams;
+  const query = mediaQuery(given);
   const owner = { storeId: null, storeSlug: null };
-  const [{ items, total, searched }, ai, site, altMissing, waiting] = await Promise.all([
+  const [{ items, total, searched }, ai, site, altMissing, waiting, canva] = await Promise.all([
     listMedia(owner, query),
     aiFor(null),
     altSite(owner),
     missingAltTexts(owner),
     compressibleCount(owner),
+    // The person's own Canva (D898), for a platform admin who may change the site.
+    platformCan(account, "website") && uploadsEnabled() ? canvaForLibrary({ ...owner, accountId: account.id }, given.canva) : null,
   ]);
   return (
     <MediaLibrary
@@ -79,6 +85,7 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
         edit: ai?.image?.editModel && uploadsEnabled() ? "/admin/platform/media/edit" : null,
         settingsHref: "/admin/platform/ai",
       }}
+      canva={canva ? { ...canva, endpoint: "/admin/platform/media/canva", connect: connectCanvaAction.bind(null, "/admin/platform/media") } : null}
       upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       startVideo={uploadsEnabled() ? startPlatformVideoUploadAction : null}
       actions={{

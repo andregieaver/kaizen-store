@@ -16,8 +16,13 @@ import { requireAccount } from "@/server/auth";
 import { kaizenLifeAppUrl, lifeLinkOf } from "@/server/kaizen-life-accounts";
 import { recentHandoffsOf } from "@/server/kaizen-life-handoffs";
 import { grantsOfAccount } from "@/server/oauth";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { CanvaAccountCard } from "@/components/admin/canva-media";
+import { areaTexts } from "@/lib/admin-area";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
+import { canvaAccount, canvaOffered } from "@/server/canva";
 
-import { disconnectGrantAction, switchAssistantsAction, takeBackLifeTaskAction, unlinkKaizenLifeAction } from "./actions";
+import { connectCanvaAction, disconnectCanvaAction, disconnectGrantAction, switchAssistantsAction, takeBackLifeTaskAction, unlinkKaizenLifeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Connected apps and assistants" };
 
@@ -34,16 +39,29 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const w = OAUTH_WORDS[lang];
-  const [grants, life, lifeApp, tasks] = await Promise.all([
+  const [grants, life, lifeApp, tasks, canva] = await Promise.all([
     grantsOfAccount(account.id),
     lifeLinkOf(account.id),
     kaizenLifeAppUrl(account.id),
     recentHandoffsOf(account.id),
+    // The person's own Canva (D898): connected here or from a media library, used in every library they work in.
+    canvaOffered() ? canvaAccount(account.id) : null,
   ]);
   const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.connected.title} description={w.connected.description} />
+      {canvaOffered() && (
+        <AdminTextScope texts={areaTexts(lang, { canva: CANVA_WORDS })}>
+          <div id="canva" className="max-w-3xl">
+            <CanvaAccountCard
+              account={canva ? { name: canva.name, problem: canva.problem !== null } : null}
+              connect={connectCanvaAction.bind(null, "/admin/account/connected")}
+              disconnect={disconnectCanvaAction}
+            />
+          </div>
+        </AdminTextScope>
+      )}
       {life ? (
         <section className="max-w-3xl" aria-labelledby="kaizen-life-link">
           <Card compact>

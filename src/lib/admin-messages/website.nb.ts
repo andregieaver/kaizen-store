@@ -342,8 +342,8 @@ export const websiteNb: WebsiteMessages = {
     chooseFile: "Velg {name}",
     places: { one: "1 sted", many: "{n} steder" },
     rows: { fileName: "Filnavn", fileType: "Filtype", fileSize: "Filstørrelse", dimensions: "Bredde og høyde", added: "Lagt til", madeBy: "Laget av" },
-    madeBy: { person: "Lastet opp", ai_made: "Laget av KI", ai_edited: "Redigert av KI" },
-    madeByChip: { ai_made: "KI", ai_edited: "KI-redigert" },
+    madeBy: { person: "Lastet opp", ai_made: "Laget av KI", ai_edited: "Redigert av KI", canva: "Fra Canva" },
+    madeByChip: { ai_made: "KI", ai_edited: "KI-redigert", canva: "Canva" },
     editedFrom: "Redigert fra et annet bilde i biblioteket, som er som det var.",
     edit: {
       title: "Rediger med KI",

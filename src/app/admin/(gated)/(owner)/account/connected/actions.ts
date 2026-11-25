@@ -1,9 +1,14 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { CANVA_STATE_COOKIE, CANVA_STATE_MINUTES, CANVA_STATE_PATH } from "@/lib/canva";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { requireAccount } from "@/server/auth";
+import { disconnectCanva, startCanvaConnect } from "@/server/canva";
 import { switchAssistantsFromFlow, unlinkFromFlow } from "@/server/kaizen-life-accounts";
 import { cancelToLife } from "@/server/kaizen-life-handoffs";
 import { disconnectGrant } from "@/server/oauth";
@@ -38,5 +43,25 @@ export async function switchAssistantsAction(on: boolean): Promise<void> {
 export async function takeBackLifeTaskAction(id: string): Promise<void> {
   const account = await requireAccount();
   await cancelToLife(account.id, id);
+  refresh();
+}
+
+/**
+ * A person's own Canva (D898): connected and disconnected by the person alone, from a media library, a store's Integrations or this page.
+ * `back` is the admin page to come back to (checked by `safeBack()`); what the connection may then do in a store is the media library's own
+ * permission.
+ */
+export async function connectCanvaAction(back: string): Promise<{ ok: false; problem: string }> {
+  const account = await requireAccount();
+  const start = startCanvaConnect(account.id, back);
+  if (!start.ok) return { ok: false, problem: CANVA_WORDS[await actionAdminLang()].problems.off };
+  (await cookies()).set(CANVA_STATE_COOKIE, start.cookie, { httpOnly: true, secure: true, sameSite: "lax", path: CANVA_STATE_PATH, maxAge: CANVA_STATE_MINUTES * 60 });
+  redirect(start.url);
+}
+
+/** *Disconnect* Canva: the refresh token revoked at Canva and the connection gone. */
+export async function disconnectCanvaAction(): Promise<void> {
+  const account = await requireAccount();
+  await disconnectCanva(account.id);
   refresh();
 }

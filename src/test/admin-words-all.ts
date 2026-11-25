@@ -7,6 +7,7 @@ import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
 import { AUTOMATIC_WORDS } from "@/lib/admin-words/automatic";
 import { BACKDROPS_WORDS } from "@/lib/admin-words/backdrops";
+import { CANVA_WORDS } from "@/lib/admin-words/canva";
 import { CONSENT_LOOK_WORDS } from "@/lib/admin-words/consent-look";
 import { BILLING_WORDS } from "@/lib/admin-words/billing";
 import { BLOCKS_WORDS } from "@/lib/admin-words/blocks";
@@ -157,6 +158,7 @@ export const ALL_AREA_WORDS: { [A in AdminArea]: Record<AdminLang, AdminAreaMess
   screens: SCREENS_WORDS,
   storeParts: STORE_PARTS_WORDS,
   backdrops: BACKDROPS_WORDS,
+  canva: CANVA_WORDS,
   consentLook: CONSENT_LOOK_WORDS,
   animation: ANIMATION_WORDS,
   heatmaps: HEATMAPS_WORDS,

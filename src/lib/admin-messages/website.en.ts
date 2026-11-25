@@ -360,8 +360,8 @@ export const websiteEn = {
     chooseFile: "Choose {name}",
     places: { one: "1 place", many: "{n} places" },
     rows: { fileName: "File name", fileType: "File type", fileSize: "File size", dimensions: "Width and height", added: "Added", madeBy: "Made by" },
-    madeBy: { person: "Uploaded", ai_made: "Made by AI", ai_edited: "Edited by AI" },
-    madeByChip: { ai_made: "AI", ai_edited: "AI edit" },
+    madeBy: { person: "Uploaded", ai_made: "Made by AI", ai_edited: "Edited by AI", canva: "From Canva" },
+    madeByChip: { ai_made: "AI", ai_edited: "AI edit", canva: "Canva" },
     editedFrom: "Edited from another picture in the library, which stays as it was.",
     edit: {
       title: "Edit with AI",

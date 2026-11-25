@@ -21,7 +21,7 @@ type Row = Record<string, unknown>;
  * address that is none, its name and picture go, its sign-in user is deleted and it is switched off, so every place that names it now
  * names nobody (the activity log is pseudonymised by this, never edited). What is only theirs is deleted: their memberships, the AI
  * manager's conversations, memories, notices, saved skills and follow-ups, their devices for push, their recovery codes, their links to
- * Kaizen Life and WordPress, their support inbox state and alert choices, and the emails Kaizena Flow sent them as staff; their
+ * Kaizen Life, WordPress and Canva, their support inbox state and alert choices, and the emails Kaizena Flow sent them as staff; their
  * applications to open a store are emptied. A customer record with the same email in a store is a different subject (the store's
  * shopper) and is not touched.
  *
@@ -128,6 +128,8 @@ export async function eraseOwnAccount(account: Pick<Account, "id">, deps: { dele
     // A change of email waiting for its link (D836): the address it would move to goes too.
     await tx.execute(sql`delete from commerce.account_email_changes where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.wordpress_connections where account_id = ${id}::uuid`);
+    // Their own Canva (D898): its tokens go; Canva's own list of apps is theirs to tidy.
+    await tx.execute(sql`delete from commerce.design_connections where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.support_agents where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.support_reads where account_id = ${id}::uuid`);
     await forgetAlertRecipientIn(tx, id);
