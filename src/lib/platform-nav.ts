@@ -213,6 +213,8 @@ export const PLATFORM_SECTIONS: PlatformSection[] = [
         // The platform day to day: whether it is up, what every store used and was sent, its languages and experiments, and who runs it.
         heading: "Running the platform",
         items: [
+          // The incident log (D895): errors, warnings and improvements, worked by the autopilot; improvements wait for Approve.
+          item("/incidents", "Incidents", "Every error and warning the platform meets and every improvement suggested: what needs you, what is being fixed and what was fixed.", "life-buoy", "settings", { basic: true }),
           item("/status", "Status page", "The public status page: each part's checks every five minutes, incidents to post and update, and their subscribers.", "activity", "settings", { basic: true }),
           item("/capacity", "Usage and limits", "What every store used this month against its limits: storage, products, staff, visits, emails and AI.", "gauge", "settings", { basic: true }),
           item("/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup.", "mail", "settings", { basic: true }),

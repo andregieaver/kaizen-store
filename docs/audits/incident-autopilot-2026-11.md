@@ -1,6 +1,6 @@
 # The incident log and its autopilot (plan, 20 November 2026)
 
-A plan, agreed in outline with the owner on 20 November 2026; **nothing in it is built yet**. The aim: every error, warning and suggested
+A plan, agreed with the owner on 20 November 2026 (D895); being built, step by step (section 10). The aim: every error, warning and suggested
 enhancement on the platform lands in one log, and Claude Code sessions work through that log on their own. They fix what they can, push
 each fix through the normal CI and deploy, and mark the entry done once the problem has stayed away. The owner sees one list: what needs
 them, what is being fixed and what was fixed.
@@ -294,19 +294,26 @@ These are the owner's to write (legal texts are never written by a model, D656 s
 
 ### Phase 1: the log and the screen
 
-- [ ] **IA-1** Claim the decision; write the rule section in `docs/rules/admin/platform.md` (tables, the one writer, the statuses, the
+- [x] **IA-1** Claim the decision; write the rule section in `docs/rules/admin/platform.md` (tables, the one writer, the statuses, the
       owner's Approve, the subscription rule) and list this plan among the working plans in `CLAUDE.md`.
-- [ ] **IA-2** Migration for `platform_incidents`, `platform_incident_events` and `platform_autopilot_runs`, the checks and the status
+      Done 25 November 2026: D895, the rule in `docs/rules/admin/platform.md`, this plan in `CLAUDE.md`.
+- [x] **IA-2** Migration for `platform_incidents`, `platform_incident_events` and `platform_autopilot_runs`, the checks and the status
       trigger, with tests in `src/db/commerce.test.ts`; read `.claude/rules/database.md` first.
-- [ ] **IA-3** `src/server/incidents.ts`: `logIncident()` (upsert, throttle, reopen), the status moves, proposals and their 180-day
+      Done 25 November 2026: `platform_incidents`, `platform_incident_events`, `platform_autopilot_runs`, the autopilot's settings and the trigger `platform_incidents_move`; every move tested in `src/db/commerce.test.ts`.
+- [x] **IA-3** `src/server/incidents.ts`: `logIncident()` (upsert, throttle, reopen), the status moves, proposals and their 180-day
       memory, and the pruning; unit and integration tests.
-- [ ] **IA-4** Connect the sources inside the app: `cron-alerts.ts`, `watchdog.ts`, `status.ts`.
-- [ ] **IA-5** `/admin/platform/incidents`: Needs you, Being fixed, Fixed lately; the entry's page; the runs; the switch, the gap and
+      Done 25 November 2026: `src/server/incidents.ts` and the dispatcher's `incidents` job (`src/server/incident-jobs.ts`), which also releases expired claims and closes quiet fixes, so the runs need not.
+- [x] **IA-4** Connect the sources inside the app: `cron-alerts.ts`, `watchdog.ts`, `status.ts`.
+      Done 25 November 2026.
+- [x] **IA-5** `/admin/platform/incidents`: Needs you, Being fixed, Fixed lately; the entry's page; the runs; the switch, the gap and
       *Run now*; the instant push (held to 07:00 for the night's proposals); words in both platform languages; signed-in e2e in
       `e2e/signed-in/`; screenshots to the owner.
-- [ ] **IA-6** The daily summary email at 07:00 Oslo time: the `incidentDigest` dispatcher job, its day claimed once, both platform
+      Done 25 November 2026: the page, the entry's page, the switch and gap (Run now waits for phase 2, when there is a run to start), the instant push; `e2e/signed-in/incidents.spec.ts`.
+- [x] **IA-6** The daily summary email at 07:00 Oslo time: the `incidentDigest` dispatcher job, its day claimed once, both platform
       languages, a test that it lands at seven in summer and in winter.
-- [ ] **IA-7** *Add an idea* for the owner (approved when saved).
+      Done 25 November 2026: in the dispatcher's `incidents` job (one job, not a second `incidentDigest`), with the morning push; tested at seven in summer and in winter.
+- [x] **IA-7** *Add an idea* for the owner (approved when saved).
+      Done 25 November 2026.
 
 ### Phase 2: the autopilot
 

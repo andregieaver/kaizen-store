@@ -470,6 +470,9 @@ export const NAV_NB: Record<string, string> = {
     "Hver butikk autopiloten driver alene i 100 dager: hva som holder den igjen, hva som venter på eieren, KI-kostnaden og de tre forholdstallene; å sette og avslutte en utfordring.",
   "Usage and limits": "Bruk og grenser",
   "Status page": "Statusside",
+  "Incidents": "Hendelser",
+  "Every error and warning the platform meets and every improvement suggested: what needs you, what is being fixed and what was fixed.":
+    "Alle feil og advarsler plattformen møter og alle forbedringer som foreslås: det som trenger deg, det som rettes og det som er rettet.",
   "Content notices": "Meldinger om innhold",
   "AI assistants and apps": "AI-assistenter og apper",
   "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block.": "AI-assistentene og appene folk har koblet til gjennom Kaizena Flows innlogging, til å bekrefte eller blokkere.",

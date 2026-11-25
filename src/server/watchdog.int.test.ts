@@ -44,6 +44,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await forget();
   await db().execute(sql`delete from commerce.cron_jobs where job = 'route.watchdog'`);
+  await db().execute(sql`delete from commerce.platform_incidents where fingerprint = ${`watchdog:${JOB}`}`);
   if (original) {
     await db().execute(sql`
       update commerce.cron_jobs set last_finished_at = ${original.last_finished_at as Date | null}, every_seconds = ${original.every_seconds as number} where job = ${JOB}
@@ -68,6 +69,11 @@ describe("the watchdog", () => {
     const [mine] = await db().execute<Row>(sql`select count(*)::int as n from commerce.email_messages where kind = 'platform.watchdog' and to_address = ${`watchdog-${run}@example.com`}`);
     expect(mine.n).toBe(1);
     expect(await runWatchdog(now)).toEqual({ stopped: [JOB], sent: 0 });
+  });
+
+  it("puts the stopped job in the incident log once, for the autopilot (D895)", async () => {
+    const [entry] = await db().execute<Row>(sql`select kind, source, status from commerce.platform_incidents where fingerprint = ${`watchdog:${JOB}`}`);
+    expect(entry).toEqual({ kind: "error", source: "watchdog", status: expect.any(String) });
   });
 
   it("counts a dispatcher row that is gone as stopped", async () => {

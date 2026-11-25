@@ -708,6 +708,27 @@ under *What the router fetches ahead*.
   is `testAi()` on the platform's own text model, asked once a day and an hour after a failed check (`aiCheckDue()`), never every five
   minutes: each check is a paid call. A failed one stands for `AI_RETRY_MINUTES` in its objective (95 %).
 
+## The incident log (D895, `docs/audits/incident-autopilot-2026-11.md`, `src/lib/incidents.ts`, `src/server/incidents.ts`)
+
+- **The incident log (D895, `docs/audits/incident-autopilot-2026-11.md`, `src/lib/incidents.ts`, `src/server/incidents.ts`)**: one log of
+  the platform's errors, warnings and enhancements, worked by Claude Code sessions on the owner's subscription (never Anthropic API
+  billing). `commerce.platform_incidents` and its events are written only by `src/server/incidents.ts`: `logIncident()` (one row per
+  `fingerprint`, a repeat counted at most once every `REPEAT_WRITE_SECONDS`, a fixed or done problem reopened, a dismissed or won't-fix one
+  only counted; never throws), `moveIncident()` and `addIdea()`. The statuses and every allowed move are `INCIDENT_MOVES`, held by the
+  trigger `platform_incidents_move` (`incidents.test.ts` compares the two): **a proposal is never claimed before the owner's Approve**
+  (`proposed` only becomes `approved` or `dismissed`); the owner's own idea starts `approved`. A fix needs its commit, a hand-over
+  (`needs_owner`, `wont_fix`) its note, a claim a session. `facts` and `evidence` are ids and counts (as `log()`'s fields), cut to their
+  limits. The dispatcher's `incidents` job (`src/server/incident-jobs.ts`) releases claims past `CLAIM_HOURS` and closes fixes quiet for
+  `QUIET_HOURS`; from seven in Oslo, once a day (`incident_digest_last_day` claimed first), it prunes closed entries and runs after
+  `INCIDENT_KEEP_DAYS`, after the daily summary email (`platform.incident_digest`, each platform admin in their language: what was fixed, what
+  needs them, what is being fixed and what is new) and the morning push of what waits. A push goes at once (`sendPlatformPush()`) for a new
+  proposal of the platform's AI and an entry set to `needs_owner`; the nightly run's proposals wait for the morning. The page
+  `/admin/platform/incidents` (the settings area, `platformAction()`, one action) shows Needs you (Approve, Dismiss, Send back), Being fixed
+  and Fixed lately, with *Add an idea* and the autopilot's switch and gap one step away; each owner's decision (`decideIncident()`) is in
+  the change log. It is left out of the AI manager's map (`NOT_YET_IN_PROMPT`) until phase 2. Sources inside the app call `logIncident()`: a failing job (`alertFailingJob()`), a stopped scheduler
+  (`runWatchdog()`) and a status part failed twice in a row (`runStatusChecks()`). A new source names its fingerprint with
+  `fingerprintOf()` and never puts a person's data in it.
+
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 
 - **The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)**: the

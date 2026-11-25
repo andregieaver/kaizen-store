@@ -3,6 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { EVENT_KEEP_DAYS } from "@/lib/event-log";
+import { canMove, INCIDENT_KINDS, INCIDENT_STATUSES, statusFitsKind } from "@/lib/incidents";
 import { minorUnitDigits } from "@/lib/money";
 import { COPY_RULES } from "@/lib/store-copy-rules";
 import { RESERVED_STORE_PAGE_SLUGS, pageBlockSchema } from "@/lib/page-content";
@@ -9015,5 +9016,81 @@ describe("a change of email waits for its link (D836)", () => {
       db.query("update commerce.account_email_changes set used_at = created_at - interval '1 second' where account_id = $1", [id]),
     ).rejects.toThrow(/account_email_changes_times/);
     expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.account_email_changes'::regclass")).on).toBe(true);
+  });
+});
+
+describe("the incident log moves only as INCIDENT_MOVES allows (D895)", () => {
+  let n = 0;
+  /** An entry already in `status`, with every field a status needs, inserted straight (an insert is not a move). */
+  const entry = async (kind: string, status: string, source = kind === "enhancement" ? "nightly" : "runtime"): Promise<string> => {
+    n += 1;
+    return (
+      await one<{ id: string }>(
+        `insert into commerce.platform_incidents (kind, source, fingerprint, title, status, claimed_by, claim_expires_at, fix_commit, fixed_at, done_at)
+         values ($1, $2, $3, 'A test entry', $4, 'https://claude.ai/code/session_test', now() + interval '3 hours', 'abc1234', now(), now()) returning id`,
+        [kind, source, `test:d895:${n}`, status],
+      )
+    ).id;
+  };
+
+  it("allows exactly the moves canMove() allows, for every kind and every pair of statuses", async () => {
+    const wrong: string[] = [];
+    for (const kind of INCIDENT_KINDS) {
+      for (const from of INCIDENT_STATUSES) {
+        if (!statusFitsKind(kind, from)) continue;
+        for (const to of INCIDENT_STATUSES) {
+          if (to === from) continue;
+          const id = await entry(kind, from);
+          const moved = await db.query("update commerce.platform_incidents set status = $2 where id = $1", [id, to]).then(
+            () => true,
+            () => false,
+          );
+          if (moved !== canMove(kind, from, to)) wrong.push(`${kind} ${from}>${to}: database ${moved ? "allowed" : "refused"}`);
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("never builds a proposal without the owner's Approve: proposed cannot be claimed, fixed or done", async () => {
+    for (const to of ["claimed", "fixed", "done"]) {
+      const id = await entry("enhancement", "proposed");
+      await expect(db.query("update commerce.platform_incidents set status = $2 where id = $1", [id, to])).rejects.toThrow(/platform_incidents_move/);
+    }
+  });
+
+  it("keeps an entry's kind and fingerprint, and one row per fingerprint", async () => {
+    const id = await entry("error", "open");
+    await expect(db.query("update commerce.platform_incidents set kind = 'warning' where id = $1", [id])).rejects.toThrow(/platform_incidents_move/);
+    await expect(db.query("update commerce.platform_incidents set fingerprint = 'other' where id = $1", [id])).rejects.toThrow(/platform_incidents_move/);
+    const { fingerprint } = await one<{ fingerprint: string }>("select fingerprint from commerce.platform_incidents where id = $1", [id]);
+    await expect(
+      db.query("insert into commerce.platform_incidents (kind, source, fingerprint, title, status) values ('error', 'cron', $1, 'Again', 'open')", [fingerprint]),
+    ).rejects.toThrow(/platform_incidents_fingerprint_key/);
+  });
+
+  it("refuses a status the kind does not have, a proposal from a problem's source, and the fields a status needs left empty", async () => {
+    const insert = (kind: string, source: string, status: string, extra = "") =>
+      db.query(
+        `insert into commerce.platform_incidents (kind, source, fingerprint, title, status${extra ? ", " + extra.split("=")[0] : ""})
+         values ($1, $2, $3, 'T', $4${extra ? ", " + extra.split("=")[1] : ""})`,
+        [kind, source, `test:d895:checks:${(n += 1)}`, status],
+      );
+    await expect(insert("error", "runtime", "proposed")).rejects.toThrow(/platform_incidents_status_kind/);
+    await expect(insert("enhancement", "nightly", "open")).rejects.toThrow(/platform_incidents_status_kind/);
+    await expect(insert("error", "nightly", "open")).rejects.toThrow(/platform_incidents_source_kind/);
+    await expect(insert("error", "runtime", "claimed")).rejects.toThrow(/platform_incidents_claim/);
+    await expect(insert("error", "runtime", "fixed")).rejects.toThrow(/platform_incidents_fixed/);
+    await expect(insert("error", "runtime", "done")).rejects.toThrow(/platform_incidents_done/);
+    await expect(insert("error", "runtime", "open", "fix_commit='not a commit'")).rejects.toThrow(/platform_incidents_commit/);
+    await expect(insert("error", "runtime", "open", "facts='[1]'")).rejects.toThrow(/platform_incidents_json/);
+  });
+
+  it("holds the autopilot's gap to the owner's choices, and is closed to the Data API like every commerce table", async () => {
+    await expect(db.query("update commerce.platform_settings set autopilot_gap_hours = 3")).rejects.toThrow(/platform_settings_autopilot_gap/);
+    await expect(db.query("insert into commerce.platform_autopilot_runs (reason) values ('whenever')")).rejects.toThrow(/platform_autopilot_runs_reason/);
+    for (const table of ["platform_incidents", "platform_incident_events", "platform_autopilot_runs"]) {
+      expect((await one<{ on: boolean }>(`select relrowsecurity as on from pg_class where oid = 'commerce.${table}'::regclass`)).on).toBe(true);
+    }
   });
 });

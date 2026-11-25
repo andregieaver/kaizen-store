@@ -7,11 +7,13 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { STOPPED_AFTER_SECONDS, stoppedJobs } from "@/lib/cron-health";
+import { fingerprintOf } from "@/lib/incidents";
 import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 
 import { cronJobRows } from "./cron-runs";
 import { sendEmail } from "./email";
+import { logIncident } from "./incidents";
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
 
@@ -27,6 +29,16 @@ export async function runWatchdog(now: Date = new Date()): Promise<{ stopped: st
   try {
     stopped = stoppedJobs(await cronJobRows(), now);
     if (stopped.length === 0) return { stopped: [], sent: 0 };
+    // The incident log (D895): each stopped job is an entry for the autopilot; `logIncident()` never throws.
+    for (const s of stopped) {
+      await logIncident({
+        kind: "error",
+        source: "watchdog",
+        fingerprint: fingerprintOf("watchdog", s.job),
+        title: `The scheduler stopped: ${s.job} has not finished a run`,
+        facts: { job: s.job, minutes: s.minutes },
+      });
+    }
     const recipients = await typedRows(
       z.object({ id: col.uuid, email: col.text, admin_locale: col.textOrNull }),
       sql`select id, email, admin_locale from commerce.accounts where platform_admin and disabled_at is null and email <> '' order by id`,
