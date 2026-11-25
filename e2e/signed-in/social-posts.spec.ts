@@ -187,7 +187,7 @@ test("how the store's Facebook Page's posts did, from choosing the Page to its f
     const [store] = await sql`select id from commerce.stores where slug = ${SLUG}`;
     await sql`
       insert into commerce.facebook_pages (store_id, user_token_encrypted, choices, insights)
-      values (${store.id}, ${encryptSecret("stand-in", key)}, ${JSON.stringify([{ id: "5550001", name: "Keramikkverkstedet" }, { id: "5550002", name: "Eva's other shop" }])}::jsonb, true)`;
+      values (${store.id}, ${encryptSecret("stand-in", key)}, ${sql.json([{ id: "5550001", name: "Keramikkverkstedet" }, { id: "5550002", name: "Eva's other shop" }])}, true)`;
   } finally {
     await sql.end();
   }
