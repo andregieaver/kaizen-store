@@ -1,6 +1,6 @@
 {
-  "id": "8a21ed99-1f8a-4ca9-bd6e-50178d2b0d09",
-  "prevId": "bbf5eb9a-e017-43f9-87e6-c8b203178258",
+  "id": "0014f841-d9a3-4039-8ad6-aa48fd7cff90",
+  "prevId": "8a21ed99-1f8a-4ca9-bd6e-50178d2b0d09",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -82948,6 +82948,265 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.social_posts": {
+      "name": "social_posts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topic": {
+          "name": "topic",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "campaign": {
+          "name": "campaign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "caption": {
+          "name": "caption",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hashtags": {
+          "name": "hashtags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "link": {
+          "name": "link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_line": {
+          "name": "price_line",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "copied_at": {
+          "name": "copied_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "social_posts_ref_idx": {
+          "name": "social_posts_ref_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "ref",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "channel",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_list_idx": {
+          "name": "social_posts_list_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_product_idx": {
+          "name": "social_posts_product_idx",
+          "columns": [
+            {
+              "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_created_by_idx": {
+          "name": "social_posts_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "social_posts_store_id_stores_id_fk": {
+          "name": "social_posts_store_id_stores_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "social_posts_product_id_products_id_fk": {
+          "name": "social_posts_product_id_products_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "products",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_created_by_accounts_id_fk": {
+          "name": "social_posts_created_by_accounts_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "social_posts_store_id_key": {
+          "name": "social_posts_store_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "social_posts_channel": {
+          "name": "social_posts_channel",
+          "value": "\"commerce\".\"social_posts\".\"channel\" in ('instagram', 'facebook', 'pinterest', 'tiktok', 'linkedin')"
+        },
+        "social_posts_ref": {
+          "name": "social_posts_ref",
+          "value": "\"commerce\".\"social_posts\".\"ref\" ~ '^[a-z0-9]{12}$'"
+        },
+        "social_posts_texts": {
+          "name": "social_posts_texts",
+          "value": "char_length(\"commerce\".\"social_posts\".\"caption\") between 1 and 3000 and char_length(\"commerce\".\"social_posts\".\"title\") <= 100 and char_length(\"commerce\".\"social_posts\".\"topic\") <= 500 and char_length(\"commerce\".\"social_posts\".\"campaign\") <= 80 and cardinality(\"commerce\".\"social_posts\".\"hashtags\") <= 30"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.speed_samples": {
       "name": "speed_samples",

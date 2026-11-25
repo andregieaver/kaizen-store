@@ -799,6 +799,36 @@ export const marketingEn = {
    * What the server answers in English, said in the person's language by `marketingProblem()` (`src/lib/marketing-words.ts`): matched by the
    * English text, with `{name}` parts carried over. A text not listed stays as the server wrote it.
    */
+  social: {
+    title: "Social posts",
+    description: "Posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn, written in your brand from a product, to copy into each channel.",
+    product: "Product",
+    productHint: "The posts link to this product and can show its price.",
+    noProduct: "No product: write about something else",
+    topic: "What the posts are about",
+    topicHintProduct: "Optional: anything to add, such as an occasion or who it suits.",
+    topicHint: "In a few words, such as an opening, an event or news.",
+    channels: "Channels",
+    customise: "Customise",
+    theme: "Theme",
+    themeHint: "Optional. Posts with the same theme are counted together under Analytics.",
+    withPrice: "Show the price",
+    write: "Write posts",
+    writing: "Writing…",
+    written: "Written. Copy each post into its channel.",
+    copy: "Copy text",
+    copied: "Copied",
+    copyLink: "Copy link",
+    linkNote: "{channel} does not open links in posts: put this link in your profile, a Story or the Pin.",
+    recent: "Your posts",
+    none: "No posts yet. Choose a product and press Write posts.",
+    noAi: "Social posts need an AI with a text model. Set one up under Settings, AI.",
+    readOnly: "You can read the posts; writing them needs marketing rights.",
+    madeAt: "Written {date}",
+    copiedAt: "Copied {date}",
+    notCopied: "Not copied yet",
+    about: "About: {what}",
+  },
   sms: {
     /** Before connecting, drawn for Homer (round 13, D639). */
     leadNotSet: "Texts are not set up.",

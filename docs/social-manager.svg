@@ -25,25 +25,25 @@
 
   <!-- phases -->
   <g font-size="13">
-    <rect x="270" y="96" width="200" height="266" rx="12" fill="#eef2ff" stroke="#6366f1"/>
-    <text x="286" y="122" font-weight="700" fill="#3730a3">1 · Adviser</text>
-    <text x="286" y="150" fill="#1e1b4b">Status-quo report</text>
-    <text x="286" y="172" fill="#1e1b4b">Recommendations</text>
-    <text x="286" y="190" fill="#1e1b4b">as plan steps</text>
-    <text x="286" y="212" fill="#1e1b4b">Content calendar</text>
-    <text x="286" y="234" fill="#1e1b4b">Weekly review</text>
-    <text x="286" y="336" font-size="12" fill="#4338ca">Claude Opus 5.5 · Haiku 5.5</text>
+    <rect x="500" y="96" width="200" height="266" rx="12" fill="#eef2ff" stroke="#6366f1"/>
+    <text x="516" y="122" font-weight="700" fill="#3730a3">2 · Adviser</text>
+    <text x="516" y="150" fill="#1e1b4b">Status-quo report</text>
+    <text x="516" y="172" fill="#1e1b4b">Recommendations</text>
+    <text x="516" y="190" fill="#1e1b4b">as plan steps</text>
+    <text x="516" y="212" fill="#1e1b4b">Content calendar</text>
+    <text x="516" y="234" fill="#1e1b4b">Weekly review</text>
+    <text x="516" y="336" font-size="12" fill="#4338ca">Claude Opus 5.5 · Haiku 5.5</text>
 
-    <rect x="500" y="96" width="200" height="266" rx="12" fill="#ecfdf5" stroke="#10b981"/>
-    <text x="516" y="122" font-weight="700" fill="#065f46">2 · Copy and graphics</text>
-    <text x="516" y="150" fill="#022c22">Captions per channel</text>
-    <text x="516" y="172" fill="#022c22">Pictures composed:</text>
-    <text x="516" y="190" fill="#022c22">real photo + template</text>
-    <text x="516" y="208" fill="#022c22">+ price set by code</text>
-    <text x="516" y="230" fill="#022c22">Vision check</text>
-    <text x="516" y="252" fill="#022c22">Slideshow video</text>
-    <text x="516" y="318" font-size="12" fill="#047857">Claude Sonnet 5.5</text>
-    <text x="516" y="336" font-size="12" fill="#047857">picture model for scenes</text>
+    <rect x="270" y="96" width="200" height="266" rx="12" fill="#ecfdf5" stroke="#10b981"/>
+    <text x="286" y="122" font-weight="700" fill="#065f46">1 · Post creator</text>
+    <text x="286" y="150" fill="#022c22">Caption per channel</text>
+    <text x="286" y="172" fill="#022c22">Pictures composed:</text>
+    <text x="286" y="190" fill="#022c22">real photo + template</text>
+    <text x="286" y="208" fill="#022c22">+ price set by code</text>
+    <text x="286" y="230" fill="#022c22">Copy and paste by hand</text>
+    <text x="286" y="252" fill="#022c22">Tagged link per post</text>
+    <text x="286" y="318" font-size="12" fill="#047857">Claude Sonnet 5.5</text>
+    <text x="286" y="336" font-size="12" fill="#047857">picture model for scenes</text>
 
     <rect x="730" y="96" width="200" height="266" rx="12" fill="#fff7ed" stroke="#f97316"/>
     <text x="746" y="122" font-weight="700" fill="#9a3412">3 · Posting</text>

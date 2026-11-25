@@ -536,6 +536,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   attributes it through `creator_attribute_order()`; a new way to pay, cancel or refund an order needs nothing more, and a new way to place an
   order with a code in play calls it too. The creator's page never names a buyer.
 
+## The social post creator (D870 C1, `src/lib/social-posts.ts` pure, `src/server/social-posts.ts`, `/admin/{store}/social`)
+
+- **The social post creator (D870 C1, `src/lib/social-posts.ts` pure, `src/server/social-posts.ts`, `/admin/{store}/social`)**: posts to copy by
+  hand, one per channel of `POST_CHANNELS`, written only by `writeSocialPosts()` (`marketing:write`, AI feature `social_posts`) from a product's
+  facts in the store's main market or the owner's topic, in the store's main language with `brandGuide()`, and kept only in `social_posts`. The
+  model never writes a price, a stock level or a link: the price line is the shop's price (`priceLines()`) and the link is `postLink()`'s, one
+  reference per batch (`newPostRef()`), so each channel's visits and orders are the post's (S1.1); every caption, title and hashtag passes
+  `postClaims()` (the claims filter and the brand's words to avoid) or nothing is kept. What the owner copies is `copyText()`; a channel that
+  opens no link in a post (`linkInCaption: false`) gets its link to copy apart. A new channel is a key in `POST_CHANNELS` (and the table's check)
+  with its `CHANNEL_SPECS`.
+
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 
 - **Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)**: what a shopper does

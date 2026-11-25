@@ -102,6 +102,9 @@ export const NAV_NB: Record<string, string> = {
   Subscribers: "Abonnenter",
   "People who asked for your emails with news and offers, with what they agreed to and when.":
     "Personer som har bedt om e-poster med nyheter og tilbud, med hva de samtykket til og når.",
+  "Social posts": "Innlegg i sosiale medier",
+  "Posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn, written in your brand from a product, to copy into each channel.":
+    "Innlegg for Instagram, Facebook, Pinterest, TikTok og LinkedIn, skrevet i merkevarens stemme fra et produkt, til å kopiere inn i hver kanal.",
   "Text messages": "SMS",
   "Offers by text message to the numbers that asked for them at checkout, in their daytime.": "Tilbud på SMS til numrene som ba om det i kassen, på dagtid hos dem.",
   "Cart reminders": "Påminnelser om handlekurv",

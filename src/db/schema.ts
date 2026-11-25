@@ -17891,6 +17891,51 @@ export const smsConsentEvents = commerce.table(
 );
 
 /**
+ * A social post the creator wrote (D870 C1, `src/lib/social-posts.ts`, `src/server/social-posts.ts`): for one channel, a caption and hashtags
+ * by the store's writer from a product or the owner's topic, and the tagged link code made with the post's own reference (`ref`, read back
+ * from `visits.content` as `p-{ref}`). The owner copies it into the channel by hand; `copied_at` is when they first pressed Copy. Never a
+ * person; a store's own content, so it leaves in no copy of the store.
+ */
+export const socialPosts = commerce
+  .table(
+    "social_posts",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      channel: text("channel").notNull(),
+      ref: text("ref").notNull(),
+      /** The product it is about, or null for a topic of the owner's own. Kept when the product goes: the post was still made. */
+      productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+      topic: text("topic").notNull().default(""),
+      campaign: text("campaign").notNull().default(""),
+      locale: text("locale").notNull(),
+      title: text("title").notNull().default(""),
+      caption: text("caption").notNull(),
+      hashtags: text("hashtags").array().notNull().default(sql`'{}'::text[]`),
+      link: text("link").notNull(),
+      /** The price as the shop showed it when written, set by code; null for a topic or when the owner leaves it out. */
+      priceLine: text("price_line"),
+      copiedAt: timestamp("copied_at", { withTimezone: true }),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      unique("social_posts_store_id_key").on(t.storeId, t.id),
+      uniqueIndex("social_posts_ref_idx").on(t.storeId, t.ref, t.channel),
+      index("social_posts_list_idx").on(t.storeId, t.createdAt),
+      index("social_posts_product_idx").on(t.productId),
+      index("social_posts_created_by_idx").on(t.createdBy),
+      check("social_posts_channel", sql`${t.channel} in ('instagram', 'facebook', 'pinterest', 'tiktok', 'linkedin')`),
+      check("social_posts_ref", sql`${t.ref} ~ '^[a-z0-9]{12}$'`),
+      check(
+        "social_posts_texts",
+        sql`char_length(${t.caption}) between 1 and 3000 and char_length(${t.title}) <= 100 and char_length(${t.topic}) <= 500 and char_length(${t.campaign}) <= 80 and cardinality(${t.hashtags}) <= 30`,
+      ),
+    ],
+  )
+  .enableRLS();
+
+/**
  * A marketing text (D565): its words, who it is for (every SMS subscriber, or a segment's), and what it cost. A draft is sent once: its
  * messages are made at the start, each waiting for its recipient's hours. Written only by `src/server/sms.ts`.
  */

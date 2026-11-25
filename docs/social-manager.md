@@ -1,6 +1,8 @@
 # The AI social media manager (D870, plan, 23 November 2026)
 
-Status: **agreed with the owner (D870), not started.**
+Status: **agreed with the owner (D870); building.** On 25 November the owner moved the post creator first: posts to copy by hand are
+useful on day one, need no channel's approval, and give the adviser posts to measure. Order now: the creator (C1 words, C2 pictures),
+the adviser (S1.x), posting (S3.x). S1.1 (tagged links) was built first and serves the creator's links.
 
 ![How the social media manager works](social-manager.svg)
 
@@ -26,9 +28,24 @@ that knows the store's goals and its performance, in three phases:
 | Comments and DMs | **Out of scope** of these three phases (a fourth, with the support desk's rules) |
 | Paid boosting | Out of scope; a later step on the ad accounts of D585 and their limits |
 | Pricing | **A paid extension** (the sixth in D748): bought on its own, and may be included in a plan as a grant. Hidden until opted in, 14-day trial, read-only after grace, as every extension |
-| The platform | Kaizena Flow's own accounts get the same feature from `/admin/platform` in the same change (parity rule); the platform always has every extension |
+| The platform | Kaizena Flow's own accounts get the same feature from `/admin/platform` in the same change (parity rule); the platform always has every extension. The creator's first slice (C1) is the stores'; the platform's creator, writing from a topic or a page of kaizenaflow.com since it sells no products, is its next step (C1b) |
+| Order (25 November) | **The post creator first**, for posting by hand, then the adviser, then posting by itself. Its words (C1) before its pictures (C2) |
 
-## 3. Phase 1: the adviser
+## 3. First: the post creator (posting by hand)
+
+The owner chooses a product (or writes what the posts are about) and the channels, and presses *Write posts*; each channel gets a
+caption and hashtags in the store's brand, the price line set by code from the shop's price, and the post's tagged link (S1.1), one
+reference for the batch. *Copy text* puts it on the clipboard; where a channel opens no link in a post (Instagram, TikTok, Pinterest)
+the link is copied on its own for the profile, a Story or the Pin. The posts are kept (`social_posts`) and listed newest first, and
+the first copy of each is noted. Lisa's theme (the link's campaign) and the price line are under *Customise*.
+
+| Step | What | Done when |
+|---|---|---|
+| C1 | The words: `/admin/{store}/social`, `writeSocialPosts()` (`src/server/social-posts.ts`, pure parts `src/lib/social-posts.ts`), the claims filter and the brand's avoided words over every caption and hashtag | An owner copies a post with its tagged link. **Done 2026-11-25** |
+| C1b | The platform's creator at `/admin/platform/social`, from a topic or one of kaizenaflow.com's pages | Kaizena Flow's own posts are written and kept as a store's are |
+| C2 | Pictures: the product's own photo in a template of the store's look, each channel's shape (1:1, 4:5, 9:16), the price set by code; *Download picture* | A post has a picture to download beside its words |
+
+## 4. Then: the adviser
 
 **What it reads**
 
@@ -62,7 +79,7 @@ that knows the store's goals and its performance, in three phases:
 | S1.5 | The weekly review | It arrives once per week per store, claimed before sending |
 | S1.6 | The extension: an id in `EXTENSION_IDS`, its price rows and plan grants, markers and trial | Hidden for an account without it; the platform has it |
 
-## 4. Phase 2: copy and graphics
+## 5. Copy and graphics, in depth
 
 - **Post drafts** per channel: caption, hashtags, alt text and the tagged link, by the brand-aware writer (`brandGuide()`), through
   `findClaims()` and `findAvoided()`; a price or stock level appears only as code placed it.
@@ -83,7 +100,7 @@ that knows the store's goals and its performance, in three phases:
 | S2.4 | The calendar screen, approval per post and per week |
 | S2.5 | Slideshow video |
 
-## 5. Phase 3: posting on a schedule
+## 6. Last: posting on a schedule
 
 - **Publishing**: Meta's content publishing (Instagram and Facebook pages), then Pinterest's API, then TikTok's Content Posting API
   (public posts only after TikTok's audit; private until then), then LinkedIn. Each needs its own app review: started in phase 1.
@@ -106,7 +123,7 @@ that knows the store's goals and its performance, in three phases:
 | S3.5 | TikTok (after the audit) |
 | S3.6 | LinkedIn |
 
-## 6. Models per stage
+## 7. Models per stage
 
 All calls go through the AI settings' provider (the AI Gateway with its EU-only and zero-retention options) and are metered in
 `ai_usage` like every other feature, with the autopilot's budget.
@@ -121,7 +138,7 @@ All calls go through the AI settings' provider (the AI Gateway with its EU-only 
 | Video (later) | Slideshows by code; a generative model later | Cost, consistency and the EU rule |
 | Timing, scheduling, attribution, every figure | Code | Must be exact |
 
-## 7. Pricing (a proposal; every number is a setting)
+## 8. Pricing (a proposal; every number is a setting)
 
 What one store costs Kaizena Flow at 30 posts a month, roughly: the weekly analysis about €3, captions about €2, pictures €3 to €12
 (two tries each, depending on size and quality), checks well under €1: about **€8 to €18**. Checked against the providers' prices
@@ -133,11 +150,11 @@ before the price is set.
 
 Plan grants proposed: included in **Plus**; Advanced gets the adviser (phase 1) only, or nothing. The owner decides when S1.6 starts.
 
-## 8. Still open
+## 9. Still open
 
 Settled by the owner when the step that needs it starts:
 
-1. The price and the plan grants (section 7).
+1. The price and the plan grants (section 8). Until the extension exists (S1.6), the creator is open to every store, its AI metered as any feature's.
 2. Whether the adviser alone (phase 1) is a lower tier of the extension, so owners can start cheaply.
 3. The owner's default rules for *Post on its own*: posts per day per channel, quiet hours.
 4. Which comparable brands, if any, the adviser follows by default for Kaizena Flow's own accounts.

@@ -1,0 +1,111 @@
+import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+import { closeDb, db } from "@/db/client";
+
+import type { Membership } from "./auth";
+
+type Row = Record<string, unknown>;
+
+vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
+
+process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
+
+const { writeSocialPosts, listSocialPosts, markSocialPostCopied, socialProducts } = await import("./social-posts");
+const { getStore } = await import("./stores");
+const { encryptSecret, parseKey } = await import("@/lib/secret-box");
+
+/** The social post creator (D870 C1) against the demo store, with the model's answer handed in (`complete`). */
+
+const run = Date.now().toString(36);
+let member: Membership;
+let productId: string;
+let productTitle: string;
+
+const answer = (posts: unknown) => async () => ({ content: JSON.stringify({ posts }), toolCalls: [] });
+
+beforeAll(async () => {
+  const store = (await getStore("demo"))!;
+  const [account] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`social-${run}@example.com`}, 'Social') returning id, email, name`);
+  member = { account: { id: String(account.id), email: String(account.email), name: String(account.name) }, store, role: "owner" } as unknown as Membership;
+  await db().execute(sql`delete from commerce.ai_providers where store_id = ${store.id}::uuid`);
+  await db().execute(sql`
+    insert into commerce.ai_providers (store_id, provider, api_key_encrypted, api_key_hint, enabled, text_model)
+    values (${store.id}::uuid, 'openai', ${encryptSecret("sk-test", parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!)}, 'test', true, 'text-a')`);
+  const products = await socialProducts(store);
+  expect(products.length).toBeGreaterThan(0);
+  productId = products[0].id;
+  productTitle = products[0].title;
+}, 60_000);
+
+afterAll(async () => {
+  await db().execute(sql`delete from commerce.social_posts where store_id = ${member.store.id}::uuid`);
+  await db().execute(sql`delete from commerce.ai_providers where store_id = ${member.store.id}::uuid`);
+  await closeDb();
+});
+
+describe("the social post creator", () => {
+  it("writes a post per channel about a product, with code's price line and one tagged link per channel, and keeps them", async () => {
+    const result = await writeSocialPosts(
+      member,
+      { productId, channels: ["instagram", "facebook"], campaign: "Spring" },
+      {
+        ref: "abcdef123456",
+        complete: answer([
+          { channel: "instagram", caption: "Slow mornings start here.", hashtags: ["#mugs", "coffee"] },
+          { channel: "facebook", caption: "Meet our favourite for slow mornings.", hashtags: [] },
+        ]),
+      },
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const [ig, fb] = result.posts;
+    expect(ig).toMatchObject({ channel: "instagram", ref: "abcdef123456", caption: "Slow mornings start here.", hashtags: ["mugs", "coffee"] });
+    expect(ig.link).toContain("utm_source=instagram&utm_medium=social&utm_campaign=spring&utm_content=p-abcdef123456");
+    expect(fb.link).toContain("utm_source=facebook");
+    expect(ig.priceLine).toMatch(new RegExp(`^${productTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} · .*\\d`));
+    // Instagram opens no link in a caption, so it is copied apart; Facebook's goes in the text.
+    expect(ig.text).not.toContain("http");
+    expect(fb.text).toContain(fb.link);
+    expect(ig.text.endsWith("#mugs #coffee")).toBe(true);
+
+    const listed = await listSocialPosts(member.store.id);
+    expect(listed.filter((p) => p.ref === "abcdef123456").map((p) => p.channel).sort()).toEqual(["facebook", "instagram"]);
+  });
+
+  it("writes from the owner's topic alone, with no price, linking to the shop's front page", async () => {
+    const result = await writeSocialPosts(
+      member,
+      { topic: "We are open late on Thursdays before Christmas", channels: ["linkedin"] },
+      { complete: answer([{ channel: "linkedin", caption: "Late opening on Thursdays in December.", hashtags: ["christmas"] }]) },
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.posts[0]).toMatchObject({ productId: null, priceLine: null });
+  });
+
+  it("keeps nothing when the AI writes a price or urgency", async () => {
+    const before = (await listSocialPosts(member.store.id)).length;
+    const result = await writeSocialPosts(
+      member,
+      { productId, channels: ["tiktok"] },
+      { complete: answer([{ channel: "tiktok", caption: "Only 199 kr, last chance!", hashtags: [] }]) },
+    );
+    expect(result).toMatchObject({ ok: false });
+    expect((await listSocialPosts(member.store.id)).length).toBe(before);
+  });
+
+  it("refuses without a product or a topic, without a channel, and for a product of another store", async () => {
+    expect(await writeSocialPosts(member, { channels: ["instagram"] })).toEqual({ ok: false, problem: "Choose a product, or say in a few words what the post is about." });
+    expect(await writeSocialPosts(member, { productId, channels: [] })).toEqual({ ok: false, problem: "Choose at least one channel." });
+    expect(await writeSocialPosts(member, { productId: "00000000-0000-4000-8000-000000000000", channels: ["instagram"] })).toMatchObject({ ok: false });
+  });
+
+  it("notes the first copy, only of the store's own post", async () => {
+    const [post] = await listSocialPosts(member.store.id);
+    expect(await markSocialPostCopied(member, post.id)).toBe(true);
+    const [again] = (await listSocialPosts(member.store.id)).filter((p) => p.id === post.id);
+    expect(again.copiedAt).not.toBeNull();
+    expect(await markSocialPostCopied(member, "00000000-0000-4000-8000-000000000000")).toBe(false);
+  });
+});

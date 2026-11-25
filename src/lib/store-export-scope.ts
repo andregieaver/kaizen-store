@@ -189,6 +189,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   fiken_connections: "secret",
   sms_settings: "secret",
   sms_campaigns: "record",
+  social_posts: "record",
   fiken_sync: "record",
   // Which documents went as e-invoices, and their state (D463).
   einvoice_sends: "record",
