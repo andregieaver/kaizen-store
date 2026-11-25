@@ -310,6 +310,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("hosts", "host", via("none"), ["name"], null, "none", OWN),
   entry("blog_authors", "staff", via("none"), ["name", "bio"], null, "none", "The authors of the store's articles (D341), named and described by the store for its own blog. " + OWN),
   entry("wordpress_connections", "owner", via("none"), ["site_name"], null, "none", "A WordPress site an owner connected (D169): its address and name, a hash of its token, never the token. " + OWN),
+  entry("design_connections", "staff", via("none"), ["display_name", "external_user_id"], null, "none", "A person's own Canva account (D898): the name and ids Canva gives, and its tokens kept encrypted; deleted when the person disconnects or their account is erased. " + OWN),
+  entry("design_edits", "staff", via("none"), ["design_id"], null, "none", "Which library picture a person sent to their Canva to edit and the design it became (D898), never a customer. " + OWN),
   entry("referral_entries", "owner", via("none"), ["note"], null, "none", "Referral credit between store owners (D131). " + OWN),
   entry("return_settings", "owner", via("none"), ["return_address"], null, "none", "The store's own return address. " + OWN),
   entry("store_locations", "owner", via("none"), ["name", "phone", "notes"], null, "none", "The store's own places. " + OWN),

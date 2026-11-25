@@ -208,6 +208,22 @@ export function ebayApp(
   return { clientId, clientSecret, ruName };
 }
 
+/**
+ * Kaizena Flow's public integration at Canva (D898, `docs/design-tools.md`): its client id and secret from Canva's Developer Portal, with
+ * `{SITE_URL}/api/integrations/canva/callback` as its redirect URL and `{SITE_URL}/api/integrations/canva/return` as its return URL. Null
+ * without both: nothing Canva is offered.
+ */
+export function canvaApp(
+  source: Record<string, string | undefined> = { CANVA_CLIENT_ID: process.env.CANVA_CLIENT_ID, CANVA_CLIENT_SECRET: process.env.CANVA_CLIENT_SECRET },
+): { clientId: string; clientSecret: string } | null {
+  const clientId = source.CANVA_CLIENT_ID?.trim();
+  const clientSecret = source.CANVA_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  if (!/^[A-Za-z0-9_-]{6,128}$/.test(clientId)) throw new Error("CANVA_CLIENT_ID must be the client ID of Kaizena Flow's integration at Canva.");
+  if (clientSecret.length < 8 || clientSecret.length > 512 || /\s/.test(clientSecret)) throw new Error("CANVA_CLIENT_SECRET must be the client secret of Kaizena Flow's integration at Canva.");
+  return { clientId, clientSecret };
+}
+
 export type SesEnv = { accessKeyId: string; secretAccessKey: string; region: string; configurationSet: string | null; topicArn: string | null };
 
 /**

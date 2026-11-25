@@ -18,6 +18,7 @@ import { compressPlan } from "@/lib/media-compress";
 import { EDIT_ACTIONS, EDIT_BRIEF_MAX, EDIT_BRIEF_MIN, needsBrief, type EditAction } from "@/lib/picture-edit";
 
 import { useAdminLang, useAdminText } from "./admin-text";
+import { CanvaPanel, EditInCanva, type CanvaTools } from "./canva-media";
 import { uploadPicture, type Saving, type Upload } from "./image-upload";
 import { compressLibraryFile, type CompressActions } from "./media-compress";
 import { Modal } from "./modal";
@@ -105,6 +106,7 @@ export function MediaLibrary({
   compress,
   waiting,
   pictures,
+  canva,
   timeZone,
 }: {
   items: MediaItem[];
@@ -130,6 +132,8 @@ export function MediaLibrary({
   waiting: number;
   /** Making and editing pictures with the site's AI (D349): the routes, null where the site has no such model, and where its AI settings are. */
   pictures?: PictureTools;
+  /** The person's own Canva (D898): *Import from Canva* and *Edit in Canva*; null where Kaizena Flow's integration at Canva is not set up. */
+  canva?: CanvaTools | null;
   /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own library: when each file was added, on that clock (D812). */
   timeZone: string;
 }) {
@@ -192,6 +196,17 @@ export function MediaLibrary({
             <MakePictureButton place="library" onMade={() => router.refresh()} />
           </div>
         </PictureMakerProvider>
+      )}
+
+      {canva && (
+        <CanvaPanel
+          canva={canva}
+          basePath={basePath}
+          onOpen={(id) => {
+            setOpenId(id);
+            router.refresh();
+          }}
+        />
       )}
 
       {/* Round 52 (D788): on a phone the alt texts and the search are rows of one card, each saying what it holds; from `sm` up as before. */}
@@ -412,6 +427,7 @@ export function MediaLibrary({
           languages={languages}
           altAi={altAi}
           pictures={pictures}
+          canva={canva ?? null}
           onOpen={(id) => {
             setOpenId(id);
             router.refresh();
@@ -549,6 +565,7 @@ function Details({
   languages,
   altAi,
   pictures,
+  canva,
   onOpen,
   onCompressed,
   onClose,
@@ -561,6 +578,7 @@ function Details({
   languages: AltLanguage[];
   altAi: boolean;
   pictures?: PictureTools;
+  canva: CanvaTools | null;
   onOpen: (id: string) => void;
   onCompressed: () => void;
   onClose: () => void;
@@ -633,6 +651,7 @@ function Details({
           {item.editedFrom && <p className="text-sm text-muted">{w.editedFrom}</p>}
           {compress && <CompressOne item={item} compress={compress} onCompressed={onCompressed} />}
           {item.kind === "image" && pictures && <EditWithAi item={item} pictures={pictures} onOpen={onOpen} />}
+          {item.kind === "image" && canva && <EditInCanva item={item} canva={canva} />}
           {item.kind === "image" && <AltTextForm item={item} languages={languages} altAi={altAi} actions={actions} />}
         </div>
       </Modal>

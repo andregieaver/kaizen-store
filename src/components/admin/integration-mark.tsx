@@ -16,6 +16,7 @@ const TONES: Record<string, string> = {
   dhl_paket: "bg-red-700 text-yellow-300",
   nshift: "bg-teal-800 text-white",
   sendcloud: "bg-cyan-800 text-white",
+  canva: "bg-teal-600 text-white",
 };
 
 export function IntegrationMark({ id }: { id: string }) {

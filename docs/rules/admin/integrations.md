@@ -697,3 +697,26 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`src/lib/ebay.ts`). A listing's price is the store's own for a market in the marketplace's currency, its quantity the store's
   own stock; an eBay order draws stock from own locations with a stock context and is never a shop order (eBay takes the payment
   and gives the receipt). Another marketplace gets its own module beside it and its own `channel` value.
+
+## Canva (D898, `docs/design-tools.md` C1, `src/lib/canva.ts`, `src/server/canva.ts`, `src/server/canva-route.ts`, `CanvaPanel`/`EditInCanva` in `src/components/admin/canva-media.tsx`)
+
+- **Canva (D898, `docs/design-tools.md` C1, `src/lib/canva.ts`, `src/server/canva.ts`, `src/server/canva-route.ts`)**: a person's own Canva,
+  not a store's (Canva's edit links work only for the Canva user who owns the design): `commerce.design_connections`, one per account and
+  `provider`, written only by `canva.ts` (and deleted by `account-erasure.ts`), connected by anyone signed in (`connectCanvaAction`, from a
+  media library, a store's Integrations → Canva or Account → Connected apps) and used in a library only where the person may change its
+  pictures (`website:write`, or a platform admin's `website` for Kaizena Flow's). Off without `CANVA_CLIENT_ID` and `CANVA_CLIENT_SECRET`
+  (`canvaApp()`, `canvaOffered()`). Connect is Canva's authorization code with PKCE (S256) and only `CANVA_SCOPES`; the state, the person and
+  the `back` page (an admin path, `safeBack()`) travel sealed in `kaizen_canva` on `/api/integrations/canva` only, and the callback refuses
+  unless the person signed in now is the one who pressed. Tokens are kept encrypted, never logged or audited, and refreshed only inside
+  `canvaAccess()`'s transaction that locks the row (Canva's refresh tokens work once); a refusal keeps the row with its `problem` and the
+  admin asks the person to connect again. Every call to Canva goes through `canvaCall()` with an injectable `fetch`. *Edit in Canva* reads
+  the picture's own file by its row (never an address), sends it as a PNG asset, makes a design of its size (`designSize()`) and keeps
+  `commerce.design_edits` with the correlation only as its SHA-256; the browser goes to the edit link with `correlation_state`. Canva's
+  *Return* (`/api/integrations/canva/return`) is believed only through `readCanvaReturn()`: Ed25519 (`EdDSA`) against Canva's keys, our client
+  id, type `rti`, not over, and Canva's user the one whose connection made the edit; the design is then brought back by the library
+  (`bringBackFromCanva()`, the person's own edit only). Whatever comes from Canva (an edited copy or an import) is exported as PNG, read only
+  from `isCanvaFile()` hosts, shrunk by `shrinkPicture()`, counted by `storageRefusal()` and kept by `storePicture()` as a **new** item with
+  `made_by = 'canva'` (an edit names `edited_from`); the original is never overwritten. Thumbnails in *Import from Canva* go through
+  `/api/integrations/canva/thumbnail`, which reads only addresses this server signed (`thumbnailAddress()`) from Canva's file hosts. Only
+  what the person presses leaves: never a customer's data. A new tool is a `provider` in both tables' checks with its own module beside
+  this one, through the same tables (`docs/design-tools.md` sections 3 and 4).
