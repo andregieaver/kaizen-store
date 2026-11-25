@@ -350,6 +350,9 @@ export const NOT_PERSONAL: Record<string, string> = {
   status_checks: "The status page's checks (D360): a component, passed or not and a reason code; no person.",
   status_incidents: "Incidents on the status page (D360): a platform admin's words and the parts affected; staff only by id.",
   status_incident_updates: "Updates to incidents on the status page (D360): a platform admin's words; staff only by id.",
+  platform_incidents: "The incident log (D895): the platform's errors, warnings and suggested improvements, with ids and counts as facts (never a person's data), a store only by id, staff only by id; closed entries kept 180 days.",
+  platform_incident_events: "Each change and note of an incident (D895): statuses, a note written by staff or the autopilot, staff only by id; goes with its incident.",
+  platform_autopilot_runs: "The incident autopilot's runs (D895): why and when each started, a session link and counts; staff only by id, kept 180 days.",
   site_staging_pages: "Which pages a set of changes made ready together holds (D358): ids only.",
   workflow_runs: "Each run of a workflow (D356): the event, the id of what it was about, whether its conditions held and each action's outcome; no name, address or words of a customer, kept 90 days.",
   api_uploads: "A picture an Admin API caller sends (D440): where it waits in the private imports bucket, its type and size, the token and the library item it became; no name or words.",
@@ -715,6 +718,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.status_alert": "staff",
   "platform.job_failing": "staff",
   "platform.watchdog": "staff",
+  /** The incident log's daily summary (D895), to platform admins: titles and counts of the platform's own problems, never a customer. */
+  "platform.incident_digest": "staff",
   /** What holds a challenge store up (`docs/100-day-challenge.md` A6), to platform admins: the store's name, the kind and a count, never a customer. */
   "platform.challenge_stall": "staff",
   "referral.credit_applied": "staff",

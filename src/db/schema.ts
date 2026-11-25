@@ -42,6 +42,7 @@ import {
   type PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
 import { FLOW_TRIGGERS } from "../lib/flow-triggers";
+import { AUTOPILOT_GAPS, AUTOPILOT_REASONS, ENHANCEMENT_ONLY, INCIDENT_KINDS, INCIDENT_LIMITS, INCIDENT_SOURCES, INCIDENT_STATUSES, PROBLEM_ONLY } from "../lib/incidents";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { LIMIT_KEYS } from "../lib/limits";
 import { EXTENSION_IDS, EXTENSION_SOURCES } from "../lib/extensions";
@@ -144,6 +145,8 @@ const auditAreaList = sql.raw(AUDIT_AREA_KEYS.map((k) => `'${k}'`).join(", "));
 /** The kinds of data a retention rule can be for (wave 1, 1g: `src/lib/retention.ts`), as a SQL list for a check. */
 const retentionKindList = sql.raw(RETENTION_KINDS.map((k) => `'${k}'`).join(", "));
 const sqlList = (values: readonly string[]) => sql.raw(values.map((k) => `'${k}'`).join(", "));
+/** A number of the code's own (a limit or a list of them) written into a check: digits only, never text from outside. */
+const sqlNumbers = (...values: readonly number[]) => sql.raw(values.map((n) => String(Math.trunc(n))).join(", "));
 /** A number from `src/lib/order-limits.ts` written into a check, so the database and the code say the same. */
 const lit = (n: number) => sql.raw(String(n));
 /**
@@ -2054,6 +2057,13 @@ export const platformSettings = commerce.table(
     /** When the switch was last turned on or off, and by whom (D484). */
     siteFromStoreAt: timestamp("site_from_store_at", { withTimezone: true }),
     siteFromStoreBy: uuid("site_from_store_by").references(() => accounts.id),
+    /**
+     * The incident log's autopilot (D895): off until a platform admin turns it on, and the shortest gap in hours between runs the app wakes
+     * (`AUTOPILOT_GAPS`, 4 by default). The day the 07:00 summary email last went, so each day's goes once.
+     */
+    autopilotOn: boolean("autopilot_on").notNull().default(false),
+    autopilotGapHours: smallint("autopilot_gap_hours").notNull().default(4),
+    incidentDigestLastDay: date("incident_digest_last_day", { mode: "string" }),
     /** Raised by one by every writer of commerce.ui_translations (bloat review step 0.8): an instance polls this one row, not the table. */
     uiTextVersion: bigint("ui_text_version", { mode: "number" }).notNull().default(0),
     updatedAt: updatedAt(),
@@ -2061,6 +2071,7 @@ export const platformSettings = commerce.table(
   },
   (t) => [
     check("platform_settings_briefing", sql`${t.briefing} in ('off', 'daily', 'weekly')`),
+    check("platform_settings_autopilot_gap", sql`${t.autopilotGapHours} in (${sqlNumbers(...AUTOPILOT_GAPS)})`),
     check("platform_settings_founding_months", sql`${t.extensionFoundingMonths} between 1 and 36`),
     check("platform_settings_price_tuning", sql`${t.priceTuning} in ('off', 'propose', 'auto')`),
     check("platform_settings_extension_upsell", sql`${t.extensionUpsellPercent} between 0 and 100`),
@@ -22096,6 +22107,122 @@ export const platformTargets = commerce.table(
     check("platform_targets_value", sql`${t.targetValue} > 0`),
   ],
 );
+
+/**
+ * The incident log (D895, `docs/audits/incident-autopilot-2026-11.md`): one row per problem or proposal, met by its `fingerprint` (one row
+ * per fingerprint until pruned, so a repeat counts and a dismissed proposal is remembered). Written only by `src/server/incidents.ts`; the
+ * moves between statuses are `INCIDENT_MOVES` (`src/lib/incidents.ts`), held by the trigger `platform_incidents_move`. `facts` and
+ * `evidence` hold ids and counts only, never a person's data or a secret.
+ */
+export const platformIncidents = commerce.table(
+  "platform_incidents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    source: text("source").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    title: text("title").notNull(),
+    facts: jsonb("facts").notNull().default({}),
+    evidence: jsonb("evidence").notNull().default({}),
+    /** The store that met the problem, for context only: the log is the platform's, never a store's own row (not `store_id`). */
+    aboutStoreId: uuid("about_store_id").references(() => stores.id, { onDelete: "set null" }),
+    status: text("status").notNull(),
+    occurrences: integer("occurrences").notNull().default(1),
+    reopenedCount: integer("reopened_count").notNull().default(0),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    claimedBy: text("claimed_by"),
+    claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
+    fixCommit: text("fix_commit"),
+    fixNote: text("fix_note"),
+    fixedAt: timestamp("fixed_at", { withTimezone: true }),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("platform_incidents_fingerprint_key").on(t.fingerprint),
+    index("platform_incidents_status_idx").on(t.status, t.lastSeenAt),
+    index("platform_incidents_store_idx").on(t.aboutStoreId),
+    index("platform_incidents_decided_by_idx").on(t.decidedBy),
+    check("platform_incidents_kind", sql`${t.kind} in (${sqlList(INCIDENT_KINDS)})`),
+    check("platform_incidents_source", sql`${t.source} in (${sqlList(INCIDENT_SOURCES)})`),
+    check("platform_incidents_status", sql`${t.status} in (${sqlList(INCIDENT_STATUSES)})`),
+    check(
+      "platform_incidents_status_kind",
+      sql`case when ${t.kind} = 'enhancement' then ${t.status} not in (${sqlList(PROBLEM_ONLY)}) else ${t.status} not in (${sqlList(ENHANCEMENT_ONLY)}) end`,
+    ),
+    check("platform_incidents_source_kind", sql`${t.source} not in ('nightly', 'platform_ai', 'owner') or ${t.kind} = 'enhancement'`),
+    check(
+      "platform_incidents_texts",
+      sql`char_length(${t.fingerprint}) between 1 and ${sqlNumbers(INCIDENT_LIMITS.fingerprint)} and char_length(${t.title}) between 1 and ${sqlNumbers(INCIDENT_LIMITS.title)} and char_length(coalesce(${t.fixNote}, '')) <= ${sqlNumbers(INCIDENT_LIMITS.note)} and char_length(coalesce(${t.claimedBy}, '')) <= 300`,
+    ),
+    check(
+      "platform_incidents_json",
+      sql`jsonb_typeof(${t.facts}) = 'object' and jsonb_typeof(${t.evidence}) = 'object' and octet_length(${t.facts}::text) <= ${sqlNumbers(INCIDENT_LIMITS.factsBytes)} and octet_length(${t.evidence}::text) <= ${sqlNumbers(INCIDENT_LIMITS.factsBytes)}`,
+    ),
+    check("platform_incidents_counts", sql`${t.occurrences} >= 1 and ${t.reopenedCount} >= 0`),
+    check("platform_incidents_claim", sql`${t.status} <> 'claimed' or (${t.claimedBy} is not null and ${t.claimExpiresAt} is not null)`),
+    check("platform_incidents_fixed", sql`${t.status} <> 'fixed' or (${t.fixCommit} is not null and ${t.fixedAt} is not null)`),
+    check("platform_incidents_commit", sql`${t.fixCommit} is null or ${t.fixCommit} ~ '^[0-9a-f]{7,40}$'`),
+    check("platform_incidents_done", sql`${t.status} <> 'done' or ${t.doneAt} is not null`),
+  ],
+).enableRLS();
+
+/** Every status change and note of an incident (D895): who (an account, or the autopilot's session link) and when; nothing is overwritten. */
+export const platformIncidentEvents = commerce.table(
+  "platform_incident_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    incidentId: uuid("incident_id")
+      .notNull()
+      .references(() => platformIncidents.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    session: text("session"),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status"),
+    note: text("note"),
+  },
+  (t) => [
+    index("platform_incident_events_incident_idx").on(t.incidentId, t.at),
+    index("platform_incident_events_account_idx").on(t.accountId),
+    check("platform_incident_events_note", sql`char_length(coalesce(${t.note}, '')) <= ${sqlNumbers(INCIDENT_LIMITS.note)} and char_length(coalesce(${t.session}, '')) <= 300`),
+    check("platform_incident_events_something", sql`${t.toStatus} is not null or ${t.note} is not null`),
+  ],
+).enableRLS();
+
+/**
+ * The autopilot's runs (D895): each wake the app asks for and each run a session reports, why it started, when, and what it did, so the gap
+ * between woken runs and the daily summary are worked out in code. `requested_at` is when the app decided a run is wanted; `sent_at` when it
+ * woke the scheduled task; `started_at` and `finished_at` are the session's own reports.
+ */
+export const platformAutopilotRuns = commerce.table(
+  "platform_autopilot_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reason: text("reason").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    requestedBy: uuid("requested_by").references(() => accounts.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    session: text("session"),
+    summary: text("summary"),
+    claimed: integer("claimed").notNull().default(0),
+    fixed: integer("fixed").notNull().default(0),
+    proposed: integer("proposed").notNull().default(0),
+  },
+  (t) => [
+    index("platform_autopilot_runs_requested_idx").on(t.requestedAt),
+    index("platform_autopilot_runs_requested_by_idx").on(t.requestedBy),
+    check("platform_autopilot_runs_reason", sql`${t.reason} in (${sqlList(AUTOPILOT_REASONS)})`),
+    check("platform_autopilot_runs_texts", sql`char_length(coalesce(${t.summary}, '')) <= ${sqlNumbers(INCIDENT_LIMITS.note)} and char_length(coalesce(${t.session}, '')) <= 300`),
+    check("platform_autopilot_runs_counts", sql`${t.claimed} >= 0 and ${t.fixed} >= 0 and ${t.proposed} >= 0`),
+  ],
+).enableRLS();
 
 /**
  * A store's own turnover thresholds (the threshold watch, D514, section 4.4 of `docs/own-books-and-sales.md`): an amount over twelve months

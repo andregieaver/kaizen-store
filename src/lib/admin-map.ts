@@ -1364,6 +1364,11 @@ const PAGES: readonly MapEntry[] = [
   platform("emails", "/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup."),
   platform("email", "/emails/[emailId]", "Email", "One email."),
   platform("ai", "/ai", "AI", "Kaizena Flow's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
+  platform("incidents", "/incidents", "Incidents", "The incident log (D895): every error and warning the platform meets and every improvement suggested, what needs the owner, what is being fixed and what was fixed; ideas to add and the autopilot's settings.", {
+    keywords: ["incident", "error", "warning", "bug", "autopilot", "improvement", "idea", "approve"],
+    tasks: ["Approve or dismiss a suggested improvement", "See what was fixed", "Add an idea", "Turn the autopilot on or off"],
+  }),
+  platform("incident", "/incidents/[id]", "Incident", "One entry of the incident log: its facts, evidence and history, and the decisions it allows."),
   platform("status", "/status", "Status page", "The public status page: each part's checks, incidents to post and update, and how many subscribe.", {
     keywords: ["status", "incident", "outage", "uptime", "downtime", "maintenance"],
     tasks: ["Post an incident", "Update or resolve an incident", "See the latest checks"],
@@ -1651,6 +1656,8 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   "store:analytics.companies",
   // Find companies (D893): Kaizena Flow's own store only until P5.3's legal reading, for the same reason.
   "store:prospects",
+  // The incident log (D895): named in the AI's map once its autopilot is connected (phase 2) and the eval is recorded with it.
+  "platform:incidents",
 ]);
 
 /** The map as the AI reads it: every page without params, by the menu's sections, each by the menu's word (D881). */

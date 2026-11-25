@@ -104,11 +104,12 @@ describe("the platform admin's sections (D144), one structure (D877)", () => {
       ["AI", 4],
       ["Apps and connections", 4],
       ["Privacy and law", 3],
-      ["Running the platform", 8],
+      ["Running the platform", 9],
     ]);
     // The sidebar draws them under its headings (in D873's one style), and the page of cards under the same words.
     expect(areas.find((a) => a.section === "settings")!.groups.map((g) => g.heading)).toEqual(settings.groups.map((g) => g.heading));
     expect(settings.groups.find((g) => g.heading === "Running the platform")!.items.map((i) => i.label)).toEqual([
+      "Incidents",
       "Status page",
       "Usage and limits",
       "Emails",
@@ -148,7 +149,7 @@ describe("the platform's Basic view (D884, as a store's D454)", () => {
       website: ["Pages", "Blog", "Media", "Menus", "Forms", "Design"],
       plans: ["Editor", "Accounts", "Plan analytics", "Discounts"],
       support: ["Inbox", "Support reports", "Chat assistant"],
-      settings: ["Header and footer", "VAT rates", "Domains", "AI usage", "100-day challenge", "App listings", "Content notices", "Status page", "Usage and limits", "Emails", "Team"],
+      settings: ["Header and footer", "VAT rates", "Domains", "AI usage", "100-day challenge", "App listings", "Content notices", "Incidents", "Status page", "Usage and limits", "Emails", "Team"],
     });
     // Each of Settings' six groups keeps an everyday page, so Basic still shows every group.
     const settings = platformSection("settings");

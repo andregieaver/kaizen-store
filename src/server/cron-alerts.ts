@@ -8,10 +8,12 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { FAILING_AFTER } from "@/lib/cron-health";
+import { fingerprintOf } from "@/lib/incidents";
 import { renderEmail, type RenderedEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail } from "./email";
+import { logIncident } from "./incidents";
 import { log } from "./log";
 
 type Row = Record<string, unknown>;
@@ -23,6 +25,14 @@ type Row = Record<string, unknown>;
  * ledger keeps it. Never throws: the platform home shows the job failing anyway.
  */
 export async function alertFailingJob(job: string, facts: { failedAt: Date; lastOkAt: string | null; error: string | null }): Promise<void> {
+  // The incident log (D895): the failing job is one entry for the autopilot, whatever the emails do; `logIncident()` never throws.
+  await logIncident({
+    kind: "error",
+    source: "cron",
+    fingerprint: fingerprintOf("cron", job),
+    title: `Scheduled job ${job} is failing`,
+    facts: { job, failedAt: facts.failedAt.toISOString(), lastOkAt: facts.lastOkAt, error: (facts.error ?? "").slice(0, 500) || null },
+  });
   try {
     const admins = await db().execute<Row>(sql`
       select id, email, admin_locale from commerce.accounts where platform_admin and disabled_at is null and email <> ''

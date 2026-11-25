@@ -10,6 +10,7 @@ import { db } from "@/db/client";
 import { countActiveMarkets } from "@/db/health";
 import { atomFeed, type AtomEntry } from "@/lib/atom";
 import { jobsCheck } from "@/lib/cron-health";
+import { fingerprintOf } from "@/lib/incidents";
 import { renderEmail } from "@/lib/email-layout";
 import { emailSetup } from "@/lib/email-settings";
 import { publicEnv } from "@/lib/env";
@@ -45,6 +46,7 @@ import { ownConnection, testAi } from "./ai";
 import { audit, type Account } from "./auth";
 import { cronJobRows } from "./cron-runs";
 import { sendEmail } from "./email";
+import { logIncident } from "./incidents";
 import { log } from "./log";
 import { connectWebhookUrl, platformStripe, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
@@ -255,7 +257,17 @@ export async function runStatusChecks(probes: Probes = PROBES): Promise<{ measur
       measured++;
       if (!probe.ok) {
         failedCount++;
-        if (await alertAdmins(component)) alerts++;
+        if (await alertAdmins(component)) {
+          alerts++;
+          // The incident log (D895): a part that failed twice in a row (the email's own rule, so one blip is not an entry); never throws.
+          await logIncident({
+            kind: "error",
+            source: "status",
+            fingerprint: fingerprintOf("status", component),
+            title: `Status check failing: ${component}`,
+            facts: { component, reason: probe.reason ?? "error", ms: probe.ms ?? null },
+          });
+        }
       }
     } catch (error) {
       report(error, "record");

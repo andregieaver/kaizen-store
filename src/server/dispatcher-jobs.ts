@@ -1,6 +1,7 @@
 import "server-only";
 
 import { runEbayJobs } from "@/server/ebay";
+import { runIncidentJobs } from "@/server/incident-jobs";
 import { sendOwnerJourney } from "@/server/owner-journey";
 import { runSms } from "@/server/sms";
 import { runSupplierOrders } from "@/server/supplier-orders";
@@ -131,6 +132,8 @@ export const DISPATCHER_JOBS = {
   platformBooks: () => runPlatformBooks(),
   // The platform's morning briefing (D513): at seven in Oslo, daily or on Mondays, once a period, to its owners and finance.
   platformBriefing: () => sendPlatformBriefing(),
+  // The incident log (D895): claims past their time released and quiet fixes done each run; from seven in Oslo, once a day, old entries pruned.
+  incidents: () => runIncidentJobs(),
   // Fiken (D460): the same for stores whose Fiken connection is on, booked as sales (Annet salg), within 40 seconds.
   fiken: () => syncDueFiken(),
   // The AI's single-use cards (D599): each open card's charges read, and the card closed once charged or out of time.
