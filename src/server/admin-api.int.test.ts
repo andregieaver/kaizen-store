@@ -1001,6 +1001,43 @@ describe("content, the store and operations (D440 C4)", () => {
     expect((await call("GET", `pages/${child.body.data.id}`, writer.token)).body.data.slug).toBe(`api-moved-${run}/child`);
   });
 
+  it("builds a draft page from a Figma frame (D898 F2), and refuses a frame it cannot read", async () => {
+    const writer = await makeApiToken(store.member, { name: "Figma plugin", scopes: ["content:write"] });
+    if (!writer.ok) throw new Error(writer.problem);
+    const ink = { r: 0.1, g: 0.1, b: 0.1, a: 1 };
+    const run = (t: string, size: number) => ({ t, family: "Fancy Grotesk Pro", style: "Regular", weight: size > 30 ? 700 : 400, size, color: ink, line: size * 1.3, tracking: 0 });
+    const desktop = {
+      name: "Figma hero",
+      width: 1440,
+      height: 600,
+      tree: {
+        id: "1:1",
+        type: "FRAME",
+        name: "Figma hero",
+        box: [0, 0, 1440, 600],
+        children: [
+          {
+            id: "1:2",
+            type: "FRAME",
+            name: "Hero",
+            box: [0, 0, 1440, 600],
+            layout: { mode: "VERTICAL", wrap: false, gap: 24, crossGap: 0, padding: [96, 120, 96, 120], main: "MIN", cross: "MIN" },
+            children: [
+              { id: "1:3", type: "TEXT", name: "Title", box: [120, 96, 800, 80], text: { align: "LEFT", runs: [run("Made in Figma", 64)] } },
+              { id: "1:4", type: "TEXT", name: "Lead", box: [120, 200, 800, 48], text: { align: "LEFT", runs: [run("Sent by the Kaizena Flow plugin.", 18)] } },
+            ],
+          },
+        ],
+      },
+    };
+    const made = await call("POST", "pages/import", writer.token, { source: "figma", file: "Shop.fig", desktop, pictures: {} });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    expect(made.body.data.edit_url).toMatch(new RegExp(`/admin/${store.slug}/pages/${made.body.data.id}$`));
+    expect(made.body.data.notes.some((n: string) => n.includes("Fancy Grotesk Pro"))).toBe(true);
+    expect((await call("GET", `pages/${made.body.data.id}`, writer.token)).body.data.state).toBe("draft");
+    expect((await call("POST", "pages/import", writer.token, { source: "figma", desktop: { name: "x" }, pictures: {} })).status).toBe(422);
+  });
+
   it("writes and publishes a content entry, checked by its type's fields", async () => {
     const { saveContentType } = await import("./content-types");
     const title = { id: "f_apititle001", name: "name", label: "Name", type: "text", access: "public", width: 100 } as const;
@@ -1285,6 +1322,14 @@ describe("every operation's answer (D438)", () => {
     if (!contract.ok) throw new Error(contract.problem);
     expect((await call("GET", "contracts", full)).status).toBe(200);
     expect((await call("GET", `contracts/${contract.id}`, full)).status).toBe(200);
+    // The CRM (D902, D901 P29), read with customers:read; its own cases are admin-api-crm.int.test.ts.
+    const task = await (await import("./activities")).createActivity(store.member, { kind: "task", title: "API task", dealId: deal.id, dueOn: "2026-12-01" });
+    if (!task.ok) throw new Error("activity");
+    const [company] = await db().execute<{ id: string }>(sql`
+      insert into commerce.customer_companies (store_id, name) values (${store.storeId}::uuid, ${`API company ${Date.now()}`}) returning id`);
+    for (const path of ["pipelines", "deals", `deals/${deal.id}`, "activities", `activities/${task.id}`, "leads", "companies", `companies/${company.id}`]) {
+      expect((await call("GET", path, full)).status).toBe(200);
+    }
     expect([...parsed].sort()).toEqual(Object.keys(ADMIN_API_BY_NAME).sort());
   });
 });

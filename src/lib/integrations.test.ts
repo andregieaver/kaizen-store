@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { checkWebhookUrl, webhookHint } from "./integrations";
+import { checkWebhookUrl, isServiceEventOf, SERVICE_EVENTS, serviceEventsOf, webhookHint } from "./integrations";
 
 /** A made-up Slack webhook, put together here so secret scanners do not take it for a real one. */
 const slackHook = (team: string, bot: string, secret: string) => ["https://hooks.slack.com/services", team, bot, secret].join("/");
@@ -59,5 +59,32 @@ describe("Slack's webhook addresses (D101)", () => {
       expect(checkWebhookUrl("slack", url).ok, url).toBe(false);
     }
     expect(checkWebhookUrl("zapier", SLACK).ok).toBe(false);
+  });
+});
+
+describe("what each service may be sent (D902, D901 P29)", () => {
+  it("sends Zapier and Make the deals', activities' and leads' events", () => {
+    for (const provider of ["zapier", "make"] as const) {
+      const ids = serviceEventsOf(provider).map((e) => e.id);
+      for (const id of ["deal.created", "deal.stage_changed", "deal.won", "deal.lost", "activity.created", "activity.done", "lead.dismissed", "lead.deal_made"]) {
+        expect(ids).toContain(id);
+        expect(isServiceEventOf(provider, id)).toBe(true);
+      }
+    }
+  });
+
+  it("tells Slack of deals but not of each activity or lead decision", () => {
+    const ids = serviceEventsOf("slack").map((e) => e.id);
+    expect(ids).toEqual(expect.arrayContaining(["deal.created", "deal.stage_changed", "deal.won", "deal.lost"]));
+    for (const id of ["activity.created", "activity.done", "lead.dismissed", "lead.deal_made"]) {
+      expect(ids).not.toContain(id);
+      expect(isServiceEventOf("slack", id)).toBe(false);
+    }
+  });
+
+  it("keeps the rest an owner's own endpoints' only", () => {
+    expect(isServiceEventOf("zapier", "inventory.updated")).toBe(false);
+    expect(isServiceEventOf("make", "customer.erased")).toBe(false);
+    expect(SERVICE_EVENTS.every((e) => isServiceEventOf("zapier", e.id))).toBe(true);
   });
 });

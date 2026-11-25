@@ -13,6 +13,7 @@ import { answerContent, CONTENT_NAMES, type ContentRoute } from "./admin-api-con
 import { answerCustomers, CUSTOMERS_NAMES, type CustomersRoute } from "./admin-api-customers";
 import { answerForms, FORMS_NAMES, type FormsRoute } from "./admin-api-forms";
 import { answerContracts, CONTRACTS_NAMES, type ContractsRoute } from "./admin-api-contracts";
+import { answerCrm, CRM_NAMES, type CrmRoute } from "./admin-api-crm";
 import { answerOrders, ORDERS_NAMES, type OrdersRoute } from "./admin-api-orders";
 import {
   asTool,
@@ -186,8 +187,9 @@ const isCustomers = (route: ApiRoute): route is CustomersRoute => (CUSTOMERS_NAM
 const isContent = (route: ApiRoute): route is ContentRoute => (CONTENT_NAMES as readonly string[]).includes(route.name);
 const isForms = (route: ApiRoute): route is FormsRoute => (FORMS_NAMES as readonly string[]).includes(route.name);
 const isContracts = (route: ApiRoute): route is ContractsRoute => (CONTRACTS_NAMES as readonly string[]).includes(route.name);
+const isCrm = (route: ApiRoute): route is CrmRoute => (CRM_NAMES as readonly string[]).includes(route.name);
 /** The operations of unit A and before, answered here; each slice of wave 14 unit C answers its own (D440). */
-type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute | ContentRoute | FormsRoute | ContractsRoute>;
+type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute | ContentRoute | FormsRoute | ContractsRoute | CrmRoute>;
 
 async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
   if (isCatalogue(route)) return answerCatalogue(caller, route, request);
@@ -196,6 +198,7 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
   if (isContent(route)) return answerContent(caller, route, request);
   if (isForms(route)) return answerForms(caller, route, request);
   if (isContracts(route)) return answerContracts(caller, route, request);
+  if (isCrm(route)) return answerCrm(caller, route, request);
   return answerCore(caller, route as CoreRoute, request);
 }
 
@@ -378,6 +381,7 @@ async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request)
           email: col.text,
           name: col.textOrNull,
           phone: col.textOrNull,
+          company_id: col.uuid.nullable(),
           created_at: col.timestamp,
           verified: col.bool,
           tags: z.array(z.string()),
@@ -385,7 +389,7 @@ async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request)
           cursor_at: z.string(),
         }),
         sql`
-          select c.id, c.email, c.name, c.phone, c.created_at, ${cursorAt(sql`c.created_at`)} as cursor_at, c.updated_at, c.email_verified_at is not null as verified,
+          select c.id, c.email, c.name, c.phone, c.company_id, c.created_at, ${cursorAt(sql`c.created_at`)} as cursor_at, c.updated_at, c.email_verified_at is not null as verified,
             coalesce((select array_agg(t.label order by t.label) from commerce.customer_tags t where t.store_id = c.store_id and t.email = lower(c.email)), '{}') as tags
           from commerce.customers c
           where c.store_id = ${storeId}::uuid and c.copied_from is null
@@ -402,6 +406,7 @@ async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request)
         phone: r.phone ?? "",
         email_verified: r.verified,
         tags: r.tags,
+        company_id: r.company_id,
         created_at: r.created_at,
         updated_at: r.updated_at,
       });

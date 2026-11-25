@@ -8,7 +8,7 @@ import {
   checkWebhookUrl,
   isAppEvent,
   isEvent,
-  isServiceEvent,
+  isServiceEventOf,
   webhookHint,
   type IntegrationEvent,
   type Provider,
@@ -114,7 +114,7 @@ export async function saveIntegration(
   provider: Provider,
   input: { url: string; events: string[]; enabled: boolean },
 ): Promise<SaveResult> {
-  const events = [...new Set(input.events.filter(isServiceEvent))];
+  const events = [...new Set(input.events.filter((event) => isServiceEventOf(provider, event)))];
   const existing = await getIntegration(store.id, provider);
   let encrypted: string | null = null;
   let hint: string | null = null;

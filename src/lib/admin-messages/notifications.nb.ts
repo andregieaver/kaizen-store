@@ -637,7 +637,7 @@ export const notificationsNb: NotificationsMessages = {
     googleSetUp: "Sett opp Google-anmeldelser",
     infos: {
       zapier: {
-        summary: "Send bestillinger, kunder og abonnementer til tusenvis av apper, som Google Sheets, Slack, Mailchimp eller regnskapet ditt.",
+        summary: "Send bestillinger, kunder, abonnementer og avtaler til tusenvis av apper, som Google Sheets, et CRM som Pipedrive eller HubSpot, eller regnskapet ditt.",
         steps: [
           "Lag en ny Zap i Zapier.",
           "Velg Webhooks by Zapier som utløser, og Catch Hook som hendelse.",
@@ -646,7 +646,7 @@ export const notificationsNb: NotificationsMessages = {
         ],
       },
       make: {
-        summary: "Send bestillinger, kunder og abonnementer til scenarioene dine i Make, og videre til appene du bruker.",
+        summary: "Send bestillinger, kunder, abonnementer og avtaler til scenarioene dine i Make, og videre til appene du bruker, som et CRM.",
         steps: [
           "Lag et nytt scenario i Make.",
           "Legg til Webhooks-modulen Custom webhook som første steg, og legg til en webhook.",
@@ -655,7 +655,7 @@ export const notificationsNb: NotificationsMessages = {
         ],
       },
       slack: {
-        summary: "Få en melding i en Slack-kanal når en bestilling er betalt, sendt, kansellert eller refundert, og for nye kunder og abonnementer.",
+        summary: "Få en melding i en Slack-kanal når en bestilling er betalt, sendt, kansellert eller refundert, for nye kunder og abonnementer, og når en avtale åpnes, flyttes, vinnes eller tapes.",
         steps: [
           "Gå til api.slack.com/apps, velg Create New App, From scratch, og velg arbeidsområdet ditt.",
           "Under Incoming Webhooks slår du dem på og velger Add New Webhook to Workspace.",
@@ -1367,7 +1367,7 @@ export const notificationsNb: NotificationsMessages = {
       "orders:read": "Lese bestillinger, med adressene, refusjoner og notater, ordreutkast, returer og abonnementer",
       "orders:write": "Registrere pakker med sporing",
       "orders:manage": "Lage og endre ordreutkast, og notere og merke bestillinger",
-      "customers:read": "Lese kunder, deres tilgodelapper og bonuspoeng, og segmenter",
+      "customers:read": "Lese kunder, deres tilgodelapper og bonuspoeng, og segmenter; bedrifter; og med Avtaler, avtaler, aktiviteter, leads og kontrakter",
       "customers:write": "Merke kunder",
       "customers:manage": "Legge til kunder og endre navn, telefon og adresser, aldri e-posten",
       "discounts:read": "Lese rabattkoder",

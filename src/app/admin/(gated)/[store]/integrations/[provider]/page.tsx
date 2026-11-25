@@ -10,7 +10,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { EVENTS, INTEGRATIONS, isProvider, SERVICE_EVENTS } from "@/lib/integrations";
+import { EVENTS, INTEGRATIONS, isProvider, serviceEventsOf } from "@/lib/integrations";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
@@ -136,7 +136,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-1 text-sm font-medium">{w.events}</legend>
               {/* Subscriptions' events are offered while that feature is on (D178); one already chosen is kept as it is while it is off. */}
-              {SERVICE_EVENTS.filter((event) => (!event.id.startsWith("subscription.") || subscriptionsOn) && topicOffered(store, event.id)).map((event) => (
+              {serviceEventsOf(provider).filter((event) => (!event.id.startsWith("subscription.") || subscriptionsOn) && topicOffered(store, event.id)).map((event) => (
                 <label key={event.id} className="flex items-start gap-2 text-sm">
                   <input type="checkbox" name="events" value={event.id} defaultChecked={chosen.has(event.id)} className="mt-0.5 size-4" />
                   <span>
@@ -146,7 +146,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
                 </label>
               ))}
               {!subscriptionsOn &&
-                SERVICE_EVENTS.filter((event) => event.id.startsWith("subscription.") && chosen.has(event.id)).map((event) => (
+                serviceEventsOf(provider).filter((event) => event.id.startsWith("subscription.") && chosen.has(event.id)).map((event) => (
                   <input key={event.id} type="hidden" name="events" value={event.id} />
                 ))}
             </fieldset>

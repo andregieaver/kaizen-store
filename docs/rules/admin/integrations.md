@@ -77,7 +77,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `activity.created`/`activity.done` (`commerce.activities`; Pipedrive's activities send none, under the same flag), `lead.dismissed`/
   `lead.deal_made` (a new decision in `commerce.lead_decisions`: a lead has no row of its own, its requests' events mark its arrival) and
   `domain.failing`/`domain.recovered` (a connected domain's last known answer from the domain watch, `checks.watch.known`, which the database
-  keeps through answers the watch could not read, so a turn is one event).
+  keeps through answers the watch could not read, so a turn is one event). Since D902, D901 P29 the deals', activities' and leads' topics go to
+  Zapier and Make as well (`ENDPOINT_ONLY` no longer holds them) and are the Deals extension's (`TOPIC_EXTENSIONS`); Slack gets the four
+  deal topics as `dealMessage()` and never an activity's or a lead's (`NOT_TO_SLACK`, `serviceEventsOf()`, `isServiceEventOf()`, which the
+  provider page and `saveIntegration()` use): a new service topic Slack has no message for goes in `NOT_TO_SLACK`.
 
 ## The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
 

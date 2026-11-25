@@ -72,6 +72,8 @@ describe("TOPIC_EXTENSIONS", () => {
     expect(topicOffered(without, "work_invoice.paid", now)).toBe(true);
     expect(topicOffered(without, "order.created", now)).toBe(true);
     expect(topicOffered({ extensionFacts: null }, "deal.won", now)).toBe(true);
+    // D902, D901 P29: activities and leads are offered with Deals, as deals are.
+    for (const topic of ["activity.created", "activity.done", "lead.dismissed", "lead.deal_made"]) expect(topicOffered(without, topic, now)).toBe(false);
   });
 });
 

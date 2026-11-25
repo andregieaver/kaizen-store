@@ -9,6 +9,7 @@ import { CONTENT_API } from "./admin-api-content";
 import { CUSTOMERS_API } from "./admin-api-customers";
 import { FORMS_API } from "./admin-api-forms";
 import { CONTRACTS_API } from "./admin-api-contracts";
+import { CRM_API } from "./admin-api-crm";
 import { ORDERS_API } from "./admin-api-orders";
 import { fieldInputSchema, ruleInputSchema, conditionSchema, effectSchema } from "./checkout-rules-schema";
 import { CHECKOUT_FIELD_KINDS } from "./checkout-rules";
@@ -201,6 +202,7 @@ export const apiCustomer = z.object({
   phone: z.string(),
   email_verified: z.boolean(),
   tags: z.array(z.string()),
+  company_id: id.nullable().describe("The company they buy for (`GET /companies/{id}`), when they are one's buyer (D902, D901 P29)."),
   created_at: when,
   updated_at: when,
 });
@@ -699,7 +701,7 @@ const CORE_API = [
   }),
 ] as const;
 
-export const ADMIN_API = [...CORE_API, ...CATALOGUE_API, ...ORDERS_API, ...CUSTOMERS_API, ...CONTENT_API, ...FORMS_API, ...CONTRACTS_API] as const;
+export const ADMIN_API = [...CORE_API, ...CATALOGUE_API, ...ORDERS_API, ...CUSTOMERS_API, ...CONTENT_API, ...FORMS_API, ...CONTRACTS_API, ...CRM_API] as const;
 
 export type AdminOperation = (typeof ADMIN_API)[number];
 export type AdminApiName = AdminOperation["name"];
