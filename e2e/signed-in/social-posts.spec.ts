@@ -26,6 +26,19 @@ const POSTS = {
   ],
 };
 
+const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+const ADVICE = {
+  verdicts: ["Your posts reach people, but few come to the shop from them.", "Reels reach far more than pictures.", "The new bowl has not been shown yet."],
+  recommendations: [
+    { title: "Show the workshop at work", why: "Reels reach most, and a first look brings people closer.", kind: "write", productId: null, topic: "A morning in the workshop", channels: ["instagram", "facebook"] },
+    { title: "Count visits", why: "So the adviser can tell which posts bring people to the shop.", kind: "count_visits", productId: null, topic: "", channels: [] },
+  ],
+  calendar: [
+    { day: day(1), channel: "instagram", productId: null, idea: "A reel of a bowl taking shape on the wheel." },
+    { day: day(3), channel: "pinterest", productId: null, idea: "Bowls from above on linen, for a kitchen board." },
+  ],
+};
+
 test.beforeAll(async () => {
   stub = createServer((req, res) => {
     let body = "";
@@ -36,7 +49,8 @@ test.beforeAll(async () => {
         JSON.stringify({
           id: "chatcmpl-stand-in",
           object: "chat.completion",
-          choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(POSTS) } }],
+          // The adviser's prompt gets the adviser's answer (S1.4); every other prompt is the post creator's.
+          choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(body.includes("social media adviser") ? ADVICE : POSTS) } }],
           usage: { prompt_tokens: 100, completion_tokens: 100, total_tokens: 200 },
         }),
       );
@@ -152,10 +166,27 @@ test("how the store's own Instagram posts did, newest first, once the account gr
   await card.screenshot({ path: "test-results/social-insights.png" });
 
   // What the adviser reads (S1.3): the same figures, worked out by code, one step away.
-  await page.getByText("What the adviser reads").click();
+  await page.locator("summary", { hasText: "What the adviser reads" }).click();
   const facts = page.locator("details", { hasText: "What the adviser reads" });
   await expect(facts).toContainText("@keramikkverkstedet: 3 posts");
   await expect(facts).toContainText("Posts written here, last 90 days");
   await facts.scrollIntoViewIfNeeded();
   await facts.screenshot({ path: "test-results/social-facts.png" });
 });
+
+test("the adviser says how the store stands in three verdicts, and its one button writes the main recommendation's posts (D870 S1.4)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const adviser = page.getByRole("region", { name: "Your social media adviser" });
+  await adviser.getByRole("button", { name: "Ask the adviser" }).click();
+  await expect(adviser.getByRole("listitem").first()).toContainText("Your posts reach people");
+  await expect(adviser.getByRole("listitem")).toHaveCount(3);
+  await adviser.scrollIntoViewIfNeeded();
+  await adviser.getByText("All recommendations and the two-week plan").click();
+  await expect(adviser).toContainText("Count visits");
+  await expect(adviser).toContainText("A reel of a bowl taking shape on the wheel.");
+  await adviser.screenshot({ path: "test-results/social-adviser.png" });
+
+  await adviser.getByRole("button", { name: "Write posts: Show the workshop at work" }).click();
+  await expect(page.getByText("About: A morning in the workshop").first()).toBeVisible();
+});
+

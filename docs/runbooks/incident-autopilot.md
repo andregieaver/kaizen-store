@@ -74,8 +74,15 @@ Your session's link names you in every write (`session`): get it from the `get_s
    - In an area of the ground rules' list: `needs-owner` with what you found and the fix you would make. Stop there.
    - Fix it, run `pnpm lint`, `pnpm typecheck` and the tests the change touches (and `pnpm test:int` for `src/server`), commit with the
      entry's id in the message (`… (incident 1a2b3c4d)`), push to `main`, and follow the run until the deploy reaches production.
-   - Then `POST $API/{id}/fixed` with the commit and one plain line of what changed (the owner reads it in the email). The log closes it
-     after 24 quiet hours, or reopens it if it comes back.
+   - Then, **only once production runs the fix**, `POST $API/{id}/fixed` with the commit and one plain line of what changed (the owner
+     reads it in the email). Production runs it when the commit `GET https://kaizenaflow.com/api/health` reports contains yours:
+     `git fetch origin main && git merge-base --is-ancestor <your commit> <health's commit>` succeeds. A wait loop that ends without that
+     is not a deploy (the first run by hand marked two fixes early this way, 25 November 2026). The log closes it after 24 quiet hours,
+     or reopens it if it comes back.
+   - While `main` is red from other sessions' changes, a push without a migration may still wait (another session's pending migration
+     holds every deploy for a green run). Then leave the entry claimed with a note naming the commit, finish the run, and let the next run
+     mark it fixed once the health check shows the commit; if the claim runs out first, the next run claims it again and only checks the
+     deploy, never redoes the fix.
    - If CI fails because of your change, fix it before anything else. If you cannot finish: `give-back` with a note of where you got to.
 6. **Propose (nightly only).** At most 3 improvements, each with its evidence and one sentence of why, from: warnings that keep coming
    back, fixes that reopened, areas where errors cluster, open items of the plans in `docs/audits/`, gaps in `docs/platform-parity.md`, slow
