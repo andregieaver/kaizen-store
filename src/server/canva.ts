@@ -47,14 +47,14 @@ import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 
 import { shrinkPicture } from "./ai-pictures";
-import { audit, getAccount, getMembership, platformCan } from "./auth";
+import { audit, getAccount, platformCan } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import { storageRefusal } from "./limits";
 import { log } from "./log";
 import { downloadStoredFile, uploadsEnabled } from "./media";
 import { storePicture } from "./media-library";
 import { owned } from "./owned";
-import { memberCan } from "./permissions";
+import { checkMemberAny, memberCan } from "./permissions";
 import { loadSharp } from "./sharp-load";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -371,13 +371,13 @@ export async function startCanvaEdit(
   place: EditPlace = "library",
 ): Promise<CanvaOutcome<{ url: string; editId: string }>> {
   if (!canvaOffered(deps)) return { ok: false, problem: "off" };
-  const { mediaId, url } = typeof target === "string" ? { mediaId: target, url: undefined } : target;
-  if (mediaId ? !z.uuid().safeParse(mediaId).success : !url || url.length > 1000 || !/^https?:\/\//.test(url)) return { ok: false, problem: "gone" };
+  const { mediaId, url: address } = typeof target === "string" ? { mediaId: target, url: undefined } : target;
+  if (mediaId ? !z.uuid().safeParse(mediaId).success : !address || address.length > 1000 || !/^https?:\/\//.test(address)) return { ok: false, problem: "gone" };
   // A picture field holds only its picture's address: the picture must be one the site's own library holds (by its file or its small copy).
   const picture = await typedRow(
     z.object({ id: col.uuid, bucket: col.text, path: col.text, file_name: col.text, width: z.number().int().nullable(), height: z.number().int().nullable() }),
     sql`select id, bucket, path, file_name, width, height from commerce.media
-        where ${mediaId ? sql`id = ${mediaId}::uuid` : sql`(url = ${url ?? ""} or thumbnail_url = ${url ?? ""} or medium_url = ${url ?? ""})`} and kind = 'image' and ${owned(owner.storeId)}
+        where ${mediaId ? sql`id = ${mediaId}::uuid` : sql`(url = ${address ?? ""} or thumbnail_url = ${address ?? ""} or medium_url = ${address ?? ""})`} and kind = 'image' and ${owned(owner.storeId)}
         limit 1`,
   );
   if (!picture) return { ok: false, problem: "gone" };
@@ -680,7 +680,7 @@ export async function canvaForLibrary(
  */
 export async function canvaForField(endpoint: string, storeSlug: string | null, key: PermissionKey): Promise<CanvaField | null> {
   if (!canvaOffered() || !uploadsEnabled()) return null;
-  const person = storeSlug ? ((m) => (m && memberCan(m, key) ? m.account : null))(await getMembership(storeSlug)) : await getAccount();
+  const person = storeSlug ? ((m) => (m && memberCan(m, key) ? m.account : null))(await checkMemberAny(storeSlug)) : await getAccount();
   if (!person || (!storeSlug && !platformCan(person, "website"))) return null;
   const account = await canvaAccount(person.id);
   return { endpoint, connected: account !== null && account.problem === null };
