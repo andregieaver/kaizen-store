@@ -122,7 +122,9 @@ describe("a social post's picture (D870 C2)", () => {
       const png = await sharp({ create: { width: 40, height: 40, channels: 3, background: "#c0ffee" } }).png().toBuffer();
       return new Response(new Uint8Array(png), { status: 200 });
     }) as typeof fetch;
-    const result = await socialPicture(member, ig.id, "http://localhost:3000", { fetch: fakeFetch });
+    // Google Fonts is not asked in tests: without the store's fonts the picture is drawn in next/og's own.
+    const noFonts = (async () => new Response("", { status: 503 })) as typeof fetch;
+    const result = await socialPicture(member, ig.id, "http://localhost:3000", { fetch: fakeFetch, fontFetch: noFonts });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.fileName).toBe(`instagram-${ig.ref}-4x5.png`);
@@ -131,7 +133,7 @@ describe("a social post's picture (D870 C2)", () => {
     expect(asked.every((u) => u.startsWith("http://localhost:3000/") || u.includes("/storage/v1/object/public/"))).toBe(true);
 
     const topic = posts.find((p) => p.channel === "linkedin" && !p.productId)!;
-    const drawn = await socialPicture(member, topic.id, "http://localhost:3000", { fetch: fakeFetch });
+    const drawn = await socialPicture(member, topic.id, "http://localhost:3000", { fetch: fakeFetch, fontFetch: noFonts });
     expect(drawn.ok && (await sharp(Buffer.from(await drawn.response.arrayBuffer())).metadata()).width).toBe(1200);
 
     expect((await socialPicture(member, "00000000-0000-4000-8000-000000000000", "http://localhost:3000")).ok).toBe(false);

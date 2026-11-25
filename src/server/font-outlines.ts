@@ -36,6 +36,40 @@ const hostIs = (url: string, host: string) => {
   }
 };
 
+export type FontFile = { ok: true; data: ArrayBuffer; family: string; weight: number } | { ok: false; problem: string };
+
+const files = new Map<string, ArrayBuffer>();
+
+/**
+ * The family's TrueType file at the nearest weight it has, kept in memory: asked as CSS of `fonts.googleapis.com`, fetched only from
+ * `fonts.gstatic.com`. Brand marks read its outlines (`fontOutlines()`); a social post's picture (D870 C2b) draws its words with it.
+ */
+export async function fontFile(family: string, weight: number, fetcher: Fetcher = fetch): Promise<FontFile> {
+  const font = findFont(family);
+  if (!font) return { ok: false, problem: `"${family}" is not in the font catalogue (Google Fonts).` };
+  const chosen = nearestWeight(font.weights, weight);
+  const key = `${font.family}:${chosen}`;
+  const cached = files.get(key);
+  if (cached) return { ok: true, data: cached, family: font.family, weight: chosen };
+  try {
+    const cssUrl = `https://${CSS_HOST}/css2?family=${encodeURIComponent(font.family).replace(/%20/g, "+")}:wght@${chosen}`;
+    // No browser's name is sent, so Google answers with TrueType files, which the readers take.
+    const css = await fetcher(cssUrl, { signal: AbortSignal.timeout(10_000) });
+    if (!css.ok) throw new Error(`Google Fonts answered ${css.status}`);
+    const file = (await css.text()).match(/url\((https:\/\/[^)\s]+)\)\s*format\(['"]truetype['"]\)/)?.[1];
+    if (!file || !hostIs(file, FILE_HOST)) throw new Error("Google Fonts sent no TrueType file for it.");
+    const response = await fetcher(file, { signal: AbortSignal.timeout(15_000), redirect: "error" });
+    if (!response.ok) throw new Error(`Google Fonts answered ${response.status} for the file`);
+    const data = await response.arrayBuffer();
+    if (data.byteLength === 0 || data.byteLength > MAX_FONT_BYTES) throw new Error("The font file was empty or too large.");
+    files.set(key, data);
+    return { ok: true, data, family: font.family, weight: chosen };
+  } catch (error) {
+    log("warn", "brand.font_file_failed", { family: font.family, weight: chosen }, error);
+    return { ok: false, problem: `${font.family} could not be fetched from Google Fonts. Try again in a moment, or choose another font.` };
+  }
+}
+
 export type Outlines = { ok: true; font: Font; family: string; weight: number } | { ok: false; problem: string };
 
 /** The family's outlines at the nearest weight it has; a problem in words when the family is unknown or cannot be fetched. */
@@ -46,19 +80,11 @@ export async function fontOutlines(family: string, weight: number, fetcher: Fetc
   const key = `${font.family}:${chosen}`;
   const cached = kept.get(key);
   if (cached) return { ok: true, font: cached, family: font.family, weight: chosen };
+  const file = await fontFile(family, weight, fetcher);
+  if (!file.ok) return { ok: false, problem: `${font.family} could not be fetched from Google Fonts to draw the mark. Try again in a moment, or choose another font.` };
   try {
-    const cssUrl = `https://${CSS_HOST}/css2?family=${encodeURIComponent(font.family).replace(/%20/g, "+")}:wght@${chosen}`;
-    // No browser's name is sent, so Google answers with TrueType files, which the reader takes.
-    const css = await fetcher(cssUrl, { signal: AbortSignal.timeout(10_000) });
-    if (!css.ok) throw new Error(`Google Fonts answered ${css.status}`);
-    const file = (await css.text()).match(/url\((https:\/\/[^)\s]+)\)\s*format\(['"]truetype['"]\)/)?.[1];
-    if (!file || !hostIs(file, FILE_HOST)) throw new Error("Google Fonts sent no TrueType file for it.");
-    const response = await fetcher(file, { signal: AbortSignal.timeout(15_000), redirect: "error" });
-    if (!response.ok) throw new Error(`Google Fonts answered ${response.status} for the file`);
-    const data = await response.arrayBuffer();
-    if (data.byteLength === 0 || data.byteLength > MAX_FONT_BYTES) throw new Error("The font file was empty or too large.");
     const { parse } = await import("opentype.js");
-    const parsed = parse(data);
+    const parsed = parse(file.data);
     kept.set(key, parsed);
     return { ok: true, font: parsed, family: font.family, weight: chosen };
   } catch (error) {
@@ -68,4 +94,7 @@ export async function fontOutlines(family: string, weight: number, fetcher: Fetc
 }
 
 /** Forgets the fonts kept in memory (tests). */
-export const forgetFontOutlines = () => kept.clear();
+export const forgetFontOutlines = () => {
+  kept.clear();
+  files.clear();
+};

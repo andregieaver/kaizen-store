@@ -42,8 +42,9 @@ the first copy of each is noted. Lisa's theme (the link's campaign) and the pric
 | Step | What | Done when |
 |---|---|---|
 | C1 | The words: `/admin/{store}/social`, `writeSocialPosts()` (`src/server/social-posts.ts`, pure parts `src/lib/social-posts.ts`), the claims filter and the brand's avoided words over every caption and hashtag | An owner copies a post with its tagged link. **Done 2026-11-25** |
+| C2b | The store's own type and logo on the picture: its heading font at its heading weight and its body font (`fontFile()`, Google Fonts' TrueType files, Inter where the theme names none), and its logo (the dark-background one on a dark theme) | A picture is set in the store's fonts with its logo. **Done 2026-11-25** |
 | C1b | The platform's creator at `/admin/platform/social`, from a topic or one of kaizenaflow.com's pages | Kaizena Flow's own posts are written and kept as a store's are |
-| C2 | Pictures: the product's own photo in a template of the store's look, each channel's shape (1:1, 4:5, 9:16), the price set by code; *Download picture* | A post has a picture to download beside its words. **Done 2026-11-25**: `socialPicture()` (`src/server/social-pictures.tsx`, next/og), `/admin/{store}/social/picture/{id}`; next: the store's heading font and logo on the picture (C2b) |
+| C2 | Pictures: the product's own photo in a template of the store's look, each channel's shape (1:1, 4:5, 9:16), the price set by code; *Download picture* | A post has a picture to download beside its words. **Done 2026-11-25**: `socialPicture()` (`src/server/social-pictures.tsx`, next/og), `/admin/{store}/social/picture/{id}`; then C2b (below) |
 
 ## 4. Then: the adviser
 

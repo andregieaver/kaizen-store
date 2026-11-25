@@ -551,7 +551,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   with its `CHANNEL_SPECS`. A post's picture (C2) is only `socialPicture()` (`src/server/social-pictures.tsx`), drawn by code on request and
   never stored or made by a picture model: the product's own photo (read only from the store's own site or Supabase Storage's public files, with a
   time limit and a size cap), its title, the price line the post was written with and the store's name, in the live theme's colours
-  (`paletteOf()`) and the channel's shape (`PICTURE_SIZES`); a post without a product shows `pictureHeadline()`.
+  (`paletteOf()`) and the channel's shape (`PICTURE_SIZES`); a post without a product shows `pictureHeadline()`. Its type is the store's heading and
+  body fonts (C2b), fetched only by `fontFile()` (`src/server/font-outlines.ts`, `fonts.gstatic.com` alone, as brand marks), its logo the store's
+  own (`navigation.logo`, `logoDark` on a dark theme), read as the photo is; a font or logo that cannot be read leaves the picture without it.
 
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 
