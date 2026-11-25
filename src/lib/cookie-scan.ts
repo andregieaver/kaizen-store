@@ -114,11 +114,26 @@ async function record(context: BrowserContext, page: Page, path: string, siteHos
   }
 }
 
-/** Opens a page and lets its scripts run a moment, as a visitor would. */
-async function open(page: Page, url: string): Promise<boolean> {
+/**
+ * A scan's time (incident a3cdb94e, D895): the route that runs it may take 120 seconds, Chromium's start included, so the pages get
+ * `SCAN_BUDGET_MS` in all; a page waits at most `PAGE_WAIT_MS` to load and `IDLE_WAIT_MS` more for its scripts, never past the budget.
+ * A page that fails counts toward `maxPages * 2` attempts, so a site of broken links cannot keep the scan opening pages until it is
+ * killed. A scan cut short keeps what it found.
+ */
+export const SCAN_BUDGET_MS = 90_000;
+const PAGE_WAIT_MS = 20_000;
+const IDLE_WAIT_MS = 3_000;
+
+/** The scan's clock: when it must stop opening pages. */
+type Clock = { deadline: number; now: () => number };
+
+/** Opens a page and lets its scripts run a moment, as a visitor would, within the scan's time. */
+async function open(page: Page, url: string, clock: Clock): Promise<boolean> {
+  const left = clock.deadline - clock.now();
+  if (left <= 0) return false;
   try {
-    const response = await page.goto(url, { waitUntil: "load", timeout: 20_000 });
-    await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
+    const response = await page.goto(url, { waitUntil: "load", timeout: Math.min(PAGE_WAIT_MS, left) });
+    await page.waitForLoadState("networkidle", { timeout: Math.max(1, Math.min(IDLE_WAIT_MS, clock.deadline - clock.now())) }).catch(() => {});
     return response !== null && response.status() < 400;
   } catch {
     return false;
@@ -144,7 +159,7 @@ async function linksOn(page: Page, target: ScanTarget): Promise<string[]> {
  * One visit: a new browser profile opens the site's pages (following its
  * links, or the given list) and records what it finds after each.
  */
-async function visit(browser: Browser, target: ScanTarget, pages: string[] | null, beforeConsent: boolean, found: Found) {
+async function visit(browser: Browser, target: ScanTarget, pages: string[] | null, beforeConsent: boolean, found: Found, clock: Clock) {
   const context = await browser.newContext({ locale: "en-GB" });
   try {
     if (!beforeConsent && target.consent) {
@@ -155,9 +170,11 @@ async function visit(browser: Browser, target: ScanTarget, pages: string[] | nul
     const queue = [...(pages ?? target.starts)];
     const seen = new Set(queue);
     const opened: string[] = [];
-    while (queue.length > 0 && opened.length < target.maxPages) {
+    let attempts = 0;
+    while (queue.length > 0 && opened.length < target.maxPages && attempts < target.maxPages * 2 && clock.now() < clock.deadline) {
       const path = queue.shift()!;
-      if (!(await open(page, new URL(path, target.origin).href))) continue;
+      attempts += 1;
+      if (!(await open(page, new URL(path, target.origin).href, clock))) continue;
       opened.push(path);
       await record(context, page, path, siteHost, beforeConsent, found);
       // The first visit follows links; the second opens the same pages.
@@ -177,11 +194,17 @@ async function visit(browser: Browser, target: ScanTarget, pages: string[] | nul
 }
 
 /** Scans a site: without a choice, then (if the site asks) with everything allowed. */
-export async function scanSite(browser: Browser, target: ScanTarget): Promise<{ pages: string[]; items: ScannedItem[] }> {
+export async function scanSite(
+  browser: Browser,
+  target: ScanTarget,
+  options: { budgetMs?: number; now?: () => number } = {},
+): Promise<{ pages: string[]; items: ScannedItem[] }> {
+  const now = options.now ?? Date.now;
+  const clock: Clock = { now, deadline: now() + (options.budgetMs ?? SCAN_BUDGET_MS) };
   const found: Found = new Map();
-  const pages = await visit(browser, target, null, true, found);
+  const pages = await visit(browser, target, null, true, found, clock);
   if (pages.length === 0) throw new Error(`None of the site's pages opened at ${target.origin}.`);
-  if (target.consent) await visit(browser, target, pages, false, found);
+  if (target.consent) await visit(browser, target, pages, false, found, clock);
   const items = [...found.values()].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name),
   );
