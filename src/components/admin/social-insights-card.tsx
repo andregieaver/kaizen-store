@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { ButtonLink, EmptyState, List, ListRow, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { SocialMessages } from "@/lib/admin-messages/social.en";
@@ -26,16 +28,7 @@ export function SocialInsightsCard({
   const date = (iso: string) => new Date(iso).toLocaleDateString(numberLocale, { dateStyle: "medium", timeZone });
   const action = (label: string) => (mayConnect ? <ButtonLink href={connectHref} kind="secondary">{label}</ButtonLink> : <p className="text-caption text-ink-2">{w.askOwner}</p>);
   return (
-    <section aria-labelledby="social-insights" className="flex flex-col gap-3 rounded-panel bg-sunken p-4">
-      <div className="flex flex-col gap-1">
-        <h2 id="social-insights" className="text-title text-ink">
-          {w.title}
-        </h2>
-        <p className="text-caption text-ink-2">
-          {w.lead}
-          {view.state === "ready" && view.fetchedAt ? ` ${fillWords(w.readAt, { date: date(view.fetchedAt) })}` : ""}
-        </p>
-      </div>
+    <InsightsFrame id="social-insights" title={w.title} lead={`${w.lead}${view.state === "ready" && view.fetchedAt ? ` ${fillWords(w.readAt, { date: date(view.fetchedAt) })}` : ""}`}>
       {view.state === "none" && <EmptyState compact title={w.none} action={action(w.connect)} />}
       {view.state === "reconnect" && (
         <>
@@ -53,18 +46,7 @@ export function SocialInsightsCard({
             <List label={w.title}>
               {view.posts.map((p) => (
                 <ListRow key={p.mediaId}>
-                  <RowLead
-                    title={
-                      p.permalink ? (
-                        <a href={p.permalink} target="_blank" rel="noopener noreferrer" className="underline">
-                          {p.caption.slice(0, 80) || w.noCaption}
-                        </a>
-                      ) : (
-                        p.caption.slice(0, 80) || w.noCaption
-                      )
-                    }
-                    sub={`${w.kinds[p.kind]} · ${date(p.postedAt)}`}
-                  />
+                  <RowLead title={<PostTitle post={p} empty={w.noCaption} />} sub={`${w.kinds[p.kind]} · ${date(p.postedAt)}`} />
                   <RowFact sub={w.reach}>{count(p.figures.reach)}</RowFact>
                   <RowFact sub={w.likes}>{count(p.figures.likes)}</RowFact>
                   <RowFact sub={w.saves}>{count(p.figures.saves)}</RowFact>
@@ -75,6 +57,33 @@ export function SocialInsightsCard({
           )}
         </>
       )}
+    </InsightsFrame>
+  );
+}
+
+/** A figures card's frame on Social posts: its heading and lead, then what it shows (Instagram's here, the Facebook Page's in `social-facebook-card.tsx`). */
+export function InsightsFrame({ id, title, lead, children }: { id: string; title: string; lead: string; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className="flex flex-col gap-3 rounded-panel bg-sunken p-4">
+      <div className="flex flex-col gap-1">
+        <h2 id={`${id}-title`} className="text-title text-ink">
+          {title}
+        </h2>
+        <p className="text-caption text-ink-2">{lead}</p>
+      </div>
+      {children}
     </section>
+  );
+}
+
+/** A post's caption's start, linked to the post where its address is known. */
+export function PostTitle({ post, empty }: { post: { caption: string; permalink: string }; empty: string }) {
+  const text = post.caption.slice(0, 80) || empty;
+  return post.permalink ? (
+    <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="underline">
+      {text}
+    </a>
+  ) : (
+    text
   );
 }

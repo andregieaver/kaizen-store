@@ -3,6 +3,8 @@ import { fillWords } from "@/lib/admin-fill";
 import type { SocialMessages } from "@/lib/admin-messages/social.en";
 import type { FacebookView } from "@/server/facebook-pages";
 
+import { InsightsFrame, PostTitle } from "./social-insights-card";
+
 type Done = keyof SocialMessages["facebook"]["done"];
 
 /**
@@ -45,16 +47,7 @@ export function SocialFacebookCard({
   );
   const connect = !mayConnect ? <p className="text-caption text-ink-2">{w.askOwner}</p> : appOn ? form("connect", w.connect) : <p className="text-caption text-ink-2">{w.off}</p>;
   return (
-    <section id="social-facebook" aria-labelledby="social-facebook-title" className="flex flex-col gap-3 rounded-panel bg-sunken p-4">
-      <div className="flex flex-col gap-1">
-        <h2 id="social-facebook-title" className="text-title text-ink">
-          {w.title}
-        </h2>
-        <p className="text-caption text-ink-2">
-          {w.lead}
-          {view.state === "ready" && view.fetchedAt ? ` ${fillWords(w.readAt, { date: date(view.fetchedAt) })}` : ""}
-        </p>
-      </div>
+    <InsightsFrame id="social-facebook" title={w.title} lead={`${w.lead}${view.state === "ready" && view.fetchedAt ? ` ${fillWords(w.readAt, { date: date(view.fetchedAt) })}` : ""}`}>
       {said && (
         <p role="status" className={done === "failed" || done === "nopage" ? "text-body text-danger-text" : "text-body text-ink"}>
           {said}
@@ -94,18 +87,7 @@ export function SocialFacebookCard({
             <List label={w.title}>
               {view.posts.map((p) => (
                 <ListRow key={p.mediaId}>
-                  <RowLead
-                    title={
-                      p.permalink ? (
-                        <a href={p.permalink} target="_blank" rel="noopener noreferrer" className="underline">
-                          {p.caption.slice(0, 80) || w.noCaption}
-                        </a>
-                      ) : (
-                        p.caption.slice(0, 80) || w.noCaption
-                      )
-                    }
-                    sub={`${view.name} · ${date(p.postedAt)}`}
-                  />
+                  <RowLead title={<PostTitle post={p} empty={w.noCaption} />} sub={`${view.name} · ${date(p.postedAt)}`} />
                   {view.insights && <RowFact sub={w.reach}>{count(p.figures.reach)}</RowFact>}
                   <RowFact sub={w.reactions}>{count(p.figures.likes)}</RowFact>
                   <RowFact sub={w.comments}>{count(p.figures.comments)}</RowFact>
@@ -122,6 +104,6 @@ export function SocialFacebookCard({
           {form("disconnect", w.disconnect, "quiet")}
         </div>
       )}
-    </section>
+    </InsightsFrame>
   );
 }
