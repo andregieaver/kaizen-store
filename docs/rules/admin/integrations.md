@@ -722,3 +722,6 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `/api/integrations/canva/thumbnail`, which reads only addresses this server signed (`thumbnailAddress()`) from Canva's file hosts. Only
   what the person presses leaves: never a customer's data. A new tool is a `provider` in both tables' checks with its own module beside
   this one, through the same tables (`docs/design-tools.md` sections 3 and 4).
+- **Picture fields (C2, `canva-field.tsx`, `canvaForField()`; how: `docs/design-tools.md`)**: the builder's (library route, `website:write`)
+  and product photos (`/products/canva`, `products:write`, edit and bring only). The picture is found by address among the site's own
+  rows, never fetched from it; `CANVA_BACK` shows nothing of the edit, it only names its id to this site's tabs. Words: the `canvaField` cut.

@@ -20,6 +20,7 @@ vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublish
 const kept: { madeBy?: string; editedFrom?: string | null; fileName: string; storeId: string | null }[] = [];
 let stored = 0;
 vi.mock("./media", () => ({
+  uploadsEnabled: () => true,
   downloadStoredFile: async () => new Uint8Array(await sharp({ create: { width: 120, height: 80, channels: 3, background: "#c0ffee" } }).webp().toBuffer()),
 }));
 vi.mock("./media-library", async () => {
@@ -203,6 +204,32 @@ describe("A person's Canva (D898)", () => {
     expect(await canva.canvaEditsOf(owner)).toEqual({ [picture]: started.editId });
     const [original] = await db().execute<Record<string, string>>(sql`select made_by from commerce.media where id = ${picture}::uuid`);
     expect(original.made_by).toBe("person");
+  });
+
+  it("edits a picture field's picture found by its address: Canva's Return lands on the back page, and the field asks where it stands (C2)", async () => {
+    const address = `https://example.supabase.co/storage/v1/object/public/product-media/hero-${store.slug}.webp`;
+    // Only a picture the site's own library holds.
+    expect(await canva.startCanvaEdit(owner, { url: "https://elsewhere.example/hero.webp" }, deps, "field")).toEqual({ ok: false, problem: "gone" });
+    expect(await canva.startCanvaEdit({ ...owner, storeId: null, storeSlug: null }, { url: address }, deps, "field")).toEqual({ ok: false, problem: "gone" });
+    const started = await canva.startCanvaEdit(owner, { url: address }, deps, "field");
+    if (!started.ok) throw new Error(started.problem);
+    const correlation = new URL(started.url).searchParams.get("correlation_state")!;
+    expect(await canva.canvaEditStatus(owner, started.editId)).toEqual({ ok: true, status: "open" });
+    // Another person's, or a word that is no id, is not there.
+    expect(await canva.canvaEditStatus({ ...owner, accountId: "5c2c8f0e-3a9d-4c7b-9e21-0a1b2c3d4e5f" }, started.editId)).toEqual({ ok: false, problem: "gone" });
+    expect(await canva.canvaEditStatus(owner, "nope")).toEqual({ ok: false, problem: "gone" });
+
+    const to = await canva.canvaReturned(new URLSearchParams({ correlation_jwt: fake.returnJwt({ design_id: "DAFedited1", correlation_state: correlation }) }), deps);
+    expect(to).toBe(`/admin/account/canva-back?edit=${started.editId}`);
+    expect(await canva.canvaEditStatus(owner, started.editId)).toEqual({ ok: true, status: "returned" });
+
+    // The field takes the copy brought in: its address and size.
+    const brought = await canva.bringBackFromCanva(owner, started.editId, deps);
+    if (!brought.ok) throw new Error(brought.problem);
+    expect(brought).toMatchObject({ width: 200, height: 100 });
+    expect(brought.url).toMatch(/\/canva-\d+-\d+\.webp$/);
+    expect(kept.at(-1)).toMatchObject({ madeBy: "canva", editedFrom: picture });
+    expect(await canva.canvaEditStatus(owner, started.editId)).toEqual({ ok: true, status: "brought" });
   });
 
   it("imports a design's first page as a new picture, and says when a design is gone", async () => {

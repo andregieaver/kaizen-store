@@ -37,6 +37,7 @@ import { shrinkImage } from "@/lib/image-resize";
 
 import { FileField, LinkField, RelationField } from "./field-pickers";
 import { editableSubs, ownView, rowLimits, rowsNeeded, withCell, type FieldFileUploader } from "./fields-form-helpers";
+import { EditInCanvaButton } from "./canva-field";
 import { LibraryButton } from "./media-picker";
 import { RichTextEditor } from "./lazy/editors";
 
@@ -1248,6 +1249,8 @@ function PictureField({
             <button type="button" onClick={() => onChange(undefined)} className="w-fit text-xs underline">
               {w.remove}
             </button>
+            {/* Edited in the person's own Canva (D898 C2), where the editor offers it; its description kept. */}
+            <EditInCanvaButton small current={value} onEdited={(picture) => onChange({ ...value, url: picture.url, thumbnailUrl: picture.thumbnailUrl })} />
           </div>
         </div>
       )}
@@ -1353,6 +1356,11 @@ function GalleryField({
               >
                 {w.remove}
               </button>
+              <EditInCanvaButton
+                small
+                current={image}
+                onEdited={(picture) => onChange(value.map((v, i) => (i === index ? { ...v, url: picture.url, thumbnailUrl: picture.thumbnailUrl } : v)))}
+              />
             </li>
           ))}
         </ul>

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { compressPicture, extensionOf, mediumCopy } from "@/lib/image-compress";
 import { savingWords } from "@/lib/image-quality";
 
+import { EditInCanvaButton } from "./canva-field";
 import { LibraryButton } from "./media-picker";
 import { MakePictureButton, RemoveBackgroundButton, type CurrentPicture } from "./picture-maker";
 import { useAdminText } from "@/components/admin/admin-text";
@@ -98,6 +99,8 @@ export function ImageUploadButton({
       )}
       {/* The field's picture with its background taken away by the site's AI (D413); its description stays as it was. */}
       <RemoveBackgroundButton current={current} onEdited={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height })} />
+      {/* The field's picture edited in the person's own Canva (D898 C2), the edited copy taking its place. */}
+      <EditInCanvaButton current={current} onEdited={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height })} />
     </>
   );
   if (!upload) return <div className="flex flex-col gap-2"><p className="text-sm text-muted">{ui.uploadsOff}</p><div className="flex flex-wrap gap-2">{library}</div></div>;

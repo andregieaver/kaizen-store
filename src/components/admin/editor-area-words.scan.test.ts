@@ -9,9 +9,11 @@ import { describe, expect, it } from "vitest";
  */
 const EDITOR = ["builder", "blocks", "fieldsEditor", "productsEditor", "designEditor", "blogEditor", "schedulesEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions"];
 const PLATFORM_SITE = ["designEditor", "builder", "blocks", "fieldsEditor", "productsEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick", "builderVersions"];
+/** A store's editor adds Canva on its picture fields (D898 C2); the sandbox has no Canva. */
+const STORE_EDITOR = [...EDITOR, "canvaField"];
 
 const CASES = [
-  { file: "src/app/admin/(gated)/[store]/pages/editor-views.tsx", name: "EDITOR_AREA_WORDS", areas: EDITOR },
+  { file: "src/app/admin/(gated)/[store]/pages/editor-views.tsx", name: "EDITOR_AREA_WORDS", areas: STORE_EDITOR },
   { file: "src/app/admin/try/[sandbox]/editor.tsx", name: "EDITOR_AREA_WORDS", areas: EDITOR },
   { file: "src/server/platform-site-areas.ts", name: "PLATFORM_SITE_AREA_WORDS", areas: PLATFORM_SITE },
 ];

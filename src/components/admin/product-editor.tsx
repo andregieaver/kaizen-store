@@ -88,6 +88,8 @@ import { OperatorPicker } from "@/components/admin/operator-picker";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { MakePictureButton, PictureMakerProvider, type PictureMaker } from "@/components/admin/picture-maker";
+import { CanvaFieldProvider, EditInCanvaButton } from "@/components/admin/canva-field";
+import type { CanvaField } from "@/lib/canva-paths";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
@@ -135,6 +137,8 @@ type Props = {
   uploads: boolean;
   /** Where the product's pictures are made by prompt (D349), or none without a picture model. */
   pictures?: PictureMaker | null;
+  /** *Edit in Canva* on the product's photos (D898 C2), or none without Canva. */
+  canva?: CanvaField | null;
   /** Where the product is shown in the storefront, once saved. */
   storefrontPath: string | null;
   /** The site's address, for the search result preview. */
@@ -403,6 +407,7 @@ export function ProductEditor(props: Props) {
         update={update}
         uploads={uploads}
         pictures={props.pictures ?? null}
+        canva={props.canva ?? null}
         title={title}
         otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
         languageNames={languageNames}
@@ -981,6 +986,7 @@ function MediaSection({
   update,
   uploads,
   pictures,
+  canva,
   title,
   otherLocales,
   languageNames,
@@ -988,6 +994,7 @@ function MediaSection({
   storeSlug: string;
   uploads: boolean;
   pictures: PictureMaker | null;
+  canva: CanvaField | null;
   title: string;
   otherLocales: string[];
   languageNames: Record<string, string>;
@@ -1026,6 +1033,7 @@ function MediaSection({
     });
 
   return (
+    <CanvaFieldProvider canva={canva}>
     <section aria-labelledby="media-heading" className={card}>
       <h2 id="media-heading" className="mb-1 text-title text-ink">
         {w.media.title}
@@ -1089,6 +1097,12 @@ function MediaSection({
                   {w.media.remove}
                 </button>
               </div>
+              {/* A photo edited in the person's own Canva (D898 C2): the edited copy takes its place, its description kept. */}
+              {media.kind === "image" && (
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <EditInCanvaButton small current={media} onEdited={(picture) => patch(index, { url: picture.url, thumbnailUrl: picture.thumbnailUrl })} />
+                </div>
+              )}
             </li>
           ))}
         </ol>
@@ -1168,6 +1182,7 @@ function MediaSection({
         </p>
       )}
     </section>
+    </CanvaFieldProvider>
   );
 }
 
