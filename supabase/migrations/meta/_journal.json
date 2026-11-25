@@ -1296,6 +1296,20 @@
       "when": 1795616452007,
       "tag": "20261125142051_wealthy_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1795621124186,
+      "tag": "20261125153844_social_extension_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1795621129408,
+      "tag": "20261125153849_social_extension",
+      "breakpoints": true
     }
   ]
 }

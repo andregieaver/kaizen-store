@@ -1,6 +1,6 @@
 {
-  "id": "4e0f2288-9cde-4599-84c6-8785a4a081fc",
-  "prevId": "6e466785-bf1e-40ed-bfc8-6012b81fba64",
+  "id": "44ad0d8e-cc92-4153-ab48-8a33a0e1efd8",
+  "prevId": "4e0f2288-9cde-4599-84c6-8785a4a081fc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -901,7 +901,7 @@
         },
         "access_requests_extensions": {
           "name": "access_requests_extensions",
-          "value": "\"commerce\".\"access_requests\".\"extensions\" <@ array['ab_testing', 'support_desk', 'email_automation', 'work', 'deals']::text[]"
+          "value": "\"commerce\".\"access_requests\".\"extensions\" <@ array['ab_testing', 'support_desk', 'email_automation', 'work', 'deals', 'social']::text[]"
         },
         "access_requests_wants_something": {
           "name": "access_requests_wants_something",
@@ -36614,7 +36614,7 @@
       "checkConstraints": {
         "extensions_known": {
           "name": "extensions_known",
-          "value": "\"commerce\".\"extensions\".\"id\" in ('ab_testing', 'support_desk', 'email_automation', 'work', 'deals')"
+          "value": "\"commerce\".\"extensions\".\"id\" in ('ab_testing', 'support_desk', 'email_automation', 'work', 'deals', 'social')"
         },
         "extensions_name_present": {
           "name": "extensions_name_present",

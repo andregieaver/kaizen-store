@@ -415,7 +415,7 @@ Opens `/admin/{store}/marketing`, its own page. 16 pages in 5 groups, 4 in Basic
 |  | Subscribers | `/admin/{store}/subscribers` | Advanced |  |
 |  | Segments | `/admin/{store}/segments` | Advanced | the Email automation extension |
 | Channels | Ads and conversions | `/admin/{store}/ads` | Advanced |  |
-|  | Social posts | `/admin/{store}/social` | Advanced |  |
+|  | Social posts | `/admin/{store}/social` | Advanced | the Social media manager extension |
 |  | Product feeds | `/admin/{store}/feeds` | Advanced |  |
 |  | Creators | `/admin/{store}/creators` | Advanced | Online shop |
 | Loyalty | Bonus credits | `/admin/{store}/bonus` | Basic | Bonus program |

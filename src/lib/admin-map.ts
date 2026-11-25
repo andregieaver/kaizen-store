@@ -633,7 +633,7 @@ const PAGES: readonly MapEntry[] = [
     keywords: ["conversions api", "capi", "meta pixel", "facebook pixel", "tiktok events api", "pinterest conversions", "server-side tracking", "ad tracking", "measurement protocol"],
     tasks: ["Send purchases to Meta from the server", "Connect TikTok's Events API"],
   }),
-  store("social", "/social", "Social posts", "Social posts: posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn written by the store's AI in its brand, from a product (its words, its price set by the shop, its link) or a topic of the owner's, to copy into each channel by hand. Each post carries a tagged link, so its visits and orders are counted. The posts written before, newest first, and whether each was copied.", {
+  store("social", "/social", "Social posts", "Social posts: posts for Instagram, Facebook, Pinterest, TikTok and LinkedIn written by the store's AI in its brand, from a product (its words, its price set by the shop, its link) or a topic of the owner's, to copy into each channel by hand. Each post carries a tagged link, so its visits and orders are counted. The posts written before, newest first, and whether each was copied.", { extension: "social",
     keywords: ["social media", "instagram post", "facebook post", "pinterest pin", "tiktok caption", "linkedin post", "caption", "hashtags", "content", "sosiale medier", "facebook page insights", "facebook reach"],
     tasks: ["Write an Instagram post for a product", "Make posts for my social media"],
   }),

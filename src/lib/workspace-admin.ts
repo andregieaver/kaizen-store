@@ -7,7 +7,7 @@ import type { ExtensionId } from "./extensions";
  */
 
 /** The page each workspace extension opens on, after the workspace's address (Work lives at the account's level, D123: its own address). */
-export const WORKSPACE_STARTS: Readonly<Record<Exclude<ExtensionId, "ab_testing">, string>> = {
+export const WORKSPACE_STARTS: Readonly<Record<Exclude<ExtensionId, "ab_testing" | "social">, string>> = {
   support_desk: "/support",
   email_automation: "/broadcasts",
   work: "",

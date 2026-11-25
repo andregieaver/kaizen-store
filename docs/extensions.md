@@ -46,7 +46,7 @@ when it is built.
 | Standalone pages | Each standalone product gets **its own landing page** (for search), and there is one combined sign-up where you pick what you want |
 | The platform | The platform admin **always has every extension** |
 
-## 3. The five extensions and where their edges are
+## 3. The six extensions and where their edges are
 
 The rule for every edge: **e-commerce stays whole in the core.** An extension takes what is its own; what a shop needs to sell,
 deliver, invoice an order and report its VAT stays.
@@ -58,6 +58,7 @@ deliver, invoice an order and report its VAT stays.
 | **Email automation** | Automations (`automations`, `automation_steps`, `automation_sends`), broadcasts (`broadcasts`, `broadcast_*`), segments (`segments`), marketing from the store's facts (D352), the account's own sending domain | The subscriber list and consent (D295, collected at checkout), transactional email (order mails, notifications D238) | Yes |
 | **Work** | Clients, assignments, tasks, time and timers, Work invoices and credit notes (`work_*`), **the ledger and the books**: ledger (`ledger_*`), the VAT return (D496), SAF-T (D497), bank statements (D486), subscriptions (D503), receipts by email (D504), budget (D505), year-end (D506), accountants (D512), the threshold watch (D514), Peppol e-invoices for Work (D463) | Invoices and credit notes for shop orders (D159), the shop's VAT, OSS and IOSS reports (D161) | Yes |
 | **Deals and contracts** | Deals and pipelines (`deal_*`, D464), contracts (`contract_*`, D695), activities (D468), the leads inbox (D475), email on the timeline (D476), sales reports (D520), moving in from Pipedrive (D477), the AI manager's CRM and contract tools | Customers, their orders, addresses, accounts, customer groups, company accounts and B2B (D108, D321), quotes and price on request (D431), the customer's timeline (D462) showing commerce events | Yes |
+| **Social media manager** (D870 S1.6) | Social posts and their pictures (`social_posts`), the adviser and its weekly review (`social_advice`, `social_reviews`), the Facebook Page and the posts' figures (`facebook_pages`, `social_post_insights`), and the AI manager's social tools | The Instagram feed on a store's pages (D560) and tagged links' visits in analytics | No: it writes from a store's products, pages and figures |
 
 The store features (D178) stay as they are, **under** the entitlement: an extension decides whether a switch exists at all; the
 store's own switch (such as `sales` for Deals, or Work switched on per store) still says whether that store uses it.

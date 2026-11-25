@@ -8,6 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { addDays, customPeriod, startOfWeek, todayIn } from "@/lib/analytics-period";
 import { renderEmail } from "@/lib/email-layout";
+import { storeExtensionOn } from "@/lib/extensions";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { siteUrl } from "@/lib/site";
@@ -128,6 +129,8 @@ export async function sendSocialReviews(deps: ReviewDeps = {}): Promise<{ sent: 
       if (!account?.email) continue;
       const member = await passMembership(r.slug, account.id);
       if (!member || !memberCan(member, "marketing:read")) continue;
+      // Only while the store's account has the social media manager (D870 S1.6).
+      if (!storeExtensionOn(member.store, "social", now)) continue;
       const facts = await factsOf(member.store, weekStart, now);
       if (!reviewWorthSending(facts)) continue;
       const claimed = await typedRow(

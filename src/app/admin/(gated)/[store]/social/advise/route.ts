@@ -11,7 +11,7 @@ import { writeSocialAdvice } from "@/server/social-advice";
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest, { params }: RouteContext<"/admin/[store]/social/advise">) {
-  const member = await checkPermission((await params).store, "marketing:write");
+  const member = await checkPermission((await params).store, "marketing:write", "social");
   if (!member) return NextResponse.json({ ok: false, problem: "Not found." }, { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   return NextResponse.json(await writeSocialAdvice(member));

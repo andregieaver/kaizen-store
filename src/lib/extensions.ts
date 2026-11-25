@@ -42,7 +42,7 @@ export function trialReminderDue(startedAt: Date, endsAt: Date, now: Date): numb
 }
 
 /** The extensions, in the order the owner named them. A new one is an id here, its row in a migration and its gates (step E3). */
-export const EXTENSION_IDS = ["ab_testing", "support_desk", "email_automation", "work", "deals"] as const;
+export const EXTENSION_IDS = ["ab_testing", "support_desk", "email_automation", "work", "deals", "social"] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];
 
 /**
@@ -55,6 +55,7 @@ export const EXTENSION_PATHS: Record<ExtensionId, readonly string[]> = {
   email_automation: ["broadcasts", "automations", "segments", "flows"],
   work: ["settings/books"],
   deals: ["deals", "leads", "analytics/sales"],
+  social: ["social"],
 };
 
 /** The extension whose folder a store admin path (after `/admin/{store}/`) is in, if any. */
@@ -70,15 +71,16 @@ export const EXTENSION_NAMES: Record<ExtensionId, string> = {
   email_automation: "Email automation",
   work: "Work",
   deals: "Deals and contracts",
+  social: "Social media manager",
 };
 
 export const isExtensionId = (value: unknown): value is ExtensionId => (EXTENSION_IDS as readonly unknown[]).includes(value);
 
 /**
- * The extensions that need a store's site (A/B testing tries two versions of its pages): never offered in a standalone account's workspace
+ * The extensions that need a store's site (A/B testing tries two versions of its pages; the social media manager writes from its products and figures): never offered in a standalone account's workspace
  * (D748 E7). The catalogue's `extensions.store_only` says the same and the platform admin cannot change it (`src/db/extensions.test.ts`).
  */
-export const STORE_ONLY_EXTENSIONS: readonly ExtensionId[] = ["ab_testing"];
+export const STORE_ONLY_EXTENSIONS: readonly ExtensionId[] = ["ab_testing", "social"];
 
 /** The extensions a workspace can have, in the catalogue's order. */
 export const WORKSPACE_EXTENSIONS: readonly ExtensionId[] = EXTENSION_IDS.filter((id) => !STORE_ONLY_EXTENSIONS.includes(id));
@@ -98,6 +100,7 @@ export const ALLOWANCES_OF: Record<ExtensionId, readonly AllowanceKey[]> = {
   email_automation: ["contacts", "emails_per_contact"],
   work: ["people"],
   deals: ["people"],
+  social: [],
 };
 
 /** Reads a size's allowances from its stored JSON, keeping only known keys with whole numbers of zero or more. */

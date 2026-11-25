@@ -11,7 +11,7 @@ import { checkPermission } from "@/server/permissions";
  */
 export async function POST(request: NextRequest, { params }: RouteContext<"/admin/[store]/social/facebook">) {
   const { store } = await params;
-  const member = await checkPermission(store, "marketing:write");
+  const member = await checkPermission(store, "marketing:write", "social");
   if (!member) return new NextResponse("Not found", { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   const form = await request.formData().catch(() => null);

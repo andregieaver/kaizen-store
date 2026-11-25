@@ -141,7 +141,7 @@ describe("founding prices (D748 E6)", () => {
 });
 
 describe("parseGrantsForm", () => {
-  const context = { planIds: [PLAN], sizesOf: { ab_testing: [SIZE], support_desk: [], email_automation: [OTHER], work: [], deals: [] } };
+  const context = { planIds: [PLAN], sizesOf: { ab_testing: [SIZE], support_desk: [], email_automation: [OTHER], work: [], deals: [], social: [] } };
 
   it("reads a size per plan and extension, nothing for not included", () => {
     expect(parseGrantsForm(form({ [`grant:${PLAN}:ab_testing`]: SIZE, [`grant:${PLAN}:email_automation`]: "" }), context)).toEqual({

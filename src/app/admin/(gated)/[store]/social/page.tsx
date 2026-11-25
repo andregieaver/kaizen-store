@@ -6,6 +6,7 @@ import { SocialFacebookCard } from "@/components/admin/social-facebook-card";
 import { SocialFactsCard } from "@/components/admin/social-facts-card";
 import { SocialInsightsCard } from "@/components/admin/social-insights-card";
 import { SocialPostCreator } from "@/components/admin/social-posts";
+import { requireExtension } from "@/components/admin/extension-off";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { SOCIAL_WORDS } from "@/lib/admin-words/social";
 import { aiFor } from "@/server/ai";
@@ -35,6 +36,9 @@ export default async function SocialPostsPage({
     (await params).store,
     "marketing:read",
   );
+  // The social media manager is a paid extension (D870 S1.6): an account without it sees what it is and how to add it.
+  const notInAccount = requireExtension(member, "social");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = SOCIAL_WORDS[lang];
