@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 
-import { useAdminText } from "@/components/admin/admin-text";
 import { EmptyState } from "@/components/admin/ui/empty-state";
 import { Field, Select, TextInput } from "@/components/admin/ui/field";
 import { hint, label, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
+import type { SocialMessages } from "@/lib/admin-messages/social.en";
 import { CHANNEL_SPECS, PICTURE_SIZES, POST_CHANNELS, type PostChannel } from "@/lib/social-posts";
 
 /**
@@ -20,6 +20,7 @@ type Post = {
   channel: PostChannel;
   ref: string;
   productId: string | null;
+  pageId: string | null;
   topic: string;
   text: string;
   link: string;
@@ -37,14 +38,18 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 
 export function SocialPostCreator({
   products,
+  pages,
   posts: initial,
   mayWrite,
   hasAi,
   timeZone,
   dateLocale,
   base,
+  words: w,
 }: {
   products: { id: string; title: string }[];
+  /** The site's published pages (C1b): what Kaizena Flow's own site, which has no products, writes about. */
+  pages: { id: string; title: string }[];
   posts: Post[];
   mayWrite: boolean;
   hasAi: boolean;
@@ -52,9 +57,13 @@ export function SocialPostCreator({
   dateLocale: string;
   /** The screen's address: posts are written at `{base}/write`, a copy noted at `{base}/copied/{id}`, a picture drawn at `{base}/picture/{id}`. */
   base: string;
+  /** The screen's words in the admin's language (`SOCIAL_WORDS`, a server-only area). */
+  words: SocialMessages;
 }) {
-  const w = useAdminText("marketing").social;
-  const [productId, setProductId] = useState(products[0]?.id ?? "");
+  // What the posts are about, as `product:{id}`, `page:{id}`, or empty for the owner's own words: a product first, else a page.
+  const [subject, setSubject] = useState(products[0] ? `product:${products[0].id}` : pages[0] ? `page:${pages[0].id}` : "");
+  const productId = subject.startsWith("product:") ? subject.slice(8) : null;
+  const pageId = subject.startsWith("page:") ? subject.slice(5) : null;
   const [topic, setTopic] = useState("");
   const [channels, setChannels] = useState<PostChannel[]>(["instagram", "facebook"]);
   const [campaign, setCampaign] = useState("");
@@ -67,7 +76,7 @@ export function SocialPostCreator({
   const submit = () =>
     start(async () => {
       setMessage(null);
-      const result = await postJson<Result>(`${base}/write`, { productId: productId || null, topic, campaign, channels, withPrice }).catch(() => null);
+      const result = await postJson<Result>(`${base}/write`, { productId, pageId, topic, campaign, channels, withPrice }).catch(() => null);
       if (!result) return setMessage({ tone: "problem", text: w.failed });
       if (!result.ok) return setMessage({ tone: "problem", text: result.problem });
       setPosts((list) => [...result.posts, ...list]);
@@ -80,7 +89,7 @@ export function SocialPostCreator({
     if (last && last[0].ref === post.ref) last.push(post);
     else batches.push([post]);
   }
-  const titleOf = new Map(products.map((p) => [p.id, p.title]));
+  const titleOf = new Map([...products, ...pages].map((p) => [p.id, p.title]));
   const date = (iso: string) => new Date(iso).toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short", timeZone });
 
   return (
@@ -94,19 +103,32 @@ export function SocialPostCreator({
             submit();
           }}
         >
-          <Field label={w.product} hint={w.productHint}>
+          <Field label={w.subject} hint={productId ? w.productHint : pageId ? w.pageHint : w.subjectHint}>
             {(control) => (
-              <Select {...control} value={productId} onChange={(e) => setProductId(e.target.value)}>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
+              <Select {...control} value={subject} onChange={(e) => setSubject(e.target.value)}>
+                {products.length > 0 && (
+                  <optgroup label={w.productsGroup}>
+                    {products.map((p) => (
+                      <option key={p.id} value={`product:${p.id}`}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {pages.length > 0 && (
+                  <optgroup label={w.pagesGroup}>
+                    {pages.map((p) => (
+                      <option key={p.id} value={`page:${p.id}`}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
                 <option value="">{w.noProduct}</option>
               </Select>
             )}
           </Field>
-          <Field label={w.topic} hint={productId ? w.topicHintProduct : w.topicHint}>
+          <Field label={subject ? w.topic : w.topicAlone} hint={subject ? w.topicHintProduct : w.topicHint}>
             {(control) => <TextInput {...control} value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={500} />}
           </Field>
           <fieldset className="flex flex-col gap-2">
@@ -154,7 +176,7 @@ export function SocialPostCreator({
         ) : (
           batches.map((batch) => {
             const first = batch[0];
-            const what = (first.productId && titleOf.get(first.productId)) || first.topic;
+            const what = (first.productId && titleOf.get(first.productId)) || (first.pageId && titleOf.get(first.pageId)) || first.topic;
             return (
               <div key={first.ref} className="flex flex-col gap-3">
                 <p className="text-caption text-ink-2">
@@ -163,7 +185,7 @@ export function SocialPostCreator({
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {batch.map((post) => (
-                    <PostCard key={post.id} post={post} copied={() => postJson(`${base}/copied/${post.id}`, {}).catch(() => null)} date={date} picture={`${base}/picture/${post.id}`} />
+                    <PostCard key={post.id} words={w} post={post} copied={() => postJson(`${base}/copied/${post.id}`, {}).catch(() => null)} date={date} picture={`${base}/picture/${post.id}`} />
                   ))}
                 </div>
               </div>
@@ -175,8 +197,7 @@ export function SocialPostCreator({
   );
 }
 
-function PostCard({ post, copied, date, picture }: { post: Post; copied: () => Promise<unknown>; date: (iso: string) => string; picture: string }) {
-  const w = useAdminText("marketing").social;
+function PostCard({ words: w, post, copied, date, picture }: { words: SocialMessages; post: Post; copied: () => Promise<unknown>; date: (iso: string) => string; picture: string }) {
   const [done, setDone] = useState<"text" | "link" | null>(null);
   const [copiedAt, setCopiedAt] = useState(post.copiedAt);
   const spec = CHANNEL_SPECS[post.channel];

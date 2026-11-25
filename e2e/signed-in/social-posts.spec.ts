@@ -69,7 +69,7 @@ test("the owner writes posts for two channels from a product and copies one", as
   await page.goto(`/admin/${SLUG}/social`);
   await expect(page.getByRole("heading", { name: "Social posts", level: 1 })).toBeVisible();
   await expect(page.getByText("No posts yet. Choose a product and press Write posts.")).toBeVisible();
-  await expect(page.getByLabel("Product", { exact: true })).not.toHaveValue("");
+  await expect(page.getByLabel("What the posts are about", { exact: true })).toHaveValue(/^product:/);
 
   await page.getByRole("button", { name: "Write posts" }).click();
   await expect(page.getByText("Written. Copy each post into its channel.")).toBeVisible();
@@ -101,3 +101,17 @@ test("the owner writes posts for two channels from a product and copies one", as
   await expect(page.getByRole("article", { name: "Facebook" })).toContainText(/Copied /);
   await expect(page.getByRole("article", { name: "Instagram" })).toContainText("Not copied yet");
 });
+
+test("a store's page is a subject too, and a post about it links to it (C1b: Kaizena Flow's own site has pages, not products)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const subject = page.getByLabel("What the posts are about", { exact: true });
+  const option = subject.locator("optgroup[label='Pages of your site'] option").first();
+  await expect(option).toHaveCount(1);
+  await subject.selectOption((await option.getAttribute("value"))!);
+  await expect(page.getByText("The posts link to this page and invite people to it.")).toBeVisible();
+  await page.getByRole("button", { name: "Write posts" }).click();
+  await expect(page.getByText("Written. Copy each post into its channel.")).toBeVisible();
+  await expect(page.getByRole("article", { name: "Facebook" }).first()).toContainText("utm_source=facebook");
+  await page.screenshot({ path: "test-results/social-posts-page.png", fullPage: true });
+});
+

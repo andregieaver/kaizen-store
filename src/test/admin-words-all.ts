@@ -43,6 +43,7 @@ import { FORM_TEMPLATES_WORDS } from "@/lib/admin-words/form-templates";
 import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { GIFT_CARDS_WORDS } from "@/lib/admin-words/gift-cards";
 import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
+import { SOCIAL_WORDS } from "@/lib/admin-words/social";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { HOME_DRAFTS_WORDS } from "@/lib/admin-words/home-drafts";
 import { HOUSE_AUTOPILOT_WORDS } from "@/lib/admin-words/house-autopilot";
@@ -159,6 +160,7 @@ export const ALL_AREA_WORDS: { [A in AdminArea]: Record<AdminLang, AdminAreaMess
   consentLook: CONSENT_LOOK_WORDS,
   animation: ANIMATION_WORDS,
   heatmaps: HEATMAPS_WORDS,
+  social: SOCIAL_WORDS,
   recordings: RECORDINGS_WORDS,
   companies: COMPANIES_WORDS,
   registerFacts: REGISTER_FACTS_WORDS,

@@ -17917,6 +17917,8 @@ export const socialPosts = commerce
       ref: text("ref").notNull(),
       /** The product it is about, or null for a topic of the owner's own. Kept when the product goes: the post was still made. */
       productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+      /** The page of the store's site it is about (C1b: Kaizena Flow's own site has pages, not products), or null. Kept when the page goes. */
+      pageId: uuid("page_id").references(() => pages.id, { onDelete: "set null" }),
       topic: text("topic").notNull().default(""),
       campaign: text("campaign").notNull().default(""),
       locale: text("locale").notNull(),
@@ -17935,6 +17937,7 @@ export const socialPosts = commerce
       uniqueIndex("social_posts_ref_idx").on(t.storeId, t.ref, t.channel),
       index("social_posts_list_idx").on(t.storeId, t.createdAt),
       index("social_posts_product_idx").on(t.productId),
+      index("social_posts_page_idx").on(t.pageId),
       index("social_posts_created_by_idx").on(t.createdBy),
       check("social_posts_channel", sql`${t.channel} in ('instagram', 'facebook', 'pinterest', 'tiktok', 'linkedin')`),
       check("social_posts_ref", sql`${t.ref} ~ '^[a-z0-9]{12}$'`),
