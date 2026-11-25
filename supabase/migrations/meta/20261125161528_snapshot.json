@@ -1,6 +1,6 @@
 {
-  "id": "4e0f2288-9cde-4599-84c6-8785a4a081fc",
-  "prevId": "6e466785-bf1e-40ed-bfc8-6012b81fba64",
+  "id": "e1b2c366-0f63-4dd6-b7f5-27edd609440e",
+  "prevId": "4e0f2288-9cde-4599-84c6-8785a4a081fc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -27417,6 +27417,12 @@
           "notNull": true,
           "default": "'library'"
         },
+        "post_id": {
+          "name": "post_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "result_media_id": {
           "name": "result_media_id",
           "type": "uuid",
@@ -27537,6 +27543,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "design_edits_post_idx": {
+          "name": "design_edits_post_idx",
+          "columns": [
+            {
+              "expression": "post_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -27582,6 +27603,20 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
+        "design_edits_post_id_social_posts_id_fk": {
+          "name": "design_edits_post_id_social_posts_id_fk",
+          "tableFrom": "design_edits",
+          "tableTo": "social_posts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "post_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "design_edits_result_media_id_media_id_fk": {
           "name": "design_edits_result_media_id_media_id_fk",
           "tableFrom": "design_edits",
@@ -27611,7 +27646,11 @@
         },
         "design_edits_place": {
           "name": "design_edits_place",
-          "value": "\"commerce\".\"design_edits\".\"place\" in ('library', 'field')"
+          "value": "\"commerce\".\"design_edits\".\"place\" in ('library', 'field', 'post')"
+        },
+        "design_edits_post": {
+          "name": "design_edits_post",
+          "value": "\"commerce\".\"design_edits\".\"place\" = 'post' or \"commerce\".\"design_edits\".\"post_id\" is null"
         },
         "design_edits_design": {
           "name": "design_edits_design",
@@ -84625,6 +84664,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "picture_media_id": {
+          "name": "picture_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "copied_at": {
           "name": "copied_at",
           "type": "timestamp with time zone",
@@ -84738,6 +84783,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "social_posts_picture_idx": {
+          "name": "social_posts_picture_idx",
+          "columns": [
+            {
+              "expression": "picture_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -84776,6 +84836,20 @@
           "schemaTo": "commerce",
           "columnsFrom": [
             "page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_picture_media_id_media_id_fk": {
+          "name": "social_posts_picture_media_id_media_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "media",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "picture_media_id"
           ],
           "columnsTo": [
             "id"

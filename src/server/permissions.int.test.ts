@@ -287,6 +287,7 @@ describe("what the guards promise the scan test", () => {
       "storePictureRequest",
       "storeProductCanvaRequest",
       "storeProductPictureRequest",
+      "storeSocialCanvaRequest",
       "tickRequest",
     ]);
     expect(p.NO_ACCESS).toBe("You do not have access to this.");

@@ -725,3 +725,5 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - **Picture fields (C2, `canva-field.tsx`, `canvaForField()`; how: `docs/design-tools.md`)**: the builder's (library route, `website:write`)
   and product photos (`/products/canva`, `products:write`, edit and bring only). The picture is found by address among the site's own
   rows, never fetched from it; `CANVA_BACK` shows nothing of the edit, it only names its id to this site's tabs. Words: the `canvaField` cut.
+  A social post's picture (C3, `canva-posts.ts`, `/social/canva`, `marketing:write`) reopens the person's earlier design of the post, else
+  sends its picture; brought back, the copy is the post's (`social_posts.picture_media_id`).

@@ -68,6 +68,8 @@ export type SocialPost = {
   createdAt: string;
   /** What the owner copies (`copyText()`). */
   text: string;
+  /** The post's own picture from Canva (D898 C3), a library item; absent or null for the picture drawn by code. */
+  pictureMediaId?: string | null;
 };
 
 export type WriteResult = { ok: true; posts: SocialPost[] } | { ok: false; problem: string };
@@ -261,6 +263,7 @@ const POST_ROW = z.object({
   price_line: col.textOrNull,
   copied_at: col.timestampOrNull,
   created_at: col.timestamp,
+  picture_media_id: col.textOrNull,
 });
 
 /** The store's posts, newest first (at most `limit`), each with the text to copy. */
@@ -268,7 +271,7 @@ export async function listSocialPosts(storeId: string, limit = 60): Promise<Soci
   const rows = await typedRows(
     POST_ROW,
     sql`
-    select id, channel, ref, product_id, page_id, topic, title, caption, hashtags, link, price_line, copied_at, created_at
+    select id, channel, ref, product_id, page_id, topic, title, caption, hashtags, link, price_line, copied_at, created_at, picture_media_id
     from commerce.social_posts where store_id = ${storeId}::uuid
     order by created_at desc, ref, channel limit ${limit}
   `,
@@ -287,6 +290,7 @@ export async function listSocialPosts(storeId: string, limit = 60): Promise<Soci
     priceLine: r.price_line,
     copiedAt: r.copied_at,
     createdAt: r.created_at,
+    pictureMediaId: r.picture_media_id,
     text: copyText({ channel: r.channel, title: r.title, caption: r.caption, hashtags: r.hashtags, link: r.link, priceLine: r.price_line }),
   }));
 }

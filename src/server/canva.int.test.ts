@@ -42,6 +42,8 @@ vi.mock("./media-library", async () => {
 });
 
 const canva = await import("./canva");
+const posts = await import("./canva-posts");
+const { PICTURE_SIZES } = await import("@/lib/social-posts");
 const { newStore } = await import("./inventory-test-support");
 
 type Call = { method: string; url: string; body: unknown; headers: Record<string, string> };
@@ -80,6 +82,9 @@ function fakeCanva() {
       });
     }
     if (url.endsWith("/v1/designs/DAFsale1")) return json(200, { design: { id: "DAFsale1", title: "Black Friday" } });
+    if (url.endsWith("/v1/designs/DAFedited1") && method === "GET") {
+      return json(200, { design: { id: "DAFedited1", title: "hero", urls: { edit_url: "https://www.canva.com/api/design/tok2/edit", view_url: "https://www.canva.com/api/design/tok2/view" } } });
+    }
     if (url.endsWith("/v1/designs/DAFmissing")) return json(404, { code: "design_not_found", message: "Design not found" });
     if (url.endsWith("/v1/exports") && method === "POST") return json(200, { job: { id: "ex-1", status: "in_progress" } });
     if (url.endsWith("/v1/exports/ex-1")) return json(200, { job: { id: "ex-1", status: "success", urls: ["https://export-download.canva.com/ex-1/1.png"] } });
@@ -230,6 +235,52 @@ describe("A person's Canva (D898)", () => {
     expect(brought.url).toMatch(/\/canva-\d+-\d+\.webp$/);
     expect(kept.at(-1)).toMatchObject({ madeBy: "canva", editedFrom: picture });
     expect(await canva.canvaEditStatus(owner, started.editId)).toEqual({ ok: true, status: "brought" });
+  });
+
+  it("edits a social post's picture: sent in the channel's shape, brought back as the post's picture, reopened in the same design, and undone (C3)", async () => {
+    const [post] = await db().execute<{ id: string }>(sql`
+      insert into commerce.social_posts (store_id, channel, ref, locale, title, caption, link)
+      values (${store.storeId}::uuid, 'instagram', ${`c3${store.slug.replace(/[^a-z0-9]/g, "").slice(0, 10).padEnd(10, "0")}`}, 'nb-NO', 'Mugs', 'New mugs are in.', 'https://example.com/mugs')
+      returning id`);
+    const member = { store: { id: store.storeId, slug: store.slug }, account: { id: store.accountId } } as unknown as Parameters<typeof posts.startPostEdit>[0];
+    const drawn: string[] = [];
+    const draw = async (_member: unknown, postId: string) => {
+      drawn.push(postId);
+      return new Uint8Array(await sharp({ create: { width: 1080, height: 1350, channels: 3, background: "#224466" } }).png().toBuffer());
+    };
+    // Another store's post, or no id, is not there.
+    expect(await posts.startPostEdit(member, "nope", "https://kaizenaflow.com", { ...deps, draw })).toEqual({ ok: false, problem: "gone" });
+
+    const first = await posts.startPostEdit(member, String(post.id), "https://kaizenaflow.com", { ...deps, draw });
+    if (!first.ok) throw new Error(first.problem);
+    expect(drawn).toEqual([String(post.id)]);
+    const made = fake.calls.filter((c) => c.url.endsWith("/v1/designs") && c.method === "POST").at(-1)!;
+    expect(made.body).toMatchObject({ design_type: { type: "custom", width: PICTURE_SIZES.instagram.width, height: PICTURE_SIZES.instagram.height } });
+    const [row] = await db().execute<Record<string, string | null>>(sql`select place, post_id, source_media_id from commerce.design_edits where id = ${first.editId}::uuid`);
+    expect(row).toMatchObject({ place: "post", post_id: String(post.id), source_media_id: null });
+
+    const correlation = new URL(first.url).searchParams.get("correlation_state")!;
+    const to = await canva.canvaReturned(new URLSearchParams({ correlation_jwt: fake.returnJwt({ design_id: "DAFedited1", correlation_state: correlation }) }), deps);
+    expect(to).toBe(`/admin/account/canva-back?edit=${first.editId}`);
+    const brought = await canva.bringBackFromCanva({ storeId: store.storeId, storeSlug: store.slug, accountId: store.accountId }, first.editId, deps);
+    if (!brought.ok) throw new Error(brought.problem);
+    expect(kept.at(-1)).toMatchObject({ madeBy: "canva", editedFrom: null, fileName: expect.stringMatching(/^instagram-.*-canva\./) });
+    const pictureOf = async () => (await db().execute<{ picture: string | null }>(sql`select picture_media_id as picture from commerce.social_posts where id = ${post.id}::uuid`))[0].picture;
+    expect(await pictureOf()).toBe(brought.mediaId);
+
+    // Edited again: the same design opens where it was left, nothing drawn or sent again.
+    const uploads = fake.calls.filter((c) => c.url.endsWith("/v1/asset-uploads") && c.method === "POST").length;
+    const again = await posts.startPostEdit(member, String(post.id), "https://kaizenaflow.com", { ...deps, draw });
+    if (!again.ok) throw new Error(again.problem);
+    expect(new URL(again.url).pathname).toBe("/api/design/tok2/edit");
+    expect(fake.calls.filter((c) => c.url.endsWith("/v1/asset-uploads") && c.method === "POST")).toHaveLength(uploads);
+    expect(drawn).toHaveLength(1);
+
+    // The original picture again; the copy stays in the library.
+    expect(await posts.usePostDrawnPicture(member, String(post.id))).toEqual({ ok: true, postId: String(post.id) });
+    expect(await pictureOf()).toBeNull();
+    const [still] = await db().execute<{ n: number }>(sql`select count(*)::int as n from commerce.media where id = ${brought.mediaId}::uuid`);
+    expect(still.n).toBe(1);
   });
 
   it("imports a design's first page as a new picture, and says when a design is gone", async () => {

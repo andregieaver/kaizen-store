@@ -11828,9 +11828,12 @@ export const designEdits = commerce.table(
     status: text("status").notNull().default("open"),
     /**
      * Where the edit started (C2): `library` (the media library, which Canva's *Return* comes back to) or `field` (a picture field in the
-     * page builder or the product editor, which opened Canva in a tab of its own and waits for the design while its page stays open).
+     * page builder or the product editor, which opened Canva in a tab of its own and waits for the design while its page stays open), or
+     * `post` (a social post's picture, C3, which waits the same way).
      */
     place: text("place").notNull().default("library"),
+    /** The social post a `post` edit is for (C3): brought back, the copy becomes the post's picture. Kept when the post goes. */
+    postId: uuid("post_id").references((): AnyPgColumn => socialPosts.id, { onDelete: "set null" }),
     resultMediaId: uuid("result_media_id").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
     broughtAt: timestamp("brought_at", { withTimezone: true }),
@@ -11845,9 +11848,11 @@ export const designEdits = commerce.table(
     index("design_edits_account_idx").on(t.accountId),
     index("design_edits_source_idx").on(t.sourceMediaId),
     index("design_edits_result_idx").on(t.resultMediaId),
+    index("design_edits_post_idx").on(t.postId),
     check("design_edits_provider", sql`${t.provider} in ('canva')`),
     check("design_edits_status", sql`${t.status} in ('open', 'returned', 'brought')`),
-    check("design_edits_place", sql`${t.place} in ('library', 'field')`),
+    check("design_edits_place", sql`${t.place} in ('library', 'field', 'post')`),
+    check("design_edits_post", sql`${t.place} = 'post' or ${t.postId} is null`),
     check("design_edits_design", sql`${t.designId} ~ '^[A-Za-z0-9_-]{1,100}$'`),
     check("design_edits_correlation", sql`${t.correlationHash} ~ '^[0-9a-f]{64}$'`),
     check("design_edits_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
@@ -18119,6 +18124,11 @@ export const socialPosts = commerce
       link: text("link").notNull(),
       /** The price as the shop showed it when written, set by code; null for a topic or when the owner leaves it out. */
       priceLine: text("price_line"),
+      /**
+       * The post's own picture once the owner edited it in Canva (D898 C3): a library item, shown and downloaded in place of the picture drawn
+       * by code; null for the drawn one. Back to the drawn one when the item goes.
+       */
+      pictureMediaId: uuid("picture_media_id").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
       copiedAt: timestamp("copied_at", { withTimezone: true }),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
@@ -18130,6 +18140,7 @@ export const socialPosts = commerce
       index("social_posts_product_idx").on(t.productId),
       index("social_posts_page_idx").on(t.pageId),
       index("social_posts_created_by_idx").on(t.createdBy),
+      index("social_posts_picture_idx").on(t.pictureMediaId),
       check("social_posts_channel", sql`${t.channel} in ('instagram', 'facebook', 'pinterest', 'tiktok', 'linkedin')`),
       check("social_posts_ref", sql`${t.ref} ~ '^[a-z0-9]{12}$'`),
       check(
