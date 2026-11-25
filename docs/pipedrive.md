@@ -751,6 +751,9 @@ hashes, read up to 15 at a time.
   * Deals', activities' and leads' events reach Zapier and Make; Slack is told of deals.
   * The Admin API reads pipelines, deals, activities, leads and companies, and a customer names their company.
   * Writing deals and activities over the API comes with a scope of its own.
+* **Listed (25 November 2026, the owner: "close enough").** Integrations has a *Sales and CRM* group. **Pipedrive** opens Settings →
+  Moving in (D477), shown on while its token is kept. **HubSpot** opens Zapier, marked *Through Zapier*, where its customers, orders and
+  deals go today (D902). Each entry points at its own Connect once G1 and H1 are built.
 * **G0 (25 November 2026).** The spikes that Pipedrive's and HubSpot's own pages answer (section 12, section 11). Left: S1, S4's evidence,
   S5, S11 and S12.
 

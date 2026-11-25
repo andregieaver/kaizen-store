@@ -17,6 +17,8 @@ const TONES: Record<string, string> = {
   nshift: "bg-teal-800 text-white",
   sendcloud: "bg-cyan-800 text-white",
   canva: "bg-teal-600 text-white",
+  pipedrive: "bg-emerald-700 text-white",
+  hubspot: "bg-orange-600 text-white",
 };
 
 export function IntegrationMark({ id }: { id: string }) {

@@ -21,13 +21,14 @@ import { fikenCounts, getFikenConnection } from "@/server/fiken";
 import { getGoogleSettings } from "@/server/google-reviews";
 import { instagramStatus } from "@/server/instagram";
 import { canvaAccount } from "@/server/canva";
+import { pipedriveMove } from "@/server/pipedrive";
 import { getTripletexConnection, tripletexCounts } from "@/server/tripletex";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Integrations" };
 
-type Group = "delivery" | "accounting" | "sell" | "pages" | "design" | "automate";
-const GROUPS: readonly Group[] = ["delivery", "accounting", "sell", "pages", "design", "automate"];
+type Group = "delivery" | "accounting" | "sell" | "crm" | "pages" | "design" | "automate";
+const GROUPS: readonly Group[] = ["delivery", "accounting", "sell", "crm", "pages", "design", "automate"];
 type Badge = { text: string; tone: string; problem?: boolean };
 /** One service as a row: what it does, how it stands, and the one action. */
 type Entry = { id: string; name: string; summary: string; group: Group; href: string; action: string; badge: Badge | null; connected: boolean; local: boolean };
@@ -54,7 +55,7 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
   const w = all.integrations;
   const h = w.hub;
   const k = w.carrier;
-  const [connected, carriers, endpoints, tripletex, tripletexSent, fiken, fikenSent, ebay, google, instagram, canva] = await Promise.all([
+  const [connected, carriers, endpoints, tripletex, tripletexSent, fiken, fikenSent, ebay, google, instagram, canva, pipedrive] = await Promise.all([
     listIntegrations(store.id),
     listCarriers(store.id),
     listEndpoints(store.id),
@@ -67,6 +68,7 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
     instagramStatus(store.id),
     // The person's own Canva (D898): each member connects their own.
     canvaAccount(member.account.id),
+    pipedriveMove(store.id),
   ]);
   // Tripletex and Fiken are not webhooks (D453, D460): their state is their own connection's.
   const tx = w.tripletex.listStatus;
@@ -197,6 +199,32 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
       local: true,
     },
   ];
+  // A store's CRM (D901, D902): Pipedrive's move by its token today (D477) and both kept in step through Zapier or Make and the Admin API,
+  // until Kaizena Flow's own Connect (docs/pipedrive.md G1, H1). HubSpot opens Zapier, where its deals, people and orders already go.
+  const crm: Entry[] = [
+    {
+      id: "pipedrive",
+      name: "Pipedrive",
+      summary: w.pipedriveDescription,
+      group: "crm",
+      href: `/admin/${store.slug}/settings/moving`,
+      action: pipedrive ? w.manage : w.pipedriveSetUp,
+      badge: pipedrive ? { text: all.common.on, tone: ON } : null,
+      connected: Boolean(pipedrive),
+      local: true,
+    },
+    {
+      id: "hubspot",
+      name: "HubSpot",
+      summary: w.hubspotDescription,
+      group: "crm",
+      href: `${base}/zapier`,
+      action: w.hubspotSetUp,
+      badge: { text: w.throughZapier, tone: QUIET },
+      connected: false,
+      local: true,
+    },
+  ];
   const endpointEntry: Entry = {
     id: "endpoints",
     name: h.endpointsName,
@@ -208,7 +236,7 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
     connected: endpoints.length > 0,
     local: true,
   };
-  const every = [...carrierEntries, ...services.filter((s) => s.group === "accounting"), ...services.filter((s) => s.group === "sell"), ...pages, ...design, ...services.filter((s) => s.group === "automate"), endpointEntry];
+  const every = [...carrierEntries, ...services.filter((s) => s.group === "accounting"), ...services.filter((s) => s.group === "sell"), ...crm, ...pages, ...design, ...services.filter((s) => s.group === "automate"), endpointEntry];
   const on = every.filter((e) => e.connected);
   const problems = on.filter((e) => e.badge?.problem).length;
 
