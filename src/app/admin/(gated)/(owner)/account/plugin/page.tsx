@@ -9,7 +9,8 @@ import { PLUGINS_WORDS } from "@/lib/admin-words/plugins";
 import { requireAccount } from "@/server/auth";
 import { ownedStores, waitingSignIn } from "@/server/plugin-sign-in";
 
-export const metadata: Metadata = { title: "Connect Figma", robots: { index: false, follow: false }, referrer: "no-referrer" };
+// `same-origin`: the code never leaves in a Referer, and the form still says it comes from this site (`no-referrer` would send `Origin: null`).
+export const metadata: Metadata = { title: "Connect Figma", robots: { index: false, follow: false }, referrer: "same-origin" };
 
 const PROBLEMS = ["owner", "limit", "off", "gone"] as const;
 
