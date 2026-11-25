@@ -904,6 +904,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D899 | **A found company's door from its whole page and its contact page (email plan P5.2)** | 2026-11-25 | [text](decisions/D899.md) |
 | D900 | **Market check: the store against itself, market by market, then its rivals** | 2026-11-25 | [text](decisions/D900.md) |
 | D901 | **Pipedrive: beside it, moving from it, and past it (plan)** | 2026-11-25 | [text](decisions/D901.md) |
+| D902 | **The CRM reaches Zapier, Make and the Admin API (D901 P29)** | 2026-11-25 | [text](decisions/D902.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
