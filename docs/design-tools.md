@@ -58,8 +58,10 @@ Owners change pictures every week, *Edit in Canva* works on a free Canva account
 
 ### What C2 does
 
-- **Where.** Every picture field under the page builder (`ImageUploadButton`, through `CanvaFieldProvider`, for a store's pages and Kaizena
-  Flow's own) and each photo of a product in the product editor. Kaizena Flow sells plans, not goods, so it has no product editor to match.
+- **Where.** Every picture field under the page builder, through `CanvaFieldProvider`, for a store's pages and Kaizena Flow's own: the
+  blocks' (`ImageUploadButton`), the page's own picture, and custom fields' pictures and galleries; and each photo of a product in the
+  product editor. Kaizena Flow sells plans, not goods, so it has no product editor to match. Elsewhere (a menu, a chat agent's avatar)
+  no provider is given and nothing is drawn.
 - **How.** *Edit in Canva* opens a new tab on the press (a tab opened later is a pop-up the browser stops), asks the route to send the
   field's picture to Canva (found by its address among the site's own library, `place = 'field'`), and sends that tab to Canva's edit
   link. The editor stays as it is, with its unsaved changes. Canva's *Return* lands on `/admin/account/canva-back`, which tells the

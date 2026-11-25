@@ -79,7 +79,7 @@ import { ColourLibraryProvider } from "./colour-library";
 import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureEditorProvider, PictureMakerProvider } from "./picture-maker";
-import { CanvaFieldProvider } from "./canva-field";
+import { CanvaFieldProvider, EditInCanvaButton } from "./canva-field";
 import { FormsContext, SignupCodesContext } from "./block-fields";
 import { HeaderStageFields } from "./header-stage-fields";
 import { newId, PageBuilder, type DualBuilder } from "./page-builder";
@@ -1810,6 +1810,8 @@ function ThumbnailField({
           <p className="text-muted">{tw.noUploads}</p>
         )}
         <LibraryButton onPicked={(picture) => onChange({ url: picture.url, width: picture.width, height: picture.height, alt: value?.alt || picture.alt })} />
+        {/* The page's picture edited in the person's own Canva (D898 C2), its description kept. */}
+        <EditInCanvaButton current={value} onEdited={(picture) => onChange({ url: picture.url, width: picture.width, height: picture.height, alt: value?.alt ?? "" })} />
         {value && (
           <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
             {tw.remove}
