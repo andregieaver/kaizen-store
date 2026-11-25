@@ -116,6 +116,37 @@ describe("reading a page", () => {
     await expect(research.readWebPage(actor(), { url: "https://coffee.example/file.pdf" }, { fetchPage: page("%PDF", "application/pdf") })).rejects.toThrow("not a page that can be read");
     await expect(research.readWebPage(actor(), { url: "javascript:alert(1)" }, { fetchPage: page("") })).rejects.toThrow("full address");
   });
+
+  it("obeys the site's robots.txt: a page it closes and a site whose robots.txt cannot be heard are not read (D900 M2)", async () => {
+    const asked: string[] = [];
+    const site = (robots: Fetched) =>
+      (async (url: string): Promise<Fetched> => {
+        asked.push(url);
+        return new URL(url).pathname === "/robots.txt" ? robots : { ok: true, url, status: 200, contentType: "text/html", bytes: new TextEncoder().encode("<html><body>Hei</body></html>") };
+      }) as never;
+    const closed = site({ ok: true, url: "https://closed.example/robots.txt", status: 200, contentType: "text/plain", bytes: new TextEncoder().encode("User-agent: *\nDisallow: /p/") });
+    await expect(research.readWebPage(actor(), { url: "https://closed.example/p/mug" }, { fetchPage: closed })).rejects.toThrow("robots.txt asks robots not to read");
+    // Another page of the same site is read, and its robots.txt is not asked for again within the hour.
+    expect((await research.readWebPage(actor(), { url: "https://closed.example/about" }, { fetchPage: closed })).text).toContain("Hei");
+    expect(asked.filter((u) => u.endsWith("/robots.txt"))).toEqual(["https://closed.example/robots.txt"]);
+    const silent = site({ ok: false, problem: "The site took too long to answer." });
+    await expect(research.readWebPage(actor(), { url: "https://silent.example/" }, { fetchPage: silent })).rejects.toThrow("robots.txt could not be read");
+    const missing = site({ ok: false, problem: "The site answered 404.", status: 404 });
+    expect((await research.readWebPage(actor(), { url: "https://open.example/" }, { fetchPage: missing })).text).toContain("Hei");
+    const [kept] = await db().execute<Row>(sql`select count(*)::int as n from commerce.research_sources where store_id = ${store.id}::uuid and url like 'https://closed.example/p/%'`);
+    expect(kept.n).toBe(0);
+  });
+
+  it("reads a product page's offer from its own data, never its words, and keeps the page as a source (D900 M2)", async () => {
+    const ld = { "@context": "https://schema.org", "@type": "Product", name: "Linen apron", offers: { "@type": "Offer", price: "449.00", priceCurrency: "NOK", availability: "https://schema.org/InStock" } };
+    const html = `<html><head><title>Linen apron</title><script type="application/ld+json">${JSON.stringify(ld)}</script></head><body><p>Only 99 kr today!</p></body></html>`;
+    const read = await research.readOfferPage(actor(), { url: "https://rival.example/p/apron" }, { fetchPage: page(html) });
+    expect(read).toMatchObject({ url: "https://rival.example/p/apron", title: "Linen apron" });
+    expect(read.offers).toEqual([expect.objectContaining({ name: "Linen apron", priceMinor: 44900, currency: "NOK", availability: "in_stock" })]);
+    const [kept] = await db().execute<Row>(sql`select kind from commerce.research_sources where store_id = ${store.id}::uuid and url = 'https://rival.example/p/apron'`);
+    expect(kept).toMatchObject({ kind: "page" });
+    expect((await research.readOfferPage(actor(), { url: "https://rival.example/p/plain" }, { fetchPage: page("<html><body>Apron 99 kr</body></html>") })).offers).toEqual([]);
+  });
 });
 
 describe("notes and comparisons", () => {
