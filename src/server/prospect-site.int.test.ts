@@ -58,12 +58,14 @@ describe("reading a company's site (D894)", () => {
       (async (url: string): Promise<Fetched> => {
         fetched.push(new URL(url).pathname);
         const body = pages[new URL(url).pathname];
-        return body === undefined ? ({ ok: false, url, problem: "404" } as never) : { ok: true, url, status: 200, contentType: "text/html", bytes: new TextEncoder().encode(body) };
+        // A page the site does not have answers 404, as safeFetch() says it: robots.txt among them, so every page may be read (D900 M2).
+        return body === undefined ? { ok: false, problem: "The site answered 404.", status: 404 } : { ok: true, url, status: 200, contentType: "text/html", bytes: new TextEncoder().encode(body) };
       }) as never;
 
     const footer = await readCompanySite(actor, connection, "kafe-door.no", [], { fetchPage: site({ "/": html(`<footer><a href="mailto:post@kafe-door.no">Skriv til oss</a></footer>`) }) });
     expect(footer).toMatchObject({ ok: true, addresses: ["post@kafe-door.no"] });
-    expect(fetched).toEqual(["/"]);
+    // The site's robots.txt first (D900 M2), read once an hour for the site, then its front page.
+    expect(fetched).toEqual(["/robots.txt", "/"]);
 
     fetched.length = 0;
     const contact = await readCompanySite(actor, connection, "kafe-door.no", [], {

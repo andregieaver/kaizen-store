@@ -29,8 +29,8 @@ The parts already exist; the market check joins them:
 | Step | What | State |
 |---|---|---|
 | **M1** | **Your markets side by side**: the store against itself, country by country, from its own data only. No rival is read. | Built (2026-11-25) |
-| M1b | Kaizena Flow's sign-ups by country: a sign-up keeps the country of the page it was sent from, so the house store's markets have a conversion. | Next for the platform |
-| M2 | **Rivals**: 3 to 8 per market, confirmed by the owner, with facts read by code from their own pages. The SWOT as a view of M1 and M2. | Planned |
+| M1b | Kaizena Flow's sign-ups by country. | Parked (25 November 2026): its site sells in one country, so it would be one row (3.5) |
+| M2 | **Rivals**: 3 to 8 per market, confirmed by the owner, with facts read by code from their own pages. The SWOT as a view of M1 and M2. | Reading built (robots.txt, a page's offer data); rivals in progress |
 | M3 | **Watching**: rivals' pages read again once a month in the goal reviews; a change is an autopilot event, never an action. | Planned |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices, fees, EU features), shown beside `platform_pricing_facts` (D854). | Planned |
 
@@ -92,8 +92,12 @@ that tool's own gate.
 The same page serves Kaizena Flow's store (`/admin/kaizenaflow/analytics/markets`), with what applies to it: visits by country, the
 searches of its site that found nothing and its text by language. It sells plans through Stripe, not goods, so orders, the average order
 and prices per country do not apply, and the page says so in one line. Its conversion is sign-ups per visit (`houseSignupRate()`, D757),
-which is known for the site as a whole but not by country: a sign-up keeps no country. M1b keeps the country of the page a sign-up was
-sent from (`access_requests.market_code`), after which its countries are compared as a store's are.
+which is known for the site as a whole but not by country: a sign-up keeps no country.
+
+**M1b is parked** (read on 25 November 2026): kaizenaflow.com sells in one country (NO, in English and Norwegian), so every visit's
+country is NO (153 in 30 days) and a sign-up's country would be the same one row; there was one sign-up in those 30 days, far under any
+minimum volume. A split worth having is by language (a sign-up already keeps its `locale`), and it is taken up when the site has at least
+`MIN_ORDERS` (10) sign-ups a month, or when Kaizena Flow sells in a second country.
 
 ## 4. M2: rivals (planned)
 
