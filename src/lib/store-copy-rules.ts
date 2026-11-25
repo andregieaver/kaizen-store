@@ -231,6 +231,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   sms_messages: never("The texts the original sent (D565)."),
   sms_campaigns: never("A store's text messages are sent to its own numbers (D565); a copy starts without them."),
   social_posts: never("A store's social posts were written for its own channels and carry its own links (D870); a copy starts without them."),
+  social_advice: never("Advice written from a store's own figures (D870 S1.4); a copy has none of them and starts without it."),
   social_post_insights: never("Figures of a store's own Instagram account, read with its token (D870 S1.2); a copy has no account and starts without them."),
   sms_settings: never("The original's 46elks account (D565): a password, and the copy's owner connects their own."),
   abandoned_checkouts: never("Carts left behind by shoppers, with their emails."),

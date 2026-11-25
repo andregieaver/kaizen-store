@@ -408,6 +408,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   product_groups: "A store's combined listing (D566): the name of the option its products share, by language; never a person.",
   sms_campaigns: "A store's marketing text (D565): its name, its words and the segment it was for; never a person (who got it is in `sms_messages`).",
   social_posts: "A store's social post (D870 C1): its channel, caption, hashtags, tagged link and the product or topic it was about; never a person.",
+  social_advice: "The social media adviser's answers to a store (D870 S1.4): the store's figures it read and its verdicts, recommendations and calendar; never a person.",
   social_post_insights: "How a store's own Instagram posts did (D870 S1.2): each post's id, kind, date, caption's start, address and totals (reach, likes, saves); never who liked or saw it.",
   sms_settings: "A store's 46elks account for marketing texts (D565): its API username, an encrypted password, the sender name, the store's reply number, its hours and the month's cap, and the staff account that changed them; never a shopper's data.",
   broadcasts: "A store's broadcast (D297): its name, its words in each language and who it was for in words (a segment's name and rules); never a person.",

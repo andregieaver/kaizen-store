@@ -8,6 +8,7 @@
  * of the next two weeks; anything else in the answer is left out, and an answer without three verdicts is refused.
  */
 
+import { addDays } from "./analytics-period";
 import { findAvoided } from "./brand";
 import { findClaims } from "./claims";
 import type { SocialFacts } from "./social-facts";
@@ -64,8 +65,6 @@ export function checkedWords(raw: unknown, max: number, avoid: readonly string[]
   if (findClaims(text).length > 0 || findAvoided(text, avoid).length > 0) return null;
   return text;
 }
-
-const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 /**
  * The adviser's answer as kept, or null when it is no JSON or has fewer than three good verdicts. `today` is the store's day; the calendar
