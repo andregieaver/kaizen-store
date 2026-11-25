@@ -28,7 +28,7 @@ export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
 export const ENHANCEMENT_ONLY: readonly IncidentStatus[] = ["proposed", "approved", "dismissed"];
 export const PROBLEM_ONLY: readonly IncidentStatus[] = ["open"];
 
-/** Statuses where nothing is waiting: a repeat of `dismissed` or `wont_fix` only counts, a repeat of `fixed` or `done` reopens. */
+/** Statuses where nothing is waiting: a repeat of `dismissed` or `wont_fix` only counts, a repeat of `fixed` or `done` reopens (in `logIncident()`'s statement). */
 export const CLOSED_STATUSES: readonly IncidentStatus[] = ["done", "dismissed", "wont_fix"];
 
 /**
@@ -67,12 +67,6 @@ export function workableStatus(kind: IncidentKind): "open" | "approved" {
 export function firstStatus(kind: IncidentKind, source: IncidentSource): IncidentStatus {
   if (kind !== "enhancement") return "open";
   return source === "owner" ? "approved" : "proposed";
-}
-
-/** Where a repeat of an entry leaves it: a fixed or done entry reopens; a dismissed or won't-fix one stays as decided; the rest stay. */
-export function statusAfterRepeat(kind: IncidentKind, status: IncidentStatus): IncidentStatus {
-  if (status === "fixed" || status === "done") return workableStatus(kind);
-  return status;
 }
 
 /** The groups of the incidents page (the plan's section 4): what needs the owner, what is being worked, what was fixed lately. */

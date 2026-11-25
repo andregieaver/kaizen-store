@@ -72,9 +72,9 @@ own, or none. Access requests and Support show the number waiting. Settings' six
 | Plans | `credit-card` | `/admin/platform/plans` | 9 pages, 4 in Basic |
 | Access requests | `bell` | `/admin/platform/requests` | none |
 | Support | `chat` | `/admin/platform/support` | 7 pages, 3 in Basic |
-| Settings | `cog` | `/admin/platform/settings`, its own page | 28 pages in 6 groups, 11 in Basic |
+| Settings | `cog` | `/admin/platform/settings`, its own page | 29 pages in 6 groups, 12 in Basic |
 
-57 pages in 4 sidebars, 24 of them in Basic.
+58 pages in 4 sidebars, 25 of them in Basic.
 
 <!-- nav:generated:end platform-tabs -->
 
@@ -292,7 +292,7 @@ Opens `/admin/platform/support`. 7 pages, 3 in Basic.
 
 ### Platform › Settings
 
-Opens `/admin/platform/settings`, its own page. 28 pages in 6 groups, 11 in Basic.
+Opens `/admin/platform/settings`, its own page. 29 pages in 6 groups, 12 in Basic.
 
 | Group | Page | Address | View |
 | --- | --- | --- | --- |
@@ -316,7 +316,8 @@ Opens `/admin/platform/settings`, its own page. 28 pages in 6 groups, 11 in Basi
 | Privacy and law | Data retention | `/admin/platform/retention` | Advanced |
 |  | Record of processing | `/admin/platform/processing` | Advanced |
 |  | Content notices | `/admin/platform/reports` | Basic |
-| Running the platform | Status page | `/admin/platform/status` | Basic |
+| Running the platform | Incidents | `/admin/platform/incidents` | Basic |
+|  | Status page | `/admin/platform/status` | Basic |
 |  | Usage and limits | `/admin/platform/capacity` | Basic |
 |  | Emails | `/admin/platform/emails` | Basic |
 |  | Languages | `/admin/platform/languages` | Advanced |

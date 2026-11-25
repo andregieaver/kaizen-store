@@ -12,7 +12,6 @@ import {
   INCIDENT_MOVES,
   INCIDENT_STATUSES,
   incidentGroup,
-  statusAfterRepeat,
   statusFitsKind,
   workableStatus,
 } from "./incidents";
@@ -63,13 +62,6 @@ describe("a new entry and a repeat", () => {
     expect(firstStatus("enhancement", "nightly")).toBe("proposed");
     expect(firstStatus("enhancement", "platform_ai")).toBe("proposed");
     expect(firstStatus("enhancement", "owner")).toBe("approved");
-  });
-
-  it("reopen a fixed or done problem and leave a decided one as it is", () => {
-    expect(statusAfterRepeat("error", "fixed")).toBe("open");
-    expect(statusAfterRepeat("warning", "done")).toBe("open");
-    expect(statusAfterRepeat("error", "wont_fix")).toBe("wont_fix");
-    expect(statusAfterRepeat("error", "claimed")).toBe("claimed");
   });
 
   it("group statuses for the page: what needs the owner, what is worked, what was fixed", () => {
