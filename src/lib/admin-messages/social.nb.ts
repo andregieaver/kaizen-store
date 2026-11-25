@@ -144,6 +144,17 @@ export const socialNb: SocialMessages = {
     ownPost: "Skrevet for denne dagen",
     picture: "Bildet for {channel}",
     failed: "Det gikk ikke. Prøv igjen.",
+    checked: "Bildet er sjekket",
+    notChecked: "Bildet er ikke sjekket ennå",
+    checkFound: "Bildesjekken fant: {problems}",
+    checkPicture: "Sjekk bildet",
+    checkWaits: "Et innlegg der bildesjekken fant noe, er ikke med i Godkjenn uka: les det og godkjenn det for seg.",
+    problems: {
+      unreadable: "teksten er vanskelig å lese",
+      wrong_subject: "det viser ikke det innlegget handler om",
+      cut_off: "noe er kuttet av",
+      off_brand: "det ligner ikke butikken din",
+    },
   },
   adviser: {
     title: "Rådgiveren for sosiale medier",

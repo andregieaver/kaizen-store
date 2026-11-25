@@ -1,6 +1,6 @@
 {
-  "id": "b6e9e36d-081c-4719-8fe0-68057616944f",
-  "prevId": "e3c852f9-74ae-43e3-90db-b52c15ab7685",
+  "id": "58de6465-da5d-4175-889d-31e58cade87d",
+  "prevId": "ffc77c1e-60ad-4018-b572-6a8e925ed1c1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -85274,6 +85274,26 @@
           "primaryKey": false,
           "notNull": false
         },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "check_problems": {
+          "name": "check_problems",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "check_note": {
+          "name": "check_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -85540,6 +85560,10 @@
         "social_posts_ref": {
           "name": "social_posts_ref",
           "value": "\"commerce\".\"social_posts\".\"ref\" ~ '^[a-z0-9]{12}$'"
+        },
+        "social_posts_check": {
+          "name": "social_posts_check",
+          "value": "\"commerce\".\"social_posts\".\"check_problems\" <@ array['unreadable', 'wrong_subject', 'cut_off', 'off_brand']::text[] and char_length(\"commerce\".\"social_posts\".\"check_note\") <= 300"
         },
         "social_posts_texts": {
           "name": "social_posts_texts",

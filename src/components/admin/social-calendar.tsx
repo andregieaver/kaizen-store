@@ -16,7 +16,7 @@ import { CHANNEL_SPECS } from "@/lib/social-posts";
  * Writing goes to `/write` with the day (one post at a time, so a week never waits on one long call); approving and changing to `/calendar`.
  */
 
-type Answer = { ok: boolean; problem?: string };
+type Answer = { ok: boolean; problem?: string; posts?: { id: string }[] };
 
 async function postJson(url: string, body: unknown): Promise<Answer> {
   const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
@@ -65,7 +65,17 @@ export function SocialCalendar({
       if (done) setMessage({ tone: "ok", text: done });
       window.location.reload();
     });
-  const write = (items: CalendarItem[], key: string) => run(key, items.map((it) => () => postJson(`${base}/write`, writeBody(it))));
+  /** Writes one planned post, then has its picture checked (S2.3); a check that cannot run leaves the post unchecked, never unwritten. */
+  const writeAndCheck = async (it: CalendarItem): Promise<Answer> => {
+    const written = await postJson(`${base}/write`, writeBody(it));
+    const ids = written.posts?.map((p) => p.id) ?? [];
+    if (written.ok && ids.length > 0) await postJson(`${base}/calendar`, { do: "check", ids });
+    return written;
+  };
+  const write = (items: CalendarItem[], key: string) => run(key, items.map((it) => () => writeAndCheck(it)));
+  const check = (id: string) => run(`check-${id}`, [() => postJson(`${base}/calendar`, { do: "check", ids: [id] })]);
+  const problemsOf = (problems: string[]) =>
+    problems.map((p) => (Object.hasOwn(w.problems, p) ? w.problems[p as keyof typeof w.problems] : p)).join(", ");
   const approve = (ids: string[], key: string, yes = true) => run(key, [() => postJson(`${base}/calendar`, { do: yes ? "approve" : "unapprove", ids })]);
   const save = (id: string, caption: string) => run(`edit-${id}`, [() => postJson(`${base}/calendar`, { do: "edit", id, caption })], w.saved);
   const canWrite = mayWrite && hasAi;
@@ -107,6 +117,9 @@ export function SocialCalendar({
                 )}
                 {action === null && week.days.some((d) => d.items.length > 0) && <p className="text-caption text-ink-2">{w.allApproved}</p>}
               </div>
+              {week.days.some((d) => d.items.some((it) => it.draft && !it.draft.approved && (it.draft.check?.problems.length ?? 0) > 0)) && (
+                <p className="text-caption text-ink-2">{w.checkWaits}</p>
+              )}
               <ol className="flex flex-col gap-3">
                 {week.days
                   .filter((d) => d.items.length > 0)
@@ -132,6 +145,18 @@ export function SocialCalendar({
                           <>
                             <p className="line-clamp-3 text-body text-ink whitespace-pre-line">{it.draft.caption}</p>
                             <span className={`text-caption ${it.draft.approved ? "text-success-text" : "text-ink-2"}`}>{it.draft.approved ? w.approved : w.draft}</span>
+                            {it.draft.check ? (
+                              it.draft.check.problems.length > 0 ? (
+                                <p className="text-caption text-danger-text">
+                                  {fillWords(w.checkFound, { problems: problemsOf(it.draft.check.problems) })}
+                                  {it.draft.check.note ? `. ${it.draft.check.note}` : ""}
+                                </p>
+                              ) : (
+                                <span className="text-caption text-ink-2">{w.checked}</span>
+                              )
+                            ) : (
+                              <span className="text-caption text-ink-2">{w.notChecked}</span>
+                            )}
                             {mayWrite && (
                               <details className="text-sm">
                                 <summary className="cursor-pointer">{w.edit}</summary>
@@ -166,6 +191,11 @@ export function SocialCalendar({
                               {w.write}
                             </button>
                           )}
+                          {it.draft && !it.draft.approved && hasAi && (!it.draft.check || it.draft.check.problems.length > 0) ? (
+                            <button type="button" className={secondary} disabled={pending} onClick={() => check(it.draft!.id)}>
+                              {w.checkPicture}
+                            </button>
+                          ) : null}
                           {it.draft && !it.draft.approved && (
                             <button type="button" className={secondary} disabled={pending} onClick={() => approve([it.draft!.id], `approve-${it.draft!.id}`)}>
                               {w.approve}

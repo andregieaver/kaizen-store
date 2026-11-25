@@ -145,6 +145,17 @@ export const socialEn = {
     ownPost: "Written for this day",
     picture: "The {channel} picture",
     failed: "That did not work. Try again.",
+    checked: "Picture checked",
+    notChecked: "Picture not checked yet",
+    checkFound: "The picture check found: {problems}",
+    checkPicture: "Check the picture",
+    checkWaits: "A post whose picture check found something is left out of Approve the week: read it and approve it on its own.",
+    problems: {
+      unreadable: "the words are hard to read",
+      wrong_subject: "it does not show what the post is about",
+      cut_off: "something is cut off",
+      off_brand: "it does not look like your shop",
+    },
   },
   adviser: {
     title: "Your social media adviser",

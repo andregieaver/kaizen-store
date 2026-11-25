@@ -591,6 +591,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   and `editSocialPost()` are the only writers of `approved_at`, `approved_by` and `edited_at`, through `social/calendar` (`marketing:write`,
   the extension `social`), each audited; phase 3 publishes approved posts only.
 
+## The vision check of a post's picture (D870 S2.3, `src/lib/social-vision.ts` pure, `src/server/social-vision.ts`)
+
+- **The vision check of a post's picture (D870 S2.3, `src/lib/social-vision.ts` pure, `src/server/social-vision.ts`)**: `checkSocialPosts()`
+  (the calendar route's `check`, `marketing:write`, the extension `social`) sends each post's picture as it will be posted (`socialPicture()`,
+  its Canva one else drawn) as data to `seeing()` with `visionPrompt()` (the post's channel and shape, its product, page or topic, the theme's
+  colours, `UNTRUSTED_TEXT`), metered as `social_posts`; `parseVisionVerdict()` reads four answers into `CHECK_PROBLEMS` and a note without
+  digits. The only writer of `checked_at`, `check_problems` and `check_note`; no answer leaves a post unchecked, never failed, and
+  `editSocialPost()` clears them. The calendar checks each post it writes, shows the verdict, and leaves a failed post out of *Approve the
+  week* (`checkFailed()`), for a person to approve on its own.
+
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 
 - **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram

@@ -28,6 +28,7 @@ const DELEGATES: Record<string, string> = {
   "src/server/dream-factory.ts": "src/lib/dream-factory.ts",
   "src/server/recommend.ts": "src/lib/recommendations.ts",
   "src/server/receipt-reading.ts": "src/lib/receipt-reading.ts",
+  "src/server/social-vision.ts": "src/lib/social-vision.ts",
   "src/server/replicate-ai.ts": "src/lib/replicate-prompts.ts",
   "src/server/support-partner.ts": "src/lib/support-partner.ts",
   "src/server/support-summary.ts": "src/lib/support-summary.ts",

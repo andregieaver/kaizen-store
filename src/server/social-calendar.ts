@@ -31,6 +31,9 @@ const DRAFT_ROW = z.object({
   product_id: z.string().nullable(),
   topic: col.text,
   edited_at: col.timestampOrNull,
+  checked_at: col.timestampOrNull,
+  check_problems: z.array(z.string()),
+  check_note: col.text,
 });
 
 /** The calendar of the store's two weeks from today's Monday: the advice's plan and the drafts written for its days. */
@@ -39,13 +42,13 @@ export async function calendarOf(storeId: string, today: string, slots: readonly
   const rows = await typedRows(
     DRAFT_ROW,
     sql`
-      select id, planned_for::text as day, channel, caption, approved_at is not null as approved, product_id, topic, edited_at
+      select id, planned_for::text as day, channel, caption, approved_at is not null as approved, product_id, topic, edited_at, checked_at, check_problems, check_note
       from commerce.social_posts
       where store_id = ${storeId}::uuid and planned_for between ${first}::date and ${addDays(first, CALENDAR_WEEKS * 7 - 1)}::date
       order by created_at desc
     `,
   );
-  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at }));
+  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null }));
   return socialCalendar(today, slots, drafts);
 }
 
@@ -93,7 +96,8 @@ export async function editSocialPost(member: Membership, raw: unknown): Promise<
     return { ok: false, problem: `The words make claims the shop does not make in posts: ${found}.` };
   }
   await db().execute(sql`
-    update commerce.social_posts set caption = ${caption}, edited_at = now(), approved_at = null, approved_by = null
+    update commerce.social_posts set caption = ${caption}, edited_at = now(), approved_at = null, approved_by = null,
+      checked_at = null, check_problems = '{}', check_note = ''
     where store_id = ${member.store.id}::uuid and id = ${parsed.data.id}::uuid`);
   await audit(member.account.id, member.store.id, "store.social_post_edited", {});
   return { ok: true };

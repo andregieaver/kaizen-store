@@ -7,6 +7,7 @@
 import { addDays, startOfWeek } from "./analytics-period";
 import type { CalendarSlot } from "./social-advice";
 import type { PostChannel } from "./social-posts";
+import { checkFailed } from "./social-vision";
 
 /** A draft on the calendar: a post planned for a day, and whether a person has said yes to it. */
 export type CalendarDraft = {
@@ -19,6 +20,8 @@ export type CalendarDraft = {
   topic: string;
   /** When its words were last changed by hand, so its picture (drawn from them) is asked for again; absent when never. */
   editedAt?: string | null;
+  /** The vision check's verdict (S2.3): what it found wrong (none: passed) and its note; null or absent while unchecked. */
+  check?: { problems: string[]; note: string } | null;
 };
 
 /** One planned post: the adviser's idea (or none, for a draft written straight onto a day) and its draft, if written. */
@@ -65,7 +68,8 @@ export function socialCalendar(today: string, slots: readonly CalendarSlot[], dr
     const days = Array.from({ length: 7 }, (_, i) => addDays(start, i)).map((day) => ({ day, items: items.filter((it) => it.day === day) }));
     const inWeek = days.flatMap((d) => d.items);
     const toWrite = inWeek.filter((it) => !it.draft && it.idea && it.day >= today);
-    const toApprove = inWeek.flatMap((it) => (it.draft && !it.draft.approved ? [it.draft] : []));
+    // A post the vision check failed waits for a person to approve it on its own (S2.3).
+    const toApprove = inWeek.flatMap((it) => (it.draft && !it.draft.approved && !checkFailed(it.draft.check?.problems) ? [it.draft] : []));
     return { start, days, toWrite, toApprove, action: weekAction({ toWrite, toApprove }) };
   });
 }

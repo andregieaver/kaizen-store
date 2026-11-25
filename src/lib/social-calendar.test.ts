@@ -51,4 +51,12 @@ describe("the social calendar (D870 S2.4)", () => {
       [false, "older"],
     ]);
   });
+
+  it("leaves a post whose picture check found something out of Approve the week (S2.3)", () => {
+    const failed = { ...draft("bad", "2026-11-26", "instagram"), check: { problems: ["cut_off"], note: "The bowl is cut off." } };
+    const passed = { ...draft("good", "2026-11-28", "facebook"), check: { problems: [], note: "" } };
+    const weeks = socialCalendar(TODAY, [], [failed, passed, draft("unchecked", "2026-11-27", "pinterest")]);
+    expect(weeks[0].toApprove.map((d) => d.id).sort()).toEqual(["good", "unchecked"]);
+    expect(weeks[0].action).toEqual({ kind: "approve", count: 2 });
+  });
 });

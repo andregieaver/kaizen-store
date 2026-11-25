@@ -18249,6 +18249,13 @@ export const socialPosts = commerce
       approvedAt: timestamp("approved_at", { withTimezone: true }),
       approvedBy: uuid("approved_by").references(() => accounts.id, { onDelete: "set null" }),
       editedAt: timestamp("edited_at", { withTimezone: true }),
+      /**
+       * The vision check (D870 S2.3): when the store's model that sees pictures last looked at the post's picture, what it found wrong
+       * (`CHECK_PROBLEMS` in `src/lib/social-vision.ts`, none when it passed) and its note in a sentence. Null `checked_at`: not checked.
+       */
+      checkedAt: timestamp("checked_at", { withTimezone: true }),
+      checkProblems: text("check_problems").array().notNull().default(sql`'{}'::text[]`),
+      checkNote: text("check_note").notNull().default(""),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },
@@ -18264,6 +18271,10 @@ export const socialPosts = commerce
       index("social_posts_picture_idx").on(t.pictureMediaId),
       check("social_posts_channel", sql`${t.channel} in ('instagram', 'facebook', 'pinterest', 'tiktok', 'linkedin')`),
       check("social_posts_ref", sql`${t.ref} ~ '^[a-z0-9]{12}$'`),
+      check(
+        "social_posts_check",
+        sql`${t.checkProblems} <@ array['unreadable', 'wrong_subject', 'cut_off', 'off_brand']::text[] and char_length(${t.checkNote}) <= 300`,
+      ),
       check(
         "social_posts_texts",
         sql`char_length(${t.caption}) between 1 and 3000 and char_length(${t.title}) <= 100 and char_length(${t.topic}) <= 500 and char_length(${t.campaign}) <= 80 and cardinality(${t.hashtags}) <= 30`,

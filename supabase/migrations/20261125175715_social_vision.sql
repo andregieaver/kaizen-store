@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."social_posts" ADD COLUMN "checked_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."social_posts" ADD COLUMN "check_problems" text[] DEFAULT '{}'::text[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."social_posts" ADD COLUMN "check_note" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."social_posts" ADD CONSTRAINT "social_posts_check" CHECK ("commerce"."social_posts"."check_problems" <@ array['unreadable', 'wrong_subject', 'cut_off', 'off_brand']::text[] and char_length("commerce"."social_posts"."check_note") <= 300);

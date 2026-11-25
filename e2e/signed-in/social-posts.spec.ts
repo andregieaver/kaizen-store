@@ -40,6 +40,8 @@ const ADVICE = {
   ],
 };
 
+const CHECKED = { readable: true, shows_subject: true, whole: true, on_brand: true, note: "" };
+
 test.beforeAll(async () => {
   stub = createServer((req, res) => {
     let body = "";
@@ -50,8 +52,14 @@ test.beforeAll(async () => {
         JSON.stringify({
           id: "chatcmpl-stand-in",
           object: "chat.completion",
-          // The adviser's prompt gets the adviser's answer (S1.4); every other prompt is the post creator's.
-          choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(body.includes("social media adviser") ? ADVICE : POSTS) } }],
+          // The adviser's prompt gets the adviser's answer (S1.4), the picture checker's a pass (S2.3); every other prompt is the post creator's.
+          choices: [
+            {
+              index: 0,
+              finish_reason: "stop",
+              message: { role: "assistant", content: JSON.stringify(body.includes("social media adviser") ? ADVICE : body.includes("picture checker") ? CHECKED : POSTS) },
+            },
+          ],
           usage: { prompt_tokens: 100, completion_tokens: 100, total_tokens: 200 },
         }),
       );
@@ -264,6 +272,9 @@ test("the adviser's plan is a calendar: write the week's posts, change one's wor
     await expect(calendar.getByRole("button", { name: /^Approve the week/ }).first()).toBeVisible();
   }
   await expect(calendar.getByText("Not written yet")).toHaveCount(0);
+  // Each written post's picture was looked at by the store's model that sees pictures (S2.3).
+  await expect(calendar.getByText("Picture checked").first()).toBeVisible();
+  await expect(calendar.getByText("Picture not checked yet")).toHaveCount(0);
   await expect(calendar).toContainText("Slow mornings start with a good cup.");
   await calendar.scrollIntoViewIfNeeded();
   await calendar.screenshot({ path: "test-results/social-calendar.png" });
