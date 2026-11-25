@@ -16,7 +16,6 @@ import { uploadsEnabled } from "@/server/media";
 import { compressibleCount, listMedia } from "@/server/media-library";
 import { PageHeader } from "@/components/admin/ui";
 
-import { connectCanvaAction } from "../../(owner)/account/connected/actions";
 import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../upload-actions";
 import {
   compressiblePlatformMediaAction,
@@ -85,7 +84,7 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
         edit: ai?.image?.editModel && uploadsEnabled() ? "/admin/platform/media/edit" : null,
         settingsHref: "/admin/platform/ai",
       }}
-      canva={canva ? { ...canva, endpoint: "/admin/platform/media/canva", connect: connectCanvaAction.bind(null, "/admin/platform/media") } : null}
+      canva={canva ? { ...canva, endpoint: "/admin/platform/media/canva", back: "/admin/platform/media" } : null}
       upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       startVideo={uploadsEnabled() ? startPlatformVideoUploadAction : null}
       actions={{

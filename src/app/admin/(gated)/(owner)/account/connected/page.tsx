@@ -22,7 +22,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { CANVA_WORDS } from "@/lib/admin-words/canva";
 import { canvaAccount, canvaOffered } from "@/server/canva";
 
-import { connectCanvaAction, disconnectCanvaAction, disconnectGrantAction, switchAssistantsAction, takeBackLifeTaskAction, unlinkKaizenLifeAction } from "./actions";
+import { disconnectGrantAction, switchAssistantsAction, takeBackLifeTaskAction, unlinkKaizenLifeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Connected apps and assistants" };
 
@@ -56,8 +56,7 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
           <div id="canva" className="max-w-3xl">
             <CanvaAccountCard
               account={canva ? { name: canva.name, problem: canva.problem !== null } : null}
-              connect={connectCanvaAction.bind(null, "/admin/account/connected")}
-              disconnect={disconnectCanvaAction}
+              back="/admin/account/connected"
             />
           </div>
         </AdminTextScope>

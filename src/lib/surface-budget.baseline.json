@@ -2,7 +2,7 @@
   "dispatcherJobs": 89,
   "minuteRoutes": 9,
   "pages": 609,
-  "routeHandlers": 304,
+  "routeHandlers": 306,
   "storeLinks": 120,
   "storeLinksBySection": {
     "orders": 7,
@@ -506,6 +506,12 @@
       "count": "tables",
       "from": 560,
       "to": 562,
+      "decision": "D898"
+    },
+    {
+      "count": "routeHandlers",
+      "from": 304,
+      "to": 306,
       "decision": "D898"
     }
   ]

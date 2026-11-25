@@ -10,8 +10,6 @@ import { CANVA_WORDS } from "@/lib/admin-words/canva";
 import { canvaAccount, canvaOffered } from "@/server/canva";
 import { requirePermission } from "@/server/permissions";
 
-import { connectCanvaAction, disconnectCanvaAction } from "../../../(owner)/account/connected/actions";
-
 export const metadata: Metadata = { title: "Canva" };
 
 /**
@@ -39,8 +37,7 @@ export default async function StoreCanvaPage({ params, searchParams }: PageProps
         {canvaOffered() ? (
           <CanvaAccountCard
             account={connected ? { name: connected.name, problem: connected.problem !== null } : null}
-            connect={connectCanvaAction.bind(null, here)}
-            disconnect={disconnectCanvaAction}
+            back={here}
             library={{ href: `/admin/${store.slug}/media`, label: w.canvaPage.library }}
           />
         ) : (
