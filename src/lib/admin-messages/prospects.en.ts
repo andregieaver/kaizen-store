@@ -4,7 +4,7 @@
  */
 export const prospectsEn = {
   title: "Find companies",
-  lead: "Describe the companies you want to reach. They are found in Norway's public company register, never as people.",
+  lead: "Describe the companies you want to reach. They are found in Norway's or Finland's public company register, never as people.",
   describe: "Who do you want to reach?",
   example: "Cafés in Oslo with 5 to 50 employees",
   find: "Find companies",
@@ -12,10 +12,13 @@ export const prospectsEn = {
   notUnderstood: "That did not name an industry or a place we know. Try other words, or choose the details under Customise.",
   searching: "Looking for: {filters}",
   customise: "Customise",
+  country: "Country",
+  countries: { NO: "Norway", FI: "Finland" },
+  finland: "Finland's register has no headcount, and searches one industry and one town at a time. Its total counts companies that have ceased; those are left out of the list.",
   industries: "Industry codes",
   industriesHelp: "SN2025 divisions or groups, separated by commas, such as 56.1 or 47.",
   places: "Places",
-  placesHelp: "Municipality or county numbers, separated by commas, such as 0301 for Oslo or 46 for Vestland.",
+  placesHelp: "Municipality or county numbers, separated by commas, such as 0301 for Oslo or 46 for Vestland; in Finland one municipality, such as 091 for Helsinki.",
   employeesMin: "At least this many employees",
   employeesMax: "At most this many employees",
   foundedFrom: "Registered on or after",

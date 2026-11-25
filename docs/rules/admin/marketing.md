@@ -489,6 +489,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`platform_do_not_contact`) holds hashes of folded addresses and domains (`entryHash()`), shared by every store and the platform, never
   removed; `mayContact()` is asked before any outreach is sent, and a found company whose website's domain is on it is marked and its link
   hidden. An entry by hand is a route handler (same-site, `customers:write`), audited with its kind only.
+- **Finland (D896)**: `country: "FI"` searches PRH's open register (`FI_HOST`) with one industry (the code without its dot) and one
+  municipality by its Finnish name; no headcount. PRH ignores its form filter, so `readFiCompany()` keeps only `FI_FORMS` and drops a company
+  ceased, in liquidation or bankrupt; our page of 20 is a fifth of PRH's 100.
 - **Reading a found company's site (D894, `src/lib/prospect-reading.ts`, `readCompanySite()`)**: on request, one company at a time, never
   one on the do-not-contact list; the front page through `readWebPage()`; the model says what the company does and scores the owner's site
   criteria (`c=` in the address, from the filter prompt), and the fit is `compareOptions()` in code. Contact shown is `generalAddresses()`

@@ -3,7 +3,7 @@ import type { ProspectsMessages } from "./prospects.en";
 /** Ord for Finn bedrifter (e-postplanen P5.1, D893) og lista over hvem som ikke skal kontaktes (P5.6). */
 export const prospectsNb: ProspectsMessages = {
   title: "Finn bedrifter",
-  lead: "Beskriv bedriftene du vil nå. De finnes i Enhetsregisteret, aldri som personer.",
+  lead: "Beskriv bedriftene du vil nå. De finnes i det offentlige registeret i Norge eller Finland, aldri som personer.",
   describe: "Hvem vil du nå?",
   example: "Kafeer i Oslo med 5 til 50 ansatte",
   find: "Finn bedrifter",
@@ -11,10 +11,13 @@ export const prospectsNb: ProspectsMessages = {
   notUnderstood: "Det nevnte ingen bransje eller sted vi kjenner. Prøv andre ord, eller velg detaljene under Tilpass.",
   searching: "Ser etter: {filters}",
   customise: "Tilpass",
+  country: "Land",
+  countries: { NO: "Norge", FI: "Finland" },
+  finland: "Finlands register har ikke antall ansatte, og søker i én bransje og én by om gangen. Totalen teller med bedrifter som er avviklet; de er tatt ut av lista.",
   industries: "Næringskoder",
   industriesHelp: "SN2025-næringer eller -grupper, skilt med komma, for eksempel 56.1 eller 47.",
   places: "Steder",
-  placesHelp: "Kommune- eller fylkesnummer, skilt med komma, for eksempel 0301 for Oslo eller 46 for Vestland.",
+  placesHelp: "Kommune- eller fylkesnummer, skilt med komma, for eksempel 0301 for Oslo eller 46 for Vestland; i Finland én kommune, for eksempel 091 for Helsingfors.",
   employeesMin: "Minst så mange ansatte",
   employeesMax: "Høyst så mange ansatte",
   foundedFrom: "Registrert fra og med",
