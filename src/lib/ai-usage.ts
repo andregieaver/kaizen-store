@@ -58,6 +58,7 @@ export const AI_FEATURES = {
   content_moderation: "Notices of illegal content",
   support_partner: "Support partner",
   receipt_reading: "Reading receipts and bills",
+  prospect_search: "Finding companies",
   ai_test: "Settings tests",
   other: "Other",
 } as const;

@@ -1,13 +1,13 @@
 {
   "dispatcherJobs": 87,
   "minuteRoutes": 9,
-  "pages": 604,
-  "routeHandlers": 293,
-  "storeLinks": 118,
+  "pages": 605,
+  "routeHandlers": 294,
+  "storeLinks": 119,
   "storeLinksBySection": {
     "orders": 7,
     "products": 6,
-    "customers": 9,
+    "customers": 10,
     "marketing": 15,
     "analytics": 18,
     "website": 15,
@@ -21,8 +21,8 @@
   "shopOnlyTools": 268,
   "managerTools": 28,
   "featureIds": 14,
-  "tables": 554,
-  "platformTables": 22,
+  "tables": 555,
+  "platformTables": 23,
   "hot": {
     "orders": {
       "indexes": 33,
@@ -381,6 +381,42 @@
       "from": 21,
       "to": 22,
       "decision": "D892"
+    },
+    {
+      "count": "pages",
+      "from": 604,
+      "to": 605,
+      "decision": "D893"
+    },
+    {
+      "count": "routeHandlers",
+      "from": 293,
+      "to": 294,
+      "decision": "D893"
+    },
+    {
+      "count": "tables",
+      "from": 554,
+      "to": 555,
+      "decision": "D893"
+    },
+    {
+      "count": "platformTables",
+      "from": 22,
+      "to": 23,
+      "decision": "D893"
+    },
+    {
+      "count": "storeLinks",
+      "from": 118,
+      "to": 119,
+      "decision": "D893"
+    },
+    {
+      "count": "storeLinksBySection.customers",
+      "from": 9,
+      "to": 10,
+      "decision": "D893"
     }
   ]
 }

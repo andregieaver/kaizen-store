@@ -579,6 +579,10 @@ const PAGES: readonly MapEntry[] = [
     tasks: ["Make a deal of a lead", "Dismiss a lead", "Open what a lead asked for"],
     feature: "sales",
   }),
+  store("prospects", "/companies/find", "Find companies", "Find companies: say in words whom you want to reach (cafés in Oslo with 5 to 50 employees) and the AI turns it into filters over Norway's public company register (industry, place, size, when registered); limited companies and the like only, never a sole trader, none bankrupt. Nothing is kept or sent. Under it, the do-not-contact list every store and Kaizena Flow share: add an address or a company's domain someone asked to be left out. Kaizena Flow's own store first.", {
+    keywords: ["find companies", "prospecting", "prospects", "b2b", "company register", "brreg", "enhetsregisteret", "ideal customer", "do not contact", "outreach"],
+    tasks: ["Find companies that fit", "Add an address to the do-not-contact list"],
+  }),
   store("deal.new", "/deals/new", "New deal", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { extension: "deals", feature: "sales" }),
   store("deal", "/deals/[dealId]", "Deal", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", { extension: "deals",
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
@@ -1641,6 +1645,8 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   // Which companies visited (D890): Kaizena Flow's own store only for now, so not a page to point every store's owner to; named in the
   // AI's map when it opens to every store, and the eval is recorded with it then.
   "store:analytics.companies",
+  // Find companies (D893): Kaizena Flow's own store only until P5.3's legal reading, for the same reason.
+  "store:prospects",
 ]);
 
 /** The map as the AI reads it: every page without params, by the menu's sections, each by the menu's word (D881). */

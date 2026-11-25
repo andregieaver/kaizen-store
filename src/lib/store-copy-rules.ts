@@ -316,6 +316,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   marketing_spend: never("What the original's owner entered as marketing spend (D152): history of the original's business."),
   visits: never("The original's counted visitor-days (D152); a copy starts with visit counting off and counts nothing of its own until chosen."),
   product_views: never("How often the original's products were viewed (D152)."),
+  platform_do_not_contact: never("One list for every store and the platform (P5.6, D893): who recorded an entry is kept for the audit; a copy adds to the same list."),
   company_visits: never("Which companies visited the original (D890); a copy starts with company recognition off and counts its own."),
   company_lookup_settings: never("A company lookup service's key (D890) is its holder's secret; a copy connects its own."),
   data_jobs: never("An import or export the original's staff ran (D165): its file, counts and options belong to the store and the person who ran it; a copy starts with none."),

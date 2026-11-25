@@ -153,6 +153,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/deals/contracts", "Contracts", "Every contract on your deals: who it is for, its version, and whether it is signed, waiting or declined.", { area: "customers", extension: "deals", feature: "sales", icon: "file-pen", basic: true }),
           // The leads inbox, a tab of Deals before (ecosystem plan E2.8, D713): its own page, so it is found and its address is its own.
           item("/leads", "Leads", "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.", { area: "customers", extension: "deals", feature: "sales", icon: "user-plus", basic: true }),
+          item("/companies/find", "Find companies", "Companies in the public register that fit whom you want to reach, and the list of those who asked not to be contacted.", { area: "customers", icon: "search", house: true }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { area: "customers", feature: "shop", icon: "heart" }),
           item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock.", { area: "customers", icon: "shield-check", basic: true, workspace: true }),
         ],

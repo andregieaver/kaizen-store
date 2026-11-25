@@ -321,6 +321,11 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Avtaler",
     keywords: ["avtaler", "salgsløp", "pipeline", "crm", "salgsmuligheter", "leads", "tavle", "prognose"],
   },
+  "store:prospects": {
+    title: "Finn bedrifter",
+    keywords: ["finn bedrifter", "prospektering", "potensielle kunder", "b2b", "enhetsregisteret", "brreg", "ideell kunde", "ikke kontakt", "oppsøkende salg"],
+    tasks: ["Finn bedrifter som passer", "Legg en adresse på lista over hvem som ikke skal kontaktes"],
+  },
   "store:leads": { title: "Leads", keywords: ["leads", "potensielle kunder", "henvendelser", "forespørsler", "følge opp", "interessenter"] },
   "store:deal.new": { title: "Ny avtale", keywords: ["ny avtale", "legg til avtale", "salgsmulighet"] },
   "store:deal": { title: "Avtale", keywords: ["avtale", "koble bestilling", "tilbud", "oppdrag", "historikk"] },

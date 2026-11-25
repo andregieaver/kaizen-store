@@ -8912,6 +8912,34 @@ export const platformLegalViews = commerce
   .enableRLS();
 
 /**
+ * Do not contact, everywhere (email plan P5.6, D893): an address or a company's domain that said no to outreach (a reply, the link in an
+ * email, a complaint, or asked by hand), kept as a SHA-256 hash of its folded form, never in clear, and checked before any outreach is sent
+ * or offered by every store and the platform alike (`mayContact()`). Never deleted by a store: a no stays a no. Who recorded it is kept for
+ * the audit (`store_id`, `account_id`), not to scope it.
+ */
+export const platformDoNotContact = commerce
+  .table(
+    "platform_do_not_contact",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      kind: text("kind").notNull(),
+      hash: text("hash").notNull(),
+      reason: text("reason").notNull(),
+      storeId: uuid("store_id").references(() => stores.id, { onDelete: "set null" }),
+      accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      uniqueIndex("platform_do_not_contact_hash_idx").on(t.kind, t.hash),
+      index("platform_do_not_contact_store_idx").on(t.storeId),
+      index("platform_do_not_contact_account_idx").on(t.accountId),
+      check("platform_do_not_contact_kind", sql`${t.kind} in ('address', 'domain') and ${t.hash} ~ '^[0-9a-f]{64}$'`),
+      check("platform_do_not_contact_reason", sql`${t.reason} in ('reply', 'link', 'complaint', 'asked')`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * Who is in a segment trigger's segment (M2.3, `segment.entered`), as its last hourly read found them (`enterSegments()`): a person new to it
  * starts the flow; one who left is forgotten, so coming back starts it again. A working list, never shown. Personal data (with the
  * subscriber): deleted with the subscriber and with the flow; never exported or copied.

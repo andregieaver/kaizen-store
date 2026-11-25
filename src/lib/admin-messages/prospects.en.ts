@@ -1,0 +1,51 @@
+/**
+ * The words of Find companies (email plan P5.1, D893) and its do-not-contact list (P5.6). Server-only: the page is drawn on the server and
+ * posts plain forms.
+ */
+export const prospectsEn = {
+  title: "Find companies",
+  lead: "Describe the companies you want to reach. They are found in Norway's public company register, never as people.",
+  describe: "Who do you want to reach?",
+  example: "Cafés in Oslo with 5 to 50 employees",
+  find: "Find companies",
+  noAi: "Describing in words needs AI, which is not set up. Choose the details under Customise instead.",
+  notUnderstood: "That did not name an industry or a place we know. Try other words, or choose the details under Customise.",
+  searching: "Looking for: {filters}",
+  customise: "Customise",
+  industries: "Industry codes",
+  industriesHelp: "SN2025 divisions or groups, separated by commas, such as 56.1 or 47.",
+  places: "Places",
+  placesHelp: "Municipality or county numbers, separated by commas, such as 0301 for Oslo or 46 for Vestland.",
+  employeesMin: "At least this many employees",
+  employeesMax: "At most this many employees",
+  foundedFrom: "Registered on or after",
+  foundedTo: "Registered on or before",
+  apply: "Search with these",
+  employees: { one: "1 employee", many: "{n} employees" },
+  employeesRange: "{min} to {max} employees",
+  employeesAtLeast: "at least {min} employees",
+  employeesAtMost: "at most {max} employees",
+  found: { none: "No companies match.", one: "1 company matches.", many: "{n} companies match." },
+  tooMany: "More than 10,000 companies match: narrow the search to page through them.",
+  failed: "The register did not answer. Try again in a moment.",
+  founded: "registered {date}",
+  website: "Website",
+  register: "In the register",
+  blocked: "Asked not to be contacted",
+  previous: "Previous",
+  next: "Next",
+  pageOf: "Page {page} of {pages}",
+  how: "Only limited companies and the like are listed: never a sole trader, and none bankrupt or being wound up. Nothing is kept: the register is asked each time. Writing to them waits for a lawyer's reading of each country's rules.",
+  dnc: {
+    title: "Do not contact",
+    lead: "Someone asked not to be contacted? Add their address or their company's domain. Every store and Kaizena Flow will skip it.",
+    count: { one: "1 address or domain is on the list.", many: "{n} addresses and domains are on the list." },
+    entry: "Address or domain",
+    add: "Add to the list",
+    added: "Added. Nobody will contact it.",
+    invalid: "That is not an email address or a domain.",
+    kept: "Kept as a code that cannot be read back, never as the address itself. Nothing takes an entry off the list.",
+  },
+};
+
+export type ProspectsMessages = typeof prospectsEn;

@@ -479,6 +479,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   Added and done are events (`activity.created`, `activity.done`, ecosystem plan E5.1, D757), queued by the table's trigger; the note is
   never in a payload.
 
+## Finding companies and do not contact (email plan P5.1, P5.6, D893, `src/lib/prospect-search.ts`, `src/server/prospect-search.ts`, `src/server/do-not-contact.ts`, `/admin/{store}/companies/find`)
+
+- **Finding companies and do not contact (D893)**: Find companies turns the owner's words into filters (`filtersFromWords()`: the model
+  chooses SN2025 industry codes from the bundled list and names places; `cleanFilters()` keeps only what is on
+  `src/data/no-register-codes.json`), redirects to an address holding them, and asks Brønnøysund's open register for a page of companies
+  (`searchUrl()`: `ORG_FORMS` only, never `ENK`, none bankrupt or being wound up). Nothing is kept and nothing is sent. Kaizena Flow's store
+  only while P5.3 waits for the lawyer (`house` in the menu, `store.house` in the page and its route). The do-not-contact list
+  (`platform_do_not_contact`) holds hashes of folded addresses and domains (`entryHash()`), shared by every store and the platform, never
+  removed; `mayContact()` is asked before any outreach is sent, and a found company whose website's domain is on it is marked and its link
+  hidden. An entry by hand is a route handler (same-site, `customers:write`), audited with its kind only.
+
 ## A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
 
 - **A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)**: leads are read where their requests are (quote

@@ -155,6 +155,9 @@ export const NAV_NB: Record<string, string> = {
   Heatmaps: "Varmekart",
   Recordings: "Opptak",
   "Visiting companies": "Besøkende bedrifter",
+  "Find companies": "Finn bedrifter",
+  "Companies in the public register that fit whom you want to reach, and the list of those who asked not to be contacted.":
+    "Bedrifter i Enhetsregisteret som passer dem du vil nå, og lista over dem som har bedt om ikke å bli kontaktet.",
   "Which companies' networks your visitors came from, how often they came back and what they looked at.": "Hvilke bedrifters nettverk de besøkende kom fra, hvor ofte de kom tilbake og hva de så på.",
   "Watch visits to your pages, for visitors who allow it, to see where they get stuck.":
     "Se besøk på sidene dine, for besøkende som tillater det, for å se hvor de står fast.",

@@ -154,7 +154,7 @@ page that needs a feature (D178) or a paid extension (D748) is in the menu only 
 | Home | `home` | `/admin/{store}`; also `/admin/{store}/setup`, `/admin/{store}/assistant` | none |  |
 | Orders | `package` | `/admin/{store}/orders` | 7 pages, 4 in Basic | Online shop |
 | Products | `tag` | `/admin/{store}/products` | 6 pages, 3 in Basic |  |
-| Customers | `users` | `/admin/{store}/customers` | 9 pages, 6 in Basic |  |
+| Customers | `users` | `/admin/{store}/customers` | 10 pages, 6 in Basic |  |
 | Marketing | `megaphone` | `/admin/{store}/marketing`, its own page | 15 pages in 5 groups, 4 in Basic |  |
 | Analytics | `chart` | `/admin/{store}/analytics` | 18 pages in 4 groups, 2 in Basic |  |
 | Website | `monitor` | `/admin/{store}/website`, its own page | 15 pages in 3 groups, 8 in Basic |  |
@@ -162,7 +162,7 @@ page that needs a feature (D178) or a paid extension (D748) is in the menu only 
 | Support | `chat` | `/admin/{store}/support` | 7 pages, 3 in Basic |  |
 | Settings | `cog` | `/admin/{store}/settings`, its own page | 36 pages in 5 groups, 12 in Basic |  |
 
-118 pages in 9 sections, 46 of them in Basic.
+119 pages in 9 sections, 46 of them in Basic.
 
 <!-- nav:generated:end store-tabs -->
 
@@ -384,7 +384,7 @@ Opens `/admin/{store}/products`. 6 pages, 3 in Basic.
 
 ### Store › Customers
 
-Opens `/admin/{store}/customers`. 9 pages, 6 in Basic.
+Opens `/admin/{store}/customers`. 10 pages, 6 in Basic.
 
 | Group | Page | Address | View | Needs |
 | --- | --- | --- | --- | --- |
@@ -395,6 +395,7 @@ Opens `/admin/{store}/customers`. 9 pages, 6 in Basic.
 |  | Deals | `/admin/{store}/deals` | Basic | Deals; the Deals and contracts extension |
 |  | Contracts | `/admin/{store}/deals/contracts` | Basic | Deals; the Deals and contracts extension |
 |  | Leads | `/admin/{store}/leads` | Basic | Deals; the Deals and contracts extension |
+|  | Find companies | `/admin/{store}/companies/find` | Advanced |  |
 |  | Wishlists | `/admin/{store}/wishlists` | Advanced | Online shop |
 |  | Privacy requests | `/admin/{store}/privacy` | Basic |  |
 

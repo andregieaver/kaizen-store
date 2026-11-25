@@ -1,6 +1,6 @@
 {
-  "id": "bbf5eb9a-e017-43f9-87e6-c8b203178258",
-  "prevId": "43429fe7-ded1-4091-b31c-9775ff0f39ff",
+  "id": "8a21ed99-1f8a-4ca9-bd6e-50178d2b0d09",
+  "prevId": "bbf5eb9a-e017-43f9-87e6-c8b203178258",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -62029,6 +62029,153 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.platform_do_not_contact": {
+      "name": "platform_do_not_contact",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "platform_do_not_contact_hash_idx": {
+          "name": "platform_do_not_contact_hash_idx",
+          "columns": [
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_do_not_contact_store_idx": {
+          "name": "platform_do_not_contact_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_do_not_contact_account_idx": {
+          "name": "platform_do_not_contact_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "platform_do_not_contact_store_id_stores_id_fk": {
+          "name": "platform_do_not_contact_store_id_stores_id_fk",
+          "tableFrom": "platform_do_not_contact",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "platform_do_not_contact_account_id_accounts_id_fk": {
+          "name": "platform_do_not_contact_account_id_accounts_id_fk",
+          "tableFrom": "platform_do_not_contact",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_do_not_contact_kind": {
+          "name": "platform_do_not_contact_kind",
+          "value": "\"commerce\".\"platform_do_not_contact\".\"kind\" in ('address', 'domain') and \"commerce\".\"platform_do_not_contact\".\"hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "platform_do_not_contact_reason": {
+          "name": "platform_do_not_contact_reason",
+          "value": "\"commerce\".\"platform_do_not_contact\".\"reason\" in ('reply', 'link', 'complaint', 'asked')"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.platform_integration_deliveries": {
       "name": "platform_integration_deliveries",
