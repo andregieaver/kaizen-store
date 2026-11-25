@@ -150,4 +150,12 @@ test("how the store's own Instagram posts did, newest first, once the account gr
   await expect(card.getByRole("listitem").nth(2)).toContainText("(no caption)");
   await card.scrollIntoViewIfNeeded();
   await card.screenshot({ path: "test-results/social-insights.png" });
+
+  // What the adviser reads (S1.3): the same figures, worked out by code, one step away.
+  await page.getByText("What the adviser reads").click();
+  const facts = page.locator("details", { hasText: "What the adviser reads" });
+  await expect(facts).toContainText("@keramikkverkstedet: 3 posts");
+  await expect(facts).toContainText("Posts written here, last 90 days");
+  await facts.scrollIntoViewIfNeeded();
+  await facts.screenshot({ path: "test-results/social-facts.png" });
 });

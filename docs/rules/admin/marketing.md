@@ -572,6 +572,15 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   who liked or saw them. The owner reads them on Social posts (`insightsView()`); Kaizena Flow's own store shows the platform's account while it
   has none of its own.
 
+## The social media adviser's facts (D870 S1.3, `src/lib/social-facts.ts` pure, `src/server/social-facts.ts`)
+
+- **The social media adviser's facts (D870 S1.3, `src/lib/social-facts.ts` pure, `src/server/social-facts.ts`)**: what the adviser is told is
+  only `socialFacts()`, worked out by code from what `gatherSocialFacts()` reads, all through the analytics' own readers: 28 days' sales against
+  the 28 before (`periodTotals()`), the active goals' progress, the products on sale with margin (`productsReport()`) and stock, social
+  channels' visits and sales (`marketingReport()`), tagged posts (`postReport()`), the creator's posts and the Instagram figures
+  (`insightsView()`). A product with `LOW_STOCK` or fewer in stock is never offered to push; a figure that cannot be known is null, never 0. The
+  owner reads the same object under *What the adviser reads* on Social posts. A new fact is a field of `SocialFacts` with its test.
+
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 
 - **Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)**: what a shopper does
