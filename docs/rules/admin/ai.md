@@ -114,6 +114,15 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `issue_gift_card` through `issueGiftCard()` behind the `spend` gate, always emailed, its code never in an answer). Answers carry
   counts, never who is on a list. Flows (D855): `list_flows` and `start_flow` (off and untested, through `startRecipeFlow()`); `create_flow` and `change_flow` (M3.2, held for the eval) take the model's draft and code builds the steps (`draftSteps()`), checks the words for claims and saves it off and untested; switching one on has no tool. Review moderation has no tool: a review's words never reach a model.
 
+## The AI manager's social media tools (D870 S1.4b, `src/server/social-tools.ts`)
+
+- **The AI manager's social media tools (D870 S1.4b, `src/server/social-tools.ts`)**: `social_report` (`marketing:read`) reads the adviser's
+  newest answer (`latestAdvice()`) with the figures it was written from, `social_plan` (`marketing:write`) asks the adviser anew
+  (`writeSocialAdvice()`), and `write_social_posts` (`marketing:write`) writes posts with the creator (`writeSocialPosts()`), kept on the
+  Social posts page and never posted, so none is gated. The figures go to the model from the kept facts without captions or any other text
+  from outside, and the advice's words were checked when written (`parseAdvice()`). A recommendation becomes work through an autopilot plan
+  with `write_social_posts` steps, which starts only on its maker's yes.
+
 ## The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)
 
 - **The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)**:

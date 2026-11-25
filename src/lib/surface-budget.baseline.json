@@ -17,8 +17,8 @@
   },
   "basicLinks": 46,
   "platformLinks": 58,
-  "storeTools": 298,
-  "shopOnlyTools": 268,
+  "storeTools": 301,
+  "shopOnlyTools": 271,
   "managerTools": 28,
   "featureIds": 14,
   "tables": 563,
@@ -524,6 +524,18 @@
       "count": "tables",
       "from": 562,
       "to": 563,
+      "decision": "D870"
+    },
+    {
+      "count": "storeTools",
+      "from": 298,
+      "to": 301,
+      "decision": "D870"
+    },
+    {
+      "count": "shopOnlyTools",
+      "from": 268,
+      "to": 271,
       "decision": "D870"
     }
   ]
