@@ -734,6 +734,10 @@
         "statements": 12,
         "rowsRead": 2
       },
+      "dispatcher.incidents": {
+        "statements": 3,
+        "rowsRead": 1
+      },
       "dispatcher.instagram": {
         "statements": 1,
         "rowsRead": 0
@@ -1116,6 +1120,10 @@
         "statements": 14,
         "rowsRead": 1000
       },
+      "dispatcher.incidents": {
+        "statements": 3,
+        "rowsRead": 1
+      },
       "dispatcher.instagram": {
         "statements": 1,
         "rowsRead": 0
@@ -1321,7 +1329,7 @@
         "rowsRead": 2
       },
       "route.subscription-reminders": {
-        "statements": 324,
+        "statements": 326,
         "rowsRead": 5566
       },
       "route.theme-shots": {
@@ -1501,6 +1509,10 @@
       "dispatcher.house-customers": {
         "statements": 2,
         "rowsRead": 998
+      },
+      "dispatcher.incidents": {
+        "statements": 0,
+        "rowsRead": 0
       },
       "dispatcher.instagram": {
         "statements": 0,
@@ -1703,7 +1715,7 @@
         "rowsRead": 0
       },
       "route.subscription-reminders": {
-        "statements": 141,
+        "statements": 143,
         "rowsRead": 2799
       },
       "route.theme-shots": {

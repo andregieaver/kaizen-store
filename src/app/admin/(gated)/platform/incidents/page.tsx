@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
-import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card, Chip, EmptyState, Field, List, ListRow, PageHeader, RowActions, RowLead, Select, TextInput } from "@/components/admin/ui";
 import { TextArea } from "@/components/admin/ui/field";
@@ -14,7 +14,7 @@ import { AUTOPILOT_GAPS, incidentGroup } from "@/lib/incidents";
 import { requirePlatformReader } from "@/server/auth";
 import { autopilotSettings, incidentBoard, type IncidentEntry } from "@/server/incidents";
 
-import { incidentAction } from "./actions";
+import { IncidentNotice, INCIDENT_ACT } from "./notice";
 
 export const metadata: Metadata = { title: "Incidents" };
 
@@ -24,12 +24,12 @@ type W = PlatformMessages["incidents"];
  * The incident log (D895): for Homer, what needs the owner (Approve or Dismiss a proposal, a hand-over to read), what is being fixed and what
  * was fixed lately; an idea to add. For Lisa, one step away: each entry's page, and the autopilot's switch and gap under Autopilot.
  */
-export default async function PlatformIncidentsPage() {
+export default async function PlatformIncidentsPage({ searchParams }: PageProps<"/admin/platform/incidents">) {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = PLATFORM_WORDS[lang].incidents;
-  const [board, settings] = await Promise.all([incidentBoard(), autopilotSettings()]);
+  const [board, settings, query] = await Promise.all([incidentBoard(), autopilotSettings(), searchParams]);
   const needsYou = board.filter((e) => incidentGroup(e.status) === "needs_you");
   const working = board.filter((e) => incidentGroup(e.status) === "being_fixed" || incidentGroup(e.status) === "waiting");
   const fixed = board.filter((e) => incidentGroup(e.status) === "fixed");
@@ -44,6 +44,7 @@ export default async function PlatformIncidentsPage() {
           </>
         }
       />
+      <IncidentNotice query={query} w={w} />
       <Card title={w.needsYou} count={needsYou.length}>
         {needsYou.length === 0 ? (
           <EmptyState compact title={w.needsYouNone} />
@@ -54,7 +55,7 @@ export default async function PlatformIncidentsPage() {
                 <EntryLead entry={entry} w={w} lang={lang} />
                 <RowActions>
                   {entry.status === "proposed" ? (
-                    <ActionForm action={incidentAction} className="flex items-center gap-2">
+                    <form method="post" action={INCIDENT_ACT} className="flex items-center gap-2">
                       <input type="hidden" name="id" value={entry.id} />
                       <SubmitButton name="intent" value="approve">
                         {w.approve}
@@ -62,14 +63,14 @@ export default async function PlatformIncidentsPage() {
                       <SubmitButton name="intent" value="dismiss" variant="secondary">
                         {w.dismiss}
                       </SubmitButton>
-                    </ActionForm>
+                    </form>
                   ) : (
-                    <ActionForm action={incidentAction} className="flex items-center gap-2">
+                    <form method="post" action={INCIDENT_ACT} className="flex items-center gap-2">
                       <input type="hidden" name="id" value={entry.id} />
                       <SubmitButton name="intent" value="send_back" variant="secondary">
                         {w.sendBack}
                       </SubmitButton>
-                    </ActionForm>
+                    </form>
                   )}
                 </RowActions>
               </ListRow>
@@ -109,7 +110,7 @@ export default async function PlatformIncidentsPage() {
       <PhoneRows>
         <PhoneRow flat title={w.idea.title} sub={w.idea.sub} change={w.phone.open} done={w.phone.close}>
           <Card title={w.idea.title} description={w.idea.sub}>
-            <ActionForm action={incidentAction} className="flex flex-col gap-3" replaceOnSuccess>
+            <form method="post" action={INCIDENT_ACT} className="flex flex-col gap-3">
               <Field label={w.idea.field} required>
                 {(control) => <TextInput {...control} name="title" maxLength={200} full />}
               </Field>
@@ -121,12 +122,12 @@ export default async function PlatformIncidentsPage() {
                   {w.idea.save}
                 </SubmitButton>
               </div>
-            </ActionForm>
+            </form>
           </Card>
         </PhoneRow>
         <PhoneRow flat last title={w.autopilot.title} sub={settings.on ? w.autopilot.on : w.autopilot.off} change={w.phone.open} done={w.phone.close}>
           <Card title={w.autopilot.title} description={settings.on ? w.autopilot.on : w.autopilot.off}>
-            <ActionForm action={incidentAction} className="flex flex-col gap-3">
+            <form method="post" action={INCIDENT_ACT} className="flex flex-col gap-3">
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="on" defaultChecked={settings.on} />
                 {w.autopilot.turnOn}
@@ -149,7 +150,7 @@ export default async function PlatformIncidentsPage() {
                   {w.autopilot.save}
                 </SubmitButton>
               </div>
-            </ActionForm>
+            </form>
           </Card>
         </PhoneRow>
       </PhoneRows>

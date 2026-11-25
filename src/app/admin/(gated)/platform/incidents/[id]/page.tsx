@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
-import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, Field, PageHeader } from "@/components/admin/ui";
 import { TextArea } from "@/components/admin/ui/field";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
@@ -14,7 +14,7 @@ import { canMove, workableStatus } from "@/lib/incidents";
 import { requirePlatformReader } from "@/server/auth";
 import { incidentDetail } from "@/server/incidents";
 
-import { incidentAction } from "../actions";
+import { IncidentNotice, INCIDENT_ACT } from "../notice";
 
 export const metadata: Metadata = { title: "Incident" };
 
@@ -24,12 +24,12 @@ type W = PlatformMessages["incidents"];
  * One entry of the incident log (D895): what it is, its facts and evidence (ids and counts, drawn as text), its history, and the owner's
  * decisions the log allows from where it stands.
  */
-export default async function PlatformIncidentPage({ params }: PageProps<"/admin/platform/incidents/[id]">) {
+export default async function PlatformIncidentPage({ params, searchParams }: PageProps<"/admin/platform/incidents/[id]">) {
   await connection();
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = PLATFORM_WORDS[lang].incidents;
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const entry = await incidentDetail(id);
   if (!entry) notFound();
   const at = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
@@ -52,10 +52,12 @@ export default async function PlatformIncidentPage({ params }: PageProps<"/admin
           </ButtonLink>
         }
       />
+      <IncidentNotice query={query} w={w} />
       <Card title={w.statuses[entry.status]} aside={<Chip signal={entry.status === "needs_owner" || entry.status === "proposed" ? "danger" : "neutral"}>{w.kinds[entry.kind]}</Chip>}>
         {entry.fixNote && <p className="mb-4 text-sm text-ink">{entry.fixNote}</p>}
-        <ActionForm action={incidentAction} className="flex flex-col gap-3">
+        <form method="post" action={INCIDENT_ACT} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={entry.id} />
+          <input type="hidden" name="from" value="entry" />
           <Field label={can("wont_fix") ? w.wontFixReason : w.reason}>
             {(control) => <TextArea {...control} name="note" maxLength={2000} rows={2} full />}
           </Field>
@@ -87,7 +89,7 @@ export default async function PlatformIncidentPage({ params }: PageProps<"/admin
               </SubmitButton>
             )}
           </div>
-        </ActionForm>
+        </form>
       </Card>
       {facts.length > 0 && <Facts title={w.facts} rows={facts} />}
       {evidence.length > 0 && <Facts title={w.evidence} rows={evidence} />}

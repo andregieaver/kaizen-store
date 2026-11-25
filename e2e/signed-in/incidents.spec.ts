@@ -50,7 +50,8 @@ test("approves a suggested improvement, reads a hand-over and adds an idea", asy
   const idea = page.getByRole("region", { name: "Add an idea" });
   await idea.getByLabel("What should be better").fill(`A darker admin at night (${run})`);
   await idea.getByRole("button", { name: "Add idea" }).click();
-  await expect(idea.getByText("Added. The autopilot will build it.")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Added. The autopilot will build it." })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Being fixed" }).getByText(`A darker admin at night (${run})`)).toBeVisible();
 
   await page.getByRole("link", { name: `Scheduled job route.e2e is failing (${run})` }).click();
   await expect(page.getByRole("heading", { name: `Scheduled job route.e2e is failing (${run})`, level: 1 })).toBeVisible();
