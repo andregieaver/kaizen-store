@@ -205,7 +205,7 @@ on to the consent page `/admin/oauth/authorize` (the admin's gate, never framed)
 | Route | Who calls it | First check |
 |---|---|---|
 | `/api/ab` | a visitor's browser (A/B test assignment, D148) | `sameSite()`, budget `ab` |
-| `/api/admin` | an owner's tools (the Admin API, D355) | a scoped token (`apiCaller()`), budget, idempotency keys (2.9); `v1/openapi.json` is the public contract (D438), no data |
+| `/api/admin` | an owner's tools (the Admin API, D355), and apps in design tools (the Figma plugin, D898 F1) | a scoped token (`apiCaller()`), budget, idempotency keys (2.9); any origin may call it, as only the `Authorization` header is read, never a cookie; `v1/openapi.json` is the public contract (D438), no data |
 | `/api/ads` | a visitor's browser (ad click ids, D303) | `sameSite()` |
 | `/api/auth` | a shopper signing in with Google (D375) | `sameSite()`, Google's signed answer and a state cookie |
 | `/api/blog` | a visitor commenting (D341) | `sameSite()`; a comment has a status (pending, approved, rejected, spam) the owner moderates |
@@ -230,6 +230,7 @@ on to the consent page `/admin/oauth/authorize` (the admin's gate, never framed)
 | `/api/mollie` | Mollie's webhook | the payment re-fetched from Mollie, never the body believed (2.8) |
 | `/api/oauth` | MCP clients and apps (Kaizena Flow's authorization server, D439): token, revocation, registration | the client named by its id (public, held by PKCE) or its secret (`client_secret_basic`, compared in constant time); codes and tokens found only by their SHA-256; budget `oauth` per address (an IPv6 one by its /64) for every request, and `oauth_token` per client only for a request whose secret, code, refresh token or own token proved good, registration `oauth_register` ten an hour, failing closed; a site-wide bucket counts only asks within the caller's own (2.9) |
 | `/api/platform` | the admin's live-site editing (edit pass, page CSS); Kaizena Flow's own read-only API at `/api/platform/v1` (D518) | editing: a signed-in account and its assurance (`getAccount()`, `getAssurance()`); `v1`: a `kfp_` token of a platform owner's, its scopes and the request budget (`platformApiCaller()`) |
+| `/api/plugin` | a design tool's app signing in to a store (the Figma plugin, D898 F1) | budgets `plugin_sign_in` and `plugin_poll`; the secret only the app holds (kept as its SHA-256), the owner's approval in the admin (`sameSite()`, owners only), ten minutes, the token handed over once |
 | `/api/private` | a visitor unlocking a private store (D339) | `sameSite()`, budget `unlock` failing closed |
 | `/api/product-question` | a visitor asking about a product (D431) | `sameSite()`, the visitor's own key and the part's day (D93's limits); the copy's addresses read from the published layout, never the browser |
 | `/api/quotes` | a visitor asking for a quote (D431) | `sameSite()`, the visitor's own key, a store's day; the cart's lines read from the cart itself |

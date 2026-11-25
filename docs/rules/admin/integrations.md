@@ -725,3 +725,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - **Picture fields (C2, `canva-field.tsx`, `canvaForField()`; how: `docs/design-tools.md`)**: the builder's (library route, `website:write`)
   and product photos (`/products/canva`, `products:write`, edit and bring only). The picture is found by address among the site's own
   rows, never fetched from it; `CANVA_BACK` shows nothing of the edit, it only names its id to this site's tabs. Words: the `canvaField` cut.
+  A social post's picture (C3, `canva-posts.ts`, `/social/canva`, `marketing:write`) reopens the person's earlier design of the post, else
+  sends its picture; brought back, the copy is the post's (`social_posts.picture_media_id`).
+
+## Figma (D898 F1 and F2, `figma-plugin/`, `src/server/plugin-sign-in.ts`, `src/lib/figma-capture.ts`, `src/server/figma-import.ts`)
+
+- **Figma (D898 F1 and F2)**: the Kaizena Flow plugin signs in without a redirect: `/api/plugin/sign-in` and `/poll` (any origin, no
+  cookie, budgets `plugin_sign_in` failing closed and `plugin_poll`) and the owner's approval at `/admin/account/plugin` (a plain form to
+  `/api/plugin/approve`, `sameSite()`, the store's owner). `commerce.plugin_sign_ins` is written only by `plugin-sign-in.ts`: the plugin's
+  secret only as its SHA-256, ten minutes, the token made by `makeApiToken()` (named *Figma plugin*, `PLUGIN_SCOPES`) kept encrypted until the
+  plugin takes it once; signing in again revokes the person's earlier one. The plugin then calls the Admin API, which answers any origin
+  (bearer tokens only): pictures through `media.upload` and `media.create`, the frame through `pages.import`, which only builds a draft
+  (`importFigmaPage()`: the frame checked by `figmaFrame`, pictures only the store's own library images by id, typefaces by
+  `installFamily()`, `buildReplica()` and the editor's `savePage()`); nothing is published. The plugin's files are plain JavaScript with no
+  build; its id comes from the owner's Figma account.

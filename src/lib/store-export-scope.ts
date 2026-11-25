@@ -36,6 +36,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   api_uploads: "record",
   // A picture sent to a person's own Canva and the design it became (D898): a record of their edits, not the store's site.
   design_edits: "record",
+  plugin_sign_ins: "secret",
   // Which app an owner cut off for which person (D439): about a connection, set again after a move.
   oauth_grants: "secret",
   oauth_store_cutoffs: "secret",

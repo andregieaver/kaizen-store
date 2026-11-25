@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>Pipedrive: one door, one engine, two ways through it</title>
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1f6b3a"/>
+    </marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1d4f91"/>
+    </marker>
+    <marker id="k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#4d5450"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="760" fill="#f4f4ef"/>
+
+  <text x="40" y="50" font-size="24" font-weight="700" fill="#141a17">Pipedrive: one door, one engine, two ways through it</text>
+  <text x="40" y="76" font-size="14" fill="#4d5450">D901, docs/pipedrive.md. Homer presses one button and answers one question; Lisa's choices wait under Customise.</text>
+
+  <!-- 1. One door -->
+  <text x="40" y="118" font-size="13" font-weight="700" fill="#4d5450" letter-spacing="1">1 · ONE DOOR</text>
+  <rect x="40" y="132" width="200" height="64" rx="12" fill="#141a17"/>
+  <text x="140" y="160" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">Connect Pipedrive</text>
+  <text x="140" y="180" font-size="12" fill="#cfd3cf" text-anchor="middle">Pipedrive asks: allow?</text>
+  <line x1="240" y1="164" x2="292" y2="164" stroke="#4d5450" stroke-width="2" marker-end="url(#k)"/>
+  <rect x="296" y="132" width="190" height="64" rx="12" fill="#ffffff" stroke="#d6d8d2"/>
+  <text x="391" y="160" font-size="15" font-weight="700" fill="#141a17" text-anchor="middle">One question</text>
+  <text x="391" y="180" font-size="12" fill="#4d5450" text-anchor="middle">no token, no file, no mapping</text>
+  <path d="M486 152 C 520 152, 520 136, 552 136" fill="none" stroke="#1f6b3a" stroke-width="2" marker-end="url(#g)"/>
+  <path d="M486 176 C 520 176, 520 192, 552 192" fill="none" stroke="#1d4f91" stroke-width="2" marker-end="url(#b)"/>
+  <rect x="556" y="116" width="250" height="40" rx="20" fill="#e3efe6" stroke="#1f6b3a"/>
+  <text x="681" y="141" font-size="15" font-weight="700" fill="#1f6b3a" text-anchor="middle">Keep using Pipedrive</text>
+  <rect x="556" y="172" width="250" height="40" rx="20" fill="#e4ecf7" stroke="#1d4f91"/>
+  <text x="681" y="197" font-size="15" font-weight="700" fill="#1d4f91" text-anchor="middle">Move to Kaizena Flow</text>
+  <text x="826" y="133" font-size="13" fill="#141a17">Customers, orders and requests show up in Pipedrive;</text>
+  <text x="826" y="150" font-size="13" fill="#141a17">deals won there become quotes here, ready to send.</text>
+  <text x="826" y="189" font-size="13" fill="#141a17">Everything comes over; both kept in step</text>
+  <text x="826" y="206" font-size="13" fill="#141a17">until switch day. Pipedrive stays as it is.</text>
+
+  <!-- 2. The engine -->
+  <text x="40" y="256" font-size="13" font-weight="700" fill="#4d5450" letter-spacing="1">2 · ONE ENGINE</text>
+  <rect x="40" y="270" width="430" height="250" rx="16" fill="#ffffff" stroke="#d6d8d2"/>
+  <text x="62" y="300" font-size="17" font-weight="700" fill="#141a17">Kaizena Flow</text>
+  <rect x="62" y="314" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="76" y="333" font-size="13" font-weight="700" fill="#141a17">Event log, read with the engine's own cursor</text>
+  <text x="76" y="349" font-size="12" fill="#4d5450">a change that commits late is never skipped</text>
+  <rect x="62" y="364" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="76" y="383" font-size="13" font-weight="700" fill="#141a17">The tables' own writers</text>
+  <text x="76" y="399" font-size="12" fill="#4d5450">customers, companies, deals, quotes, activities</text>
+  <rect x="62" y="414" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="76" y="433" font-size="13" font-weight="700" fill="#141a17">Links: ours ↔ theirs</text>
+  <text x="76" y="449" font-size="12" fill="#4d5450">a hash of what was written, the side that owns each field</text>
+  <rect x="62" y="464" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="76" y="483" font-size="13" font-weight="700" fill="#141a17">The panel's summary</text>
+  <text x="76" y="499" font-size="12" fill="#4d5450">lifetime value, last orders, open quote: ready in milliseconds</text>
+
+  <rect x="730" y="270" width="430" height="250" rx="16" fill="#ffffff" stroke="#d6d8d2"/>
+  <text x="752" y="300" font-size="17" font-weight="700" fill="#141a17">The owner's Pipedrive</text>
+  <rect x="752" y="314" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="766" y="333" font-size="13" font-weight="700" fill="#141a17">API, through Kaizena Flow's app (OAuth)</text>
+  <text x="766" y="349" font-size="12" fill="#4d5450">people, organisations, deals, leads, products</text>
+  <rect x="752" y="364" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="766" y="383" font-size="13" font-weight="700" fill="#141a17">Webhooks v2</text>
+  <text x="766" y="399" font-size="12" fill="#4d5450">unsigned (Basic auth); deleted after 3 failing days</text>
+  <rect x="752" y="414" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="766" y="433" font-size="13" font-weight="700" fill="#141a17">Daily budget, shared with the owner's other apps</text>
+  <text x="766" y="449" font-size="12" fill="#4d5450">30 000 tokens × plan × seats; we keep to our share</text>
+  <rect x="752" y="464" width="386" height="42" rx="8" fill="#f4f4ef"/>
+  <text x="766" y="483" font-size="13" font-weight="700" fill="#141a17">Kaizena Flow panel</text>
+  <text x="766" y="499" font-size="12" fill="#4d5450">on each person, organisation and deal</text>
+
+  <!-- arrows between -->
+  <text x="600" y="312" font-size="12" font-weight="700" fill="#1f6b3a" text-anchor="middle">out queue</text>
+  <text x="600" y="326" font-size="11" fill="#1f6b3a" text-anchor="middle">claimed · retried · looked up first</text>
+  <line x1="452" y1="337" x2="746" y2="337" stroke="#1f6b3a" stroke-width="2.5" marker-end="url(#g)"/>
+  <line x1="750" y1="387" x2="454" y2="387" stroke="#1d4f91" stroke-width="2.5" marker-end="url(#b)"/>
+  <text x="600" y="406" font-size="12" font-weight="700" fill="#1d4f91" text-anchor="middle">in queue</text>
+  <text x="600" y="420" font-size="11" fill="#1d4f91" text-anchor="middle">webhooks + nightly sweep · taken once</text>
+  <line x1="752" y1="485" x2="452" y2="485" stroke="#4d5450" stroke-width="2" stroke-dasharray="6 5" marker-start="url(#k)" marker-end="url(#k)"/>
+  <text x="600" y="476" font-size="11" fill="#4d5450" text-anchor="middle">the panel asks (signed token)</text>
+
+  <!-- guarantees -->
+  <g font-size="12" font-weight="700">
+    <rect x="40" y="536" width="270" height="30" rx="15" fill="#e3efe6"/>
+    <text x="175" y="556" fill="#1f6b3a" text-anchor="middle">Never lost: cursor + nightly sweep</text>
+    <rect x="326" y="536" width="270" height="30" rx="15" fill="#e3efe6"/>
+    <text x="461" y="556" fill="#1f6b3a" text-anchor="middle">Never doubled: Kaizena Flow ID</text>
+    <rect x="612" y="536" width="260" height="30" rx="15" fill="#e3efe6"/>
+    <text x="742" y="556" fill="#1f6b3a" text-anchor="middle">No ping-pong: echoes dropped</text>
+    <rect x="888" y="536" width="272" height="30" rx="15" fill="#e3efe6"/>
+    <text x="1024" y="556" fill="#1f6b3a" text-anchor="middle">Every failure: a sentence + a button</text>
+  </g>
+
+  <!-- 3. The move -->
+  <text x="40" y="606" font-size="13" font-weight="700" fill="#4d5450" letter-spacing="1">3 · THE MOVE, STEP BY STEP</text>
+  <g font-size="14" font-weight="700" text-anchor="middle">
+    <rect x="40" y="620" width="146" height="64" rx="10" fill="#e4ecf7" stroke="#1d4f91"/>
+    <text x="113" y="646" fill="#1d4f91">Connect</text>
+    <rect x="203" y="620" width="146" height="64" rx="10" fill="#e4ecf7" stroke="#1d4f91"/>
+    <text x="276" y="646" fill="#1d4f91">Check</text>
+    <rect x="366" y="620" width="146" height="64" rx="10" fill="#e4ecf7" stroke="#1d4f91"/>
+    <text x="439" y="646" fill="#1d4f91">Copy</text>
+    <rect x="529" y="620" width="146" height="64" rx="10" fill="#e4ecf7" stroke="#1d4f91"/>
+    <text x="602" y="646" fill="#1d4f91">Both in step</text>
+    <rect x="692" y="620" width="146" height="64" rx="10" fill="#1d4f91"/>
+    <text x="765" y="646" fill="#ffffff">Switch day</text>
+    <rect x="855" y="620" width="146" height="64" rx="10" fill="#e4ecf7" stroke="#1d4f91"/>
+    <text x="928" y="646" fill="#1d4f91">30 days</text>
+    <rect x="1018" y="620" width="142" height="64" rx="10" fill="#ffffff" stroke="#1d4f91"/>
+    <text x="1089" y="646" fill="#1d4f91">Close Pipedrive</text>
+  </g>
+  <g font-size="11" fill="#4d5450" text-anchor="middle">
+    <text x="113" y="666">once, one button</text>
+    <text x="276" y="666">reads, writes nothing</text>
+    <text x="439" y="666">writes here, quietly</text>
+    <text x="602" y="666">Pipedrive's changes come</text>
+    <text x="765" y="666" fill="#e4ecf7">inbox, forms, team move</text>
+    <text x="928" y="666">we watch for strays</text>
+    <text x="1089" y="666">we say when</text>
+  </g>
+  <g stroke="#1d4f91" stroke-width="2">
+    <line x1="186" y1="652" x2="201" y2="652" marker-end="url(#b)"/>
+    <line x1="349" y1="652" x2="364" y2="652" marker-end="url(#b)"/>
+    <line x1="512" y1="652" x2="527" y2="652" marker-end="url(#b)"/>
+    <line x1="675" y1="652" x2="690" y2="652" marker-end="url(#b)"/>
+    <line x1="838" y1="652" x2="853" y2="652" marker-end="url(#b)"/>
+    <line x1="1001" y1="652" x2="1016" y2="652" marker-end="url(#b)"/>
+  </g>
+  <text x="40" y="718" font-size="12" fill="#4d5450">Undo this copy until anything new depends on it · reconciled per currency after Copy, daily, and on switch day · nothing ever written to Pipedrive in a move</text>
+  <text x="40" y="738" font-size="12" fill="#4d5450">Built today: the move by API token (D477), never yet run in production. Everything else here is the plan.</text>
+</svg>

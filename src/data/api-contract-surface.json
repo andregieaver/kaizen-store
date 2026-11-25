@@ -1,5 +1,5 @@
 {
- "version": "1.60",
+ "version": "1.61",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -1821,6 +1821,16 @@
   "admin POST /pages -> data.title",
   "admin POST /pages -> data.updated_at",
   "admin POST /pages <- draft (required)",
+  "admin POST /pages/import",
+  "admin POST /pages/import -> data",
+  "admin POST /pages/import -> data.edit_url",
+  "admin POST /pages/import -> data.id",
+  "admin POST /pages/import -> data.notes",
+  "admin POST /pages/import -> data.summary",
+  "admin POST /pages/import -> data.title",
+  "admin POST /pages/import <- desktop (required)",
+  "admin POST /pages/import <- pictures (required)",
+  "admin POST /pages/import <- source (required)",
   "admin POST /pages/{id}/publish",
   "admin POST /pages/{id}/publish -> data",
   "admin POST /pages/{id}/publish -> data.draft",

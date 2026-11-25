@@ -5,12 +5,12 @@ import { useState, useTransition } from "react";
 import { primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { SocialMessages } from "@/lib/admin-messages/social.en";
-import type { Advice, CalendarSlot, Recommendation } from "@/lib/social-advice";
+import type { Advice, Recommendation } from "@/lib/social-advice";
 import { CHANNEL_SPECS, type PostChannel } from "@/lib/social-posts";
 
 /**
  * The social media adviser on the Social posts page (D870 S1.4). Homer sees three verdicts and one button that writes the posts of its main
- * recommendation; Lisa opens every recommendation and the two-week plan, each with its own button, and reads every figure under *What the
+ * recommendation; Lisa opens every recommendation, each with its own button (the two-week plan is the calendar below, S2.4), and reads every figure under *What the
  * adviser reads*. Asking and writing go to the page's routes (`/advise`, `/write`); the page is read again after, so the new advice or posts show.
  */
 
@@ -65,7 +65,6 @@ export function SocialAdviser({
   const ask = () => act("ask", `${base}/advise`, {});
   const canAct = mayWrite && hasAi;
   const date = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { dateStyle: "medium", timeZone });
-  const day = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
   const subject = (productId: string | null, topic: string) => (productId ? (titles[productId] ?? w.noProduct) : topic);
 
     const recAction = (r: Recommendation, i: number) => {
@@ -79,13 +78,6 @@ export function SocialAdviser({
     if (r.kind === "count_visits") return <a className={secondary} href={visitsHref}>{w.countVisits}</a>;
     return null;
   };
-  const slotWrite = (s: CalendarSlot, i: number) =>
-    canAct ? (
-      <button type="button" className={secondary} disabled={pending} onClick={() => write(`slot-${i}`, { productId: s.productId, topic: s.productId ? "" : s.idea, channels: [s.channel] })}>
-        {busy === `slot-${i}` ? w.writing : w.write}
-      </button>
-    ) : null;
-
   return (
     <section aria-labelledby="social-adviser" className="flex flex-col gap-4 rounded-panel border border-line bg-card p-4">
       <div className="flex flex-col gap-1">
@@ -138,25 +130,6 @@ export function SocialAdviser({
               </li>
             ))}
           </ol>
-          <h3 className="mt-3 text-body-strong text-ink">{w.plan}</h3>
-          {kept.advice.calendar.length === 0 ? (
-            <p className="text-caption text-ink-2">{w.noPlan}</p>
-          ) : (
-            <ol className="flex flex-col gap-3">
-              {kept.advice.calendar.map((s, i) => (
-                <li key={i} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-body text-ink">
-                      {day(s.day)} · {CHANNEL_SPECS[s.channel].label}
-                      {s.productId ? ` · ${titles[s.productId] ?? w.noProduct}` : ""}
-                    </span>
-                    <span className="text-caption text-ink-2">{s.idea}</span>
-                  </div>
-                  {slotWrite(s, i)}
-                </li>
-              ))}
-            </ol>
-          )}
         </details>
       )}
     </section>

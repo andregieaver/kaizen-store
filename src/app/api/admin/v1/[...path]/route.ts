@@ -21,10 +21,20 @@ import { takeBudget } from "@/server/request-budget";
  *
  * Besides its scope, each operation asks what its screen asks (D440): the staff permission (D158) the token's maker must hold in the store now
  * (`memberCan()`, so a store that is not open refuses what would change it), and the store feature (D178) it stands behind.
+ *
+ * Any origin may call it (D898 F1: a Figma plugin's frame has none): only the `Authorization` header is read, never a cookie, so a page
+ * elsewhere reaches nothing its own token does not.
  */
 export const maxDuration = 60;
 
-const HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" };
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, Idempotency-Key",
+  "Access-Control-Expose-Headers": "Retry-After, Idempotent-Replayed",
+  "Access-Control-Max-Age": "3600",
+};
+const HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex", ...CORS };
 
 const error = (code: ApiErrorCode, message: string, headers: Record<string, string> = {}) =>
   Response.json({ error: { code, message } }, { status: API_ERRORS[code], headers: { ...HEADERS, ...headers } });
@@ -86,3 +96,5 @@ export const GET = (request: Request, context: RouteContext<"/api/admin/v1/[...p
 export const POST = (request: Request, context: RouteContext<"/api/admin/v1/[...path]">) => handle("POST", request, context);
 export const PATCH = (request: Request, context: RouteContext<"/api/admin/v1/[...path]">) => handle("PATCH", request, context);
 export const DELETE = (request: Request, context: RouteContext<"/api/admin/v1/[...path]">) => handle("DELETE", request, context);
+/** A browser's preflight. */
+export const OPTIONS = () => new Response(null, { status: 204, headers: CORS });

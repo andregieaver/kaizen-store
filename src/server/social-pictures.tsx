@@ -14,6 +14,7 @@ import type { Membership } from "./auth";
 import { listGridProducts } from "./catalog";
 import { fontFile, type Fetcher } from "./font-outlines";
 import { log } from "./log";
+import { downloadStoredFile } from "./media";
 import { loadSharp } from "./sharp-load";
 import { col, typedRows } from "./typed-rows";
 
@@ -21,7 +22,8 @@ import { col, typedRows } from "./typed-rows";
  * A social post's picture (D870 C2, `docs/social-manager.md` 3), composed by code, never by a picture model: the product's own photo in the
  * store's live colours (each pair already at 4.5:1, `themeWarnings()`), its title and the price line the post was written with, and the
  * store's name, in the channel's shape (`PICTURE_SIZES`). A post with no product shows its headline (`pictureHeadline()`) on the store's
- * accent. Made on request and never stored: the same post always gives the same picture.
+ * accent. Made on request and never stored: the same post always gives the same picture. A post the owner edited in Canva (D898 C3) shows
+ * that copy instead, a library item (`social_posts.picture_media_id`), until they choose the drawn one again.
  */
 
 const POST = z.object({
@@ -32,6 +34,7 @@ const POST = z.object({
   title: col.text,
   caption: col.text,
   price_line: col.textOrNull,
+  picture_media_id: col.textOrNull,
 });
 
 type Palette = { background: string; surface: string; text: string; accent: string; accentText: string };
@@ -140,17 +143,44 @@ function storageOrigin(): string | null {
   }
 }
 
-export type PictureResult = { ok: true; response: ImageResponse; fileName: string } | { ok: false };
+export type PictureResult = { ok: true; response: Response; fileName: string } | { ok: false };
 
-/** The picture of one of the store's posts, or not found. `origin` is the address the request came to, for the store's own files. */
-export async function socialPicture(member: Membership, postId: string, origin: string, deps: PictureDeps = {}): Promise<PictureResult> {
+/** The file types a post's own picture is kept in, by its media type. */
+const KEPT_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/avif": "avif" };
+
+/** A post's own picture (C3): the store's library item, its file read by its row; null when it is gone or cannot be read. */
+async function keptPicture(storeId: string, mediaId: string): Promise<{ bytes: Uint8Array; type: string } | null> {
+  const [file] = await typedRows(
+    z.object({ bucket: col.text, path: col.text, content_type: col.text }),
+    sql`select bucket, path, content_type from commerce.media where store_id = ${storeId}::uuid and id = ${mediaId}::uuid and kind = 'image'`,
+  );
+  if (!file || !KEPT_TYPES[file.content_type]) return null;
+  const bytes = await downloadStoredFile(file.bucket, file.path);
+  return bytes ? { bytes, type: file.content_type } : null;
+}
+
+/**
+ * The picture of one of the store's posts, or not found: its own from Canva where it has one, else drawn (`drawn` asks for the drawn one
+ * always). `origin` is the address the request came to, for the store's own files.
+ */
+export async function socialPicture(member: Membership, postId: string, origin: string, deps: PictureDeps = {}, options: { drawn?: boolean } = {}): Promise<PictureResult> {
   if (!z.uuid().safeParse(postId).success) return { ok: false };
   const { store } = member;
   const [post] = await typedRows(
     POST,
-    sql`select channel, ref, product_id, page_id, title, caption, price_line from commerce.social_posts where store_id = ${store.id}::uuid and id = ${postId}::uuid`,
+    sql`select channel, ref, product_id, page_id, title, caption, price_line, picture_media_id from commerce.social_posts where store_id = ${store.id}::uuid and id = ${postId}::uuid`,
   );
   if (!post) return { ok: false };
+  if (post.picture_media_id && !options.drawn) {
+    const kept = await keptPicture(store.id, post.picture_media_id);
+    if (kept) {
+      return {
+        ok: true,
+        fileName: pictureFileName(post.channel as PostChannel, post.ref).replace(/\.png$/, `.${KEPT_TYPES[kept.type]}`),
+        response: new Response(new Uint8Array(kept.bytes), { headers: { "Content-Type": kept.type, "Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff" } }),
+      };
+    }
+  }
   const size = PICTURE_SIZES[post.channel as PostChannel];
   const palette = paletteOf(store);
   const market = store.markets[0];

@@ -37,6 +37,7 @@ export const canvaNb: CanvaMessages = {
     done: "Det redigerte bildet fra Canva er på plass.",
     blocked: "Nettleseren åpnet ikke en ny fane. Tillat popup-vinduer for Kaizena Flow og prøv igjen.",
     connectLead: "Kobler til din egen Canva i en ny fane; kom tilbake hit når det er gjort.",
+    drawn: "Bruk det opprinnelige bildet",
   },
   back: {
     title: "Tilbake fra Canva",

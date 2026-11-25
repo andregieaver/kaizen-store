@@ -1,6 +1,6 @@
 {
-  "id": "d6a88dd2-5116-40ce-a1a7-a635d38d7ae3",
-  "prevId": "afa4780c-e016-43b1-8bb1-e3080500e65a",
+  "id": "b6e9e36d-081c-4719-8fe0-68057616944f",
+  "prevId": "e3c852f9-74ae-43e3-90db-b52c15ab7685",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -27417,6 +27417,12 @@
           "notNull": true,
           "default": "'library'"
         },
+        "post_id": {
+          "name": "post_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "result_media_id": {
           "name": "result_media_id",
           "type": "uuid",
@@ -27537,6 +27543,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "design_edits_post_idx": {
+          "name": "design_edits_post_idx",
+          "columns": [
+            {
+              "expression": "post_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -27582,6 +27603,20 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
+        "design_edits_post_id_social_posts_id_fk": {
+          "name": "design_edits_post_id_social_posts_id_fk",
+          "tableFrom": "design_edits",
+          "tableTo": "social_posts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "post_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "design_edits_result_media_id_media_id_fk": {
           "name": "design_edits_result_media_id_media_id_fk",
           "tableFrom": "design_edits",
@@ -27611,7 +27646,11 @@
         },
         "design_edits_place": {
           "name": "design_edits_place",
-          "value": "\"commerce\".\"design_edits\".\"place\" in ('library', 'field')"
+          "value": "\"commerce\".\"design_edits\".\"place\" in ('library', 'field', 'post')"
+        },
+        "design_edits_post": {
+          "name": "design_edits_post",
+          "value": "\"commerce\".\"design_edits\".\"place\" = 'post' or \"commerce\".\"design_edits\".\"post_id\" is null"
         },
         "design_edits_design": {
           "name": "design_edits_design",
@@ -66797,6 +66836,208 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.plugin_sign_ins": {
+      "name": "plugin_sign_ins",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tool": {
+          "name": "tool",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "read_hash": {
+          "name": "read_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'waiting'"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_sealed": {
+          "name": "token_sealed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "plugin_sign_ins_read_idx": {
+          "name": "plugin_sign_ins_read_idx",
+          "columns": [
+            {
+              "expression": "read_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "plugin_sign_ins_code_idx": {
+          "name": "plugin_sign_ins_code_idx",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "plugin_sign_ins_store_idx": {
+          "name": "plugin_sign_ins_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "plugin_sign_ins_account_idx": {
+          "name": "plugin_sign_ins_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "plugin_sign_ins_expires_idx": {
+          "name": "plugin_sign_ins_expires_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "plugin_sign_ins_store_id_stores_id_fk": {
+          "name": "plugin_sign_ins_store_id_stores_id_fk",
+          "tableFrom": "plugin_sign_ins",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "plugin_sign_ins_account_id_accounts_id_fk": {
+          "name": "plugin_sign_ins_account_id_accounts_id_fk",
+          "tableFrom": "plugin_sign_ins",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "plugin_sign_ins_tool": {
+          "name": "plugin_sign_ins_tool",
+          "value": "\"commerce\".\"plugin_sign_ins\".\"tool\" in ('figma')"
+        },
+        "plugin_sign_ins_status": {
+          "name": "plugin_sign_ins_status",
+          "value": "\"commerce\".\"plugin_sign_ins\".\"status\" in ('waiting', 'approved', 'taken', 'declined')"
+        },
+        "plugin_sign_ins_code": {
+          "name": "plugin_sign_ins_code",
+          "value": "\"commerce\".\"plugin_sign_ins\".\"code\" ~ '^[A-HJ-NP-Z2-9]{8}$'"
+        },
+        "plugin_sign_ins_read": {
+          "name": "plugin_sign_ins_read",
+          "value": "\"commerce\".\"plugin_sign_ins\".\"read_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "plugin_sign_ins_token": {
+          "name": "plugin_sign_ins_token",
+          "value": "\"commerce\".\"plugin_sign_ins\".\"token_sealed\" is null or \"commerce\".\"plugin_sign_ins\".\"status\" = 'approved'"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.postal_points": {
       "name": "postal_points",
       "schema": "commerce",
@@ -84997,8 +85238,38 @@
           "primaryKey": false,
           "notNull": false
         },
+        "picture_media_id": {
+          "name": "picture_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "copied_at": {
           "name": "copied_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_for": {
+          "name": "planned_for",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "edited_at": {
+          "name": "edited_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -85018,6 +85289,42 @@
         }
       },
       "indexes": {
+        "social_posts_planned_idx": {
+          "name": "social_posts_planned_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "planned_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_approved_by_idx": {
+          "name": "social_posts_approved_by_idx",
+          "columns": [
+            {
+              "expression": "approved_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "social_posts_ref_idx": {
           "name": "social_posts_ref_idx",
           "columns": [
@@ -85110,6 +85417,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "social_posts_picture_idx": {
+          "name": "social_posts_picture_idx",
+          "columns": [
+            {
+              "expression": "picture_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -85148,6 +85470,34 @@
           "schemaTo": "commerce",
           "columnsFrom": [
             "page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_picture_media_id_media_id_fk": {
+          "name": "social_posts_picture_media_id_media_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "media",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "picture_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_approved_by_accounts_id_fk": {
+          "name": "social_posts_approved_by_accounts_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "approved_by"
           ],
           "columnsTo": [
             "id"

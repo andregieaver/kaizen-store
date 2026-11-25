@@ -9,6 +9,8 @@ import { fillWords } from "@/lib/admin-fill";
 import type { SocialMessages } from "@/lib/admin-messages/social.en";
 import { CHANNEL_SPECS, PICTURE_SIZES, POST_CHANNELS, type PostChannel } from "@/lib/social-posts";
 
+import { CanvaPostTools } from "./canva-field";
+
 /**
  * The social post creator's screen (D870 C1). Homer chooses a product (or writes what the posts are about), keeps the channels ticked and
  * presses Write posts; each post comes back as a card with Copy text, and Copy link where the channel opens no link in a post. Lisa's theme
@@ -26,6 +28,8 @@ type Post = {
   link: string;
   copiedAt: string | null;
   createdAt: string;
+  /** Its own picture from Canva (D898 C3), or null for the one drawn by code. */
+  pictureMediaId?: string | null;
 };
 
 type Result = { ok: true; posts: Post[] } | { ok: false; problem: string };
@@ -200,6 +204,9 @@ export function SocialPostCreator({
 function PostCard({ words: w, post, copied, date, picture }: { words: SocialMessages; post: Post; copied: () => Promise<unknown>; date: (iso: string) => string; picture: string }) {
   const [done, setDone] = useState<"text" | "link" | null>(null);
   const [copiedAt, setCopiedAt] = useState(post.copiedAt);
+  // The post's picture as it is now: its own from Canva (C3) or the drawn one. The address names it, so a new one is never an old one cached.
+  const [own, setOwn] = useState(post.pictureMediaId ?? null);
+  const shown = `${picture}?v=${own ?? "drawn"}`;
   const spec = CHANNEL_SPECS[post.channel];
   const copy = async (what: "text" | "link") => {
     try {
@@ -221,7 +228,7 @@ function PostCard({ words: w, post, copied, date, picture }: { words: SocialMess
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- drawn by the server for this post, private to the admin */}
       <img
-        src={picture}
+        src={shown}
         alt={fillWords(w.pictureAlt, { channel: spec.label, shape: PICTURE_SIZES[post.channel].shape })}
         width={PICTURE_SIZES[post.channel].width}
         height={PICTURE_SIZES[post.channel].height}
@@ -243,10 +250,12 @@ function PostCard({ words: w, post, copied, date, picture }: { words: SocialMess
             {done === "link" ? w.copied : w.copyLink}
           </button>
         )}
-        <a href={`${picture}?download=1`} download className={secondary}>
+        <a href={`${shown}&download=1`} download className={secondary}>
           {w.downloadPicture}
         </a>
       </div>
+      {/* The picture edited in the person's own Canva (D898 C3), where the screen offers it; the copy is kept in the library. */}
+      <CanvaPostTools postId={post.id} fromCanva={own !== null} onChanged={setOwn} />
     </article>
   );
 }

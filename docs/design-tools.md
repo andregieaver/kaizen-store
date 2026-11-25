@@ -33,7 +33,7 @@ Owners change pictures every week, *Edit in Canva* works on a free Canva account
 |---|---|---|
 | C1 | **Connect Canva** (a person's account, OAuth with PKCE, tokens sealed and refreshed under the row's lock, Canva's refresh tokens being single use), **Edit in Canva** and **Import from Canva** in the media library, for stores and Kaizena Flow's own library alike. The edited copy is a new library item beside the original (`made_by = 'canva'`, `edited_from`). | Built (25 November 2026, f78b932) |
 | C2 | *Edit in Canva* on every picture field: the page builder's picture fields (stores' and Kaizena Flow's own) and the product editor's photos, the edited copy put where the old one was (one Undo step in the builder, the product's own save in the editor). Canva opens in a tab of its own so the editor keeps its unsaved changes; *Return* lands on `/admin/account/canva-back`, which tells the field's tab and closes. | Built (25 November 2026, 198b8d8) |
-| C3 | Social post pictures into Canva. Today a post's picture is drawn on request and never stored (D870 C2); editing it keeps a copy in the library, which needs the owner's yes. | Waits for the owner |
+| C3 | Social post pictures into Canva: *Edit in Canva* on a post's card opens the post's picture in the person's Canva, and the edited copy, kept in the library, becomes the post's picture (the owner said yes to keeping it, 25 November 2026). | Built (this change) |
 | C4 | A product into a Canva brand template (Canva Pro and up: autofill), with its photo, name and the shop's price line worked out in code (`priceLines()`), never a model's. | Later |
 | C5 | A Canva app inside Canva: *Publish to Kaizena Flow* from Canva's share menu (the content publisher intent) and a panel of the store's pictures and products. Signs in as one of our developer apps; its own review at Canva, with EU trader checks. | Later |
 | C6 | The AI manager with Canva's MCP server: custom apps (D363) learn MCP's OAuth sign-in (discovery, PKCE, rotating refresh). | Later |
@@ -72,6 +72,16 @@ Owners change pictures every week, *Edit in Canva* works on a free Canva account
   Canva*. A product's photos go through `/admin/{store}/products/canva` (`products:write`, edit and bring back only); the builder through
   the library's route (`website:write`).
 
+### What C3 does
+
+- **Where.** Each post's card on Marketing → Social posts, for a member who may change the marketing (`marketing:write`), a store's posts and
+  Kaizena Flow's own alike (its posts are its house store's).
+- **How.** *Edit in Canva* opens a tab as a picture field does (C2). The first time, the post's picture drawn by code goes up to Canva in the
+  channel's shape (`PICTURE_SIZES`); after that, the person's own design of the post opens again where they left it, its layers intact (a
+  design Canva no longer opens for them is passed over for the picture itself). Brought back, the copy is a library item (`made_by =
+  'canva'`) and the post's picture (`social_posts.picture_media_id`): the card, its download and the picture route show it in place of the
+  drawn one. *Use the original picture* goes back to the drawn one; the copy stays in the library.
+
 ### What the owner sets up at Canva (once)
 
 Canva's Developer Portal (two-step sign-in on the account): a **public integration** named *Kaizena Flow*, with
@@ -86,14 +96,32 @@ questionnaire) once C1 is live.
 
 ## 3. Figma
 
-| Step | What |
-|---|---|
-| F1 | **A Figma plugin**, *Send to my store*: it signs in to Kaizena Flow and sends the selected frames (boxes, text, picture bytes, styles and variables; plugins read variables on every plan, the REST API only on Enterprise). Needs a sign-in a plugin can use (it cannot take a redirect: the device grant, RFC 8628, or Figma's polling pattern) and CORS on the Admin API for the plugin's frame. |
-| F2 | **A page draft** from the frames through the page copy engine: an adapter from Figma's nodes to `PageCapture` (`src/lib/replicate-capture.ts`), so a frame gets `buildReplica()`'s grids, style model and refine passes, compared against Figma's own render of the frame. Fonts install where Google has them (D59); the summary names the rest. |
-| F3 | **A look from the file**: colours and type as an installed look, checked by `themeWarnings()`, made live only by the owner. Admin API routes to read and write a look, text styles and saved colours. |
-| F4 | **A Figma REST app** for webhooks (*the design changed: bring it again?*). REST file reads are 20 a month on Starter and view seats, so it is never the main path. |
-| F5 | **Back to Figma**: the same plugin draws a page and the theme as frames and variables. |
-| F6 | **Our MCP in Figma's agent and Make** as a custom connector, registered as one of our developer apps. Figma's own MCP server takes only clients on its list (we join the waitlist), so the AI manager uses it later. |
+| Step | What | State |
+|---|---|---|
+| F1 | **A Figma plugin**, *Send to my store*: it signs in to Kaizena Flow and sends the selected frames (boxes, text, picture bytes, styles and variables; plugins read variables on every plan, the REST API only on Enterprise). Needs a sign-in a plugin can use (it cannot take a redirect: the device grant, RFC 8628, or Figma's polling pattern) and CORS on the Admin API for the plugin's frame. | Built (this change): owners, frames and pictures; variables with F3 |
+| F2 | **A page draft** from the frames through the page copy engine: an adapter from Figma's nodes to `PageCapture` (`src/lib/replicate-capture.ts`), so a frame gets `buildReplica()`'s grids, style model and refine passes, compared against Figma's own render of the frame. Fonts install where Google has them (D59); the summary names the rest. | Built (this change): the computers' frame; the phone frame and the refine passes next |
+| F3 | **A look from the file**: colours and type as an installed look, checked by `themeWarnings()`, made live only by the owner. Admin API routes to read and write a look, text styles and saved colours. | Next |
+| F4 | **A Figma REST app** for webhooks (*the design changed: bring it again?*). REST file reads are 20 a month on Starter and view seats, so it is never the main path. | Later |
+| F5 | **Back to Figma**: the same plugin draws a page and the theme as frames and variables. | Later |
+| F6 | **Our MCP in Figma's agent and Make** as a custom connector, registered as one of our developer apps. Figma's own MCP server takes only clients on its list (we join the waitlist), so the AI manager uses it later. | Later |
+
+### What F1 and F2 do
+
+- **The plugin** (`figma-plugin/`, plain JavaScript, `README.md` there): *Send to my store* reads the selected frame (the widest is the
+  computers'; one at phone width is sent too) and its pictures and drawn shapes, sends each picture to the store's media library through the
+  Admin API's one-time upload addresses (`POST /media/uploads`, the bytes to storage, `POST /media`: a Vercel request takes at most 4.5 MB),
+  then the frame to `POST /api/admin/v1/pages/import`. It reaches only Kaizena Flow and its file storage (`networkAccess`).
+- **Signing in** (`src/server/plugin-sign-in.ts`, `commerce.plugin_sign_ins`): a plugin cannot follow a redirect, so it asks
+  `/api/plugin/sign-in` for a sign-in, shows its eight-letter code and opens `/admin/account/plugin?code=…`; the owner checks the code, picks
+  the store and presses *Connect Figma*, which makes an Admin API token (`content:read`, `content:write`, `products:manage`) named *Figma
+  plugin*, listed with the store's tokens; the plugin asks `/api/plugin/sign-in/poll` with the secret only it holds and is given the token
+  once. Ten minutes; signing in again revokes the person's earlier plugin token. Owners only for now: API tokens act as the owner (D355).
+- **The draft** (`src/lib/figma-capture.ts`, `src/server/figma-import.ts`): the frame becomes a `PageCapture` (auto layout a flex box, a
+  fill a background, a text a heading or a paragraph by its size, one h1, a painted box with one label a button, a picture or a drawn shape
+  the library item sent for it) and `buildReplica()` lays it out as a copied page is; saved as a draft by the editor's own save. Typefaces
+  install from Google Fonts or the nearest stands in, as the copy does (`installFamily()`), and the answer names each. A picture that is not
+  the store's own library image is left out.
+- **The Admin API** sends CORS headers and answers a preflight: it reads only the `Authorization` header, never a cookie.
 
 ## 4. Miro
 

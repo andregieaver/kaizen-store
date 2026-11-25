@@ -99,8 +99,8 @@ export const canvaOffered = (deps: CanvaDeps = {}): boolean => appOf(deps) !== n
 export type CanvaProblem = "off" | "not_connected" | "reconnect" | "gone" | "unreadable" | "unreachable" | "slow" | "license" | "busy" | "storage" | "canva";
 export type CanvaOutcome<T> = ({ ok: true } & T) | { ok: false; problem: CanvaProblem; detail?: string };
 
-/** Where an edit started: the media library, or a picture field that waits for it in its own tab (C2). */
-export type EditPlace = "library" | "field";
+/** Where an edit started: the media library, a picture field (C2) or a social post (C3), the last two waiting for it in their own tab. */
+export type EditPlace = "library" | "field" | "post";
 
 /** A picture from Canva as kept in the library: its row, its address and small copy, and its size, so a picture field can take it. */
 export type BroughtPicture = { mediaId: string; url: string; thumbnailUrl: string | null; width: number; height: number };
@@ -359,6 +359,9 @@ async function pollJob<T extends { job: { status: string } }>(
   }
 }
 
+/** Where an edit goes once it is started: the place it waits in, and for a social post's picture (C3) the post. */
+export type EditTarget = { place: EditPlace; postId?: string | null };
+
 /**
  * *Edit in Canva* on a library picture: its own file (read by its row, never an address) goes up to the person's Canva as a PNG asset, a
  * design of its size is made with it, and an edit row keeps the design and a one-time correlation. The answer is the design's edit link
@@ -368,7 +371,7 @@ export async function startCanvaEdit(
   owner: CanvaOwner,
   target: string | { mediaId?: string; url?: string },
   deps: CanvaDeps = {},
-  place: EditPlace = "library",
+  place: EditPlace | EditTarget = "library",
 ): Promise<CanvaOutcome<{ url: string; editId: string }>> {
   if (!canvaOffered(deps)) return { ok: false, problem: "off" };
   const { mediaId, url: address } = typeof target === "string" ? { mediaId: target, url: undefined } : target;
@@ -383,18 +386,32 @@ export async function startCanvaEdit(
   if (!picture) return { ok: false, problem: "gone" };
   const bytes = await downloadStoredFile(picture.bucket, picture.path);
   if (!bytes) return { ok: false, problem: "unreadable" };
+  return sendToCanva(owner, { bytes, fileName: picture.file_name, width: picture.width, height: picture.height, sourceMediaId: picture.id }, typeof place === "string" ? { place } : place, deps);
+}
+
+/**
+ * Sends a picture to the person's Canva and starts an edit of it (C1, C3): the bytes go up as a PNG asset, a design of its size is made with
+ * it, and an edit row keeps the design and a one-time correlation (only its hash). The answer is the design's edit link carrying it.
+ */
+export async function sendToCanva(
+  owner: CanvaOwner,
+  picture: { bytes: Uint8Array; fileName: string; width: number | null; height: number | null; sourceMediaId: string | null },
+  target: EditTarget,
+  deps: CanvaDeps = {},
+): Promise<CanvaOutcome<{ url: string; editId: string }>> {
+  if (!canvaOffered(deps)) return { ok: false, problem: "off" };
   let png: Uint8Array;
   let size: { width: number; height: number };
   try {
     const sharp = await loadSharp();
-    const read = sharp(bytes, { failOn: "error" }).rotate();
+    const read = sharp(picture.bytes, { failOn: "error" }).rotate();
     const meta = await read.metadata();
     png = new Uint8Array(await read.png().toBuffer());
     size = designSize(picture.width ?? meta.width ?? null, picture.height ?? meta.height ?? null);
   } catch {
     return { ok: false, problem: "unreadable" };
   }
-  const name = assetName(picture.file_name);
+  const name = assetName(picture.fileName);
   const upload = await canvaCall(owner.accountId, "POST", "/v1/asset-uploads", { bytes: png, headers: { "Asset-Upload-Metadata": JSON.stringify({ name_base64: Buffer.from(name).toString("base64") }) } }, deps);
   if (!upload.ok) return problemOf(upload);
   const started = canvaAssetJob.safeParse(upload.body);
@@ -416,16 +433,48 @@ export async function startCanvaEdit(
   if (!made.ok) return problemOf(made);
   const design = canvaDesignAnswer.safeParse(made.body);
   if (!design.success || !design.data.design.urls) return { ok: false, problem: "canva" };
+  return keepEdit(owner, design.data.design.id, design.data.design.urls.edit_url, picture.sourceMediaId, target);
+}
+
+/** The edit row for a design and the link that opens it, with a new one-time correlation. */
+async function keepEdit(
+  owner: CanvaOwner,
+  designId: string,
+  editUrl: string,
+  sourceMediaId: string | null,
+  target: EditTarget,
+): Promise<CanvaOutcome<{ url: string; editId: string }>> {
   const { correlation, hash } = newCorrelation();
-  const url = editLink(design.data.design.urls.edit_url, correlation);
+  const url = editLink(editUrl, correlation);
   if (!url) return { ok: false, problem: "canva" };
   const row = await typedRow(
     z.object({ id: col.uuid }),
-    sql`insert into commerce.design_edits (store_id, account_id, provider, design_id, source_media_id, correlation_hash, place)
-        values (${owner.storeId}::uuid, ${owner.accountId}::uuid, 'canva', ${design.data.design.id}, ${picture.id}::uuid, ${hash}, ${place}) returning id`,
+    sql`insert into commerce.design_edits (store_id, account_id, provider, design_id, source_media_id, correlation_hash, place, post_id)
+        values (${owner.storeId}::uuid, ${owner.accountId}::uuid, 'canva', ${designId}, ${sourceMediaId}::uuid, ${hash}, ${target.place}, ${target.postId ?? null}::uuid)
+        returning id`,
   );
   if (!row) return { ok: false, problem: "canva" };
   return { ok: true, url, editId: row.id };
+}
+
+/**
+ * Opens a design the person made before again (C3: a post's picture goes on in the same design, its layers as they were): a fresh edit link
+ * from Canva and a new edit row. `gone` when the design is no longer theirs to open.
+ */
+export async function reopenCanvaDesign(
+  owner: CanvaOwner,
+  designId: string,
+  sourceMediaId: string | null,
+  target: EditTarget,
+  deps: CanvaDeps = {},
+): Promise<CanvaOutcome<{ url: string; editId: string }>> {
+  if (!canvaOffered(deps)) return { ok: false, problem: "off" };
+  if (!CANVA_ID.test(designId)) return { ok: false, problem: "gone" };
+  const read = await canvaCall(owner.accountId, "GET", `/v1/designs/${encodeURIComponent(designId)}`, {}, deps);
+  if (!read.ok) return problemOf(read);
+  const design = canvaDesignAnswer.safeParse(read.body);
+  if (!design.success || !design.data.design.urls) return { ok: false, problem: "gone" };
+  return keepEdit(owner, design.data.design.id, design.data.design.urls.edit_url, sourceMediaId, target);
 }
 
 let keysRead: { keys: CanvaKey[]; at: number } | null = null;
@@ -476,7 +525,8 @@ export async function canvaReturned(params: URLSearchParams, deps: CanvaDeps = {
     update commerce.design_edits set status = case when status = 'open' then 'returned' else status end, returned_at = now(), updated_at = now()
     where id = ${edit.id}::uuid and ${owned(edit.store_id)}
   `);
-  return edit.place === "field" ? `${CANVA_BACK}?edit=${edit.id}` : `${library}?canva=${edit.id}`;
+  // A field's or a post's edit (C2, C3) waits in the tab it started from: the back page tells it and closes.
+  return edit.place === "library" ? `${library}?canva=${edit.id}` : `${CANVA_BACK}?edit=${edit.id}`;
 }
 
 /** Where a person's edit stands, for a picture field waiting on it in another tab: `open` until Canva's *Return*, then `returned`. */
@@ -554,15 +604,18 @@ async function keepInLibrary(
 
 /**
  * Brings an edit back from Canva into the library (after *Return*, or again later): the person's own edit in this library, its design's
- * first page exported and kept as a new picture edited from the original, which stays as it was. The edit row names the latest copy.
+ * first page exported and kept as a new picture edited from the original, which stays as it was. The edit row names the latest copy, and a
+ * social post's edit (C3) makes the copy the post's picture.
  */
 export async function bringBackFromCanva(owner: CanvaOwner, editId: string, deps: CanvaDeps = {}): Promise<CanvaOutcome<BroughtPicture>> {
   if (!canvaOffered(deps)) return { ok: false, problem: "off" };
   if (!z.uuid().safeParse(editId).success) return { ok: false, problem: "gone" };
   const edit = await typedRow(
-    z.object({ id: col.uuid, design_id: col.text, source: col.textOrNull, file_name: col.textOrNull }),
-    sql`select e.id, e.design_id, e.source_media_id as source, m.file_name
-        from commerce.design_edits e left join commerce.media m on m.id = e.source_media_id
+    z.object({ id: col.uuid, design_id: col.text, source: col.textOrNull, file_name: col.textOrNull, post_id: col.textOrNull, post_name: col.textOrNull }),
+    sql`select e.id, e.design_id, e.source_media_id as source, m.file_name, e.post_id, p.channel || '-' || p.ref as post_name
+        from commerce.design_edits e
+        left join commerce.media m on m.id = e.source_media_id
+        left join commerce.social_posts p on p.id = e.post_id and e.place = 'post' and p.store_id = e.store_id
         where e.id = ${editId}::uuid and e.account_id = ${owner.accountId}::uuid and e.provider = 'canva' and ${owned(owner.storeId, sql`e.store_id`)}`,
   );
   if (!edit) return { ok: false, problem: "gone" };
@@ -571,8 +624,13 @@ export async function bringBackFromCanva(owner: CanvaOwner, editId: string, deps
     await db().execute(sql`update commerce.design_edits set problem = ${exported.problem}, updated_at = now() where id = ${edit.id}::uuid and ${owned(owner.storeId)}`);
     return exported;
   }
-  const kept = await keepInLibrary(owner, exported.bytes, editedFileName(edit.file_name ?? "picture"), edit.source);
+  const kept = await keepInLibrary(owner, exported.bytes, editedFileName(edit.file_name ?? edit.post_name ?? "picture"), edit.source);
   if (!kept.ok) return kept;
+  if (edit.post_id && owner.storeId) {
+    await db().execute(sql`
+      update commerce.social_posts set picture_media_id = ${kept.mediaId}::uuid where id = ${edit.post_id}::uuid and store_id = ${owner.storeId}::uuid
+    `);
+  }
   await db().execute(sql`
     update commerce.design_edits set status = 'brought', result_media_id = ${kept.mediaId}::uuid, brought_at = now(), problem = null, updated_at = now()
     where id = ${edit.id}::uuid and ${owned(owner.storeId)}

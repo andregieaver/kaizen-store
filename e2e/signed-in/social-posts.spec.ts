@@ -23,6 +23,7 @@ const POSTS = {
   posts: [
     { channel: "instagram", caption: "Slow mornings start with a good cup.\nMade by hand, glazed in small batches.", hashtags: ["handmade", "ceramics", "coffee"] },
     { channel: "facebook", caption: "Meet the mug we reach for first every morning: heavy in the hand, warm to hold.", hashtags: ["ceramics"] },
+    { channel: "pinterest", title: "Bowls on linen", caption: "Hand-thrown bowls for a slow kitchen, glazed in small batches.", hashtags: ["ceramics", "kitchen"] },
   ],
 };
 
@@ -98,7 +99,8 @@ test("the owner writes posts for two channels from a product and copies one", as
   const picture = instagram.getByRole("img", { name: "The Instagram picture, 4:5" });
   await expect(picture).toBeVisible();
   await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1080);
-  await expect(instagram.getByRole("link", { name: "Download picture" })).toHaveAttribute("href", /\/social\/picture\/[0-9a-f-]{36}\?download=1$/);
+  // The address names the picture it shows (`v`: the drawn one, or the post's own from Canva, D898 C3), so a new one is never an old one cached.
+  await expect(instagram.getByRole("link", { name: "Download picture" })).toHaveAttribute("href", /\/social\/picture\/[0-9a-f-]{36}\?v=drawn&download=1$/);
   await page.screenshot({ path: "test-results/social-posts.png", fullPage: true });
   const download = await page.request.get((await instagram.getByRole("link", { name: "Download picture" }).getAttribute("href"))!);
   expect(download.headers()["content-type"]).toBe("image/png");
@@ -240,12 +242,49 @@ test("the adviser says how the store stands in three verdicts, and its one butto
   await expect(adviser.getByRole("listitem").first()).toContainText("Your posts reach people");
   await expect(adviser.getByRole("listitem")).toHaveCount(3);
   await adviser.scrollIntoViewIfNeeded();
-  await adviser.getByText("All recommendations and the two-week plan").click();
+  await adviser.getByText("All recommendations").click();
   await expect(adviser).toContainText("Count visits");
-  await expect(adviser).toContainText("A reel of a bowl taking shape on the wheel.");
   await adviser.screenshot({ path: "test-results/social-adviser.png" });
 
   await adviser.getByRole("button", { name: "Write posts: Show the workshop at work" }).click();
   await expect(page.getByText("About: A morning in the workshop").first()).toBeVisible();
 });
 
+test("the adviser's plan is a calendar: write the week's posts, change one's words, approve the week (D870 S2.4)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const calendar = page.getByRole("region", { name: "Your posting plan" });
+  // The plan the adviser wrote in the test before: tomorrow on Instagram, in three days on Pinterest.
+  await expect(calendar).toContainText("A reel of a bowl taking shape on the wheel.");
+  await expect(calendar).toContainText("Bowls from above on linen, for a kitchen board.");
+  // Write each week's missing posts with its one button (both slots may fall in one week or two).
+  for (let i = 0; i < 2; i++) {
+    const write = calendar.getByRole("button", { name: /^Write (this|next) week's posts/ }).first();
+    if (!(await write.isVisible())) break;
+    await write.click();
+    await expect(calendar.getByRole("button", { name: /^Approve the week/ }).first()).toBeVisible();
+  }
+  await expect(calendar.getByText("Not written yet")).toHaveCount(0);
+  await expect(calendar).toContainText("Slow mornings start with a good cup.");
+  await calendar.scrollIntoViewIfNeeded();
+  await calendar.screenshot({ path: "test-results/social-calendar.png" });
+
+  // Lisa changes one post's words: a claim is refused, plain words are kept.
+  const instagram = calendar.getByRole("listitem").filter({ hasText: "Instagram" }).first();
+  await instagram.getByText("Change the words").click();
+  await instagram.getByLabel("The post's words").fill("Only today: 50% off!");
+  await instagram.getByRole("button", { name: "Save" }).click();
+  await expect(calendar.getByRole("status")).toContainText("claims");
+  await instagram.getByLabel("The post's words").fill("A slow morning at the wheel, glazed in small batches.");
+  await instagram.getByRole("button", { name: "Save" }).click();
+  await expect(calendar).toContainText("A slow morning at the wheel, glazed in small batches.");
+
+  // Homer approves each week with one press.
+  for (let i = 0; i < 2; i++) {
+    const approve = calendar.getByRole("button", { name: /^Approve the week/ }).first();
+    if (!(await approve.isVisible())) break;
+    await approve.click();
+    await expect(calendar.getByText("Every post this week is approved.").first()).toBeVisible();
+  }
+  await expect(calendar.getByText("Draft", { exact: true })).toHaveCount(0);
+  await calendar.screenshot({ path: "test-results/social-calendar-approved.png" });
+});

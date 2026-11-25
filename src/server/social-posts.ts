@@ -48,6 +48,8 @@ const writeInput = z
     campaign: z.string().trim().max(THEME_MAX).default(""),
     channels: z.array(z.enum(POST_CHANNELS)).min(1, "Choose at least one channel.").max(POST_CHANNELS.length),
     withPrice: z.boolean().default(true),
+    /** The calendar's day the post is written for (D870 S2.4), or null for a post written outside the plan. */
+    plannedFor: z.iso.date().nullable().default(null),
   })
   .refine((v) => v.productId !== null || v.pageId !== null || v.topic.length >= 5, { message: "Choose a product or a page, or say in a few words what the post is about." })
   .refine((v) => v.productId === null || v.pageId === null, { message: "Choose a product or a page, not both." });
@@ -68,6 +70,8 @@ export type SocialPost = {
   createdAt: string;
   /** What the owner copies (`copyText()`). */
   text: string;
+  /** The post's own picture from Canva (D898 C3), a library item; absent or null for the picture drawn by code. */
+  pictureMediaId?: string | null;
 };
 
 export type WriteResult = { ok: true; posts: SocialPost[] } | { ok: false; problem: string };
@@ -210,9 +214,9 @@ export async function writeSocialPosts(member: Membership, raw: unknown, options
       const [r] = await typedRows(
         SAVED_ROW,
         sql`
-        insert into commerce.social_posts (store_id, channel, ref, product_id, page_id, topic, campaign, locale, title, caption, hashtags, link, price_line, created_by)
+        insert into commerce.social_posts (store_id, channel, ref, product_id, page_id, topic, campaign, locale, title, caption, hashtags, link, price_line, planned_for, created_by)
         values (${store.id}::uuid, ${row.channel}, ${ref}, ${product?.id ?? null}::uuid, ${page?.id ?? null}::uuid, ${input.topic}, ${input.campaign}, ${locale}, ${row.title}, ${row.caption},
-          ${`{${row.hashtags.join(",")}}`}::text[], ${row.link}, ${priceLine}, ${member.account.id}::uuid)
+          ${`{${row.hashtags.join(",")}}`}::text[], ${row.link}, ${priceLine}, ${input.plannedFor}::date, ${member.account.id}::uuid)
         returning id, channel
       `,
         tx,
@@ -261,6 +265,7 @@ const POST_ROW = z.object({
   price_line: col.textOrNull,
   copied_at: col.timestampOrNull,
   created_at: col.timestamp,
+  picture_media_id: col.textOrNull,
 });
 
 /** The store's posts, newest first (at most `limit`), each with the text to copy. */
@@ -268,7 +273,7 @@ export async function listSocialPosts(storeId: string, limit = 60): Promise<Soci
   const rows = await typedRows(
     POST_ROW,
     sql`
-    select id, channel, ref, product_id, page_id, topic, title, caption, hashtags, link, price_line, copied_at, created_at
+    select id, channel, ref, product_id, page_id, topic, title, caption, hashtags, link, price_line, copied_at, created_at, picture_media_id
     from commerce.social_posts where store_id = ${storeId}::uuid
     order by created_at desc, ref, channel limit ${limit}
   `,
@@ -287,6 +292,7 @@ export async function listSocialPosts(storeId: string, limit = 60): Promise<Soci
     priceLine: r.price_line,
     copiedAt: r.copied_at,
     createdAt: r.created_at,
+    pictureMediaId: r.picture_media_id,
     text: copyText({ channel: r.channel, title: r.title, caption: r.caption, hashtags: r.hashtags, link: r.link, priceLine: r.price_line }),
   }));
 }

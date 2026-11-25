@@ -76,6 +76,7 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   shell: () => import("@/lib/admin-messages/shell.en").then((m) => m.shellEn),
   moving: () => import("@/lib/admin-messages/moving.en").then((m) => m.movingEn),
   canva: () => import("@/lib/admin-messages/canva.en").then((m) => m.canvaEn),
+  plugins: () => import("@/lib/admin-messages/plugins.en").then((m) => m.pluginsEn),
   // Cuts (bloat review step 2.27): the same groups as `cut()` in `admin-text.ts` picks.
   builderText: () =>
     import("@/lib/admin-messages/builder.en").then((m) => ({ richText: m.builderEn.richText, textStyles: m.builderEn.textStyles, responsive: m.builderEn.responsive })),
