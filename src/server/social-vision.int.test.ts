@@ -4,9 +4,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
-/** The store's model that sees pictures, scripted: what it is asked and the picture it gets are kept, its answer is the next in line. */
+/** The store's model that sees pictures, scripted: what it is asked and the picture it gets are kept, its answer is the one for the post's channel. */
 const asked: { system: string; hasPicture: boolean }[] = [];
-const answers: string[] = [];
+const answers: Record<string, string> = {};
 vi.mock("./ai", async (importOriginal) => {
   const real = await importOriginal<typeof import("./ai")>();
   return {
@@ -14,7 +14,8 @@ vi.mock("./ai", async (importOriginal) => {
     completeText: async (_c: unknown, messages: { content: unknown }[]) => {
       const user = messages[1].content as { type: string }[];
       asked.push({ system: String(messages[0].content), hasPicture: user.some((p) => p.type === "image_url") });
-      return { text: answers.shift() ?? "", region: null };
+      const channel = Object.keys(answers).find((label) => String(messages[0].content).includes(`a ${label} post`));
+      return { text: channel ? answers[channel] : "", region: null };
     },
   };
 });
@@ -59,11 +60,9 @@ afterAll(async () => {
 describe("the vision check of a post's picture", () => {
   it("keeps each post's verdict, leaves a post without an answer unchecked, and keeps a failed post out of Approve the week", async () => {
     const member = (await passMembership(store.slug, store.account.id))!;
-    answers.push(
-      '{"readable": true, "shows_subject": true, "whole": true, "on_brand": true, "note": ""}',
-      '{"readable": false, "shows_subject": true, "whole": true, "on_brand": true, "note": "The headline is pale on a pale background."}',
-      "I cannot tell.",
-    );
+    answers.Instagram = '{"readable": true, "shows_subject": true, "whole": true, "on_brand": true, "note": ""}';
+    answers.Facebook = '{"readable": false, "shows_subject": true, "whole": true, "on_brand": true, "note": "The headline is pale on a pale background."}';
+    answers.Pinterest = "I cannot tell.";
     const result = await checkSocialPosts(member, [good, bad, silent], "https://example.com", { connection, picture });
     expect(result.ok).toBe(true);
     expect(asked).toHaveLength(3);
