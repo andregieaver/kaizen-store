@@ -3,6 +3,7 @@ import type { CssVersionActions } from "@/lib/css-versions";
 import type { PageVersionItem } from "@/lib/page-versions";
 import type { PreviewLinkAnswer, PreviewLinkItem } from "@/lib/preview-links";
 import type { PickerList } from "@/lib/media-picker";
+import type { CanvaField } from "@/lib/canva-paths";
 import type { Breakpoints } from "@/lib/breakpoints";
 import type { ColourSwatch } from "@/lib/colour";
 import type { CSSProperties } from "react";
@@ -141,6 +142,8 @@ export type PageOwnerContext = {
   pictures?: PictureMaker | null;
   /** *Remove background* on any picture field (D413): the site's library edit route, where its AI has a model that edits pictures. */
   pictureEdit?: PictureEditor | null;
+  /** *Edit in Canva* on any picture field (D898 C2): the site's Canva route and whether the person's Canva is connected; null without Canva. */
+  canva?: CanvaField | null;
   /**
    * *Change with AI* (D351): the route a described change to the open page is sent to, where the site's AI has a text model and the page is a
    * page or an article; absent or null elsewhere. The answer is the page changed, unsaved, which the editor holds as one change.

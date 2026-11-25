@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."design_edits" ADD COLUMN "place" text DEFAULT 'library' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."design_edits" ADD CONSTRAINT "design_edits_place" CHECK ("commerce"."design_edits"."place" in ('library', 'field'));

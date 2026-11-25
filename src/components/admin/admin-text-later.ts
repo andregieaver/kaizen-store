@@ -80,6 +80,15 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   builderText: () =>
     import("@/lib/admin-messages/builder.en").then((m) => ({ richText: m.builderEn.richText, textStyles: m.builderEn.textStyles, responsive: m.builderEn.responsive })),
   websitePick: () => import("@/lib/admin-messages/website.en").then((m) => ({ picker: m.websiteEn.picker, pictureMaker: m.websiteEn.pictureMaker })),
+  canvaField: () =>
+    import("@/lib/admin-messages/canva.en").then((m) => ({
+      edit: m.canvaEn.edit,
+      opening: m.canvaEn.opening,
+      connect: m.canvaEn.connect,
+      field: m.canvaEn.field,
+      outcome: m.canvaEn.outcome,
+      problems: m.canvaEn.problems,
+    })),
   assistantBar: () =>
     import("@/lib/admin-messages/assistant.en").then((m) => ({ name: m.assistantEn.name, launcher: m.assistantEn.launcher, notices: m.assistantEn.notices })),
   homeDrafts: () => import("@/lib/admin-messages/home.en").then((m) => ({ drafts: m.homeEn.drafts })),

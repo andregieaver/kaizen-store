@@ -20,6 +20,7 @@ import { areaTexts } from "@/lib/admin-area";
 import { BUILDER_WORDS } from "@/lib/admin-words/builder";
 import type { EditablePage } from "@/server/pages";
 import { PLATFORM_SITE_AREA_WORDS } from "@/server/platform-site-areas";
+import { CANVA_FIELD_WORDS } from "@/lib/admin-words/canva-field";
 import { platformSiteWords } from "@/server/platform-site-words";
 
 import { deleteThemeStorePageAction } from "./actions";
@@ -104,6 +105,8 @@ export async function NewPageView({ type, searchParams }: { type: PageType; sear
   const bw = BUILDER_WORDS[lang];
   return (
     <AdminTextScope texts={areaTexts(lang, PLATFORM_SITE_AREA_WORDS)}>
+      {/* Edit in Canva on the picture fields (D898 C2): its cut, beside the shared builder's words. */}
+      <AdminTextScope texts={areaTexts(lang, { canvaField: CANVA_FIELD_WORDS })}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">{typeWords(w, type).new}</h1>
       {dual && dual !== "refused" && context.dualPages ? (
@@ -118,6 +121,7 @@ export async function NewPageView({ type, searchParams }: { type: PageType; sear
       ) : (
         <PageEditor {...props} notice={dual === "refused" ? bw.dual.notOpened : null} />
       )}
+      </AdminTextScope>
     </AdminTextScope>
   );
 }
@@ -166,6 +170,8 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
   if (dual && dual !== "refused" && context.dualPages) {
     return (
       <AdminTextScope texts={areaTexts(lang, PLATFORM_SITE_AREA_WORDS)}>
+        {/* Edit in Canva on the picture fields (D898 C2): its cut, beside the shared builder's words. */}
+        <AdminTextScope texts={areaTexts(lang, { canvaField: CANVA_FIELD_WORDS })}>
         <h1 className="sr-only">{fillWords(w.tables.editTitle, { title: page.draft.title || `${w.tables.untitled} ${w.tables.pageTypes[type].one}` })}</h1>
         <DualPageEditor
           left={{ doc: { kind: type as DualKind, id: page.id }, kindName: bw.dual.kinds[type as DualKind], props: { page, notice, savedParts: saved, terms, gridTerms, context } }}
@@ -175,11 +181,14 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
           pick={{ ...context.dualPages, templates: saved }}
           site={{ css: context.siteCss, name: bw.editor.kaizenSite, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
         />
+        </AdminTextScope>
       </AdminTextScope>
     );
   }
   return (
     <AdminTextScope texts={areaTexts(lang, PLATFORM_SITE_AREA_WORDS)}>
+      {/* Edit in Canva on the picture fields (D898 C2): its cut, beside the shared builder's words. */}
+      <AdminTextScope texts={areaTexts(lang, { canvaField: CANVA_FIELD_WORDS })}>
       <h1 className="sr-only">{fillWords(w.tables.editTitle, { title: page.draft.title || `${w.tables.untitled} ${w.tables.pageTypes[type].one}` })}</h1>
       <PageEditor
         key={page.id}
@@ -190,6 +199,7 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
         gridTerms={gridTerms}
         context={context}
       />
+      </AdminTextScope>
     </AdminTextScope>
   );
 }

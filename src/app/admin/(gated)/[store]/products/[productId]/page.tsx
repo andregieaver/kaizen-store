@@ -14,6 +14,7 @@ import { signalPlan } from "@/lib/page-signals";
 import { editorOptions } from "@/lib/variant-grid";
 import { areaTexts } from "@/lib/admin-area";
 import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
+import { CANVA_FIELD_WORDS } from "@/lib/admin-words/canva-field";
 import { FIELDS_EDITOR_WORDS } from "@/lib/admin-words/fields-editor";
 import { PRODUCT_WORDS } from "@/lib/admin-words/product";
 import { PRODUCTS_WORDS } from "@/lib/admin-words/products";
@@ -66,7 +67,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
           {w.archived}
         </p>
       )}
-      <AdminTextScope texts={areaTexts(lang, { product: PRODUCT_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS })}>
+      <AdminTextScope texts={areaTexts(lang, { product: PRODUCT_WORDS, productsEditor: PRODUCTS_EDITOR_WORDS, fieldsEditor: FIELDS_EDITOR_WORDS, builderText: BUILDER_TEXT_WORDS, websitePick: WEBSITE_PICK_WORDS, canvaField: CANVA_FIELD_WORDS })}>
         <ProductEditor {...(await editorProps(store, context, lang))} productId={productId} initial={initial} fields={fields} insight={insight} />
       </AdminTextScope>
       <p className="flex flex-wrap gap-x-6 gap-y-2 text-sm">

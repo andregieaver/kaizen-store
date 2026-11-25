@@ -79,6 +79,7 @@ import { ColourLibraryProvider } from "./colour-library";
 import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureEditorProvider, PictureMakerProvider } from "./picture-maker";
+import { CanvaFieldProvider, EditInCanvaButton } from "./canva-field";
 import { FormsContext, SignupCodesContext } from "./block-fields";
 import { HeaderStageFields } from "./header-stage-fields";
 import { newId, PageBuilder, type DualBuilder } from "./page-builder";
@@ -749,6 +750,8 @@ export function PageEditor({
     <PictureMakerProvider maker={context.pictures}>
     {/* And take a picture's background away with the site's AI (D413), where it has a model that edits pictures. */}
     <PictureEditorProvider editor={context.pictureEdit}>
+    {/* And edit it in the person's own Canva (D898 C2), where Canva is set up. */}
+    <CanvaFieldProvider canva={context.canva}>
     <SignupCodesContext value={context.signupCodes ?? null}>
     <FormsContext value={context.forms ?? null}>
     {/* The store's saved colours and gradients (D183), kept on its theme; none on Kaizen's own pages. */}
@@ -1488,6 +1491,7 @@ export function PageEditor({
     </ColourLibraryProvider>
     </FormsContext>
     </SignupCodesContext>
+    </CanvaFieldProvider>
     </PictureEditorProvider>
     </PictureMakerProvider>
     </MediaPickerProvider>
@@ -1806,6 +1810,8 @@ function ThumbnailField({
           <p className="text-muted">{tw.noUploads}</p>
         )}
         <LibraryButton onPicked={(picture) => onChange({ url: picture.url, width: picture.width, height: picture.height, alt: value?.alt || picture.alt })} />
+        {/* The page's picture edited in the person's own Canva (D898 C2), its description kept. */}
+        <EditInCanvaButton current={value} onEdited={(picture) => onChange({ url: picture.url, width: picture.width, height: picture.height, alt: value?.alt ?? "" })} />
         {value && (
           <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
             {tw.remove}

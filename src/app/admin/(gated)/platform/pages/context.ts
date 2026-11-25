@@ -19,6 +19,7 @@ import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
 import { canMakePictures } from "@/server/picture-maker";
 import { canEditPictures } from "@/server/picture-editor";
+import { canvaForField } from "@/server/canva";
 import { canChangePages } from "@/server/page-change-ai";
 import { platformMenuPreviews } from "@/server/menus";
 import { getPlatformChrome, getPlatformFonts } from "@/server/platform-navigation";
@@ -87,6 +88,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     pictures: (await canMakePictures(null)) ? { endpoint: "/admin/platform/media/make" } : null,
     // Remove background on picture fields (D413), while Kaizena Flow's AI has a model that edits pictures.
     pictureEdit: (await canEditPictures(null)) ? { endpoint: "/admin/platform/media/edit" } : null,
+    // *Edit in Canva* on picture fields (D898 C2), through Kaizena Flow's library's Canva route.
+    canva: await canvaForField("/admin/platform/media/canva", null, "website:write"),
     aiChange: (type === "page" || type === "article") && (await canChangePages(null)) ? { endpoint: "/admin/platform/pages/change" } : null,
     startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,
     // Kaizena Flow's own forms (D705), for a form component.

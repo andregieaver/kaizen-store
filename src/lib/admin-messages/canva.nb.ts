@@ -30,6 +30,19 @@ export const canvaNb: CanvaMessages = {
   returned: "Designet ditt er tilbake i biblioteket.",
   open: "Åpne det",
   disconnect: "Koble fra",
+  field: {
+    waiting: "Gjør deg ferdig i Canva-fanen og trykk Return der. Da tar det redigerte bildet dette bildets plass.",
+    stop: "Slutt å vente",
+    bringing: "Henter det fra Canva …",
+    done: "Det redigerte bildet fra Canva er på plass.",
+    blocked: "Nettleseren åpnet ikke en ny fane. Tillat popup-vinduer for Kaizena Flow og prøv igjen.",
+    connectLead: "Kobler til din egen Canva i en ny fane; kom tilbake hit når det er gjort.",
+  },
+  back: {
+    title: "Tilbake fra Canva",
+    edit: "Du kan lukke denne fanen. Bildet ditt er i fanen du startet fra.",
+    connected: "Canva er koblet til. Du kan lukke denne fanen og trykke Rediger i Canva igjen.",
+  },
   outcome: { connected: "Canva er koblet til.", declined: "Canva ble ikke koblet til.", failed: "Canva kunne ikke kobles til. Prøv igjen." },
   problems: {
     off: "Canva er ikke satt opp på Kaizena Flow ennå.",

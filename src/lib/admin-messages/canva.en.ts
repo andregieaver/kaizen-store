@@ -1,8 +1,8 @@
 import type { Widen } from "./common.en";
 
 /**
- * The words of a person's own Canva (D898, `docs/design-tools.md` C1): the media library's Canva card, *Import from Canva*, *Edit in
- * Canva*, the connect card on Integrations and Account, and what went wrong. Its own area, so pages that draw the media library without
+ * The words of a person's own Canva (D898, `docs/design-tools.md` C1 and C2): the media library's Canva card, *Import from Canva*, *Edit
+ * in Canva* there and on every picture field, the connect card on Integrations and Account, and what went wrong. Its own area, so pages that draw the media library without
  * Canva (the page builder's picker) do not carry them. `{name}`-style placeholders are filled by `fillWords()`; a count is a `{ one, many }`
  * pair read by `countWords()`.
  */
@@ -35,6 +35,21 @@ export const canvaEn = {
   returned: "Your design is back in the library.",
   open: "Open it",
   disconnect: "Disconnect",
+  // A picture field's *Edit in Canva* (C2): Canva opens in a tab of its own and the field waits for it.
+  field: {
+    waiting: "Finish in the Canva tab and press Return there. The edited picture then takes this one's place.",
+    stop: "Stop waiting",
+    bringing: "Bringing it back from Canva…",
+    done: "The edited picture from Canva is in.",
+    blocked: "The browser did not open a new tab. Allow pop-ups for Kaizena Flow and try again.",
+    connectLead: "Connects your own Canva in a new tab; come back here when it is done.",
+  },
+  // The tab Canva's Return lands in (C2), which hands the picture to the field and closes.
+  back: {
+    title: "Back from Canva",
+    edit: "You can close this tab. Your picture is in the tab you started from.",
+    connected: "Your Canva is connected. You can close this tab and press Edit in Canva again.",
+  },
   outcome: { connected: "Your Canva is connected.", declined: "Canva was not connected.", failed: "Canva could not be connected. Try again." },
   problems: {
     off: "Canva is not set up on Kaizena Flow yet.",
