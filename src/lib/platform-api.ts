@@ -5,7 +5,11 @@
  * Nothing here reads the database.
  */
 
-export const PLATFORM_API_SCOPES = ["stores:read", "plans:read", "requests:read", "figures:read"] as const;
+/**
+ * `incidents` is the one scope that writes (D895): the incident log only, for the autopilot's Claude Code session, through
+ * `/api/platform/v1/incidents/…` (`src/lib/incident-api.ts`); every other route stays read only.
+ */
+export const PLATFORM_API_SCOPES = ["stores:read", "plans:read", "requests:read", "figures:read", "incidents"] as const;
 export type PlatformApiScope = (typeof PLATFORM_API_SCOPES)[number];
 export const isPlatformApiScope = (value: string): value is PlatformApiScope => (PLATFORM_API_SCOPES as readonly string[]).includes(value);
 
@@ -33,6 +37,7 @@ export const PLATFORM_API_OPERATIONS: readonly { path: string; scope: PlatformAp
   { path: "/plans", scope: "plans:read" },
   { path: "/requests", scope: "requests:read" },
   { path: "/figures", scope: "figures:read" },
+  { path: "/incidents", scope: "incidents" },
 ];
 
 /** The route a GET asks for, from the path after `/api/platform/v1/`; null for none. */

@@ -725,7 +725,13 @@ under *What the router fetches ahead*.
   proposal of the platform's AI and an entry set to `needs_owner`; the nightly run's proposals wait for the morning. The page
   `/admin/platform/incidents` (the settings area; its forms post to the route `incidents/act`, never a server action, so it adds no manifest entry) shows Needs you (Approve, Dismiss, Send back), Being fixed
   and Fixed lately, with *Add an idea* and the autopilot's switch and gap one step away; each owner's decision (`decideIncident()`) is in
-  the change log. It is left out of the AI manager's map (`NOT_YET_IN_PROMPT`) until phase 2. Sources inside the app call `logIncident()`: a failing job (`alertFailingJob()`), a stopped scheduler
+  the change log. It is left out of the AI manager's map (`NOT_YET_IN_PROMPT`) until the autopilot has run for a while. The autopilot's
+  session reaches the log only through Kaizena Flow's API with the `incidents` scope (`src/server/incident-api.ts`: a session holds at most
+  `MAX_CLAIMS_PER_SESSION`, only the claiming session marks a fix, `MAX_PROPOSALS_PER_NIGHT` proposals a night) and follows
+  `docs/runbooks/incident-autopilot.md`. The app wakes it only through `src/server/autopilot-wake.ts`: `requestWake()` records a wish (a new
+  or returning problem, an Approve, an idea, *Run now*; only while the switch is on), and the `incidents` job sends it through the scheduled
+  task's API trigger once the owner's gap since the last run's start has passed (*Run now* at once); the body names a reason and a count,
+  never an error's text. Without `AUTOPILOT_FIRE_TOKEN` and `AUTOPILOT_TRIGGER_ID` no wake goes and the nightly run covers everything. Sources inside the app call `logIncident()`: a failing job (`alertFailingJob()`), a stopped scheduler
   (`runWatchdog()`) and a status part failed twice in a row (`runStatusChecks()`). A new source names its fingerprint with
   `fingerprintOf()` and never puts a person's data in it.
 

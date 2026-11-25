@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
 import { getAccount, platformCan } from "@/server/auth";
+import { requestWake } from "@/server/autopilot-wake";
 import { addIdea, decideIncident, saveAutopilotSettings, type OwnerDecision } from "@/server/incidents";
 
 const DECISIONS: readonly OwnerDecision[] = ["approve", "dismiss", "send_back", "wont_fix", "reopen"];
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
   if (intent === "idea") {
     return (await addIdea(account.id, String(form.get("title") ?? ""), note)) ? back("done=idea") : back("problem=idea");
   }
+  if (intent === "run_now") return (await requestWake("run_now", account.id)) ? back("done=run_now") : back("problem=off");
   if (intent === "settings") {
     const saved = await saveAutopilotSettings(account.id, { on: form.get("on") === "on", gapHours: Number(form.get("gap")) });
     return saved ? back("done=settings") : back("problem=gap");

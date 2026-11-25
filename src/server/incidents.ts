@@ -26,6 +26,7 @@ import {
 } from "@/lib/incidents";
 
 import { audit } from "./auth";
+import { requestWake } from "./autopilot-wake";
 import { log } from "./log";
 import { sendPlatformPush } from "./push";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
@@ -93,6 +94,8 @@ export async function logIncident(input: IncidentInput): Promise<LoggedIncident 
   const logged = await writeIncident(input);
   // A proposal waits for the owner: a push at once, except the nightly run's, which waits for the 07:00 summary (the owner's answer).
   if (logged?.created && logged.status === "proposed" && input.source !== "nightly") await tellOwner(logged.id, "proposed", input.title);
+  // New work for the autopilot: a new problem, or one that came back after its fix (the wake waits for the owner's gap).
+  if (logged && logged.status === "open" && (logged.created || logged.reopened)) await requestWake("work");
   return logged;
 }
 
@@ -251,7 +254,17 @@ export async function decideIncident(
   const moved = await moveIncident(id, to, { accountId }, { note });
   if (!moved.ok) return moved;
   await audit(accountId, null, `platform.incident_${decision}`, { incident: id, from: moved.from, to });
+  if (to === "approved" || to === "open") await requestWake(decision === "approve" ? "approve" : "work", accountId);
   return { ok: true };
+}
+
+/** The autopilot's latest run that started: when, its summary if it finished, and its session's link. */
+export async function lastAutopilotRun(): Promise<{ startedAt: string; finishedAt: string | null; summary: string | null; session: string | null } | null> {
+  const row = await typedRow(
+    z.object({ started_at: col.timestamp, finished_at: col.timestampOrNull, summary: col.textOrNull, session: col.textOrNull }),
+    sql`select started_at, finished_at, summary, session from commerce.platform_autopilot_runs where started_at is not null order by started_at desc limit 1`,
+  );
+  return row ? { startedAt: row.started_at, finishedAt: row.finished_at, summary: row.summary, session: row.session } : null;
 }
 
 export type AutopilotSettings = { on: boolean; gapHours: number };
@@ -282,7 +295,10 @@ export async function addIdea(accountId: string, title: string, note: string | n
     title,
     facts: { by: accountId },
   });
-  if (logged) await writeEvent(db(), logged.id, { accountId }, { from: null, to: null }, noteOf(note) ?? "Added by the owner");
+  if (logged) {
+    await writeEvent(db(), logged.id, { accountId }, { from: null, to: null }, noteOf(note) ?? "Added by the owner");
+    await requestWake("idea", accountId);
+  }
   return logged;
 }
 
