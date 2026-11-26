@@ -241,7 +241,7 @@ Status: Planned, Building, Done (date and commit).
 | Id | Step | Status |
 |---|---|---|
 | P5.1 | Life's project and checklist tools as AI manager tools (listed below), held for the eval as `.claude/rules/ai-prompts.md` says | Planned |
-| P5.2 | Events in `commerce.events` (project created, status changed; list created, archived; item done, assigned), workflow triggers and webhook topics | Planned |
+| P5.2 | Events in `commerce.events` (project created, status changed; list created, archived; item done, assigned), workflow triggers and webhook topics | Built 26 November 2026 (below) |
 | P5.3 | Tasks the AI manager works on (Life: assigned to the assistant) | Planned |
 
 Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set_project_status`, `review_project`,
@@ -526,4 +526,20 @@ and the agents' eval recorded again on Platform → AI for the three new tools.
 **In production (26 November 2026).** P8.3d (e79c547) and P4.3 (6835062) are deployed and their migrations applied: Work's link and
 the task-time join, who gave a task its person, and the reminders table with its two triggers. The advisors list only INFO for them (no
 policy on a table with RLS, as every `commerce` table; new indexes not used yet), nothing for `docs/audits/psi-followups.md`.
+
+## As built: step P5.2, Projects' events (26 November 2026)
+
+- **Six events**, each queued by a trigger where its row changes (`commerce.queue_integration_event()`, the rules migration
+  `projects_events`): `project.created` and `project.status_changed` (a save that keeps the status is none), `checklist.created` (made or
+  copied), and `task.created`, `task.assigned` (given a person or another person; taken away from everyone is none) and `task.done` (ticked;
+  unticked is none, and a repeating task coming back is none). A template list and its tasks send none: they are no work to do. Each is on
+  the event log, a workflow trigger, and a webhook topic for the store's own endpoints, Zapier and Make, offered while the account has
+  Projects (`TOPIC_EXTENSIONS`). Slack is told none of them (`NOT_TO_SLACK`), and no app is sent them (no app scope reads projects).
+- **What they carry** (`src/lib/webhook-topics.ts`, built in `src/server/integrations.ts`): a project's name, status, health, target date,
+  number of lists and the deal it came from; a list's title, state, project, person, due time and open and done tasks; a task's title, list,
+  project, person and who gave it, priority, due time, whether it repeats and when it was done. Never a task's notes or comments. API
+  contract 1.69.
+- **Workflows** test a project's name, status or health, a list's title, or a task's title, list, priority and whether it repeats
+  (`WORKFLOW_FIELDS`), with each action that suits any event (email staff, Slack, an endpoint, the AI manager).
+- **Left of P5.2:** a list archived as an event (not asked for yet; `checklist.created` and the tasks' events cover the work).
 

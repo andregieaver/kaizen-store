@@ -6,6 +6,7 @@ import { APP_EVENTS, EVENTS, isServiceEvent, type AppEvent, type IntegrationEven
 import { LEAD_KINDS, LEAD_SOURCES } from "./leads";
 import { SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "./marketing-consent";
 import { DELIVERIES, PRODUCT_KINDS } from "./product-input";
+import { CHECKLIST_STATES, PRIORITIES, PROJECT_HEALTHS, PROJECT_STATUSES } from "./projects-model";
 import { VAT_KINDS } from "./vat-treatment";
 import { ID_HEADER, PAYLOAD_VERSION, SIGNATURE_HEADER, TIMESTAMP_HEADER, TOLERANCE_SECONDS, TOPIC_HEADER } from "./webhook-signature";
 import { jsonSchemaOf, type JsonSchema } from "./openapi";
@@ -298,6 +299,46 @@ export const WEBHOOK_SUBJECTS = {
   erasure: z.object({
     customer_id: id.describe("The account that was erased. Nothing else about the person is sent, now or later."),
   }),
+  // Projects (D903 P5.2): what and whose as ids and the team's own titles. Never a task's notes or comments.
+  project: z.object({
+    id,
+    name: z.string(),
+    status: z.enum(PROJECT_STATUSES),
+    health: z.enum(PROJECT_HEALTHS).describe("On track (green), at risk (amber) or off track (red), as the team judged it."),
+    target_date: z.string().nullable().describe("A date, YYYY-MM-DD."),
+    deal_id: id.nullable().describe("The deal it was started from (Deals)."),
+    lists: z.int().describe("How many checklists are in it."),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
+  checklist: z.object({
+    id,
+    title: z.string(),
+    status: z.enum(CHECKLIST_STATES),
+    project_id: id.nullable().describe("The project it lives in, when it is in one."),
+    assignee_id: id.nullable().describe("The staff member it is for."),
+    due_at: when.nullable(),
+    open_tasks: z.int(),
+    done_tasks: z.int(),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
+  task: z.object({
+    id,
+    title: z.string().describe("What the team called it."),
+    status: z.enum(["open", "done"]),
+    list: z.object({ id, title: z.string() }),
+    project_id: id.nullable().describe("The project its list lives in, when it is in one."),
+    assignee_id: id.nullable().describe("The staff member it is for."),
+    assigned_by: id.nullable().describe("The staff member who gave it its person."),
+    priority: z.enum(PRIORITIES).nullable(),
+    due_at: when.nullable(),
+    all_day: z.boolean().describe("Due on a day as a whole: `due_at` is noon of that day in the store's zone."),
+    repeats: z.boolean().describe("A repeating task, which comes back once done."),
+    done_at: when.nullable(),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
   gift_card: z.object({
     id,
     last4: z.string().nullable().describe("The code's last four characters. The code itself is never sent."),
@@ -541,6 +582,12 @@ const SUBJECT_OF: Record<IntegrationEvent | AppEvent, WebhookSubjectName> = {
   "lead.deal_made": "lead",
   "domain.failing": "domain",
   "domain.recovered": "domain",
+  "project.created": "project",
+  "project.status_changed": "project",
+  "checklist.created": "checklist",
+  "task.created": "task",
+  "task.assigned": "task",
+  "task.done": "task",
   "app.uninstalled": "installation",
   "store.erase_requested": "installation",
 };

@@ -86,6 +86,22 @@ function newerSubject(storeId: string, trigger: WorkflowTrigger) {
       return sql`select id from commerce.store_domains where store_id = ${storeId}::uuid and status = 'active'
         and coalesce(checks -> 'watch' ->> 'known', checks -> 'watch' ->> 'serving') = any(${trigger === "domain.failing" ? "{certificate,elsewhere}" : "{ok}"}::text[])
         order by checks -> 'watch' ->> 'at' desc nulls last limit 1`;
+    // Projects (D903 P5.2): a template list and its tasks send no events, so none is a sample.
+    case "project.created":
+      return sql`select id from commerce.projects where store_id = ${storeId}::uuid order by created_at desc limit 1`;
+    case "project.status_changed":
+      return sql`select id from commerce.projects where store_id = ${storeId}::uuid order by updated_at desc limit 1`;
+    case "checklist.created":
+      return sql`select id from commerce.checklists where store_id = ${storeId}::uuid and not as_template order by created_at desc limit 1`;
+    case "task.created":
+    case "task.assigned":
+    case "task.done":
+      return sql`
+        select i.id from commerce.checklist_items i join commerce.checklists c on c.store_id = i.store_id and c.id = i.checklist_id
+        where i.store_id = ${storeId}::uuid and not c.as_template
+          and (${trigger} <> 'task.assigned' or i.assigned_to is not null) and (${trigger} <> 'task.done' or i.done_at is not null)
+        order by case ${trigger} when 'task.done' then i.done_at when 'task.assigned' then coalesce(i.assigned_at, i.updated_at) else i.created_at end desc
+        limit 1`;
     default:
       return null;
   }

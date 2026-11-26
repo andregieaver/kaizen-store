@@ -1,6 +1,7 @@
 import { ACTIVITY_KINDS } from "./activities";
 import { EVENTS, type IntegrationEvent } from "./integrations";
 import { LEAD_KINDS } from "./leads";
+import { PRIORITIES, PROJECT_HEALTHS, PROJECT_STATUSES } from "./projects-model";
 
 /**
  * Workflows (wave 9 unit C, D356, `docs/wave-9-platform.md` section 3, C): the pure parts. A workflow is a trigger (one of the store's events,
@@ -55,8 +56,15 @@ export function subjectOf(
   | "activity"
   | "lead"
   | "domain"
+  | "project"
+  | "checklist"
+  | "task"
   | "schedule" {
   if (trigger === "schedule") return "schedule";
+  // Projects (D903 P5.2).
+  if (trigger.startsWith("project.")) return "project";
+  if (trigger.startsWith("checklist.")) return "checklist";
+  if (trigger.startsWith("task.")) return "task";
   // Ecosystem plan E5.1 (D757).
   if (trigger.startsWith("activity.")) return "activity";
   if (trigger.startsWith("lead.")) return "lead";
@@ -243,6 +251,19 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "activity.title", kind: "text" },
   ],
   lead: [{ key: "lead.requests.kind", kind: "text", choices: LEAD_KINDS }],
+  // Projects (D903 P5.2).
+  project: [
+    { key: "project.name", kind: "text" },
+    { key: "project.status", kind: "text", choices: PROJECT_STATUSES },
+    { key: "project.health", kind: "text", choices: PROJECT_HEALTHS },
+  ],
+  checklist: [{ key: "checklist.title", kind: "text" }],
+  task: [
+    { key: "task.title", kind: "text" },
+    { key: "task.list.title", kind: "text" },
+    { key: "task.priority", kind: "text", choices: PRIORITIES },
+    { key: "task.repeats", kind: "yes_no" },
+  ],
   domain: [
     { key: "domain.serving", kind: "text", choices: ["ok", "certificate", "elsewhere"] },
     { key: "domain.primary", kind: "yes_no" },

@@ -16,6 +16,15 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.69 — 2026-11-26
+
+Six webhook topics and workflow triggers for a store with Projects (D903 P5.2), offered to its own endpoints, Zapier and Make while the
+store has the Projects extension: `project.created` and `project.status_changed` (the `project`: its name, status, health, target date, how
+many checklists it has and the deal it came from), `checklist.created` (the `checklist`: its title, state, project, person, due time and how
+many tasks are open and done; a template sends none) and `task.created`, `task.assigned` and `task.done` (the `task`: its title, checklist,
+project, its person and who gave it, priority, due time, whether it repeats and when it was done; never its notes). Unticking a task, taking
+its person away, or a template's tasks send nothing.
+
 ## 1.68 — 2026-11-26
 
 The MCP tool `publish_social_post` puts one approved social post (D870 S3.2) on the store's posting queue, which publishes it to its

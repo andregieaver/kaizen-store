@@ -80,7 +80,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   keeps through answers the watch could not read, so a turn is one event). Since D902, D901 P29 the deals', activities' and leads' topics go to
   Zapier and Make as well (`ENDPOINT_ONLY` no longer holds them) and are the Deals extension's (`TOPIC_EXTENSIONS`); Slack gets the four
   deal topics as `dealMessage()` and never an activity's or a lead's (`NOT_TO_SLACK`, `serviceEventsOf()`, `isServiceEventOf()`, which the
-  provider page and `saveIntegration()` use): a new service topic Slack has no message for goes in `NOT_TO_SLACK`.
+  provider page and `saveIntegration()` use): a new service topic Slack has no message for goes in `NOT_TO_SLACK`. Projects' six events (D903 P5.2,
+  `projectData()`, `taskData()`) are queued the same way and never sent to Slack or an app; `docs/projects.md` P5.2 has them.
 
 ## The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
 
