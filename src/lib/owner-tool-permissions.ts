@@ -71,7 +71,6 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   social_report: "marketing:read",
   social_plan: "marketing:write",
   write_social_posts: "marketing:write",
-  publish_social_post: "marketing:write",
   start_flow: "marketing:write",
   create_flow: "marketing:write",
   change_flow: "marketing:write",

@@ -9,8 +9,6 @@ import { OwnerToolError } from "./owner-tool-error";
 import type { PermissionHolder } from "@/lib/permissions";
 import { latestAdvice, writeSocialAdvice } from "./social-advice";
 import { writeSocialPosts } from "./social-posts";
-import { publishSocialPost } from "./social-publish";
-import { siteUrl } from "@/lib/site";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { col, typedRows } from "./typed-rows";
@@ -85,7 +83,10 @@ const adviceOf = (advice: Advice) => ({
   planned_posts: advice.calendar.map((s) => ({ day: s.day, channel: s.channel, product_id: s.productId, idea: s.idea })),
 });
 
-/** The approved posts not yet published (S3.1), for publish_social_post: their ids, channels and days, and their words' start. */
+/**
+ * The approved posts not yet published (S3.1): their channels and days, and their words' start. The owner posts them with *Post now* on
+ * Social posts; the manager's own request to publish comes with the posting queue (S3.2), so the shop's functions never load the publishing.
+ */
 async function readyToPost(storeId: string) {
   const rows = await typedRows(
     z.object({ id: col.uuid, channel: col.text, day: col.textOrNull, caption: col.text }),
@@ -117,9 +118,3 @@ export async function writeSocialPostsTool(ctx: Ctx, input: OwnerToolInput<"writ
   };
 }
 
-/** Publishes an approved post (S3.1) once the owner said yes to the request: the calendar's own *Post now*. */
-export async function publishSocialPostTool(ctx: Ctx, input: OwnerToolInput<"publish_social_post">) {
-  const result = await publishSocialPost(memberOf(ctx), input.post_id, siteUrl());
-  if (!result.ok) throw new OwnerToolError(result.problem);
-  return { done: "Published.", ...(result.url ? { url: result.url } : {}), link: link(ctx.store) };
-}

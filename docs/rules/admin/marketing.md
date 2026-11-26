@@ -640,7 +640,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## Publishing an approved social post (D870 S3.1, `src/lib/social-publish.ts` pure, `src/server/social-publish.ts`)
 
 - **Publishing an approved social post (D870 S3.1, `src/lib/social-publish.ts` pure, `src/server/social-publish.ts`)**:
-  `publishSocialPost()` (the calendar route's `publish`, a person's press; or `publish_social_post`, gated `public` and in `NEVER_AUTOMATIC`)
+  `publishSocialPost()` (the calendar route's `publish`, a person's press; never through the manager's tools, which the shop's functions load)
   publishes one approved post to Instagram or the Facebook Page (`PUBLISH_CHANNELS`) where `publishTargets()` finds a connection with
   `publish` (`instagram_accounts.publish`, `facebook_pages.publish`, from `src/lib/social-publish-grants.ts`, a module without imports as
   every storefront reaches the Instagram feed). It claims the post (`publish_started_at`, lapsing after five minutes), sends the picture as a

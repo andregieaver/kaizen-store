@@ -1,5 +1,5 @@
 {
- "version": "1.68",
+ "version": "1.67",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2855,9 +2855,6 @@
   "mcp publish_page",
   "mcp publish_page <- page (required)",
   "mcp publish_page <- store (required)",
-  "mcp publish_social_post",
-  "mcp publish_social_post <- post_id (required)",
-  "mcp publish_social_post <- store (required)",
   "mcp read_rival_offer",
   "mcp read_rival_offer <- page (required)",
   "mcp read_rival_offer <- rival (required)",

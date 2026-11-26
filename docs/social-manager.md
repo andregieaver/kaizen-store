@@ -155,8 +155,8 @@ post is shown with its reason and left out of *Approve the week*, and *Check the
 S3.1 as built: an approved post on the calendar has *Post now* where the store's connection allows posting (`publishSocialPost()`,
 `src/server/social-publish.ts`): to Instagram as a media container then `media_publish` (its slideshow as a Reel), to the Facebook Page as a
 photo or video. The picture goes up as a JPEG kept in the library. The post is claimed first so it never goes out twice; Meta's id and
-address are kept, or its refusal in its words; a published post's words and yes no longer change. The AI manager's `publish_social_post`
-asks the owner (the public gate, never automatic until S3.3). Instagram now asks `instagram_business_content_publish` and Facebook's
+address are kept, or its refusal in its words; a published post's words and yes no longer change. The AI manager's request to publish
+comes with the queue (S3.2), so the shop's functions, which load the manager's tools, never load the publishing (ci-red #66). Instagram now asks `instagram_business_content_publish` and Facebook's
 configuration `pages_manage_posts`: an owner connects again to allow posting. Other businesses' accounts need Meta's App Review for both.
 
 | Step | What |

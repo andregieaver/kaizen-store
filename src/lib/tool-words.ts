@@ -41,7 +41,6 @@ export const TOOL_WORDS: Record<string, string> = {
   social_report: "Reading the social media advice",
   social_plan: "Asking the social media adviser",
   write_social_posts: "Writing the posts",
-  publish_social_post: "Publishing the post",
   start_flow: "Starting the flow",
   create_flow: "Writing the flow",
   change_flow: "Changing the flow",
