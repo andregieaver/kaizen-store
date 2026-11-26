@@ -31,8 +31,8 @@ The parts already exist; the market check joins them:
 | **M1** | **Your markets side by side**: the store against itself, country by country, from its own data only. No rival is read. | Built (2026-11-25) |
 | M1b | Kaizena Flow's sign-ups by country. | Parked (25 November 2026): its site sells in one country, so it would be one row (3.5) |
 | M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built, deployed at `9dfeeb3` (25 November 2026): migration `20261125181441_previous_black_crow.sql`, advisors INFO only |
-| M3 | **Watching**: rivals' pages read again before they go old; a change is kept, a threat in the SWOT and an autopilot event, never an action. | Built (25 November 2026) |
-| M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices and fees), cited and checked on their pages, beside `platform_pricing_facts` (D854). | Built but EU features (26 November 2026) |
+| M3 | **Watching**: rivals' pages read again before they go old; a change is kept, a threat in the SWOT and an autopilot event, never an action. | Built, deployed at `afc199e` (26 November 2026): migration `20261125225113_whole_the_leader.sql`, advisors INFO only |
+| M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices and fees), cited and checked on their pages, beside `platform_pricing_facts` (D854). | Built but EU features, deployed at `9fbb82c` (26 November 2026): migration `20261125234508_friendly_lily_hollister.sql`, advisors INFO only |
 
 ## 3. M1: your markets side by side (built)
 
