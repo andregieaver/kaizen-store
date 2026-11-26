@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ConsentCategory } from "./cookie-consent";
 import { CODE_CATEGORIES } from "./custom-code";
 import { knownCookie, type KnownCookie } from "./known-cookies";
+import { NO_ANSWER, within } from "./replicate-watch";
 
 /**
  * The cookie scan (D58): a real browser opens a site's pages as a first-time
@@ -209,6 +210,36 @@ export async function scanSite(
     (a, b) => a.kind.localeCompare(b.kind) || a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name),
   );
   return { pages, items };
+}
+
+/**
+ * The whole scan's limit (incident a3cdb94e, reopened 26 November 2026): reading a page's cookies and storage has no time limit of its
+ * own in Playwright, so a renderer that stopped answering held the scan until Vercel killed the route at 120 seconds, and the scan was
+ * only marked failed ten minutes later. As the replicator does (`looking()`, D150), the browser is closed under a scan that runs past
+ * `SCAN_LIMIT_MS`, which ends whatever it waited for, and closing is given `SCAN_CLOSE_MS`; with Chromium's start that stays inside 120.
+ */
+export const SCAN_LIMIT_MS = 100_000;
+export const SCAN_CLOSE_MS = 8_000;
+
+/** Starts a browser, scans the site with it and closes it whatever happens; a scan past `limitMs` fails with a plain sentence. */
+export async function scanWithin(
+  launch: () => Promise<Browser>,
+  target: ScanTarget,
+  limitMs: number = SCAN_LIMIT_MS,
+): Promise<{ pages: string[]; items: ScannedItem[] }> {
+  const browser = await launch();
+  try {
+    const running = scanSite(browser, target, { budgetMs: Math.min(SCAN_BUDGET_MS, limitMs) });
+    // If the limit wins, `running` ends on its own once the browser is closed: its failure then is not news.
+    running.catch(() => {});
+    const result = await within(running, limitMs);
+    if (result === NO_ANSWER) {
+      throw new Error(`The scan did not finish within ${Math.round(limitMs / 1000)} seconds: a page of the site stopped answering.`);
+    }
+    return result;
+  } finally {
+    await within(browser.close().catch(() => {}), SCAN_CLOSE_MS);
+  }
 }
 
 // ---------------------------------------------------------------------------

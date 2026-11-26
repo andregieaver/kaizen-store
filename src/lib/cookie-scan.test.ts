@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cookieNoteInput, parseScannedItems, reviewFindings, sameSite, scanSite, SCAN_BUDGET_MS, type ScannedItem, type ScanTarget } from "./cookie-scan";
+import { cookieNoteInput, parseScannedItems, reviewFindings, sameSite, scanSite, SCAN_BUDGET_MS, scanWithin, type ScannedItem, type ScanTarget } from "./cookie-scan";
 
 const item = (over: Partial<ScannedItem>): ScannedItem => ({
   kind: "cookie",
@@ -139,5 +139,39 @@ describe("a cookie scan's time", () => {
     expect(result.pages).toHaveLength(6);
     expect(calls).toHaveLength(9);
     expect(clock.t).toBeLessThanOrEqual(SCAN_BUDGET_MS);
+  });
+});
+
+/**
+ * Incident a3cdb94e, reopened: on a deployment with the budget above the scan was still killed at 120 seconds, because reading a page's
+ * storage (`frame.evaluate`) has no time limit, so a renderer that stopped answering held it for ever.
+ */
+describe("a cookie scan whose page stops answering", () => {
+  it("closes the browser under it at its limit and fails with a plain sentence", async () => {
+    let closed = false;
+    const hung = new Promise<never>(() => {});
+    const page = {
+      goto: async () => ({ status: () => 200 }),
+      waitForLoadState: async () => {},
+      $$eval: async () => [],
+      frames: () => [{ url: () => "https://shop.example/", evaluate: () => hung }],
+    };
+    const context = { addCookies: async () => {}, newPage: async () => page, cookies: async () => [], close: async () => {} };
+    const browser = { newContext: async () => context, close: async () => void (closed = true) } as never;
+    const target: ScanTarget = { origin: "https://shop.example", starts: ["/"], within: () => true, consent: null, maxPages: 3 };
+    const started = Date.now();
+    await expect(scanWithin(async () => browser, target, 50)).rejects.toThrow(/did not finish within 0 seconds: a page of the site stopped answering/);
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(closed).toBe(true);
+  });
+
+  it("closes the browser after a scan that finishes", async () => {
+    let closed = false;
+    const page = { goto: async () => ({ status: () => 200 }), waitForLoadState: async () => {}, $$eval: async () => [], frames: () => [] };
+    const context = { addCookies: async () => {}, newPage: async () => page, cookies: async () => [], close: async () => {} };
+    const browser = { newContext: async () => context, close: async () => void (closed = true) } as never;
+    const target: ScanTarget = { origin: "https://shop.example", starts: ["/"], within: () => true, consent: null, maxPages: 3 };
+    await expect(scanWithin(async () => browser, target, 5000)).resolves.toEqual({ pages: ["/"], items: [] });
+    expect(closed).toBe(true);
   });
 });

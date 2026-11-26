@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import type { Browser } from "playwright-core";
 
 import { db } from "@/db/client";
-import { scanSite } from "@/lib/cookie-scan";
+import { scanWithin } from "@/lib/cookie-scan";
 
 import { launchBrowser } from "./browser";
 import { scanTarget } from "./cookie-scans";
@@ -14,12 +14,10 @@ export async function runScan(
   scan: { id: string; storeId: string | null },
   launch: () => Promise<Browser> = launchBrowser,
 ): Promise<void> {
-  let browser: Browser | null = null;
   try {
     const target = await scanTarget(scan.storeId);
     if (!target) throw new Error("The site is not open, so there is nothing to scan.");
-    browser = await launch();
-    const { pages, items } = await scanSite(browser, target);
+    const { pages, items } = await scanWithin(launch, target);
     await db().execute(sql`
       update commerce.cookie_scans
       set status = 'done', finished_at = now(), pages = ${JSON.stringify(pages)}::jsonb,
@@ -32,8 +30,6 @@ export async function runScan(
       update commerce.cookie_scans set status = 'failed', finished_at = now(), error = ${message.slice(0, 500)}
       where id = ${scan.id}::uuid
     `);
-  } finally {
-    await browser?.close().catch(() => {});
   }
 }
 
