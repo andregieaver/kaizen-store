@@ -15783,6 +15783,55 @@ export const rivalPages = commerce.table(
 ).enableRLS();
 
 /**
+ * A rival's published price for a service (D905, market check M5d, `docs/market-check.md` 7.5): kept by a person with the page it is on, as
+ * M4 keeps other platforms' plan prices. Code checks the figure stands on that page (`priceOnPage()`) when it is kept and monthly after;
+ * held against the store's own price, as the owner gave it (`own_minor`) or a product's current price in the rival's country. At most
+ * `SERVICE_PRICES_PER_RIVAL` a rival; written only by `src/server/market-rivals.ts`; staff-only.
+ */
+export const rivalServicePrices = commerce.table(
+  "rival_service_prices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    rivalId: uuid("rival_id").notNull(),
+    /** The service as the rival's page names it. */
+    service: text("service").notNull(),
+    priceMinor: bigint("price_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** What the price is for: `once`, an `hour`, a `night` or a `month`. */
+    per: text("per").notNull(),
+    /** The store's own price for the same, in `currency`, as the owner gave it; a product's price is used instead where one is named. */
+    ownMinor: bigint("own_minor", { mode: "number" }),
+    productId: uuid("product_id"),
+    /** The page on the rival's site the price is on. */
+    source: text("source").notNull(),
+    /** When code last found the price on its page, whether it did (null: the page could not be read), and since when it is gone. */
+    checkedOn: date("checked_on").notNull(),
+    onPage: boolean("on_page"),
+    goneAt: timestamp("gone_at", { withTimezone: true }),
+    /** When the watcher last tried to read its page. */
+    watchedAt: timestamp("watched_at", { withTimezone: true }),
+    addedBy: uuid("added_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("rival_service_prices_key").on(t.rivalId, t.service, t.currency, t.per),
+    foreignKey({ name: "rival_service_prices_rival_fk", columns: [t.storeId, t.rivalId], foreignColumns: [marketRivals.storeId, marketRivals.id] }).onDelete("cascade"),
+    productRef("rival_service_prices_product_fk", t),
+    index("rival_service_prices_store_rival_idx").on(t.storeId, t.rivalId),
+    index("rival_service_prices_store_product_idx").on(t.storeId, t.productId),
+    index("rival_service_prices_added_by_idx").on(t.addedBy),
+    // The watcher's due prices, checked longest ago first.
+    index("rival_service_prices_checked_idx").on(t.checkedOn),
+    check("rival_service_prices_service", sql`length(${t.service}) between 1 and 120`),
+    check("rival_service_prices_amounts", sql`${t.priceMinor} >= 0 and (${t.ownMinor} is null or ${t.ownMinor} >= 0)`),
+    check("rival_service_prices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("rival_service_prices_per", sql`${t.per} in ('once', 'hour', 'night', 'month')`),
+    check("rival_service_prices_source", sql`${t.source} ~ '^https://' and length(${t.source}) <= 2000`),
+  ],
+).enableRLS();
+
+/**
  * A rival's offer as its own product page states it in machine-readable data (D900 M2, `pageOffers()`), never read off its words: the
  * page, the price as the rival asks it, availability, the cheapest stated shipping, delivery days and the returns window, and when it was
  * read. Held against one of the store's products when the owner or the AI manager names it (`product_id`). One row a page, replaced when

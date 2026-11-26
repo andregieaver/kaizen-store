@@ -38,9 +38,9 @@
     "shop|analytics": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 153268,
+      "toolChars": 153327,
       "alwaysSentChars": 36551,
-      "totalChars": 168929
+      "totalChars": 168988
     },
     "shop|website": {
       "promptChars": 15661,
@@ -136,9 +136,9 @@
     "all|analytics": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152451,
+      "toolChars": 152510,
       "alwaysSentChars": 36581,
-      "totalChars": 168992
+      "totalChars": 169051
     },
     "all|website": {
       "promptChars": 16541,
@@ -236,9 +236,9 @@
     "autopilot_event": {
       "promptChars": 17246,
       "toolCount": 48,
-      "toolChars": 33455,
+      "toolChars": 33514,
       "alwaysSentChars": 0,
-      "totalChars": 50701,
+      "totalChars": 50760,
       "case": "review"
     },
     "platform": {
@@ -442,7 +442,7 @@
     "list_report_schedules": 398,
     "list_research_notes": 421,
     "list_returns": 1492,
-    "list_rivals": 611,
+    "list_rivals": 670,
     "list_scheduled_changes": 499,
     "list_segments": 270,
     "list_staff": 338,

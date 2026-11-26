@@ -167,6 +167,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   rival_offers: "record",
   // The pages rivals' sitemaps list (D905): paths only.
   rival_pages: "record",
+  // Rivals' published service prices kept by hand (D905 M5d).
+  rival_service_prices: "record",
   platform_do_not_contact: "record",
   company_lookup_settings: "secret",
   staff_alert_recipients: "people",

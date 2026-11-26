@@ -1,5 +1,5 @@
 {
- "version": "1.65",
+ "version": "1.66",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",

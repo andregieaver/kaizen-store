@@ -51,8 +51,10 @@ const TONE: Record<MarketFindingKind, PillTone> = {
   rival_out: "info",
   rival_move: "bad",
   rival_site: "warning",
+  service_cheaper: "warning",
   strong_market: "good",
   rival_dearer: "good",
+  service_dearer: "good",
 };
 
 /**

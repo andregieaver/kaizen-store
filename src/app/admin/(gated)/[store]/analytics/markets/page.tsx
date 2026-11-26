@@ -53,11 +53,22 @@ export default async function MarketsPage({ params, searchParams }: PageProps<"/
         sites={check.sites}
         sells={check.sells}
         offers={check.offers}
+        services={
+          check.house
+            ? null
+            : { prices: check.services, per: words.finding.servicePer, currencies: [...new Set(store.markets.map((m) => m.currency))] }
+        }
         countries={countries}
         products={check.sells ? products : []}
         actions={
           ctx.canExport
-            ? { add: rivalsAction.bind(null, store.slug, "add"), remove: rivalsAction.bind(null, store.slug, "remove"), read: rivalsAction.bind(null, store.slug, "read") }
+            ? {
+                add: rivalsAction.bind(null, store.slug, "add"),
+                remove: rivalsAction.bind(null, store.slug, "remove"),
+                read: rivalsAction.bind(null, store.slug, "read"),
+                keepPrice: rivalsAction.bind(null, store.slug, "keepPrice"),
+                removePrice: rivalsAction.bind(null, store.slug, "removePrice"),
+              }
             : null
         }
         now={now}

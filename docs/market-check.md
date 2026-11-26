@@ -36,7 +36,7 @@ The parts already exist; the market check joins them:
 | M5a | **Rivals for every site**: rivals without a shop, and what changed on their sites, read from their own sitemaps (7.2). | Built, deployed at `4a5d1f7` (26 November 2026): migration `20261126083203_big_wild_child.sql`, advisors INFO only |
 | M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Spec |
 | M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Spec |
-| M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Spec |
+| M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Built (26 November 2026): migration `20261126103848_melodic_epoch.sql` |
 | M5e | **Enquiries as the conversion**: forms, bookings and appointments per country where a store has no orders (7.6). | Spec |
 
 ## 3. M1: your markets side by side (built)
@@ -244,12 +244,25 @@ store's site and each rival's, monthly, and held against the store's own: only t
 Platform → AI, kept as the search key is. Finding: a rival good where the store is poor on one of the three. Not a lab test of our own:
 field data is what visitors meet.
 
-### 7.5 M5d: service prices by hand
+### 7.5 M5d: service prices by hand (built 26 November 2026)
 
-As M4 keeps other platforms' plan prices: the owner keeps a rival's published price for a service (an hour of consulting, a haircut, a
-night) with its page; when kept and monthly, `priceOnPage()` checks the figure stands on its page beside its currency's mark (*On its
-page*, *Not found*, *Gone*). It is held against the store's own price where the store has one for the service (an appointment's or a
-booking's), compared by code in one currency, never converted. The model never reads a price off a page.
+- **What is kept.** `commerce.rival_service_prices`: a rival's service as its page names it, its price and currency, what it is for (once,
+  an hour, a night, a month), the page it is on (on the rival's own site, `onRivalSite()`), and the store's own price for the same: as the
+  owner gives it, or, with a shop, a product of the store's whose lowest current price in the rival's country and that currency is used
+  (an appointment's, a stay's, a rental's). At most `SERVICE_PRICES_PER_RIVAL` (20) a rival; kept again in place by rival, service,
+  currency and what it is for. Written only by `src/server/market-rivals.ts` (`keepServicePrice()`).
+- **Checked by code.** When kept, the page is read as the store (`readWebPage()`: robots.txt first, the day's pages, kept as a source)
+  and `priceOnPage()` says whether the figure stands there beside its currency's mark: *On its page*, *Not found on its page*, *Page not
+  read*. The dispatcher's `rivalWatch` reads it again once it was checked longer ago than `RIVAL_WATCH_DAYS` (28), two a run, as the
+  person who kept it; a price that was on its page and is no longer is *Gone from its page: check it*. Code never guesses the new figure,
+  and the model never reads a price off a page (prices are often drawn by scripts: then a person checks).
+- **Compared by code.** Only a price found on its page within 30 days and not gone since, against the store's own in the same currency
+  (`serviceGap()`, `priceGap()`), never converted. At least a tenth cheaper is a weakness (`service_cheaper`), a tenth dearer a strength
+  (`service_dearer`); its page is the website's pages, where a site without a shop shows its prices. A price not found is shown, not found.
+- **Where.** *Their published prices* under *Your rivals* (Lisa's part): each price with what it is for, against yours, its state, when
+  checked, its page and *Remove*; *Keep a price* a step in, open while there are none. `list_rivals` gives them per rival.
+- **The platform.** Kaizena Flow's prices are its plans: other platforms' plan prices are kept beside them on Platform → Plans (M4), so
+  its own store's Markets page has no service prices.
 
 ### 7.6 M5e: enquiries as the conversion
 

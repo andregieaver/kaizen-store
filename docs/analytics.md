@@ -238,14 +238,16 @@ country and is left out.
 | A rival is dearer | The same offer the other way round: the store at least a tenth cheaper. |
 | Sold out at a rival | An offer read within 30 days whose own page says it cannot be bought now (`out_of_stock` or `discontinued`), held against a product of the store's with a price in that country: a gap the rival leaves. No price is compared. |
 | A rival's move | An offer read within 30 days whose last read changed it, within 30 days, in the rival's favour (D900 M3, `rivalMove()`): its price down by a twentieth or more against the read before in one currency, else its shipping down, else its returns window longer. |
+| A rival's service price | A rival's published price for a service (D905 M5d), kept by a person with its page and found on that page by code (`priceOnPage()`) within 30 days and not gone since, against the store's own price for the same in that currency (as the owner gave it, or a product's lowest current price in the rival's country): at least a tenth cheaper. Never converted. |
+| Cheaper than a rival's service | The same the other way round: the store at least a tenth cheaper. |
 | A rival's site | A rival's site (D905, `siteGrowth()`) whose sitemaps, read weekly and listed whole (not past `RIVAL_PATHS_MAX`, 1,000), added at least `SITE_ADDED_MIN` (5) pages in 30 days after its first listing, more than twice the pages and articles the store first published in those 30 days (a new store's starter pages count). Every store's: no shop needed. |
 
-The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, a rival's move, a rival's site, not in its language, no
-price, sold out at a rival, a country that buys more, a rival is dearer), then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
+The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, a rival's service price, a rival's move, a rival's site, not in its language, no
+price, sold out at a rival, a country that buys more, a rival is dearer, cheaper than a rival's service), then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
 (the AI manager opened with the finding's words and figures, `askAboutFinding()`, sent by the person) and a link to the page that fixes it.
 
 The **SWOT** (`SWOT_OF`, `swotOf()`) draws every finding in one of four parts by its kind, never a text of its own: **strengths** (a country
-that buys more, a rival is dearer), **weaknesses** (a country that buys less, a rival is cheaper, not in its language, no price),
+that buys more, a rival is dearer or its service dearer), **weaknesses** (a country that buys less, a rival or its service cheaper, not in its language, no price),
 **opportunities** (searched for, sold out at a rival) and **threats** (a rival's move, M3, and a rival's site, D905; with none, the part says so). `market_check` names each finding's part.
 
 Kaizena Flow's own store (`house`) sells plans, not goods: its orders, average order and prices are left out and the page says so; its

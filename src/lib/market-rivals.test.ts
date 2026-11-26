@@ -9,6 +9,7 @@ import {
   priceOnPage,
   rivalHost,
   rivalMove,
+  serviceGap,
   SITE_ADDED_MIN,
   siteGrowth,
   type OfferState,
@@ -128,5 +129,20 @@ describe("what changed on a rival's site (D905)", () => {
     expect(siteGrowth({ ...site, added: 11 }, 5)).toBe(11);
     expect(siteGrowth({ ...site, cut: true }, 0)).toBeNull();
     expect(siteGrowth({ ...site, since: null }, 0)).toBeNull();
+  });
+});
+
+describe("a rival's service price (D905 M5d)", () => {
+  const now = new Date("2026-11-26T12:00:00Z");
+  const price = { priceMinor: 50000, currency: "NOK", own: { priceMinor: 60000, currency: "NOK" }, checkedOn: "2026-11-20", onPage: true, goneAt: null };
+
+  it("is held against the store's own only when code found it on its page lately and it is not gone", () => {
+    expect(serviceGap(price, now)).toBeCloseTo(0.2);
+    expect(serviceGap({ ...price, onPage: null }, now)).toBeNull();
+    expect(serviceGap({ ...price, onPage: false }, now)).toBeNull();
+    expect(serviceGap({ ...price, goneAt: "2026-11-25T00:00:00Z" }, now)).toBeNull();
+    expect(serviceGap({ ...price, checkedOn: "2026-10-01" }, now)).toBeNull();
+    expect(serviceGap({ ...price, own: null }, now)).toBeNull();
+    expect(serviceGap({ ...price, own: { priceMinor: 60000, currency: "EUR" } }, now)).toBeNull();
   });
 });

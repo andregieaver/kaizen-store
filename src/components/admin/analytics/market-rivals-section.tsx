@@ -6,12 +6,13 @@ import type { MarketCheckMessages } from "@/lib/admin-messages/market-check.en";
 import { formatCount, formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { offerFresh, pathShown, priceGap, type RivalSiteFacts } from "@/lib/market-rivals";
-import type { KeptOffer, Rival } from "@/server/market-rivals";
+import type { KeptOffer, KeptServicePrice, Rival } from "@/server/market-rivals";
 
 import { CARD_CLASS } from "../ui/card";
 import { EmptyState } from "../ui/empty-state";
 import { Field, Select, TextInput } from "../ui/field";
 import { DataTable, StatusPill, type Column } from "./data-table";
+import { MarketServicePrices, type MarketServicePricesProps } from "./market-service-prices";
 import { AnalyticsSection } from "./section";
 
 /**
@@ -36,12 +37,17 @@ export type MarketRivalsProps = {
   /** The store has a shop: its products can be held against rivals' offers. */
   sells: boolean;
   offers: readonly KeptOffer[];
+  /**
+   * Their published service prices (D905 M5d), kept by hand, with what a price is for in words and the store's currencies; null for
+   * Kaizena Flow's own store, whose prices are its plans.
+   */
+  services: { prices: readonly KeptServicePrice[]; per: MarketServicePricesProps["per"]; currencies: readonly string[] } | null;
   /** The store's countries, by code and name, for the country of a new rival. */
   countries: readonly { code: string; name: string }[];
   /** The store's products a rival's page may be held against, by handle and title. */
   products: readonly { handle: string; title: string }[];
   /** The forms' actions, or null when the member may only read. */
-  actions: { add: Action; remove: Action; read: Action } | null;
+  actions: { add: Action; remove: Action; read: Action; keepPrice: Action; removePrice: Action } | null;
   now: Date;
 };
 
@@ -82,7 +88,7 @@ function SiteLine({ site, w, day }: { site: RivalSiteFacts | undefined; w: Marke
   );
 }
 
-export function MarketRivalsSection({ lang, locale, timeZone, words: w, rivals, sites, sells, offers, countries, products, actions, now }: MarketRivalsProps) {
+export function MarketRivalsSection({ lang, locale, timeZone, words: w, rivals, sites, sells, offers, services, countries, products, actions, now }: MarketRivalsProps) {
   const names = new Map(countries.map((c) => [c.code, c.name]));
   const siteOf = new Map(sites.map((s) => [s.rivalId, s]));
   const day = (iso: string) => adminDate(timeZone, iso, "day", lang);
@@ -223,6 +229,19 @@ export function MarketRivalsSection({ lang, locale, timeZone, words: w, rivals, 
         </div>
       ) : null}
 
+      {services && rivals.length > 0 ? (
+        <MarketServicePrices
+          lang={lang}
+          locale={locale}
+          w={w.prices}
+          per={services.per}
+          prices={services.prices}
+          rivals={rivals}
+          currencies={services.currencies}
+          products={products}
+          actions={actions ? { keep: actions.keepPrice, remove: actions.removePrice } : null}
+        />
+      ) : null}
       {sells && offers.length > 0 ? <DataTable caption={w.caption} columns={columns} rows={offers} rowKey={(o) => o.id} exportable={false} exportReason="markets.rivals" /> : null}
     </AnalyticsSection>
   );

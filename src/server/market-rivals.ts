@@ -16,6 +16,8 @@ import {
   RIVAL_PATHS_MAX,
   RIVALS_PER_MARKET,
   rivalHost,
+  SERVICE_PER,
+  SERVICE_PRICES_PER_RIVAL,
   SITE_FILES_MAX,
   SITE_WATCH_DAYS,
   SITE_WINDOW_DAYS,
@@ -25,6 +27,7 @@ import {
   type OfferState,
   type OwnPrice,
   type RivalOfferFacts,
+  type RivalServiceFacts,
   type RivalSiteFacts,
   type SiteProblem,
 } from "@/lib/market-rivals";
@@ -204,7 +207,7 @@ const CHANGED = sql`(o.price_minor, o.currency, o.availability, o.shipping_minor
   is distinct from (excluded.price_minor, excluded.currency, excluded.availability, excluded.shipping_minor, excluded.shipping_currency, excluded.return_days)`;
 
 export type WatchDeps = ResearchDeps & { now?: Date; perRun?: number };
-export type WatchRun = { read: number; changed: number; failed: number; sites: SiteWatchRun; platform: PlatformWatchRun };
+export type WatchRun = { read: number; changed: number; failed: number; sites: SiteWatchRun; services: ServiceWatchRun; platform: PlatformWatchRun };
 
 /**
  * The watcher (D900 M3, the five-minute dispatcher's `rivalWatch`): a few kept offers read longer ago than `RIVAL_WATCH_DAYS` are read
@@ -243,7 +246,14 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
       join commerce.market_rivals r on r.store_id = c.store_id and r.id = c.rival_id
     `,
   );
-  const run: WatchRun = { read: 0, changed: 0, failed: 0, sites: { listed: 0, failed: 0 }, platform: { checked: 0, gone: 0, failed: 0 } };
+  const run: WatchRun = {
+    read: 0,
+    changed: 0,
+    failed: 0,
+    sites: { listed: 0, failed: 0 },
+    services: { checked: 0, gone: 0, failed: 0 },
+    platform: { checked: 0, gone: 0, failed: 0 },
+  };
   for (const o of due) {
     try {
       const store = await getStore(o.slug);
@@ -268,6 +278,12 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
     run.sites = await watchRivalSites(deps);
   } catch (error) {
     report(error, "rivals.site_watch");
+  }
+  // Rivals' service prices kept by hand (D905 M5d): a few pages a run.
+  try {
+    run.services = await watchServicePrices(deps);
+  } catch (error) {
+    report(error, "rivals.service_watch");
   }
   // The other store platforms' prices (M4), in the same job: a few pages a run.
   try {
@@ -515,10 +531,13 @@ export async function listPlatformRivalPrices(): Promise<PlatformRivalPrice[]> {
   }));
 }
 
-/** Whether a page's text states the price, or null when the page could not be read (refused by its robots.txt, gone, too large). */
-async function onItsPage(account: { id: string }, source: string, minor: number, currency: string, deps: ResearchDeps): Promise<boolean | null> {
+/**
+ * Whether a page's text states the price, or null when the page could not be read (refused by its robots.txt, gone, too large). Read as
+ * the platform (`store` null, M4) or as a store (M5d), within its pages for the day.
+ */
+async function onItsPage(actor: ResearchActor, source: string, minor: number, currency: string, deps: ResearchDeps): Promise<boolean | null> {
   try {
-    const page = await readWebPage({ account, store: null }, { url: source }, deps);
+    const page = await readWebPage(actor, { url: source }, deps);
     return priceOnPage(`${page.title} ${page.description} ${page.text}`, minor, currency);
   } catch (error) {
     if (error instanceof OwnerToolError) return null;
@@ -560,7 +579,7 @@ export async function keepPlatformRivalPrice(
     sql`select id from commerce.platform_rival_prices where platform = ${platform} and plan = ${plan} and currency = ${currency} and interval = ${input.interval}`,
   );
   if (!exists && (count?.n ?? 0) >= PLATFORM_RIVAL_PRICES_MAX) throw new PlatformRivalError("full");
-  const onPage = await onItsPage(account, source, minor, currency, deps);
+  const onPage = await onItsPage({ account, store: null }, source, minor, currency, deps);
   const row = await typedRow(
     z.object({ id: col.uuid }),
     sql`insert into commerce.platform_rival_prices (platform, plan, price_minor, currency, interval, fee_bps, plan_id, source, checked_on, on_page, added_by)
@@ -610,7 +629,7 @@ export async function watchPlatformRivalPrices(deps: WatchDeps = {}): Promise<Pl
   );
   const run: PlatformWatchRun = { checked: 0, gone: 0, failed: 0 };
   for (const r of due) {
-    const found = await onItsPage({ id: r.added_by }, r.source, r.price_minor, r.currency, deps);
+    const found = await onItsPage({ account: { id: r.added_by }, store: null }, r.source, r.price_minor, r.currency, deps);
     if (found === null) {
       run.failed++;
       continue;
@@ -623,6 +642,215 @@ export async function watchPlatformRivalPrices(deps: WatchDeps = {}): Promise<Pl
     await db().execute(sql`
       update commerce.platform_rival_prices set on_page = false, gone_at = case when on_page or gone_at is not null then coalesce(gone_at, now()) else null end
       where id = ${r.id}::uuid
+    `);
+    if (r.on_page) run.gone++;
+  }
+  return run;
+}
+
+// A rival's published service prices (D905, market check M5d, `docs/market-check.md` 7.5) --------------------------------------------
+
+export type ServicePriceProblem = "rival" | "service" | "price" | "currency" | "per" | "own" | "product" | "source" | "site" | "full";
+
+export class ServicePriceError extends Error {
+  constructor(readonly problem: ServicePriceProblem) {
+    super(problem);
+  }
+}
+
+/** A rival's service price as kept, with the store's own beside it: as the owner gave it, or its product's current price there. */
+export type KeptServicePrice = RivalServiceFacts & {
+  id: string;
+  rivalId: string;
+  host: string;
+  source: string;
+  productId: string | null;
+  productName: string | null;
+};
+
+const SERVICE_ROW = z.object({
+  id: col.uuid,
+  rival_id: col.uuid,
+  rival_name: col.text,
+  host: col.text,
+  market: col.text,
+  service: col.text,
+  price_minor: col.minor,
+  currency: col.currency,
+  per: z.enum(SERVICE_PER),
+  own_minor: col.minorOrNull,
+  product_id: col.textOrNull,
+  product_name: col.textOrNull,
+  product_minor: col.minorOrNull,
+  source: col.text,
+  checked_on: col.text,
+  on_page: col.bool.nullable(),
+  gone_at: col.textOrNull,
+});
+
+/**
+ * The store's rivals' service prices, by country and rival, each with the store's own: a named product's lowest current price in the
+ * rival's country and the price's currency, else the price the owner gave. One read.
+ */
+export async function listServicePrices(store: Pick<Store, "id">, locale = "en-GB"): Promise<KeptServicePrice[]> {
+  const rows = await typedRows(
+    SERVICE_ROW,
+    sql`
+      select sp.id, sp.rival_id, r.name as rival_name, r.host, r.market_code::text as market, sp.service, sp.price_minor, sp.currency::text as currency,
+        sp.per, sp.own_minor, sp.product_id::text as product_id, coalesce(t.title, p.handle) as product_name, own.amount as product_minor, sp.source,
+        sp.checked_on::text as checked_on, sp.on_page, sp.gone_at::text as gone_at
+      from commerce.rival_service_prices sp
+      join commerce.market_rivals r on r.store_id = sp.store_id and r.id = sp.rival_id
+      left join commerce.products p on p.store_id = sp.store_id and p.id = sp.product_id
+      left join lateral (
+        select tr.title from commerce.product_translations tr
+        where tr.store_id = sp.store_id and tr.product_id = sp.product_id and btrim(tr.title) <> ''
+        order by (tr.locale = ${locale}) desc, tr.locale limit 1
+      ) t on true
+      left join lateral (
+        select min(cp.amount_minor) as amount
+        from commerce.current_prices cp join commerce.product_variants v on v.store_id = cp.store_id and v.id = cp.variant_id
+        where cp.store_id = sp.store_id and v.product_id = sp.product_id and cp.market_code = r.market_code and cp.currency = sp.currency
+      ) own on true
+      where sp.store_id = ${store.id}::uuid
+      order by r.market_code, lower(r.name), lower(sp.service)
+    `,
+  );
+  return rows.map((r) => {
+    const ownMinor = r.product_id ? r.product_minor : r.own_minor;
+    return {
+      id: r.id,
+      rivalId: r.rival_id,
+      rivalName: r.rival_name,
+      host: r.host,
+      market: r.market.trim(),
+      service: r.service,
+      priceMinor: r.price_minor,
+      currency: r.currency,
+      per: r.per,
+      own: ownMinor === null ? null : { priceMinor: ownMinor, currency: r.currency },
+      productId: r.product_id,
+      productName: r.product_id ? (r.product_name ?? null) : null,
+      source: r.source,
+      checkedOn: r.checked_on,
+      onPage: r.on_page,
+      goneAt: r.gone_at,
+    };
+  });
+}
+
+/** A typed amount in minor units of the currency (`499`, `499,50`, `1 299`), or null. */
+const typedAmount = (text: string, currency: string) => amountMinor(text.trim().replace(/\s/g, "").replace(",", "."), currency);
+
+/**
+ * Keeps a rival's published price for a service with the page it is on (D905 M5d), by rival, service, currency and what it is for, kept
+ * again in place when it is there. The page must be on the rival's own site; code reads it as the store (robots.txt first, the day's pages,
+ * kept as a source) and says whether the figure is on it (`priceOnPage()`); a page that cannot be read keeps it unconfirmed. The owner's own
+ * price is optional, or a product of the store's whose price there is used. The caller may change analytics (`storeAction()`).
+ */
+export async function keepServicePrice(
+  actor: { account: { id: string }; store: Store },
+  input: { rival: string; service: string; price: string; currency: string; per: string; own: string; product: string; source: string },
+  deps: ResearchDeps = {},
+): Promise<{ id: string; service: string; priceMinor: number; currency: string; onPage: boolean | null }> {
+  const { store } = actor;
+  const rival = /^[0-9a-f-]{36}$/i.test(input.rival.trim()) ? await findRival(store.id, input.rival.trim()) : null;
+  if (!rival) throw new ServicePriceError("rival");
+  const service = input.service.trim().replace(/\s+/g, " ");
+  if (service.length < 1 || service.length > 120) throw new ServicePriceError("service");
+  const currency = input.currency.trim().toUpperCase();
+  if (!store.markets.some((m) => m.currency === currency)) throw new ServicePriceError("currency");
+  const minor = typedAmount(input.price, currency);
+  if (minor === null || minor < 0) throw new ServicePriceError("price");
+  if (!(SERVICE_PER as readonly string[]).includes(input.per)) throw new ServicePriceError("per");
+  const ownText = input.own.trim();
+  const own = ownText === "" ? null : typedAmount(ownText, currency);
+  if (ownText !== "" && (own === null || own < 0)) throw new ServicePriceError("own");
+  const handle = input.product.trim();
+  const productId = handle ? await productByHandle(store.id, handle) : null;
+  if (handle && !productId) throw new ServicePriceError("product");
+  const source = input.source.trim();
+  if (!normaliseSource(source) || !source.startsWith("https://") || source.length > 2000) throw new ServicePriceError("source");
+  if (!onRivalSite(rival.host, source)) throw new ServicePriceError("site");
+  const counted = await typedRow(
+    z.object({ n: col.int, here: col.bool }),
+    sql`select count(*)::int as n, coalesce(bool_or(service = ${service} and currency = ${currency} and per = ${input.per}), false) as here
+      from commerce.rival_service_prices where store_id = ${store.id}::uuid and rival_id = ${rival.id}::uuid`,
+  );
+  if (!counted?.here && (counted?.n ?? 0) >= SERVICE_PRICES_PER_RIVAL) throw new ServicePriceError("full");
+  const onPage = await onItsPage(actor, source, minor, currency, deps);
+  const row = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`insert into commerce.rival_service_prices (store_id, rival_id, service, price_minor, currency, per, own_minor, product_id, source, checked_on, on_page, added_by)
+      values (${store.id}::uuid, ${rival.id}::uuid, ${service}, ${minor}, ${currency}, ${input.per}, ${own}, ${productId}::uuid, ${source}, current_date, ${onPage},
+        ${actor.account.id}::uuid)
+      on conflict (rival_id, service, currency, per) do update set
+        price_minor = excluded.price_minor, own_minor = excluded.own_minor, product_id = excluded.product_id, source = excluded.source,
+        checked_on = excluded.checked_on, on_page = excluded.on_page, gone_at = null, added_by = excluded.added_by
+      returning id`,
+  );
+  if (!row) throw new Error("rival_service_prices: the upsert returned no row");
+  await audit(actor.account.id, store.id, "analytics.rival_price_kept", { price: row.id, rival: rival.id, currency, per: input.per, onPage });
+  return { id: row.id, service, priceMinor: minor, currency, onPage };
+}
+
+/** Removes a rival's service price; false when the store has no such row. */
+export async function removeServicePrice(actor: { account: { id: string }; store: Store }, id: string): Promise<boolean> {
+  if (!z.uuid().safeParse(id).success) return false;
+  const gone = await db().execute(sql`delete from commerce.rival_service_prices where store_id = ${actor.store.id}::uuid and id = ${id}::uuid returning id`);
+  if (gone.length === 0) return false;
+  await audit(actor.account.id, actor.store.id, "analytics.rival_price_removed", { price: id });
+  return true;
+}
+
+export type ServiceWatchRun = { checked: number; gone: number; failed: number };
+
+/**
+ * The rivals' service prices checked again on their pages (D905 M5d), as M4's are: a few checked longer ago than `RIVAL_WATCH_DAYS`, each
+ * read as the store and the person who kept it, only for an open store. Found: checked today. A price that was on its page and is no
+ * longer: `gone_at`, for a person to check again; code never guesses the new figure. A page that cannot be read waits `RIVAL_RETRY_DAYS`.
+ */
+export async function watchServicePrices(deps: WatchDeps = {}): Promise<ServiceWatchRun> {
+  const now = deps.now ?? new Date();
+  const at = now.toISOString();
+  const due = await typedRows(
+    z.object({ id: col.uuid, store_id: col.uuid, slug: col.text, source: col.text, price_minor: col.minor, currency: col.currency, on_page: col.bool.nullable(), added_by: col.uuid }),
+    sql`
+      with claimed as (
+        update commerce.rival_service_prices sp set watched_at = ${at}::timestamptz
+        where sp.id in (
+          select s2.id from commerce.rival_service_prices s2
+          where s2.added_by is not null and commerce.store_is_active(s2.store_id)
+            and s2.checked_on < (${at}::timestamptz - make_interval(days => ${RIVAL_WATCH_DAYS}))::date
+            and (s2.watched_at is null or s2.watched_at < ${at}::timestamptz - make_interval(days => ${RIVAL_RETRY_DAYS}))
+          order by s2.checked_on limit ${PLATFORM_WATCH_PER_RUN}
+          for update of s2 skip locked
+        )
+        returning sp.id, sp.store_id, sp.source, sp.price_minor, sp.currency, sp.on_page, sp.added_by
+      )
+      select c.id, c.store_id, s.slug, c.source, c.price_minor, c.currency::text as currency, c.on_page, c.added_by
+      from claimed c join commerce.stores s on s.id = c.store_id
+    `,
+  );
+  const run: ServiceWatchRun = { checked: 0, gone: 0, failed: 0 };
+  for (const r of due) {
+    const store = await getStore(r.slug);
+    if (!store || store.id !== r.store_id) continue;
+    const found = await onItsPage({ account: { id: r.added_by }, store }, r.source, r.price_minor, r.currency, deps);
+    if (found === null) {
+      run.failed++;
+      continue;
+    }
+    if (found) {
+      await db().execute(sql`
+        update commerce.rival_service_prices set checked_on = (${at}::timestamptz)::date, on_page = true, gone_at = null
+        where store_id = ${r.store_id}::uuid and id = ${r.id}::uuid`);
+      run.checked++;
+      continue;
+    }
+    await db().execute(sql`
+      update commerce.rival_service_prices set on_page = false, gone_at = case when on_page or gone_at is not null then coalesce(gone_at, ${at}::timestamptz) else null end
+      where store_id = ${r.store_id}::uuid and id = ${r.id}::uuid
     `);
     if (r.on_page) run.gone++;
   }

@@ -238,3 +238,36 @@ export function siteGrowth(site: Pick<RivalSiteFacts, "since" | "cut" | "added">
   if (!site.since || site.cut || site.added < SITE_ADDED_MIN || site.added <= 2 * published) return null;
   return site.added;
 }
+
+// A rival's published service prices (D905, market check M5d, `docs/market-check.md` 7.5) ---------------------------------------------
+
+/** Service prices a store keeps of one rival. */
+export const SERVICE_PRICES_PER_RIVAL = 20;
+/** What a service price is for: once, an hour, a night or a month. */
+export const SERVICE_PER = ["once", "hour", "night", "month"] as const;
+export type ServicePer = (typeof SERVICE_PER)[number];
+
+/** A rival's service price as kept by hand (`listServicePrices()` in `src/server/market-rivals.ts`), with the store's own beside it. */
+export type RivalServiceFacts = {
+  rivalName: string;
+  market: string;
+  service: string;
+  priceMinor: number;
+  currency: string;
+  per: ServicePer;
+  /** The store's own price for the same, as the owner gave it or a product's current price there; null when there is none. */
+  own: OwnPrice | null;
+  /** When code last found the price on its page (`YYYY-MM-DD`), whether it did, and since when it is gone from it. */
+  checkedOn: string;
+  onPage: boolean | null;
+  goneAt: string | null;
+};
+
+/**
+ * How much dearer the store is than a rival's service price (as `priceGap()`), or null: only for a price code found on its own page within
+ * `OFFER_FRESH_DAYS` and not gone since, against an own price in the same currency. A price not found on its page is shown, never a finding.
+ */
+export function serviceGap(s: Pick<RivalServiceFacts, "priceMinor" | "currency" | "own" | "checkedOn" | "onPage" | "goneAt">, now: Date): number | null {
+  if (s.onPage !== true || s.goneAt || !offerFresh(`${s.checkedOn}T00:00:00Z`, now)) return null;
+  return priceGap(s.own, s);
+}

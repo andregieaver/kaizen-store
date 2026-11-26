@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 import { marketCheckEn } from "@/lib/admin-messages/market-check.en";
 import { marketCheckNb } from "@/lib/admin-messages/market-check.nb";
 import { formatCount } from "@/lib/analytics-core";
+import { formatAmount } from "@/lib/analytics-format";
 import type { RivalSiteFacts } from "@/lib/market-rivals";
-import type { KeptOffer, Rival } from "@/server/market-rivals";
+import type { KeptOffer, KeptServicePrice, Rival } from "@/server/market-rivals";
 
 import { MarketRivalsSection, type MarketRivalsProps } from "./market-rivals-section";
 
@@ -68,10 +69,11 @@ const props = (over: Partial<MarketRivalsProps> = {}): MarketRivalsProps => ({
   rivals: [rival],
   sites: [site()],
   sells: true,
+  services: { prices: [], per: marketCheckEn.finding.servicePer, currencies: ["NOK", "EUR"] },
   offers: [offer(), offer({ id: "44444444-4444-4444-8444-444444444444", address: "https://linnet.example/p/bowl", name: "Bowl", productId: null, own: null, readAt: "2026-10-01T10:00:00Z" })],
   countries: [{ code: "NO", name: "Norway" }],
   products: [{ handle: "apron", title: "Forkle i lin" }],
-  actions: { add: action, remove: action, read: action },
+  actions: { add: action, remove: action, read: action, keepPrice: action, removePrice: action },
   now,
   ...over,
 });
@@ -135,5 +137,71 @@ describe("rivals' sites on Analytics → Markets (D905)", () => {
     const out = html(h(MarketRivalsSection, props({ lang: "nb", words: marketCheckNb.rivals })));
     expect(out).toContain("140 sider · 9 lagt til på 30 dager · 2 borte · de fleste under /blogg");
     expect(out).toContain("Nyeste sider:");
+  });
+});
+
+describe("rivals' published service prices on Analytics → Markets (D905 M5d)", () => {
+  const price = (over: Partial<KeptServicePrice> = {}): KeptServicePrice => ({
+    id: "55555555-5555-4555-8555-555555555555",
+    rivalId: rival.id,
+    rivalName: "Linnet",
+    host: "linnet.example",
+    market: "NO",
+    service: "Linen workshop",
+    priceMinor: 50000,
+    currency: "NOK",
+    per: "hour",
+    own: { priceMinor: 60000, currency: "NOK" },
+    productId: null,
+    productName: null,
+    source: "https://linnet.example/kurs",
+    checkedOn: "2026-11-24",
+    onPage: true,
+    goneAt: null,
+    ...over,
+  });
+  const services = (prices: KeptServicePrice[]) => ({ prices, per: marketCheckEn.finding.servicePer, currencies: ["NOK", "EUR"] });
+
+  it("shows each price with what it is for, against the store's own, whether it is on its page, and its page", () => {
+    const out = html(h(MarketRivalsSection, props({ sells: false, products: [], services: services([price()]) })));
+    expect(out).toContain("Linnet: Linen workshop");
+    expect(out).toContain(`${formatAmount(50000, "NOK", "nb-NO")} an hour`);
+    expect(out).toContain(`you ask ${formatAmount(60000, "NOK", "nb-NO")} an hour: you are 20 % dearer · Checked 24 Nov 2026`);
+    expect(out).toContain("On its page");
+    expect(out).toContain('href="https://linnet.example/kurs"');
+    // Keeping one is a step in while there are prices; without a shop there is no product to choose.
+    expect(out).toMatch(/<details(?![^>]*\bopen\b)[^>]*>\s*<summary[^>]*>Keep a price/);
+    expect(out).not.toContain("Or your product");
+  });
+
+  it("says when a page is unread, the price not found or gone, or the store gave none of its own", () => {
+    const out = html(
+      h(
+        MarketRivalsSection,
+        props({
+          services: services([
+            price({ id: "a", service: "Unread", onPage: null }),
+            price({ id: "b", service: "Missing", onPage: false }),
+            price({ id: "c", service: "Gone", onPage: false, goneAt: "2026-11-25T10:00:00Z" }),
+            price({ id: "d", service: "Mine none", own: null }),
+          ]),
+        }),
+      ),
+    );
+    expect(out).toContain("Page not read");
+    expect(out).toContain("Not found on its page");
+    expect(out).toContain("Gone from its page: check it");
+    expect(out).toContain("no price of yours given");
+  });
+
+  it("opens the form while none is kept, offers a product with a shop, and is left out for Kaizena Flow's own store", () => {
+    const open = html(h(MarketRivalsSection, props({ services: services([]) })));
+    expect(open).toContain("No prices kept yet.");
+    expect(open).toMatch(/<details[^>]*\bopen\b[^>]*>\s*<summary[^>]*>Keep a price/);
+    expect(open).toContain("Or your product");
+    const house = html(h(MarketRivalsSection, props({ services: null })));
+    expect(house).not.toContain("Their published prices");
+    const reader = html(h(MarketRivalsSection, props({ actions: null, services: services([price()]) })));
+    expect(reader).not.toContain("Keep the price");
   });
 });

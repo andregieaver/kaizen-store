@@ -215,6 +215,10 @@ test.describe("as the owner of a store without a shop (D905)", () => {
         insert into commerce.market_rivals (store_id, market_code, name, host) values (${store.id}, 'NO', 'Linnet', 'linnet.example') returning id`;
       await rivalSite(sql, store.id, rival.id);
       await sql`insert into commerce.market_rivals (store_id, market_code, name, host) values (${store.id}, 'NO', 'Furu', 'furu.example')`;
+      // A price Linnet shows for a course, kept two days ago and found on its page by code (D905 M5d): the store asks a third more.
+      await sql`
+        insert into commerce.rival_service_prices (store_id, rival_id, service, price_minor, currency, per, own_minor, source, checked_on, on_page)
+        values (${store.id}, ${rival.id}, 'Linkurs, 3 timer', 90000, 'NOK', 'once', 120000, 'https://linnet.example/kurs', current_date - 2, true)`;
     } finally {
       await sql.end();
     }
@@ -236,9 +240,24 @@ test.describe("as the owner of a store without a shop (D905)", () => {
     await expect(rivals.locator('[data-rival="furu.example"]')).toContainText("Its site is read within a few minutes.");
     await expect(rivals.getByRole("button", { name: "Add rival" })).toBeVisible();
     await expect(rivals.getByRole("button", { name: "Read the page" })).toHaveCount(0);
+    // Their published prices (D905 M5d): the course against the store's own, a weakness found by code.
+    await expect(findings.locator('[data-finding="service_cheaper"]')).toContainText("Linnet asks");
+    const prices = rivals.locator("[data-service-prices]");
+    await expect(prices.locator('[data-service-price="Linnet Linkurs, 3 timer"]')).toContainText("you are 33 % dearer");
+    await expect(prices.locator('[data-service-price="Linnet Linkurs, 3 timer"]')).toContainText("On its page");
+    // Keeping one through the form: the page cannot be read from here, so it is kept unconfirmed.
+    await prices.getByText("Keep a price").click();
+    await prices.getByLabel("Their service").fill("Ullkurs");
+    await prices.getByLabel("Their price").fill("400");
+    await prices.getByLabel("The page it is on").fill("https://linnet.example/ull");
+    await prices.getByLabel("Your price for it").fill("450");
+    await prices.getByRole("button", { name: "Keep the price" }).click();
+    await expect(prices).toContainText("Kept: Ullkurs at");
+    await expect(prices.locator('[data-service-price="Linnet Ullkurs"]')).toContainText("Page not read");
     if (shots) {
       await page.screenshot({ path: `${shots}/markets-site-computer.png` });
       await rivals.screenshot({ path: `${shots}/markets-site-rivals.png` });
+      await prices.screenshot({ path: `${shots}/markets-service-prices.png` });
     }
   });
 });

@@ -13,7 +13,7 @@ import { featureOn } from "@/lib/store-features";
 
 import { adminLink, BASIS, mainLocale, periodWords, type Ctx } from "./analytics-tools";
 import { marketCheck } from "./market-check";
-import { listRivals, readRivalOffer, rivalOffers, RivalError, rivalSites, type RivalProblem } from "./market-rivals";
+import { listRivals, listServicePrices, readRivalOffer, rivalOffers, RivalError, rivalSites, type KeptServicePrice, type RivalProblem } from "./market-rivals";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Account } from "./auth";
 
@@ -106,6 +106,21 @@ function siteFacts(site: RivalSiteFacts | undefined) {
   };
 }
 
+/** A rival's service price as the tool gives it (D905 M5d): kept by a person, checked on its page by code, the difference worked out in code. */
+function servicePriceFacts(s: KeptServicePrice) {
+  const gap = priceGap(s.own, s);
+  return {
+    service: s.service,
+    their_price: englishMoney(s.priceMinor, s.currency),
+    per: s.per,
+    your_price: s.own ? englishMoney(s.own.priceMinor, s.own.currency) : null,
+    difference: gap === null ? "not comparable" : gap > 0 ? `the store is ${formatPercent(gap, 0)} dearer` : `the store is ${formatPercent(-gap, 0)} cheaper`,
+    on_its_page: s.goneAt ? "gone from its page since it was kept" : s.onPage === null ? "page not read" : s.onPage ? "found there" : "not found there",
+    checked: s.checkedOn,
+    page: s.source,
+  };
+}
+
 /**
  * The store's rivals as Analytics → Markets shows them, every figure written by code: what changed on each one's site (D905, every store)
  * and, for a store with a shop, the offers read of it held against the store's own prices (D900 M2).
@@ -113,7 +128,12 @@ function siteFacts(site: RivalSiteFacts | undefined) {
 export async function listRivalsTool({ store }: Ctx) {
   const now = new Date();
   const sells = !store.house && featureOn(store, "shop");
-  const [rivals, offers, sites] = await Promise.all([listRivals(store.id), sells ? rivalOffers(store, store.localization.locales[0]) : [], rivalSites(store.id, now)]);
+  const [rivals, offers, sites, services] = await Promise.all([
+    listRivals(store.id),
+    sells ? rivalOffers(store, store.localization.locales[0]) : [],
+    rivalSites(store.id, now),
+    store.house ? [] : listServicePrices(store, store.localization.locales[0]),
+  ]);
   const siteOf = new Map(sites.map((s) => [s.rivalId, s]));
   return {
     rivals: rivals.map((r) => ({
@@ -121,6 +141,7 @@ export async function listRivalsTool({ store }: Ctx) {
       host: r.host,
       country: r.market,
       site: siteFacts(siteOf.get(r.id)),
+      service_prices: services.filter((s) => s.rivalId === r.id).map(servicePriceFacts),
       offers: offers
         .filter((o) => o.rivalId === r.id)
         .map((o) => {

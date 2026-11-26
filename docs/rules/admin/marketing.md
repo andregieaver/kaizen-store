@@ -53,7 +53,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   kept by a platform admin with their page and checked there by code (`priceOnPage()`), never read off a page by a model. Rivals are every
   store's (D905, M5a): a rival's site is read only from its sitemaps (`readSitemapPaths()`: robots.txt first, each file a page of the day,
   addresses only, never a page's words), weekly by the same watcher (`watchRivalSites()`), its paths kept in `rival_pages` by
-  `keepRivalSite()` alone; what needs products (offers, *Read the page*, `read_rival_offer`) stays the shop's.
+  `keepRivalSite()` alone; what needs products (offers, *Read the page*, `read_rival_offer`) stays the shop's. A rival's service price
+  (M5d, `rival_service_prices`) is kept only by a person with its page, checked there by code (`priceOnPage()`, when kept and by the
+  watcher), and compared (`serviceGap()`) only when found there.
 
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 

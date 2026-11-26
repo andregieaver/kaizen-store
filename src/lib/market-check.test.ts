@@ -19,7 +19,7 @@ import {
   type MarketCheckFacts,
   type MarketFacts,
 } from "./market-check";
-import type { RivalSiteFacts } from "./market-rivals";
+import type { RivalServiceFacts, RivalSiteFacts } from "./market-rivals";
 
 const country = (code: string, over: Partial<MarketFacts> = {}): MarketFacts => ({
   code,
@@ -45,6 +45,7 @@ const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): Ma
   rivalOffers: [],
   rivalSites: [],
   published: 0,
+  rivalServices: [],
   ...over,
 });
 const names = new Map([
@@ -265,6 +266,49 @@ describe("the market check's findings (D900 M1)", () => {
     expect(marketFindings(facts([country("NO")], { published: 6, rivalSites: [site("Rapid")] })).filter((f) => f.kind === "rival_site")).toEqual([]);
     expect(findingText(sites[0], marketCheckEn.finding, names, language)).toBe("Rapid added 12 pages to its site in 30 days, most under /blog; you published 2.");
     expect(findingText(sites[1], marketCheckNb.finding, names, language)).toBe("Even la til 5 sider på nettstedet sitt på 30 dager; du publiserte 2.");
+  });
+
+  it("holds a rival's service price found on its page against the store's own, a tenth apart either way (D905 M5d)", () => {
+    const now = new Date("2026-11-26T12:00:00Z");
+    const service = (name: string, over: Partial<RivalServiceFacts> = {}): RivalServiceFacts => ({
+      rivalName: "Klipp",
+      market: "NO",
+      service: name,
+      priceMinor: 50000,
+      currency: "NOK",
+      per: "hour",
+      own: { priceMinor: 60000, currency: "NOK" },
+      checkedOn: "2026-11-24",
+      onPage: true,
+      goneAt: null,
+      ...over,
+    });
+    const found = marketFindings(
+      facts([country("NO", { sells: false })], {
+        rivalServices: [
+          service("Haircut"),
+          service("Colour", { priceMinor: 80000 }),
+          // Within a tenth, not found on its page, or with no price of the store's: shown, never found.
+          service("Wash", { priceMinor: 57000 }),
+          service("Beard", { onPage: false }),
+          service("Styling", { own: null }),
+        ],
+      }),
+      now,
+    );
+    expect(found.map((f) => (f.kind === "service_cheaper" || f.kind === "service_dearer" ? [f.kind, f.service] : f.kind))).toEqual([
+      ["service_cheaper", "Haircut"],
+      ["service_dearer", "Colour"],
+    ]);
+    const swot = swotOf(found);
+    expect([swot.weaknesses.length, swot.strengths.length]).toEqual([1, 1]);
+    const [cheaper, dearer] = found;
+    expect(findingText(cheaper, marketCheckEn.finding, names, language)).toBe(
+      `Klipp asks ${englishMoney(50000, "NOK")} an hour for Haircut in Norway, and you ask ${englishMoney(60000, "NOK")} an hour: 20 % more.`,
+    );
+    expect(findingText(dearer, marketCheckNb.finding, names, language)).toBe(
+      `Du tar ${englishMoney(60000, "NOK")} i timen for Colour i Norway, og Klipp tar ${englishMoney(80000, "NOK")} i timen: du er 25 % billigere.`,
+    );
   });
 
   it("draws the findings as a SWOT, each in the part its kind is, in their own order; a rival's move is a threat (D900 M2, M3)", () => {

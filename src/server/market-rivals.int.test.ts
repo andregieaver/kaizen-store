@@ -246,6 +246,73 @@ describe("a store's rivals (D900 M2)", () => {
     expect(left.n).toBe(0);
   });
 
+  it("keep a rival's published service price with its page, checked there by code, against the store's own (D905 M5d)", async () => {
+    const pages = (texts: Record<string, string>) => site(Object.fromEntries(Object.entries(texts).map(([path, text]) => [path, `<html><head><title>Kurs</title></head><body><p>${text}</p></body></html>`])));
+    const keep = (over: Partial<Parameters<typeof rivals.keepServicePrice>[1]> = {}, fetchPage = pages({ "/kurs": "Linkurs: 500 kr per time" })) =>
+      rivals.keepServicePrice(
+        actor(),
+        { rival: rival.id, service: "Linkurs", price: "500", currency: "NOK", per: "hour", own: "600", product: "", source: "https://linnet.example/kurs", ...over },
+        { fetchPage },
+      );
+    const refused = async (over: Partial<Parameters<typeof rivals.keepServicePrice>[1]>) => {
+      try {
+        await keep(over);
+        return null;
+      } catch (error) {
+        return error instanceof rivals.ServicePriceError ? error.problem : String(error);
+      }
+    };
+    expect(await refused({ rival: "11111111-1111-4111-8111-111111111111" })).toBe("rival");
+    expect(await refused({ service: " " })).toBe("service");
+    expect(await refused({ price: "abc" })).toBe("price");
+    expect(await refused({ currency: "USD" })).toBe("currency");
+    expect(await refused({ per: "week" })).toBe("per");
+    expect(await refused({ own: "x" })).toBe("own");
+    expect(await refused({ product: "nothing" })).toBe("product");
+    expect(await refused({ source: "http://linnet.example/kurs" })).toBe("source");
+    expect(await refused({ source: "https://elsewhere.example/kurs" })).toBe("site");
+
+    const kept = await keep();
+    expect(kept).toMatchObject({ service: "Linkurs", priceMinor: 50000, currency: "NOK", onPage: true });
+    // Kept again in place: this time its page does not state it.
+    expect(await keep({}, pages({ "/kurs": "Linkurs: 450 kr" }))).toMatchObject({ id: kept.id, onPage: false });
+    await keep();
+    // Held against a product of the store's: the apron's own price in Norway.
+    await keep({ service: "Forkle", per: "once", price: "400", own: "", product: "apron", source: "https://linnet.example/forkle" }, pages({ "/forkle": "Forkle 400 kr" }));
+    let prices = await rivals.listServicePrices(store, "nb-NO");
+    expect(prices.find((p) => p.service === "Linkurs")).toMatchObject({ per: "hour", own: { priceMinor: 60000, currency: "NOK" }, onPage: true, goneAt: null });
+    expect(prices.find((p) => p.service === "Forkle")).toMatchObject({ productName: "Forkle i lin", own: { priceMinor: 46000, currency: "NOK" } });
+
+    // Both found on their pages and the store dearer by more than a tenth: weaknesses, the largest first.
+    const today = new Date().toISOString().slice(0, 10);
+    let check = await marketCheck(store, customPeriod(today, today), { now: new Date() });
+    expect(check.findings.filter((f) => f.kind === "service_cheaper").map((f) => (f.kind === "service_cheaper" ? [f.service, f.ownMinor, f.rivalMinor] : null))).toEqual([
+      ["Linkurs", 60000, 50000],
+      ["Forkle", 46000, 40000],
+    ]);
+
+    // A month on, the watcher reads both pages again as the store: the workshop's price is gone from its page, the apron's still there.
+    await db().execute(sql`update commerce.rival_service_prices set checked_on = current_date - 40 where store_id = ${store.id}::uuid`);
+    expect(await rivals.watchServicePrices({ fetchPage: pages({ "/kurs": "Linkurs: 550 kr", "/forkle": "Forkle 400 kr" }) })).toEqual({ checked: 1, gone: 1, failed: 0 });
+    prices = await rivals.listServicePrices(store, "nb-NO");
+    expect(prices.find((p) => p.service === "Linkurs")).toMatchObject({ onPage: false, priceMinor: 50000 });
+    expect(prices.find((p) => p.service === "Linkurs")?.goneAt).not.toBeNull();
+    expect(prices.find((p) => p.service === "Forkle")).toMatchObject({ onPage: true, checkedOn: today });
+    check = await marketCheck(store, customPeriod(today, today), { now: new Date() });
+    expect(check.findings.filter((f) => f.kind === "service_cheaper").map((f) => (f.kind === "service_cheaper" ? f.service : null))).toEqual(["Forkle"]);
+
+    // The AI manager reads them with every figure written by code.
+    const listed = await listRivalsTool({ store } as never);
+    expect(listed.rivals.find((r) => r.host === "linnet.example")?.service_prices.find((p) => p.service === "Forkle")).toMatchObject({
+      per: "once",
+      difference: "the store is 15 % dearer",
+      on_its_page: "found there",
+    });
+
+    expect(await rivals.removeServicePrice(actor(), kept.id)).toBe(true);
+    expect(await rivals.removeServicePrice(actor(), kept.id)).toBe(false);
+  });
+
   it("are removed with their offers", async () => {
     expect(await rivals.removeRival(actor(), rival.id)).toBe(true);
     expect(await rivals.removeRival(actor(), rival.id)).toBe(false);

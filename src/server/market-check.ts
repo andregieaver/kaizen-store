@@ -22,7 +22,7 @@ import { geoReport } from "./analytics-geo-data";
 import { searchesByMarket } from "./analytics-search-data";
 import { marketTraffic, type Coverage } from "./analytics-traffic-data";
 import { isDemoProduct } from "./demo-content";
-import { listRivals, rivalOffers, rivalSites, type KeptOffer, type Rival } from "./market-rivals";
+import { listRivals, listServicePrices, rivalOffers, rivalSites, type KeptOffer, type KeptServicePrice, type Rival } from "./market-rivals";
 import { owned } from "./owned";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -58,6 +58,8 @@ export type MarketCheck = MarketCheckFacts & {
   offers: KeptOffer[];
   /** What changed on the rivals' sites (D905). */
   sites: RivalSiteFacts[];
+  /** The rivals' service prices kept by hand (D905 M5d); none for Kaizena Flow's own store, whose prices are its plans. */
+  services: KeptServicePrice[];
 };
 
 const PER_LOCALE = z.object({ locale: col.text, n: col.int });
@@ -143,7 +145,7 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
   for (const m of store.markets) if (!sold.has(m.code)) sold.set(m.code, m.ownLocale);
   const otherLocales = [...new Set([...sold.values()].filter((l) => l !== mainLocale))];
 
-  const [traffic, geo, searches, unpriced, untranslated, products, rivals, offers, sites, published] = await Promise.all([
+  const [traffic, geo, searches, unpriced, untranslated, products, rivals, offers, sites, published, services] = await Promise.all([
     marketTraffic(store, period, now),
     sells ? geoReport(store, period) : null,
     searchesByMarket(store, period, { perMarket: MARKET_TERMS, minMisses: MIN_MISSES, demandTerms: DEMAND_TERMS }, now),
@@ -156,6 +158,8 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
     sells ? rivalOffers(store, mainLocale) : [],
     rivalSites(store.id, now),
     publishedSince(store, now),
+    // Rivals' service prices kept by hand (D905 M5d): Kaizena Flow's own prices are its plans, held against other platforms' on Platform → Plans.
+    house ? [] : listServicePrices(store, mainLocale),
   ]);
 
   const visitRows = new Map(traffic.byMarket.filter((r) => r.key !== "front_door").map((r) => [r.key, r]));
@@ -195,7 +199,7 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
       a.name.localeCompare(b.name),
   );
 
-  const facts: MarketCheckFacts = { markets, products, demand: searches.demand, rivalOffers: offers, rivalSites: sites, published };
+  const facts: MarketCheckFacts = { markets, products, demand: searches.demand, rivalOffers: offers, rivalSites: sites, published, rivalServices: services };
   return {
     ...facts,
     findings: marketFindings(facts, now),
@@ -210,5 +214,6 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
     rivals,
     offers,
     sites,
+    services,
   };
 }

@@ -16,10 +16,13 @@ import {
   rivalGone,
   pathShown,
   rivalMove,
+  serviceGap,
   siteGrowth,
   type RivalMove,
   type RivalOfferFacts,
+  type RivalServiceFacts,
   type RivalSiteFacts,
+  type ServicePer,
 } from "./market-rivals";
 import { englishMoney } from "./money";
 
@@ -79,25 +82,30 @@ export type MarketCheckFacts = {
   /** What changed on the rivals' sites (D905), and the pages and articles the store first published in `SITE_WINDOW_DAYS`. */
   rivalSites: RivalSiteFacts[];
   published: number;
+  /** The rivals' service prices kept by hand (D905 M5d), each with the store's own beside it. */
+  rivalServices: RivalServiceFacts[];
 };
 
 export type MarketFindingKind =
   | "weak_market"
   | "unmet_demand"
   | "rival_cheaper"
+  | "service_cheaper"
   | "rival_move"
   | "rival_site"
   | "untranslated"
   | "unpriced"
   | "rival_out"
   | "strong_market"
-  | "rival_dearer";
+  | "rival_dearer"
+  | "service_dearer";
 
 /** The order in which kinds take turns (`docs/market-check.md` 3.2): what to fix before what to grow, and what to keep last. */
 export const FINDING_KINDS: readonly MarketFindingKind[] = [
   "weak_market",
   "unmet_demand",
   "rival_cheaper",
+  "service_cheaper",
   "rival_move",
   "rival_site",
   "untranslated",
@@ -105,6 +113,7 @@ export const FINDING_KINDS: readonly MarketFindingKind[] = [
   "rival_out",
   "strong_market",
   "rival_dearer",
+  "service_dearer",
 ];
 
 /** A SWOT's four parts: two of the store itself, two of the market around it (`docs/market-check.md` 4). */
@@ -118,8 +127,10 @@ export const SWOT_PARTS: readonly SwotPart[] = ["strengths", "weaknesses", "oppo
 export const SWOT_OF: Record<MarketFindingKind, SwotPart> = {
   strong_market: "strengths",
   rival_dearer: "strengths",
+  service_dearer: "strengths",
   weak_market: "weaknesses",
   rival_cheaper: "weaknesses",
+  service_cheaper: "weaknesses",
   untranslated: "weaknesses",
   unpriced: "weaknesses",
   unmet_demand: "opportunities",
@@ -142,6 +153,8 @@ export const FIX_PATHS: Record<MarketFindingKind, string> = {
   unmet_demand: "/search",
   rival_cheaper: "/products",
   rival_dearer: "/products",
+  service_cheaper: "/pages",
+  service_dearer: "/pages",
   rival_out: "/marketing",
   rival_move: "/products",
   rival_site: "/pages",
@@ -196,6 +209,18 @@ export type MarketFinding =
   | { kind: "rival_out"; market: string; productName: string; rivalName: string; ownMinor: number; currency: string }
   /** A rival's move against the store since its page was read before (D900 M3): a lower price, cheaper shipping or longer returns. */
   | ({ kind: "rival_move"; market: string; productName: string; rivalName: string } & RivalMove)
+  /** A rival's published price for a service against the store's own for it (D905 M5d), at least a tenth apart either way. */
+  | {
+      kind: "service_cheaper" | "service_dearer";
+      market: string;
+      service: string;
+      rivalName: string;
+      rivalMinor: number;
+      ownMinor: number;
+      currency: string;
+      per: ServicePer;
+      gap: number;
+    }
   /** A rival's site that added pages faster than the store published its own (D905): how many in 30 days, where most are, and the store's. */
   | { kind: "rival_site"; market: string; rivalName: string; added: number; section: string | null; published: number }
   | { kind: "untranslated"; market: string; locale: string; products: number; of: number }
@@ -205,6 +230,7 @@ export type MarketFinding =
 export function findingId(f: MarketFinding): string {
   if (f.kind === "unmet_demand") return `${f.kind}:${f.term}`;
   if (f.kind === "rival_site") return `${f.kind}:${f.market}:${f.rivalName}`;
+  if (f.kind === "service_cheaper" || f.kind === "service_dearer") return `${f.kind}:${f.market}:${f.service}:${f.rivalName}`;
   if (f.kind === "rival_cheaper" || f.kind === "rival_dearer" || f.kind === "rival_out" || f.kind === "rival_move") return `${f.kind}:${f.market}:${f.productName}:${f.rivalName}`;
   return `${f.kind}:${f.market}`;
 }
@@ -216,6 +242,8 @@ function sizeOf(f: MarketFinding): number {
     case "strong_market":
     case "rival_cheaper":
     case "rival_dearer":
+    case "service_cheaper":
+    case "service_dearer":
       return f.gap;
     case "rival_out":
       return f.ownMinor;
@@ -278,6 +306,14 @@ export function marketFindings(facts: MarketCheckFacts, now: Date = new Date()):
     if (gap >= PRICE_GAP_MIN) all.push({ kind: "rival_cheaper", ...about, rivalMinor: o.priceMinor, currency: o.currency, gap });
     else if (gap <= -PRICE_GAP_MIN) all.push({ kind: "rival_dearer", ...about, rivalMinor: o.priceMinor, currency: o.currency, gap: -gap });
   }
+  // A rival's service price found on its page, against the store's own in the same currency (D905 M5d): at least PRICE_GAP_MIN apart.
+  for (const s of facts.rivalServices) {
+    const gap = serviceGap(s, now);
+    if (gap === null || !s.own) continue;
+    const about = { market: s.market, service: s.service, rivalName: s.rivalName, rivalMinor: s.priceMinor, ownMinor: s.own.priceMinor, currency: s.currency, per: s.per };
+    if (gap >= PRICE_GAP_MIN) all.push({ kind: "service_cheaper", ...about, gap });
+    else if (gap <= -PRICE_GAP_MIN) all.push({ kind: "service_dearer", ...about, gap: -gap });
+  }
   // A rival's site that grew faster than the store's own (D905): from a complete listing only.
   for (const site of facts.rivalSites) {
     const added = siteGrowth(site, facts.published);
@@ -318,6 +354,10 @@ export type FindingWords = {
   rival_out: string;
   rival_move: string;
   rival_site: string;
+  service_cheaper: string;
+  service_dearer: string;
+  /** A service price with what it is for: `{price} an hour`. */
+  servicePer: Record<ServicePer, string>;
   /** How `rival_site` says where most pages were added: `, most under {section}`. */
   rivalSiteUnder: string;
   rivalShipping: string;
@@ -376,6 +416,11 @@ export function findingText(
       if (f.move === "returns") return fillWords(words.rivalReturns, { ...said, before: formatCount(f.before), after: formatCount(f.after) });
       const at = (minor: number) => money(minor, f.currency ?? "");
       return fillWords(f.move === "price" ? words.rival_move : words.rivalShipping, { ...said, before: at(f.before), after: at(f.after) });
+    }
+    case "service_cheaper":
+    case "service_dearer": {
+      const at = (minor: number) => fillWords(words.servicePer[f.per], { price: money(minor, f.currency) });
+      return fillWords(words[f.kind], { rival: f.rivalName, service: quoted(f.service), market: nameOf(names, f.market), theirs: at(f.rivalMinor), yours: at(f.ownMinor), gap: formatPercent(f.gap, 0) });
     }
     case "rival_site":
       return fillWords(words.rival_site, {

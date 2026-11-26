@@ -1,6 +1,6 @@
 {
-  "id": "b74a0e50-2c7c-4721-a618-9d8af30be2a9",
-  "prevId": "ac02c7b6-bd1a-42a7-be01-2f9973b3d579",
+  "id": "3d2601ae-6b41-45d6-be99-fe2bc3692f25",
+  "prevId": "b74a0e50-2c7c-4721-a618-9d8af30be2a9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -81885,6 +81885,283 @@
         "rival_pages_section": {
           "name": "rival_pages_section",
           "value": "\"commerce\".\"rival_pages\".\"section\" is null or length(\"commerce\".\"rival_pages\".\"section\") <= 120"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "commerce.rival_service_prices": {
+      "name": "rival_service_prices",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rival_id": {
+          "name": "rival_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service": {
+          "name": "service",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_minor": {
+          "name": "price_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "per": {
+          "name": "per",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "own_minor": {
+          "name": "own_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checked_on": {
+          "name": "checked_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "on_page": {
+          "name": "on_page",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gone_at": {
+          "name": "gone_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "watched_at": {
+          "name": "watched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "rival_service_prices_store_rival_idx": {
+          "name": "rival_service_prices_store_rival_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "rival_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rival_service_prices_store_product_idx": {
+          "name": "rival_service_prices_store_product_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rival_service_prices_added_by_idx": {
+          "name": "rival_service_prices_added_by_idx",
+          "columns": [
+            {
+              "expression": "added_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rival_service_prices_checked_idx": {
+          "name": "rival_service_prices_checked_idx",
+          "columns": [
+            {
+              "expression": "checked_on",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rival_service_prices_store_id_stores_id_fk": {
+          "name": "rival_service_prices_store_id_stores_id_fk",
+          "tableFrom": "rival_service_prices",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rival_service_prices_added_by_accounts_id_fk": {
+          "name": "rival_service_prices_added_by_accounts_id_fk",
+          "tableFrom": "rival_service_prices",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "added_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "rival_service_prices_rival_fk": {
+          "name": "rival_service_prices_rival_fk",
+          "tableFrom": "rival_service_prices",
+          "tableTo": "market_rivals",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "rival_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rival_service_prices_product_fk": {
+          "name": "rival_service_prices_product_fk",
+          "tableFrom": "rival_service_prices",
+          "tableTo": "products",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "product_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rival_service_prices_key": {
+          "name": "rival_service_prices_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "rival_id",
+            "service",
+            "currency",
+            "per"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "rival_service_prices_service": {
+          "name": "rival_service_prices_service",
+          "value": "length(\"commerce\".\"rival_service_prices\".\"service\") between 1 and 120"
+        },
+        "rival_service_prices_amounts": {
+          "name": "rival_service_prices_amounts",
+          "value": "\"commerce\".\"rival_service_prices\".\"price_minor\" >= 0 and (\"commerce\".\"rival_service_prices\".\"own_minor\" is null or \"commerce\".\"rival_service_prices\".\"own_minor\" >= 0)"
+        },
+        "rival_service_prices_currency": {
+          "name": "rival_service_prices_currency",
+          "value": "\"commerce\".\"rival_service_prices\".\"currency\" ~ '^[A-Z]{3}$'"
+        },
+        "rival_service_prices_per": {
+          "name": "rival_service_prices_per",
+          "value": "\"commerce\".\"rival_service_prices\".\"per\" in ('once', 'hour', 'night', 'month')"
+        },
+        "rival_service_prices_source": {
+          "name": "rival_service_prices_source",
+          "value": "\"commerce\".\"rival_service_prices\".\"source\" ~ '^https://' and length(\"commerce\".\"rival_service_prices\".\"source\") <= 2000"
         }
       },
       "isRLSEnabled": true

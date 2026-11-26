@@ -16,6 +16,12 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.66 — 2026-11-26
+
+The MCP tool `list_rivals` gives each rival's published service prices the owner kept (D905 M5d, `service_prices`): the service, their
+price and what it is for, the store's own, the difference worked out in code, whether the price was found on its page and when it was
+checked, and the page.
+
 ## 1.65 — 2026-11-26
 
 The MCP tool `list_rivals` is every store's, with or without a shop (D905): for each rival it now gives what changed on its site, counted
