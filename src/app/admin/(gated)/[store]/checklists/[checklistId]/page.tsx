@@ -5,6 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActButton } from "@/components/admin/projects/act-button";
 import { DueCountdown } from "@/components/admin/projects/due-countdown";
 import { DuplicateButton } from "@/components/admin/projects/duplicate-button";
+import { RefreshWhile } from "@/components/admin/refresh-while";
 import { ChecklistView, type ViewEntry, type ViewItem } from "@/components/admin/projects/checklist-view";
 import { AdminLink, ButtonLink, PageHeader } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
@@ -17,10 +18,10 @@ import { costSummary, dueTarget } from "@/lib/projects-views";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { teamOf } from "@/server/projects";
 import { labelsOf } from "@/server/projects-labels";
-import { checklistDetail, listChecklists, type ChecklistItem } from "@/server/projects-lists";
+import { checklistDetail, listChecklists, listFingerprint, type ChecklistItem } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
 
-import { projectsAction } from "../../projects/actions";
+import { listStatusAction, projectsAction } from "../../projects/actions";
 
 export const metadata: Metadata = { title: "Checklist" };
 
@@ -38,11 +39,12 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const lang = adminLangOf(member.account.adminLocale);
   const w = PROJECTS_WORDS[lang];
   await ensureDefaultStatuses(store.id, w.defaults);
-  const [list, lists, team, labels] = await Promise.all([
+  const [list, lists, team, labels, drawnAs] = await Promise.all([
     checklistDetail(store.id, checklistId, member.account.id, store.timeZone),
     listChecklists(store.id),
     teamOf(store.id),
     labelsOf(store.id),
+    listFingerprint(store.id, checklistId),
   ]);
   if (!list) notFound();
   const canChange = memberCan(member, "projects:write");
@@ -85,6 +87,8 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
           </ButtonLink>
         }
       />
+      {/* A teammate's change appears within twenty seconds while the page is shown (P4.10). */}
+      <RefreshWhile seconds={20} status={listStatusAction.bind(null, store.slug, list.id)} drawn={drawnAs ?? undefined} />
       {list.description && <p className="max-w-prose text-body text-ink-2">{list.description}</p>}
       {costs.map((c) => (
         <p key={c.currency} className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted tabular-nums">

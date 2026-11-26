@@ -230,10 +230,10 @@ Status: Planned, Building, Done (date and commit).
 | P4.7 | A customer on an item (Life's contacts) | Planned |
 | P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 (87d9db8) |
 | P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 (a190512) |
-| P4.10 | A light refresh while a list is open, for a team working together | Planned |
+| P4.10 | A light refresh while a list is open, for a team working together | Done, 26 Nov 2026 |
 | P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 (50c0dbf) |
 | P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Done, 26 Nov 2026 (7fd75cc) |
-| P4.13 | Calendar and Timeline views of a project (its tasks by due day; start to due as bars) | Done, 26 Nov 2026 |
+| P4.13 | Calendar and Timeline views of a project (its tasks by due day; start to due as bars) | Done, 26 Nov 2026 (ab702af) |
 
 ### P5: the AI manager and events
 
@@ -368,3 +368,10 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   month is in the address). **Timeline**: a bar from each task's start (or its due day) to its due day in its stage's colour, cut to the
   month, the earliest first. Both drawn on the server (`project-calendar.tsx`, `monthWeeks()`, `timelineBar()`), no browser script and no
   class the stylesheet lacked.
+
+## As built: step P4.10 (26 November 2026)
+
+- **Light refresh**: a list's page asks every twenty seconds, while it is shown, for the list's fingerprint (`listFingerprint()`: how many
+  tasks, sections, subtasks and comments it has and when each last changed, one statement) through `listStatusAction`, and is drawn again
+  only when it changed (`RefreshWhile`, as the scans' pages do). A hidden tab asks nothing and looks once when shown again. What a person is
+  typing or has open stays, since a redraw keeps the page's own state.

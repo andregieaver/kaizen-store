@@ -362,6 +362,30 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
 
 const sortOf = (e: ChecklistEntry): number => (e.kind === "section" ? e.section.sortOrder : e.item.sortOrder);
 
+/**
+ * What a list's page was drawn from, in a few characters (P4.10): when any of its tasks, sections, subtasks or comments last changed, and
+ * how many there are. Its page asks every twenty seconds while it is shown and is drawn again only when this changed, so a teammate's
+ * change appears without a reload. Null when the list is not the store's.
+ */
+export async function listFingerprint(storeId: string, checklistId: string): Promise<string | null> {
+  const row = await typedRow(
+    z.object({ found: col.bool, mark: col.textOrNull }),
+    sql`
+      select exists (select 1 from commerce.checklists where store_id = ${storeId}::uuid and id = ${checklistId}::uuid) as found,
+        concat_ws(':',
+          (select count(*) || '/' || coalesce(max(updated_at)::text, '') from commerce.checklist_items where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid),
+          (select count(*) || '/' || coalesce(max(updated_at)::text, '') from commerce.checklist_sections where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid),
+          (select count(*) || '/' || coalesce(max(s.updated_at)::text, '') from commerce.checklist_subtasks s
+            join commerce.checklist_items i on i.store_id = s.store_id and i.id = s.item_id where s.store_id = ${storeId}::uuid and i.checklist_id = ${checklistId}::uuid),
+          (select count(*) || '/' || coalesce(max(greatest(c.created_at, c.edited_at))::text, '') from commerce.checklist_item_comments c
+            join commerce.checklist_items i on i.store_id = c.store_id and i.id = c.item_id where c.store_id = ${storeId}::uuid and i.checklist_id = ${checklistId}::uuid),
+          (select updated_at::text from commerce.checklists where store_id = ${storeId}::uuid and id = ${checklistId}::uuid)
+        ) as mark
+    `,
+  );
+  return row?.found ? row.mark : null;
+}
+
 /** An open task as the store's All tasks view shows it (P4.8, Life's *All items*): with its list and what that list uses. */
 export type OpenTask = {
   id: string;

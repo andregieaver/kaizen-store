@@ -346,6 +346,21 @@ describe("every open task (P4.8)", () => {
   });
 });
 
+describe("a list's fingerprint (P4.10)", () => {
+  it("changes when a teammate ticks, comments or adds, and is no one else's", async () => {
+    const { id } = ok(await lists.createChecklist(store.member, { title: "Shared" }));
+    const { id: task } = ok(await items.addItem(store.member, id, { title: "Hang the sign" }));
+    const first = await lists.listFingerprint(store.storeId, id);
+    expect(first).toEqual(expect.any(String));
+    ok(await items.setItemDone(store.member, task, true));
+    const ticked = await lists.listFingerprint(store.storeId, id);
+    expect(ticked).not.toBe(first);
+    ok(await comments.addComment(store.member, task, "Hung, a bit crooked."));
+    expect(await lists.listFingerprint(store.storeId, id)).not.toBe(ticked);
+    expect(await lists.listFingerprint(other.storeId, id)).toBeNull();
+  });
+});
+
 describe("a template (P4.12)", () => {
   it("is kept apart, has no tasks to do, and its copy is an ordinary open list", async () => {
     const { id } = ok(await lists.createChecklist(store.member, { title: "Opening a pop-up" }));

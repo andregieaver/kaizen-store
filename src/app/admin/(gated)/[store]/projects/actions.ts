@@ -14,7 +14,7 @@ import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
 import { createProject, linkChecklist, updateProject } from "@/server/projects";
 import type { ProjectsResult } from "@/server/projects-errors";
-import { createChecklist, duplicateChecklist, updateChecklist } from "@/server/projects-lists";
+import { createChecklist, duplicateChecklist, listFingerprint, updateChecklist } from "@/server/projects-lists";
 import { runProjectsOp } from "@/server/projects-ops";
 import { storeAction } from "@/server/store-action";
 
@@ -51,6 +51,13 @@ export async function projectsAction(store: string, raw: ProjectsOpInput): Promi
   });
 }
 
+
+/** A list's fingerprint for its page's light refresh (P4.10): read by anyone who may read projects; null when it cannot be read. */
+export async function listStatusAction(store: string, checklistId: string): Promise<string | null> {
+  return storeAction({ store, key: "projects:read", action: "projects.listStatus", answer: (): string | null => null }, async (member): Promise<string | null> =>
+    featureOn(member.store, "projects") ? listFingerprint(member.store.id, checklistId) : null,
+  );
+}
 
 function formAnswer(w: ProjectsMessages, result: Extract<ProjectsResult, { ok: false }>): FormState {
   const fields = Object.fromEntries((result.fields ?? []).filter((f) => f in w.fieldProblems).map((f) => [f, w.fieldProblems[f as keyof ProjectsMessages["fieldProblems"]]]));
