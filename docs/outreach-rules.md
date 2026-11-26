@@ -105,9 +105,29 @@ From the reading above, before the lawyer's view:
    controller of the prospect data, the store or Kaizena Flow, and what agreement does that need?
 6. Which countries should be read next, after the six above?
 
-## 6. The lawyer's view
+## 6. The owner's positions, and the lawyer's view still to come
 
-*To be written in, with the date, for each row of section 3 and each question in section 5.*
+**The owner's positions (26 November 2026, Legal reviews, every point).** Written by the owner, not a lawyer; each says *subject to legal
+confirmation*. In code as `src/lib/outreach-rules.ts` (D906), where no row lets anything be sent until a lawyer's reading is recorded.
+
+| Point | The owner's position |
+|---|---|
+| Norway | Allowed to a verified general enquiry address, one to one, relevant to the company, the sender named, a free way to stop. Named employees, sole traders and other natural persons excluded. *The view's last line names Sweden; read as Norway, as the rest of it and section 3 say. The owner confirms.* |
+| Sweden | The same as Norway. |
+| Denmark | Consent first. No cold email to any Danish business, general addresses included, and never a first email to ask for consent. |
+| Finland | Allowed to verified legal entities that have not refused such marketing, the sender named, an easy free way to stop. Sole traders and addresses naming a person excluded. |
+| Germany | Consent first. A published or general address is not consent. |
+| France | Allowed when the email is about the recipient's professional activity, the sender named, the source and purpose said, a free way to stop. General addresses preferred; named employees excluded unless reviewed. |
+| Q1, the first email | The sender, the company and the purpose said; where the address came from; the GDPR art. 14 notice where it applies; a free, working way to say no; no deceptive subject, false personalisation or implied relationship; relevant to the company; approved by the owner one by one. The country rule is combined with what the recipient and the address are. |
+| Q2, sole traders | Left out by default: Norway's ENK, Sweden's enskild firma and their kind elsewhere, until a country's rules are read for them. |
+| Q3, legitimate interest | Possible for limited B2B prospecting with a balancing test per campaign. 90 days after the last unanswered contact is the most, not the default; delete sooner, keeping only what stops a new contact. |
+| Q4, the shared list | Supported: the least data, keyed hashes, used for nothing but stopping contact, a no lifted only by the recipient's documented basis. Its basis, retention, notice and controller to be documented. |
+| Q5, controllers | Kaizena Flow controls its own prospecting; a store using the tool is generally the controller with Kaizena Flow its processor (an art. 28 agreement); Kaizena Flow may control the shared list alone. Advice asked on the arrangements. |
+| Q6, the next countries | United Kingdom, Netherlands, Ireland, Belgium, Austria, Spain, Italy, Poland, Portugal, Switzerland (the UK and Switzerland outside the EU and EEA). Until read, consent first. |
+| Overall | A gate before an email is written and again before it is sent; the recipient's kind and the address's kind, not the country alone; a record of every check and decision; no deceptive or falsely personal AI text; no tracking pixel; no country not read; no way round the rules through another store, domain, campaign or account. Sending stays off until the rules, controller roles, privacy documents, suppression procedures and safeguards are approved. |
+
+**The lawyer's view.** *Still to be written in, with the date, for each row of section 3 and each question in section 5, in Legal reviews by an
+account with the Legal role.*
 
 ## Sources read
 

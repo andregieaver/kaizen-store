@@ -15,6 +15,12 @@ export const prospectsEn = {
   country: "Country",
   countries: { NO: "Norway", FI: "Finland" },
   finland: "Finland's register has no headcount, and searches one industry and one town at a time. Its total counts companies that have ceased; those are left out of the list.",
+  standing: {
+    allowed_with_opt_out: "In {country}, a company's general address may be written to, one at a time, with a way to say no.",
+    consent_first: "In {country}, companies are written to only with their consent.",
+    not_at_all: "In {country}, companies are not written to by email.",
+  },
+  standingUnread: "Nothing is sent until a lawyer has confirmed it.",
   industries: "Industry codes",
   industriesHelp: "SN2025 divisions or groups, separated by commas, such as 56.1 or 47.",
   places: "Places",

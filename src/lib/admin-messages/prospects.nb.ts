@@ -14,6 +14,12 @@ export const prospectsNb: ProspectsMessages = {
   country: "Land",
   countries: { NO: "Norge", FI: "Finland" },
   finland: "Finlands register har ikke antall ansatte, og søker i én bransje og én by om gangen. Totalen teller med bedrifter som er avviklet; de er tatt ut av lista.",
+  standing: {
+    allowed_with_opt_out: "I {country} kan en bedrifts generelle adresse få e-post, én om gangen, med en enkel måte å si nei på.",
+    consent_first: "I {country} får bedrifter e-post bare med samtykke.",
+    not_at_all: "I {country} får bedrifter ikke e-post.",
+  },
+  standingUnread: "Ingenting sendes før en jurist har bekreftet det.",
   industries: "Næringskoder",
   industriesHelp: "SN2025-næringer eller -grupper, skilt med komma, for eksempel 56.1 eller 47.",
   places: "Steder",
