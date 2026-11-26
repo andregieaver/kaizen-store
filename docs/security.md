@@ -206,6 +206,7 @@ on to the consent page `/admin/oauth/authorize` (the admin's gate, never framed)
 |---|---|---|
 | `/api/ab` | a visitor's browser (A/B test assignment, D148) | `sameSite()`, budget `ab` |
 | `/api/admin` | an owner's tools (the Admin API, D355), and apps in design tools (the Figma plugin, D898 F1) | a scoped token (`apiCaller()`), budget, idempotency keys (2.9); any origin may call it, as only the `Authorization` header is read, never a cookie; `v1/openapi.json` is the public contract (D438), no data |
+| `/api/admin-use` | a signed-in store owner's own browser, after they chose heatmaps of their own use (D895 phase 3b) | `sameSite()`, signed in, the switch open (a Legal account answered every question and the owner signed), their latest choice under the current notice read again, owners only (never staff or a platform admin), a screen on the allow-list (`admin-screens.ts`); `heat`: totals per screen key and day, no person, store or address |
 | `/api/ads` | a visitor's browser (ad click ids, D303) | `sameSite()` |
 | `/api/auth` | a shopper signing in with Google (D375) | `sameSite()`, Google's signed answer and a state cookie |
 | `/api/blog` | a visitor commenting (D341) | `sameSite()`; a comment has a status (pending, approved, rejected, spam) the owner moderates |

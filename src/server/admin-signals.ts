@@ -62,7 +62,7 @@ export async function closeAdminSignals(accountId: string): Promise<void> {
 
 /**
  * Whether this person may be asked, and what they chose: the switch open, the person a store's owner and not a platform admin. `choice` is
- * null until they answer.
+ * null until they answer under the current notice (a new notice asks again, and nothing is collected meanwhile).
  */
 export async function adminSignalsFor(accountId: string): Promise<{ eligible: boolean; choice: AdminSignalChoice | null }> {
   const row = await typedRow(
@@ -74,7 +74,7 @@ export async function adminSignalsFor(accountId: string): Promise<{ eligible: bo
              c.heatmaps, c.recordings
       from commerce.accounts a
       left join lateral (
-        select heatmaps, recordings from commerce.platform_admin_signal_choices where account_id = a.id order by chosen_at desc, id desc limit 1
+        select heatmaps, recordings from commerce.platform_admin_signal_choices where account_id = a.id and notice = ${ADMIN_USE_NOTICE} order by chosen_at desc, id desc limit 1
       ) c on true
       where a.id = ${accountId}::uuid and a.disabled_at is null
     `,

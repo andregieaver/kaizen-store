@@ -12,6 +12,7 @@ import { HEAT_ENDPOINT, heatBody, IDLE_MS, MIN_VIEW_MS, TICK_MS, type HeatClick,
 
 type View = {
   store: string;
+  endpoint: string;
   path: string;
   device: HeatDevice;
   startedAt: number;
@@ -90,12 +91,16 @@ export const openViewPath = () => view?.path ?? null;
 /** How long ago the open view started, in ms. */
 export const viewAge = () => (view ? now() - view.startedAt : 0);
 
-/** Starts a view of the page now on screen. */
-export function startView(store: string, device: HeatDevice): void {
+/**
+ * Starts a view of the page now on screen. The admin's collector (D895 phase 3b) passes its own endpoint and the screen's key as the path,
+ * so no address of the admin leaves the browser.
+ */
+export function startView(store: string, device: HeatDevice, at: { endpoint?: string; path?: string } = {}): void {
   const t = now();
   view = {
     store,
-    path: location.pathname,
+    endpoint: at.endpoint ?? HEAT_ENDPOINT,
+    path: at.path ?? location.pathname,
     device,
     startedAt: t,
     visibleMs: 0,
@@ -165,7 +170,7 @@ export function summarise(): boolean {
   });
   let ok = false;
   try {
-    ok = navigator.sendBeacon(HEAT_ENDPOINT, new Blob([JSON.stringify(body)], { type: "text/plain" }));
+    ok = navigator.sendBeacon(v.endpoint, new Blob([JSON.stringify(body)], { type: "text/plain" }));
   } catch {
     ok = false;
   }

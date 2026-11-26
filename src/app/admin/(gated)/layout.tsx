@@ -9,6 +9,7 @@ import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text"
 import { adminLangOf } from "@/lib/admin-lang";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { AdminServiceWorker } from "@/components/admin/admin-service-worker";
+import { AdminUseSignals } from "@/components/admin/admin-use-signals";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 import { log } from "@/server/log";
 import { renderCount, renderFields } from "@/server/render-count";
@@ -55,6 +56,8 @@ async function Gate({ children }: { children: React.ReactNode }) {
         <AdminSchemeSync saved={account.adminScheme ?? "meadow"} />
         <AdminLangSync lang={lang} />
         <AdminServiceWorker />
+        {/* Heatmaps of an owner's own use of the admin (D895 phase 3b): loads nothing unless their choice cookie allows it. */}
+        {!account.platformAdmin && <AdminUseSignals />}
         {children}
       </div>
     </AdminTextProvider>

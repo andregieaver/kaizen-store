@@ -1,6 +1,6 @@
 {
-  "id": "b74a0e50-2c7c-4721-a618-9d8af30be2a9",
-  "prevId": "ac02c7b6-bd1a-42a7-be01-2f9973b3d579",
+  "id": "0609b50e-2bf3-447a-928c-4c74a755605b",
+  "prevId": "b74a0e50-2c7c-4721-a618-9d8af30be2a9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -64335,6 +64335,237 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.platform_admin_click_cells": {
+      "name": "platform_admin_click_cells",
+      "schema": "commerce",
+      "columns": {
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "screen": {
+          "name": "screen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "device": {
+          "name": "device",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "anchor": {
+          "name": "anchor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cx": {
+          "name": "cx",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cy": {
+          "name": "cy",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clicks": {
+          "name": "clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dead": {
+          "name": "dead",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "rage": {
+          "name": "rage",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "platform_admin_click_cells_day_screen_device_anchor_cx_cy_pk": {
+          "name": "platform_admin_click_cells_day_screen_device_anchor_cx_cy_pk",
+          "columns": [
+            "day",
+            "screen",
+            "device",
+            "anchor",
+            "cx",
+            "cy"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_admin_click_cells_screen": {
+          "name": "platform_admin_click_cells_screen",
+          "value": "\"commerce\".\"platform_admin_click_cells\".\"screen\" ~ '^(s|a)(/[a-z0-9-]{1,30}){0,2}$'"
+        },
+        "platform_admin_click_cells_device": {
+          "name": "platform_admin_click_cells_device",
+          "value": "\"commerce\".\"platform_admin_click_cells\".\"device\" in ('mobile', 'tablet', 'desktop')"
+        },
+        "platform_admin_click_cells_anchor": {
+          "name": "platform_admin_click_cells_anchor",
+          "value": "char_length(\"commerce\".\"platform_admin_click_cells\".\"anchor\") between 1 and 60"
+        },
+        "platform_admin_click_cells_cell": {
+          "name": "platform_admin_click_cells_cell",
+          "value": "\"commerce\".\"platform_admin_click_cells\".\"cx\" between 0 and 9 and \"commerce\".\"platform_admin_click_cells\".\"cy\" between 0 and 9"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "commerce.platform_admin_heat_days": {
+      "name": "platform_admin_heat_days",
+      "schema": "commerce",
+      "columns": {
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "screen": {
+          "name": "screen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "device": {
+          "name": "device",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "views": {
+          "name": "views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reach": {
+          "name": "reach",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fold_sum": {
+          "name": "fold_sum",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "attention_ms": {
+          "name": "attention_ms",
+          "type": "bigint[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "att_height_sum": {
+          "name": "att_height_sum",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "clicks": {
+          "name": "clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dead_clicks": {
+          "name": "dead_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "rage_clicks": {
+          "name": "rage_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dead_views": {
+          "name": "dead_views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "rage_views": {
+          "name": "rage_views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "frustrated_views": {
+          "name": "frustrated_views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "platform_admin_heat_days_day_screen_device_pk": {
+          "name": "platform_admin_heat_days_day_screen_device_pk",
+          "columns": [
+            "day",
+            "screen",
+            "device"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_admin_heat_days_screen": {
+          "name": "platform_admin_heat_days_screen",
+          "value": "\"commerce\".\"platform_admin_heat_days\".\"screen\" ~ '^(s|a)(/[a-z0-9-]{1,30}){0,2}$'"
+        },
+        "platform_admin_heat_days_device": {
+          "name": "platform_admin_heat_days_device",
+          "value": "\"commerce\".\"platform_admin_heat_days\".\"device\" in ('mobile', 'tablet', 'desktop')"
+        },
+        "platform_admin_heat_days_arrays": {
+          "name": "platform_admin_heat_days_arrays",
+          "value": "cardinality(\"commerce\".\"platform_admin_heat_days\".\"reach\") = 21 and cardinality(\"commerce\".\"platform_admin_heat_days\".\"attention_ms\") = 20"
+        },
+        "platform_admin_heat_days_counts": {
+          "name": "platform_admin_heat_days_counts",
+          "value": "\"commerce\".\"platform_admin_heat_days\".\"views\" >= 0 and \"commerce\".\"platform_admin_heat_days\".\"clicks\" >= 0 and \"commerce\".\"platform_admin_heat_days\".\"dead_clicks\" >= 0 and \"commerce\".\"platform_admin_heat_days\".\"rage_clicks\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.platform_admin_signal_choices": {
       "name": "platform_admin_signal_choices",

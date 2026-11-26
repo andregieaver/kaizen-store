@@ -9106,4 +9106,20 @@ describe("an owner's choices about heatmaps and recordings of the admin (D895 ph
     await insert(false, false);
     expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.platform_admin_signal_choices'::regclass")).on).toBe(true);
   });
+
+  it("keeps admin heat totals only under a screen key, never a store's address, and closed to the Data API", async () => {
+    const zeros = (n: number) => `{${new Array(n).fill(0).join(",")}}`;
+    const day = (screen: string) =>
+      db.query("insert into commerce.platform_admin_heat_days (day, screen, device, reach, attention_ms) values ('2026-11-26', $1, 'desktop', $2, $3)", [screen, zeros(21), zeros(20)]);
+    await day("s/products/detail");
+    await day("a");
+    for (const screen of ["/admin/my-shop/products", "s/products/detail/more", "x/products", "S/Products"]) await expect(day(screen), screen).rejects.toThrow(/platform_admin_heat_days_screen/);
+    const cell = (anchor: string, cx: number) =>
+      db.query("insert into commerce.platform_admin_click_cells (day, screen, device, anchor, cx, cy) values ('2026-11-26', 's', 'desktop', $1, $2, 0)", [anchor, cx]);
+    await cell("@main", 9);
+    await expect(cell("@main", 10)).rejects.toThrow(/platform_admin_click_cells_cell/);
+    for (const table of ["platform_admin_heat_days", "platform_admin_click_cells"]) {
+      expect((await one<{ on: boolean }>(`select relrowsecurity as on from pg_class where oid = 'commerce.${table}'::regclass`)).on).toBe(true);
+    }
+  });
 });

@@ -723,7 +723,8 @@ under *What the router fetches ahead*.
   `incidents` scope (`incident-api.ts`) and follows `docs/runbooks/incident-autopilot.md`. Sources inside the app (`alertFailingJob()`,
   `runWatchdog()`, `runStatusChecks()`) name a fingerprint with `fingerprintOf()`, never a person's data. Admin heatmaps and recordings
   are built locked (`admin-signals.ts`): the switch opens only once a Legal account has answered every question of the review `admin-use`
-  and the owner confirms the signed assessment; only a store's owner is asked, about their own use; each choice is a kept row.
+  and the owner confirms the signed assessment; only a store's owner is asked, about their own use; each choice is a kept row. Heatmaps (`admin-heat.ts`, `/api/admin-use/heat`) keep
+  daily totals per screen key, only for screens on `admin-screens.ts`'s allow-list, reusing the storefront heatmaps' engine.
 
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 

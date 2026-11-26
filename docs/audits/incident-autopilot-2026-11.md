@@ -342,7 +342,9 @@ These are the owner's to write (legal texts are never written by a model, D656 s
       admin*). Left: the owner's acceptance and notice paragraph, the lawyer's answers.
 - [ ] **IA-15** (phase 3b, built locked: the owner's choice of 26 November 2026) Admin heatmaps and recordings. First part done 26
       November 2026: the lock (`admin-signals.ts`: open only once a Legal account has answered every question and the owner confirms the
-      signed assessment), owners only and their own use, the notice at the ask, the consent records. Left: the collectors, the viewer.
+      signed assessment), owners only and their own use, the notice at the ask, the consent records (`e5263596`). Heatmaps done 26
+      November 2026: `admin-screens.ts` (allow-list, default deny, keys without store or id), `admin-heat.ts` on the stores' heat engine,
+      `/api/admin-use/heat`, totals 13 months, cells 90 days. Left: recordings (all text masked, 30 days), the viewer.
       Original scope: the choice (asked once, in account settings after), the masking and blocked screens with a
       scan test like `marks.test.ts` for admin screens, the platform tables and bucket, the 30 days, Platform → Analytics → Admin use with
       its viewing log; signed-in e2e; screenshots to the owner.

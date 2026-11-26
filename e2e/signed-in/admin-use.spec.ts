@@ -15,6 +15,8 @@ test.beforeAll(async () => {
   const sql = testDb();
   try {
     await sql`update commerce.platform_settings set admin_signals_open = true`;
+    await sql`delete from commerce.platform_admin_heat_days`;
+    await sql`delete from commerce.platform_admin_click_cells`;
     await sql`delete from commerce.platform_admin_signal_choices where account_id in (select id from commerce.accounts where email in (${OWNER.email}, ${READER.email}))`;
   } finally {
     await sql.end();
@@ -51,6 +53,37 @@ test.describe("the owner", () => {
     const section = page.getByRole("region", { name: "Help us make the admin easier" });
     await expect(section.getByLabel(/Allow heatmaps/)).toBeChecked();
     await expect(section.getByLabel(/Also allow recordings/)).not.toBeChecked();
+  });
+
+  test("their screen views reach the admin heatmaps' totals under the screen's key, never the store's address", async ({ page, baseURL }) => {
+    // The first test chose heatmaps; its browser cookie is set again here, as the choice left it (each test has its own browser).
+    await page.context().addCookies([{ name: "kz_admin_use", value: "h", url: new URL("/admin", baseURL).toString() }]);
+    await page.goto(`/admin/${E2E_STORE}/products`);
+    await expect(page.getByRole("main")).toBeVisible();
+    await page.mouse.click(400, 400);
+    await page.waitForTimeout(1500);
+    // Leaving the screen ends its view and sends its summary.
+    await page.goto(`/admin/${E2E_STORE}/orders`);
+    await expect
+      .poll(
+        async () => {
+          const sql = testDb();
+          try {
+            return (await sql`select screen, views from commerce.platform_admin_heat_days where screen like 's%' order by screen`).map((r) => `${r.screen}:${r.views}`);
+          } finally {
+            await sql.end();
+          }
+        },
+        { timeout: 10_000 },
+      )
+      .toContain("s/products:1");
+    const sql = testDb();
+    try {
+      // The orders screen is never measured, and no row names the store.
+      expect((await sql`select count(*)::int as n from commerce.platform_admin_heat_days where screen like '%orders%' or screen like ${`%${E2E_STORE}%`}`)[0].n).toBe(0);
+    } finally {
+      await sql.end();
+    }
   });
 });
 
