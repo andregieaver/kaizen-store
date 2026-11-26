@@ -283,6 +283,13 @@ export const TOPIC_EXTENSIONS: Readonly<Record<string, ExtensionId>> = {
   "activity.done": "deals",
   "lead.dismissed": "deals",
   "lead.deal_made": "deals",
+  // D903 P5.2: Projects' events, offered while the account has Projects.
+  "project.created": "projects",
+  "project.status_changed": "projects",
+  "checklist.created": "projects",
+  "task.created": "projects",
+  "task.assigned": "projects",
+  "task.done": "projects",
 };
 
 /** The topic is offered to the store: the shop's own, or its extension works for the store's account. */

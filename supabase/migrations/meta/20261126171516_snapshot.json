@@ -1,6 +1,6 @@
 {
-  "id": "9bfc949b-df39-436f-ba73-7bd6e131c523",
-  "prevId": "36b5659b-1f62-4cad-b25d-40a14fb12c02",
+  "id": "0e79f0df-647e-4b89-871a-076297434365",
+  "prevId": "b2327571-e474-40a0-b0ff-708af526d830",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -90111,6 +90111,31 @@
           "primaryKey": false,
           "notNull": false
         },
+        "scheduled_for": {
+          "name": "scheduled_for",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_by": {
+          "name": "scheduled_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publish_tries": {
+          "name": "publish_tries",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_try_at": {
+          "name": "next_try_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -90190,6 +90215,37 @@
           "isUnique": false,
           "with": {},
           "method": "btree",
+          "concurrently": false
+        },
+        "social_posts_scheduled_by_idx": {
+          "name": "social_posts_scheduled_by_idx",
+          "columns": [
+            {
+              "expression": "scheduled_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "social_posts_due_idx": {
+          "name": "social_posts_due_idx",
+          "columns": [
+            {
+              "expression": "scheduled_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"social_posts\".\"scheduled_for\" is not null and \"commerce\".\"social_posts\".\"published_at\" is null",
           "concurrently": false
         },
         "social_posts_approved_by_idx": {
@@ -90420,6 +90476,20 @@
           "tableFrom": "social_posts",
           "columnsFrom": [
             "published_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "social_posts_scheduled_by_accounts_id_fk": {
+          "name": "social_posts_scheduled_by_accounts_id_fk",
+          "tableFrom": "social_posts",
+          "columnsFrom": [
+            "scheduled_by"
           ],
           "tableTo": "accounts",
           "schemaTo": "commerce",
@@ -112207,7 +112277,7 @@
         },
         "workflows_trigger": {
           "name": "workflows_trigger",
-          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'form.response', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'email.bounced', 'email.complained', 'broadcast.sent', 'marketing.paused', 'activity.created', 'activity.done', 'lead.dismissed', 'lead.deal_made', 'domain.failing', 'domain.recovered', 'schedule')"
+          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'form.response', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'email.bounced', 'email.complained', 'broadcast.sent', 'marketing.paused', 'activity.created', 'activity.done', 'lead.dismissed', 'lead.deal_made', 'domain.failing', 'domain.recovered', 'project.created', 'project.status_changed', 'checklist.created', 'task.created', 'task.assigned', 'task.done', 'schedule')"
         },
         "workflows_on_when_tested": {
           "name": "workflows_on_when_tested",

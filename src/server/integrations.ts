@@ -16,6 +16,7 @@ import {
 import { storeZoneOf } from "@/lib/dates";
 import { mainCurrency } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
+import { CHECKLIST_STATES, PRIORITIES, PROJECT_HEALTHS, PROJECT_STATUSES } from "@/lib/projects-model";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 import { escapeSlack, slackMessage } from "@/lib/slack";
@@ -455,7 +456,101 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const domain = await domainData(store.id, store.slug, subjectId);
     return domain && { domain };
   }
+  // Projects (D903 P5.2).
+  if (event.startsWith("project.")) {
+    const project = await projectData(store.id, store.slug, subjectId);
+    return project && { project };
+  }
+  if (event.startsWith("checklist.")) {
+    const checklist = await checklistData(store.id, store.slug, subjectId);
+    return checklist && { checklist };
+  }
+  if (event.startsWith("task.")) {
+    const task = await taskData(store.id, store.slug, subjectId);
+    return task && { task };
+  }
   return null;
+}
+
+/** A project (D903 P5.2, `project.*`): its name, status, health and target, how many lists it has, and the deal it came from. */
+async function projectData(storeId: string, storeSlug: string, projectId: string): Promise<WebhookSubject<"project"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      name: col.text,
+      status: z.enum(PROJECT_STATUSES),
+      health: z.enum(PROJECT_HEALTHS),
+      target_date: col.textOrNull,
+      deal_id: col.uuid.nullable(),
+      lists: col.int,
+      created_at: col.timestamp,
+    }),
+    sql`
+      select p.id, p.name, p.status, p.health, p.target_date::text as target_date, p.deal_id, p.created_at,
+        (select count(*) from commerce.project_checklists pc where pc.store_id = p.store_id and pc.project_id = p.id)::int as lists
+      from commerce.projects p where p.store_id = ${storeId}::uuid and p.id = ${projectId}::uuid
+    `,
+  );
+  return row && { ...row, admin_url: `${siteUrl()}/admin/${storeSlug}/projects/${row.id}` };
+}
+
+/** A checklist (D903 P5.2, `checklist.*`): its title, state, home project, person and due time, and how many of its tasks are open and done. */
+async function checklistData(storeId: string, storeSlug: string, checklistId: string): Promise<WebhookSubject<"checklist"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      title: col.text,
+      status: z.enum(CHECKLIST_STATES),
+      project_id: col.uuid.nullable(),
+      assignee_id: col.uuid.nullable(),
+      due_at: col.timestampOrNull,
+      open_tasks: col.int,
+      done_tasks: col.int,
+      created_at: col.timestamp,
+    }),
+    sql`
+      select c.id, c.title, c.status, c.primary_project_id as project_id, c.assigned_to as assignee_id, c.due_at, c.created_at,
+        (select count(*) from commerce.checklist_items i where i.store_id = c.store_id and i.checklist_id = c.id and i.archived_at is null and i.done_at is null)::int as open_tasks,
+        (select count(*) from commerce.checklist_items i where i.store_id = c.store_id and i.checklist_id = c.id and i.archived_at is null and i.done_at is not null)::int as done_tasks
+      from commerce.checklists c where c.store_id = ${storeId}::uuid and c.id = ${checklistId}::uuid
+    `,
+  );
+  return row && { ...row, admin_url: `${siteUrl()}/admin/${storeSlug}/checklists/${row.id}` };
+}
+
+/** A task (D903 P5.2, `task.*`): its title, list and project, whose it is and who gave it, when it is due, and whether it is done. Never its notes. */
+async function taskData(storeId: string, storeSlug: string, itemId: string): Promise<WebhookSubject<"task"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      title: col.text,
+      list_id: col.uuid,
+      list_title: col.text,
+      project_id: col.uuid.nullable(),
+      assignee_id: col.uuid.nullable(),
+      assigned_by: col.uuid.nullable(),
+      priority: z.enum(PRIORITIES).nullable(),
+      due_at: col.timestampOrNull,
+      all_day: col.bool,
+      repeats: col.bool,
+      done_at: col.timestampOrNull,
+      created_at: col.timestamp,
+    }),
+    sql`
+      select i.id, i.title, c.id as list_id, c.title as list_title, c.primary_project_id as project_id, i.assigned_to as assignee_id,
+        i.assigned_by, i.priority, i.due_at, coalesce(i.all_day, false) as all_day, i.recurrence is not null as repeats, i.done_at, i.created_at
+      from commerce.checklist_items i join commerce.checklists c on c.store_id = i.store_id and c.id = i.checklist_id
+      where i.store_id = ${storeId}::uuid and i.id = ${itemId}::uuid
+    `,
+  );
+  if (!row) return null;
+  const { list_id, list_title, ...task } = row;
+  return {
+    ...task,
+    status: task.done_at ? "done" : "open",
+    list: { id: list_id, title: list_title },
+    admin_url: `${siteUrl()}/admin/${storeSlug}/checklists/${list_id}`,
+  };
 }
 
 /**

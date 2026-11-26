@@ -928,6 +928,15 @@ export const notificationsEn = {
       "domain.serving": "What the domain watch found",
       "domain.primary": "The store's main address (yes or no)",
       "domain.hostname": "Domain",
+      // Projects (D903 P5.2).
+      "project.name": "Project name",
+      "project.status": "Project status",
+      "project.health": "Project health",
+      "checklist.title": "Checklist title",
+      "task.title": "Task",
+      "task.list.title": "Task's checklist",
+      "task.priority": "Task priority",
+      "task.repeats": "A repeating task (yes or no)",
       // Kaizena Flow's own events (D516).
       "request.store_name": "Store asked for",
       "request.language": "Language of the request",
@@ -965,6 +974,10 @@ export const notificationsEn = {
       "activity.kind": { call: "A call", meeting: "A meeting", task: "A task" },
       "lead.requests.kind": { quote: "A quote", question: "A question", chat: "A chat", subscriber: "Joining the email list" },
       "domain.serving": { ok: "It reaches the store", certificate: "Its certificate fails", elsewhere: "It points elsewhere" },
+      // Projects (D903 P5.2).
+      "project.status": { planning: "Planning", active: "Active", blocked: "Blocked", done: "Done", archived: "Archived" },
+      "project.health": { green: "On track", amber: "At risk", red: "Off track" },
+      "task.priority": { low: "Low", medium: "Medium", high: "High" },
     } as Record<string, Record<string, string>>,
     yesNo: { yes: "Yes", no: "No" },
     listHint: "Values with commas between",

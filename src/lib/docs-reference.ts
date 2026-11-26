@@ -81,6 +81,10 @@ export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   activity: "customers",
   lead: "customers",
   domain: "settings",
+  // Projects (D903 P5.2): the team's own work.
+  project: "team",
+  checklist: "team",
+  task: "team",
 };
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];

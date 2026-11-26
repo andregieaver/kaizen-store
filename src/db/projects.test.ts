@@ -465,3 +465,48 @@ describe("reminders on tasks and lists (D903 P4.3)", () => {
     expect(await one("select count(*)::int as n from commerce.checklist_reminders where item_id = $1", [task])).toEqual({ n: 0 });
   });
 });
+
+describe("Projects' events (D903 P5.2)", () => {
+  /** The store's events about a subject, in the log's order. */
+  const about = async (storeId: string, subjectId: string) =>
+    (await db.query<{ event: string }>("select event from commerce.events where store_id = $1 and subject_id = $2 order by tx, id", [storeId, subjectId])).rows.map((r) => r.event);
+
+  it("a project made and its status changed, never for a save that keeps the status", async () => {
+    const work = await project(shop);
+    await db.query("update commerce.projects set status = 'blocked' where id = $1", [work]);
+    await db.query("update commerce.projects set name = 'Renamed', status = 'blocked' where id = $1", [work]);
+    await db.query("update commerce.projects set status = 'done' where id = $1", [work]);
+    expect(await about(shop, work)).toEqual(["project.created", "project.status_changed", "project.status_changed"]);
+  });
+
+  it("a list made, and a task added, given a person, given another, ticked; none for unticking, taking the person away, or a template", async () => {
+    const list = await checklist(shop);
+    expect(await about(shop, list)).toEqual(["checklist.created"]);
+    const task = await item(shop, list);
+    await db.query("update commerce.checklist_items set assigned_to = $2 where id = $1", [task, account]);
+    await db.query("update commerce.checklist_items set assigned_to = null where id = $1", [task]);
+    await db.query("update commerce.checklist_items set assigned_to = $2 where id = $1", [task, account]);
+    await db.query("update commerce.checklist_items set done_at = now() where id = $1", [task]);
+    await db.query("update commerce.checklist_items set done_at = null where id = $1", [task]);
+    await db.query("update commerce.checklist_items set done_at = now() where id = $1", [task]);
+    expect(await about(shop, task)).toEqual(["task.created", "task.assigned", "task.assigned", "task.done", "task.done"]);
+    // Added done and with a person: each said at once.
+    const born = await id("insert into commerce.checklist_items (store_id, checklist_id, title, assigned_to, done_at) values ($1, $2, 'Born done', $3, now()) returning id", [shop, list, account]);
+    expect(await about(shop, born)).toEqual(["task.created", "task.assigned", "task.done"]);
+    // A template and its tasks are no work to do.
+    const template = await id("insert into commerce.checklists (store_id, title, as_template) values ($1, 'Opening steps', true) returning id", [shop]);
+    const step = await item(shop, template);
+    await db.query("update commerce.checklist_items set done_at = now() where id = $1", [step]);
+    expect([await about(shop, template), await about(shop, step)]).toEqual([[], []]);
+  });
+
+  it("are workflows' triggers", async () => {
+    for (const trigger of ["project.created", "project.status_changed", "checklist.created", "task.created", "task.assigned", "task.done"]) {
+      await db.query(
+        "insert into commerce.workflows (store_id, name, trigger, actions) values ($1, $2, $3, '[{\"kind\":\"email_staff\",\"subject\":\"x\",\"text\":\"y\"}]')",
+        [shop, `On ${trigger}`, trigger],
+      );
+    }
+    expect(await one("select count(*)::int as n from commerce.workflows where store_id = $1 and trigger like any (array['project.%', 'checklist.%', 'task.%'])", [shop])).toEqual({ n: 6 });
+  });
+});

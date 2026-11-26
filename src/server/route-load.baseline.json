@@ -23,7 +23,7 @@
     "platform-admin-layout": 982,
     "platform-admin-home": 978,
     "site-front-page": 517,
-    "docs-feedback": 292,
+    "docs-feedback": 302,
     "page-reads": 85,
     "page-article": 457,
     "stores": 78
@@ -60,6 +60,10 @@
     "stores": []
   },
   "heavyHandlers": {
+    "src/app/admin/(gated)/platform/ai/eval/[run]/recording/route.ts": {
+      "files": 1501,
+      "reason": "The eval's recording reads every agent's prompt and tools, and through them the webhook topics' payload shapes; Projects' events (D903 P5.2) brought projects-model.ts, its status and priority names, into those shapes, one file over 1,500."
+    },
     "src/app/api/cron/cart-reminders/route.ts": {
       "files": 1502,
       "reason": "A reminder job loads the cart, mail and money code it works on; the two files of the cold-start helper (step 1.16) took it from 1,500 to 1,502."

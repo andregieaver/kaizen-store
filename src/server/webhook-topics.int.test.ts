@@ -258,6 +258,25 @@ beforeAll(async () => {
     where store_id = ${store.storeId}::uuid and id = ${String(domain.id)}::uuid
   `);
   subjects.domain = String(domain.id);
+
+  // Projects (D903 P5.2): a project from the deal, a list in it, and a task with private notes, given its person and ticked.
+  const [project] = await db().execute<Row>(sql`
+    insert into commerce.projects (store_id, name, status, deal_id, target_date, created_by)
+    values (${store.storeId}::uuid, 'Shop fit-out', 'active', ${deal.id}::uuid, '2026-12-20', ${store.accountId}::uuid) returning id
+  `);
+  subjects.project = String(project.id);
+  const [list] = await db().execute<Row>(sql`
+    insert into commerce.checklists (store_id, title, primary_project_id, created_by)
+    values (${store.storeId}::uuid, 'Fit-out steps', ${project.id}::uuid, ${store.accountId}::uuid) returning id
+  `);
+  subjects.checklist = String(list.id);
+  const [task] = await db().execute<Row>(sql`
+    insert into commerce.checklist_items (store_id, checklist_id, title, description, assigned_to, assigned_by, priority, due_at, done_at, created_by)
+    values (${store.storeId}::uuid, ${list.id}::uuid, 'Book the electrician', 'Private task notes', ${store.accountId}::uuid, ${store.accountId}::uuid, 'high',
+      now() + interval '2 days', now(), ${store.accountId}::uuid)
+    returning id
+  `);
+  subjects.task = String(task.id);
 }, 180_000);
 
 afterAll(async () => {
@@ -334,6 +353,12 @@ describe("every webhook topic's payload (D438)", () => {
     });
     expect(lead).not.toContain("kari@example.com");
     expect(lead).not.toContain("Hello");
+    // Projects (D903 P5.2): the team's titles and ids; never a task's notes.
+    const taskText = await text("task.done", subjects.task!);
+    expect(taskText).not.toContain("Private task notes");
+    expect(JSON.parse(taskText).task).toMatchObject({ title: "Book the electrician", status: "done", priority: "high", list: { title: "Fit-out steps" } });
+    expect(JSON.parse(await text("project.created", subjects.project!)).project).toMatchObject({ name: "Shop fit-out", status: "active", lists: 1, target_date: "2026-12-20" });
+    expect(JSON.parse(await text("checklist.created", subjects.checklist!)).checklist).toMatchObject({ title: "Fit-out steps", open_tasks: 0, done_tasks: 1 });
     const domain = JSON.parse(await text("domain.failing", subjects.domain!)).domain;
     expect(domain).toMatchObject({ primary: true, serving: "certificate", language: null, market: null });
     expect(domain.admin_url).toContain("/settings/domains");

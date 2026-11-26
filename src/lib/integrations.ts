@@ -153,7 +153,14 @@ export type IntegrationEvent =
   | "lead.dismissed"
   | "lead.deal_made"
   | "domain.failing"
-  | "domain.recovered";
+  | "domain.recovered"
+  // Projects' events (D903 P5.2): a project made or its status changed, a list made, a task added, given its person or done.
+  | "project.created"
+  | "project.status_changed"
+  | "checklist.created"
+  | "task.created"
+  | "task.assigned"
+  | "task.done";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -215,6 +222,12 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "lead.deal_made", label: "Lead made a deal", hint: "Someone made a deal of a lead: the person became a customer if they were not one, and a deal about them opened. What they asked for, as ids; never their address or words." },
   { id: "domain.failing", label: "Domain failing", hint: "One of the store's connected domains no longer reaches the store, as the daily domain watch found: its certificate fails, or it points elsewhere or at nothing. Sent once, until it works again." },
   { id: "domain.recovered", label: "Domain working again", hint: "A connected domain that was failing reaches the store again, as the daily domain watch found." },
+  { id: "project.created", label: "Project made", hint: "A project was made in Projects, by a person, from a won deal or by the AI manager." },
+  { id: "project.status_changed", label: "Project status changed", hint: "A project moved to planning, active, blocked, done or archived." },
+  { id: "checklist.created", label: "Checklist made", hint: "A checklist was made, or copied. A template sends none." },
+  { id: "task.created", label: "Task added", hint: "A task was added to a checklist: typed, pasted, made from an order, a return, a review or a conversation, or copied with a list. Never its notes." },
+  { id: "task.assigned", label: "Task given a person", hint: "A task was given someone on the store's team, or given to someone else. Taken away from everyone sends nothing." },
+  { id: "task.done", label: "Task done", hint: "A task was ticked off; a repeating task each time it is done. Unticked sends nothing." },
 ];
 
 export const isEvent = (value: string): value is IntegrationEvent => EVENTS.some((e) => e.id === value);
@@ -296,7 +309,19 @@ export const isServiceEvent = (value: string): value is IntegrationEvent => isEv
  * What Zapier and Make get but Slack does not (D902, D901 P29): a channel is told what the team wants to read together (a deal opened, moved, won
  * or lost: `slackMessage()`), not each person's calls and tasks or each lead set aside, which Zapier and Make carry on to another CRM.
  */
-const NOT_TO_SLACK: ReadonlySet<IntegrationEvent> = new Set(["activity.created", "activity.done", "lead.dismissed", "lead.deal_made"]);
+const NOT_TO_SLACK: ReadonlySet<IntegrationEvent> = new Set([
+  "activity.created",
+  "activity.done",
+  "lead.dismissed",
+  "lead.deal_made",
+  // Projects' events (D903 P5.2): carried on by Zapier and Make to another tool, never each a message in a channel.
+  "project.created",
+  "project.status_changed",
+  "checklist.created",
+  "task.created",
+  "task.assigned",
+  "task.done",
+]);
 
 /** The events this service may be sent: `SERVICE_EVENTS`, less what Slack has no message for. */
 export const serviceEventsOf = (provider: Provider) => SERVICE_EVENTS.filter((event) => provider !== "slack" || !NOT_TO_SLACK.has(event.id));
