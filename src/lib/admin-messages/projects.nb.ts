@@ -22,7 +22,7 @@ export const projectsNb: ProjectsMessages = {
     "chart-5": "Tone 5",
     "chart-6": "Tone 6",
   },
-  sources: { order: "Ordre {label}", return: "Retur {label}", review: "Anmeldelse fra {label}", conversation: "Samtale med {label}", conversationUnnamed: "En samtale" },
+  sources: { order: "Ordre {label}", return: "Retur {label}", review: "Anmeldelse fra {label}", conversation: "Samtale med {label}", conversationUnnamed: "En samtale", deal: "Fra avtalen {title}" },
   problems: {
     forbidden: "Rollen din kan ikke endre prosjekter og sjekklister.",
     not_found: "Det er borte, eller det hører til en annen butikk. Last inn siden på nytt.",

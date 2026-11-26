@@ -13715,6 +13715,8 @@ export const projects = commerce
       /** When someone last looked at the status and health and said they stand. */
       statusReviewedAt: timestamp("status_reviewed_at", { withTimezone: true }),
       sortOrder: integer("sort_order").notNull().default(0),
+      /** The deal it was started from (D904 P8.3b), cleared when the deal is deleted; the project stays. Its key is in the rules migration. */
+      dealId: uuid("deal_id"),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
       updatedAt: updatedAt(),
@@ -13723,6 +13725,7 @@ export const projects = commerce
       unique("projects_store_id_key").on(t.storeId, t.id),
       index("projects_sort_idx").on(t.storeId, t.status, t.sortOrder),
       index("projects_created_by_idx").on(t.createdBy),
+      index("projects_deal_idx").on(t.storeId, t.dealId).where(sql`${t.dealId} is not null`),
       check("projects_name", trimmedText(t.name, PROJECT_LIMITS.projectName)),
       check("projects_texts", sql`(${shortText(t.description, PROJECT_LIMITS.description)}) and (${shortText(t.nextAction, PROJECT_LIMITS.nextAction)})`),
       check("projects_colour", sql`${t.colour} in (${projectColourList})`),

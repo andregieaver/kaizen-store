@@ -25,6 +25,16 @@ export const projectSourcesEn = {
   },
   /** After a task is made from a conversation, where the inbox has no room for its list. */
   added: "Task added to {list}.",
+  /** A deal's projects (P8.3b): the card on a deal's page, and starting one when the deal is won. */
+  deal: {
+    heading: "Projects",
+    none: "No project yet.",
+    start: "Start a project",
+    hint: "Named after the deal and linked to it.",
+    from: "Start from",
+    empty: "An empty project",
+    go: "Start project",
+  },
   openLists: "See your checklists",
 };
 

@@ -31,6 +31,11 @@ import { activityActions } from "../activity-actions-of";
 import { newContractAction } from "../contract-actions";
 import { deleteDealAction, linkThingAction, placeDealAction, saveDealFieldsAction, searchWhoAction, unlinkThingAction, updateDealAction } from "../actions";
 import { requireExtension } from "@/components/admin/extension-off";
+import { DealProjects } from "@/components/admin/projects/deal-projects";
+import { projectsAction } from "@/app/admin/(gated)/[store]/projects/actions";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
+import { projectsOn } from "@/lib/extensions";
+import { listTemplates as listProjectTemplates, projectsOfDeal } from "@/server/projects-deals";
 
 export const metadata: Metadata = { title: "Deal" };
 
@@ -66,6 +71,12 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
   const [emails, filing] = await Promise.all([filedEmailsOf(store.id, { dealId: deal.id }), canChange ? filingAddressOf(store.id) : Promise.resolve(null)]);
   // The deal's contracts (D695): made from the store's template, filled in from the deal.
   const [contracts, templates] = await Promise.all([contractsOfDeal(member, deal.id), canChange ? listTemplates(store.id) : Promise.resolve([])]);
+  // The deal's projects (D904 P8.3b): only while the store has Projects too, for people who may read projects; started once it is won.
+  const projectsHere = projectsOn(store) && memberCan(member, "projects:read");
+  const canStartProject = projectsHere && memberCan(member, "projects:write");
+  const [dealProjects, projectTemplates] = projectsHere
+    ? await Promise.all([projectsOfDeal(store.id, deal.id), canStartProject && deal.status === "won" ? listProjectTemplates(store.id) : Promise.resolve([])])
+    : [[], []];
   const pipeline = pipelines.find((p) => p.id === deal.pipelineId);
   const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
   const team = staff.filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > new Date().toISOString())).map((s) => ({ id: s.accountId, name: s.name || s.email }));
@@ -248,6 +259,19 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           </div>
         )}
       </Card>
+
+      {projectsHere && (
+        <DealProjects
+          base={base}
+          dealId={deal.id}
+          won={deal.status === "won"}
+          projects={dealProjects}
+          templates={projectTemplates}
+          canStart={canStartProject}
+          words={PROJECT_SOURCES_WORDS[lang]}
+          act={projectsAction.bind(null, store.slug)}
+        />
+      )}
 
       <Card title={w.contracts.title} compact>
         {contracts.length === 0 ? (

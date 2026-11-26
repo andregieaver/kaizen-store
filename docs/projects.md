@@ -273,7 +273,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 | P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Done 26 November 2026 (below) |
 | P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | In steps below |
 | P8.3a | **The shop and the support desk:** *Make a task* from an order, a return, a review or a support conversation; the task links back, and an order's and a return's page show their tasks | Built 26 November 2026 (below) |
-| P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Planned |
+| P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Built 26 November 2026 (below) |
 | P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Planned |
 | P8.3d | **Work:** time on a task and a task on an assignment (P6.1); **Email automation:** a task's person told when it is theirs (with P4.3's reminders) | Planned |
 
@@ -444,4 +444,15 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   Kari*, only while the source's arm is there (reviews on; the support desk in the account) and the person may open its page.
 - **Words.** The card's in the server area `projectSources` (handed to it by the page, so no screen carries them otherwise); the links'
   in `projects.sources`.
+
+## As built: step P8.3b, a project from a won deal (26 November 2026)
+
+- **The link** is Projects': `projects.deal_id` (migrations `20261126113521_project_deal` and `20261126113524_project_deal_rules`, the
+  store's own deal by its composite key, cleared when the deal is deleted while the project stays), so Deals' tables know nothing of
+  Projects and either arm can go without leaving the other broken.
+- **Starting one.** A deal's page has a *Projects* card while the store has Projects (`DealProjects`): the projects the deal started, each a
+  link, and once the deal is won *Start a project*: named after the deal and linked to it, empty or with a copy of a list marked as a
+  template, at home in the new project (`project.fromDeal`, `startDealProject()` in `src/server/projects-deals.ts`; the right to change
+  projects and to read customers).
+- **Back.** A project's page names the deal it came from, a link, while Deals are on and the person may read customers.
 

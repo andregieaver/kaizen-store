@@ -36,6 +36,8 @@ export const projectsOp = z.discriminatedUnion("op", [
   z.object({ op: z.literal("project.reorder"), ids }),
   z.object({ op: z.literal("project.delete"), id }),
   z.object({ op: z.literal("project.link"), projectId: id, checklistId: id }),
+  // A won deal starts a project (D904 P8.3b), with a copy of a template list if one is chosen.
+  z.object({ op: z.literal("project.fromDeal"), dealId: id, templateId: id.nullable() }),
   z.object({ op: z.literal("project.unlink"), projectId: id, checklistId: id }),
   z.object({ op: z.literal("project.reorderLists"), projectId: id, ids }),
   z.object({ op: z.literal("project.stage"), projectId: id, itemId: id, stageId: scope }),

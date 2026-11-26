@@ -1457,6 +1457,20 @@
       "when": 1795692397546,
       "tag": "20261126112637_absent_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1795692921983,
+      "tag": "20261126113521_project_deal",
+      "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1795692924056,
+      "tag": "20261126113524_project_deal_rules",
+      "breakpoints": true
     }
   ]
 }
