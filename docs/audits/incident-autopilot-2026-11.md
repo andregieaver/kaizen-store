@@ -340,13 +340,16 @@ These are the owner's to write (legal texts are never written by a model, D656 s
       Drafted 25 November 2026: `docs/dpia-admin-use.md`, a separate assessment (Kaizena Flow controller), with the notice's paragraph
       proposed in its section 6 and seven questions, under Platform → Legal reviews (*Heatmaps and recordings of how owners use the
       admin*). Left: the owner's acceptance and notice paragraph, the lawyer's answers.
-- [ ] **IA-15** (phase 3b, built locked: the owner's choice of 26 November 2026) Admin heatmaps and recordings. First part done 26
+- [x] **IA-15** (phase 3b, built locked: the owner's choice of 26 November 2026) Admin heatmaps and recordings. First part done 26
       November 2026: the lock (`admin-signals.ts`: open only once a Legal account has answered every question and the owner confirms the
       signed assessment), owners only and their own use, the notice at the ask, the consent records (`e5263596`). Heatmaps done 26
       November 2026: `admin-screens.ts` (allow-list, default deny, keys without store or id), `admin-heat.ts` on the stores' heat engine,
       `/api/admin-use/heat`, totals 13 months, cells 90 days (`0f1d2a60`). Recordings done 26 November 2026: the stores' recorder in an
       admin form (all text masked, pictures blocked, half of tabs), `admin-replay-scrub.ts` on the server (every text, attribute and address),
-      `platform_admin_recordings` and bucket `admin-recordings`, 30 days with the retention rule `admin_recordings`. Left: the viewer (IA-15c).
+      `platform_admin_recordings` and bucket `admin-recordings`, 30 days with the retention rule `admin_recordings` (`f9f70b0e`). Viewer done
+      26 November 2026: Platform → Admin use (`admin-use.ts`), each screen's 30 days worked out in code (`admin-use-figures.ts`, a share from
+      20 views), the recordings most frustrated first, the stores' player on the page (`?recording=`) under the replay policy, each viewing in
+      the activity log first. Left: IA-16b, the figures in the Monday reading.
       Original scope: the choice (asked once, in account settings after), the masking and blocked screens with a
       scan test like `marks.test.ts` for admin screens, the platform tables and bucket, the 30 days, Platform → Analytics → Admin use with
       its viewing log; signed-in e2e; screenshots to the owner.

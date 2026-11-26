@@ -480,6 +480,8 @@ export const NAV_NB: Record<string, string> = {
   "Usage and limits": "Bruk og grenser",
   "Status page": "Statusside",
   "Incidents": "Hendelser",
+  "Admin use": "Bruk av adminen",
+  "Where owners find the admin hard.": "Hvor eierne synes adminen er vanskelig.",
   "Every error and warning the platform meets and every improvement suggested: what needs you, what is being fixed and what was fixed.":
     "Alle feil og advarsler plattformen møter og alle forbedringer som foreslås: det som trenger deg, det som rettes og det som er rettet.",
   "Content notices": "Meldinger om innhold",
