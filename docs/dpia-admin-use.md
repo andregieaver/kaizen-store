@@ -84,8 +84,10 @@ recordings.
 
 ## 6. The privacy notice
 
-Kaizena Flow's privacy notice needs a paragraph. Legal texts are the owner's (never written by a model into
-`src/lib/platform-legal/*`), so this is a proposal for the owner to adapt:
+Kaizena Flow's privacy notice needs a paragraph. Legal texts are the owner's; **at the owner's request (26 November 2026)** this
+paragraph was added to the privacy notice in English and Norwegian (`src/lib/platform-legal/en.ts`, `nb.ts`, under *What we process*,
+after the website's heatmaps and recordings), with the basis (consent, Article 6(1)(a)) and a retention line (heatmap totals 13 months,
+recordings 30 days). The owner can still change its words; a lawyer should read it (question 6):
 
 > **How you use the admin.** If you say yes when asked, we collect how the admin is used so we can make it easier: where people click and
 > scroll, as totals per screen (heatmaps), and, if you also allow it, recordings of how you moved through some screens. All text is
@@ -97,7 +99,8 @@ Kaizena Flow's privacy notice needs a paragraph. Legal texts are the owner's (ne
 None of these is a decision. For the owner, with a lawyer:
 
 1. Accept this assessment, or change it.
-2. Add the privacy notice's paragraph (section 6, in the owner's words).
+2. ~~Add the privacy notice's paragraph (section 6).~~ Added at the owner's request on 26 November 2026; a lawyer should still read
+   it (question 6).
 3. Get the lawyer's answers to section 9 (under Platform → Legal reviews).
 4. Only then open admin heatmaps and recordings (Platform → Settings), and review this assessment when what is recorded changes, and
    yearly.
