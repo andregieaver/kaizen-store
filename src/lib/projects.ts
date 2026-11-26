@@ -204,6 +204,9 @@ export const itemFields = z.object({
   cost,
   /** When it comes back once done (P4.1); null takes the rule off. */
   recurrence: recurrence.nullable().optional(),
+  /** Its category and its tags (P4.6): the store's labels of each kind; the tags given replace those it has. */
+  categoryId: uuidOrNone,
+  tagIds: z.array(z.uuid()).max(30).optional(),
 });
 export const itemInput = itemFields.refine(
   (v) => !v.startAt || !v.dueAt || v.startAt <= v.dueAt,
@@ -227,6 +230,15 @@ export const statusInput = z.object({
 });
 
 export const sectionTitle = trimmed(PROJECT_LIMITS.sectionTitle);
+
+/** A category or a tag (P4.6): its name and colour. */
+export const labelInput = z.object({
+  name: trimmed(PROJECT_LIMITS.labelName),
+  colour: z.enum(PROJECT_COLOURS),
+});
+
+/** A comment on a task (P4.4). */
+export const commentBody = trimmed(PROJECT_LIMITS.comment);
 
 /** The fields a zod issue names, as the forms show their problems: one per field, the first. */
 export function problemFields(error: z.ZodError): string[] {

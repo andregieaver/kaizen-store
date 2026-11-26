@@ -125,8 +125,8 @@ export const STORE_EXPORT_TABLES = [
   "deal_stages",
   // Its contract templates (D695): its own words; the contracts name people and leave through the privacy export.
   "contract_templates",
-  // Its projects and checklists (D903): the team's own plans, with who is assigned left out as every column naming a person is; folds are each
-  // person's own view and stay out.
+  // Its projects and checklists (D903): the team's own plans and labels, with who is assigned left out as every column naming a person is; folds
+  // are each person's own view and comments each person's words, and stay out.
   "projects",
   "project_statuses",
   "checklists",
@@ -136,6 +136,8 @@ export const STORE_EXPORT_TABLES = [
   "checklist_items",
   "project_item_stages",
   "checklist_subtasks",
+  "project_labels",
+  "checklist_item_tags",
 ] as const;
 
 /** A column that could open a door, never written to the file (the support inbox's channel and email-address keys among them). */

@@ -5,7 +5,7 @@ import { dueGroups, filterCounts, isFiltering, matches, NO_FILTER, toggled, type
 const OSLO = "Europe/Oslo";
 // Thursday 26 November 2026, 15:00 in Oslo.
 const now = new Date("2026-11-26T14:00:00Z");
-const task = (over: Partial<FilterTask> = {}): FilterTask => ({ statusId: null, assignedTo: null, priority: null, dueAt: null, allDay: null, ...over });
+const task = (over: Partial<FilterTask> = {}): FilterTask => ({ statusId: null, assignedTo: null, priority: null, dueAt: null, allDay: null, categoryId: null, tagIds: [], ...over });
 
 describe("filters on a checklist's tasks (D903 P4.11)", () => {
   it("puts a task in its due groups: late, today (and so this week), this week, or no date", () => {
@@ -23,6 +23,10 @@ describe("filters on a checklist's tasks (D903 P4.11)", () => {
     expect(matches(mine, { ...NO_FILTER, people: ["a"], priorities: ["low"] }, now, OSLO)).toBe(false);
     expect(matches(task(), { ...NO_FILTER, people: ["nobody"], priorities: ["none"], due: ["none"] }, now, OSLO)).toBe(true);
     expect(matches(task(), { ...NO_FILTER, statuses: ["s1"] }, now, OSLO)).toBe(false);
+    const tagged = task({ categoryId: "c1", tagIds: ["t1", "t2"] });
+    expect(matches(tagged, { ...NO_FILTER, tags: ["t2", "t9"] }, now, OSLO)).toBe(true);
+    expect(matches(tagged, { ...NO_FILTER, categories: ["none"] }, now, OSLO)).toBe(false);
+    expect(matches(task(), { ...NO_FILTER, categories: ["none"], tags: ["t1"] }, now, OSLO)).toBe(false);
   });
 
   it("counts each value over every task, and toggles a value in and out", () => {

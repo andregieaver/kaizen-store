@@ -1,7 +1,8 @@
 /**
- * Filters on a checklist's tasks (D903 P4.11, Life's `checklist-item-filter.tsx`): by status, by who does it, by priority and by when it is
- * due. Within a group any chosen value matches; across groups every group must; an empty group matches all. Each value is counted over the
- * whole list, not the filtered view, so a count says what choosing it would give rather than what is already shown. Pure.
+ * Filters on a checklist's tasks (D903 P4.11, Life's `checklist-item-filter.tsx`): by status, by who does it, by priority, by when it is
+ * due, by category and by tag (P4.6). Within a group any chosen value matches; across groups every group must; an empty group matches
+ * all. Each value is counted over the whole list, not the filtered view, so a count says what choosing it would give rather than what is
+ * already shown. Pure.
  */
 
 import { dueState } from "./projects-dates";
@@ -11,11 +12,19 @@ import { addCalendarDays, dayIn } from "./work-dates";
 export const DUE_FILTERS = ["late", "today", "week", "none"] as const;
 export type DueFilter = (typeof DUE_FILTERS)[number];
 
-/** Who does it: an account's id, or `nobody`. A priority, or `none`. */
-export type TaskFilter = { statuses: string[]; people: string[]; priorities: string[]; due: DueFilter[] };
-export const NO_FILTER: TaskFilter = { statuses: [], people: [], priorities: [], due: [] };
+/** Who does it: an account's id, or `nobody`. A priority, or `none`. A category's id, or `none`. A tag's id. */
+export type TaskFilter = { statuses: string[]; people: string[]; priorities: string[]; due: DueFilter[]; categories: string[]; tags: string[] };
+export const NO_FILTER: TaskFilter = { statuses: [], people: [], priorities: [], due: [], categories: [], tags: [] };
 
-export type FilterTask = { statusId: string | null; assignedTo: string | null; priority: Priority | null; dueAt: string | null; allDay: boolean | null };
+export type FilterTask = {
+  statusId: string | null;
+  assignedTo: string | null;
+  priority: Priority | null;
+  dueAt: string | null;
+  allDay: boolean | null;
+  categoryId: string | null;
+  tagIds: readonly string[];
+};
 
 export const isFiltering = (filter: TaskFilter): boolean => Object.values(filter).some((values) => values.length > 0);
 
@@ -35,6 +44,8 @@ function valuesOf(task: FilterTask, now: Date, timeZone: string): TaskFilter {
     people: [task.assignedTo ?? "nobody"],
     priorities: [task.priority ?? "none"],
     due: dueGroups(task, now, timeZone),
+    categories: [task.categoryId ?? "none"],
+    tags: [...task.tagIds],
   };
 }
 
@@ -45,7 +56,7 @@ export function matches(task: FilterTask, filter: TaskFilter, now: Date, timeZon
 
 /** How many of the tasks have each value, group by group. */
 export function filterCounts(tasks: readonly FilterTask[], now: Date, timeZone: string): Record<keyof TaskFilter, Map<string, number>> {
-  const counts = { statuses: new Map<string, number>(), people: new Map<string, number>(), priorities: new Map<string, number>(), due: new Map<string, number>() };
+  const counts = Object.fromEntries((Object.keys(NO_FILTER) as (keyof TaskFilter)[]).map((group) => [group, new Map<string, number>()])) as Record<keyof TaskFilter, Map<string, number>>;
   for (const task of tasks) {
     const has = valuesOf(task, now, timeZone);
     for (const group of Object.keys(counts) as (keyof TaskFilter)[]) for (const v of has[group]) counts[group].set(v, (counts[group].get(v) ?? 0) + 1);

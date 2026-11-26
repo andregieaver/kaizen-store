@@ -12,6 +12,8 @@ const lists = await import("./projects-lists");
 const items = await import("./projects-items");
 const statuses = await import("./projects-statuses");
 const repeat = await import("./projects-repeat");
+const labels = await import("./projects-labels");
+const comments = await import("./projects-comments");
 const { newStore } = await import("./inventory-test-support");
 
 type TestStore = Awaited<ReturnType<typeof newStore>>;
@@ -276,6 +278,45 @@ describe("a duplicated list (P4.2)", () => {
     // The original is as it was.
     expect((await detail(id)).done.map((t) => t.title)).toEqual(["Book the stand"]);
     expect(await lists.duplicateChecklist(other.member, id, "Theirs")).toEqual({ ok: false, problem: "not_found" });
+  });
+});
+
+describe("labels and comments (P4.6, P4.4)", () => {
+  it("give a task a category and tags from the store's labels, kept in order and taken off with the label", async () => {
+    const { id: marketing } = ok(await labels.addLabel(store.member, "category", { name: "Marketing", colour: "insight" }));
+    const { id: urgent } = ok(await labels.addLabel(store.member, "tag", { name: "Urgent", colour: "danger" }));
+    const { id: small } = ok(await labels.addLabel(store.member, "tag", { name: "Small", colour: "neutral" }));
+    const { id } = ok(await lists.createChecklist(store.member, { title: "Labelled" }));
+    const { id: task } = ok(await items.addItem(store.member, id, { title: "Write the post", categoryId: marketing, tagIds: [urgent] }));
+    expect(itemOf(await detail(id), task)).toMatchObject({ categoryId: marketing, tagIds: [urgent] });
+    ok(await items.updateItem(store.member, task, { tagIds: [small, urgent] }));
+    ok(await labels.reorderLabels(store.member, "tag", [small, urgent]));
+    expect(itemOf(await detail(id), task).tagIds).toEqual([small, urgent]);
+    expect(await items.updateItem(store.member, task, { categoryId: urgent })).toMatchObject({ ok: false, problem: "invalid" });
+    expect(await labels.addLabel(store.member, "tag", { name: "  ", colour: "neutral" })).toMatchObject({ ok: false, problem: "invalid" });
+    const { id: copy } = ok(await lists.duplicateChecklist(store.member, id, "Labelled (copy)"));
+    const [copied] = (await detail(copy)).entries.flatMap((e) => (e.kind === "item" ? [e.item] : []));
+    expect(copied).toMatchObject({ categoryId: marketing, tagIds: [small, urgent] });
+    ok(await labels.deleteLabel(store.member, marketing));
+    ok(await items.updateItem(store.member, task, { tagIds: [] }));
+    expect(itemOf(await detail(id), task)).toMatchObject({ categoryId: null, tagIds: [] });
+  });
+
+  it("keep a thread on a task that only each comment's writer changes or deletes", async () => {
+    const { id } = ok(await lists.createChecklist(store.member, { title: "Talked about" }));
+    const { id: task } = ok(await items.addItem(store.member, id, { title: "Choose the printer" }));
+    const { id: comment } = ok(await comments.addComment(store.member, task, "  The usual one is booked until March.  "));
+    const someoneElse = { ...store.member, account: { ...store.member.account, id: other.accountId } };
+    expect(await comments.editComment(someoneElse, comment, "Mine now")).toEqual({ ok: false, problem: "not_found" });
+    expect(await comments.deleteComment(someoneElse, comment)).toEqual({ ok: false, problem: "not_found" });
+    ok(await comments.editComment(store.member, comment, "The usual one is booked until April."));
+    const [said] = itemOf(await detail(id), task).comments;
+    expect(said).toMatchObject({ body: "The usual one is booked until April.", writtenBy: store.accountId });
+    expect(said?.editedAt).not.toBeNull();
+    expect(await comments.addComment(store.member, task, "   ")).toMatchObject({ ok: false, problem: "invalid" });
+    expect(await comments.addComment(other.member, task, "Sneaky")).toEqual({ ok: false, problem: "not_found" });
+    ok(await comments.deleteComment(store.member, comment));
+    expect(itemOf(await detail(id), task).comments).toEqual([]);
   });
 });
 

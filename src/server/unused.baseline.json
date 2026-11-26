@@ -117,6 +117,8 @@
     "src/db/schema.ts#chatAgents",
     "src/db/schema.ts#chatUsage",
     "src/db/schema.ts#checklistFolds",
+    "src/db/schema.ts#checklistItemComments",
+    "src/db/schema.ts#checklistItemTags",
     "src/db/schema.ts#checklistStatuses",
     "src/db/schema.ts#checklistSubtasks",
     "src/db/schema.ts#checkoutAccounts",

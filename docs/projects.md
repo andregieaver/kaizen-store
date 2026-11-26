@@ -222,16 +222,16 @@ Status: Planned, Building, Done (date and commit).
 | Id | Step | Status |
 |---|---|---|
 | P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Done, 26 Nov 2026 (b7b673b) |
-| P4.2 | Duplicate a list with its options (templates are P4.12) | Done, 26 Nov 2026 |
+| P4.2 | Duplicate a list with its options (templates are P4.12) | Done, 26 Nov 2026 (50c0dbf) |
 | P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Planned |
-| P4.4 | Comments on an item (Life's activity thread) | Planned |
+| P4.4 | Comments on an item (Life's activity thread) | Done, 26 Nov 2026 |
 | P4.5 | Attachments from the media library | Planned |
-| P4.6 | Category and labels | Planned |
+| P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 |
 | P4.7 | A customer on an item (Life's contacts) | Planned |
 | P4.8 | Calendar and Timeline views of a project; every item across lists (Life's *All items*, with P4.11's filters); cost summary; due countdown | Planned |
 | P4.9 | What is due on Home's attention list | Planned |
 | P4.10 | A light refresh while a list is open, for a team working together | Planned |
-| P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 |
+| P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 (50c0dbf) |
 | P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Planned |
 
 ### P5: the AI manager and events
@@ -322,3 +322,14 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   priority, due: late, today, this week, no date), offering only the values its tasks have, each with its count over the whole list
   (`src/lib/projects-filter.ts`). Within a group any value matches, across groups every one must. While filtering, a section shows only when
   a task under it matches, dragging rests, and the line says *Showing 3 of 12 tasks*. Kept on the page only, not in the address.
+
+## As built: steps P4.6 and P4.4 (26 November 2026)
+
+- **Labels.** The store's categories (a task has one) and tags (several), each with a colour and an order, made on the Statuses page with
+  the statuses' editor (`project_labels`; a task's category is `checklist_items.category_id`, its tags `checklist_item_tags`). The rules
+  migration `projects_labels_rules` holds a category to its kind and a tag to its, never lets a label change kind, and takes a deleted label
+  off its tasks. An Advanced list's Category and Tags fields put them in the editor and on the row, and the filters gain both groups. A
+  duplicated list carries its tasks' category and tags, as Life's did.
+- **Comments.** A thread under every task, in its editor (Life's activity thread, `checklist_item_comments`): who wrote it and when, the
+  writer edits or deletes their own, and the row counts them. Read with the list; shown as text. Not in the whole-store file (people's own
+  words), not copied with a store, and classed as staff's own in the personal-data register.

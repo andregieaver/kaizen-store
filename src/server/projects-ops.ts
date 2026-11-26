@@ -4,8 +4,10 @@ import type { ProjectsOp } from "@/lib/projects-ops";
 
 import type { Membership } from "./auth";
 import * as projects from "./projects";
+import * as comments from "./projects-comments";
 import type { ProjectsResult } from "./projects-errors";
 import * as items from "./projects-items";
+import * as labels from "./projects-labels";
 import * as lists from "./projects-lists";
 import * as statuses from "./projects-statuses";
 
@@ -98,6 +100,20 @@ export async function runProjectsOp(member: Membership, op: ProjectsOp): Promise
       return statuses.useOwnStatuses(member, op.kind, op.scopeId);
     case "status.useStore":
       return statuses.useStoreStatuses(member, op.kind, op.scopeId);
+    case "label.add":
+      return labels.addLabel(member, op.kind, op.input);
+    case "label.update":
+      return labels.updateLabel(member, op.id, op.input);
+    case "label.delete":
+      return labels.deleteLabel(member, op.id);
+    case "label.reorder":
+      return labels.reorderLabels(member, op.kind, op.ids);
+    case "comment.add":
+      return comments.addComment(member, op.itemId, op.body);
+    case "comment.edit":
+      return comments.editComment(member, op.id, op.body);
+    case "comment.delete":
+      return comments.deleteComment(member, op.id);
   }
 }
 

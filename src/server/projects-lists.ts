@@ -76,8 +76,15 @@ export type ChecklistItem = {
   blockedReason: string | null;
   blockedByItemId: string | null;
   cost: { minor: number; currency: string } | null;
+  /** Its category and tags (P4.6), the store's labels. */
+  categoryId: string | null;
+  tagIds: string[];
   subtasks: Subtask[];
+  /** The team's comments on it (P4.4), oldest first. */
+  comments: ItemComment[];
 };
+
+export type ItemComment = { id: string; body: string; writtenBy: string | null; author: string | null; createdAt: string; editedAt: string | null };
 
 export type ChecklistSection = { id: string; title: string; sortOrder: number };
 
@@ -195,6 +202,7 @@ const itemRow = z.object({
   blocked_by_item_id: col.uuid.nullable(),
   cost_minor: col.minorOrNull,
   cost_currency: col.currency.nullable(),
+  category_id: col.uuid.nullable(),
 });
 
 const subtaskRow = z.object({
@@ -223,12 +231,12 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     `,
   );
   if (!list) return null;
-  const [items, sections, subtasks, statuses, projects, folds] = await Promise.all([
+  const [items, sections, subtasks, statuses, projects, folds, tags, comments] = await Promise.all([
     typedRows(
       itemRow,
       sql`
         select id, title, description, done_at, archived_at, sort_order, status_id, assigned_to, start_at, due_at, all_day, priority, recurrence,
-          streak, next_due_at, last_completed_at, skipped_at, blocked_reason, blocked_by_item_id, cost_minor, cost_currency
+          streak, next_due_at, last_completed_at, skipped_at, blocked_reason, blocked_by_item_id, cost_minor, cost_currency, category_id
         from commerce.checklist_items where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid
         order by sort_order, created_at
       `,
@@ -258,6 +266,25 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     typedRows(
       z.object({ section_id: col.uuid.nullable() }),
       sql`select section_id from commerce.checklist_folds where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid and account_id = ${accountId}::uuid`,
+    ),
+    typedRows(
+      z.object({ item_id: col.uuid, label_id: col.uuid }),
+      sql`
+        select t.item_id, t.label_id from commerce.checklist_item_tags t join commerce.checklist_items i on i.store_id = t.store_id and i.id = t.item_id
+        join commerce.project_labels l on l.store_id = t.store_id and l.id = t.label_id
+        where t.store_id = ${storeId}::uuid and i.checklist_id = ${checklistId}::uuid
+        order by l.sort_order
+      `,
+    ),
+    typedRows(
+      z.object({ id: col.uuid, item_id: col.uuid, body: col.text, written_by: col.uuid.nullable(), author: col.textOrNull, created_at: col.timestamp, edited_at: col.timestampOrNull }),
+      sql`
+        select c.id, c.item_id, c.body, c.written_by, coalesce(nullif(btrim(a.name), ''), a.email) as author, c.created_at, c.edited_at
+        from commerce.checklist_item_comments c join commerce.checklist_items i on i.store_id = c.store_id and i.id = c.item_id
+        left join commerce.accounts a on a.id = c.written_by
+        where c.store_id = ${storeId}::uuid and i.checklist_id = ${checklistId}::uuid
+        order by c.created_at
+      `,
     ),
   ]);
   const due = timeZone ? items.filter((i) => isDue(i)) : [];
@@ -290,7 +317,12 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     blockedReason: r.blocked_reason,
     blockedByItemId: r.blocked_by_item_id,
     cost: r.cost_minor !== null && r.cost_currency ? { minor: r.cost_minor, currency: r.cost_currency } : null,
+    categoryId: r.category_id,
+    tagIds: tags.filter((t) => t.item_id === r.id).map((t) => t.label_id),
     subtasks: stepsOf.get(r.id) ?? [],
+    comments: comments
+      .filter((c) => c.item_id === r.id)
+      .map((c) => ({ id: c.id, body: c.body, writtenBy: c.written_by, author: c.author, createdAt: c.created_at, editedAt: c.edited_at })),
   });
   const live = items.filter((i) => i.archived_at === null).map(toItem);
   const entries: ChecklistEntry[] = [
@@ -353,7 +385,7 @@ export async function createChecklist(member: Membership, raw: unknown, projectI
 /**
  * A list copied (P4.2, Life's `duplicateChecklistRecord`), at the end of the store's lists, under the title given. The shape of the work
  * comes: its settings, its own statuses, its projects and home, its sections, and its tasks (open and done) with their notes, people,
- * priorities, costs, blockers inside the list and subtasks in order. The record of doing it does not: every task is open, in the list's
+ * priorities, costs, category and tags, blockers inside the list and subtasks in order. The record of doing it does not: every task is open, in the list's
  * first status, with no run. Due dates and repeats stay behind (a deadline belongs to the occasion, two tasks on one schedule are almost
  * always a mistake), and so do archived tasks.
  */
@@ -396,22 +428,29 @@ export async function duplicateChecklist(member: Membership, id: string, title: 
       await tx.execute(sql`
         with src as materialized (
           select gen_random_uuid() as new_id, i.id, i.title, i.description, i.sort_order, i.assigned_to, i.priority, i.blocked_reason, i.blocked_by_item_id,
-            i.cost_minor, i.cost_currency
+            i.cost_minor, i.cost_currency, i.category_id
           from commerce.checklist_items i
           where i.store_id = ${storeId}::uuid and i.checklist_id = ${id}::uuid and i.archived_at is null
         ),
         tasks as (
           insert into commerce.checklist_items (id, store_id, checklist_id, title, description, sort_order, assigned_to, priority, blocked_reason,
-            blocked_by_item_id, cost_minor, cost_currency, created_by)
+            blocked_by_item_id, cost_minor, cost_currency, category_id, created_by)
           select s.new_id, ${storeId}::uuid, ${copy}::uuid, s.title, s.description, s.sort_order, s.assigned_to, s.priority, s.blocked_reason,
-            (select b.new_id from src b where b.id = s.blocked_by_item_id), s.cost_minor, s.cost_currency, ${member.account.id}::uuid
+            (select b.new_id from src b where b.id = s.blocked_by_item_id), s.cost_minor, s.cost_currency, s.category_id, ${member.account.id}::uuid
           from src s
           returning id
+        ),
+        steps as (
+          insert into commerce.checklist_subtasks (store_id, item_id, title, sort_order, is_goal, assigned_to)
+          select st.store_id, s.new_id, st.title, st.sort_order, st.is_goal, st.assigned_to
+          from commerce.checklist_subtasks st join src s on s.id = st.item_id
+          where st.store_id = ${storeId}::uuid and s.new_id in (select id from tasks)
+          returning id
         )
-        insert into commerce.checklist_subtasks (store_id, item_id, title, sort_order, is_goal, assigned_to)
-        select st.store_id, s.new_id, st.title, st.sort_order, st.is_goal, st.assigned_to
-        from commerce.checklist_subtasks st join src s on s.id = st.item_id
-        where st.store_id = ${storeId}::uuid and s.new_id in (select id from tasks)
+        insert into commerce.checklist_item_tags (store_id, item_id, label_id)
+        select t.store_id, s.new_id, t.label_id
+        from commerce.checklist_item_tags t join src s on s.id = t.item_id
+        where t.store_id = ${storeId}::uuid and s.new_id in (select id from tasks)
       `);
       return { ok: true, id: copy };
     }),

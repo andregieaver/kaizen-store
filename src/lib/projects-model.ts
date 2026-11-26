@@ -44,4 +44,10 @@ export const PROJECT_LIMITS = {
   itemTitle: 500,
   itemDescription: 10_000,
   blockedReason: 500,
+  labelName: 40,
+  comment: 4000,
 } as const;
+
+/** A label is a category (one a task) or a tag (several), P4.6. */
+export const LABEL_KINDS = ["category", "tag"] as const;
+export type LabelKind = (typeof LABEL_KINDS)[number];

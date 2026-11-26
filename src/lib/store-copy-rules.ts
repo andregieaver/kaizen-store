@@ -537,6 +537,9 @@ export const COPY_RULES: Record<string, CopyRule> = {
   project_item_stages: never("Where an item sits in a project (D903), with the lists."),
   checklist_subtasks: never("An item's subtasks (D903), with the lists."),
   checklist_folds: never("What one person folded in a list (D903): theirs, not the store's."),
+  project_labels: never("A store's categories and tags for tasks (D903 P4.6), with its lists: a copy starts without them."),
+  checklist_item_tags: never("A task's tags (D903 P4.6), with the lists."),
+  checklist_item_comments: never("The team's comments on a task (D903 P4.4): their own words, with the lists."),
   work_time_entries: never("Work (D122) is the owner's own bookkeeping."),
   work_timers: never("Work (D122) is the owner's own bookkeeping."),
 };

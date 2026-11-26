@@ -5,8 +5,9 @@
 
 import { z } from "zod";
 
-import { checklistInput, itemFields, projectInput, statusInput, subtaskInput } from "./projects";
+import { checklistInput, itemFields, labelInput, projectInput, statusInput, subtaskInput } from "./projects";
 import { ADVANCED_FEATURES } from "./projects-features";
+import { LABEL_KINDS } from "./projects-model";
 
 const id = z.uuid();
 const ids = z.array(z.uuid()).min(1).max(500);
@@ -82,6 +83,13 @@ export const projectsOp = z.discriminatedUnion("op", [
   z.object({ op: z.literal("status.delete"), kind, id, replacementId: id }),
   z.object({ op: z.literal("status.useOwn"), kind, scopeId: id }),
   z.object({ op: z.literal("status.useStore"), kind, scopeId: id }),
+  z.object({ op: z.literal("label.add"), kind: z.enum(LABEL_KINDS), input: labelInput }),
+  z.object({ op: z.literal("label.update"), id, input: labelInput }),
+  z.object({ op: z.literal("label.delete"), id }),
+  z.object({ op: z.literal("label.reorder"), kind: z.enum(LABEL_KINDS), ids }),
+  z.object({ op: z.literal("comment.add"), itemId: id, body: z.string().max(4000) }),
+  z.object({ op: z.literal("comment.edit"), id, body: z.string().max(4000) }),
+  z.object({ op: z.literal("comment.delete"), id }),
 ]);
 
 export type ProjectsOp = z.infer<typeof projectsOp>;

@@ -44,7 +44,7 @@ import {
 import { FLOW_TRIGGERS } from "../lib/flow-triggers";
 import { AUTOPILOT_GAPS, AUTOPILOT_REASONS, ENHANCEMENT_ONLY, INCIDENT_KINDS, INCIDENT_LIMITS, INCIDENT_SOURCES, INCIDENT_STATUSES, PROBLEM_ONLY } from "../lib/incidents";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
-import { CHECKLIST_STATES, PRIORITIES, PROJECT_COLOURS, PROJECT_HEALTHS, PROJECT_LIMITS, PROJECT_STATUSES, STATUS_BUCKETS } from "../lib/projects-model";
+import { CHECKLIST_STATES, LABEL_KINDS, PRIORITIES, PROJECT_COLOURS, PROJECT_HEALTHS, PROJECT_LIMITS, PROJECT_STATUSES, STATUS_BUCKETS } from "../lib/projects-model";
 import { LIMIT_KEYS } from "../lib/limits";
 import { EXTENSION_IDS, EXTENSION_SOURCES } from "../lib/extensions";
 import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
@@ -13914,6 +13914,8 @@ export const checklistItems = commerce
       blockedByItemId: uuid("blocked_by_item_id"),
       costMinor: bigint("cost_minor", { mode: "number" }),
       costCurrency: char("cost_currency", { length: 3 }),
+      /** Its category, one of the store's labels of that kind (P4.6); the rules migration holds the kind and clears it with the label. */
+      categoryId: uuid("category_id"),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
       updatedAt: updatedAt(),
@@ -13927,6 +13929,7 @@ export const checklistItems = commerce
       index("checklist_items_due_idx").on(t.storeId, t.dueAt).where(sql`${t.dueAt} is not null and ${t.doneAt} is null and ${t.archivedAt} is null`),
       index("checklist_items_next_due_idx").on(t.nextDueAt).where(sql`${t.recurrence} is not null and ${t.nextDueAt} is not null`),
       index("checklist_items_assigned_idx").on(t.assignedTo),
+      index("checklist_items_category_idx").on(t.storeId, t.categoryId).where(sql`${t.categoryId} is not null`),
       index("checklist_items_created_by_idx").on(t.createdBy),
       check("checklist_items_title", trimmedText(t.title, PROJECT_LIMITS.itemTitle)),
       check("checklist_items_texts", sql`(${shortText(t.description, PROJECT_LIMITS.itemDescription)}) and (${shortText(t.blockedReason, PROJECT_LIMITS.blockedReason)})`),
@@ -13997,6 +14000,81 @@ export const checklistSubtasks = commerce
   .enableRLS();
 
 /** A section, or the Done line (`section_id` null), folded by one person in one list: each person's own view. */
+/**
+ * A store's labels for checklist tasks (D903 P4.6, Life's taxonomy terms): categories (a task has one) and tags (a task has several), each
+ * with a colour and an order, named once for the whole store so every list sorts the same way. Deleting one takes it off its tasks.
+ */
+export const projectLabels = commerce
+  .table(
+    "project_labels",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      /** `category` or `tag`. */
+      kind: text("kind").notNull(),
+      name: text("name").notNull(),
+      slug: text("slug").notNull(),
+      colour: text("colour").notNull().default("neutral"),
+      sortOrder: integer("sort_order").notNull().default(0),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("project_labels_store_id_key").on(t.storeId, t.id),
+      unique("project_labels_slug_key").on(t.storeId, t.kind, t.slug),
+      index("project_labels_order_idx").on(t.storeId, t.kind, t.sortOrder),
+      check("project_labels_kind", sql`${t.kind} in (${wordList(LABEL_KINDS)})`),
+      check("project_labels_name", trimmedText(t.name, PROJECT_LIMITS.labelName)),
+      check("project_labels_slug", sql`${t.slug} ~ '^[a-z0-9][a-z0-9_-]{0,39}$'`),
+      check("project_labels_colour", sql`${t.colour} in (${projectColourList})`),
+    ],
+  )
+  .enableRLS();
+
+/** A task's tags (P4.6): labels of the kind `tag` (the rules migration holds the kind). */
+export const checklistItemTags = commerce
+  .table(
+    "checklist_item_tags",
+    {
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      itemId: uuid("item_id").notNull(),
+      labelId: uuid("label_id").notNull(),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.storeId, t.itemId, t.labelId] }),
+      foreignKey({ name: "checklist_item_tags_item_fk", columns: [t.storeId, t.itemId], foreignColumns: [checklistItems.storeId, checklistItems.id] }).onDelete("cascade"),
+      foreignKey({ name: "checklist_item_tags_label_fk", columns: [t.storeId, t.labelId], foreignColumns: [projectLabels.storeId, projectLabels.id] }).onDelete("cascade"),
+      index("checklist_item_tags_label_idx").on(t.storeId, t.labelId),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * A task's comments (D903 P4.4, Life's activity thread): the team talking about one task, oldest first. Who wrote it (`written_by`) may
+ * change or delete their own; an account deleted leaves its words without a name.
+ */
+export const checklistItemComments = commerce
+  .table(
+    "checklist_item_comments",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      itemId: uuid("item_id").notNull(),
+      writtenBy: uuid("written_by").references(() => accounts.id, { onDelete: "set null" }),
+      body: text("body").notNull(),
+      editedAt: timestamp("edited_at", { withTimezone: true }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      foreignKey({ name: "checklist_item_comments_item_fk", columns: [t.storeId, t.itemId], foreignColumns: [checklistItems.storeId, checklistItems.id] }).onDelete("cascade"),
+      index("checklist_item_comments_item_idx").on(t.storeId, t.itemId, t.createdAt),
+      index("checklist_item_comments_written_by_idx").on(t.writtenBy),
+      check("checklist_item_comments_body", trimmedText(t.body, PROJECT_LIMITS.comment)),
+    ],
+  )
+  .enableRLS();
+
 export const checklistFolds = commerce
   .table(
     "checklist_folds",

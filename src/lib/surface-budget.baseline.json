@@ -22,7 +22,7 @@
   "shopOnlyTools": 274,
   "managerTools": 28,
   "featureIds": 15,
-  "tables": 579,
+  "tables": 582,
   "platformTables": 27,
   "hot": {
     "orders": {
@@ -687,6 +687,12 @@
       "count": "dispatcherJobs",
       "from": 92,
       "to": 93,
+      "decision": "D903"
+    },
+    {
+      "count": "tables",
+      "from": 579,
+      "to": 582,
       "decision": "D903"
     }
   ]

@@ -182,6 +182,7 @@ export const projectsEn = {
     blocked: "Blocked",
     subtasks: "{done}/{total}",
     inProjects: "In {projects}",
+    comments: { one: "{n} comment", many: "{n} comments" },
   },
 
   item: {
@@ -210,6 +211,19 @@ export const projectsEn = {
     unarchive: "Bring back",
     deleteItem: "Delete the task",
     deleteConfirm: "Delete {title}?",
+    category: "Category",
+    noCategory: "No category",
+    tags: "Tags",
+    labelsWhere: "Make categories and tags on the Statuses page.",
+    comments: "Comments",
+    commentLabel: "Write a comment",
+    commentAdd: "Comment",
+    commentEdit: "Edit {name}'s comment",
+    commentDelete: "Delete the comment",
+    commentDeleteConfirm: "Delete your comment?",
+    commentEdited: "edited",
+    commentBy: "{name}, {date}",
+    someone: "Someone who left",
   },
 
   /** A repeating task (P4.1): its rule in the editor, and on its row its run, its next time and the skip. */
@@ -254,6 +268,9 @@ export const projectsEn = {
     nobody: "Nobody",
     none: "No priority",
     dueNames: { late: "Late", today: "Today", week: "This week", none: "No date" },
+    category: "Category",
+    noCategory: "No category",
+    tags: "Tags",
     option: "{name}: {n}",
     showing: "Showing {shown} of {total} tasks",
     clear: "Clear filters",
@@ -278,7 +295,7 @@ export const projectsEn = {
       status: "Status",
       priority: "Priority",
       category: "Category",
-      tags: "Labels",
+      tags: "Tags",
       subtasks: "Subtasks",
       assignment: "Who does it",
       startDate: "Start date",
@@ -315,6 +332,10 @@ export const projectsEn = {
     itemsText: "A task in a done status is ticked; ticking a task moves it to the first done status.",
     stages: "Project stages",
     stagesText: "The columns of a project's board.",
+    categories: "Categories",
+    categoriesText: "A task has one category: the kind of work it is. Shown on lists whose Category field is on.",
+    tags: "Tags",
+    tagsText: "A task can have several tags. Shown on lists whose Tags field is on.",
   },
 
   statusEditor: {
@@ -330,6 +351,13 @@ export const projectsEn = {
     removeTitle: "Delete {name}?",
     moveItemsTo: "Move what uses it to",
     dragHint: "Drag by the handle to change the order.",
+    addCategory: "Add a category",
+    addTag: "Add a tag",
+    newCategory: "New category",
+    newTag: "New tag",
+    noCategories: "No categories yet.",
+    noTags: "No tags yet.",
+    labelOff: "It is taken off every task that has it.",
   },
 };
 

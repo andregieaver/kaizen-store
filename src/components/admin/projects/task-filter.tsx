@@ -5,16 +5,17 @@ import { EmptyState } from "@/components/admin/ui/empty-state";
 import { fillWords } from "@/lib/admin-fill";
 import type { ProjectsMessages } from "@/lib/admin-messages/projects.en";
 import type { ChecklistFeatures } from "@/lib/projects-features";
-import { DUE_FILTERS, filterCounts, toggled, type FilterTask, type TaskFilter } from "@/lib/projects-filter";
+import { DUE_FILTERS, filterCounts, NO_FILTER, toggled, type FilterTask, type TaskFilter } from "@/lib/projects-filter";
 import { PRIORITIES } from "@/lib/projects-model";
 
 import { ColourDot } from "./parts";
 import { Toggle } from "./toggle";
-import type { ViewStatus } from "./checklist-view";
+import type { ViewLabel, ViewStatus } from "./checklist-view";
 
 export type FilterWords = ProjectsMessages["filter"];
 
 type Option = { value: string; label: string; colour?: ViewStatus["colour"] };
+const labelOption = (l: ViewLabel): Option => ({ value: l.id, label: l.name, colour: l.colour });
 
 /**
  * The filters of a checklist (D903 P4.11, Life's `checklist-item-filter.tsx`): one group for each field the list uses, offering only the
@@ -31,6 +32,7 @@ export function TaskFilterPanel({
   timeZone,
   words,
   priorityNames,
+  labels,
 }: {
   tasks: readonly FilterTask[];
   filter: TaskFilter;
@@ -42,6 +44,8 @@ export function TaskFilterPanel({
   timeZone: string;
   words: FilterWords;
   priorityNames: ProjectsMessages["priorities"];
+  /** The store's categories and tags (P4.6). */
+  labels: readonly ViewLabel[];
 }) {
   const counts = filterCounts(tasks, now, timeZone);
   const inUse = (group: keyof TaskFilter, options: Option[]) => options.filter((o) => (counts[group].get(o.value) ?? 0) > 0 || (filter[group] as string[]).includes(o.value));
@@ -54,6 +58,10 @@ export function TaskFilterPanel({
       ? [{ group: "priorities" as const, legend: words.priority, options: inUse("priorities", [...[...PRIORITIES].reverse().map((p) => ({ value: p, label: priorityNames[p] })), { value: "none", label: words.none }]) }]
       : []),
     ...(features.dueDate ? [{ group: "due" as const, legend: words.due, options: inUse("due", DUE_FILTERS.map((d) => ({ value: d, label: words.dueNames[d] }))) }] : []),
+    ...(features.category
+      ? [{ group: "categories" as const, legend: words.category, options: inUse("categories", [...labels.filter((l) => l.kind === "category").map(labelOption), { value: "none", label: words.noCategory }]) }]
+      : []),
+    ...(features.tags ? [{ group: "tags" as const, legend: words.tags, options: inUse("tags", labels.filter((l) => l.kind === "tag").map(labelOption)) }] : []),
   ].filter((g) => g.options.length > 1 || (g.options.length === 1 && (filter[g.group] as string[]).length > 0));
 
   if (groups.length === 0) return <EmptyState compact title={words.nothingToFilter} />;
@@ -74,7 +82,7 @@ export function TaskFilterPanel({
           })}
         </div>
       ))}
-      <Button kind="quiet" size="dense" className="self-start" onClick={() => onChange({ statuses: [], people: [], priorities: [], due: [] })}>
+      <Button kind="quiet" size="dense" className="self-start" onClick={() => onChange(NO_FILTER)}>
         {words.clear}
       </Button>
     </div>

@@ -32,6 +32,8 @@ export type ViewItem = EditorItem &
   ItemMoment & { subtasks: (EditorItem["subtasks"][number] & { sortOrder?: number })[] };
 export type ViewEntry = { kind: "section"; section: { id: string; title: string } } | { kind: "item"; item: ViewItem };
 export type ViewStatus = { id: string; name: string; colour: ProjectColour; bucket: StatusBucket };
+/** One of the store's categories or tags (P4.6). */
+export type ViewLabel = { id: string; kind: "category" | "tag"; name: string; colour: ProjectColour };
 
 export type ChecklistWords = Pick<ProjectsMessages, "checklist" | "item" | "repeat" | "filter" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody" | "due">;
 
@@ -40,7 +42,10 @@ type Props = {
   entries: ViewEntry[];
   done: ViewItem[];
   statuses: ViewStatus[];
+  labels: ViewLabel[];
   team: { id: string; name: string }[];
+  /** Who is looking: the comments they wrote are theirs to change. */
+  me: string;
   /** The store's other lists, where tasks can be moved. */
   otherLists: { id: string; title: string }[];
   folds: string[];
@@ -295,6 +300,7 @@ export function ChecklistView(props: Props) {
           timeZone={props.timeZone}
           words={words.filter}
           priorityNames={words.priorities}
+          labels={props.labels}
         />
       )}
 
@@ -426,11 +432,14 @@ export function ChecklistView(props: Props) {
           item={editingItem}
           features={list.features}
           statuses={statuses}
+          labels={props.labels}
+          me={props.me}
           team={team}
           others={allItems.filter((i) => i.id !== editingItem.id).map((i) => ({ id: i.id, title: i.title }))}
           timeZone={props.timeZone}
           currency={props.currency}
           locale={props.locale}
+          lang={props.lang}
           words={words}
           act={props.act}
           canChange={canChange}
@@ -468,6 +477,9 @@ function ItemFacts({ item, features, status, person, props, now }: { item: ViewI
     if (item.done && item.nextDueAt) facts.push(<span key="back" className="text-chip text-ink-2 tabular-nums">{fillWords(r.back, { date: adminDate(props.timeZone, item.nextDueAt, "dayTime", props.lang) })}</span>);
     if (!item.done && item.skippedAt) facts.push(<span key="skipped" className="text-chip text-warning-text">{r.skipped}</span>);
   }
+  const category = features.category ? props.labels.find((l) => l.id === item.categoryId) : undefined;
+  if (category) facts.push(<StatusPill key="category" colour={category.colour}>{category.name}</StatusPill>);
+  if (features.tags) for (const tag of props.labels.filter((l) => item.tagIds.includes(l.id))) facts.push(<StatusPill key={tag.id} colour={tag.colour}>{tag.name}</StatusPill>);
   if (features.assignment && person) facts.push(<span key="person" className="text-chip text-ink-2">{person}</span>);
   if (features.subtasks && item.subtasks.length > 0) {
     facts.push(
@@ -477,6 +489,7 @@ function ItemFacts({ item, features, status, person, props, now }: { item: ViewI
     );
   }
   if (features.cost && item.cost) facts.push(<span key="cost" className="text-chip text-ink-2 tabular-nums">{formatMoney(item.cost.minor, item.cost.currency, props.locale)}</span>);
+  if (item.comments.length > 0) facts.push(<span key="comments" className="text-chip text-ink-2 tabular-nums">{countWords(item.comments.length, w.checklist.comments)}</span>);
   return facts.length > 0 ? <span className="flex flex-wrap items-center gap-x-3 gap-y-1">{facts}</span> : null;
 }
 

@@ -322,3 +322,38 @@ describe("folds and blocking", () => {
     expect(await one("select blocked_by_item_id, checklist_id from commerce.checklist_items where id = $1", [second])).toEqual({ blocked_by_item_id: null, checklist_id: list });
   });
 });
+
+describe("labels and comments (P4.6, P4.4)", () => {
+  const label = (storeId: string, kind: string, name: string) =>
+    id("insert into commerce.project_labels (store_id, kind, name, slug) values ($1, $2, $3, lower($3)) returning id", [storeId, kind, name]);
+
+  it("give a task one category and several tags, each of its kind, and take them off with the label", async () => {
+    const list = await checklist(shop);
+    const task = await item(shop, list);
+    const shopping = await label(shop, "category", "Shopping");
+    const urgent = await label(shop, "tag", "Urgent");
+    const later = await label(shop, "tag", "Later");
+    await rejects("update commerce.checklist_items set category_id = $2 where id = $1", [task, urgent], /checklist_item\.category_kind/);
+    await db.query("update commerce.checklist_items set category_id = $2 where id = $1", [task, shopping]);
+    await rejects("insert into commerce.checklist_item_tags (store_id, item_id, label_id) values ($1, $2, $3)", [shop, task, shopping], /checklist_item\.tag_kind/);
+    await db.query("insert into commerce.checklist_item_tags (store_id, item_id, label_id) values ($1, $2, $3), ($1, $2, $4)", [shop, task, urgent, later]);
+    await rejects("update commerce.project_labels set kind = 'category' where id = $1", [urgent], /checklist_item\.label_kind_fixed/);
+    await db.query("delete from commerce.project_labels where id in ($1, $2)", [shopping, urgent]);
+    expect(await one("select category_id, checklist_id from commerce.checklist_items where id = $1", [task])).toEqual({ category_id: null, checklist_id: list });
+    expect((await db.query("select label_id from commerce.checklist_item_tags where item_id = $1", [task])).rows).toEqual([{ label_id: later }]);
+  });
+
+  it("refuse another store's label, a label's name twice in its kind, and an empty comment", async () => {
+    const list = await checklist(shop);
+    const task = await item(shop, list);
+    const theirs = await label(other, "category", "Theirs");
+    await rejects("update commerce.checklist_items set category_id = $2 where id = $1", [task, theirs], /checklist_items_category_fk|checklist_item\.category_kind/);
+    await label(shop, "tag", "Twice");
+    await rejects("insert into commerce.project_labels (store_id, kind, name, slug) values ($1, 'tag', 'Twice', 'twice')", [shop], /project_labels_slug_key/);
+    await label(shop, "category", "Twice");
+    await rejects("insert into commerce.checklist_item_comments (store_id, item_id, written_by, body) values ($1, $2, $3, '  ')", [shop, task, account], /checklist_item_comments_body/);
+    await db.query("insert into commerce.checklist_item_comments (store_id, item_id, written_by, body) values ($1, $2, $3, 'Ordered from the usual supplier.')", [shop, task, account]);
+    await db.query("delete from commerce.checklist_items where id = $1", [task]);
+    expect(await one("select count(*)::int as n from commerce.checklist_item_comments where item_id = $1", [task])).toEqual({ n: 0 });
+  });
+});

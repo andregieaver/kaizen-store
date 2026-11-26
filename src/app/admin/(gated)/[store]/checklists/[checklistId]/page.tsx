@@ -13,6 +13,7 @@ import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { mainCurrency } from "@/lib/markets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { teamOf } from "@/server/projects";
+import { labelsOf } from "@/server/projects-labels";
 import { checklistDetail, listChecklists, type ChecklistItem } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
 
@@ -34,7 +35,12 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const lang = adminLangOf(member.account.adminLocale);
   const w = PROJECTS_WORDS[lang];
   await ensureDefaultStatuses(store.id, w.defaults);
-  const [list, lists, team] = await Promise.all([checklistDetail(store.id, checklistId, member.account.id, store.timeZone), listChecklists(store.id), teamOf(store.id)]);
+  const [list, lists, team, labels] = await Promise.all([
+    checklistDetail(store.id, checklistId, member.account.id, store.timeZone),
+    listChecklists(store.id),
+    teamOf(store.id),
+    labelsOf(store.id),
+  ]);
   if (!list) notFound();
   const canChange = memberCan(member, "projects:write");
   const act = projectsAction.bind(null, store.slug);
@@ -74,6 +80,8 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         entries={entries}
         done={list.done.map(toView)}
         statuses={list.statuses.map((s) => ({ id: s.id, name: s.name, colour: s.colour, bucket: s.bucket }))}
+        labels={labels.map((l) => ({ id: l.id, kind: l.kind, name: l.name, colour: l.colour }))}
+        me={member.account.id}
         team={team}
         otherLists={lists.filter((l) => l.id !== list.id && l.status !== "archived").map((l) => ({ id: l.id, title: l.title }))}
         folds={list.folds}

@@ -542,6 +542,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   projects: "A store's projects (D903): names, descriptions, status, health, next action and target date, written by staff about the store's own work, and the staff account that made one; never a shopper's data.",
   project_statuses: "A project's stages (D903): names, colours and order, the store's own words.",
   checklist_statuses: "A checklist's statuses (D903): names, colours and order, the store's own words.",
+  project_labels: "A store's categories and tags for tasks (D903 P4.6): names, colours and order, the store's own words.",
+  checklist_item_comments: "The team's comments on a task (D903 P4.4): staff writing about the store's own work. " + OWN,
   contract_codes: "The codes a contract's signer proves their email with (D695): a hash, its tries and its expiry, tied to the signer; no person's data of its own.",
   contract_seals: "Kaizena Flow's own seal for signed contracts (D695): a certificate and its encrypted key; no person's data.",
   contract_templates: "A store's contract templates (D695): its own words, fields and signature boxes, written by staff; no person's data.",

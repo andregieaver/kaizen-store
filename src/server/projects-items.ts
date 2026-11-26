@@ -13,6 +13,7 @@ import type { Membership } from "./auth";
 import { memberCan } from "./permissions";
 import { assignable } from "./projects";
 import { projectsGuard, type ProjectsResult } from "./projects-errors";
+import { replaceTags } from "./projects-labels";
 import { at, reorderSql, setList } from "./projects-sql";
 import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
@@ -67,6 +68,7 @@ function itemColumns(d: Partial<ItemInput>): [SQL, unknown][] {
     [sql`blocked_by_item_id`, uuidOrNull(d.blockedByItemId)],
     [sql`cost_minor`, d.cost === undefined ? undefined : (d.cost?.minor ?? null)],
     [sql`cost_currency`, d.cost === undefined ? undefined : (d.cost?.currency ?? null)],
+    [sql`category_id`, uuidOrNull(d.categoryId)],
   ];
 }
 
@@ -94,18 +96,23 @@ export async function addItem(member: Membership, checklistId: string, raw: unkn
   if (!(await listExists(storeId, checklistId))) return { ok: false, problem: "not_found" };
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
   const given = [...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone)].filter(([, v]) => v !== undefined);
-  return projectsGuard(async () => {
-    const sortOrder = await endOf(db(), storeId, checklistId);
-    const made = await typedRow(
-      z.object({ id: col.uuid }),
-      sql`
-        insert into commerce.checklist_items (store_id, checklist_id, sort_order, created_by${sql.join(given.map(([c]) => sql`, ${c}`), sql``)})
-        values (${storeId}::uuid, ${checklistId}::uuid, ${sortOrder}, ${member.account.id}::uuid${sql.join(given.map(([, v]) => sql`, ${v}`), sql``)})
-        returning id
-      `,
-    );
-    return made ? { ok: true, id: made.id } : { ok: false, problem: "invalid" };
-  });
+  return projectsGuard(() =>
+    db().transaction(async (tx): Promise<ProjectsResult<{ id: string }>> => {
+      const sortOrder = await endOf(tx, storeId, checklistId);
+      const made = await typedRow(
+        z.object({ id: col.uuid }),
+        sql`
+          insert into commerce.checklist_items (store_id, checklist_id, sort_order, created_by${sql.join(given.map(([c]) => sql`, ${c}`), sql``)})
+          values (${storeId}::uuid, ${checklistId}::uuid, ${sortOrder}, ${member.account.id}::uuid${sql.join(given.map(([, v]) => sql`, ${v}`), sql``)})
+          returning id
+        `,
+        tx,
+      );
+      if (!made) return { ok: false, problem: "invalid" };
+      if (input.data.tagIds) await replaceTags(tx, storeId, made.id, input.data.tagIds);
+      return { ok: true, id: made.id };
+    }),
+  );
 }
 
 /** Several items at once, one a line (a pasted list), at the end of the list. Empty lines are skipped. */
@@ -137,11 +144,22 @@ export async function updateItem(member: Membership, itemId: string, raw: unknow
   const storeId = member.store.id;
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
   const set = setList([...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone)]);
-  if (!set) return { ok: true };
-  return projectsGuard(async () => {
-    const changed = await typedRows(z.object({ id: col.uuid }), sql`update commerce.checklist_items set ${set} where store_id = ${storeId}::uuid and id = ${itemId}::uuid returning id`);
-    return changed.length > 0 ? { ok: true } : { ok: false, problem: "not_found" };
-  });
+  const tags = input.data.tagIds;
+  if (!set && tags === undefined) return { ok: true };
+  return projectsGuard(() =>
+    db().transaction(async (tx): Promise<ProjectsResult> => {
+      const found = await typedRows(
+        z.object({ id: col.uuid }),
+        set
+          ? sql`update commerce.checklist_items set ${set} where store_id = ${storeId}::uuid and id = ${itemId}::uuid returning id`
+          : sql`select id from commerce.checklist_items where store_id = ${storeId}::uuid and id = ${itemId}::uuid`,
+        tx,
+      );
+      if (found.length === 0) return { ok: false, problem: "not_found" };
+      if (tags !== undefined) await replaceTags(tx, storeId, itemId, tags);
+      return { ok: true };
+    }),
+  );
 }
 
 /**

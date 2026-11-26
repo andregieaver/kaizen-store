@@ -9,6 +9,7 @@ import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import { Field, Select, TextInput } from "@/components/admin/ui/field";
 import { TextArea } from "@/components/admin/ui/field";
 import { fillWords } from "@/lib/admin-fill";
+import type { AdminLang } from "@/lib/admin-lang";
 import type { ProjectsMessages } from "@/lib/admin-messages/projects.en";
 import { minorUnitDigits } from "@/lib/money";
 import { instantOf, whenFields } from "@/lib/projects-dates";
@@ -16,7 +17,10 @@ import type { ChecklistFeatures } from "@/lib/projects-features";
 import { PRIORITIES, type Priority, type ProjectColour, type StatusBucket } from "@/lib/projects-model";
 import type { Recurrence } from "@/lib/projects-recurrence";
 
+import { ItemComments, type EditorComment } from "./item-comments";
+import { ColourDot } from "./parts";
 import { draftOf, RepeatField, ruleOf } from "./repeat-field";
+import { Toggle } from "./toggle";
 import { useAct, type ProjectsAct } from "./use-act";
 
 export type EditorItem = {
@@ -35,7 +39,10 @@ export type EditorItem = {
   blockedByItemId: string | null;
   cost: { minor: number; currency: string } | null;
   recurrence: Recurrence | null;
+  categoryId: string | null;
+  tagIds: string[];
   subtasks: { id: string; title: string; done: boolean; isGoal: boolean }[];
+  comments: EditorComment[];
 };
 
 export type EditorWords = Pick<ProjectsMessages, "item" | "repeat" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody">;
@@ -49,11 +56,14 @@ export function ItemEditor({
   item,
   features,
   statuses,
+  labels,
+  me,
   team,
   others,
   timeZone,
   currency,
   locale,
+  lang,
   words,
   act,
   canChange,
@@ -62,12 +72,17 @@ export function ItemEditor({
   item: EditorItem;
   features: ChecklistFeatures;
   statuses: { id: string; name: string; colour: ProjectColour; bucket: StatusBucket }[];
+  /** The store's categories and tags (P4.6). */
+  labels: { id: string; kind: "category" | "tag"; name: string; colour: ProjectColour }[];
+  /** Who is looking: their own comments are theirs to change. */
+  me: string;
   team: { id: string; name: string }[];
   /** The list's other tasks, one of which this one may wait for. */
   others: { id: string; title: string }[];
   timeZone: string;
   currency: string;
   locale: string;
+  lang: AdminLang;
   words: EditorWords;
   act: ProjectsAct;
   canChange: boolean;
@@ -91,6 +106,10 @@ export function ItemEditor({
   const [blockedReason, setBlockedReason] = useState(item.blockedReason ?? "");
   const [blockedBy, setBlockedBy] = useState(item.blockedByItemId ?? "");
   const [newStep, setNewStep] = useState("");
+  const [categoryId, setCategoryId] = useState(item.categoryId ?? "");
+  const [tagIds, setTagIds] = useState(item.tagIds);
+  const categories = labels.filter((l) => l.kind === "category");
+  const tags = labels.filter((l) => l.kind === "tag");
   const [repeat, setRepeat] = useState(() => draftOf(item.recurrence));
   const rule = ruleOf(repeat, item.recurrence);
   // Sent only when it changed: a task given a rule is open again.
@@ -116,6 +135,8 @@ export function ItemEditor({
           ...((features.startDate || features.dueDate) && { allDay: (dueAt.at ? dueAt.allDay : startAt.allDay) ?? null }),
           ...(features.cost && { cost: cost.trim() && Number.isFinite(amount) ? { minor: Math.round(amount * 10 ** digits), currency: item.cost?.currency ?? currency } : null }),
           ...(features.recurrence && ruleChanged && { recurrence: rule }),
+          ...(features.category && categories.length > 0 && { categoryId: categoryId || null }),
+          ...(features.tags && tags.length > 0 && { tagIds }),
         },
       },
       (answer) => answer.ok && onClose(),
@@ -226,6 +247,32 @@ export function ItemEditor({
           )}
           {features.dueDate && <DayAndTime label={w.dueAt} day={dueDay} time={dueTime} onDay={setDueDay} onTime={setDueTime} disabled={!canChange} />}
           {features.recurrence && <RepeatField draft={repeat} onChange={setRepeat} words={words.repeat} locale={locale} disabled={!canChange} />}
+          {features.category && categories.length > 0 && (
+            <Field label={w.category}>
+              {(control) => (
+                <Select {...control} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={!canChange} full>
+                  <option value="">{w.noCategory}</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          )}
+          {features.tags && tags.length > 0 && (
+            <div role="group" aria-label={w.tags} className="flex flex-wrap items-center gap-1.5 sm:col-span-2">
+              <span className="text-sm font-medium text-ink">{w.tags}</span>
+              {tags.map((t) => (
+                <Toggle key={t.id} on={tagIds.includes(t.id)} disabled={!canChange} onClick={() => setTagIds((ids) => (ids.includes(t.id) ? ids.filter((x) => x !== t.id) : [...ids, t.id]))}>
+                  <ColourDot colour={t.colour} size="size-2" />
+                  {t.name}
+                </Toggle>
+              ))}
+            </div>
+          )}
+          {(features.category || features.tags) && labels.length === 0 && <p className="text-sm text-muted sm:col-span-2">{w.labelsWhere}</p>}
           {features.status && (
             <>
               <Field label={w.blockedReason} hint={w.blockedReasonHint}>
@@ -298,6 +345,20 @@ export function ItemEditor({
             )}
           </section>
         )}
+        <ItemComments
+          itemId={item.id}
+          comments={item.comments}
+          me={me}
+          canChange={canChange}
+          timeZone={timeZone}
+          lang={lang}
+          words={w}
+          delete={words.delete}
+          save={words.save}
+          cancel={words.cancel}
+          run={run}
+          pending={pending}
+        />
         <p role="status" aria-live="polite" className="text-sm text-danger-text">
           {said}
         </p>
