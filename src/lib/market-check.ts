@@ -52,7 +52,10 @@ export type MarketFacts = {
   sells: boolean;
   /** Visitor-days of the covered days; null while visits are not counted. */
   visits: number | null;
-  /** Paid orders from those visits: conversion's numerator. Null with `visits`. */
+  /**
+   * Conversion's numerator, null with `visits`: the paid orders from those visits, or, for a store without a shop, the visits that sent an
+   * enquiry through one of its forms (D905 M5e, the facts' `measure`).
+   */
   visitOrders: number | null;
   /** Paid orders placed in the country's market, its revenue without VAT in the main currency. Null where orders do not apply (the house). */
   orders: number | null;
@@ -90,7 +93,12 @@ export type MarketCheckFacts = {
   searchTerms: SearchTermFacts[];
   /** How fast the store's own site and its rivals' are for their visitors, by Chrome's measure (D905 M5c). */
   siteSpeeds: SiteSpeedFacts[];
+  /** What conversion counts: orders, or for a store without a shop enquiries sent through its forms (D905 M5e). */
+  measure: ConversionMeasure;
 };
+
+/** What a visit's conversion is: an order, or an enquiry where there is no shop (D905 M5e). */
+export type ConversionMeasure = "orders" | "enquiries";
 
 export type MarketFindingKind =
   | "weak_market"
@@ -183,6 +191,8 @@ export const FIX_PATHS: Record<MarketFindingKind, string> = {
 export type ConversionFinding = {
   kind: "weak_market" | "strong_market";
   market: string;
+  /** What `orders` counts: orders, or enquiries for a store without a shop (D905 M5e). */
+  measure: ConversionMeasure;
   /** The country's conversion and the rest's (0..1). */
   rate: number;
   restRate: number;
@@ -292,7 +302,7 @@ function sizeOf(f: MarketFinding): number {
 }
 
 /** Each country held against the rest of the store, where both sides have enough visits and the difference is not chance. */
-function conversionFindings(markets: readonly MarketFacts[]): ConversionFinding[] {
+function conversionFindings(markets: readonly MarketFacts[], measure: ConversionMeasure): ConversionFinding[] {
   const counted = markets.filter((m): m is MarketFacts & { visits: number; visitOrders: number } => m.visits !== null && m.visitOrders !== null);
   const visits = counted.reduce((n, m) => n + m.visits, 0);
   const orders = counted.reduce((n, m) => n + m.visitOrders, 0);
@@ -308,7 +318,7 @@ function conversionFindings(markets: readonly MarketFacts[]): ConversionFinding[
     const expected = Math.round(restRate * m.visits);
     const kind = z < 0 ? "weak_market" : "strong_market";
     const gap = Math.max(0, kind === "weak_market" ? expected - m.visitOrders : m.visitOrders - expected);
-    out.push({ kind, market: m.code, rate, restRate, visits: m.visits, orders: m.visitOrders, restVisits, restOrders, z, gap });
+    out.push({ kind, market: m.code, measure, rate, restRate, visits: m.visits, orders: m.visitOrders, restVisits, restOrders, z, gap });
   }
   return out;
 }
@@ -318,7 +328,7 @@ function conversionFindings(markets: readonly MarketFacts[]): ConversionFinding[
  * next of each, each kind's largest first (ties by the country or term, so the order never depends on how the rows were read).
  */
 export function marketFindings(facts: MarketCheckFacts, now: Date = new Date()): MarketFinding[] {
-  const all: MarketFinding[] = [...conversionFindings(facts.markets)];
+  const all: MarketFinding[] = [...conversionFindings(facts.markets, facts.measure)];
   for (const d of facts.demand) if (d.misses >= MIN_MISSES) all.push({ kind: "unmet_demand", term: d.term, misses: d.misses, markets: d.markets });
   // A rival's offer read within OFFER_FRESH_DAYS, held against the store's own price there: one it cannot sell now is a gap it leaves; else,
   // in the same currency, at least PRICE_GAP_MIN apart either way.
@@ -384,6 +394,9 @@ export const missRateOf = (m: Pick<MarketFacts, "searches" | "misses">): number 
 
 /** The words a finding is written with, in the reader's language (`marketsEn.finding`). */
 export type FindingWords = {
+  /** `weak_market` and `strong_market` where conversion counts enquiries (D905 M5e). */
+  weakEnquiries: string;
+  strongEnquiries: string;
   weak_market: string;
   strong_market: string;
   unmet_demand: string;
@@ -438,7 +451,7 @@ export function findingText(
   switch (f.kind) {
     case "weak_market":
     case "strong_market":
-      return fillWords(words[f.kind], {
+      return fillWords(f.measure === "enquiries" ? (f.kind === "weak_market" ? words.weakEnquiries : words.strongEnquiries) : words[f.kind], {
         market: nameOf(names, f.market),
         rate: formatPercent(f.rate),
         rest: formatPercent(f.restRate),

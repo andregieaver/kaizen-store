@@ -26,6 +26,7 @@ export const marketCheckNb: MarketCheckMessages = {
     untranslated: "Språk",
     unpriced: "Priser",
   },
+  kindsEnquiries: { weak_market: "Spør mindre", strong_market: "Spør mer" },
   makePlan: "Lag en plan",
   makePlanFor: ": {text}",
   open: {
@@ -49,6 +50,10 @@ export const marketCheckNb: MarketCheckMessages = {
     weak_market:
       "Besøkende i {market} kjøper mindre: {rate} av besøkene ender i en ordre, mot {rest} i de andre landene dine. Med den raten ville landet hatt omtrent {gap} flere ordrer.",
     strong_market: "Besøkende i {market} kjøper mer: {rate} av besøkene ender i en ordre, mot {rest} i de andre landene dine. Det kan være verdt mer av markedsføringen din.",
+    weakEnquiries:
+      "Besøkende i {market} spør mindre: {rate} av besøkene ender i en henvendelse, mot {rest} i de andre landene dine. Med den raten ville landet hatt omtrent {gap} flere henvendelser.",
+    strongEnquiries:
+      "Besøkende i {market} spør mer: {rate} av besøkene ender i en henvendelse, mot {rest} i de andre landene dine. Det kan være verdt mer av markedsføringen din.",
     unmet_demand: "Kunder søkte etter «{term}» {n} ganger uten å finne noe{where}.",
     unmetIn: ", de fleste i {market}",
     rival_cheaper: "{rival} selger {product} for {theirs} i {market}, og du tar {yours}: {gap} mer.",
@@ -102,6 +107,7 @@ export const marketCheckNb: MarketCheckMessages = {
     country: "Land",
     visits: "Besøk",
     conversion: "Konvertering",
+    enquiryRate: "Henvendelser per besøk",
     orders: "Ordrer",
     revenue: "Omsetning",
     aov: "Snittordre",
@@ -114,6 +120,8 @@ export const marketCheckNb: MarketCheckMessages = {
     notApplicable: "—",
     compared:
       "Et land sammenlignes med resten bare når begge har minst {visits} besøk og resten minst {orders} ordrer, og forskjellen er for stor til å være tilfeldig.",
+    comparedEnquiries:
+      "Et land sammenlignes med resten bare når begge har minst {visits} besøk og resten minst {orders} henvendelser, og forskjellen er for stor til å være tilfeldig. En henvendelse er en melding sendt gjennom et av skjemaene på nettstedet ditt.",
   },
   rivals: {
     title: "Konkurrentene dine",
@@ -283,7 +291,7 @@ export const marketCheckNb: MarketCheckMessages = {
     partial: "Besøk telles fra {date}: konverteringen gjelder bare de dagene.",
     searchesClamped: "Søk lagres i 90 dager, så de telles fra {date}.",
     searchesEmpty: "Ingen søk fra denne perioden er lagret lenger: søk lagres i 90 dager.",
-    house: "Kaizena Flow selger planer, ikke varer: ordrer og priser per land gjelder ikke. Påmeldinger telles ikke per land ennå.",
-    noShop: "Butikken er slått av, så ordrer og priser per land vises ikke.",
+    house: "Kaizena Flow selger planer, ikke varer: konverteringen teller meldinger sendt gjennom skjemaene på nettstedet, og priser per land gjelder ikke. Påmeldinger telles ikke per land ennå.",
+    noShop: "Butikken er slått av: konverteringen teller meldinger sendt gjennom skjemaene på nettstedet ditt, og ordrer og priser per land vises ikke.",
   },
 };

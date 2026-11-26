@@ -1,6 +1,6 @@
 {
-  "id": "cd9aebba-c6d6-40ae-8139-bb6be2775196",
-  "prevId": "121d0847-81cb-4a7f-a4d3-7ae0248ca832",
+  "id": "acd8066b-0f98-4b0a-8278-211487f84425",
+  "prevId": "cd9aebba-c6d6-40ae-8139-bb6be2775196",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -106130,6 +106130,12 @@
         },
         "checkout_at": {
           "name": "checkout_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enquiry_at": {
+          "name": "enquiry_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

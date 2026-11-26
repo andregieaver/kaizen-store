@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."visits" ADD COLUMN "enquiry_at" timestamp with time zone;

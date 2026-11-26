@@ -48,6 +48,7 @@ const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): Ma
   rivalServices: [],
   searchTerms: [],
   siteSpeeds: [],
+  measure: "orders",
   ...over,
 });
 const names = new Map([
@@ -336,6 +337,16 @@ describe("the market check's findings (D900 M1)", () => {
     expect(findingText(behind, marketCheckEn.finding, names, language)).toBe("Linnet is number 2 in a search for “linen apron” in Norway; you are number 7.");
     expect(findingText(missing, marketCheckEn.finding, names, language)).toBe("Linnet is number 4 in a search for “linforkle” in Norway; you are not on the first page.");
     expect(findingText(ahead, marketCheckNb.finding, names, language)).toBe("Du er nummer 1 i et søk etter «forkle» i Norway, og ingen konkurrent du følger, er over deg.");
+  });
+
+  it("says a country asks less or more where conversion counts enquiries, with the same minimums (D905 M5e)", () => {
+    const markets = [country("NO", { visits: 2000, visitOrders: 60, sells: false }), country("DE", { visits: 1000, visitOrders: 5, sells: false })];
+    const [weak] = marketFindings(facts(markets, { measure: "enquiries" }));
+    expect(weak).toMatchObject({ kind: "weak_market", measure: "enquiries", market: "DE", gap: 25 });
+    expect(findingText(weak, marketCheckEn.finding, names, language)).toBe(
+      "Visitors in Germany ask less: 0.5 % of visits end in an enquiry, against 3.0 % in your other countries. At that rate it would have had about 25 more enquiries.",
+    );
+    expect(findingText(weak, marketCheckNb.finding, names, language)).toContain("spør mindre");
   });
 
   it("finds a rival's site good where the store's is poor, by Chrome's measure (D905 M5c)", () => {

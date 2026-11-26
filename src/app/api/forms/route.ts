@@ -43,6 +43,6 @@ export async function POST(request: Request) {
   const parsed = formRequest.safeParse(body);
   if (!parsed.success) return fail(400, "The form could not be read.");
   const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-  const { status, body: answer } = await submitForm(parsed.data, formVisitor(address), files);
+  const { status, body: answer } = await submitForm(parsed.data, formVisitor(address), files, request.headers);
   return Response.json(answer, { status, headers: { "Cache-Control": "no-store" } });
 }

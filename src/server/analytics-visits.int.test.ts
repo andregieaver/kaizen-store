@@ -18,7 +18,7 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 
-const { recordVisit, recordTouch, recordPageError, attachVisitToCart, pruneVisits, visitKeyOf } = await import("./analytics-visits");
+const { recordVisit, recordTouch, recordPageError, attachVisitToCart, markVisitEnquiry, pruneVisits, visitKeyOf } = await import("./analytics-visits");
 const { forgetVisitStore } = await import("./store-facts");
 const { logSearch } = await import("./search");
 const { NEW_VISITS_PER_ADDRESS_WINDOW, NEW_VISITS_PER_STORE_DAY } = await import("@/lib/visit-record");
@@ -187,6 +187,22 @@ describe("recording a page view", () => {
     // Another visitor's error leaves this row alone, and counting off marks nothing.
     await setCounting(false);
     expect(await recordPageError({ headers: asRequest({}, DESKTOP), body: view(page()), now: EVENING })).toBe(false);
+  });
+
+  it("marks the sender's counted visit with its first enquiry, and nothing for a robot, a privacy signal or counting off (D905 M5e)", async () => {
+    // No visit counted yet: an enquiry starts nothing.
+    expect(await markVisitEnquiry(storeId, asRequest(), EVENING)).toBe(false);
+    await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING });
+    expect(await markVisitEnquiry(storeId, asRequest({ "sec-gpc": "1" }), EVENING)).toBe(false);
+    expect(await markVisitEnquiry(storeId, asRequest({}, "Googlebot/2.1"), EVENING)).toBe(false);
+    expect(await markVisitEnquiry(storeId, asRequest(), new Date(EVENING.getTime() + 60_000))).toBe(true);
+    // The first enquiry's time is kept; a second marks nothing.
+    expect(await markVisitEnquiry(storeId, asRequest(), new Date(EVENING.getTime() + 120_000))).toBe(false);
+    const [row] = await visits();
+    expect(new Date(String(row.enquiry_at)).getTime()).toBe(EVENING.getTime() + 60_000);
+    // Another visitor's enquiry leaves this row alone, and counting off marks nothing.
+    await setCounting(false);
+    expect(await markVisitEnquiry(storeId, asRequest({}, DESKTOP), EVENING)).toBe(false);
   });
 
   it("makes another row for another visitor and for the same one on another day, and the two cannot be linked", async () => {

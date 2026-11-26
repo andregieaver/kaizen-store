@@ -231,6 +231,7 @@ country and is left out.
 |---|---|
 | A country buys less | Its conversion is under the rest's: at least `MIN_VISITS` (200) visits in it and in the rest, at least `MIN_ORDERS` (10) orders in the rest, and `twoProportionZ()` of the rest against it at −1.96 or lower. Its figure: the orders it would have had at the rest's rate, less those it had (an estimate). |
 | A country buys more | The same the other way round, at +1.96 or higher. |
+| Asks less, asks more | For a store without a shop (D905 M5e): the same test with enquiries for orders, the visits that sent a message through one of the site's forms (`visits.enquiry_at`, marked on the sender's visit for the day), the same minimums. |
 | Searched for, not found | A term with at least `MIN_MISSES` (5) misses in the period, its countries' misses added up; at most `DEMAND_TERMS` (10). |
 | Not in its language | A country whose own language is not the main one, with products without a name in it. |
 | No price there | A country the store sells to with products that have no price there. |

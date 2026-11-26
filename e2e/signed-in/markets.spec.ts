@@ -249,6 +249,9 @@ test.describe("as the owner of a store without a shop (D905)", () => {
     await page.waitForLoadState("networkidle");
     await page.getByText("See every country and every finding").click();
     await expect(page.locator("[data-every-country]")).toHaveAttribute("open", "");
+    // Without a shop, a country's conversion counts the visits that sent a message through a form (D905 M5e).
+    await expect(page.getByRole("columnheader", { name: "Enquiry rate" })).toBeVisible();
+    await expect(page.getByText("conversion counts the messages sent through your site's forms", { exact: false })).toBeVisible();
     const rivals = page.locator('section[aria-labelledby="market-rivals"]');
     await expect(rivals.locator('[data-rival="linnet.example"] [data-rival-site]')).toContainText("46 pages · 8 added in 30 days · 2 gone");
     await expect(rivals.locator('[data-rival="linnet.example"]').getByRole("link", { name: "/blogg/linpleie" })).toHaveAttribute("href", "https://linnet.example/blogg/linpleie");

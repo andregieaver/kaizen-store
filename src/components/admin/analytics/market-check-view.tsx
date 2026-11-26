@@ -90,13 +90,17 @@ export type MarketCheckViewProps = {
 /** A language code's name in the reader's language: `de-DE` is "German". */
 const languageOf = (lang: AdminLang) => (locale: string) => languageNames([locale.split("-")[0]], lang);
 
+/** A finding's label: a country's conversion says *asks* rather than *buys* where it counts enquiries (D905 M5e). */
+const kindLabel = (f: MarketFinding, words: MarketCheckViewProps["words"]) =>
+  (f.kind === "weak_market" || f.kind === "strong_market") && f.measure === "enquiries" ? words.kindsEnquiries[f.kind] : words.kinds[f.kind];
+
 /** The period's words inside a sentence: its first letter in lower case ("last 30 days"). */
 const inSentence = (label: string) => label.charAt(0).toLocaleLowerCase() + label.slice(1);
 
 function FindingCard({ finding, text, base, periodLabel, words }: { finding: MarketFinding; text: string } & Pick<MarketCheckViewProps, "base" | "periodLabel" | "words">) {
   return (
     <li data-finding={finding.kind} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
-      <StatusPill tone={TONE[finding.kind]}>{words.kinds[finding.kind]}</StatusPill>
+      <StatusPill tone={TONE[finding.kind]}>{kindLabel(finding, words)}</StatusPill>
       <p className="flex-1 text-body text-ink">{text}</p>
       {/* The button above its link in every card, so the three cards end alike whatever the link's words. */}
       <div className="flex flex-col items-start gap-2">
@@ -121,7 +125,7 @@ type Line = { kind: MarketFindingKind; f: MarketFinding; text: string };
 function FindingLine({ f, text, base, periodLabel, words }: Line & Pick<MarketCheckViewProps, "base" | "periodLabel" | "words">) {
   return (
     <li data-finding={f.kind} className="flex flex-col items-start gap-2 px-4 py-3 text-sm">
-      <StatusPill tone={TONE[f.kind]}>{words.kinds[f.kind]}</StatusPill>
+      <StatusPill tone={TONE[f.kind]}>{kindLabel(f, words)}</StatusPill>
       <span className="text-ink">{text}</span>
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <AdminLink href={`${base}${FIX_PATHS[f.kind]}`} className={linkClass}>
@@ -162,7 +166,7 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words,
       ),
     },
     { key: "visits", label: e.visits, align: "right", cell: (m) => cell(m.visits, formatCount, e.notCounted) },
-    { key: "conversion", label: e.conversion, align: "right", cell: (m) => cell(conversionOf(m), (r) => formatPercent(r), e.notCounted) },
+    { key: "conversion", label: check.measure === "enquiries" ? e.enquiryRate : e.conversion, align: "right", cell: (m) => cell(conversionOf(m), (r) => formatPercent(r), e.notCounted) },
     ...(check.sells
       ? ([
           { key: "orders", label: e.orders, align: "right", cell: (m) => cell(m.orders, formatCount, e.notApplicable) },
@@ -248,7 +252,7 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words,
 
           <AnalyticsSection id="market-countries" title={e.title} description={e.description} level={3}>
             <DataTable caption={e.caption} columns={columns} rows={check.markets} rowKey={(m) => m.code} exportable={false} exportReason="markets.countries" />
-            {counted ? <p className="text-xs text-muted">{fillWords(e.compared, { visits: formatCount(MIN_VISITS), orders: formatCount(MIN_ORDERS) })}</p> : null}
+            {counted ? <p className="text-xs text-muted">{fillWords(check.measure === "enquiries" ? e.comparedEnquiries : e.compared, { visits: formatCount(MIN_VISITS), orders: formatCount(MIN_ORDERS) })}</p> : null}
           </AnalyticsSection>
 
           {rivals}

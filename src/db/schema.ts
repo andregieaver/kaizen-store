@@ -15616,6 +15616,11 @@ export const visits = commerce.table(
     productViews: integer("product_views").notNull().default(0),
     /** When the visitor first reached checkout that day. */
     checkoutAt: timestamp("checkout_at", { withTimezone: true }),
+    /**
+     * When the visitor first sent an enquiry that day through one of the site's forms (D905, market check M5e): a message or a quote, never
+     * a newsletter sign-up. A store without a shop is compared country by country on these, as one with a shop is on orders.
+     */
+    enquiryAt: timestamp("enquiry_at", { withTimezone: true }),
     firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
     lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
     /**
