@@ -624,6 +624,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   minutes). The only writer of both columns (`dropSocialScene()` clears the scene for the drawn picture). `socialPicture()` draws the scene in
   the photo's place, a topic's behind its headline on the accent band; a Canva copy (`picture_media_id`) still wins.
 
+## A social post's slideshow video (D870 S2.5, `src/lib/social-slideshow.ts` pure, `src/server/social-slideshow.ts`)
+
+- **A social post's slideshow video (D870 S2.5, `src/lib/social-slideshow.ts` pure, `src/server/social-slideshow.ts`)**: made in the
+  owner's browser by `makeSlideshow()` (`src/lib/social-slideshow-make.ts`, mediabunny loaded on the press) from `slideshowPlan()`: the
+  post's own picture (by its address with its version) and the product's photos after its first, each served by `social/slides/[postId]`
+  (`?n=`, the store's own files through `ownFile()`, `marketing:read`, the extension `social`). `framesAt()`, `coverRect()` and
+  `containRect()` place every frame (1080 × 1920, 30 fps, `SLIDES_MAX` photos). The video is uploaded straight to Storage
+  (`startSlideshowUpload()`, the calendar route's `video_start`, storage limits as any video) and kept by `keepSlideshow()`
+  (`video_keep`: the library row for that path, the store's own only), the only writer of `video_media_id`.
+
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 
 - **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram

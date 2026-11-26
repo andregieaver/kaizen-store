@@ -24,6 +24,8 @@ export type CalendarDraft = {
   check?: { problems: string[]; note: string } | null;
   /** Whether it draws a made scene (S2.1), and how often one was made for it. */
   scene?: { on: boolean; tries: number };
+  /** Its slideshow video's address in the library (S2.5), if one was made. */
+  video?: string | null;
 };
 
 /** One planned post: the adviser's idea (or none, for a draft written straight onto a day) and its draft, if written. */

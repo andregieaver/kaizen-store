@@ -18914,6 +18914,8 @@ export const socialPosts = commerce
        */
       sceneMediaId: uuid("scene_media_id").references(() => media.id, { onDelete: "set null" }),
       sceneTries: smallint("scene_tries").notNull().default(0),
+      /** The post's slideshow video (D870 S2.5): made in the owner's browser from its pictures, kept in the library for Reels and TikTok. */
+      videoMediaId: uuid("video_media_id").references(() => media.id, { onDelete: "set null" }),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },
@@ -18921,6 +18923,7 @@ export const socialPosts = commerce
       unique("social_posts_store_id_key").on(t.storeId, t.id),
       index("social_posts_planned_idx").on(t.storeId, t.plannedFor),
       index("social_posts_scene_idx").on(t.sceneMediaId),
+      index("social_posts_video_idx").on(t.videoMediaId),
       index("social_posts_approved_by_idx").on(t.approvedBy),
       uniqueIndex("social_posts_ref_idx").on(t.storeId, t.ref, t.channel),
       index("social_posts_list_idx").on(t.storeId, t.createdAt),

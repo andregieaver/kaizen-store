@@ -36,6 +36,7 @@ const DRAFT_ROW = z.object({
   check_note: col.text,
   scene: col.bool,
   scene_tries: col.int,
+  video: col.textOrNull,
 });
 
 /** The calendar of the store's two weeks from today's Monday: the advice's plan and the drafts written for its days. */
@@ -44,13 +45,13 @@ export async function calendarOf(storeId: string, today: string, slots: readonly
   const rows = await typedRows(
     DRAFT_ROW,
     sql`
-      select id, planned_for::text as day, channel, caption, approved_at is not null as approved, product_id, topic, edited_at, checked_at, check_problems, check_note, scene_media_id is not null as scene, scene_tries
-      from commerce.social_posts
-      where store_id = ${storeId}::uuid and planned_for between ${first}::date and ${addDays(first, CALENDAR_WEEKS * 7 - 1)}::date
-      order by created_at desc
+      select p.id, p.planned_for::text as day, p.channel, p.caption, p.approved_at is not null as approved, p.product_id, p.topic, p.edited_at, p.checked_at, p.check_problems, p.check_note, p.scene_media_id is not null as scene, p.scene_tries, v.url as video
+      from commerce.social_posts p left join commerce.media v on v.id = p.video_media_id and v.store_id = p.store_id
+      where p.store_id = ${storeId}::uuid and p.planned_for between ${first}::date and ${addDays(first, CALENDAR_WEEKS * 7 - 1)}::date
+      order by p.created_at desc
     `,
   );
-  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null, scene: { on: r.scene, tries: r.scene_tries } }));
+  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null, scene: { on: r.scene, tries: r.scene_tries }, video: r.video }));
   return socialCalendar(today, slots, drafts);
 }
 

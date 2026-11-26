@@ -112,12 +112,18 @@ manager's tools and the weekly review carry them. Pages of other businesses need
 | S2.2 | The caption writer per channel, with the filters and the tagged link |
 | S2.3 | The vision check. **Done 2026-11-25** (below) |
 | S2.4 | The calendar screen, approval per post and per week. **Done 2026-11-25** (below) |
-| S2.5 | Slideshow video |
+| S2.5 | Slideshow video. **Done 2026-11-26** (below) |
 
 S2.4 as built: *Your posting plan* on Social posts (`socialCalendar()`, `src/server/social-calendar.ts`) lays the adviser's two weeks with
 their drafts (`social_posts.planned_for`); Homer writes the week's posts, then approves the week; Lisa writes, changes the words of (the
 claims filter again, the yes taken back), approves or takes back each post (`approved_at`, `approved_by`). Four columns and one route
 (`social/calendar`); no job, no table.
+
+S2.5 as built: *Make a video* on a calendar post makes a 9:16 slideshow in the owner's browser (`makeSlideshow()`,
+`src/lib/social-slideshow-make.ts`, timings in `src/lib/social-slideshow.ts`): the post's own picture whole over a blurred copy, then the
+product's other photos, each zooming and drifting with crossfades, encoded as H.264 MP4 by WebCodecs (mediabunny). It is uploaded straight
+to Storage, kept in the library and on the post (`video_media_id`, `src/server/social-slideshow.ts`), and offered to download. No server
+encoding and no AI: it costs nothing but the storage.
 
 S2.1 as built: *Make a scene* on a calendar post (`makeSocialScene()`, `src/server/social-scenes.ts`, brief in `src/lib/social-scenes.ts`)
 puts a product's own photo on a new background in the shop's style (the library's AI edit, `new_background`), or makes a background in the

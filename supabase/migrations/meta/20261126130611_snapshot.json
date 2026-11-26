@@ -1,6 +1,6 @@
 {
-  "id": "d63ee54a-c5e8-4407-97ee-c5fb045172c2",
-  "prevId": "e9f02b91-7924-4df3-8176-b0bc6e3146d2",
+  "id": "121d0847-81cb-4a7f-a4d3-7ae0248ca832",
+  "prevId": "d63ee54a-c5e8-4407-97ee-c5fb045172c2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -89477,6 +89477,12 @@
           "notNull": true,
           "default": 0
         },
+        "video_media_id": {
+          "name": "video_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -89518,6 +89524,21 @@
           "columns": [
             {
               "expression": "scene_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_video_idx": {
+          "name": "social_posts_video_idx",
+          "columns": [
+            {
+              "expression": "video_media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -89730,6 +89751,20 @@
           "schemaTo": "commerce",
           "columnsFrom": [
             "scene_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_video_media_id_media_id_fk": {
+          "name": "social_posts_video_media_id_media_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "media",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "video_media_id"
           ],
           "columnsTo": [
             "id"

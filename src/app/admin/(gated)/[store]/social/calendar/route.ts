@@ -4,6 +4,7 @@ import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 import { approveSocialPosts, editSocialPost } from "@/server/social-calendar";
 import { dropSocialScene, makeSocialScene } from "@/server/social-scenes";
+import { keepSlideshow, startSlideshowUpload } from "@/server/social-slideshow";
 import { checkSocialPosts } from "@/server/social-vision";
 
 /**
@@ -26,5 +27,9 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   const post = (body as { id?: unknown } | null)?.id;
   if (body?.do === "scene") return NextResponse.json(await makeSocialScene(member, post, request.nextUrl.origin));
   if (body?.do === "no_scene") return NextResponse.json(await dropSocialScene(member, post));
+  // The slideshow made in the browser (S2.5): its upload started, then kept on the post once it is there.
+  const extra = body as { size?: unknown; path?: unknown } | null;
+  if (body?.do === "video_start") return NextResponse.json(await startSlideshowUpload(member, post, extra?.size));
+  if (body?.do === "video_keep") return NextResponse.json(await keepSlideshow(member, post, extra?.path));
   return NextResponse.json({ ok: false, problem: "Unknown request." }, { status: 400 });
 }

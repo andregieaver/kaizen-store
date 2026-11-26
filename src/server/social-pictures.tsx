@@ -59,7 +59,7 @@ export function paletteOf(store: Pick<Membership["store"], "theme">): Palette {
  * A file of the store's own (a path on this site, or Supabase Storage's public files), read with a time limit and a size cap; null when it is
  * anywhere else or cannot be read, and the picture is drawn without it.
  */
-async function ownFile(url: string | null, origin: string, deps: PictureDeps): Promise<Buffer | null> {
+export async function ownFile(url: string | null, origin: string, deps: PictureDeps = {}): Promise<Buffer | null> {
   if (!url) return null;
   let address: URL;
   try {
