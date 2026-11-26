@@ -74,6 +74,21 @@ function itemColumns(d: Partial<ItemInput>): [SQL, unknown][] {
 }
 
 /**
+ * Who gave the task its person, and when (D904 P8.3d), written with the person: the five-minute job tells the person once by email, unless
+ * they took it themselves. A change to the same person leaves the marks as they were, so nobody is told twice.
+ */
+function giverColumns(assignedTo: string | null | undefined, actorId: string, mode: "insert" | "update"): [SQL, unknown][] {
+  if (assignedTo === undefined) return [];
+  if (mode === "insert") return assignedTo ? [[sql`assigned_by`, sql`${actorId}::uuid`], [sql`assigned_at`, sql`now()`]] : [];
+  const changed = sql`assigned_to is distinct from ${assignedTo}::uuid`;
+  return [
+    [sql`assigned_by`, sql`case when ${changed} then ${actorId}::uuid else assigned_by end`],
+    [sql`assigned_at`, sql`case when ${changed} then ${assignedTo ? sql`now()` : sql`null`} else assigned_at end`],
+    [sql`assignee_told_at`, sql`case when ${changed} then null else assignee_told_at end`],
+  ];
+}
+
+/**
  * The columns a rule writes (P4.1): the rule, counted from today where it counts days or months, and its next time after now; a task given
  * a rule is open again, and one whose rule is taken off forgets its run and its skip.
  */
@@ -98,7 +113,12 @@ export async function addItem(member: Membership, checklistId: string, raw: unkn
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
   // Where it came from (P8.3a): the source's column, from a fixed list, never the caller's words.
   const from: [SQL, unknown][] = source ? [[sql`${sql.identifier(SOURCE_COLUMNS[source.kind])}`, sql`${source.id}::uuid`]] : [];
-  const given = [...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone), ...from].filter(([, v]) => v !== undefined);
+  const given = [
+    ...itemColumns(input.data),
+    ...giverColumns(input.data.assignedTo, member.account.id, "insert"),
+    ...repeatColumns(input.data.recurrence, member.store.timeZone),
+    ...from,
+  ].filter(([, v]) => v !== undefined);
   return projectsGuard(() =>
     db().transaction(async (tx): Promise<ProjectsResult<{ id: string }>> => {
       const sortOrder = await endOf(tx, storeId, checklistId);
@@ -146,7 +166,11 @@ export async function updateItem(member: Membership, itemId: string, raw: unknow
   if (!input.success) return { ok: false, problem: "invalid", fields: problemFields(input.error) };
   const storeId = member.store.id;
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
-  const set = setList([...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone)]);
+  const set = setList([
+    ...itemColumns(input.data),
+    ...giverColumns(input.data.assignedTo, member.account.id, "update"),
+    ...repeatColumns(input.data.recurrence, member.store.timeZone),
+  ]);
   const tags = input.data.tagIds;
   if (!set && tags === undefined) return { ok: true };
   return projectsGuard(() =>

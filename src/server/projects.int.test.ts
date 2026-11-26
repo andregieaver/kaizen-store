@@ -17,6 +17,8 @@ const comments = await import("./projects-comments");
 const sources = await import("./projects-sources");
 const dealProjects = await import("./projects-deals");
 const tools = await import("./projects-tools");
+const work = await import("./projects-work");
+const notices = await import("./projects-notices");
 const attention = await import("./attention");
 const { dayIn, addCalendarDays, noonOf } = await import("@/lib/work-dates");
 const { newStore } = await import("./inventory-test-support");
@@ -538,3 +540,108 @@ describe("the AI manager's Projects tools (D904 P8.3c)", () => {
   });
 });
 
+
+describe("a list's time on a Work assignment (D904 P8.3d)", () => {
+  it("sends a list's time to an assignment, logs a task's time there in Work, and counts it on the task and the list", async () => {
+    const withWork = { ...store.member, store: { ...store.member.store, workOn: true } };
+    const [client] = await db().execute<{ id: string }>(sql`insert into commerce.work_clients (store_id, name, currency) values (${store.storeId}::uuid, 'Café Nord', 'NOK') returning id`);
+    const [assignment] = await db().execute<{ id: string }>(
+      sql`insert into commerce.work_assignments (store_id, client_id, name) values (${store.storeId}::uuid, ${client.id}::uuid, 'Shop fit-out') returning id`,
+    );
+    const { id: list } = ok(await lists.createChecklist(store.member, { title: "Fit-out tasks" }));
+    const { id: task } = ok(await items.addItem(store.member, list, { title: "Measure the room" }));
+
+    // Without Work the pair is dark: nothing changes.
+    expect(await work.setListAssignment(store.member, { checklistId: list, assignmentId: assignment.id })).toMatchObject({ ok: false, problem: "forbidden" });
+    ok(await work.setListAssignment(withWork, { checklistId: list, assignmentId: assignment.id }));
+    expect(await work.assignmentOptions(store.storeId, assignment.id)).toContainEqual({ id: assignment.id, label: "Café Nord · Shop fit-out" });
+
+    const logged = ok(await work.logTaskTime(withWork, { itemId: task, minutes: 90 }));
+    ok(await work.logTaskTime(withWork, { itemId: task, minutes: 15 }));
+    const [entry] = await db().execute<{ assignment_id: string; minutes: number; note: string; account_id: string; billable: boolean }>(
+      sql`select assignment_id, minutes, note, account_id, billable from commerce.work_time_entries where id = ${logged.id}::uuid`,
+    );
+    expect(entry).toMatchObject({ assignment_id: assignment.id, minutes: 90, note: "Measure the room", account_id: store.accountId, billable: true });
+    expect(await work.taskMinutes(store.storeId, list)).toEqual({ [task]: 105 });
+    expect(await work.listWork(store.storeId, list)).toEqual({ assignmentId: assignment.id, assignment: "Shop fit-out", client: "Café Nord", minutes: 105 });
+    expect(await work.listsOfAssignment(store.storeId, assignment.id)).toEqual([{ id: list, title: "Fit-out tasks", open: 1 }]);
+
+    // Work's rules hold: a day that has not come is refused, and a list with no assignment logs nothing.
+    expect(await work.logTaskTime(withWork, { itemId: task, minutes: 30, workDate: "2999-01-01" })).toMatchObject({ ok: false, problem: "invalid", fields: ["workDate"] });
+    const { id: plain } = ok(await lists.createChecklist(store.member, { title: "Not client work" }));
+    const { id: loose } = ok(await items.addItem(store.member, plain, { title: "Water the plants" }));
+    expect(await work.logTaskTime(withWork, { itemId: loose, minutes: 30 })).toMatchObject({ ok: false, problem: "invalid" });
+    // Another store's assignment is not there for a list.
+    const elsewhere = { ...other.member, store: { ...other.member.store, workOn: true } };
+    const { id: theirs } = ok(await lists.createChecklist(other.member, { title: "Their list" }));
+    expect(await work.setListAssignment(elsewhere, { checklistId: theirs, assignmentId: assignment.id })).toMatchObject({ ok: false, problem: "not_found" });
+    // Back to none: the list keeps its tasks, and the time stays Work's.
+    ok(await work.setListAssignment(withWork, { checklistId: list, assignmentId: null }));
+    expect(await work.listWork(store.storeId, list)).toBeNull();
+    expect(await work.taskMinutes(store.storeId, list)).toEqual({ [task]: 105 });
+  });
+});
+
+describe("a task's person told by email (D904 P8.3d)", () => {
+  it("tells someone given tasks by someone else once, in one email a run in their language, and nobody who took a task themselves", async () => {
+    await db().execute(sql`update commerce.stores set features = array_append(features, 'projects') where id = ${store.storeId}::uuid and not ('projects' = any(features))`);
+    const address = `mate-${store.slug}@example.com`;
+    const [mate] = await db().execute<{ id: string }>(sql`insert into commerce.accounts (email, name, admin_locale) values (${address}, 'Kari', 'nb-NO') returning id`);
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${store.storeId}::uuid, ${mate.id}::uuid, 'admin')`);
+    const { id: list } = ok(await lists.createChecklist(store.member, { title: "Window display" }));
+    ok(await items.addItem(store.member, list, { title: "Choose the posters", assignedTo: mate.id }));
+    const { id: second } = ok(await items.addItem(store.member, list, { title: "Hang the lights" }));
+    ok(await items.updateItem(store.member, second, { assignedTo: mate.id }));
+    const { id: mine } = ok(await items.addItem(store.member, list, { title: "Sweep the floor", assignedTo: store.accountId }));
+    const marks = async (id: string) =>
+      (await db().execute<{ by: string | null; at: string | null }>(sql`select assigned_by as by, assigned_at::text as at from commerce.checklist_items where id = ${id}::uuid`))[0];
+    const given = await marks(second);
+    expect(given.by).toBe(store.accountId);
+    // Saving the same person again changes nothing, so nobody is told twice.
+    ok(await items.updateItem(store.member, second, { assignedTo: mate.id, title: "Hang the fairy lights" }));
+    expect(await marks(second)).toEqual(given);
+
+    const sent: { to: string; subject: string }[] = [];
+    const send = (async (message: { to: string; email: { subject: string } }) => {
+      sent.push({ to: message.to, subject: message.email.subject });
+      return "sent" as const;
+    }) as unknown as Parameters<typeof notices.runTaskAssignedEmails>[1];
+    const toMate = () => sent.filter((m) => m.to === address);
+    // Within two minutes nobody is told: a person chosen by mistake can be changed first.
+    await notices.runTaskAssignedEmails(new Date(), send);
+    expect(toMate()).toEqual([]);
+    const later = new Date(Date.now() + 3 * 60_000);
+    await notices.runTaskAssignedEmails(later, send);
+    expect(toMate()).toEqual([{ to: address, subject: "Du har 2 nye oppgaver i Test" }]);
+    // Told once; the task its own person took was passed over, and is never told.
+    await notices.runTaskAssignedEmails(later, send);
+    expect(toMate()).toHaveLength(1);
+    expect(sent.filter((m) => m.to === store.accountEmail)).toEqual([]);
+    const [passed] = await db().execute<{ told: boolean }>(sql`select assignee_told_at is not null as told from commerce.checklist_items where id = ${mine}::uuid`);
+    expect(passed.told).toBe(true);
+  });
+
+  it("says one task's title and who gave it", () => {
+    const task = {
+      id: "t",
+      store_id: "s",
+      slug: "shop",
+      store_name: "Nord",
+      title: "Hang the lights",
+      checklist_id: "c",
+      list_title: "Window display",
+      account_id: "a",
+      email: "kari@example.com",
+      admin_locale: null,
+      owner: false,
+      kind: null,
+      role_id: null,
+      permissions: null,
+      giver: "Anna",
+    };
+    const email = notices.taskAssignedEmail([task], "en");
+    expect(email.subject).toBe("Anna gave you a task: Hang the lights");
+    expect(email.text).toContain("Hang the lights, in Window display, from Anna");
+    expect(email.text).toContain("/admin/shop/checklists/c");
+  });
+});

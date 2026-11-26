@@ -19,6 +19,12 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 import { workWords } from "@/server/work-words";
 import { workText } from "@/lib/work-text";
+import { AdminLink } from "@/components/admin/ui/link";
+import { countWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
+import { projectsOn } from "@/lib/extensions";
+import { listsOfAssignment } from "@/server/projects-work";
 
 export const metadata: Metadata = { title: "Assignment" };
 
@@ -44,13 +50,17 @@ export default async function WorkAssignmentPage({
 
   const s = assignment.summary;
   const untouched = s.loggedMinutes === 0 && assignment.draftInvoiceId === null && assignment.issuedInvoices === 0;
-  const [entries, choices, defaults, client, clients] = await Promise.all([
+  // Projects' pair (D904 P8.3d): the checklists whose time comes here, while the store has Projects and the person may read it.
+  const withProjects = projectsOn(store) && memberCan(staffer, "projects:read");
+  const [entries, choices, defaults, client, clients, lists] = await Promise.all([
     listTimeEntries(store.id, { assignmentId, limit: ENTRY_LIMIT }),
     listAssignmentChoices(store.id, [assignmentId]),
     formDefaults(store),
     getClient(store.id, assignment.clientId),
     untouched ? listClients(store.id) : Promise.resolve([]),
+    withProjects ? listsOfAssignment(store.id, assignmentId) : Promise.resolve([]),
   ]);
+  const pw = PROJECT_SOURCES_WORDS[adminLangOf(account.adminLocale)].work;
   const choice = choices.find((c) => c.id === assignment.id);
   if (!choice) notFound();
 
@@ -139,6 +149,25 @@ export default async function WorkAssignmentPage({
         locale={locale}
         truncated={entries.totals.count > entries.entries.length}
       />
+
+      {lists.length > 0 && (
+        <section aria-labelledby="assignment-lists" className="flex flex-col gap-3" data-assignment-lists>
+          <h2 id="assignment-lists" className="text-title text-ink">
+            {pw.heading}
+          </h2>
+          <p className="text-sm text-muted">{pw.hint}</p>
+          <ul className="flex flex-col divide-y divide-line rounded-panel border border-line bg-card text-sm">
+            {lists.map((l) => (
+              <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 px-4 py-3">
+                <AdminLink href={`/admin/${store.slug}/checklists/${l.id}`} className="underline underline-offset-2">
+                  {l.title}
+                </AdminLink>
+                <span className="text-muted tabular-nums">{countWords(l.open, pw.open)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <AssignmentInvoicesSlot
         storeSlug={store.slug}

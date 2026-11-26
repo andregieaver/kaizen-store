@@ -394,3 +394,38 @@ describe("a project from a deal (D904 P8.3b)", () => {
     expect(await one("select deal_id from commerce.projects where id = $1", [work])).toEqual({ deal_id: null });
   });
 });
+
+describe("a list's time on a Work assignment (D904 P8.3d)", () => {
+  let clients = 0;
+  const assignment = async (storeId: string) => {
+    const client = await id("insert into commerce.work_clients (store_id, name, currency) values ($1, $2, 'NOK') returning id", [storeId, `Client ${++clients}`]);
+    return id("insert into commerce.work_assignments (store_id, client_id, name) values ($1, $2, 'Fit-out') returning id", [storeId, client]);
+  };
+  const entry = (storeId: string, assignmentId: string) =>
+    id("insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes) values ($1, $2, $3, '2026-11-20', 45) returning id", [storeId, assignmentId, account]);
+
+  it("names an assignment of its own store only, and keeps the list when the assignment goes", async () => {
+    const mine = await assignment(shop);
+    const list = await checklist(shop);
+    await rejects("update commerce.checklists set assignment_id = $2 where id = $1", [await checklist(other), mine], /checklists_assignment_fk/);
+    await db.query("update commerce.checklists set assignment_id = $2 where id = $1", [list, mine]);
+    await db.query("delete from commerce.work_assignments where id = $1", [mine]);
+    expect(await one("select assignment_id from commerce.checklists where id = $1", [list])).toEqual({ assignment_id: null });
+  });
+
+  it("links a task to time of its own store, and drops only the link when the task or the entry goes", async () => {
+    const mine = await assignment(shop);
+    const task = await item(shop, await checklist(shop));
+    const kept = await entry(shop, mine);
+    const gone = await entry(shop, mine);
+    await rejects("insert into commerce.checklist_item_time (store_id, item_id, time_entry_id) values ($1, $2, $3)", [other, task, kept], /checklist_item_time_item_fk/);
+    await db.query("insert into commerce.checklist_item_time (store_id, item_id, time_entry_id) values ($1, $2, $3), ($1, $2, $4)", [shop, task, kept, gone]);
+    // One task a time entry: a second link of the same entry is refused.
+    await rejects("insert into commerce.checklist_item_time (store_id, item_id, time_entry_id) values ($1, $2, $3)", [shop, task, kept], /checklist_item_time_store_id_time_entry_id_pk/);
+    await db.query("delete from commerce.work_time_entries where id = $1", [gone]);
+    expect(await one("select count(*)::int as n from commerce.checklist_item_time where item_id = $1", [task])).toEqual({ n: 1 });
+    await db.query("delete from commerce.checklist_items where id = $1", [task]);
+    expect(await one("select count(*)::int as n from commerce.work_time_entries where id = $1", [kept])).toEqual({ n: 1 });
+    expect(await one("select count(*)::int as n from commerce.checklist_item_time where time_entry_id = $1", [kept])).toEqual({ n: 0 });
+  });
+});
