@@ -728,6 +728,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   // An app's listing decided by Kaizena Flow's review (D441 D3), to its developer.
   "platform.app_listing_decided": "staff",
   "platform.access_approved": "staff",
+  // Added to a team (D907): to the person added, who works there.
+  "platform.team_invite": "staff",
+  "staff.team_invite": "staff",
   "platform.access_declined": "staff",
   "platform.access_confirm": "staff",
   "platform.status_confirm": "staff",

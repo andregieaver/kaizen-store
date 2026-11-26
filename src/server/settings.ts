@@ -19,6 +19,7 @@ import { checkLimit } from "./limits";
 import { platformModes } from "./stripe-keys";
 import type { Store } from "./stores";
 import { checkoutProviderOf } from "./mollie";
+import { sendStoreTeamInvite } from "./team-invite";
 
 type Row = Record<string, unknown>;
 
@@ -253,6 +254,8 @@ export async function inviteStaff(
     return { ok: false, problems: [`${email} cannot be invited. Contact support.`] };
   }
   await auditChange(member, "staff.invited", { type: "account", id: result, label: email }, null, { email, role, roleName, kind: "staff" }, "staff", { email, role });
+  // They are told, with the way in (D907): best effort, the invitation stands whatever the email does.
+  await sendStoreTeamInvite(account, store, { id: result, email }, { kind: role, name: roleName });
   return { ok: true };
 }
 

@@ -210,6 +210,13 @@ describe("inviting staff with a role", () => {
     const staff = (await settings.listStaff(store.id)).find((m) => m.email === email)!;
     expect(staff).toMatchObject({ role: "admin", roleName: "Shop assistant", kind: "staff", expiresAt: null });
     expect((await auditRows(store.id, "staff.invited")).at(-1)).toMatchObject({ area: "staff", target_type: "account", changes: { email: { from: null, to: email }, roleName: { from: null, to: "Shop assistant" } } });
+    // They are told, by the store's name and their role, with the way in (D907).
+    const [told] = await db().execute<{ n: number; subject: string; html: string }>(
+      sql`select count(*)::int as n, max(subject) as subject, max(html) as html from commerce.email_messages where store_id = ${store.id}::uuid and kind = 'staff.team_invite' and lower(to_address) = ${email}`,
+    );
+    expect(told.n).toBe(1);
+    expect(told.subject).toContain("You have been added to");
+    expect(told.html).toContain("shop assistant");
     expect(await settings.inviteStaff(owner, email, "admin")).toMatchObject({ ok: false, problems: [expect.stringContaining("already has access")] });
     expect(await settings.inviteStaff(owner, "owner-with-role@example.com", "owner", role.id)).toMatchObject({ ok: false, problems: ["A custom role is for an admin."] });
     expect(await settings.inviteStaff(owner, "ghost-role@example.com", "admin", "33333333-3333-4333-8333-333333333333")).toMatchObject({ ok: false });

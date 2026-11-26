@@ -10,6 +10,7 @@ import { HOUSE_ROLE_TEMPLATE, isMemberRole, isTeamRole, type MemberRole, type Te
 
 import { audit, type Account } from "./auth";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { sendPlatformTeamInvite } from "./team-invite";
 
 /**
  * The platform's team (C1 of `docs/platform-parity-plan.md`, D471): who runs Kaizena Flow. A platform admin is an account with
@@ -109,6 +110,8 @@ export async function addPlatformAdmin(actor: Account, rawEmail: string, rawName
     return made;
   });
   await audit(actor.id, null, "platform.admin_added", { account: id, made: !found, role }, { target: { type: "account", id } });
+  // They are told, with the way in (D907): best effort, the addition stands whatever the email does.
+  await sendPlatformTeamInvite(actor, { id, email }, role);
   return { ok: true, email };
 }
 

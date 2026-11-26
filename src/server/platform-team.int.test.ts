@@ -100,6 +100,12 @@ describe("the platform's team (D471)", () => {
       sql`select id, platform_admin, platform_role from commerce.accounts where email = ${`team-lawyer-${run}@example.com`}`,
     );
     expect([lawyer.platform_admin, lawyer.platform_role]).toEqual([false, "legal"]);
+    // They are told, with the way in to Legal reviews (D907).
+    const [told] = await db().execute<{ n: number; subject: string }>(
+      sql`select count(*)::int as n, max(subject) as subject from commerce.email_messages where kind = 'platform.team_invite' and lower(to_address) = ${`team-lawyer-${run}@example.com`}`,
+    );
+    expect(told.n).toBe(1);
+    expect(told.subject).toBe("You have been added to Kaizena Flow's team");
     expect(await houseRole(lawyer.id)).toBeNull();
     expect((await listPlatformAdmins(me)).find((p) => p.id === lawyer.id)?.role).toBe("legal");
 

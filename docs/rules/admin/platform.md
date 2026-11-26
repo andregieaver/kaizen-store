@@ -496,6 +496,9 @@ under *What the router fetches ahead*.
   two-step sign-in. Only an owner changes the team (`addPlatformAdmin()`, `setPlatformRole()`, `removePlatformAdmin()`), never their own
   place, and the platform keeps an owner; a member is an admin of Kaizena Flow's own store in the store role of their work
   (`HOUSE_ROLE_TEMPLATE`), set in the same transaction, never its owner (`store_members_house()`).
+- **Told when added (D907)**: `addPlatformAdmin()` and a store's `inviteStaff()` send `teamInviteEmail()` (`platform.team_invite`,
+  `staff.team_invite`) after the addition is saved, best effort: who added them, to what, as which role, and the sign-in page with `next` set
+  to where they work (Legal reviews for a lawyer).
 
 ## Legal reviews and the Legal role (D892, `src/lib/legal-reviews.ts`, `src/server/legal-reviews.ts`, `/admin/legal`)
 
