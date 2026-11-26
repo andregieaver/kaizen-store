@@ -33,7 +33,8 @@ import type { GuideHintPlace } from "./guide-slots";
  * Guide's runtime (D909, `src/lib/guide.ts`), loaded by `GuideProvider` once the screen is drawn, so no screen's first scripts carry it. It
  * reads the person's record, the level's places and Guide's words from Guide's route (`/api/guide`, which also marks found the place
  * the screen is in), marks the places reached as the person moves on, and decides from the page's signals when one moment may be shown:
- * never while they type, hold unsaved work, have just arrived, are in a focus task (`quietOn`) or have another dialog open. Events go to the
+ * never while they type, hold unsaved work, have just arrived, are in a focus task or a workspace tool (`quietHere()`) or have another
+ * dialog open. Events go to the
  * route with `fetch`, never as server actions, which Next queues with the router's own moves. It draws the rail's button, the phone's link
  * and the hints into the slots the server sent (`guide-slots.tsx`), and loads what it shows (`guide-layer.tsx`) only once there is something.
  */
@@ -61,6 +62,48 @@ function loadLayer(): Promise<Layer> {
 type Slot = { el: Element; name: string; place: GuideHintPlace | null };
 const sameSlots = (a: Slot[], b: Slot[]) => a.length === b.length && a.every((slot, i) => slot.el === b[i].el);
 
+const RAIL_FOOT = "[data-admin-rail] nav > ul:nth-of-type(2)";
+
+/**
+ * The rail's item for Guide: a list item of its own at the head of the rail's foot (above Settings), made here so no screen's document
+ * carries a slot for it; none in a workspace tool's narrow rail (`data-collapsed`), where Guide keeps quiet.
+ */
+function railSlot(): Element | null {
+  const rail = document.querySelector("[data-admin-rail]");
+  const foot = document.querySelector(RAIL_FOOT);
+  const made = foot?.querySelector(":scope > li[data-guide-rail]") ?? null;
+  if (!rail || !foot || rail.hasAttribute("data-collapsed")) {
+    made?.remove();
+    return null;
+  }
+  if (made) return made;
+  const li = document.createElement("li");
+  li.dataset.guideRail = "";
+  foot.prepend(li);
+  return li;
+}
+
+/**
+ * The phone menu's item for Guide: made beside the menu's way to Your account (`MenuFooterLink`, in every level's menu), so no screen's
+ * document carries a slot for it either.
+ */
+function menuSlot(): Element | null {
+  const account = document.querySelector('dialog a[href="/admin/account"]');
+  const made = account?.parentElement?.querySelector(":scope > [data-guide-menu]") ?? null;
+  if (!account?.parentElement) return null;
+  if (made) return made;
+  const div = document.createElement("div");
+  div.dataset.guideMenu = "";
+  account.before(div);
+  return div;
+}
+
+/** Quiet where the frame draws no rail (a focus task: the setup wizard) or a narrow one (a workspace tool: an editor, the inbox). */
+function quietHere(): boolean {
+  const rail = document.querySelector("[data-admin-rail]");
+  return !rail || rail.hasAttribute("data-collapsed");
+}
+
 /** The slots on the page now, followed as the page changes (a new screen, an empty page filled, the phone's menu drawn). */
 function useSlots(): Slot[] {
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -69,17 +112,23 @@ function useSlots(): Slot[] {
     const scan = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const found = Array.from(document.querySelectorAll<HTMLElement>("[data-guide-slot]")).map((el) => ({
-          el,
-          name: el.dataset.guideSlot ?? "",
-          place: (el.dataset.place as GuideHintPlace | undefined) ?? null,
-        }));
+        const rail = railSlot();
+        const menu = menuSlot();
+        const found: Slot[] = [
+          ...(rail ? [{ el: rail, name: "rail", place: null }] : []),
+          ...(menu ? [{ el: menu, name: "menu", place: null }] : []),
+          ...Array.from(document.querySelectorAll<HTMLElement>("[data-guide-slot]")).map((el) => ({
+            el,
+            name: el.dataset.guideSlot ?? "",
+            place: (el.dataset.place as GuideHintPlace | undefined) ?? null,
+          })),
+        ];
         setSlots((was) => (sameSlots(was, found) ? was : found));
       });
     };
     scan();
     const observer = new MutationObserver(scan);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-collapsed"] });
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
@@ -92,7 +141,8 @@ function send(body: unknown): Promise<Response> {
   return fetch(ROUTE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true });
 }
 
-export default function GuideRuntime({ level, home, quietOn }: { level: string; home: string; quietOn: string }) {
+export default function GuideRuntime({ level }: { level: string }) {
+  const home = level === "platform" ? "/admin/platform" : `/admin/${level}`;
   const path = usePathname();
   const [read, setRead] = useState<Read | null>(null);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
@@ -191,13 +241,12 @@ export default function GuideRuntime({ level, home, quietOn }: { level: string; 
   // Whether a moment may be shown now, and which; checked until the page is calm, once per visit.
   useEffect(() => {
     if (!read || !progress || moment || panel || decided.current === path) return;
-    const quiet = new RegExp(quietOn);
     const candidate = guideMoment(read.places, home, settings, progress, { path, calm: true, phone: window.matchMedia(PHONE).matches, now: Date.now() }, asked);
     if (!candidate) return;
     const settle = candidate.kind === "spotlight" ? SPOTLIGHT_SETTLE_MS : candidate.open ? 0 : BEACON_SETTLE_MS;
     const calm = () => {
       const at = Date.now();
-      if (document.visibilityState !== "visible" || quiet.test(path)) return false;
+      if (document.visibilityState !== "visible" || quietHere()) return false;
       if (at - arrived.current.at < settle || at - lastKey.current < QUIET_AFTER_TYPING_MS) return false;
       if (document.activeElement?.matches(EDITING)) return false;
       if (asker()) return false;
@@ -216,7 +265,7 @@ export default function GuideRuntime({ level, home, quietOn }: { level: string; 
     };
     const timer = window.setInterval(tick, 500);
     return () => window.clearInterval(timer);
-  }, [read, progress, settings, home, path, asked, moment, panel, quietOn, dispatch, setMoment]);
+  }, [read, progress, settings, home, path, asked, moment, panel, dispatch, setMoment]);
 
   const finish = useCallback(
     (how: "done" | "later" | "none") => {

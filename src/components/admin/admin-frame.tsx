@@ -52,7 +52,6 @@ export function AdminFrame({
   layout = "classic",
   focus,
   home,
-  railFoot,
   lang = "en",
   children,
 }: {
@@ -91,8 +90,6 @@ export function AdminFrame({
   focus?: { pattern: string; back: { href: string; label: string }; title: ReactNode };
   /** The rail's logo tile: where it leads and its name. */
   home?: { href: string; label: string };
-  /** Drawn at the rail's foot above Settings (Guide's button, D909). */
-  railFoot?: ReactNode;
   /** The account's language for the admin. */
   lang?: AdminLang;
   children: ReactNode;
@@ -198,7 +195,7 @@ export function AdminFrame({
         {sheet}
         {before}
         <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
-          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizena Flow" }} label={tabsLabel} collapseOn={workspace} areas={areas ?? []} extra={railFoot} />, null)}
+          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizena Flow" }} label={tabsLabel} collapseOn={workspace} areas={areas ?? []} />, null)}
           <div className="flex min-w-0 flex-1 flex-col">
             <header data-admin-topbar className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
               {focused(

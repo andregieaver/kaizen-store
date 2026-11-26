@@ -6,7 +6,6 @@ import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { GuideProvider } from "@/components/admin/guide/guide-provider";
-import { GuideSlot } from "@/components/admin/guide/guide-slots";
 import { PageFinder } from "@/components/admin/page-finder";
 import { PlatformRoleNotice } from "@/components/admin/platform-role-notice";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -104,7 +103,6 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
           </>
         }
         account={<AdminAccountMenu account={account} role={w.levels.platform} />}
-        railFoot={<GuideSlot name="rail" />}
         tabs={tabs}
         groups={[]}
         areas={areas}
@@ -114,7 +112,6 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         menuFooter={
           <>
             <AdminViewToggle />
-            <GuideSlot name="menu" />
             <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>
             <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
           </>
@@ -125,8 +122,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         {role !== "owner" && <PlatformRoleNotice role={role} words={w.platformRole} />}
         {children}
       </AdminFrame>
-      {/* Guide (D909), as in a store: the platform's places come from its route; quiet in the workspace tools. */}
-      <GuideProvider level="platform" home={base} quietOn={`(?:${FULL_WIDTH})|(?:${INBOX})`} />
+      {/* Guide (D909), as in a store: the platform's places come from its route. */}
+      <GuideProvider level="platform" />
     </AdminViewProvider>
   );
 }

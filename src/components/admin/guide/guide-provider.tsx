@@ -9,18 +9,14 @@ import { useEffect, useState, type ComponentType } from "react";
  * by `import()` in an effect, never `lazy()` under a `<Suspense>`: a boundary in the layout kept the router from finishing some moves
  * (`e2e/signed-in/ab-behaviour.spec.ts`, 26 November 2026).
  */
-type Props = { level: string; home: string; quietOn: string };
+type Props = { level: string };
 
+/** One prop, so a screen's document carries as little of Guide as can be (`admin-scripts.spec.ts`, what a screen is handed). */
 export function GuideProvider({
   level,
-  home,
-  quietOn,
 }: {
   /** The store's address name, or `platform`. */
   level: string;
-  home: string;
-  /** Addresses where Guide stays quiet (a regular expression's source): the focus tasks and the workspace tools. */
-  quietOn: string;
 }) {
   const [Runtime, setRuntime] = useState<ComponentType<Props> | null>(null);
   useEffect(() => {
@@ -35,5 +31,5 @@ export function GuideProvider({
       live = false;
     };
   }, []);
-  return Runtime ? <Runtime level={level} home={home} quietOn={quietOn} /> : null;
+  return Runtime ? <Runtime level={level} /> : null;
 }

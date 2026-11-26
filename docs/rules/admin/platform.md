@@ -191,7 +191,7 @@ under *What the router fetches ahead*.
   pressed, and fades after `BEACON_FADES_AFTER` visits not pressed. A **hint** is a `GuideSlot name="hint"` in an empty page's `EmptyState` (`after`):
   part of the page, in no budget, gone once the page fills. "Later" twice and that kind stops (`LATER_STOPS_AFTER`). With no level chosen
   it is Balanced for `AUTO_QUIET_DAYS` and Quiet after. Never while the person types, holds unsaved work (`asker()` of the leave guard),
-  has just arrived, has another dialog open, or is on a page of the layout's `quietOn` (the setup wizard and the workspace tools); a phone
+  has just arrived, has another dialog open, or is where the frame draws no rail or a narrow one (the setup wizard, the workspace tools); a phone
   gets hints only.
 - A level's places come from its menu as the frame draws it (`guidePlacesFromNav()`: each section's tab, sidebar prefixes and everyday
   pages), so a new section is a place with no change here; its line is in the `guide` area's `places` by the section's key, else the
@@ -202,8 +202,9 @@ under *What the router fetches ahead*.
   (`accounts.guide_level`, null for automatic, and `accounts.guide_off`) follows them to every level. Everything goes through Guide's route
   (`/api/guide`: GET reads the record, places and words and marks found the screen's place; POST takes an event or the choice),
   never a server action, which Next queues with the router's own moves and the signed-in specs count. The layout renders `GuideProvider`
-  with three props (all a screen's first scripts carry of Guide) and empty `GuideSlot`s (server markup: the rail's foot, the phone's menu,
-  the empty pages' hints); the runtime (`guide-runtime.tsx`) is a chunk loaded once the screen is drawn and fills the slots by portal, and
+  with one prop, the level (all a screen's first scripts and document carry of Guide; an empty page's hint is a `GuideSlot`, server
+  markup); the runtime (`guide-runtime.tsx`) is a chunk loaded once the screen is drawn, adds its own items to the rail's foot and beside
+  the phone menu's Your account, and fills the hint slots by portal, and
   what it shows (`guide-layer.tsx`) a chunk loaded only when something is shown. Guide's own looks (a shadow, a width, a layer) are styles,
   not classes, so it adds nothing to the stylesheet store pages share (`e2e/performance.spec.ts`). `e2e/signed-in/prefetch.spec.ts` names
   the route's one read.

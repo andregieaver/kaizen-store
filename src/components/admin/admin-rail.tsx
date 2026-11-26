@@ -3,7 +3,7 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AdminLink } from "./ui/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
 import { RAIL_NAMES_EVENT, railNamesShown, setRailNames } from "@/lib/admin-rail";
@@ -32,22 +32,7 @@ function useRailNames(): boolean {
  * The button at its foot widens it to show every section's name beside its icon (D262), a choice kept in the browser and set on
  * `<html>` before the page is drawn (`railNamesScript()`), which the classes follow; a workspace's narrow rail keeps to its icons.
  */
-export function AdminRail({
-  items,
-  home,
-  label,
-  collapseOn,
-  areas,
-  extra,
-}: {
-  items: NavItem[];
-  home: { href: string; label: string };
-  label: string;
-  collapseOn?: string;
-  areas?: NavArea[];
-  /** Drawn at the foot above the foot's items (Guide's button). */
-  extra?: ReactNode;
-}) {
+export function AdminRail({ items, home, label, collapseOn, areas }: { items: NavItem[]; home: { href: string; label: string }; label: string; collapseOn?: string; areas?: NavArea[] }) {
   const isCurrent = useIsCurrent(items, areas);
   const path = usePathname();
   const named = useRailNames();
@@ -107,12 +92,7 @@ export function AdminRail({
       </AdminLink>
       <nav aria-label={label} className={`mt-8 flex flex-1 flex-col items-center justify-between ${collapsed ? "" : "[[data-rail=names]_&]:items-stretch"}`}>
         <ul className={`flex flex-col ${collapsed ? "gap-2" : "gap-3"} [@media(max-height:720px)]:gap-1`}>{main.map(tile)}</ul>
-        {(foot.length > 0 || extra) && (
-          <div className="mt-3 flex flex-col gap-3">
-            {extra}
-            {foot.length > 0 && <ul className="flex flex-col gap-3">{foot.map(tile)}</ul>}
-          </div>
-        )}
+        {foot.length > 0 && <ul className="mt-3 flex flex-col gap-3">{foot.map(tile)}</ul>}
       </nav>
       {!collapsed && (
         <button

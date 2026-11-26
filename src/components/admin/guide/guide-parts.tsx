@@ -29,7 +29,7 @@ export function GuideIcon({ className = "size-5" }: { className?: string }) {
 
 /**
  * Guide's tile at the foot of the rail: its name and how far the person is, read out as it is shown. In the rail's classes, so it adds no rule
- * to the stylesheet every page shares; left out of the narrow rail of a workspace tool, where Guide stays quiet.
+ * to the stylesheet every page shares; the runtime leaves it out of a workspace tool's narrow rail.
  */
 export function GuideRailButton({ shown }: { shown: GuideShown }) {
   const progress = fillWords(shown.button.progress, { found: shown.found, total: shown.total });
@@ -39,7 +39,7 @@ export function GuideRailButton({ shown }: { shown: GuideShown }) {
       data-guide="button"
       onClick={() => shown.setPanel(!shown.panel)}
       aria-expanded={shown.panel}
-      className="group relative flex size-11 items-center justify-center rounded-tile text-rail-icon hover:bg-[color-mix(in_srgb,var(--rail),white_8%)] hover:text-[color-mix(in_srgb,var(--rail-icon),white_45%)] [[data-collapsed]_&]:hidden [[data-rail=names]_&]:w-full [[data-rail=names]_&]:justify-start [[data-rail=names]_&]:gap-3 [[data-rail=names]_&]:px-3"
+      className="group relative flex size-11 items-center justify-center rounded-tile text-rail-icon hover:bg-[color-mix(in_srgb,var(--rail),white_8%)] hover:text-[color-mix(in_srgb,var(--rail-icon),white_45%)] [[data-rail=names]_&]:w-full [[data-rail=names]_&]:justify-start [[data-rail=names]_&]:gap-3 [[data-rail=names]_&]:px-3"
     >
       <span className="text-brand">
         <GuideIcon />

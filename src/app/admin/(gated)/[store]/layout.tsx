@@ -6,7 +6,6 @@ import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/shell-actio
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { ExtensionBanner } from "@/components/admin/extension-banner";
 import { GuideProvider } from "@/components/admin/guide/guide-provider";
-import { GuideSlot } from "@/components/admin/guide/guide-slots";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
@@ -99,13 +98,13 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const banners = extensionBanners(readExtensionFacts(store.extensionFacts), new Date());
   const w = SHELL_WORDS[lang];
   const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });
-  // Guide (D909): its record, places and words come from its own route once the screen is drawn; quiet in the setup wizard and the
-  // workspace tools. A sandbox store (`/try`) has no record to keep.
+  // Guide (D909): its record, places and words come from its own route once the screen is drawn; it keeps quiet where the frame draws no
+  // rail or a narrow one (the setup wizard, the workspace tools). A sandbox store (`/try`) has no record to keep.
   const guide = !store.sandbox;
   const guided = (frame: ReactNode) => (
     <>
       {frame}
-      {guide && <GuideProvider level={store.slug} home={base} quietOn={`(?:${SETUP})|(?:${FULL_WIDTH})|(?:${INBOX})`} />}
+      {guide && <GuideProvider level={store.slug} />}
     </>
   );
   // Basic or Advanced (D454): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
@@ -164,7 +163,6 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
           </>
         }
         account={<AdminAccountMenu account={account} role={member.roleName ?? (member.kind === "collaborator" ? "collaborator" : role)} />}
-        railFoot={guide && <GuideSlot name="rail" />}
         tabs={tabs}
         groups={[]}
         areas={areas}
@@ -174,7 +172,6 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         menuFooter={
           <>
             <AdminViewToggle />
-            {guide && <GuideSlot name="menu" />}
             {stores.some((s) => s.role === "owner") && <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>}
             <MenuFooterLink href="/admin/stores">{w.store.allYourStores}</MenuFooterLink>
             {account.platformAdmin && <MenuFooterLink href="/admin/platform">{w.levels.platform}</MenuFooterLink>}
