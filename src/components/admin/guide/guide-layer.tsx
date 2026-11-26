@@ -586,7 +586,7 @@ function Toast({ guide }: { guide: GuideState }) {
       className="fixed flex items-start gap-3 rounded-card bg-inverse p-4 text-inverse-ink shadow-[var(--shadow-float)]"
       style={{ bottom: edge ? 24 : 96, left: edge + 16, width: CARD_WIDTH(400), zIndex: ABOVE.card }}
     >
-      <span className="mt-0.5 text-brand">
+      <span className="mt-0.5" style={{ color: "var(--brand)" }}>
         <GuideIcon />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">

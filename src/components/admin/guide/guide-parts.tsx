@@ -41,7 +41,7 @@ export function GuideRailButton({ shown }: { shown: GuideShown }) {
       aria-expanded={shown.panel}
       className="group relative flex size-11 items-center justify-center rounded-tile text-rail-icon hover:bg-[color-mix(in_srgb,var(--rail),white_8%)] hover:text-[color-mix(in_srgb,var(--rail-icon),white_45%)] [[data-rail=names]_&]:w-full [[data-rail=names]_&]:justify-start [[data-rail=names]_&]:gap-3 [[data-rail=names]_&]:px-3"
     >
-      <span className="text-brand">
+      <span style={{ color: "var(--brand)" }}>
         <GuideIcon />
       </span>
       {/* Named by its words, read as they are shown when the rail shows names (no label of its own to disagree with them, axe's rule). */}
@@ -53,7 +53,7 @@ export function GuideRailButton({ shown }: { shown: GuideShown }) {
         {progress}
       </span>
       {shown.found < shown.total && (
-        <span aria-hidden className="absolute top-1.5 right-1.5 size-2 rounded-pill bg-brand ring-2 ring-rail [[data-rail=names]_&]:hidden" />
+        <span aria-hidden className="absolute top-2 right-2 size-2 rounded-pill bg-brand ring-2 ring-rail [[data-rail=names]_&]:hidden" />
       )}
     </button>
   );
