@@ -46,6 +46,7 @@ const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): Ma
   rivalSites: [],
   published: 0,
   rivalServices: [],
+  searchTerms: [],
   ...over,
 });
 const names = new Map([
@@ -309,6 +310,31 @@ describe("the market check's findings (D900 M1)", () => {
     expect(findingText(dearer, marketCheckNb.finding, names, language)).toBe(
       `Du tar ${englishMoney(60000, "NOK")} i timen for Colour i Norway, og Klipp tar ${englishMoney(80000, "NOK")} i timen: du er 25 % billigere.`,
     );
+  });
+
+  it("finds where the store came up for a word it follows: behind a rival, or near the top with none above (D905 M5b)", () => {
+    const now = new Date("2026-11-26T12:00:00Z");
+    const term = (word: string, own: number | null, rival: number | null) => ({
+      term: word,
+      market: "NO",
+      checkedAt: "2026-11-24T10:00:00Z",
+      own,
+      rivals: [{ name: "Linnet", host: "linnet.no", position: rival }],
+    });
+    const found = marketFindings(facts([country("NO", { sells: false })], { searchTerms: [term("linen apron", 7, 2), term("linforkle", null, 4), term("forkle", 1, 5), term("lin", 5, null)] }), now);
+    const words = found.map((f) => (f.kind === "search_behind" || f.kind === "search_ahead" ? [f.kind, f.term] : f.kind));
+    expect(words).toEqual([
+      ["search_behind", "linforkle"],
+      ["search_ahead", "forkle"],
+      ["search_behind", "linen apron"],
+    ]);
+    expect(swotOf(found).weaknesses).toHaveLength(2);
+    const behind = found.find((f) => f.kind === "search_behind" && f.term === "linen apron")!;
+    const missing = found.find((f) => f.kind === "search_behind" && f.term === "linforkle")!;
+    const ahead = found.find((f) => f.kind === "search_ahead")!;
+    expect(findingText(behind, marketCheckEn.finding, names, language)).toBe("Linnet is number 2 in a search for “linen apron” in Norway; you are number 7.");
+    expect(findingText(missing, marketCheckEn.finding, names, language)).toBe("Linnet is number 4 in a search for “linforkle” in Norway; you are not on the first page.");
+    expect(findingText(ahead, marketCheckNb.finding, names, language)).toBe("Du er nummer 1 i et søk etter «forkle» i Norway, og ingen konkurrent du følger, er over deg.");
   });
 
   it("draws the findings as a SWOT, each in the part its kind is, in their own order; a rival's move is a threat (D900 M2, M3)", () => {

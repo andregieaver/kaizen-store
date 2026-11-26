@@ -324,6 +324,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   company_visits: never("Which companies visited the original (D890); a copy starts with company recognition off and counts its own."),
   market_rivals: never("The original's rivals (D900 M2) are its owner's own judgement of its market; a copy adds its own."),
   rival_offers: never("Offers read of the original's rivals (D900 M2), held against its products; a copy reads its own."),
+  search_terms: never("The words the original follows in search (D905 M5b) and its places there; a copy follows its own."),
   rival_service_prices: never("The original's rivals' service prices (D905 M5d), held against its own; a copy keeps its own."),
   rival_pages: never("The pages of the original's rivals' sites (D905), as its watcher listed them; a copy's rivals are read anew."),
   company_lookup_settings: never("A company lookup service's key (D890) is its holder's secret; a copy connects its own."),

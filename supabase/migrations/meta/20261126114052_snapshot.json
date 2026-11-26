@@ -1,6 +1,6 @@
 {
-  "id": "84017aa4-586d-4498-8704-e577086fea61",
-  "prevId": "554b8bb5-01d6-4ed3-93e7-c8cbe1dfe6e0",
+  "id": "6b8a0c2f-baa8-4575-a3bc-a4f504c70e9e",
+  "prevId": "84017aa4-586d-4498-8704-e577086fea61",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -84184,6 +84184,191 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.search_terms": {
+      "name": "search_terms",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market_code": {
+          "name": "market_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "term": {
+          "name": "term",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "own_position": {
+          "name": "own_position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "positions": {
+          "name": "positions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "previous_position": {
+          "name": "previous_position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_at": {
+          "name": "previous_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tried_at": {
+          "name": "tried_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "search_terms_added_by_idx": {
+          "name": "search_terms_added_by_idx",
+          "columns": [
+            {
+              "expression": "added_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "search_terms_tried_idx": {
+          "name": "search_terms_tried_idx",
+          "columns": [
+            {
+              "expression": "tried_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "search_terms_store_id_stores_id_fk": {
+          "name": "search_terms_store_id_stores_id_fk",
+          "tableFrom": "search_terms",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "search_terms_added_by_accounts_id_fk": {
+          "name": "search_terms_added_by_accounts_id_fk",
+          "tableFrom": "search_terms",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "added_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "search_terms_key": {
+          "name": "search_terms_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "market_code",
+            "term"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "search_terms_market": {
+          "name": "search_terms_market",
+          "value": "\"commerce\".\"search_terms\".\"market_code\" ~ '^[A-Z]{2}$'"
+        },
+        "search_terms_term": {
+          "name": "search_terms_term",
+          "value": "length(\"commerce\".\"search_terms\".\"term\") between 2 and 80"
+        },
+        "search_terms_positions": {
+          "name": "search_terms_positions",
+          "value": "jsonb_typeof(\"commerce\".\"search_terms\".\"positions\") = 'object'"
+        },
+        "search_terms_places": {
+          "name": "search_terms_places",
+          "value": "(\"commerce\".\"search_terms\".\"own_position\" is null or \"commerce\".\"search_terms\".\"own_position\" between 1 and 100) and (\"commerce\".\"search_terms\".\"previous_position\" is null or \"commerce\".\"search_terms\".\"previous_position\" between 1 and 100)"
+        },
+        "search_terms_problem": {
+          "name": "search_terms_problem",
+          "value": "\"commerce\".\"search_terms\".\"problem\" is null or \"commerce\".\"search_terms\".\"problem\" in ('off', 'failed')"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.segments": {
       "name": "segments",

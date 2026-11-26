@@ -52,6 +52,8 @@ const TONE: Record<MarketFindingKind, PillTone> = {
   rival_move: "bad",
   rival_site: "warning",
   service_cheaper: "warning",
+  search_behind: "warning",
+  search_ahead: "good",
   strong_market: "good",
   rival_dearer: "good",
   service_dearer: "good",

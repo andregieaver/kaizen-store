@@ -6,6 +6,7 @@ import { formatAmount } from "@/lib/analytics-format";
 import { addDays, customPeriod, todayIn } from "@/lib/analytics-period";
 import { languageNames } from "@/lib/legal-admin-words";
 import { conversionOf, findingText, FIX_PATHS, MIN_ORDERS, MIN_VISITS, SWOT_OF } from "@/lib/market-check";
+import { SEARCH_PLACES } from "@/lib/market-search";
 import { OFFERS_PER_RIVAL, offerFresh, pathShown, priceGap, RIVALS_PER_MARKET, SITE_WINDOW_DAYS, type RivalSiteFacts } from "@/lib/market-rivals";
 import { englishMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
@@ -56,6 +57,18 @@ export async function marketCheckTool({ store }: Ctx, { days }: OwnerToolInput<"
       most_missed: m.missedTerms.map((t) => `${t.term} (${t.misses})`),
       ...(m.locale && { products_without_a_name_in: { language: languageName(m.locale), products: m.untranslated } }),
     })),
+    // The words the store follows in search (D905 M5b): each place counted by code from one page of results.
+    search_words: check.searchTerms.map((t) => {
+      const placed = (n: number | null) => (t.checkedAt ? (n ?? `not in the first ${SEARCH_PLACES}`) : null);
+      return {
+        word: t.term,
+        country: t.market,
+        your_place: t.checkedAt ? placed(t.own) : "not searched yet",
+        place_before: t.previous,
+        rivals: t.rivals.map((r) => ({ name: r.name, place: placed(r.position) })),
+        searched: t.checkedAt?.slice(0, 10) ?? null,
+      };
+    }),
     findings: check.findings.map((f) => ({
       kind: f.kind,
       // Where the finding stands in a SWOT (D900 M2): a SWOT asked for is these lines sorted, never one written from memory.

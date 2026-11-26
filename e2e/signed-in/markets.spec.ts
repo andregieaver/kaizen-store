@@ -219,6 +219,12 @@ test.describe("as the owner of a store without a shop (D905)", () => {
       await sql`
         insert into commerce.rival_service_prices (store_id, rival_id, service, price_minor, currency, per, own_minor, source, checked_on, on_page)
         values (${store.id}, ${rival.id}, 'Linkurs, 3 timer', 90000, 'NOK', 'once', 120000, 'https://linnet.example/kurs', current_date - 2, true)`;
+      // Words it follows in search (D905 M5b), searched two days ago: behind Linnet for one, first for another, one not searched yet.
+      await sql`
+        insert into commerce.search_terms (store_id, market_code, term, checked_at, own_position, positions, previous_position, previous_at, tried_at)
+        values (${store.id}, 'NO', 'linkurs oslo', now() - interval '2 days', 6, '{"linnet.example": 2}', 8, now() - interval '32 days', now() - interval '2 days'),
+          (${store.id}, 'NO', 'ullkurs', now() - interval '2 days', 1, '{}', null, null, now() - interval '2 days'),
+          (${store.id}, 'NO', 'strikkekurs', null, null, '{}', null, null, null)`;
     } finally {
       await sql.end();
     }
@@ -255,7 +261,17 @@ test.describe("as the owner of a store without a shop (D905)", () => {
     await prices.getByRole("button", { name: "Keep the price" }).click();
     await expect(prices).toContainText("Kept: Ullkurs at");
     await expect(prices.locator('[data-service-price="Linnet: Ullkurs"]')).toContainText("Page not read");
+    // Where it comes up in search (D905 M5b): each place counted by code, behind a rival a weakness.
+    const words = page.locator('section[aria-labelledby="market-search"]');
+    await expect(words.locator('[data-search-term="linkurs oslo"]')).toContainText("You: number 6 (up 2) · Linnet: number 2 · Furu: not on the first page");
+    await expect(words.locator('[data-search-term="strikkekurs"]')).toContainText("Searched within a few minutes.");
+    await expect(page.locator('[data-finding="search_behind"]').first()).toContainText("Linnet is number 2 in a search for “linkurs oslo” in Norway; you are number 6.");
+    await words.getByLabel("Word").fill("Lin Workshop");
+    await words.getByRole("button", { name: "Follow the word" }).click();
+    await expect(words).toContainText("“lin workshop” is followed");
+    await expect(words.locator('[data-search-term="lin workshop"]')).toContainText("Searched within a few minutes.");
     if (shots) {
+      await words.screenshot({ path: `${shots}/markets-search.png` });
       await page.screenshot({ path: `${shots}/markets-site-computer.png` });
       await rivals.screenshot({ path: `${shots}/markets-site-rivals.png` });
       await prices.screenshot({ path: `${shots}/markets-service-prices.png` });

@@ -34,7 +34,7 @@ The parts already exist; the market check joins them:
 | M3 | **Watching**: rivals' pages read again before they go old; a change is kept, a threat in the SWOT and an autopilot event, never an action. | Built, deployed at `afc199e` (26 November 2026): migration `20261125225113_whole_the_leader.sql`, advisors INFO only |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices and fees), cited and checked on their pages, beside `platform_pricing_facts` (D854). | Built but EU features, deployed at `9fbb82c` (26 November 2026): migration `20261125234508_friendly_lily_hollister.sql`, advisors INFO only |
 | M5a | **Rivals for every site**: rivals without a shop, and what changed on their sites, read from their own sitemaps (7.2). | Built, deployed at `4a5d1f7` (26 November 2026): migration `20261126083203_big_wild_child.sql`, advisors INFO only |
-| M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Spec |
+| M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Built (26 November 2026): migration `20261126114052_lazy_paladin.sql` |
 | M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Spec |
 | M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Built (26 November 2026): migration `20261126112637_absent_magma.sql` |
 | M5e | **Enquiries as the conversion**: forms, bookings and appointments per country where a store has no orders (7.6). | Spec |
@@ -229,13 +229,25 @@ pages (their terms, and most are behind a sign-in), anything behind a sign-in, a
 - **The platform.** Kaizena Flow's own store's rivals are other platforms' sites; what it published counts its own pages and the
   platform site's (`store_id` null).
 
-### 7.3 M5b: search visibility
+### 7.3 M5b: search visibility (built 26 November 2026)
 
-The owner picks up to 10 words a market (offered from the store's own searches, page titles and products). Monthly, one search a word and
-market through the research search (`searchWeb()`, within `SEARCHES_PER_DAY`, only the word and the country are sent: Brave is a US
-company); code reads where the store's host and each rival's host stand in the first 20 results, and keeps the position with the date.
-Findings: a rival above the store for a word, the store not in the first 20 for a word a rival is. Kaizena Flow's own site gets the same,
-for its words.
+- **What is followed.** `commerce.search_terms`: a word in one of the store's countries, followed by a person (*Follow the word* on
+  Analytics → Markets, offered the store's own most searched words), kept trimmed and in lower case, at most `SEARCH_TERMS_PER_MARKET`
+  (10) a country. Written only by `src/server/market-search.ts`.
+- **How it is searched.** The five-minute dispatcher's `rivalWatch` searches a word never searched first (one just followed is searched
+  within minutes), then each searched longer ago than `SEARCH_CHECK_DAYS` (30): `SEARCH_TERMS_PER_RUN` (2) a run, at most
+  `SEARCH_TERMS_PER_STORE_DAY` (10) a store a day, as the person who followed it, through `searchWeb()`: the platform's search service,
+  counted in the store's 100 searches a day and its AI usage, only the word and the country sent (Brave is a US company). A search that
+  cannot be made waits a day and says why (search not set up; the store's AI or searches used; the service busy). No AI reads the results.
+- **What is kept.** Where the store's own site (`ownSite()`: its active domains, Kaizena Flow's host for its own store, else its path on
+  the platform's host, `/s/{slug}`) and each rival's host in that country first come up on the first page of results (`placesIn()`: the
+  10 a search answers), with the store's place the time before.
+- **Findings.** From a check within `SEARCH_FRESH_DAYS` (45): a rival above the store, or on the page where the store is not, is a weakness
+  (`search_behind`, the highest such rival); the store at number 3 or higher with no rival above it is a strength (`search_ahead`). Their
+  page is the website's pages.
+- **Where.** *Where you come up in search* in Lisa's part: each word with its country, your place and its change, each rival's place, when
+  searched or why not, *Remove*, and *Follow the word*. `market_check` gives the words and places to the AI manager.
+- **The platform.** Kaizena Flow's own store follows its words the same way, found at its own host.
 
 ### 7.4 M5c: speed
 

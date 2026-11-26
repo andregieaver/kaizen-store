@@ -377,6 +377,7 @@
     "src/db/schema.ts#searchRules",
     "src/db/schema.ts#searchSettings",
     "src/db/schema.ts#searchSynonyms",
+    "src/db/schema.ts#searchTerms",
     "src/db/schema.ts#sendingDomains",
     "src/db/schema.ts#sendingPauses",
     "src/db/schema.ts#shipmentLines",
