@@ -12,4 +12,5 @@ export const WORKSPACE_STARTS: Readonly<Record<Exclude<ExtensionId, "ab_testing"
   email_automation: "/broadcasts",
   work: "",
   deals: "/deals",
+  projects: "/projects",
 };

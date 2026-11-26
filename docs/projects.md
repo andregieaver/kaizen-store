@@ -269,7 +269,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 
 | Id | Step | Status |
 |---|---|---|
-| P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Planned |
+| P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Built 26 November 2026 (below) |
 | P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Planned |
 | P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | Planned |
 
@@ -384,3 +384,25 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   tasks, sections, subtasks and comments it has and when each last changed, one statement) through `listStatusAction`, and is drawn again
   only when it changed (`RefreshWhile`, as the scans' pages do). A hidden tab asks nothing and looks once when shown again. What a person is
   typing or has open stays, since a redraw keeps the page's own state.
+
+## As built: step P8.1, Projects as a paid extension (26 November 2026)
+
+- **The catalogue** (migrations `20261126064631_projects_extension_id` and `20261126064730_projects_extension`, the owner's answers): the
+  extension `projects`, standalone, one size *5 people* (`{"people": 5}`) at €25 a month and €19 founding (NOK ×10, a year ten months),
+  €4 a person beyond (NOK 40), in the *Everything* bundle at its price, and included in Grow, Advanced and Plus at that size. Every number
+  is the platform admin's at Platform → Plans → Extensions.
+- **The gates.** `EXTENSION_PATHS.projects` is `projects` and `checklists`: every page there draws `requireExtension(member, "projects")`
+  before the feature's gate (the extension's marker with its trial for an account without it), every action passes `extension: "projects"`
+  to `storeAction()` (refused while the account lacks it or it is read-only), and the store menu and the admin map carry the tag.
+  `projectsOn(store)` (`src/lib/extensions.ts`) is the feature and the extension together, asked by Home's queue of tasks due
+  (`attention.ts`, `control-center.ts`). The five-minute job rolls repeating tasks on only where `commerce.extension_on()` says so; a
+  read-only list rolls on when its page is read.
+- **People.** `peopleOf(organisation, "projects")` counts each person once who may change projects (`projects:write`) in a store with
+  Projects on; a read-only member is free. `EXTRA_UNIT_OF.projects` is `person`, so use beyond five is billed as Work's and Deals' is.
+- **Existing accounts.** Extensions launched on 19 November, so the migration gives an account already using Projects (a checklist, or the
+  feature on, in a counted store) whose plan does not include it the launch's 60-day trial with its 14-day grace; on 26 November no store
+  in production used it, so none was written. The launch's evidence (`extension-launch.ts`) counts a checklist too.
+- **Its workspace.** A workspace starts with the store feature `projects` on beside `sales` (`commerce.make_workspace()`, and the one
+  workspace in production was given it), and its Home has a Projects card opening `/projects` (`WORKSPACE_STARTS`), so an account with
+  only Projects works in it. Its landing page and its place in the combined sign-up are P8.2.
+- **The AI round** rose by 22 characters: the extension tools' id lists name `projects`.

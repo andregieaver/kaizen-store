@@ -1401,6 +1401,20 @@
       "when": 1795664787051,
       "tag": "20261126034627_checklist_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1795675591753,
+      "tag": "20261126064631_projects_extension_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1795675650464,
+      "tag": "20261126064730_projects_extension",
+      "breakpoints": true
     }
   ]
 }

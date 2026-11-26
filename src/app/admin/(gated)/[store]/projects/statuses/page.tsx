@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireExtension } from "@/components/admin/extension-off";
 import { requireFeature } from "@/components/admin/feature-off";
 import { StatusesEditor } from "@/components/admin/projects/statuses-editor";
 import { Card, PageHeader } from "@/components/admin/ui";
@@ -20,6 +21,9 @@ export const metadata: Metadata = { title: "Statuses" };
  */
 export default async function StatusesPage({ params }: PageProps<"/admin/[store]/projects/statuses">) {
   const member = await requirePermission((await params).store, "projects:read");
+  // Projects is a paid extension (D904): an account without it sees what it is and how to add it.
+  const notInAccount = requireExtension(member, "projects");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "projects");
   if (off) return off;
   const { store } = member;

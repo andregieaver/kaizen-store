@@ -35,10 +35,10 @@ const sizeOf = async (extension: string, position = 0) =>
   (await one<{ id: string }>("select id from commerce.extension_sizes where extension_id = $1 and position = $2", [extension, position])).id;
 
 describe("the extension catalogue (D748 E2)", () => {
-  it("has the six extensions in code's order, A/B testing and the social media manager only with a store and the other four also on their own", async () => {
+  it("has the seven extensions in code's order, A/B testing and the social media manager only with a store and the other five also on their own", async () => {
     const found = await rows<{ id: string; standalone: boolean; store_only: boolean }>("select id, standalone, store_only from commerce.extensions order by position");
     expect(found.map((e) => e.id)).toEqual([...EXTENSION_IDS]);
-    expect(found.filter((e) => e.standalone).map((e) => e.id)).toEqual(["support_desk", "email_automation", "work", "deals"]);
+    expect(found.filter((e) => e.standalone).map((e) => e.id)).toEqual(["support_desk", "email_automation", "work", "deals", "projects"]);
     expect(found.filter((e) => e.store_only).map((e) => e.id)).toEqual(["ab_testing", "social"]);
     // A workspace (D748 E7) is never offered one: the code's list is the catalogue's.
     expect(found.filter((e) => e.store_only).map((e) => e.id)).toEqual([...STORE_ONLY_EXTENSIONS]);
@@ -58,6 +58,7 @@ describe("the extension catalogue (D748 E2)", () => {
       ["email_automation", 5900],
       ["email_automation", 11900],
       ["email_automation", 19900],
+      ["projects", 2500],
       ["social", 3900],
       ["support_desk", 3900],
       ["work", 3500],
@@ -83,7 +84,30 @@ describe("the extension catalogue (D748 E2)", () => {
     );
     expect(bundles).toEqual([
       { name: "Customers", members: ["deals", "email_automation", "support_desk"], eur: 8500 },
-      { name: "Everything", members: ["ab_testing", "deals", "email_automation", "social", "support_desk", "work"], eur: 11900 },
+      { name: "Everything", members: ["ab_testing", "deals", "email_automation", "projects", "social", "support_desk", "work"], eur: 11900 },
+    ]);
+  });
+
+  // Its grants to Grow, Advanced and Plus are written where plans of those names are offered (production): no migration makes plans.
+  it("sells Projects (D904) at five people for €25, €19 founding and €4 a person beyond", async () => {
+    expect(await one("select allowances, label from commerce.extension_sizes where extension_id = 'projects' and position = 0")).toEqual({
+      allowances: { people: 5 },
+      label: "5 people",
+    });
+    const prices = await rows<{ currency: string; interval: string; amount: number; founding: number }>(
+      `select p.currency, p.interval, p.amount_minor::int as amount, p.founding_minor::int as founding
+         from commerce.extension_prices p join commerce.extension_sizes s on s.id = p.size_id
+        where s.extension_id = 'projects' and p.active order by p.currency, p.interval`,
+    );
+    expect(prices).toEqual([
+      { currency: "EUR", interval: "month", amount: 2500, founding: 1900 },
+      { currency: "EUR", interval: "year", amount: 25000, founding: 19000 },
+      { currency: "NOK", interval: "month", amount: 25000, founding: 19000 },
+      { currency: "NOK", interval: "year", amount: 250000, founding: 190000 },
+    ]);
+    expect(await rows("select currency, amount_minor::int as amount from commerce.extension_extra_prices where extension_id = 'projects' and unit = 'person' order by currency")).toEqual([
+      { currency: "EUR", amount: 400 },
+      { currency: "NOK", amount: 4000 },
     ]);
   });
 

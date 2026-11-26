@@ -21,10 +21,14 @@ export const EXTENSION_WORDS_NB: Record<string, string> = {
   "Social media manager": "Sosiale medier-assistent",
   "Posts and pictures for every channel in your brand, an adviser that reads your figures, and a weekly review.":
     "Innlegg og bilder til hver kanal i din merkevare, en rådgiver som leser tallene dine, og en ukentlig gjennomgang.",
+  Projects: "Prosjekter",
+  "Projects and checklists for the team: statuses, a board, who does what and when it is due, routines that repeat.":
+    "Prosjekter og sjekklister for teamet: statuser, en tavle, hvem gjør hva og når det skal være ferdig, og rutiner som gjentar seg.",
   // Sizes.
   "Unlimited tests": "Ubegrenset antall tester",
   "Every channel": "Alle kanaler",
   "3 people": "3 personer",
+  "5 people": "5 personer",
   "10 people": "10 personer",
   "Up to 2,500 contacts": "Opptil 2 500 kontakter",
   "Up to 10,000 contacts": "Opptil 10 000 kontakter",

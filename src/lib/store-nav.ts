@@ -368,8 +368,8 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Projects",
         items: [
           // Statuses (`/projects/statuses`) is Lisa's page, one press from Projects: under its address, so in this section and area.
-          item("/projects", "Projects", "Each project and where its tasks stand, as a list or a board.", { area: "projects", feature: "projects", icon: "folder-kanban", basic: true, workspace: true }),
-          item("/checklists", "Checklists", "Lists to tick off, plain or with statuses, people and dates.", { area: "projects", feature: "projects", icon: "list-checks", basic: true, workspace: true }),
+          item("/projects", "Projects", "Each project and where its tasks stand, as a list or a board.", { area: "projects", extension: "projects", feature: "projects", icon: "folder-kanban", basic: true, workspace: true }),
+          item("/checklists", "Checklists", "Lists to tick off, plain or with statuses, people and dates.", { area: "projects", extension: "projects", feature: "projects", icon: "list-checks", basic: true, workspace: true }),
         ],
       },
     ],

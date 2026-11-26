@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { requireExtension } from "@/components/admin/extension-off";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ListSettings } from "@/components/admin/projects/list-settings";
 import { ChoiceField } from "@/components/admin/projects/parts";
@@ -29,6 +30,9 @@ export const metadata: Metadata = { title: "Customise checklist" };
 export default async function ChecklistSettingsPage({ params }: PageProps<"/admin/[store]/checklists/[checklistId]/settings">) {
   const { store: slug, checklistId } = await params;
   const member = await requirePermission(slug, "projects:read");
+  // Projects is a paid extension (D904): an account without it sees what it is and how to add it.
+  const notInAccount = requireExtension(member, "projects");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "projects");
   if (off) return off;
   const { store } = member;

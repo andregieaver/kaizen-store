@@ -65,7 +65,8 @@ const MAX_A_RUN = 500;
 
 /**
  * The dispatcher's part (`repeats`): the repeating tasks of every store whose time has come, oldest first and at most 500 a run, rolled on in
- * each store's zone. Idle, one statement on a partial index.
+ * each store's zone, only where the store's account has Projects (D904: a list read-only after its grace period rolls on when its page is
+ * read, never in the background). Idle, one statement on a partial index.
  */
 export async function rollOverDueTasks(now = Date.now()): Promise<{ rolled: number }> {
   const due = await typedRows(
@@ -73,7 +74,7 @@ export async function rollOverDueTasks(now = Date.now()): Promise<{ rolled: numb
     sql`
       select i.id, i.store_id, i.recurrence, s.time_zone
       from commerce.checklist_items i join commerce.stores s on s.id = i.store_id
-      where i.recurrence is not null and i.next_due_at <= ${new Date(now)}
+      where i.recurrence is not null and i.next_due_at <= ${new Date(now)} and commerce.extension_on(i.store_id, 'projects')
       order by i.next_due_at
       limit ${MAX_A_RUN}
     `,

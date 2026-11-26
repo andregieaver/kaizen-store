@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."access_requests" DROP CONSTRAINT "access_requests_extensions";--> statement-breakpoint
+ALTER TABLE "commerce"."extensions" DROP CONSTRAINT "extensions_known";--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD CONSTRAINT "access_requests_extensions" CHECK ("commerce"."access_requests"."extensions" <@ array['ab_testing', 'support_desk', 'email_automation', 'work', 'deals', 'social', 'projects']::text[]);--> statement-breakpoint
+ALTER TABLE "commerce"."extensions" ADD CONSTRAINT "extensions_known" CHECK ("commerce"."extensions"."id" in ('ab_testing', 'support_desk', 'email_automation', 'work', 'deals', 'social', 'projects'));

@@ -42,7 +42,7 @@ export function trialReminderDue(startedAt: Date, endsAt: Date, now: Date): numb
 }
 
 /** The extensions, in the order the owner named them. A new one is an id here, its row in a migration and its gates (step E3). */
-export const EXTENSION_IDS = ["ab_testing", "support_desk", "email_automation", "work", "deals", "social"] as const;
+export const EXTENSION_IDS = ["ab_testing", "support_desk", "email_automation", "work", "deals", "social", "projects"] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];
 
 /**
@@ -56,6 +56,7 @@ export const EXTENSION_PATHS: Record<ExtensionId, readonly string[]> = {
   work: ["settings/books"],
   deals: ["deals", "leads", "analytics/sales"],
   social: ["social"],
+  projects: ["projects", "checklists"],
 };
 
 /** The extension whose folder a store admin path (after `/admin/{store}/`) is in, if any. */
@@ -72,6 +73,7 @@ export const EXTENSION_NAMES: Record<ExtensionId, string> = {
   work: "Work",
   deals: "Deals and contracts",
   social: "Social media manager",
+  projects: "Projects",
 };
 
 export const isExtensionId = (value: unknown): value is ExtensionId => (EXTENSION_IDS as readonly unknown[]).includes(value);
@@ -101,6 +103,7 @@ export const ALLOWANCES_OF: Record<ExtensionId, readonly AllowanceKey[]> = {
   work: ["people"],
   deals: ["people"],
   social: [],
+  projects: ["people"],
 };
 
 /** Reads a size's allowances from its stored JSON, keeping only known keys with whole numbers of zero or more. */
@@ -245,6 +248,14 @@ export const storeExtensionOn = (store: { extensionFacts?: unknown }, id: Extens
  */
 export function dealsOn(store: { features: readonly string[]; extensionFacts?: unknown }, now: Date = new Date()): boolean {
   return featureOn(store, "sales") && storeExtensionOn(store, "deals", now);
+}
+
+/**
+ * Projects are on (D903, D904): the store feature `projects` is on and the store's account has the Projects extension. Every part of
+ * another screen that shows projects, checklists or their tasks asks this, never the feature alone.
+ */
+export function projectsOn(store: { features: readonly string[]; extensionFacts?: unknown }, now: Date = new Date()): boolean {
+  return featureOn(store, "projects") && storeExtensionOn(store, "projects", now);
 }
 
 /**

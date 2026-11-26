@@ -49,6 +49,9 @@ async function aiConversationsOf(organisationId: string, from: Date, to: Date): 
   return row?.n ?? 0;
 }
 
+/** The extensions whose sizes count people. */
+type PeopleExtension = "work" | "deals" | "projects";
+
 const MEMBER_ROW = z.object({
   account_id: col.uuid,
   role: z.enum(["owner", "admin"]),
@@ -57,17 +60,20 @@ const MEMBER_ROW = z.object({
   permissions: z.array(z.string()).nullable(),
   template: col.textOrNull,
   work_on: col.bool,
+  projects_on: col.bool,
 });
 
 /**
  * The account's team members who can use an extension, each person once across its stores (the owner's answer, 23 November 2026): for
  * Work, those who can open it (Work's screens need `settings:read`, in a store using Work), accountants free; for Deals, those who can
- * change customers (`customers:write`), so a read-only member is never a person here.
+ * change customers (`customers:write`); for Projects (D904), those who can change projects (`projects:write`) in a store with Projects on.
+ * A read-only member is never a person here.
  */
-export async function peopleOf(organisationId: string, extensionId: "work" | "deals"): Promise<number> {
+export async function peopleOf(organisationId: string, extensionId: PeopleExtension): Promise<number> {
   const rows = await typedRows(
     MEMBER_ROW,
-    sql`select m.account_id, m.role, m.kind, m.role_id, r.permissions, r.template, ('work' = any(s.modules)) as work_on
+    sql`select m.account_id, m.role, m.kind, m.role_id, r.permissions, r.template, ('work' = any(s.modules)) as work_on,
+                 ('projects' = any(s.features)) as projects_on
           from commerce.store_members m
           join commerce.stores s on s.id = m.store_id and s.organisation_id = ${organisationId}::uuid and ${COUNTED}
           left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
@@ -76,7 +82,12 @@ export async function peopleOf(organisationId: string, extensionId: "work" | "de
   const people = new Set<string>();
   for (const r of rows) {
     const holder = { role: r.role, kind: r.kind === "collaborator" ? ("collaborator" as const) : ("staff" as const), permissions: r.role_id ? (r.permissions ?? []) : null };
-    const counts = extensionId === "work" ? r.work_on && r.template !== "accountant" && can(holder, "settings:read") : can(holder, "customers:write");
+    const counts =
+      extensionId === "work"
+        ? r.work_on && r.template !== "accountant" && can(holder, "settings:read")
+        : extensionId === "projects"
+          ? r.projects_on && can(holder, "projects:write")
+          : can(holder, "customers:write");
     if (counts) people.add(r.account_id);
   }
   return people.size;
@@ -99,7 +110,7 @@ export async function extraLines(organisationId: string, from: Date, to: Date, c
     if (!price || standing.state !== "active" || !["bought", "bundle", "plan"].includes(standing.source ?? "")) continue;
     const size = await accountSize(organisationId, id);
     const included = (unit === "ai_conversation" ? size?.allowances.ai_conversations : size?.allowances.people) ?? null;
-    const used = id === "support_desk" ? await aiConversationsOf(organisationId, from, to) : await peopleOf(organisationId, id as "work" | "deals");
+    const used = id === "support_desk" ? await aiConversationsOf(organisationId, from, to) : await peopleOf(organisationId, id as PeopleExtension);
     lines.push({ extensionId: id, unit, used, included, unitMinor: price.unitMinor });
   }
   return lines;

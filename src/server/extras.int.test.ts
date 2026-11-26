@@ -91,6 +91,10 @@ describe("use beyond the allowances (D880)", () => {
   it("counts the AI-handled conversations and the people who can use each extension, across the account", async () => {
     expect(await extras.peopleOf(organisation, "work")).toBe(5);
     expect(await extras.peopleOf(organisation, "deals")).toBe(5);
+    // Projects (D904): nobody while the store has it off; once on, those who may change projects, the accountant not.
+    expect(await extras.peopleOf(organisation, "projects")).toBe(0);
+    await db().execute(sql`update commerce.stores set features = array_append(features, 'projects') where id = ${storeId}::uuid and not ('projects' = any(features))`);
+    expect(await extras.peopleOf(organisation, "projects")).toBe(5);
     const from = new Date(Date.now() - 24 * 3600_000);
     const lines = await extras.extraLines(organisation, from, new Date(Date.now() + 60_000), "NOK");
     expect(lines).toEqual([

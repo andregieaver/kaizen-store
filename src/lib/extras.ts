@@ -10,7 +10,7 @@ export const EXTRA_UNITS = ["ai_conversation", "person"] as const;
 export type ExtraUnit = (typeof EXTRA_UNITS)[number];
 
 /** Which extensions have use beyond an allowance, and in what unit: the support desk's AI-handled conversations, Work's and Deals' people. */
-export const EXTRA_UNIT_OF: Partial<Record<ExtensionId, ExtraUnit>> = { support_desk: "ai_conversation", work: "person", deals: "person" };
+export const EXTRA_UNIT_OF: Partial<Record<ExtensionId, ExtraUnit>> = { support_desk: "ai_conversation", work: "person", deals: "person", projects: "person" };
 
 /** An extension's use in a period against what its size includes (null: no limit), with what one unit beyond costs. */
 export type ExtraLine = { extensionId: ExtensionId; unit: ExtraUnit; used: number; included: number | null; unitMinor: number };

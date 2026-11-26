@@ -9,6 +9,7 @@ import type { ProjectsMessages } from "@/lib/admin-messages/projects.en";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { featureOffText } from "@/lib/feature-labels";
+import { projectsOn } from "@/lib/extensions";
 import { formFields, projectsOp, type ProjectsAnswer, type ProjectsOpInput } from "@/lib/projects-ops";
 import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
@@ -21,12 +22,13 @@ import { storeAction } from "@/server/store-action";
 /**
  * Projects and checklists' actions (D903): one for every change a screen makes (`projectsOp`, checked here whatever a stale page sends), and
  * the forms that make a project or a list and save their details. Each checks the member may change projects (folding is the person's own
- * view, so reading is enough) and that the feature is on, answers in the member's language, and redraws the page on success.
+ * view, so reading is enough), that the account has the extension (D904: refused while it is read-only too) and the feature is on,
+ * answers in the member's language, and redraws the page on success.
  */
 
 const wordsOf = (lang: AdminLang): ProjectsMessages => PROJECTS_WORDS[lang];
 
-/** The feature's refusal while it is off, in the member's words; null while it is on. */
+/** The feature's refusal while it is off, in the member's words; null while it is on (the extension is `storeAction()`'s to check). */
 const featureOff = (member: Membership, lang: AdminLang): string | null =>
   featureOn(member.store, "projects") ? null : featureOffText("projects", COMMON_WORDS[lang].features);
 
@@ -39,7 +41,7 @@ function problemText(w: ProjectsMessages, result: Extract<ProjectsResult, { ok: 
 export async function projectsAction(store: string, raw: ProjectsOpInput): Promise<ProjectsAnswer> {
   const parsed = projectsOp.safeParse(raw);
   const key = parsed.success && parsed.data.op === "list.fold" ? "projects:read" : "projects:write";
-  return storeAction({ store, key, action: "projects.op", answer: (message): ProjectsAnswer => ({ ok: false, message }) }, async (member, lang): Promise<ProjectsAnswer> => {
+  return storeAction({ store, key, action: "projects.op", extension: "projects", answer: (message): ProjectsAnswer => ({ ok: false, message }) }, async (member, lang): Promise<ProjectsAnswer> => {
     const w = wordsOf(lang);
     if (!parsed.success) return { ok: false, message: w.problems.invalid };
     const off = featureOff(member, lang);
@@ -54,8 +56,8 @@ export async function projectsAction(store: string, raw: ProjectsOpInput): Promi
 
 /** A list's fingerprint for its page's light refresh (P4.10): read by anyone who may read projects; null when it cannot be read. */
 export async function listStatusAction(store: string, checklistId: string): Promise<string | null> {
-  return storeAction({ store, key: "projects:read", action: "projects.listStatus", answer: (): string | null => null }, async (member): Promise<string | null> =>
-    featureOn(member.store, "projects") ? listFingerprint(member.store.id, checklistId) : null,
+  return storeAction({ store, key: "projects:read", action: "projects.listStatus", extension: "projects", answer: (): string | null => null }, async (member): Promise<string | null> =>
+    projectsOn(member.store) ? listFingerprint(member.store.id, checklistId) : null,
   );
 }
 
@@ -70,7 +72,7 @@ type Made = FormState | { id: string };
 /** A new project from its name (and a target date, if given); the page moves to it. */
 export async function createProjectAction(store: string, _state: FormState, form: FormData): Promise<FormState> {
   const made = await storeAction(
-    { store, key: "projects:write", action: "projects.create", answer: (message): Made => ({ status: "error", messages: [message] }) },
+    { store, key: "projects:write", action: "projects.create", extension: "projects", answer: (message): Made => ({ status: "error", messages: [message] }) },
     async (member, lang): Promise<Made> => {
       const w = wordsOf(lang);
       const off = featureOff(member, lang);
@@ -86,7 +88,7 @@ export async function createProjectAction(store: string, _state: FormState, form
 /** A new checklist from its title, in a project when one is chosen; the page moves to it. */
 export async function createChecklistAction(store: string, _state: FormState, form: FormData): Promise<FormState> {
   const made = await storeAction(
-    { store, key: "projects:write", action: "projects.createList", answer: (message): Made => ({ status: "error", messages: [message] }) },
+    { store, key: "projects:write", action: "projects.createList", extension: "projects", answer: (message): Made => ({ status: "error", messages: [message] }) },
     async (member, lang): Promise<Made> => {
       const w = wordsOf(lang);
       const off = featureOff(member, lang);
@@ -107,7 +109,7 @@ export async function createChecklistAction(store: string, _state: FormState, fo
 
 /** A project's details, as its settings form sends them. */
 export async function saveProjectAction(store: string, id: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store, key: "projects:write", action: "projects.save", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (member, lang): Promise<FormState> => {
+  return storeAction({ store, key: "projects:write", action: "projects.save", extension: "projects", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (member, lang): Promise<FormState> => {
     const w = wordsOf(lang);
     const off = featureOff(member, lang);
     if (off) return { status: "error", messages: [off] };
@@ -123,7 +125,7 @@ const dayAt = (day: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(day) ? `${day
 
 /** A list's details, as its settings form sends them (its due date a day). */
 export async function saveChecklistAction(store: string, id: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store, key: "projects:write", action: "projects.saveList", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (member, lang): Promise<FormState> => {
+  return storeAction({ store, key: "projects:write", action: "projects.saveList", extension: "projects", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (member, lang): Promise<FormState> => {
     const w = wordsOf(lang);
     const off = featureOff(member, lang);
     if (off) return { status: "error", messages: [off] };

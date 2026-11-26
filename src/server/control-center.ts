@@ -96,6 +96,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
            -- The paid extensions the store's account has now (D748): their items are asked only of those stores.
            commerce.extension_on(s.id, 'work') as work_ext, commerce.extension_on(s.id, 'deals') as deals_ext,
            commerce.extension_on(s.id, 'support_desk') as support_ext, commerce.extension_on(s.id, 'email_automation') as email_ext,
+           commerce.extension_on(s.id, 'projects') as projects_ext,
            -- An open book (at most one per store, ledger_books_open_key): only such a store is asked for its threshold watch (D514).
            exists (select 1 from commerce.ledger_books lb where lb.store_id = s.id and lb.closed_on is null) as has_books
     from commerce.store_members m
@@ -356,7 +357,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         comments: idsWith(storeRows, "website:read"),
         questions: supportIds,
         flows: idsWith(storeRows.filter((r) => r.email_ext === true), "marketing:read"),
-        tasks: idsWith(storeRows.filter((r) => featureOn(((r.features ?? []) as unknown[]).map(String), "projects")), "projects:read"),
+        tasks: idsWith(storeRows.filter((r) => r.projects_ext === true && featureOn(((r.features ?? []) as unknown[]).map(String), "projects")), "projects:read"),
       },
       account.id,
     ),

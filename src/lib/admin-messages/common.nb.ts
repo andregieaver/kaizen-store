@@ -32,6 +32,7 @@ export const commonNb: CommonMessages = {
       work: "Kunder, timer, fakturaer og regnskapet, på ett sted.",
       deals: "Følg hver avtale fra første henvendelse til signert kontrakt.",
       social: "Innlegg og bilder til hver kanal, skrevet i din merkevare, og en rådgiver som sier hva du bør poste nå ut fra tallene dine.",
+      projects: "Teamets prosjekter og sjekklister: hvem gjør hva, og innen når.",
     },
     tryFree: "Prøv gratis i {days} dager",
     trialStarted: "Prøveperioden har startet.",
@@ -55,6 +56,7 @@ export const commonNb: CommonMessages = {
       work: "Work",
       deals: "Avtaler og kontrakter",
       social: "Sosiale medier-assistent",
+      projects: "Prosjekter",
     },
   },
   features: {

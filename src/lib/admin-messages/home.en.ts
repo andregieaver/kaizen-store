@@ -794,6 +794,7 @@ export const homeEn = {
       email_automation: { title: "Email automation", text: "Broadcasts, flows and the people who get them." },
       work: { title: "Work", text: "Your clients, the time you spend and your invoices." },
       deals: { title: "Deals and contracts", text: "Your deals from the first talk to signed, and the leads to follow up." },
+      projects: { title: "Projects", text: "Your projects and checklists: who does what, and by when." },
     },
     assistant: "AI manager",
     assistantText: "Ask what is going on, or have it do things for you.",

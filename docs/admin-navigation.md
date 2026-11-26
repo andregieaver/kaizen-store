@@ -504,8 +504,8 @@ Opens `/admin/{store}/projects`. Needs: Projects. 2 pages, 2 in Basic.
 
 | Group | Page | Address | View | Needs |
 | --- | --- | --- | --- | --- |
-| Projects | Projects | `/admin/{store}/projects` | Basic | Projects |
-|  | Checklists | `/admin/{store}/checklists` | Basic | Projects |
+| Projects | Projects | `/admin/{store}/projects` | Basic | Projects; the Projects extension |
+|  | Checklists | `/admin/{store}/checklists` | Basic | Projects; the Projects extension |
 
 ### Store › Settings
 

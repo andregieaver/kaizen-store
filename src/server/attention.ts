@@ -14,8 +14,7 @@ import { OPEN_QUESTION } from "./unanswered-questions";
 import { textList, uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { checkedRows, col, typedRows } from "./typed-rows";
-import { dealsOn, storeExtensionOn } from "@/lib/extensions";
-import { featureOn } from "@/lib/store-features";
+import { dealsOn, projectsOn, storeExtensionOn } from "@/lib/extensions";
 
 /**
  * One attention source (ecosystem plan E2.1, D713): the queues that wait on a store's people, counted in SQL for any number of stores at
@@ -326,7 +325,7 @@ export async function storeAttention(store: Store, now: Date = new Date()): Prom
   const ids = [store.id];
   const sales = dealsOn(store) ? ids : [];
   const counts = await queueCounts(
-    { disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids, flows: storeExtensionOn(store, "email_automation", now) ? ids : [], tasks: featureOn(store, "projects") ? ids : [] },
+    { disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids, flows: storeExtensionOn(store, "email_automation", now) ? ids : [], tasks: projectsOn(store, now) ? ids : [] },
     null,
     now,
   );

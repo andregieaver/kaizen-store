@@ -227,22 +227,26 @@ Prices are per month, excluding VAT; NOK is ×10 and yearly is 10× monthly, as 
 | Email automation | €25 / €59 / €119 / €199 | **€19 / €49 / €99 / €179** | 2,500 / 10k / 25k / 50k contacts, 10 emails per contact per month | the next size |
 | Work | €35 | **€25** | 3 people; accountants free | €5 per person |
 | Deals and contracts | €35 | **€29** | 3 people | €8 per person |
+| Projects (D904, 26 November 2026) | €25 | **€19** | 5 people | €4 per person |
+| Social media manager (D870 S1.6) | €39 | — | Every channel | — |
 | Bundle **Customers** (Support + Email + Deals) | €85 | **€59** | as each part | — |
 | Bundle **Everything** | €119 | **€89** | as each part | — |
 
 | Plan (today) | Includes |
 |---|---|
 | Basic (€20) | Nothing: the lean core |
-| Grow (€50) | A/B testing |
-| Advanced (€300) | A/B testing, email automation at 10k, the support desk |
-| Plus (€1,000) | Everything, email automation at 25k |
+| Grow (€50) | A/B testing, Projects |
+| Advanced (€300) | A/B testing, email automation at 10k, the support desk, Projects |
+| Plus (€1,000) | Every extension but the social media manager (in no plan until the owner chooses), email automation at 25k |
 
 Why these numbers (the research, 17 November 2026): comparable tools charge per person, per contact and per AI resolution
 (Gorgias and Intercom about $0.90 to $0.99 per resolution plus seats; ActiveCampaign and Klaviyo $139 to $189 at 10,000
 contacts; Fiken 229 to 349 kr; Pipedrive $14 to $39 per person; A/B tools $59 to $399). Flat prices with allowances undercut
 them for small businesses. What each customer costs Kaizena Flow: A/B testing, Deals and Work almost nothing; an AI-handled
 conversation about €0.05 (Claude Haiku 4.5) to €0.20 (Claude Sonnet 5), so the allowance counts conversations the AI handled,
-resolved or not; email about $0.10 per 1,000 through SES. Every row keeps a margin at its allowance.
+resolved or not; email about $0.10 per 1,000 through SES. Every row keeps a margin at its allowance. Projects (the owner's answer, 26
+November 2026) is €5 a person at its five, below the per-person prices of the planning tools teams use today, and costs almost nothing
+to run: its pages and one five-minute job that rolls repeating tasks on.
 
 ## 13. Build steps
 
@@ -383,7 +387,8 @@ stops it before anything is sold, and pressing again goes on), then in one trans
 other account its row (keeping its stores' latest trial), writes a 60-day trial (`LAUNCH_TRIAL_DAYS`, grace 14 days after) of each
 extension an account uses and its plan does not include, and sets `extensions_launched_at`; every store's cached read is refreshed. Use is
 an account's records in an open store: an A/B test; the desk on (`support_settings.mode` not `off`); a broadcast, automation or flow; a Work
-client, invoice or time entry, or books opened; a deal or contract (a pipeline or template a page makes on a visit is not use). From then on
+client, invoice or time entry, or books opened; a deal or contract; a checklist (Projects, D904: added after launch, so its migration gave the same trial to accounts already using it) (a
+pipeline or template a page makes on a visit is not use). From then on
 no account is billed store by store: an account made later gets its row as it is made (migration `20261119192530_accounts_billed_after_launch`,
 the trigger `organisation_billed_after_launch`), sign-up and the Dream Factory write the 14-day trial on it (`writeTrial()`), and the platform's
 plan buttons on a store act on its account. The daily run's `daily.extension-trials` (`src/server/extension-reminders.ts`) emails the owner

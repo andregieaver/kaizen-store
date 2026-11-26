@@ -784,6 +784,7 @@ export const homeNb: HomeMessages = {
       email_automation: { title: "E-postautomatisering", text: "Utsendelser, flyter og menneskene som får dem." },
       work: { title: "Work", text: "Kundene dine, tiden du bruker og fakturaene dine." },
       deals: { title: "Avtaler og kontrakter", text: "Avtalene dine fra første samtale til signert, og leadene du bør følge opp." },
+      projects: { title: "Prosjekter", text: "Prosjektene og sjekklistene dine: hvem gjør hva, og innen når." },
     },
     assistant: "AI-manager",
     assistantText: "Spør hva som skjer, eller få den til å gjøre ting for deg.",

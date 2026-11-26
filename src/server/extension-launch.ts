@@ -54,6 +54,8 @@ const USED = sql`
       select 'deals'
        where exists (select 1 from commerce.deals d where d.store_id = s.id)
           or exists (select 1 from commerce.contracts c where c.store_id = s.id)
+      union all
+      select 'projects' where exists (select 1 from commerce.checklists l where l.store_id = s.id)
     ) x
    where ${COUNTED_STORE}
 `;
