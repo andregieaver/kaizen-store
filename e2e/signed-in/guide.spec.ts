@@ -45,7 +45,7 @@ test("lists the store's places and shows the rail when asked, the page dimmed ar
   await page.goto(`/admin/${E2E_STORE}/orders`);
   const panel = await openGuide(page);
   await expect(panel.getByRole("heading", { name: "Places in your admin" })).toBeVisible();
-  for (const place of ["The rail", "Your next step", "Orders", "Products", "Settings"]) await expect(panel.getByText(place, { exact: true }).first()).toBeVisible();
+  for (const place of ["The rail", "Your next step", "Orders", "Products", "Settings"]) await expect(panel.getByRole("listitem").filter({ hasText: place }).first()).toBeVisible();
   await panel.getByRole("listitem").filter({ hasText: "The rail" }).getByRole("button").click();
   await page.waitForURL((url) => url.pathname === `/admin/${E2E_STORE}`);
   const step = page.getByRole("dialog", { name: "This is the rail: every part of your store" });
@@ -84,6 +84,6 @@ test.describe("on the platform", () => {
   test("lists the platform's own sections", async ({ page }) => {
     await page.goto("/admin/platform");
     const panel = await openGuide(page);
-    for (const place of ["The rail", "Stores", "Settings"]) await expect(panel.getByText(place, { exact: true }).first()).toBeVisible();
+    for (const place of ["The rail", "Stores", "Settings"]) await expect(panel.getByRole("listitem").filter({ hasText: place }).first()).toBeVisible();
   });
 });
