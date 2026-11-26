@@ -17,6 +17,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import type { Account } from "@/server/auth";
 import { OwnerToolError } from "@/server/owner-tool-error";
+import { removeSpeedKey, saveSpeedKey } from "@/server/site-speed";
 import { saveSearchSettings } from "@/server/web-search-settings";
 
 /** Pauses or starts again every AI that acts on its own, platform-wide (PSI AST-07); a platform admin's alone, audited. */
@@ -40,6 +41,25 @@ export async function saveWebSearchAction(_state: FormState, formData: FormData)
   }
   refresh();
   return { status: "ok", messages: [PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].ai.webSearchSaved] };
+}
+
+/** The platform's Chrome UX Report key for site speed (D905 M5c): saved, or removed when the form says so. */
+export async function saveSiteSpeedAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const account = await requirePlatformAdmin();
+  const w = PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].ai;
+  try {
+    if (formData.get("intent") === "remove") {
+      await removeSpeedKey(account);
+      refresh();
+      return { status: "ok", messages: [w.speedRemoved] };
+    }
+    await saveSpeedKey(account, { apiKey: String(formData.get("api_key") ?? "") });
+  } catch (error) {
+    if (error instanceof OwnerToolError) return { status: "error", messages: [error.message] };
+    throw error;
+  }
+  refresh();
+  return { status: "ok", messages: [w.webSearchSaved] };
 }
 
 const wordsOf = (account: Account) => PLATFORM_TOOLS_WORDS[adminLangOf(account.adminLocale)].aiActions;

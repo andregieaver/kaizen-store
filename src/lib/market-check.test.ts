@@ -47,6 +47,7 @@ const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): Ma
   published: 0,
   rivalServices: [],
   searchTerms: [],
+  siteSpeeds: [],
   ...over,
 });
 const names = new Map([
@@ -335,6 +336,33 @@ describe("the market check's findings (D900 M1)", () => {
     expect(findingText(behind, marketCheckEn.finding, names, language)).toBe("Linnet is number 2 in a search for “linen apron” in Norway; you are number 7.");
     expect(findingText(missing, marketCheckEn.finding, names, language)).toBe("Linnet is number 4 in a search for “linforkle” in Norway; you are not on the first page.");
     expect(findingText(ahead, marketCheckNb.finding, names, language)).toBe("Du er nummer 1 i et søk etter «forkle» i Norway, og ingen konkurrent du følger, er over deg.");
+  });
+
+  it("finds a rival's site good where the store's is poor, by Chrome's measure (D905 M5c)", () => {
+    const now = new Date("2026-11-26T12:00:00Z");
+    const speed = (rivalName: string | null, lcp: number, inp: number, cls: number) => ({
+      host: `${rivalName ?? "own"}.no`,
+      rivalName,
+      lcp,
+      inp,
+      cls,
+      checkedAt: "2026-11-24T10:00:00Z",
+      periodEnd: "2026-11-22",
+      problem: null,
+    });
+    const found = marketFindings(facts([country("NO", { sells: false })], { siteSpeeds: [speed(null, 4800, 600, 300), speed("Linnet", 1900, 150, 20)] }), now);
+    const speedFindings = found.filter((f) => f.kind === "speed_behind");
+    // The largest gap first: layout shift 15 times the rival's, a tap four times, the main content 2.5 times.
+    expect(speedFindings.map((f) => (f.kind === "speed_behind" ? f.metric : null))).toEqual(["cls", "inp", "lcp"]);
+    expect(swotOf(found).weaknesses).toHaveLength(3);
+    const lcp = speedFindings.find((f) => f.kind === "speed_behind" && f.metric === "lcp")!;
+    const cls = speedFindings.find((f) => f.kind === "speed_behind" && f.metric === "cls")!;
+    expect(findingText(lcp, marketCheckEn.finding, names, language)).toBe(
+      "Linnet's pages show their main content in 1.9 s for most visitors; yours take 4.8 s, which Google counts as slow.",
+    );
+    expect(findingText(cls, marketCheckNb.finding, names, language, undefined, "nb-NO")).toBe(
+      "Sidene til Linnet flytter seg knapt mens de lastes (0,02); dine flytter seg 0,30, som Google regner som dårlig.",
+    );
   });
 
   it("draws the findings as a SWOT, each in the part its kind is, in their own order; a rival's move is a threat (D900 M2, M3)", () => {

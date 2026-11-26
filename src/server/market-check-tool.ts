@@ -7,6 +7,7 @@ import { addDays, customPeriod, todayIn } from "@/lib/analytics-period";
 import { languageNames } from "@/lib/legal-admin-words";
 import { conversionOf, findingText, FIX_PATHS, MIN_ORDERS, MIN_VISITS, SWOT_OF } from "@/lib/market-check";
 import { SEARCH_PLACES } from "@/lib/market-search";
+import { SPEED_METRICS, speedRating, speedText } from "@/lib/site-speed";
 import { OFFERS_PER_RIVAL, offerFresh, pathShown, priceGap, RIVALS_PER_MARKET, SITE_WINDOW_DAYS, type RivalSiteFacts } from "@/lib/market-rivals";
 import { englishMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
@@ -69,11 +70,21 @@ export async function marketCheckTool({ store }: Ctx, { days }: OwnerToolInput<"
         searched: t.checkedAt?.slice(0, 10) ?? null,
       };
     }),
+    // How fast its site and its rivals' are (D905 M5c): Chrome users' 75th percentile over 28 days, rated by Google's thresholds in code.
+    site_speed: check.siteSpeeds.map((s) => ({
+      site: s.rivalName ? `${s.rivalName} (${s.host})` : `the store's own (${s.host})`,
+      ...(s.checkedAt
+        ? Object.fromEntries(
+            SPEED_METRICS.map((m) => [m, s[m] === null ? null : { value: speedText(m, s[m]!), rating: speedRating(m, s[m]!) }]),
+          )
+        : { not_measured: s.problem === "none" ? "too few Chrome visitors to measure" : "not measured yet" }),
+      measured_to: s.periodEnd,
+    })),
     findings: check.findings.map((f) => ({
       kind: f.kind,
       // Where the finding stands in a SWOT (D900 M2): a SWOT asked for is these lines sorted, never one written from memory.
       swot: SWOT_OF[f.kind],
-      text: findingText(f, w.finding, names, languageName, (minor, currency) => formatAmount(minor, currency, locale)),
+      text: findingText(f, w.finding, names, languageName, (minor, currency) => formatAmount(minor, currency, locale), locale),
       page: adminLink(store, FIX_PATHS[f.kind]),
     })),
     notes: [

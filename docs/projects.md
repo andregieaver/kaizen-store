@@ -254,16 +254,16 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 
 | Id | Step | Status |
 |---|---|---|
-| P6.1 | Work's tasks become checklist items: an assignment has its list; time entries and timers point at items | Planned |
+| P6.1 | Work's tasks become checklist items: an assignment has its list; time entries and timers point at items | Replaced 26 November 2026 by P8.3d: Work stands alone (D904), so its tasks stay its own; a list sends its time to an assignment and its tasks log time there |
 | P6.2 | CRM tasks (`activities` of kind `task`): weighed against items linked to a customer | Planned |
-| P6.3 | A won deal starts a project from a template | Planned |
+| P6.3 | A won deal starts a project from a template | Done 26 November 2026 as P8.3b (3d7ee2c) |
 | P6.4 | Kaizen Life shows the projects of a linked account (the door of D511) | Planned |
 
 ### P7: the platform
 
 | Id | Step | Status |
 |---|---|---|
-| P7.1 | The platform admin's own projects, and the row in `docs/platform-parity.md` | Built 26 November 2026 (below: in Kaizena Flow's store, not `store_id is null`) |
+| P7.1 | The platform admin's own projects, and the row in `docs/platform-parity.md` | Done 26 November 2026 (43e4e7d; below: in Kaizena Flow's store, not `store_id is null`) |
 
 ### P8: an extension that stands alone (D904)
 
@@ -271,11 +271,11 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 |---|---|---|
 | P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Done 26 November 2026 (bc2c881, 073eb4b; below) |
 | P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Done 26 November 2026 (below) |
-| P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | In steps below |
+| P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | Done 26 November 2026 in the steps below; the workflow and webhook pair is P5.2 |
 | P8.3a | **The shop and the support desk:** *Make a task* from an order, a return, a review or a support conversation; the task links back, and an order's and a return's page show their tasks | Done 26 November 2026 (2a9f9d4; below) |
 | P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Done 26 November 2026 (3d7ee2c; below) |
 | P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Done 26 November 2026 (4b57e25; below) |
-| P8.3d | **Work:** time on a task and a task on an assignment (P6.1); **Email automation:** a task's person told when it is theirs (with P4.3's reminders) | Planned |
+| P8.3d | **Work:** a list's time goes to a Work assignment, and its tasks log time there (P6.1's pair); **a task's person told by email** when someone else gives it to them | Done 26 November 2026 (e79c547; below) |
 
 ## 6. Tests
 
@@ -482,4 +482,26 @@ and the agents' eval recorded again on Platform → AI for the three new tools.
 - **The way in.** The platform admin's Settings → *Running the platform* → *Projects* (`/admin/platform/projects`) opens that store's
   Projects for someone on its team; anyone else is told its owner adds them under Team. The store's own page offers to switch the feature on
   when it is off. The row in `docs/platform-parity.md` is ticked.
+
+## As built: step P8.3d, Work's pair and a task's person told (26 November 2026)
+
+- **A list's time goes to a Work assignment.** A list's settings show *Client work* while the store has Work and the person may see it
+  (Work's right, `settings:read`): one of Work's assignments, by client, or none (`checklists.assignment_id`, the store's own, cleared when
+  the assignment is deleted; `list.assignment`, `setListAssignment()` in `src/server/projects-work.ts`). The list's page names the client and
+  the assignment, a link to Work's page for it, and the time logged from its tasks.
+- **Time on a task.** A task of such a list shows its time, and *Log time* for someone who may log time in Work (`settings:write`): the time
+  as Work's own form reads it (1:30, 1h 30m, 90) and the day, today in the store unless changed. It goes in through Work's `logTime()`, so
+  Work's rules hold (1 minute to 24 hours, no day to come, billable, on the assignment's draft invoice like any entry), noted with the task's
+  title; Projects keeps the link (`checklist_item_time`, one task an entry, gone with either). A row shows a task's time beside its facts.
+- **Work's side.** An assignment's page lists the checklists whose time goes to it, with their open tasks, while the store has Projects and
+  the person may read it (`listsOfAssignment()`). Work's tables hold nothing of Projects: switching either off leaves the other whole.
+- **A task's person told.** Giving a task its person marks who gave it and when (`assigned_by`, `assigned_at`; a save to the same person
+  marks nothing). The five-minute dispatcher's `projectsAssigned` job (`src/server/projects-notices.ts`) claims each marked task two minutes
+  later, so a person chosen by mistake and changed at once is never told, and emails its person once, one email a run for all their new tasks
+  in a store, in their own admin language: each task's title and list and who gave it, and a link to the list (or to every task for several).
+  Nobody is told of a task they took themselves, a task done or archived, one a day old, or in a store without Projects; the person must still
+  be on the team with the right to read projects (`staff.task_assigned`, a staff email).
+- **Why not Email automation.** The email is to the store's own team, not to its customers, so it is part of Projects rather than a pair
+  with Email automation (which writes to customers): a team's tasks need their people told whatever else the account has. P4.3's reminders
+  (a time before a task is due) stay their own step.
 

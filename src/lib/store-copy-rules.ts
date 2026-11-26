@@ -324,6 +324,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   company_visits: never("Which companies visited the original (D890); a copy starts with company recognition off and counts its own."),
   market_rivals: never("The original's rivals (D900 M2) are its owner's own judgement of its market; a copy adds its own."),
   rival_offers: never("Offers read of the original's rivals (D900 M2), held against its products; a copy reads its own."),
+  site_speeds: never("The original's site and its rivals' speed (D905 M5c); a copy's sites are measured anew."),
   search_terms: never("The words the original follows in search (D905 M5b) and its places there; a copy follows its own."),
   rival_service_prices: never("The original's rivals' service prices (D905 M5d), held against its own; a copy keeps its own."),
   rival_pages: never("The pages of the original's rivals' sites (D905), as its watcher listed them; a copy's rivals are read anew."),
@@ -543,6 +544,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   project_labels: never("A store's categories and tags for tasks (D903 P4.6), with its lists: a copy starts without them."),
   checklist_item_tags: never("A task's tags (D903 P4.6), with the lists."),
   checklist_item_comments: never("The team's comments on a task (D903 P4.4): their own words, with the lists."),
+  checklist_item_time: never("Which Work time entry a task logged (D904 P8.3d): with the lists and Work's time, neither copied."),
   work_time_entries: never("Work (D122) is the owner's own bookkeeping."),
   work_timers: never("Work (D122) is the owner's own bookkeeping."),
 };

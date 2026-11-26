@@ -39,6 +39,9 @@ export const projectsOp = z.discriminatedUnion("op", [
   // A won deal starts a project (D904 P8.3b), with a copy of a template list if one is chosen.
   z.object({ op: z.literal("project.fromDeal"), dealId: id, templateId: id.nullable() }),
   z.object({ op: z.literal("project.unlink"), projectId: id, checklistId: id }),
+  // A list's time goes to a Work assignment, and a task logs time there (D904 P8.3d).
+  z.object({ op: z.literal("list.assignment"), checklistId: id, assignmentId: id.nullable() }),
+  z.object({ op: z.literal("item.logTime"), itemId: id, minutes: z.int().min(1).max(1440), workDate: z.string().max(10).nullable() }),
   z.object({ op: z.literal("project.reorderLists"), projectId: id, ids }),
   z.object({ op: z.literal("project.stage"), projectId: id, itemId: id, stageId: scope }),
   z.object({ op: z.literal("list.update"), id, patch: checklistInput.partial() }),

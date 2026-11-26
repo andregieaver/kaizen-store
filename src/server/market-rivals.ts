@@ -40,6 +40,7 @@ import { isDemoProduct } from "./demo-content";
 import { OwnerToolError } from "./owner-tool-error";
 import { log } from "./log";
 import type { SearchWatchRun } from "./market-search";
+import type { SpeedWatchRun } from "./site-speed";
 import { pgTextArray } from "./pg-arrays";
 import { readOfferPage, readSitemapPaths, readWebPage, type ResearchActor, type ResearchDeps, type SitemapRead } from "./research";
 import { getStore, type Store } from "./stores";
@@ -215,6 +216,7 @@ export type WatchRun = {
   sites: SiteWatchRun;
   services: ServiceWatchRun;
   search: SearchWatchRun;
+  speed: SpeedWatchRun;
   platform: PlatformWatchRun;
 };
 
@@ -262,6 +264,7 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
     sites: { listed: 0, failed: 0 },
     services: { checked: 0, gone: 0, failed: 0 },
     search: { searched: 0, waiting: 0 },
+    speed: { stores: 0, measured: 0, none: 0, failed: 0 },
     platform: { checked: 0, gone: 0, failed: 0 },
   };
   for (const o of due) {
@@ -302,6 +305,13 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
     run.search = await watchSearchTerms(deps);
   } catch (error) {
     report(error, "rivals.search_watch");
+  }
+  // How fast stores' sites and their rivals' are (D905 M5c): one store a run, while the platform's key is set.
+  try {
+    const { watchSiteSpeeds } = await import("./site-speed");
+    run.speed = await watchSiteSpeeds({ now: deps.now });
+  } catch (error) {
+    report(error, "rivals.speed_watch");
   }
   // The other store platforms' prices (M4), in the same job: a few pages a run.
   try {

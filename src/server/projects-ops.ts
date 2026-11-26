@@ -12,6 +12,7 @@ import * as labels from "./projects-labels";
 import * as lists from "./projects-lists";
 import * as sources from "./projects-sources";
 import * as statuses from "./projects-statuses";
+import * as work from "./projects-work";
 
 /**
  * Runs one checked operation of a projects or checklists screen (D903) through the module that owns it. Each writer checks the member's
@@ -57,6 +58,10 @@ export async function runProjectsOp(
       return lists.setFold(member, op.id, op.sectionId, op.folded);
     case "project.fromDeal":
       return deals.startDealProject(member, op);
+    case "list.assignment":
+      return work.setListAssignment(member, op);
+    case "item.logTime":
+      return work.logTaskTime(member, op);
     case "item.addFrom":
       return sources.addSourceTask(member, op, context.followUps);
     case "item.add": {

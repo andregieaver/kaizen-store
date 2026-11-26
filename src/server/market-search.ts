@@ -57,7 +57,7 @@ export type KeptSearchTerm = SearchTermFacts & {
 export async function ownSite(store: Pick<Store, "id" | "slug" | "house">): Promise<OwnSite> {
   const rows = await typedRows(
     z.object({ hostname: col.text }),
-    sql`select hostname from commerce.store_domains where store_id = ${store.id}::uuid and status = 'active'`,
+    sql`select hostname from commerce.store_domains where store_id = ${store.id}::uuid and status = 'active' order by is_primary desc, hostname`,
   );
   const hosts = rows.map((r) => r.hostname.toLowerCase().replace(/^www\./, ""));
   const site = publicSiteHost();

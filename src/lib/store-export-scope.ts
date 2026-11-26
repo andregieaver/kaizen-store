@@ -171,6 +171,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   rival_service_prices: "record",
   // The words the store follows in search and its places (D905 M5b).
   search_terms: "record",
+  // Its own site's and its rivals' speed, as the Chrome UX Report gave it (D905 M5c).
+  site_speeds: "record",
   platform_do_not_contact: "record",
   company_lookup_settings: "secret",
   staff_alert_recipients: "people",
@@ -230,6 +232,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   work_tasks: "record",
   checklist_folds: "people",
   checklist_item_comments: "people",
+  // Which Work time entry a task logged (D904 P8.3d): a link by ids to time the file does not hold.
+  checklist_item_time: "record",
   work_timers: "people",
   workflow_runs: "record",
 };

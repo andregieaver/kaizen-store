@@ -3,7 +3,7 @@
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, Pencil, Repeat, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Pencil, Repeat, Trash2 } from "lucide-react";
 import { useEffect, useOptimistic, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/admin/ui/button";
@@ -19,10 +19,11 @@ import { formatMoney } from "@/lib/money";
 import type { ItemMoment } from "@/lib/projects-ops";
 import type { ChecklistFeatures } from "@/lib/projects-features";
 import { isFiltering, matches, NO_FILTER, type TaskFilter } from "@/lib/projects-filter";
+import { formatDuration } from "@/lib/work-time";
 import type { ProjectColour, StatusBucket } from "@/lib/projects-model";
 
 import { DragHandle } from "./drag-handle";
-import { ItemEditor, type EditorItem } from "./item-editor";
+import { ItemEditor, type EditorItem, type TimeWords } from "./item-editor";
 import { repeatSummary } from "./repeat-field";
 import { taskFacts } from "./task-facts";
 import { TaskFilterPanel } from "./task-filter";
@@ -35,7 +36,7 @@ export type ViewStatus = { id: string; name: string; colour: ProjectColour; buck
 /** One of the store's categories or tags (P4.6). */
 export type ViewLabel = { id: string; kind: "category" | "tag"; name: string; colour: ProjectColour };
 
-export type ChecklistWords = Pick<ProjectsMessages, "checklist" | "item" | "repeat" | "filter" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody" | "due">;
+export type ChecklistWords = Pick<ProjectsMessages, "checklist" | "item" | "repeat" | "filter" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody" | "due"> & TimeWords;
 
 type Props = {
   list: { id: string; title: string; isRoutine: boolean; features: ChecklistFeatures };
@@ -59,6 +60,8 @@ type Props = {
   act: ProjectsAct;
   /** Where tasks came from (D904 P8.3a), by task: a link back to the order, return, review or conversation, while its own arm is there. */
   sources?: Record<string, { text: string; href: string }>;
+  /** A list whose time goes to a Work assignment (D904 P8.3d): the minutes on each task, whether the person may log time, and today. */
+  time?: { minutes: Record<string, number>; canLog: boolean; today: string };
 };
 
 /** How long a repeating task's Undo is offered after its tick or its skip. */
@@ -445,6 +448,7 @@ export function ChecklistView(props: Props) {
           words={words}
           act={props.act}
           canChange={canChange}
+          time={props.time ? { minutes: props.time.minutes[editingItem.id] ?? 0, canLog: props.time.canLog && canChange, today: props.time.today } : undefined}
           onClose={() => setEditing(null)}
         />
       )}
@@ -479,6 +483,14 @@ function ItemFacts({ item, features, status, person, props, now }: { item: ViewI
   }
   if (features.cost && item.cost) facts.push(<span key="cost" className="text-chip text-ink-2 tabular-nums">{formatMoney(item.cost.minor, item.cost.currency, props.locale)}</span>);
   if (item.comments.length > 0) facts.push(<span key="comments" className="text-chip text-ink-2 tabular-nums">{countWords(item.comments.length, w.checklist.comments)}</span>);
+  const minutes = props.time?.minutes[item.id] ?? 0;
+  if (minutes > 0)
+    facts.push(
+      <span key="time" className="inline-flex items-center gap-1 text-chip text-ink-2 tabular-nums" data-task-minutes>
+        <Clock className="size-3.5" aria-hidden />
+        {formatDuration(minutes)}
+      </span>,
+    );
   const from = props.sources?.[item.id];
   if (from)
     facts.push(

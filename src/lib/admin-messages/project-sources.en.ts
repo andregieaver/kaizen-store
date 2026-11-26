@@ -37,6 +37,23 @@ export const projectSourcesEn = {
     go: "Start project",
   },
   openLists: "See your checklists",
+  /** A task's person told it is theirs (D904 P8.3d): the tasks given since the last email, who gave each, and a link to its list. */
+  assignedEmail: {
+    subjectOne: "{giver} gave you a task: {title}",
+    subjectMany: "You have {n} new tasks in {store}",
+    preview: { one: "A task in {store} is yours now.", many: "{n} tasks in {store} are yours now." },
+    heading: { one: "A task is yours", many: "{n} tasks are yours" },
+    line: "{title}, in {list}, from {giver}",
+    buttonOne: "Open the task's list",
+    buttonMany: "See your tasks",
+    why: "You get this because someone on {store}'s team gave you a task in Projects. You hear about each task once.",
+  },
+  /** A Work assignment's checklists (P8.3d): the card on its page, the lists whose time goes to it. */
+  work: {
+    heading: "Checklists",
+    hint: "Time logged on these lists' tasks comes here.",
+    open: { one: "{n} open task", many: "{n} open tasks" },
+  },
 };
 
 export type ProjectSourcesMessages = Widen<typeof projectSourcesEn>;

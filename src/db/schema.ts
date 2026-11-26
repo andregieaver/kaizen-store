@@ -13800,6 +13800,11 @@ export const checklists = commerce
       advancedFeatures: jsonb("advanced_features").notNull().default({}),
       /** What the list is for, read by the AI manager; an advanced list's field. */
       goal: text("goal"),
+      /**
+       * The Work assignment its tasks' time goes to (D904 P8.3d), the store's own: the rules migration holds the key and clears it with the
+       * assignment, the list staying. Projects holds the link, so Work's tables know nothing of Projects.
+       */
+      assignmentId: uuid("assignment_id"),
       sortOrder: integer("sort_order").notNull().default(0),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
@@ -13809,6 +13814,7 @@ export const checklists = commerce
       unique("checklists_store_id_key").on(t.storeId, t.id),
       index("checklists_sort_idx").on(t.storeId, t.status, t.sortOrder),
       index("checklists_primary_project_idx").on(t.storeId, t.primaryProjectId).where(sql`${t.primaryProjectId} is not null`),
+      index("checklists_assignment_idx").on(t.storeId, t.assignmentId).where(sql`${t.assignmentId} is not null`),
       index("checklists_assigned_idx").on(t.assignedTo),
       index("checklists_created_by_idx").on(t.createdBy),
       check("checklists_title", trimmedText(t.title, PROJECT_LIMITS.checklistTitle)),
@@ -13942,6 +13948,13 @@ export const checklistItems = commerce
       returnId: uuid("return_id"),
       reviewId: uuid("review_id"),
       conversationId: uuid("conversation_id"),
+      /**
+       * Who gave the task its person, and when (D904 P8.3d), written by the item writers when the person changes; the five-minute job
+       * tells the person by email once (`assignee_told_at`), unless they took it themselves.
+       */
+      assignedBy: uuid("assigned_by").references(() => accounts.id, { onDelete: "set null" }),
+      assignedAt: timestamp("assigned_at", { withTimezone: true }),
+      assigneeToldAt: timestamp("assignee_told_at", { withTimezone: true }),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
       updatedAt: updatedAt(),
@@ -13962,6 +13975,9 @@ export const checklistItems = commerce
       index("checklist_items_review_link_idx").on(t.storeId, t.reviewId).where(sql`${t.reviewId} is not null`),
       index("checklist_items_conversation_link_idx").on(t.conversationId).where(sql`${t.conversationId} is not null`),
       index("checklist_items_created_by_idx").on(t.createdBy),
+      index("checklist_items_assigned_by_idx").on(t.assignedBy),
+      // The tasks whose person is still to be told: a handful at a time, so the job's read stays small.
+      index("checklist_items_to_tell_idx").on(t.assignedAt).where(sql`${t.assignedAt} is not null and ${t.assigneeToldAt} is null`),
       check("checklist_items_title", trimmedText(t.title, PROJECT_LIMITS.itemTitle)),
       check("checklist_items_texts", sql`(${shortText(t.description, PROJECT_LIMITS.itemDescription)}) and (${shortText(t.blockedReason, PROJECT_LIMITS.blockedReason)})`),
       check("checklist_items_priority", sql`${t.priority} is null or ${t.priority} in (${wordList(PRIORITIES)})`),
@@ -14103,6 +14119,28 @@ export const checklistItemComments = commerce
       index("checklist_item_comments_item_idx").on(t.storeId, t.itemId, t.createdAt),
       index("checklist_item_comments_written_by_idx").on(t.writtenBy),
       check("checklist_item_comments_body", trimmedText(t.body, PROJECT_LIMITS.comment)),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * The time logged on a task (D904 P8.3d): each a Work time entry on its list's assignment, logged from the task. Projects holds the link,
+ * so Work's entry knows nothing of the task; deleting either deletes the link, never the other.
+ */
+export const checklistItemTime = commerce
+  .table(
+    "checklist_item_time",
+    {
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      itemId: uuid("item_id").notNull(),
+      timeEntryId: uuid("time_entry_id").notNull(),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.storeId, t.timeEntryId] }),
+      foreignKey({ name: "checklist_item_time_item_fk", columns: [t.storeId, t.itemId], foreignColumns: [checklistItems.storeId, checklistItems.id] }).onDelete("cascade"),
+      foreignKey({ name: "checklist_item_time_entry_fk", columns: [t.storeId, t.timeEntryId], foreignColumns: [workTimeEntries.storeId, workTimeEntries.id] }).onDelete("cascade"),
+      index("checklist_item_time_item_idx").on(t.storeId, t.itemId),
     ],
   )
   .enableRLS();
@@ -15800,6 +15838,62 @@ export const rivalPages = commerce.table(
     index("rival_pages_seen_idx").on(t.storeId, t.rivalId, t.firstSeenAt),
     check("rival_pages_path", sql`${t.path} ~ '^/' and length(${t.path}) <= 500`),
     check("rival_pages_section", sql`${t.section} is null or length(${t.section}) <= 120`),
+  ],
+).enableRLS();
+
+/**
+ * How fast a store's own site and each of its rivals' sites are for their visitors (D905, market check M5c, `docs/market-check.md` 7.4): the
+ * Chrome UX Report's 75th percentile over 28 days of the three Core Web Vitals, as the watcher last read it, monthly. One row a site;
+ * a site no longer the store's or a rival's is dropped at the next reading. Written only by `src/server/site-speed.ts`; staff-only.
+ */
+export const siteSpeeds = commerce.table(
+  "site_speeds",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    /** The site as asked: a host (its whole origin), or a host and path for a store at a path of another site. */
+    site: text("site").notNull(),
+    /** The store's own site; else a rival's, by its host. */
+    own: boolean("own").notNull(),
+    /** Largest Contentful Paint and Interaction to Next Paint in milliseconds, Cumulative Layout Shift in thousandths. */
+    lcpMs: integer("lcp_ms"),
+    inpMs: integer("inp_ms"),
+    clsMilli: integer("cls_milli"),
+    /** The last day the figures cover. */
+    periodEnd: date("period_end"),
+    /** When figures were last read; when it was last tried, and why that try found none (`none`: too few Chrome visitors; `failed`). */
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    triedAt: timestamp("tried_at", { withTimezone: true }).notNull().defaultNow(),
+    problem: text("problem"),
+  },
+  (t) => [
+    primaryKey({ name: "site_speeds_pkey", columns: [t.storeId, t.site] }),
+    // The watcher's due stores: tried longest ago first.
+    index("site_speeds_tried_idx").on(t.triedAt),
+    check("site_speeds_site", sql`length(${t.site}) between 3 and 300`),
+    check("site_speeds_figures", sql`(${t.lcpMs} is null or ${t.lcpMs} >= 0) and (${t.inpMs} is null or ${t.inpMs} >= 0) and (${t.clsMilli} is null or ${t.clsMilli} >= 0)`),
+    check("site_speeds_problem", sql`${t.problem} is null or ${t.problem} in ('none', 'failed')`),
+  ],
+).enableRLS();
+
+/**
+ * The platform's key for the Chrome UX Report (D905 M5c), set by a platform admin on Platform → AI: one row, the key kept encrypted and
+ * shown by its hint only, decrypted for a reading and never sent to a page. Written only by `src/server/site-speed.ts`.
+ */
+export const speedSettings = commerce.table(
+  "speed_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** True: the table holds one row. */
+    single: boolean("single").notNull().default(true),
+    keyEncrypted: text("key_encrypted").notNull(),
+    keyHint: text("key_hint").notNull(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("speed_settings_single_key").on(t.single),
+    index("speed_settings_updated_by_idx").on(t.updatedBy),
+    check("speed_settings_single", sql`${t.single}`),
   ],
 ).enableRLS();
 

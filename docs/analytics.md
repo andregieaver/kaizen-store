@@ -242,14 +242,15 @@ country and is left out.
 | Cheaper than a rival's service | The same the other way round: the store at least a tenth cheaper. |
 | Behind a rival in search | A word the store follows (D905 M5b), searched within 45 days: a rival in that country came up above the store on the first page of results, or on it where the store did not. The highest such rival. Places are counted by code from one page (10 results) of the platform's search. |
 | First in search | The same word with the store at number 3 or higher and no rival it follows above it. |
+| Slower than a rival | One of Google's three Core Web Vitals (D905 M5c) by the Chrome UX Report's 75th percentile over 28 days, read within 45 days: the store's own site rated poor (LCP over 4 s, INP over 500 ms, CLS over 0.25) where a rival's is rated good (LCP to 2.5 s, INP to 200 ms, CLS to 0.1). The rival with the best figure. |
 | A rival's site | A rival's site (D905, `siteGrowth()`) whose sitemaps, read weekly and listed whole (not past `RIVAL_PATHS_MAX`, 1,000), added at least `SITE_ADDED_MIN` (5) pages in 30 days after its first listing, more than twice the pages and articles the store first published in those 30 days (a new store's starter pages count). Every store's: no shop needed. |
 
-The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, a rival's service price, behind a rival in search, a rival's move, a rival's site, not in its language, no
+The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, a rival's service price, behind a rival in search, slower than a rival, a rival's move, a rival's site, not in its language, no
 price, sold out at a rival, a country that buys more, a rival is dearer, cheaper than a rival's service, first in search), then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
 (the AI manager opened with the finding's words and figures, `askAboutFinding()`, sent by the person) and a link to the page that fixes it.
 
 The **SWOT** (`SWOT_OF`, `swotOf()`) draws every finding in one of four parts by its kind, never a text of its own: **strengths** (a country
-that buys more, a rival is dearer or its service dearer, first in search), **weaknesses** (a country that buys less, a rival or its service cheaper, behind a rival in search, not in its language, no price),
+that buys more, a rival is dearer or its service dearer, first in search), **weaknesses** (a country that buys less, a rival or its service cheaper, behind a rival in search, slower than a rival, not in its language, no price),
 **opportunities** (searched for, sold out at a rival) and **threats** (a rival's move, M3, and a rival's site, D905; with none, the part says so). `market_check` names each finding's part.
 
 Kaizena Flow's own store (`house`) sells plans, not goods: its orders, average order and prices are left out and the page says so; its

@@ -54,6 +54,7 @@ const TONE: Record<MarketFindingKind, PillTone> = {
   service_cheaper: "warning",
   search_behind: "warning",
   search_ahead: "good",
+  speed_behind: "warning",
   strong_market: "good",
   rival_dearer: "good",
   service_dearer: "good",
@@ -141,7 +142,7 @@ export function MarketCheckView({ base, lang, locale, check, periodLabel, words,
   const names = new Map(check.markets.map((m) => [m.code, m.name]));
   const languageName = languageOf(lang);
   const amount = (minor: number, currency: string) => formatAmount(minor, currency, locale);
-  const findings: Line[] = check.findings.map((f) => ({ kind: f.kind, f, text: findingText(f, w.finding, names, languageName, amount) }));
+  const findings: Line[] = check.findings.map((f) => ({ kind: f.kind, f, text: findingText(f, w.finding, names, languageName, amount, lang === "nb" ? "nb-NO" : "en-GB") }));
   const first = findings.slice(0, FINDINGS_SHOWN);
   const rest = findings.length - first.length;
   const swot = swotOf(findings);

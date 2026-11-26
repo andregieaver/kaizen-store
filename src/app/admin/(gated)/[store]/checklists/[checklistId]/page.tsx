@@ -22,6 +22,9 @@ import { labelsOf } from "@/server/projects-labels";
 import { checklistDetail, listChecklists, listFingerprint, type ChecklistItem } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
 import { sourceLinks } from "@/server/projects-sources";
+import { listWork, taskMinutes, workPairOn } from "@/server/projects-work";
+import { todayIn } from "@/lib/work-dates";
+import { formatDuration } from "@/lib/work-time";
 
 import { listStatusAction, projectsAction } from "../../projects/actions";
 
@@ -44,12 +47,16 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const lang = adminLangOf(member.account.adminLocale);
   const w = PROJECTS_WORDS[lang];
   await ensureDefaultStatuses(store.id, w.defaults);
-  const [list, lists, team, labels, drawnAs] = await Promise.all([
+  // Work's pair (D904 P8.3d): a list whose time goes to an assignment shows it, and its tasks their time, while the store has Work.
+  const withWork = workPairOn(member);
+  const [list, lists, team, labels, drawnAs, work, minutes] = await Promise.all([
     checklistDetail(store.id, checklistId, member.account.id, store.timeZone),
     listChecklists(store.id),
     teamOf(store.id),
     labelsOf(store.id),
     listFingerprint(store.id, checklistId),
+    withWork ? listWork(store.id, checklistId) : null,
+    withWork ? taskMinutes(store.id, checklistId) : {},
   ]);
   if (!list) notFound();
   const canChange = memberCan(member, "projects:write");
@@ -82,6 +89,14 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
           ...(list.archived > 0 ? [<span key="archived">{countWords(list.archived, w.checklist.archived)}</span>] : []),
           ...(list.status !== "open" ? [<span key="state">{w.checklistStates[list.status]}</span>] : []),
           ...(list.asTemplate ? [<span key="template">{w.listSettings.template}</span>] : []),
+          ...(work
+            ? [
+                <AdminLink key="work" href={`/admin/account/work/s/${store.slug}/assignments/${work.assignmentId}`} className="underline-offset-2 hover:underline" data-list-assignment>
+                  {`${work.client} · ${work.assignment}`}
+                  {work.minutes > 0 ? ` · ${fillWords(w.work.total, { time: formatDuration(work.minutes) })}` : ""}
+                </AdminLink>,
+              ]
+            : []),
           ...list.projects.map((p) => (
             <AdminLink key={p.id} href={`${base}/projects/${p.id}`} className="underline-offset-2 hover:underline">
               {p.name}
@@ -123,6 +138,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         words={w}
         act={act}
         sources={sources}
+        time={work ? { minutes, canLog: workPairOn(member, true), today: todayIn(store.timeZone) } : undefined}
       />
       {canChange && (
         <details className="flex flex-col gap-3">

@@ -18,6 +18,7 @@ import { PRIORITIES, type Priority, type ProjectColour, type StatusBucket } from
 import type { Recurrence } from "@/lib/projects-recurrence";
 
 import { ItemComments, type EditorComment } from "./item-comments";
+import { TaskTime, type TaskTimeFacts } from "./task-time";
 import { ColourDot } from "./parts";
 import { draftOf, RepeatField, ruleOf } from "./repeat-field";
 import { Toggle } from "./toggle";
@@ -45,7 +46,9 @@ export type EditorItem = {
   comments: EditorComment[];
 };
 
-export type EditorWords = Pick<ProjectsMessages, "item" | "repeat" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody">;
+/** The words of a task's time (D904 P8.3d), given only on a list whose time goes to a Work assignment. */
+export type TimeWords = Partial<Pick<ProjectsMessages, "work" | "fieldProblems">>;
+export type EditorWords = Pick<ProjectsMessages, "item" | "repeat" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody"> & TimeWords;
 
 /**
  * A task's editor (D903, Life's `edit-checklist-item-modal.tsx`): its title and notes always, and the fields its list uses (`features`) in
@@ -67,6 +70,7 @@ export function ItemEditor({
   words,
   act,
   canChange,
+  time,
   onClose,
 }: {
   item: EditorItem;
@@ -86,6 +90,8 @@ export function ItemEditor({
   words: EditorWords;
   act: ProjectsAct;
   canChange: boolean;
+  /** Its time, on a list whose time goes to a Work assignment (D904 P8.3d). */
+  time?: TaskTimeFacts;
   onClose: () => void;
 }) {
   const w = words.item;
@@ -344,6 +350,9 @@ export function ItemEditor({
               </form>
             )}
           </section>
+        )}
+        {time && words.work && words.fieldProblems && (
+          <TaskTime itemId={item.id} facts={time} words={words.work} fieldWords={words.fieldProblems} run={run} pending={pending} />
         )}
         <ItemComments
           itemId={item.id}
