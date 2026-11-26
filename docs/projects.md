@@ -274,7 +274,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 | P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | In steps below |
 | P8.3a | **The shop and the support desk:** *Make a task* from an order, a return, a review or a support conversation; the task links back, and an order's and a return's page show their tasks | Built 26 November 2026 (below) |
 | P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Built 26 November 2026 (below) |
-| P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Planned |
+| P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Built 26 November 2026 (below) |
 | P8.3d | **Work:** time on a task and a task on an assignment (P6.1); **Email automation:** a task's person told when it is theirs (with P4.3's reminders) | Planned |
 
 ## 6. Tests
@@ -455,4 +455,16 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   template, at home in the new project (`project.fromDeal`, `startDealProject()` in `src/server/projects-deals.ts`; the right to change
   projects and to read customers).
 - **Back.** A project's page names the deal it came from, a link, while Deals are on and the person may read customers.
+
+## As built: step P8.3c, the AI manager's Projects tools (26 November 2026)
+
+- **Three tools** (`src/server/projects-tools.ts`, their inputs in `src/lib/owner-tools.ts`), offered only while the store has the Projects extension
+  and its feature (`TOOL_EXTENSIONS`, `TOOL_FEATURES`): `projects_overview` reads the open projects, the open lists and the open tasks with a
+  due day the soonest first, late ones marked, the team's or the person's own (`projects:read`); `add_task` adds a task to a list named by
+  its title or id, or to Follow-ups (made the first time), and `tick_task` ticks one off by its id or title, listing them when several share
+  it (`projects:write`, no gate: they change only the store's own lists and nobody is told).
+- **What reaches the model.** Task and list titles are the team's own words. The titles *Make a task* writes in advance carry only a number
+  the system made (*Follow up order 1042*), never a name a customer typed, since task titles reach the manager.
+- **The eval.** New tools change `toolsVersion()`: the agents' eval is recorded again on Platform → AI and its recording committed (D391);
+  until then the replay warns (D793). The AI round rose by 30 characters (`load_tools` names them).
 

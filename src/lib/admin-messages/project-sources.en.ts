@@ -17,11 +17,12 @@ export const projectSourcesEn = {
   cancel: "Cancel",
   inList: "In {list}",
   tick: "Tick off {title}",
+  /** The title written in advance: a number the system made, never a name a customer typed, since task titles reach the AI manager. */
   suggested: {
     order: "Follow up order {label}",
     return: "Follow up return {label}",
-    review: "Answer the review from {label}",
-    conversation: "Follow up the conversation with {label}",
+    review: "Answer the review",
+    conversation: "Follow up the conversation",
   },
   /** After a task is made from a conversation, where the inbox has no room for its list. */
   added: "Task added to {list}.",

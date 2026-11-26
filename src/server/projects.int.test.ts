@@ -16,6 +16,7 @@ const labels = await import("./projects-labels");
 const comments = await import("./projects-comments");
 const sources = await import("./projects-sources");
 const dealProjects = await import("./projects-deals");
+const tools = await import("./projects-tools");
 const attention = await import("./attention");
 const { dayIn, addCalendarDays, noonOf } = await import("@/lib/work-dates");
 const { newStore } = await import("./inventory-test-support");
@@ -513,6 +514,27 @@ describe("a project from a won deal (D904 P8.3b)", () => {
     expect(copy).toMatchObject({ as_template: false, primary_project_id: made.id, tasks: 1 });
 
     expect(await dealProjects.startDealProject(store.member, { dealId: "00000000-0000-4000-8000-000000000000", templateId: null })).toMatchObject({ ok: false, problem: "not_found" });
+  });
+});
+
+describe("the AI manager's Projects tools (D904 P8.3c)", () => {
+  it("adds a task to the follow-ups or a named list, ticks one by its title, and says what is open and due", async () => {
+    const ctx = { account: store.member.account, store: store.member.store };
+    const { id: list } = ok(await lists.createChecklist(store.member, { title: "Opening the new shop" }));
+    expect(await tools.addTaskTool(ctx, { title: "Order the sign" })).toMatchObject({ done: 'Added "Order the sign" to Follow-ups.' });
+    expect(await tools.addTaskTool(ctx, { title: "Book the electrician", list: "opening the new shop" })).toMatchObject({
+      page: `/admin/${store.member.store.slug}/checklists/${list}`,
+    });
+    await expect(tools.addTaskTool(ctx, { title: "Nowhere", list: "No such list" })).rejects.toThrow(/No open list called/);
+
+    const overview = await tools.projectsOverviewTool(ctx, { who: "team" });
+    expect(overview.lists.map((l) => l.title)).toEqual(expect.arrayContaining(["Follow-ups", "Opening the new shop"]));
+    // At most 25 of a kind are told: the store's earlier tests left many open.
+    expect(overview.open_tasks).toBeGreaterThanOrEqual(2);
+    expect(overview.undated.length).toBeLessThanOrEqual(25);
+
+    expect(await tools.tickTaskTool(ctx, { task: "book the electrician" })).toMatchObject({ done: 'Ticked off "Book the electrician" in Opening the new shop.' });
+    await expect(tools.tickTaskTool(ctx, { task: "book the electrician" })).rejects.toThrow(/No open task called/);
   });
 });
 

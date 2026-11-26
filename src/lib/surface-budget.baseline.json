@@ -18,7 +18,7 @@
   },
   "basicLinks": 48,
   "platformLinks": 58,
-  "storeTools": 304,
+  "storeTools": 307,
   "shopOnlyTools": 274,
   "managerTools": 28,
   "featureIds": 15,
@@ -766,6 +766,12 @@
       "from": 588,
       "to": 589,
       "decision": "D905"
+    },
+    {
+      "count": "storeTools",
+      "from": 304,
+      "to": 307,
+      "decision": "D904"
     }
   ]
 }
