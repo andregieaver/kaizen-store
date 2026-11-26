@@ -13927,6 +13927,14 @@ export const checklistItems = commerce
       costCurrency: char("cost_currency", { length: 3 }),
       /** Its category, one of the store's labels of that kind (P4.6); the rules migration holds the kind and clears it with the label. */
       categoryId: uuid("category_id"),
+      /**
+       * Where the task came from (D904 P8.3a), at most one: an order, a return, a review or a support conversation of the same store. The
+       * rules migration holds the keys and clears each with what it points at; the task stays.
+       */
+      orderId: uuid("order_id"),
+      returnId: uuid("return_id"),
+      reviewId: uuid("review_id"),
+      conversationId: uuid("conversation_id"),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
       updatedAt: updatedAt(),
@@ -13941,6 +13949,11 @@ export const checklistItems = commerce
       index("checklist_items_next_due_idx").on(t.nextDueAt).where(sql`${t.recurrence} is not null and ${t.nextDueAt} is not null`),
       index("checklist_items_assigned_idx").on(t.assignedTo),
       index("checklist_items_category_idx").on(t.storeId, t.categoryId).where(sql`${t.categoryId} is not null`),
+      // A source's tasks, read on its page (P8.3a).
+      index("checklist_items_order_link_idx").on(t.storeId, t.orderId).where(sql`${t.orderId} is not null`),
+      index("checklist_items_return_link_idx").on(t.storeId, t.returnId).where(sql`${t.returnId} is not null`),
+      index("checklist_items_review_link_idx").on(t.storeId, t.reviewId).where(sql`${t.reviewId} is not null`),
+      index("checklist_items_conversation_link_idx").on(t.conversationId).where(sql`${t.conversationId} is not null`),
       index("checklist_items_created_by_idx").on(t.createdBy),
       check("checklist_items_title", trimmedText(t.title, PROJECT_LIMITS.itemTitle)),
       check("checklist_items_texts", sql`(${shortText(t.description, PROJECT_LIMITS.itemDescription)}) and (${shortText(t.blockedReason, PROJECT_LIMITS.blockedReason)})`),
@@ -13950,6 +13963,7 @@ export const checklistItems = commerce
       check("checklist_items_streak", sql`${t.streak} >= 0`),
       check("checklist_items_cost", sql`(${t.costMinor} is null) = (${t.costCurrency} is null) and (${t.costMinor} is null or ${t.costMinor} between -100000000000 and 100000000000) and (${t.costCurrency} is null or ${t.costCurrency} ~ '^[A-Z]{3}$')`),
       check("checklist_items_not_self_blocked", sql`${t.blockedByItemId} is null or ${t.blockedByItemId} <> ${t.id}`),
+      check("checklist_items_one_source", sql`num_nonnulls(${t.orderId}, ${t.returnId}, ${t.reviewId}, ${t.conversationId}) <= 1`),
     ],
   )
   .enableRLS();

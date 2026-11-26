@@ -16,6 +16,11 @@ import { orderDeliveryAddress } from "@/server/exchange-admin";
 import { exchangeBlockFor, exchangesOfReturn, previewExchange, type ExchangePreview } from "@/server/exchanges";
 import { mayRecordOutsidePayment } from "@/server/order-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { sourceTasks } from "@/server/projects-sources";
+import { SourceTasks } from "@/components/admin/projects/source-tasks";
+import { projectsAction } from "@/app/admin/(gated)/[store]/projects/actions";
+import { projectsOn } from "@/lib/extensions";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
 import { labelOptions } from "@/server/return-labels";
 import { getReturn, previewRefund } from "@/server/returns";
 
@@ -71,11 +76,13 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
   const locale = ADMIN_LANG_FACTS[lang].locale;
 
   // The exchange (D239): the return's live exchange, else its newest; why it cannot be exchanged; the builder's start (the order's address, a draft's lines).
-  const [exchanges, block, label, mayRecordOutside] = await Promise.all([
+  const [exchanges, block, label, mayRecordOutside, tasksHere] = await Promise.all([
     exchangesOfReturn(store.id, returnId),
     exchangeBlockFor(store.id, returnId),
     labelOptions(store.id, returnId),
     canWrite ? mayRecordOutsidePayment(gated) : Promise.resolve(false),
+    // Its tasks (D904 P8.3a): only while the store has Projects, for people who may read projects.
+    projectsOn(store) && memberCan(gated, "projects:read") ? sourceTasks(store.id, { kind: "return", id: returnId }) : Promise.resolve(null),
   ]);
   const exchange = exchanges.find((x) => ["draft", "proposed", "confirmed", "processed"].includes(x.status)) ?? exchanges[0] ?? null;
   const live = exchange && ["draft", "proposed", "confirmed", "processed"].includes(exchange.status) ? exchange : null;
@@ -168,6 +175,20 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
           locale={locale}
           words={words}
         />
+      }
+      tasksCard={
+        tasksHere && (
+          <SourceTasks
+            base={`/admin/${store.slug}`}
+            source={{ kind: "return", id: returnId }}
+            label={detail.number}
+            tasks={tasksHere.tasks}
+            lists={tasksHere.lists}
+            canChange={memberCan(gated, "projects:write")}
+            words={PROJECT_SOURCES_WORDS[lang]}
+            act={projectsAction.bind(null, store.slug)}
+          />
+        )
       }
       labelCard={
         <LabelCard

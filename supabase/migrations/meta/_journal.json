@@ -1436,6 +1436,20 @@
       "when": 1795687554358,
       "tag": "20261126100554_large_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1795691053454,
+      "tag": "20261126110413_checklist_item_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1795691055567,
+      "tag": "20261126110415_checklist_item_sources_rules",
+      "breakpoints": true
     }
   ]
 }

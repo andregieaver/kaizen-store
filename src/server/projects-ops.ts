@@ -9,13 +9,18 @@ import type { ProjectsResult } from "./projects-errors";
 import * as items from "./projects-items";
 import * as labels from "./projects-labels";
 import * as lists from "./projects-lists";
+import * as sources from "./projects-sources";
 import * as statuses from "./projects-statuses";
 
 /**
  * Runs one checked operation of a projects or checklists screen (D903) through the module that owns it. Each writer checks the member's
  * right again and names the store in every statement; this only routes.
  */
-export async function runProjectsOp(member: Membership, op: ProjectsOp): Promise<ProjectsResult<{ id?: string; count?: number }>> {
+export async function runProjectsOp(
+  member: Membership,
+  op: ProjectsOp,
+  context: { followUps: string },
+): Promise<ProjectsResult<{ id?: string; count?: number }>> {
   switch (op.op) {
     case "project.update":
       return projects.updateProject(member, op.id, op.patch);
@@ -49,6 +54,8 @@ export async function runProjectsOp(member: Membership, op: ProjectsOp): Promise
       return lists.reorderChecklists(member, op.ids);
     case "list.fold":
       return lists.setFold(member, op.id, op.sectionId, op.folded);
+    case "item.addFrom":
+      return sources.addSourceTask(member, op, context.followUps);
     case "item.add": {
       if (op.titles.length === 1) return items.addItem(member, op.checklistId, { title: op.titles[0] });
       const result = await items.addItems(member, op.checklistId, op.titles);

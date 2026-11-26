@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight, Pencil, Repeat, Trash2 } from "lucide-react"
 import { useEffect, useOptimistic, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/admin/ui/button";
+import { AdminLink } from "@/components/admin/ui/link";
 import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import { EmptyState } from "@/components/admin/ui/empty-state";
 import { Select, TextInput } from "@/components/admin/ui/field";
@@ -56,6 +57,8 @@ type Props = {
   now: string;
   words: ChecklistWords;
   act: ProjectsAct;
+  /** Where tasks came from (D904 P8.3a), by task: a link back to the order, return, review or conversation, while its own arm is there. */
+  sources?: Record<string, { text: string; href: string }>;
 };
 
 /** How long a repeating task's Undo is offered after its tick or its skip. */
@@ -476,6 +479,13 @@ function ItemFacts({ item, features, status, person, props, now }: { item: ViewI
   }
   if (features.cost && item.cost) facts.push(<span key="cost" className="text-chip text-ink-2 tabular-nums">{formatMoney(item.cost.minor, item.cost.currency, props.locale)}</span>);
   if (item.comments.length > 0) facts.push(<span key="comments" className="text-chip text-ink-2 tabular-nums">{countWords(item.comments.length, w.checklist.comments)}</span>);
+  const from = props.sources?.[item.id];
+  if (from)
+    facts.push(
+      <AdminLink key="from" href={from.href} className="text-chip text-ink-2 underline underline-offset-2" data-task-source>
+        {from.text}
+      </AdminLink>,
+    );
   return facts.length > 0 ? <span className="flex flex-wrap items-center gap-x-3 gap-y-1">{facts}</span> : null;
 }
 

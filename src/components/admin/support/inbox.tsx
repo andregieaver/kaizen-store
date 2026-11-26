@@ -28,6 +28,7 @@ import { CARD_CLASS } from "@/components/admin/ui/card";
 
 import { useAdminText } from "../admin-text";
 import { EmptyState } from "@/components/admin/ui/empty-state";
+import { QuickTask } from "@/components/admin/projects/quick-task";
 
 /**
  * The support inbox (D216, `docs/support.md` 2.4, 5.4), the same at every level: the list on the left, the conversation in the middle
@@ -614,6 +615,17 @@ export function Inbox({
                     : undefined
                 }
               />
+              {context.tasks && (
+                <QuickTask
+                  key={`task:${conversation.id}`}
+                  base={context.tasks.base}
+                  kind="conversation"
+                  sourceId={conversation.id}
+                  label={conversation.who}
+                  words={context.tasks.words}
+                  act={context.tasks.act}
+                />
+              )}
               {/* The conversation's open requests (ecosystem plan E2.7): carried out or decided here, not on the order page. */}
               <ConversationRequests
                 key={`requests:${conversation.id}`}

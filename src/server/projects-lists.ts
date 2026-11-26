@@ -8,6 +8,7 @@ import { checklistInput, problemFields } from "@/lib/projects";
 import { effectiveFeatures, storedFeatures, type ChecklistFeatures } from "@/lib/projects-features";
 import { CHECKLIST_STATES, PRIORITIES, PROJECT_COLOURS, type ChecklistState } from "@/lib/projects-model";
 import { parseRecurrence, type Recurrence } from "@/lib/projects-recurrence-schema";
+import { sourceOf, type TaskSource } from "@/lib/projects-sources";
 
 import type { Membership } from "./auth";
 import { memberCan } from "./permissions";
@@ -80,6 +81,8 @@ export type ChecklistItem = {
   /** Its category and tags (P4.6), the store's labels. */
   categoryId: string | null;
   tagIds: string[];
+  /** Where it came from (D904 P8.3a): an order, a return, a review or a conversation. */
+  source: TaskSource | null;
   subtasks: Subtask[];
   /** The team's comments on it (P4.4), oldest first. */
   comments: ItemComment[];
@@ -208,6 +211,10 @@ const itemRow = z.object({
   cost_minor: col.minorOrNull,
   cost_currency: col.currency.nullable(),
   category_id: col.uuid.nullable(),
+  order_id: col.uuid.nullable(),
+  return_id: col.uuid.nullable(),
+  review_id: col.uuid.nullable(),
+  conversation_id: col.uuid.nullable(),
 });
 
 const subtaskRow = z.object({
@@ -241,7 +248,8 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
       itemRow,
       sql`
         select id, title, description, done_at, archived_at, sort_order, status_id, assigned_to, start_at, due_at, all_day, priority, recurrence,
-          streak, next_due_at, last_completed_at, skipped_at, blocked_reason, blocked_by_item_id, cost_minor, cost_currency, category_id
+          streak, next_due_at, last_completed_at, skipped_at, blocked_reason, blocked_by_item_id, cost_minor, cost_currency, category_id,
+          order_id, return_id, review_id, conversation_id
         from commerce.checklist_items where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid
         order by sort_order, created_at
       `,
@@ -324,6 +332,7 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     cost: r.cost_minor !== null && r.cost_currency ? { minor: r.cost_minor, currency: r.cost_currency } : null,
     categoryId: r.category_id,
     tagIds: tags.filter((t) => t.item_id === r.id).map((t) => t.label_id),
+    source: sourceOf(r),
     subtasks: stepsOf.get(r.id) ?? [],
     comments: comments
       .filter((c) => c.item_id === r.id)

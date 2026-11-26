@@ -16,6 +16,10 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { switchOnFromPageAction } from "../settings/features/actions";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { answerReviewAction, hideReviewAction, pictureHiddenAction, publishReviewAction, savePublishModeAction, saveRequestSettingsAction } from "./actions";
+import { QuickTask } from "@/components/admin/projects/quick-task";
+import { projectsAction } from "@/app/admin/(gated)/[store]/projects/actions";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
+import { projectsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Reviews" };
 
@@ -57,6 +61,9 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
   const canChange = memberCan(member, "products:write");
   const canOrders = memberCan(member, "orders:read");
   const lang = adminLangOf(member.account.adminLocale);
+  // A pair of the octopus (D904 P8.3a): a review becomes a task while the store has Projects too.
+  const reviewTasks =
+    projectsOn(member.store) && memberCan(member, "projects:write") ? { words: PROJECT_SOURCES_WORDS[lang], act: projectsAction.bind(null, member.store.slug) } : null;
   const words = REVIEWS_WORDS[lang];
   const w = words.page;
   const STATUS_WORDS = words.statuses;
@@ -201,6 +208,17 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                     {r.title && <p className="text-body-strong text-ink" lang={r.locale}>{r.title}</p>}
                     {r.body && <p className="whitespace-pre-line text-body text-ink-2" lang={r.locale}>{r.body}</p>}
                   </div>
+                  {reviewTasks && (
+                    <QuickTask
+                      base={`/admin/${store.slug}`}
+                      kind="review"
+                      sourceId={r.id}
+                      label={r.authorName}
+                      words={reviewTasks.words}
+                      act={reviewTasks.act}
+                      className="flex flex-col gap-2 text-sm"
+                    />
+                  )}
                   {r.pictures.length > 0 && (
                     <ul className="flex flex-wrap gap-3">
                       {r.pictures.map((p, i) => (

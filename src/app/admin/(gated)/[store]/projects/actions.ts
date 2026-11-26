@@ -7,6 +7,7 @@ import type { FormState } from "@/components/admin/action-form";
 import type { AdminLang } from "@/lib/admin-lang";
 import type { ProjectsMessages } from "@/lib/admin-messages/projects.en";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
 import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { featureOffText } from "@/lib/feature-labels";
 import { projectsOn } from "@/lib/extensions";
@@ -46,7 +47,8 @@ export async function projectsAction(store: string, raw: ProjectsOpInput): Promi
     if (!parsed.success) return { ok: false, message: w.problems.invalid };
     const off = featureOff(member, lang);
     if (off) return { ok: false, message: off };
-    const result = await runProjectsOp(member, parsed.data);
+    // A task from a source with no list chosen goes to the store's list for follow-ups, named in the member's words (P8.3a).
+    const result = await runProjectsOp(member, parsed.data, { followUps: PROJECT_SOURCES_WORDS[lang].followUps });
     if (!result.ok) return { ok: false, message: problemText(w, result) };
     refresh();
     return { ok: true, id: result.id, count: result.count };

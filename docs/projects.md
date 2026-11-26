@@ -271,7 +271,11 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 |---|---|---|
 | P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Done 26 November 2026 (bc2c881, 073eb4b; below) |
 | P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Done 26 November 2026 (below) |
-| P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | Planned |
+| P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | In steps below |
+| P8.3a | **The shop and the support desk:** *Make a task* from an order, a return, a review or a support conversation; the task links back, and an order's and a return's page show their tasks | Built 26 November 2026 (below) |
+| P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Planned |
+| P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Planned |
+| P8.3d | **Work:** time on a task and a task on an assignment (P6.1); **Email automation:** a task's person told when it is theirs (with P4.3's reminders) | Planned |
 
 ## 6. Tests
 
@@ -422,3 +426,22 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 - **Its page**: `/projects` on kaizenaflow.com, made by `docs/site-pages/standalone-products.test.ts` (`PROJECTS`) from `docs/site-design.md`
   in the other product pages' shape, saved as a draft of Kaizena Flow's own store for the owner to publish (row
   `fa016e02-6bf6-463d-b3f0-47ed756411c1`, `docs/site-pages/README.md`). Only what is built is claimed.
+
+## As built: step P8.3a, tasks from the shop and the support desk (26 November 2026)
+
+- **The link.** A task has at most one source (`checklist_items.order_id`, `return_id`, `review_id`, `conversation_id`, the check
+  `checklist_items_one_source`): its store's order, return or review by their composite keys, a conversation by its id with the trigger
+  `checklist_items_conversation_store` holding it to the task's store (migrations `20261126110413_checklist_item_sources` and
+  `20261126110415_checklist_item_sources_rules`). Each is cleared when what it points at goes; the task stays. A copied list does not carry
+  its tasks' sources.
+- **Making one.** `item.addFrom` (`addSourceTask()`, `src/server/projects-sources.ts`): a title and a list, or none, which files it in the
+  store's open list named *Follow-ups* in the person's words (`projectSources.followUps`), made the first time.
+- **Where.** An order's and a return's page draw the card `SourceTasks` (their tasks, ticked there, each linking its list, and *Make a
+  task* with the title written and the list to choose); a review in the reviews list and a conversation in the inbox have `QuickTask`
+  (one field, to Follow-ups). Each only while the store has Projects (`projectsOn()`) and the person may read or change it; the inbox's only
+  at a store's own desk.
+- **Back.** A list's page links each task to its source (`sourceLinks()`): *Order 1042*, *Return 12*, *Review by Kari*, *Conversation with
+  Kari*, only while the source's arm is there (reviews on; the support desk in the account) and the person may open its page.
+- **Words.** The card's in the server area `projectSources` (handed to it by the page, so no screen carries them otherwise); the links'
+  in `projects.sources`.
+
