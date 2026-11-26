@@ -8,6 +8,10 @@ maturity for the run-up to launch. Point IDs are the audit's. Open items are und
 
 A new deferred item goes here and moves to its dated section when it is ticked.
 
+- [x] **Advisor (D903)** `20261126005206_projects.sql`: `checklist_folds_section_fk` (store_id, checklist_id, section_id) had no covering
+      index (INFO; the advisors' other findings on Projects' tables are the commerce schema's RLS without policies, by design, and new
+      indexes not used yet). Done 26 November 2026: `checklist_folds_section_idx` in `20261126032426_checklist_folds_section_idx.sql`.
+
 - [ ] **Advisor (D748 E4)** `20261119091545_store_plans.sql`: `organisation_billing_price_plan_fk` (price_id, plan_id) has no covering
       index (INFO), as `store_billing_price_plan_fk` already had; both tables hold one row per store or account. One index on
       (price_id, plan_id) each, in place of the price_id index, when either table is next changed.

@@ -1,0 +1,1 @@
+CREATE INDEX "checklist_folds_section_idx" ON "commerce"."checklist_folds" USING btree ("store_id","checklist_id","section_id");

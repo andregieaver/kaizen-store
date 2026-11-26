@@ -14097,6 +14097,8 @@ export const checklistFolds = commerce
       }).onDelete("cascade"),
       unique("checklist_folds_key").on(t.storeId, t.checklistId, t.accountId, t.sectionId).nullsNotDistinct(),
       index("checklist_folds_account_idx").on(t.accountId),
+      // Covers the section's foreign key, so deleting a section finds its folds (the advisor, 26 November 2026).
+      index("checklist_folds_section_idx").on(t.storeId, t.checklistId, t.sectionId),
     ],
   )
   .enableRLS();

@@ -1387,6 +1387,13 @@
       "when": 1795661140585,
       "tag": "20261126024540_projects_labels_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1795663466854,
+      "tag": "20261126032426_checklist_folds_section_idx",
+      "breakpoints": true
     }
   ]
 }
