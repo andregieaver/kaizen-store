@@ -254,9 +254,9 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 
 | Id | Step | Status |
 |---|---|---|
-| P6.1 | Work's tasks become checklist items: an assignment has its list; time entries and timers point at items | Planned |
+| P6.1 | Work's tasks become checklist items: an assignment has its list; time entries and timers point at items | Replaced 26 November 2026 by P8.3d: Work stands alone (D904), so its tasks stay its own; a list sends its time to an assignment and its tasks log time there |
 | P6.2 | CRM tasks (`activities` of kind `task`): weighed against items linked to a customer | Planned |
-| P6.3 | A won deal starts a project from a template | Planned |
+| P6.3 | A won deal starts a project from a template | Done 26 November 2026 as P8.3b (3d7ee2c) |
 | P6.4 | Kaizen Life shows the projects of a linked account (the door of D511) | Planned |
 
 ### P7: the platform
@@ -271,11 +271,11 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 |---|---|---|
 | P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Done 26 November 2026 (bc2c881, 073eb4b; below) |
 | P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Done 26 November 2026 (below) |
-| P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | In steps below |
+| P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | Done 26 November 2026 in the steps below; the workflow and webhook pair is P5.2 |
 | P8.3a | **The shop and the support desk:** *Make a task* from an order, a return, a review or a support conversation; the task links back, and an order's and a return's page show their tasks | Done 26 November 2026 (2a9f9d4; below) |
 | P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Done 26 November 2026 (3d7ee2c; below) |
 | P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Done 26 November 2026 (4b57e25; below) |
-| P8.3d | **Work:** a list's time goes to a Work assignment, and its tasks log time there (P6.1's pair); **a task's person told by email** when someone else gives it to them | Built 26 November 2026 (below) |
+| P8.3d | **Work:** a list's time goes to a Work assignment, and its tasks log time there (P6.1's pair); **a task's person told by email** when someone else gives it to them | Done 26 November 2026 (e79c547; below) |
 
 ## 6. Tests
 
