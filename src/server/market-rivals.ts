@@ -39,7 +39,7 @@ import { jobReport } from "./cache-events";
 import { isDemoProduct } from "./demo-content";
 import { OwnerToolError } from "./owner-tool-error";
 import { log } from "./log";
-import { watchSearchTerms, type SearchWatchRun } from "./market-search";
+import type { SearchWatchRun } from "./market-search";
 import { pgTextArray } from "./pg-arrays";
 import { readOfferPage, readSitemapPaths, readWebPage, type ResearchActor, type ResearchDeps, type SitemapRead } from "./research";
 import { getStore, type Store } from "./stores";
@@ -297,6 +297,8 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
   }
   // The words stores follow in search (D905 M5b): a few searches a run.
   try {
+    // Loaded here only: every module that reads rivals (the autopilot's events among them) need not load the search's.
+    const { watchSearchTerms } = await import("./market-search");
     run.search = await watchSearchTerms(deps);
   } catch (error) {
     report(error, "rivals.search_watch");

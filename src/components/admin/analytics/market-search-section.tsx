@@ -41,7 +41,9 @@ export function MarketSearchSection({ lang, timeZone, words: w, terms, countries
   const line = (t: KeptSearchTerm) => {
     if (!t.checkedAt) return t.problem === "failed" && t.triedAt ? fillWords(w.failed, { date: day(t.triedAt) }) : w.waiting;
     const moved = t.previous !== null && t.own !== null && t.previous !== t.own ? ` (${fillWords(t.previous > t.own ? w.up : w.down, { n: formatCount(Math.abs(t.previous - t.own)) })})` : "";
-    return [`${w.you}: ${place(t.own)}${moved}`, ...t.rivals.map((r) => `${r.name}: ${place(r.position)}`), fillWords(w.checked, { date: day(t.checkedAt) })].join(" · ");
+    // The rivals found first, by their place; those not on the page after, by name.
+    const rivals = [...t.rivals].sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity) || a.name.localeCompare(b.name));
+    return [`${w.you}: ${place(t.own)}${moved}`, ...rivals.map((r) => `${r.name}: ${place(r.position)}`), fillWords(w.checked, { date: day(t.checkedAt) })].join(" · ");
   };
   return (
     <AnalyticsSection id="market-search" title={w.title} description={w.description} level={3}>
