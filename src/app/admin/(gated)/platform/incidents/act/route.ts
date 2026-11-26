@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
 import { getAccount, platformCan } from "@/server/auth";
+import { closeAdminSignals, openAdminSignals } from "@/server/admin-signals";
 import { requestWake } from "@/server/autopilot-wake";
 import { addIdea, decideIncident, saveAutopilotSettings, type OwnerDecision } from "@/server/incidents";
 
@@ -27,6 +28,14 @@ export async function POST(request: NextRequest) {
   const note = String(form.get("note") ?? "").trim() || null;
   if (intent === "idea") {
     return (await addIdea(account.id, String(form.get("title") ?? ""), note)) ? back("done=idea") : back("problem=idea");
+  }
+  if (intent === "signals_open") {
+    const opened = await openAdminSignals(account.id, form.get("signed") === "on");
+    return opened.ok ? back("done=signals_open") : back(`problem=signals_${opened.problem}`);
+  }
+  if (intent === "signals_close") {
+    await closeAdminSignals(account.id);
+    return back("done=signals_close");
   }
   if (intent === "run_now") return (await requestWake("run_now", account.id)) ? back("done=run_now") : back("problem=off");
   if (intent === "settings") {

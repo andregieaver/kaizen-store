@@ -1,6 +1,6 @@
 {
-  "id": "ac02c7b6-bd1a-42a7-be01-2f9973b3d579",
-  "prevId": "60e3774f-4fd1-43c7-9cbb-c5f2440269d8",
+  "id": "b74a0e50-2c7c-4721-a618-9d8af30be2a9",
+  "prevId": "ac02c7b6-bd1a-42a7-be01-2f9973b3d579",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -64336,6 +64336,103 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.platform_admin_signal_choices": {
+      "name": "platform_admin_signal_choices",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "heatmaps": {
+          "name": "heatmaps",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recordings": {
+          "name": "recordings",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notice": {
+          "name": "notice",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chosen_at": {
+          "name": "chosen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "platform_admin_signal_choices_account_idx": {
+          "name": "platform_admin_signal_choices_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chosen_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "platform_admin_signal_choices_account_id_accounts_id_fk": {
+          "name": "platform_admin_signal_choices_account_id_accounts_id_fk",
+          "tableFrom": "platform_admin_signal_choices",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_admin_signal_choices_notice": {
+          "name": "platform_admin_signal_choices_notice",
+          "value": "\"commerce\".\"platform_admin_signal_choices\".\"notice\" ~ '^[a-z0-9-]{1,40}$'"
+        },
+        "platform_admin_signal_choices_pair": {
+          "name": "platform_admin_signal_choices_pair",
+          "value": "not \"commerce\".\"platform_admin_signal_choices\".\"recordings\" or \"commerce\".\"platform_admin_signal_choices\".\"heatmaps\""
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.platform_api_tokens": {
       "name": "platform_api_tokens",
       "schema": "commerce",
@@ -67493,6 +67590,25 @@
           "primaryKey": false,
           "notNull": false
         },
+        "admin_signals_open": {
+          "name": "admin_signals_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "admin_signals_opened_at": {
+          "name": "admin_signals_opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "admin_signals_opened_by": {
+          "name": "admin_signals_opened_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "ui_text_version": {
           "name": "ui_text_version",
           "type": "bigint",
@@ -67589,6 +67705,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "platform_settings_admin_signals_opened_by_idx": {
+          "name": "platform_settings_admin_signals_opened_by_idx",
+          "columns": [
+            {
+              "expression": "admin_signals_opened_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -67632,6 +67763,20 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "platform_settings_admin_signals_opened_by_accounts_id_fk": {
+          "name": "platform_settings_admin_signals_opened_by_accounts_id_fk",
+          "tableFrom": "platform_settings",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "admin_signals_opened_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "platform_settings_updated_by_accounts_id_fk": {

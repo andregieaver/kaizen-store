@@ -9094,3 +9094,16 @@ describe("the incident log moves only as INCIDENT_MOVES allows (D895)", () => {
     }
   });
 });
+
+describe("an owner's choices about heatmaps and recordings of the admin (D895 phase 3b)", () => {
+  it("never keeps recordings without heatmaps, takes a notice's version only in its shape, and is closed to the Data API", async () => {
+    const { id } = await one<{ id: string }>(`insert into commerce.accounts (email) values ('admin-use-d895@example.com') returning id`);
+    const insert = (heatmaps: boolean, recordings: boolean, notice = "2026-11-26") =>
+      db.query("insert into commerce.platform_admin_signal_choices (account_id, heatmaps, recordings, notice) values ($1, $2, $3, $4)", [id, heatmaps, recordings, notice]);
+    await expect(insert(false, true)).rejects.toThrow(/platform_admin_signal_choices_pair/);
+    await expect(insert(true, true, "Not a version")).rejects.toThrow(/platform_admin_signal_choices_notice/);
+    await insert(true, true);
+    await insert(false, false);
+    expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.platform_admin_signal_choices'::regclass")).on).toBe(true);
+  });
+});

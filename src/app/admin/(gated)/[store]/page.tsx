@@ -26,6 +26,9 @@ import { attentionFor, hidden } from "@/lib/control-center";
 import { demoTotal, demoWords } from "@/lib/demo-content";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireMemberAny } from "@/server/permissions";
+import { adminSignalsFor } from "@/server/admin-signals";
+import { AdminUseChoice } from "@/components/admin/admin-use-choice";
+import { ADMIN_USE_WORDS } from "@/lib/admin-words/admin-use";
 import { storeHomeReads } from "@/server/admin-screens";
 import { KEEP_PARAM } from "@/lib/store-switch";
 import { keptPageFor } from "@/server/store-switch";
@@ -490,8 +493,13 @@ export default async function AdminOverview({ params, searchParams }: Props) {
     </>
   );
 
+  // Heatmaps and recordings of how owners use the admin (D895 phase 3b): an owner is asked once, about their own use, while it is open.
+  const adminUse = memberCan(current, "owner") ? await adminSignalsFor(account.id) : null;
   return (
     <div className="flex flex-col gap-6">
+      {adminUse?.eligible && adminUse.choice === null && (
+        <AdminUseChoice words={ADMIN_USE_WORDS[lang]} lang={lang} from={base} choice={null} />
+      )}
       <HomeHeader
         eyebrow={fillWords(t.eyebrow, { date: dateText })}
         title={firstWeek ? (name ? fillWords(t.first.title, { name, store: store.name }) : fillWords(t.first.titlePlain, { store: store.name })) : greeting}

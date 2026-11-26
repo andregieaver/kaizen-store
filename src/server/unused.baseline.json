@@ -300,6 +300,7 @@
     "src/db/schema.ts#planMoves",
     "src/db/schema.ts#planReminderSteps",
     "src/db/schema.ts#platformAdConversions",
+    "src/db/schema.ts#platformAdminSignalChoices",
     "src/db/schema.ts#platformApiTokens",
     "src/db/schema.ts#platformAutopilotRuns",
     "src/db/schema.ts#platformDoNotContact",

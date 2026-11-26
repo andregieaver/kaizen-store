@@ -157,6 +157,13 @@ export const PURPOSES = {
     why: "Regulation (EU) 2022/2065 (DSA) Art. 16–17 oblige a hosting service to take, decide and answer notices.",
     controller: "platform",
   },
+  admin_improvement: {
+    what: "Learning where Kaizena Flow's admin is hard to use, from heatmaps and recordings a store owner allowed, and the record of that choice.",
+    basis: "a",
+    why: "The owner's own consent, asked first and withdrawable at any time (GDPR Art. 6(1)(a), Art. 7); each choice is kept to show it (Art. 7(1)). D895, docs/dpia-admin-use.md.",
+    controller: "platform",
+    review: true,
+  },
 } as const satisfies Record<string, Purpose>;
 
 export type PurposeKey = keyof typeof PURPOSES;
@@ -319,6 +326,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   accounts: "platform_service",
   push_subscriptions: "platform_service",
   account_email_changes: "platform_service",
+  platform_admin_signal_choices: "admin_improvement",
   status_subscribers: "platform_applicants",
   content_reports: "illegal_content",
   access_requests: "platform_applicants",

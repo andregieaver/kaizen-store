@@ -278,6 +278,9 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   push_subscriptions:
     "En ansatts enhet som får varsler om nye bestillinger i en butikk (D361): push-adressen og et navn; fjernes av personen, når push-tjenesten sier at den er borte, og når personen ikke lenger kan lese butikkens bestillinger. " +
     OWN,
+  platform_admin_signal_choices:
+    "En butikkeiers egne valg om varmekart og opptak av hvordan de bruker adminen (D895 fase 3b): én rad per valg med versjonen av merknaden, aldri endret, beviset på samtykket og når det ble trukket tilbake (GDPR art. 7 nr. 1). Slettes med kontoen. " +
+    OWN,
   account_email_changes:
     "En persons endring av e-postadresse som venter på lenken sin (D836): den nye adressen og en hash av lenkens token, aldri selve tokenet; én per konto. Erstattes av en ny forespørsel, slettes når den avbrytes, en dag etter at den ble brukt eller gikk ut (den daglige jobben, `pruneEmailChanges()`), og med kontoen (D377). " +
     OWN,

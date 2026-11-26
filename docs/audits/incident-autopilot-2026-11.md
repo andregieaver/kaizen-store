@@ -340,7 +340,10 @@ These are the owner's to write (legal texts are never written by a model, D656 s
       Drafted 25 November 2026: `docs/dpia-admin-use.md`, a separate assessment (Kaizena Flow controller), with the notice's paragraph
       proposed in its section 6 and seven questions, under Platform → Legal reviews (*Heatmaps and recordings of how owners use the
       admin*). Left: the owner's acceptance and notice paragraph, the lawyer's answers.
-- [ ] **IA-15** (phase 3b, after IA-14) Admin heatmaps and recordings: the choice (asked once, in account settings after), the masking and blocked screens with a
+- [ ] **IA-15** (phase 3b, built locked: the owner's choice of 26 November 2026) Admin heatmaps and recordings. First part done 26
+      November 2026: the lock (`admin-signals.ts`: open only once a Legal account has answered every question and the owner confirms the
+      signed assessment), owners only and their own use, the notice at the ask, the consent records. Left: the collectors, the viewer.
+      Original scope: the choice (asked once, in account settings after), the masking and blocked screens with a
       scan test like `marks.test.ts` for admin screens, the platform tables and bucket, the 30 days, Platform → Analytics → Admin use with
       its viewing log; signed-in e2e; screenshots to the owner.
 - [x] **IA-16a** (phase 3a) `admin-behaviour.ts` on the signals already kept as counts (the AI manager's tool calls, failures and

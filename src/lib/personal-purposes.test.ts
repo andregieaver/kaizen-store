@@ -21,7 +21,8 @@ describe("purposes and bases of the personal-data register (PSI REG-01)", () => 
   });
 
   it("rests on consent only where the law asks for it, and names the law of every obligation", () => {
-    expect(Object.entries(PURPOSES).filter(([, p]) => p.basis === "a").map(([k]) => k)).toEqual(["marketing", "recordings"]);
+    // Owners' own use of the admin (D895 phase 3b) is recorded only with their consent, as shoppers' recordings are.
+    expect(Object.entries(PURPOSES).filter(([, p]) => p.basis === "a").map(([k]) => k)).toEqual(["marketing", "recordings", "admin_improvement"]);
     for (const p of Object.values(PURPOSES).filter((p) => p.basis === "c")) expect(p.why).toMatch(/§|Art\.|Directive|Regulation|law/);
   });
 

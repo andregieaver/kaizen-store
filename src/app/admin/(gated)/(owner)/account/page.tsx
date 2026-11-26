@@ -19,6 +19,9 @@ import { listStores, passMembership, requireAccount } from "@/server/auth";
 import { memberCan } from "@/server/permissions";
 import { pushDevicesOf, pushPublicKey } from "@/server/push";
 import { PushSettings } from "@/components/admin/push-settings";
+import { AdminUseChoice } from "@/components/admin/admin-use-choice";
+import { ADMIN_USE_WORDS } from "@/lib/admin-words/admin-use";
+import { adminSignalsFor } from "@/server/admin-signals";
 import { removePushAction, removePushDeviceAction, savePushAction } from "./push-actions";
 import { PrivacyOfficerForm } from "@/components/admin/privacy-officer-form";
 import { accountOfficer, officerCandidates, ownedAccount, storedChoice } from "@/server/privacy-officers";
@@ -68,6 +71,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const owner = await isOwner(account);
   const supabase = await createClient();
   const twoStep = await twoStepStatus(account);
+  const adminUse = await adminSignalsFor(account.id);
   // The stores whose orders this person reads, each a switch for notifications on this device (D361).
   const [pushStores, pushDevices] = await Promise.all([
     listStores(account).then(async (stores) => {
@@ -270,6 +274,14 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           <p className="text-sm text-muted">{w.twoStepAgain}</p>
         )}
       </section>
+
+      {/* Heatmaps and recordings of how this owner uses the admin (D895 phase 3b): their own choice, changeable at any time. */}
+      {adminUse.eligible && (
+        <div className="max-w-2xl">
+          {query.adminUse === "saved" && <p role="status" className="mb-3 text-sm text-ink">{ADMIN_USE_WORDS[lang].ask.saved}</p>}
+          <AdminUseChoice words={ADMIN_USE_WORDS[lang]} lang={lang} from="/admin/account" choice={adminUse.choice} />
+        </div>
+      )}
 
       {/* Notifications on this device (D361): the stores whose orders this person reads. */}
       <div className="max-w-2xl">

@@ -2065,6 +2065,14 @@ export const platformSettings = commerce.table(
     autopilotOn: boolean("autopilot_on").notNull().default(false),
     autopilotGapHours: smallint("autopilot_gap_hours").notNull().default(4),
     incidentDigestLastDay: date("incident_digest_last_day", { mode: "string" }),
+    /**
+     * Heatmaps and recordings of how store owners use the admin (D895 phase 3b, `docs/dpia-admin-use.md`): off until a platform owner
+     * opens it, which `openAdminSignals()` refuses until a Legal account has answered every question of the review `admin-use` and the
+     * owner confirms the assessment is signed. Who opened it and when.
+     */
+    adminSignalsOpen: boolean("admin_signals_open").notNull().default(false),
+    adminSignalsOpenedAt: timestamp("admin_signals_opened_at", { withTimezone: true }),
+    adminSignalsOpenedBy: uuid("admin_signals_opened_by").references(() => accounts.id, { onDelete: "set null" }),
     /** Raised by one by every writer of commerce.ui_translations (bloat review step 0.8): an instance polls this one row, not the table. */
     uiTextVersion: bigint("ui_text_version", { mode: "number" }).notNull().default(0),
     updatedAt: updatedAt(),
@@ -2092,6 +2100,7 @@ export const platformSettings = commerce.table(
     index("platform_settings_footer_menu_idx").on(t.footerMenuId),
     index("platform_settings_sandbox_source_idx").on(t.sandboxSource),
     index("platform_settings_site_from_store_by_idx").on(t.siteFromStoreBy),
+    index("platform_settings_admin_signals_opened_by_idx").on(t.adminSignalsOpenedBy),
   ],
 );
 
@@ -23093,6 +23102,31 @@ export const platformIncidents = commerce.table(
     check("platform_incidents_fixed", sql`${t.status} <> 'fixed' or (${t.fixCommit} is not null and ${t.fixedAt} is not null)`),
     check("platform_incidents_commit", sql`${t.fixCommit} is null or ${t.fixCommit} ~ '^[0-9a-f]{7,40}$'`),
     check("platform_incidents_done", sql`${t.status} <> 'done' or ${t.doneAt} is not null`),
+  ],
+).enableRLS();
+
+/**
+ * A store owner's own choices about heatmaps and recordings of how they use the admin (D895 phase 3b): one row per choice, never edited,
+ * the newest standing, so the record of each consent and its withdrawal is kept (GDPR Art. 7(1)) with the notice's version it was given
+ * under. Only the person's own sessions are ever collected, never a staff member's. Goes with the account.
+ */
+export const platformAdminSignalChoices = commerce.table(
+  "platform_admin_signal_choices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    heatmaps: boolean("heatmaps").notNull(),
+    recordings: boolean("recordings").notNull(),
+    notice: text("notice").notNull(),
+    chosenAt: timestamp("chosen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("platform_admin_signal_choices_account_idx").on(t.accountId, t.chosenAt),
+    check("platform_admin_signal_choices_notice", sql`${t.notice} ~ '^[a-z0-9-]{1,40}$'`),
+    // Recordings only with heatmaps: a person who refuses heatmaps is never recorded.
+    check("platform_admin_signal_choices_pair", sql`not ${t.recordings} or ${t.heatmaps}`),
   ],
 ).enableRLS();
 

@@ -1,0 +1,45 @@
+import type { AdminUseMessages } from "./admin-use.en";
+
+/** Norwegian (bokmål), written by hand (D895). */
+export const adminUseNb: AdminUseMessages = {
+  ask: {
+    title: "Hjelp oss å gjøre adminen enklere",
+    lead: "Kan vi se, uten å vite hvem du er, hvor adminen er vanskelig å bruke? Bare din egen bruk, aldri de ansattes.",
+    heatmaps: "Varmekart: hvor du klikker og ruller, talt som summer per skjermbilde.",
+    recordings: "Opptak: hvordan du beveger deg gjennom noen skjermbilder, med alle ord skjult.",
+    collected: "Vi samler inn klikk, rulling og pauser i adminens skjermbilder. All tekst og alt du skriver er skjult.",
+    excluded: "Bestillinger, kunder, meldinger, dokumenter og fakturaer tas aldri opp, og vi ser aldri kundenes data.",
+    kept: "Opptak lagres i 30 dager og slettes så. Summene i varmekartene har ingen person og lagres i 13 måneder.",
+    access: "Bare Kaizena Flows eget team kan se opptak, og hver visning logges. Butikken og de ansatte ser dem aldri.",
+    basis: "Grunnlag: ditt samtykke (personvernforordningen artikkel 6 nr. 1 bokstav a). Å si nei endrer ingenting i hva du kan gjøre.",
+    rights: "Du kan endre eller trekke tilbake valget når som helst under Kontoinnstillinger, og be oss om innsyn i eller sletting av dataene dine.",
+    notice: "Les personvernerklæringen",
+    allowHeat: "Tillat varmekart",
+    allowRec: "Tillat også opptak",
+    save: "Lagre valget mitt",
+    no: "Nei takk",
+    saved: "Lagret. Du kan endre det når som helst under Kontoinnstillinger.",
+  },
+  account: {
+    title: "Hvordan du bruker adminen",
+    on: "Du tillater: {what}.",
+    off: "Du har ikke tillatt noe.",
+    heatmaps: "varmekart",
+    recordings: "opptak",
+    change: "Endre",
+  },
+  platform: {
+    title: "Lære av hvordan eiere bruker adminen",
+    locked: "Låst til en advokat med rollen Juridisk har svart på alle spørsmålene i vurderingen.",
+    missing: "Ikke besvart ennå: {list}.",
+    review: "Åpne den juridiske gjennomgangen",
+    ready: "Alle spørsmål er besvart. Når det åpnes, blir hver butikkeier spurt én gang; ingenting samles inn fra noen som ikke har sagt ja.",
+    signed: "Jeg har godtatt og signert vurderingen (docs/dpia-admin-use.md)",
+    open: "Åpne",
+    isOpen: "Åpen siden {at}. Butikkeiere blir spurt én gang.",
+    close: "Lukk",
+    opened: "Åpnet.",
+    closed: "Lukket. Ingenting mer samles inn.",
+    problems: { locked: "Alle spørsmål må besvares av en advokat først.", signed: "Bekreft først at vurderingen er signert." },
+  },
+};

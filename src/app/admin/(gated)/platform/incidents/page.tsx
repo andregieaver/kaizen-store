@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { SubmitButton } from "@/components/admin/action-form";
 import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
-import { Card, Chip, EmptyState, Field, List, ListRow, PageHeader, RowActions, RowLead, Select, TextInput } from "@/components/admin/ui";
+import { AdminLink, Card, Chip, EmptyState, Field, List, ListRow, PageHeader, RowActions, RowLead, Select, TextInput } from "@/components/admin/ui";
 import { TextArea } from "@/components/admin/ui/field";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
@@ -13,6 +13,8 @@ import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { AUTOPILOT_GAPS, incidentGroup } from "@/lib/incidents";
 import { requirePlatformReader } from "@/server/auth";
 import { autopilotWakeEnv } from "@/lib/env";
+import { ADMIN_USE_WORDS } from "@/lib/admin-words/admin-use";
+import { adminSignalsState } from "@/server/admin-signals";
 import { autopilotSettings, incidentBoard, lastAutopilotRun, type IncidentEntry } from "@/server/incidents";
 
 import { IncidentNotice, INCIDENT_ACT } from "./notice";
@@ -30,7 +32,8 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = PLATFORM_WORDS[lang].incidents;
-  const [board, settings, lastRun, query] = await Promise.all([incidentBoard(), autopilotSettings(), lastAutopilotRun(), searchParams]);
+  const [board, settings, lastRun, query, signals] = await Promise.all([incidentBoard(), autopilotSettings(), lastAutopilotRun(), searchParams, adminSignalsState()]);
+  const uw = ADMIN_USE_WORDS[lang].platform;
   const connected = (() => {
     try {
       return autopilotWakeEnv() !== null;
@@ -57,7 +60,7 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
           </>
         }
       />
-      <IncidentNotice query={query} w={w} />
+      <IncidentNotice query={query} w={w} use={uw} />
       <Card title={w.needsYou} count={needsYou.length}>
         {needsYou.length === 0 ? (
           <EmptyState compact title={w.needsYouNone} />
@@ -136,6 +139,41 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
                 </SubmitButton>
               </div>
             </form>
+          </Card>
+        </PhoneRow>
+        <PhoneRow flat title={uw.title} sub={signals.open ? uw.isOpen.replace("{at}", "") : uw.locked} change={w.phone.open} done={w.phone.close}>
+          <Card title={uw.title}>
+            {signals.open ? (
+              <form method="post" action={INCIDENT_ACT} className="flex flex-col gap-3">
+                <p className="text-sm text-ink">{fillWords(uw.isOpen, { at: signals.openedAt ? adminDate(PLATFORM_TIME_ZONE, signals.openedAt, "dayTime", lang) : "" })}</p>
+                <div>
+                  <SubmitButton name="intent" value="signals_close" variant="secondary">
+                    {uw.close}
+                  </SubmitButton>
+                </div>
+              </form>
+            ) : signals.missing.length > 0 ? (
+              <div className="flex flex-col gap-2 text-sm">
+                <p className="text-ink">{uw.locked}</p>
+                <p className="text-muted">{fillWords(uw.missing, { list: signals.missing.join(", ") })}</p>
+                <AdminLink href="/admin/legal/admin-use" className="text-ink underline underline-offset-2">
+                  {uw.review}
+                </AdminLink>
+              </div>
+            ) : (
+              <form method="post" action={INCIDENT_ACT} className="flex flex-col gap-3">
+                <p className="text-sm text-ink">{uw.ready}</p>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="signed" required className="mt-1" />
+                  {uw.signed}
+                </label>
+                <div>
+                  <SubmitButton name="intent" value="signals_open">
+                    {uw.open}
+                  </SubmitButton>
+                </div>
+              </form>
+            )}
           </Card>
         </PhoneRow>
         <PhoneRow flat last title={w.autopilot.title} sub={settings.on ? w.autopilot.on : w.autopilot.off} change={w.phone.open} done={w.phone.close}>
