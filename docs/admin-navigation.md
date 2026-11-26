@@ -160,7 +160,7 @@ page that needs a feature (D178) or a paid extension (D748) is in the menu only 
 | Website | `monitor` | `/admin/{store}/website`, its own page | 15 pages in 3 groups, 8 in Basic |  |
 | Bookings | `calendar` | `/admin/{store}/bookings` | 5 pages, 4 in Basic | Appointments or Stays and rentals |
 | Support | `chat` | `/admin/{store}/support` | 7 pages, 3 in Basic |  |
-| Projects | `kanban` | `/admin/{store}/projects` | 2 pages, 2 in Basic | Projects and checklists |
+| Projects | `kanban` | `/admin/{store}/projects` | 2 pages, 2 in Basic | Projects |
 | Settings | `cog` | `/admin/{store}/settings`, its own page | 36 pages in 5 groups, 12 in Basic |  |
 
 123 pages in 10 sections, 48 of them in Basic.
@@ -500,12 +500,12 @@ Opens `/admin/{store}/support`. 7 pages, 3 in Basic.
 
 ### Store › Projects
 
-Opens `/admin/{store}/projects`. Needs: Projects and checklists. 2 pages, 2 in Basic.
+Opens `/admin/{store}/projects`. Needs: Projects. 2 pages, 2 in Basic.
 
 | Group | Page | Address | View | Needs |
 | --- | --- | --- | --- | --- |
-| Projects | Projects | `/admin/{store}/projects` | Basic | Projects and checklists |
-|  | Checklists | `/admin/{store}/checklists` | Basic | Projects and checklists |
+| Projects | Projects | `/admin/{store}/projects` | Basic | Projects |
+|  | Checklists | `/admin/{store}/checklists` | Basic | Projects |
 
 ### Store › Settings
 
