@@ -283,6 +283,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   - A list's or a project's own statuses *replace* the store's (Life merged them by name, so a list could not drop one); *Statuses of its
     own* copies the store's to start from and moves the tasks along, *Use the store's statuses* moves them back by name.
   - The store starts with *To do*, *In progress*, *Done*, *Archived* (Life: Backlog, To do, Done, Archived), made in the person's language.
+  - On a board a ticked task without a stage of its own is in the first done stage (Life: always the first stage).
   - Ticking a task already in a finished status keeps it there, so a status moved to the done bucket ticks its tasks without moving them.
   - A subtask is a plain step until it is given a status (Life's subtasks start without one); then its tick and status agree as a task's.
   - The rules live in the database (`projects_rules`), so the AI manager and the API get them as the screens do.

@@ -15,4 +15,5 @@ export function featureOffText(requirement: FeatureRequirement, c: CommonMessage
 }
 
 /** A feature that another needs, in a sentence: "the online shop", "the bonus program". */
-export const needWords = (id: FeatureId, c: CommonMessages["features"]): string => c.need[id];
+/** A feature no other needs (Projects, D903) has no such words of its own and is named by its label. */
+export const needWords = (id: FeatureId, c: CommonMessages["features"]): string => (c.need as Partial<Record<FeatureId, string>>)[id] ?? c.labels[id];

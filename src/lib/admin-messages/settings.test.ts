@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DAY_NAMES, DAYS } from "../opening-hours";
-import { FEATURE_GROUPS, STORE_FEATURES } from "../store-features";
+import { dependentsOf, FEATURE_GROUPS, STORE_FEATURES, type FeatureId } from "../store-features";
 import { commonEn } from "./common.en";
 import { commonNb } from "./common.nb";
 import { settingsEn } from "./settings.en";
@@ -22,7 +22,9 @@ describe("the settings catalogue (D312 A8)", () => {
     for (const f of STORE_FEATURES) {
       expect(commonEn.features.labels[f.id]).toBe(f.label);
       expect(settingsEn.features.items[f.id]).toEqual({ words: f.words, offWords: f.offWords });
-      expect(commonEn.features.need[f.id]).toBe(f.id === "shop" ? "the online shop" : `the ${f.label.toLowerCase()}`);
+      // A feature another needs is named in a sentence ("needs the bonus program"); one no other needs may go without (Projects, D903).
+      const need = (commonEn.features.need as Partial<Record<FeatureId, string>>)[f.id];
+      if (need !== undefined || dependentsOf(f.id).length > 0) expect(need).toBe(f.id === "shop" ? "the online shop" : `the ${f.label.toLowerCase()}`);
     }
     for (const g of FEATURE_GROUPS) expect(settingsEn.features.groups[g.id]).toBe(g.label);
     for (const day of DAYS) {

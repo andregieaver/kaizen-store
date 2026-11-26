@@ -132,7 +132,10 @@ export async function listProjects(storeId: string): Promise<ProjectSummary[]> {
   ]);
   return rows.map((r) => {
     const own = effectiveOf(stages, r.id);
-    const items = stageItems.filter((s) => s.project_id === r.id).map((s) => ({ statusId: s.stage_id ?? own[0]?.id ?? null, done: s.done }));
+    // No stage is the first (Life's rule), or the first done stage once the task is ticked, as the board shows it.
+    const first = own[0]?.id ?? null;
+    const firstDone = own.find((x) => x.bucket === "done")?.id ?? first;
+    const items = stageItems.filter((s) => s.project_id === r.id).map((s) => ({ statusId: s.stage_id ?? (s.done ? firstDone : first), done: s.done }));
     return { ...summaryOf(r), bar: statusBar(own, items) };
   });
 }

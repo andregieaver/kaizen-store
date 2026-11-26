@@ -105,6 +105,8 @@ export function AdminFrame({
   const tabs = navItemsIn(lang, tabsGiven);
   const groups = navAreasIn(lang, [{ groups: groupsGiven }])[0].groups;
   const areas = areasGiven && navAreasIn(lang, areasGiven);
+  // A sidebar group sent without a heading (a store section's only one) is named by its section's tab: the sidebars get the tabs only then.
+  const namingTabs = areas?.some((area) => area.groups.some((group) => group.heading === undefined)) ? tabs : undefined;
   // The page, with the level's menu for its header's eyebrow: the objects the rail and sidebars are given, so they are sent once (D873).
   const page = (
     <NavHereProvider tabs={tabs} places={areas ?? NO_AREAS}>
@@ -132,7 +134,7 @@ export function AdminFrame({
   );
   const sidebar = (railed: boolean) =>
     areas ? (
-      <AreaSidebar areas={areas} fallback={groups} label={w.more} railed={railed} tabs={tabs} />
+      <AreaSidebar areas={areas} fallback={groups} label={w.more} railed={railed} tabs={namingTabs} />
     ) : groups.length > 0 ? (
       <aside className={`hidden w-52 shrink-0 lg:block ${railed ? "pt-2 pb-8" : "py-8"}`}>
         <div className={`sticky ${railed ? "top-6" : "top-32"}`}>
@@ -201,7 +203,7 @@ export function AdminFrame({
                   {menuButton}
                   {switcher}
                   {workspaceLinks && (
-                    <ByPath pattern={workspaceLinks} match={<AreaLinks areas={areas ?? []} fallback={groups} label={w.thisSection} tabs={tabs} />} otherwise={null} />
+                    <ByPath pattern={workspaceLinks} match={<AreaLinks areas={areas ?? []} fallback={groups} label={w.thisSection} tabs={namingTabs} />} otherwise={null} />
                   )}
                 </>,
                 focusStart,

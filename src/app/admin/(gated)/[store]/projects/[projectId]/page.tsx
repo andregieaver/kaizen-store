@@ -64,14 +64,16 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     progress: fillWords(w.progress, { done: list.done, total: list.total }),
     tasks: project.items.filter((i) => i.checklistId === list.id && !i.done).map((i) => ({ id: i.id, title: i.title, done: i.done, status: statusOf(i), facts: factsOf(i) })),
   }));
+  // A task without a stage of its own is in the first (Life's rule), or, once ticked, in the first done stage.
   const firstStage = project.stages[0]?.id ?? "";
+  const firstDone = project.stages.find((x) => x.bucket === "done")?.id ?? firstStage;
   const cards: BoardCardView[] = project.items.map((i) => ({
     id: i.id,
     title: i.title,
     href: `${base}/checklists/${i.checklistId}`,
     list: i.checklistTitle,
     done: i.done,
-    stageId: i.stageId && project.stages.some((s) => s.id === i.stageId) ? i.stageId : firstStage,
+    stageId: i.stageId && project.stages.some((s) => s.id === i.stageId) ? i.stageId : i.done ? firstDone : firstStage,
     status: statusOf(i),
     facts: factsOf(i),
   }));

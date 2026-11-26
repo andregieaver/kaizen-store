@@ -178,8 +178,8 @@ export const settingsNb: SettingsMessages = {
         many: "{n} avtaler er fortsatt åpne. De beholdes, og er der igjen når du slår på Avtaler.",
       },
       openTasks: {
-        one: "{n} oppgave er fortsatt åpen. Den beholdes, og er der igjen når du slår på Prosjekter og sjekklister.",
-        many: "{n} oppgaver er fortsatt åpne. De beholdes, og er der igjen når du slår på Prosjekter og sjekklister.",
+        one: "{n} oppgave er fortsatt åpen. Den beholdes, og er der igjen når du slår på Prosjekter.",
+        many: "{n} oppgaver er fortsatt åpne. De beholdes, og er der igjen når du slår på Prosjekter.",
       },
       asleep: {
         one: "{labels} trenger den, så den stopper også. Bryteren beholdes til du slår den på igjen.",

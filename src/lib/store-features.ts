@@ -189,7 +189,7 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     // Projects and checklists (D903): the team plans its work where it sells; a website or a workspace has it too, so it needs nothing.
     id: "projects",
     group: "team",
-    label: "Projects and checklists",
+    label: "Projects",
     words: "Plan the team's work: checklists, and projects with a board, statuses, who does what and when it is due.",
     offWords: "Projects and Checklists leave the admin. Every project, list and item is kept for when you switch it on again.",
     needs: [],

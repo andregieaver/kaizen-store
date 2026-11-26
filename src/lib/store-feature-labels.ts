@@ -170,8 +170,8 @@ export const FEATURE_SETTINGS_EN = {
       many: "{n} deals are still open. They are kept, and are there again when you switch Deals on.",
     },
     openTasks: {
-      one: "{n} task is still open. It is kept, and is there again when you switch Projects and checklists on.",
-      many: "{n} tasks are still open. They are kept, and are there again when you switch Projects and checklists on.",
+      one: "{n} task is still open. It is kept, and is there again when you switch Projects on.",
+      many: "{n} tasks are still open. They are kept, and are there again when you switch Projects on.",
     },
     asleep: {
       one: "{labels} needs it, so it stops too. Its own switch is kept for when you switch it on again.",

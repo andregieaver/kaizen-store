@@ -19,11 +19,11 @@ let wasOn = false;
 
 async function projects(page: Page, on: boolean) {
   await page.goto(`/admin/${E2E_STORE}/settings/features`);
-  const toggle = page.getByRole("switch", { name: "Projects and checklists", exact: true });
+  const toggle = page.getByRole("switch", { name: "Projects", exact: true });
   if ((await toggle.getAttribute("aria-checked")) === String(on)) return;
   await toggle.click();
   if (!on) {
-    const confirm = page.getByRole("region", { name: "Switch off Projects and checklists" }).getByRole("button", { name: "Switch off", exact: true });
+    const confirm = page.getByRole("region", { name: "Switch off Projects" }).getByRole("button", { name: "Switch off", exact: true });
     if (await confirm.isVisible().catch(() => false)) await confirm.click();
   }
   await expect(toggle).toHaveAttribute("aria-checked", String(on), { timeout: 30_000 });
