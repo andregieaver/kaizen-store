@@ -37,12 +37,15 @@ errors shown, and where a flow was left. With these measures beyond D656's:
 
 - **All text masked**, not optional (D656's *Hide all text*): every text node is drawn as dots; every field is masked to nothing, not even
   its length.
+- **Every word scrubbed again on the server** before anything is stored (built 26 November 2026, `admin-replay-scrub.ts`): every text,
+  and every attribute that can hold words or an address (labels, tooltips, placeholders, values, links, `data-*`), so only the layout's
+  attributes are kept; what was typed is never kept; pictures, video and frames are not drawn at all.
 - **Screens never recorded** (blocked outright, the recorder pauses before they are drawn): orders, customers, the inbox and chat,
   messages and campaigns, documents and invoices, the recordings player, the AI manager's conversation, anything marked
   `data-kz-private`, and every page whose address is not on an allow-list of admin screen keys.
-- **No identity**: a random id per tab, joined to no account, store, IP or other id. Each recording keeps only the plan's name, the
-  store's age band (first week, first month, older) and the screen key.
-- **Sampled** (a share of tabs, set by the owner), **30 days**, then deleted with every file. Kaizena Flow's admins may watch them
+- **No identity**: a random id per tab, joined to no account, store, IP or other id. Each recording keeps only the age band of the
+  owner's first store (first week, first month, older) and the screen keys (the plan's name is not kept, as built).
+- **Sampled** (half of an owner's tabs, as built; a setting for the owner later), **30 days**, then deleted with every file. Kaizena Flow's admins may watch them
   (Platform → Analytics → Admin use); each viewing is written to the activity log first, as D656's are.
 - Stored apart from stores' data, in their own tables and bucket, never in a store's export or copy.
 

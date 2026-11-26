@@ -15,6 +15,7 @@ const repeat = await import("./projects-repeat");
 const labels = await import("./projects-labels");
 const comments = await import("./projects-comments");
 const sources = await import("./projects-sources");
+const dealProjects = await import("./projects-deals");
 const attention = await import("./attention");
 const { dayIn, addCalendarDays, noonOf } = await import("@/lib/work-dates");
 const { newStore } = await import("./inventory-test-support");
@@ -486,6 +487,32 @@ describe("a task from where it came from (D904 P8.3a)", () => {
       ok: false,
       problem: "not_found",
     });
+  });
+});
+
+describe("a project from a won deal (D904 P8.3b)", () => {
+  it("is named after the deal, linked to it, and starts with a copy of the template list, at home in the new project", async () => {
+    const [pipeline] = await db().execute<{ id: string }>(sql`insert into commerce.deal_pipelines (store_id, name) values (${store.storeId}::uuid, 'Sales') returning id`);
+    const [stage] = await db().execute<{ id: string }>(
+      sql`insert into commerce.deal_stages (store_id, pipeline_id, name, position) values (${store.storeId}::uuid, ${pipeline.id}::uuid, 'New', 0) returning id`,
+    );
+    const [deal] = await db().execute<{ id: string }>(sql`
+      insert into commerce.deals (store_id, title, pipeline_id, stage_id, currency)
+      values (${store.storeId}::uuid, 'Fit-out for Café Nord', ${pipeline.id}::uuid, ${stage.id}::uuid, 'NOK') returning id`);
+    const { id: template } = ok(await lists.createChecklist(store.member, { title: "Shop fit-out steps" }));
+    ok(await items.addItem(store.member, template, { title: "Measure the room" }));
+    ok(await lists.setChecklistMode(store.member, template, { asTemplate: true }));
+
+    const made = ok(await dealProjects.startDealProject(store.member, { dealId: deal.id, templateId: template }));
+    expect(await dealProjects.dealOfProject(store.storeId, made.id)).toEqual({ id: deal.id, title: "Fit-out for Café Nord" });
+    expect((await dealProjects.projectsOfDeal(store.storeId, deal.id)).map((p) => p.id)).toEqual([made.id]);
+    const [copy] = await db().execute<{ id: string; as_template: boolean; primary_project_id: string; tasks: number }>(sql`
+      select l.id, l.as_template, l.primary_project_id, (select count(*)::int from commerce.checklist_items i where i.checklist_id = l.id) as tasks
+        from commerce.project_checklists pc join commerce.checklists l on l.id = pc.checklist_id
+       where pc.store_id = ${store.storeId}::uuid and pc.project_id = ${made.id}::uuid`);
+    expect(copy).toMatchObject({ as_template: false, primary_project_id: made.id, tasks: 1 });
+
+    expect(await dealProjects.startDealProject(store.member, { dealId: "00000000-0000-4000-8000-000000000000", templateId: null })).toMatchObject({ ok: false, problem: "not_found" });
   });
 });
 

@@ -44,6 +44,7 @@ export const RETENTION_KINDS = [
   "contracts",
   "form_responses",
   "unanswered_questions",
+  "admin_recordings",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -226,6 +227,7 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   // Questions the chat assistant could not answer (ecosystem plan E4.3, D729): a visitor's words, kept for the owner to answer.
   seed({ kind: "unanswered_questions", country: null, periodValue: 90, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: unanswered_questions", note: "A question the chat assistant could not answer, counted from the last time a conversation asked it: deleted this long after, whether answered, dismissed or still open; the words kept are always the newest asker's. QUESTION_KEEP_DAYS, a test holds them equal.", checkedOn: "2026-11-17" }),
   seed({ kind: "recordings", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "pruneRecordings() (RECORDING_KEEP_DAYS)", note: "Recordings of visits and their files, counted from the recording's start; the visitor's browser can erase its own at once. RECORDING_KEEP_DAYS, a test holds them equal.", checkedOn: "2026-11-16" }),
+  seed({ kind: "admin_recordings", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "pruneAdminRecordings() (RECORDING_KEEP_DAYS)", note: "Recordings of store owners' own use of the admin (D895 phase 3b) and their files, counted from the recording's start; joined to no person, so they cannot be found for one. RECORDING_KEEP_DAYS, a test holds them equal.", checkedOn: "2026-11-26" }),
 ];
 
 /** What an empty rules table means: the safe side, never "keep nothing" and never "delete everything". */

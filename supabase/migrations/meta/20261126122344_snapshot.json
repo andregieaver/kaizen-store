@@ -1,6 +1,6 @@
 {
-  "id": "6b8a0c2f-baa8-4575-a3bc-a4f504c70e9e",
-  "prevId": "84017aa4-586d-4498-8704-e577086fea61",
+  "id": "e9f02b91-7924-4df3-8176-b0bc6e3146d2",
+  "prevId": "6ee2271a-d5e3-41ba-93a6-d1f61aea3427",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -64677,6 +64677,182 @@
       },
       "isRLSEnabled": true
     },
+    "commerce.platform_admin_recordings": {
+      "name": "platform_admin_recordings",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_at": {
+          "name": "last_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "device": {
+          "name": "device",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width": {
+          "name": "width",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "height": {
+          "name": "height",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entry_screen": {
+          "name": "entry_screen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "screens": {
+          "name": "screens",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "age_band": {
+          "name": "age_band",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clicks": {
+          "name": "clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dead_clicks": {
+          "name": "dead_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "rage_clicks": {
+          "name": "rage_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "seqs": {
+          "name": "seqs",
+          "type": "smallint[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::smallint[]"
+        },
+        "segments": {
+          "name": "segments",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "bytes": {
+          "name": "bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "platform_admin_recordings_started_idx": {
+          "name": "platform_admin_recordings_started_idx",
+          "columns": [
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_admin_recordings_duration": {
+          "name": "platform_admin_recordings_duration",
+          "value": "\"commerce\".\"platform_admin_recordings\".\"duration_ms\" between 0 and 3600000"
+        },
+        "platform_admin_recordings_device": {
+          "name": "platform_admin_recordings_device",
+          "value": "\"commerce\".\"platform_admin_recordings\".\"device\" in ('mobile', 'tablet', 'desktop')"
+        },
+        "platform_admin_recordings_entry": {
+          "name": "platform_admin_recordings_entry",
+          "value": "\"commerce\".\"platform_admin_recordings\".\"entry_screen\" ~ '^(s|a)(/[a-z0-9-]{1,30}){0,2}$'"
+        },
+        "platform_admin_recordings_screens": {
+          "name": "platform_admin_recordings_screens",
+          "value": "cardinality(\"commerce\".\"platform_admin_recordings\".\"screens\") <= 50"
+        },
+        "platform_admin_recordings_age_band": {
+          "name": "platform_admin_recordings_age_band",
+          "value": "\"commerce\".\"platform_admin_recordings\".\"age_band\" in ('week', 'month', 'older')"
+        },
+        "platform_admin_recordings_seqs": {
+          "name": "platform_admin_recordings_seqs",
+          "value": "cardinality(\"commerce\".\"platform_admin_recordings\".\"seqs\") <= 200"
+        },
+        "platform_admin_recordings_segments": {
+          "name": "platform_admin_recordings_segments",
+          "value": "\"commerce\".\"platform_admin_recordings\".\"segments\" between 0 and 200"
+        },
+        "platform_admin_recordings_bytes": {
+          "name": "platform_admin_recordings_bytes",
+          "value": "\"commerce\".\"platform_admin_recordings\".\"bytes\" between 0 and 4194304"
+        },
+        "platform_admin_recordings_counts": {
+          "name": "platform_admin_recordings_counts",
+          "value": "\"commerce\".\"platform_admin_recordings\".\"clicks\" >= 0 and \"commerce\".\"platform_admin_recordings\".\"dead_clicks\" >= 0 and \"commerce\".\"platform_admin_recordings\".\"rage_clicks\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.platform_admin_signal_choices": {
       "name": "platform_admin_signal_choices",
       "schema": "commerce",
@@ -75349,6 +75525,12 @@
           "notNull": true,
           "default": 0
         },
+        "deal_id": {
+          "name": "deal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -75409,6 +75591,28 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "projects_deal_idx": {
+          "name": "projects_deal_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "deal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"projects\".\"deal_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -79664,7 +79868,7 @@
       "checkConstraints": {
         "retention_rules_kind": {
           "name": "retention_rules_kind",
-          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings', 'contracts', 'form_responses', 'unanswered_questions')"
+          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings', 'contracts', 'form_responses', 'unanswered_questions', 'admin_recordings')"
         },
         "retention_rules_value": {
           "name": "retention_rules_value",

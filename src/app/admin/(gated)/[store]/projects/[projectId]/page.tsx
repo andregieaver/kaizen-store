@@ -8,7 +8,7 @@ import { ProjectCalendar, ProjectTimeline, type CalendarTask } from "@/component
 import { healthColour, projectStatusColour, StatusBarView, StatusPill, ViewSwitch } from "@/components/admin/projects/parts";
 import { ProjectBoard, type BoardCardView } from "@/components/admin/projects/project-board";
 import { ProjectLists, type ProjectListView } from "@/components/admin/projects/project-lists";
-import { ButtonLink, EmptyState, PageHeader } from "@/components/admin/ui";
+import { AdminLink, ButtonLink, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, adminDay } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -22,6 +22,8 @@ import { listChecklists } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
 
 import { createChecklistAction, projectsAction } from "../actions";
+import { dealsOn } from "@/lib/extensions";
+import { dealOfProject } from "@/server/projects-deals";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -43,7 +45,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const lang = adminLangOf(member.account.adminLocale);
   const w = PROJECTS_WORDS[lang];
   await ensureDefaultStatuses(store.id, w.defaults);
-  const [project, lists, team] = await Promise.all([projectDetail(store.id, projectId), listChecklists(store.id), teamOf(store.id)]);
+  const [project, lists, team, deal] = await Promise.all([
+    projectDetail(store.id, projectId),
+    listChecklists(store.id),
+    teamOf(store.id),
+    // The deal it was started from (D904 P8.3b): only while Deals are on, for people who may read customers.
+    dealsOn(store) && memberCan(member, "customers:read") ? dealOfProject(store.id, projectId) : Promise.resolve(null),
+  ]);
   if (!project) notFound();
   const query = await searchParams;
   const view = query.view === "board" || query.view === "calendar" || query.view === "timeline" ? query.view : "list";
@@ -142,6 +150,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           </StatusPill>,
           ...(project.targetDate ? [<span key="target">{fillWords(w.due, { date: adminDay(project.targetDate, "day", lang) })}</span>] : []),
           ...(project.statusReviewedAt ? [<span key="reviewed">{fillWords(w.project.reviewed, { date: adminDate(store, project.statusReviewedAt, "day", lang) })}</span>] : []),
+          ...(deal
+            ? [
+                <AdminLink key="deal" href={`${base}/deals/${deal.id}`} className="underline underline-offset-2" data-project-deal>
+                  {fillWords(w.sources.deal, { title: deal.title })}
+                </AdminLink>,
+              ]
+            : []),
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-3">

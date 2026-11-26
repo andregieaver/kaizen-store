@@ -20,5 +20,14 @@ export const projectSourcesNb: ProjectSourcesMessages = {
     conversation: "Følg opp samtalen med {label}",
   },
   added: "Oppgaven er lagt i {list}.",
+  deal: {
+    heading: "Prosjekter",
+    none: "Ingen prosjekt ennå.",
+    start: "Start et prosjekt",
+    hint: "Får avtalens navn og knyttes til den.",
+    from: "Start fra",
+    empty: "Et tomt prosjekt",
+    go: "Start prosjektet",
+  },
   openLists: "Se sjekklistene",
 };

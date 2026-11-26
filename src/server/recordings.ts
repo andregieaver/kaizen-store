@@ -104,6 +104,20 @@ export function stripMeta(body: SegmentBody): SegmentBody {
   };
 }
 
+/**
+ * A segment's body as the recorder sent it (gzipped when `z` is "1"), unpacked within `REC_UNPACKED_MAX_BYTES` and checked; null for
+ * anything else. Shared with the admin's own recordings (D895 phase 3b, `admin-recordings.ts`).
+ */
+export function readSegment(bytes: Uint8Array, zipped: "0" | "1"): SegmentBody | null {
+  try {
+    const json = zipped === "1" ? gunzipSync(bytes, { maxOutputLength: REC_UNPACKED_MAX_BYTES }).toString("utf8") : new TextDecoder().decode(bytes);
+    const checked = segmentBody.safeParse(JSON.parse(json));
+    return checked.success ? checked.data : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The plan's monthly limit for new recordings, asked at most once a minute per store and instance. */
 const limitMemo = new Map<string, { at: number; ok: boolean }>();
 async function underLimit(storeId: string, now: Date): Promise<boolean> {
@@ -164,21 +178,9 @@ export async function recordSegment(
   const files = filesOf(deps);
   if (!files) return 503;
 
-  let json: string;
-  try {
-    json = q.data.z === "1" ? gunzipSync(bytes, { maxOutputLength: REC_UNPACKED_MAX_BYTES }).toString("utf8") : new TextDecoder().decode(bytes);
-  } catch {
-    return 400;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    return 400;
-  }
-  const checked = segmentBody.safeParse(parsed);
-  if (!checked.success) return 400;
-  const body = stripMeta(checked.data);
+  const read = readSegment(bytes, q.data.z);
+  if (!read) return 400;
+  const body = stripMeta(read);
 
   // Every page in it is one heatmaps measure too, never the search page: the recorder should have paused, so nothing is kept.
   const pages: string[] = [];
@@ -240,7 +242,7 @@ export async function recordSegment(
 export const STORED = z.object({ id: col.uuid, store_id: col.uuid, sealed: col.bool, seqs: z.array(z.union([z.number(), z.string()]).transform(Number)) });
 
 /** Removes every file of recordings whose rows went: what the rows named, and whatever else is in their folders. */
-export async function removeFiles(files: RecordingFiles, rows: readonly z.output<typeof STORED>[]): Promise<void> {
+export async function removeFiles(files: RecordingFiles, rows: readonly { store_id: string; id: string; sealed: boolean; seqs: readonly number[] }[]): Promise<void> {
   const paths = new Set<string>();
   for (const row of rows) {
     for (const p of pathsOf({ storeId: row.store_id, id: row.id, sealed: row.sealed, seqs: row.seqs })) paths.add(p);

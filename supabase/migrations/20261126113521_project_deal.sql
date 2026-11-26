@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."projects" ADD COLUMN "deal_id" uuid;--> statement-breakpoint
+CREATE INDEX "projects_deal_idx" ON "commerce"."projects" USING btree ("store_id","deal_id") WHERE "commerce"."projects"."deal_id" is not null;

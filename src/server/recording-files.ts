@@ -31,8 +31,11 @@ export function alreadyThere(error: unknown): boolean {
   return e.statusCode === "409" || e.statusCode === 409 || e.status === 409 || (typeof e.message === "string" && /already exists|duplicate/i.test(e.message));
 }
 
-/** The bucket behind the secret key, or null when this server has none (no recording is then kept, and none removed). */
-export function recordingFiles(): RecordingFiles | null {
+/**
+ * The bucket behind the secret key, or null when this server has none (no recording is then kept, and none removed). The admin's own
+ * recordings (D895 phase 3b) pass `admin-recordings`.
+ */
+export function recordingFiles(bucketName: string = RECORDING_BUCKET): RecordingFiles | null {
   const key = process.env.SUPABASE_SECRET_KEY?.trim();
   if (!key || supabaseKeyKind(key) === "publishable") return null;
   let url: string;
@@ -41,7 +44,7 @@ export function recordingFiles(): RecordingFiles | null {
   } catch {
     return null;
   }
-  const bucket = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }).storage.from(RECORDING_BUCKET);
+  const bucket = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }).storage.from(bucketName);
   return {
     async upload(path, bytes) {
       const { error } = await bucket.upload(path, bytes, { contentType: "application/gzip", cacheControl: "0", upsert: false });

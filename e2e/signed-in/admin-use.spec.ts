@@ -1,3 +1,5 @@
+import { gunzipSync } from "node:zlib";
+
 import { expect, test } from "@playwright/test";
 
 import { testDb } from "../db";
@@ -86,6 +88,45 @@ test.describe("the owner", () => {
     } finally {
       await sql.end();
     }
+  });
+});
+
+test.describe("the owner's recordings", () => {
+  test.use({ storageState: OWNER.state });
+
+  test("record a measured screen with every word hidden, and send nothing from a screen never measured", async ({ page, baseURL }) => {
+    await page.context().addCookies([{ name: "kz_admin_use", value: "hr", url: new URL("/admin", baseURL).toString() }]);
+    // This tab is in the recorded half (the share is a coin toss otherwise).
+    await page.addInitScript(() => {
+      const now = Date.now();
+      sessionStorage.setItem("kaizen_replay_admin", JSON.stringify({ v: 1, id: crypto.randomUUID(), seq: 0, sampled: true, started: now - 10_000, lastInput: now, pages: 0, qualified: false }));
+    });
+    const sent: string[] = [];
+    await page.route("**/api/admin-use/rec**", async (route) => {
+      const bytes = route.request().postDataBuffer() ?? Buffer.alloc(0);
+      sent.push(route.request().url().includes("z=1") ? gunzipSync(bytes).toString("utf8") : bytes.toString("utf8"));
+      await route.fulfill({ status: 204 });
+    });
+    await page.goto(`/admin/${E2E_STORE}/products`);
+    await expect(page.getByRole("main")).toBeVisible();
+    // The recorder loads after the page; once it records the screen, a click is the interaction it waits for.
+    await expect.poll(async () => page.evaluate(() => JSON.parse(sessionStorage.getItem("kaizen_replay_admin") ?? "{}").pages), { timeout: 10_000 }).toBe(1);
+    await page.mouse.click(400, 300);
+    await expect.poll(() => sent.length, { timeout: 20_000 }).toBeGreaterThan(0);
+    const body = JSON.parse(sent[0]) as { meta: { pages: string[] }; events: unknown[] };
+    expect(body.meta.pages).toEqual(["s/products"]);
+    const text = JSON.stringify(body.events);
+    expect(text).toContain("•••");
+    // The screen's own words and the store's address are never sent, not even in a heading.
+    expect(text).not.toContain(E2E_STORE);
+    expect(text).not.toMatch(/"textContent":"[^"•\s][^"]*[a-z]{3}/i);
+
+    const before = sent.length;
+    await page.goto(`/admin/${E2E_STORE}/orders`);
+    await expect(page.getByRole("main")).toBeVisible();
+    await page.mouse.click(400, 300);
+    await page.waitForTimeout(6000);
+    for (const segment of sent.slice(before)) expect(segment).not.toContain("orders");
   });
 });
 

@@ -28,7 +28,7 @@ export const projectsEn = {
     "chart-6": "Tone 6",
   },
   /** Where a task came from (D904 P8.3a): a link back on its list. */
-  sources: { order: "Order {label}", return: "Return {label}", review: "Review by {label}", conversation: "Conversation with {label}", conversationUnnamed: "A conversation" },
+  sources: { order: "Order {label}", return: "Return {label}", review: "Review by {label}", conversation: "Conversation with {label}", conversationUnnamed: "A conversation", deal: "From the deal {title}" },
   problems: {
     forbidden: "Your role can't change projects and checklists.",
     not_found: "It is gone, or it belongs to another store. Reload the page.",

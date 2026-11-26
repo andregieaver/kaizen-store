@@ -34,7 +34,7 @@ The parts already exist; the market check joins them:
 | M3 | **Watching**: rivals' pages read again before they go old; a change is kept, a threat in the SWOT and an autopilot event, never an action. | Built, deployed at `afc199e` (26 November 2026): migration `20261125225113_whole_the_leader.sql`, advisors INFO only |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices and fees), cited and checked on their pages, beside `platform_pricing_facts` (D854). | Built but EU features, deployed at `9fbb82c` (26 November 2026): migration `20261125234508_friendly_lily_hollister.sql`, advisors INFO only |
 | M5a | **Rivals for every site**: rivals without a shop, and what changed on their sites, read from their own sitemaps (7.2). | Built, deployed at `4a5d1f7` (26 November 2026): migration `20261126083203_big_wild_child.sql`, advisors INFO only |
-| M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Built (26 November 2026): migration `20261126114052_lazy_paladin.sql` |
+| M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Built (26 November 2026): migration `20261126122344_daily_thor_girl.sql` |
 | M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Spec |
 | M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Built (26 November 2026): migration `20261126112637_absent_magma.sql` |
 | M5e | **Enquiries as the conversion**: forms, bookings and appointments per country where a store has no orders (7.6). | Spec |

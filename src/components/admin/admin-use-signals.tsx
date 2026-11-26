@@ -6,8 +6,8 @@ import { useEffect } from "react";
 import { ADMIN_USE_COOKIE } from "@/lib/admin-use-cookie";
 
 /**
- * Loads the admin heatmaps' collector (D895 phase 3b) only for a person whose browser says they allowed it (the choice cookie `h` or `hr`),
- * and tells it each screen as the person moves through the admin. Draws nothing; for everyone else it loads nothing at all.
+ * Loads the admin heatmaps' collector (D895 phase 3b) only for a person whose browser says they allowed it (the choice cookie `h`, or `hr`
+ * with recordings), and tells it each screen as the person moves through the admin. Draws nothing; for everyone else it loads nothing at all.
  */
 export function AdminUseSignals() {
   const pathname = usePathname();
@@ -22,7 +22,7 @@ export function AdminUseSignals() {
       return;
     }
     if (value !== "h" && value !== "hr") return;
-    void import("@/components/signals/admin-use-watch").then((m) => m.watchScreen(pathname)).catch(() => {});
+    void import("@/components/signals/admin-use-watch").then((m) => m.watchScreen(pathname, value === "hr")).catch(() => {});
   }, [pathname]);
   return null;
 }

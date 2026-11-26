@@ -5,6 +5,7 @@ import type { ProjectsOp } from "@/lib/projects-ops";
 import type { Membership } from "./auth";
 import * as projects from "./projects";
 import * as comments from "./projects-comments";
+import * as deals from "./projects-deals";
 import type { ProjectsResult } from "./projects-errors";
 import * as items from "./projects-items";
 import * as labels from "./projects-labels";
@@ -54,6 +55,8 @@ export async function runProjectsOp(
       return lists.reorderChecklists(member, op.ids);
     case "list.fold":
       return lists.setFold(member, op.id, op.sectionId, op.folded);
+    case "project.fromDeal":
+      return deals.startDealProject(member, op);
     case "item.addFrom":
       return sources.addSourceTask(member, op, context.followUps);
     case "item.add": {
