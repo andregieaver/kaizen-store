@@ -19,6 +19,7 @@ import {
   type PageChoice,
   type PagePost,
 } from "@/lib/facebook-pages";
+import { grantsPagePublish } from "@/lib/social-publish-grants";
 import { INSIGHTS_DAYS, INSIGHTS_KEPT_DAYS, INSIGHTS_POSTS_MAX, insightsDue } from "@/lib/social-insights";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
@@ -83,11 +84,11 @@ export function facebookStarted(cookie: string | undefined, params: URLSearchPar
   return { store, accountId };
 }
 
-/** One call to Facebook's Graph API: its JSON, or `FacebookError` with Facebook's own words (never a person's data). */
-async function graph(url: string): Promise<Record<string, unknown>> {
+/** One call to Facebook's Graph API: its JSON, or `FacebookError` with Facebook's own words (never a person's data). A post sends `init`. */
+export async function graph(url: string, init: RequestInit = {}, timeoutMs = TIMEOUT_MS): Promise<Record<string, unknown>> {
   let response: Response;
   try {
-    response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" });
+    response = await fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(timeoutMs), cache: "no-store" });
   } catch {
     throw new FacebookError("Facebook did not answer. Try again in a moment.");
   }
@@ -130,22 +131,25 @@ export async function connectFacebook(accountId: string, storeId: string, params
   );
   if (typeof long.access_token !== "string") throw new FacebookError("Facebook gave no lasting token.");
   const token = long.access_token;
-  const [pages, permissions] = await Promise.all([
+  const [pages, granted] = await Promise.all([
     graph(`${FACEBOOK_GRAPH}/me/accounts?${q({ fields: "id,name,access_token", limit: "50", access_token: token })}`).then(parsePages),
-    graph(`${FACEBOOK_GRAPH}/me/permissions?${q({ access_token: token })}`).then(grantsPageInsights),
+    graph(`${FACEBOOK_GRAPH}/me/permissions?${q({ access_token: token })}`),
   ]);
+  const permissions = grantsPageInsights(granted);
+  // Whether approved posts may be published to the Page (D870 S3.1).
+  const publish = grantsPagePublish(granted);
   if (pages.length === 0) throw new FacebookError("No Facebook Page was shared. Connect again and choose your shop's Page.");
   await db().execute(sql`
-    insert into commerce.facebook_pages (store_id, page_name, user_token_encrypted, choices, insights, connected_by)
-    values (${storeId}::uuid, '', ${encryptSecret(token, key)}, ${JSON.stringify(pages.map(({ id, name }) => ({ id, name })))}::jsonb, ${permissions}, ${accountId}::uuid)
+    insert into commerce.facebook_pages (store_id, page_name, user_token_encrypted, choices, insights, publish, connected_by)
+    values (${storeId}::uuid, '', ${encryptSecret(token, key)}, ${JSON.stringify(pages.map(({ id, name }) => ({ id, name })))}::jsonb, ${permissions}, ${publish}, ${accountId}::uuid)
     on conflict on constraint facebook_pages_store_key do update set page_id = null, page_name = '', page_token_encrypted = null,
-      user_token_encrypted = excluded.user_token_encrypted, choices = excluded.choices, insights = excluded.insights, fetched_at = null,
+      user_token_encrypted = excluded.user_token_encrypted, choices = excluded.choices, insights = excluded.insights, publish = excluded.publish, fetched_at = null,
       problem = null, connected_by = excluded.connected_by, updated_at = now()
   `);
   // The old Page's figures go with a new connection; the new Page's come with its first reading.
   await db().execute(sql`delete from commerce.social_post_insights where store_id = ${storeId}::uuid and channel = 'facebook'`);
   if (pages.length === 1) await keepPage(storeId, pages[0], key);
-  await audit(accountId, storeId, "store.facebook_connected", { pages: pages.length, insights: permissions });
+  await audit(accountId, storeId, "store.facebook_connected", { pages: pages.length, insights: permissions, publish });
   return { choose: pages.length === 1 ? [] : pages.map(({ id, name }) => ({ id, name })) };
 }
 

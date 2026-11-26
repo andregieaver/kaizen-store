@@ -2448,6 +2448,12 @@ const ALL_OWNER_TOOLS = [
     }),
   ),
   tool(
+    "publish_social_post",
+    "Publishes one approved social post now (D870 S3.1) to the store's Instagram account or Facebook Page, as it shows on Social posts: its picture (or its slideshow video as a Reel) and its words. Only a post a person approved, from social_report's ready_to_post, and only where the store's connection allows posting; the other channels are copied by hand. Needs the owner's approval.",
+    z.object({ post_id: z.uuid().describe("The post's id from social_report's ready_to_post.") }),
+    "public",
+  ),
+  tool(
     "issue_gift_card",
     "Issues a gift card by hand (a goodwill gesture, a prize) and emails it to the person it is for: its code goes only in that email and is never shown here or kept. In a currency the store sells in, the store's main one unless said; the store's expiry applies. A card is money the store owes until it is spent. Needs the owner's approval.",
     z.object({
@@ -2579,6 +2585,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return quoteToolSummary(name, input) ?? inputSummary(name, input);
     case "change_form":
       return changeFormSummary(input);
+    // A social post published (D870 S3.1): it goes out to the store's followers as the owner approved it on Social posts.
+    case "publish_social_post":
+      return "Publish the approved social post now, to its channel, exactly as it shows on Social posts.";
     // A rival's page read and kept (D900 M2): staff-only, nothing shoppers see changes.
     case "read_rival_offer":
       return `Read the product page ${text("page") || "given"} of the rival ${text("rival") || "named"} and keep its price${input.product ? `, compared with your product ${text("product")}` : ""}.`;

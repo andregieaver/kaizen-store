@@ -9,6 +9,7 @@ import { z } from "zod";
 import { db, readDb } from "@/db/client";
 import { authorizeUrl, keptPosts, parsePosts, postsDue, tokenDue, type InstagramPost } from "@/lib/instagram";
 import { grantsInsights } from "@/lib/social-insights";
+import { grantsPublish } from "@/lib/social-publish-grants";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 
@@ -121,6 +122,8 @@ export async function connectInstagram(accountId: string, storeId: string | null
   if (typeof short.access_token !== "string") throw new InstagramError("Instagram gave no token.");
   // Whether the owner granted the posts' figures too (D870 S1.2): the exchange names the permissions the token carries.
   const insights = grantsInsights(short.permissions);
+  // And publishing (D870 S3.1).
+  const publish = grantsPublish(short.permissions);
   const long = await call(`${GRAPH}/access_token?${new URLSearchParams({ grant_type: "ig_exchange_token", client_secret: app.appSecret, access_token: short.access_token })}`);
   if (typeof long.access_token !== "string") throw new InstagramError("Instagram gave no lasting token.");
   const token = long.access_token;
@@ -131,14 +134,14 @@ export async function connectInstagram(accountId: string, storeId: string | null
   if (!/^[0-9]{1,40}$/.test(userId) || !username) throw new InstagramError("Instagram did not say which account this is.");
   const posts = await readPosts(token);
   await db().execute(sql`
-    insert into commerce.instagram_accounts (store_id, ig_user_id, username, token_encrypted, token_expires_at, posts, posts_fetched_at, problem, connected_by, insights)
-    values (${storeId}::uuid, ${userId}, ${username}, ${encryptSecret(token, key)}, ${expiresAt.toISOString()}, ${JSON.stringify(posts)}::jsonb, now(), null, ${accountId}::uuid, ${insights})
+    insert into commerce.instagram_accounts (store_id, ig_user_id, username, token_encrypted, token_expires_at, posts, posts_fetched_at, problem, connected_by, insights, publish)
+    values (${storeId}::uuid, ${userId}, ${username}, ${encryptSecret(token, key)}, ${expiresAt.toISOString()}, ${JSON.stringify(posts)}::jsonb, now(), null, ${accountId}::uuid, ${insights}, ${publish})
     on conflict on constraint instagram_accounts_store_key do update set ig_user_id = excluded.ig_user_id, username = excluded.username,
       token_encrypted = excluded.token_encrypted, token_expires_at = excluded.token_expires_at, posts = excluded.posts,
       posts_fetched_at = excluded.posts_fetched_at, problem = null, connected_by = excluded.connected_by,
-      insights = excluded.insights, insights_fetched_at = null, insights_problem = null, updated_at = now()
+      insights = excluded.insights, insights_fetched_at = null, insights_problem = null, publish = excluded.publish, updated_at = now()
   `);
-  await audit(accountId, storeId, storeId ? "store.instagram_connected" : "platform.instagram_connected", { username, posts: posts.length, insights });
+  await audit(accountId, storeId, storeId ? "store.instagram_connected" : "platform.instagram_connected", { username, posts: posts.length, insights, publish });
   refreshTag(instagramTag(storeId));
   return { username };
 }

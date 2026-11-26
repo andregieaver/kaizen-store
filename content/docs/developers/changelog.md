@@ -16,6 +16,12 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.68 — 2026-11-26
+
+The MCP tool `publish_social_post` publishes one approved social post (D870 S3.1) to the store's Instagram account or Facebook Page, as it
+shows on Social posts: its picture, or its slideshow video as a Reel. It needs the owner's approval, and only where the store's connection
+allows posting. `social_report` gains `ready_to_post`: the approved posts not yet published, each with its id, channel and planned day.
+
 ## 1.67 — 2026-11-26
 
 Three MCP tools for a store with Projects (D904 P8.3c): `projects_overview` reads its open projects, its open checklists and its open tasks

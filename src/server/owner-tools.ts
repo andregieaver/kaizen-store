@@ -1,6 +1,11 @@
 import "server-only";
 
-import type { socialPlanTool as SocialPlanTool, socialReportTool as SocialReportTool, writeSocialPostsTool as WriteSocialPostsTool } from "./social-tools";
+import type {
+  publishSocialPostTool as PublishSocialPostTool,
+  socialPlanTool as SocialPlanTool,
+  socialReportTool as SocialReportTool,
+  writeSocialPostsTool as WriteSocialPostsTool,
+} from "./social-tools";
 
 import type { shopifyMoveTool as ShopifyMoveTool } from "./shopify-move-tool";
 import type { listRivalsTool as ListRivalsTool, marketCheckTool as MarketCheckTool, readRivalOfferTool as ReadRivalOfferTool } from "./market-check-tool";
@@ -2619,6 +2624,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   social_report: async (...args: Parameters<typeof SocialReportTool>) => (await import("./social-tools")).socialReportTool(...args),
   social_plan: async (...args: Parameters<typeof SocialPlanTool>) => (await import("./social-tools")).socialPlanTool(...args),
   write_social_posts: async (...args: Parameters<typeof WriteSocialPostsTool>) => (await import("./social-tools")).writeSocialPostsTool(...args),
+  publish_social_post: async (...args: Parameters<typeof PublishSocialPostTool>) => (await import("./social-tools")).publishSocialPostTool(...args),
   start_flow: startFlowTool,
   create_flow: createFlowTool,
   change_flow: changeFlowTool,

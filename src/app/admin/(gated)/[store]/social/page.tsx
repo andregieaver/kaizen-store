@@ -18,6 +18,7 @@ import { todayIn } from "@/lib/analytics-period";
 import { aiAbilities, aiFor } from "@/server/ai";
 import { canvaForField } from "@/server/canva";
 import { calendarOf } from "@/server/social-calendar";
+import { publishTargets } from "@/server/social-publish";
 import { facebookAppOn, facebookView } from "@/server/facebook-pages";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { mainRecommendation } from "@/lib/social-advice";
@@ -65,7 +66,7 @@ export default async function SocialPostsPage({
     canvaForField(`/admin/${store.slug}/social/canva`, store.slug, "marketing:write"),
   ]);
   // The adviser's two-week plan with the drafts written for its days (S2.4).
-  const weeks = await calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []);
+  const [weeks, publishTo] = await Promise.all([calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []), publishTargets(store)]);
   const titles = Object.fromEntries([
     ...products.map((p) => [p.id, p.title]),
     ...[...facts.push, ...facts.newProducts, ...(advice ? [...advice.facts.push, ...advice.facts.newProducts] : [])].map((p) => [p.id, p.title]),
@@ -93,6 +94,7 @@ export default async function SocialPostsPage({
         mayWrite={memberCan(member, "marketing:write")}
         hasAi={Boolean(ai?.textModel)}
         makesPictures={Boolean(abilities?.pictures)}
+        publishTo={publishTo}
         dateLocale={ADMIN_LANG_FACTS[lang].locale}
         words={w.calendar}
       />

@@ -130,7 +130,7 @@ export function captionText(caption: string): string {
 
 /** Where the owner is sent to connect (Instagram Login), asking only to read the account's own profile and posts. */
 export function authorizeUrl(appId: string, redirectUri: string, state: string): string {
-  const params = new URLSearchParams({ client_id: appId, redirect_uri: redirectUri, response_type: "code", scope: "instagram_business_basic,instagram_business_manage_insights", state });
+  const params = new URLSearchParams({ client_id: appId, redirect_uri: redirectUri, response_type: "code", scope: "instagram_business_basic,instagram_business_manage_insights,instagram_business_content_publish", state });
   return `https://www.instagram.com/oauth/authorize?${params}`;
 }
 

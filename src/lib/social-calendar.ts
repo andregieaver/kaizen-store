@@ -26,6 +26,9 @@ export type CalendarDraft = {
   scene?: { on: boolean; tries: number };
   /** Its slideshow video's address in the library (S2.5), if one was made. */
   video?: string | null;
+  /** Published (S3.1): its address on the platform (null when Meta gave none); absent while not. A refusal's words, in `publishProblem`. */
+  published?: { url: string | null } | null;
+  publishProblem?: string | null;
 };
 
 /** One planned post: the adviser's idea (or none, for a draft written straight onto a day) and its draft, if written. */

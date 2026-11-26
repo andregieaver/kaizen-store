@@ -11977,6 +11977,8 @@ export const instagramAccounts = commerce.table(
     insightsFetchedAt: timestamp("insights_fetched_at", { withTimezone: true }),
     /** What went wrong reading the figures, in the owner's words; null when it went well. */
     insightsProblem: text("insights_problem"),
+    /** The token carries `instagram_business_content_publish` (D870 S3.1): approved posts may be published to the account. */
+    publish: boolean("publish").notNull().default(false),
     connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -12015,6 +12017,8 @@ export const facebookPages = commerce
       choices: jsonb("choices").notNull().default(sql`'[]'::jsonb`),
       /** The token carries `read_insights`: reach and views are read, not only reactions, comments and shares. */
       insights: boolean("insights").notNull().default(false),
+      /** The person granted `pages_manage_posts` (D870 S3.1): approved posts may be published to the Page. */
+      publish: boolean("publish").notNull().default(false),
       fetchedAt: timestamp("fetched_at", { withTimezone: true }),
       /** What went wrong at the last reading, in Facebook's words; null when it went well. */
       problem: text("problem"),
@@ -18916,6 +18920,17 @@ export const socialPosts = commerce
       sceneTries: smallint("scene_tries").notNull().default(0),
       /** The post's slideshow video (D870 S2.5): made in the owner's browser from its pictures, kept in the library for Reels and TikTok. */
       videoMediaId: uuid("video_media_id").references(() => media.id, { onDelete: "set null" }),
+      /**
+       * Published (D870 S3.1): when and by whom, the platform's id for the post and its address there. Only an approved post is
+       * published, by a person's press or a yes to the AI manager's request; a refusal is kept in `publish_problem`, in the platform's words.
+       */
+      publishedAt: timestamp("published_at", { withTimezone: true }),
+      publishedBy: uuid("published_by").references(() => accounts.id, { onDelete: "set null" }),
+      publishedId: text("published_id"),
+      publishedUrl: text("published_url"),
+      publishProblem: text("publish_problem"),
+      /** A publish under way claims the post (D870 S3.1), so a second press cannot publish it twice; a claim older than five minutes lapses. */
+      publishStartedAt: timestamp("publish_started_at", { withTimezone: true }),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },
@@ -18924,6 +18939,7 @@ export const socialPosts = commerce
       index("social_posts_planned_idx").on(t.storeId, t.plannedFor),
       index("social_posts_scene_idx").on(t.sceneMediaId),
       index("social_posts_video_idx").on(t.videoMediaId),
+      index("social_posts_published_by_idx").on(t.publishedBy),
       index("social_posts_approved_by_idx").on(t.approvedBy),
       uniqueIndex("social_posts_ref_idx").on(t.storeId, t.ref, t.channel),
       index("social_posts_list_idx").on(t.storeId, t.createdAt),
@@ -18936,6 +18952,10 @@ export const socialPosts = commerce
       check(
         "social_posts_check",
         sql`${t.checkProblems} <@ array['unreadable', 'wrong_subject', 'cut_off', 'off_brand']::text[] and char_length(${t.checkNote}) <= 300`,
+      ),
+      check(
+        "social_posts_published",
+        sql`(${t.publishedAt} is null or (${t.publishedId} is not null and ${t.approvedAt} is not null)) and (${t.publishProblem} is null or char_length(${t.publishProblem}) <= 300) and (${t.publishedUrl} is null or char_length(${t.publishedUrl}) <= 300)`,
       ),
       check(
         "social_posts_texts",

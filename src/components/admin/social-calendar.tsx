@@ -33,6 +33,7 @@ export function SocialCalendar({
   mayWrite,
   hasAi,
   makesPictures,
+  publishTo,
   dateLocale,
   words: w,
 }: {
@@ -44,6 +45,8 @@ export function SocialCalendar({
   hasAi: boolean;
   /** The store's AI has a picture model, so a post can have a made scene (S2.1). */
   makesPictures: boolean;
+  /** The channels whose connection allows publishing from here (S3.1). */
+  publishTo: Partial<Record<string, boolean>>;
   dateLocale: string;
   words: SocialMessages["calendar"];
 }) {
@@ -81,6 +84,10 @@ export function SocialCalendar({
   const scene = (id: string) => {
     setMessage({ tone: "ok", text: w.makingScene });
     run(`scene-${id}`, [() => postJson(`${base}/calendar`, { do: "scene", id })]);
+  };
+  const publish = (id: string) => {
+    setMessage({ tone: "ok", text: w.posting });
+    run(`publish-${id}`, [() => postJson(`${base}/calendar`, { do: "publish", id })]);
   };
   const drawn = (id: string) => run(`drawn-${id}`, [() => postJson(`${base}/calendar`, { do: "no_scene", id })]);
   /** The slideshow (S2.5): made in this browser from the post's pictures, uploaded to the library, kept on the post. */
@@ -185,7 +192,19 @@ export function SocialCalendar({
                               {it.draft.approved ? w.approved : w.draft}
                               {it.draft.scene?.on ? ` · ${w.sceneUsed}` : ""}
                               {it.draft.video ? ` · ${w.videoMade}` : ""}
+                              {it.draft.published ? ` · ${w.posted}` : ""}
                             </span>
+                            {it.draft.published?.url && (
+                              <a className="text-caption underline" href={it.draft.published.url} target="_blank" rel="noopener noreferrer">
+                                {w.viewPost}
+                              </a>
+                            )}
+                            {!it.draft.published && it.draft.publishProblem && (
+                              <p className="text-caption text-danger-text">{fillWords(w.postFailed, { problem: it.draft.publishProblem })}</p>
+                            )}
+                            {it.draft.approved && !it.draft.published && (it.channel === "instagram" || it.channel === "facebook") && !publishTo[it.channel] && (
+                              <span className="text-caption text-ink-2">{fillWords(w.connectToPost, { channel: CHANNEL_SPECS[it.channel].label })}</span>
+                            )}
                             {makesPictures && !it.draft.scene?.on && (it.draft.scene?.tries ?? 0) >= SCENE_TRIES_MAX && <span className="text-caption text-ink-2">{w.sceneTriesUsed}</span>}
                             {it.draft.check ? (
                               it.draft.check.problems.length > 0 ? (
@@ -238,7 +257,12 @@ export function SocialCalendar({
                               {w.checkPicture}
                             </button>
                           ) : null}
-                          {it.draft && makesPictures && (it.draft.scene?.tries ?? 0) < SCENE_TRIES_MAX ? (
+                          {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (
+                            <button type="button" className={primary} disabled={pending} onClick={() => publish(it.draft!.id)}>
+                              {w.postNow}
+                            </button>
+                          )}
+                          {it.draft && !it.draft.published && makesPictures && (it.draft.scene?.tries ?? 0) < SCENE_TRIES_MAX ? (
                             <button type="button" className={secondary} disabled={pending} onClick={() => scene(it.draft!.id)}>
                               {it.draft.scene?.on ? w.makeSceneAgain : w.makeScene}
                             </button>
@@ -263,7 +287,7 @@ export function SocialCalendar({
                               {w.approve}
                             </button>
                           )}
-                          {it.draft?.approved && (
+                          {it.draft?.approved && !it.draft.published && (
                             <button type="button" className={secondary} disabled={pending} onClick={() => approve([it.draft!.id], `back-${it.draft!.id}`, false)}>
                               {w.unapprove}
                             </button>

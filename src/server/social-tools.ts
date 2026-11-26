@@ -9,6 +9,11 @@ import { OwnerToolError } from "./owner-tool-error";
 import type { PermissionHolder } from "@/lib/permissions";
 import { latestAdvice, writeSocialAdvice } from "./social-advice";
 import { writeSocialPosts } from "./social-posts";
+import { publishSocialPost } from "./social-publish";
+import { siteUrl } from "@/lib/site";
+import { sql } from "drizzle-orm";
+import { z } from "zod";
+import { col, typedRows } from "./typed-rows";
 import type { Store } from "./stores";
 
 /**
@@ -80,10 +85,21 @@ const adviceOf = (advice: Advice) => ({
   planned_posts: advice.calendar.map((s) => ({ day: s.day, channel: s.channel, product_id: s.productId, idea: s.idea })),
 });
 
+/** The approved posts not yet published (S3.1), for publish_social_post: their ids, channels and days, and their words' start. */
+async function readyToPost(storeId: string) {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, channel: col.text, day: col.textOrNull, caption: col.text }),
+    sql`select id, channel, planned_for::text as day, caption from commerce.social_posts
+      where store_id = ${storeId}::uuid and approved_at is not null and published_at is null and channel in ('instagram', 'facebook')
+      order by planned_for nulls last, created_at limit 10`,
+  );
+  return rows.map((r) => ({ post_id: r.id, channel: r.channel, planned_for: r.day, begins: r.caption.slice(0, 80) }));
+}
+
 export async function socialReportTool({ store }: Ctx) {
-  const kept = await latestAdvice(store.id);
-  if (!kept) return { advice: null, say: "No advice is kept yet. Offer to ask the adviser (social_plan).", link: link(store) };
-  return { written: kept.createdAt, ...adviceOf(kept.advice), figures: figuresOf(kept.facts), link: link(store) };
+  const [kept, ready] = await Promise.all([latestAdvice(store.id), readyToPost(store.id)]);
+  if (!kept) return { advice: null, ready_to_post: ready, say: "No advice is kept yet. Offer to ask the adviser (social_plan).", link: link(store) };
+  return { written: kept.createdAt, ...adviceOf(kept.advice), figures: figuresOf(kept.facts), ready_to_post: ready, link: link(store) };
 }
 
 export async function socialPlanTool(ctx: Ctx) {
@@ -99,4 +115,11 @@ export async function writeSocialPostsTool(ctx: Ctx, input: OwnerToolInput<"writ
     done: `Written for ${result.posts.map((p) => p.channel).join(", ")}, kept on the Social posts page to copy into each channel. Nothing is posted.`,
     link: link(ctx.store),
   };
+}
+
+/** Publishes an approved post (S3.1) once the owner said yes to the request: the calendar's own *Post now*. */
+export async function publishSocialPostTool(ctx: Ctx, input: OwnerToolInput<"publish_social_post">) {
+  const result = await publishSocialPost(memberOf(ctx), input.post_id, siteUrl());
+  if (!result.ok) throw new OwnerToolError(result.problem);
+  return { done: "Published.", ...(result.url ? { url: result.url } : {}), link: link(ctx.store) };
 }

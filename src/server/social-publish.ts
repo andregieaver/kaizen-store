@@ -1,0 +1,215 @@
+import "server-only";
+
+import { sql } from "drizzle-orm";
+import { z } from "zod";
+
+import { db } from "@/db/client";
+import { decryptSecret } from "@/lib/secret-box";
+import { FACEBOOK_GRAPH } from "@/lib/facebook-pages";
+import { POST_CHANNELS } from "@/lib/social-posts";
+import {
+  CONTAINER_CHECKS,
+  CONTAINER_WAIT_MS,
+  containerState,
+  idFrom,
+  isPublishChannel,
+  permalinkFrom,
+  publishedText,
+  publishKind,
+  type PublishChannel,
+} from "@/lib/social-publish";
+
+import { audit, type Membership } from "./auth";
+import { encryptionKey } from "./encryption-key";
+import { FacebookError, graph } from "./facebook-pages";
+import { call, GRAPH, InstagramError } from "./instagram";
+import { loadSharp } from "./sharp-load";
+import { log } from "./log";
+import { storePicture } from "./media-library";
+import { memberCan, NO_ACCESS } from "./permissions";
+import { socialPicture } from "./social-pictures";
+import { col, typedRows } from "./typed-rows";
+
+/**
+ * Publishing an approved social post (D870 S3.1, the pure parts in `src/lib/social-publish.ts`): to the store's Instagram account or Facebook
+ * Page, with the token kept for it, once a person presses *Post now* or says yes to the AI manager's request. The picture goes up as a JPEG
+ * kept in the store's library (Meta fetches it by its public address); the slideshow video, where the post has one, as a Reel or a Page
+ * video. The post is claimed first, so it is never published twice; Meta's id and address are kept, or its refusal in its own words. The
+ * only writer of `published_*`, `publish_problem` and `publish_started_at`.
+ */
+
+const POST = z.object({
+  id: col.uuid,
+  channel: z.enum(POST_CHANNELS),
+  ref: col.text,
+  title: col.text,
+  caption: col.text,
+  hashtags: z.array(z.string()),
+  link: col.text,
+  price_line: col.textOrNull,
+  approved: col.bool,
+  published: col.bool,
+  video: col.textOrNull,
+});
+
+type Post = z.infer<typeof POST>;
+type Target = { kind: "instagram"; userId: string; token: string } | { kind: "facebook"; pageId: string; token: string };
+
+export type PublishDeps = {
+  /** Meta's API, for a test: Instagram's and Facebook's callers. */
+  instagram?: typeof call;
+  facebook?: typeof graph;
+  /** The picture's public address, for a test. */
+  picture?: (member: Membership, post: Post, origin: string) => Promise<string | null>;
+  wait?: (ms: number) => Promise<void>;
+};
+
+export type PublishResult = { ok: true; url: string | null } | { ok: false; problem: string };
+
+/** The account a store publishes to on a channel, with its token; Kaizena Flow's own store uses the platform's Instagram while it has none. */
+async function targetOf(store: Membership["store"], channel: PublishChannel): Promise<Target | { problem: string }> {
+  const key = encryptionKey();
+  if (!key) return { problem: "Publishing is not set up here." };
+  if (channel === "instagram") {
+    const rows = await typedRows(
+      z.object({ store_id: col.uuid.nullable(), user: col.text, token: col.text, publish: col.bool, live: col.bool }),
+      sql`select store_id, ig_user_id as user, token_encrypted as token, publish, token_expires_at > now() as live from commerce.instagram_accounts
+        where store_id = ${store.id}::uuid ${store.house ? sql`or store_id is null` : sql``} order by store_id nulls last limit 1`,
+    );
+    const account = rows[0];
+    if (!account) return { problem: "Connect the store's Instagram account first." };
+    if (!account.live) return { problem: "The Instagram connection has run out. Connect it again." };
+    if (!account.publish) return { problem: "Connect Instagram again and allow publishing, so Kaizena Flow may post for you." };
+    return { kind: "instagram", userId: account.user, token: decryptSecret(account.token, key) };
+  }
+  const [page] = await typedRows(
+    z.object({ page_id: col.textOrNull, token: col.textOrNull, publish: col.bool }),
+    sql`select page_id, page_token_encrypted as token, publish from commerce.facebook_pages where store_id = ${store.id}::uuid`,
+  );
+  if (!page?.page_id || !page.token) return { problem: "Connect the store's Facebook Page first." };
+  if (!page.publish) return { problem: "Connect Facebook again and allow posting to the Page, so Kaizena Flow may post for you." };
+  return { kind: "facebook", pageId: page.page_id, token: decryptSecret(page.token, key) };
+}
+
+/** The post's picture as Meta will fetch it: drawn (or its Canva copy), as a JPEG kept in the store's library; its public address. */
+async function publicPicture(member: Membership, post: Post, origin: string): Promise<string | null> {
+  const drawn = await socialPicture(member, post.id, origin);
+  if (!drawn.ok) return null;
+  const sharp = await loadSharp();
+  const bytes = Buffer.from(await drawn.response.arrayBuffer());
+  // Instagram takes JPEG only; a quality that keeps words crisp.
+  const jpeg = await sharp(bytes).flatten({ background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer();
+  const thumb = await sharp(jpeg).resize({ width: 480 }).jpeg({ quality: 80 }).toBuffer();
+  const name = `post-${post.ref}-${post.channel}.jpg`;
+  const stored = await storePicture(
+    { storeId: member.store.id, accountId: member.account.id },
+    new File([new Uint8Array(jpeg)], name, { type: "image/jpeg" }),
+    new File([new Uint8Array(thumb)], name.replace(/\.jpg$/, "-480.jpg"), { type: "image/jpeg" }),
+    { fileName: name },
+  );
+  return stored.ok ? stored.url : null;
+}
+
+const pause = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
+const q = (params: Record<string, string>) => new URLSearchParams(params).toString();
+const form = (params: Record<string, string>): RequestInit => ({ method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) });
+
+/** Publishes to Instagram: a container for the picture (or the video as a Reel), waited on while it is processed, then published. */
+async function toInstagram(target: Extract<Target, { kind: "instagram" }>, media: { kind: "picture" | "video"; url: string }, text: string, deps: PublishDeps) {
+  const ig = deps.instagram ?? call;
+  const container = idFrom(
+    await ig(
+      `${GRAPH}/v24.0/${target.userId}/media`,
+      form(media.kind === "video" ? { media_type: "REELS", video_url: media.url, caption: text, access_token: target.token } : { image_url: media.url, caption: text, access_token: target.token }),
+    ),
+  );
+  if (!container) throw new InstagramError("Instagram did not take the post.");
+  for (let i = 0; ; i++) {
+    const state = containerState(await ig(`${GRAPH}/v24.0/${container}?${q({ fields: "status_code", access_token: target.token })}`));
+    if (state === "ready") break;
+    if (state === "failed") throw new InstagramError("Instagram could not process the post's picture or video.");
+    if (i >= CONTAINER_CHECKS) throw new InstagramError("Instagram took too long to process the video. Try again in a moment.");
+    await (deps.wait ?? pause)(CONTAINER_WAIT_MS);
+  }
+  const mediaId = idFrom(await ig(`${GRAPH}/v24.0/${target.userId}/media_publish`, form({ creation_id: container, access_token: target.token })));
+  if (!mediaId) throw new InstagramError("Instagram did not publish the post.");
+  const url = permalinkFrom(await ig(`${GRAPH}/v24.0/${mediaId}?${q({ fields: "permalink", access_token: target.token })}`).catch(() => null));
+  return { id: mediaId, url };
+}
+
+/** Publishes to the Page: a photo with the words as its message, or the video with them as its description. */
+async function toFacebook(target: Extract<Target, { kind: "facebook" }>, media: { kind: "picture" | "video"; url: string }, text: string, deps: PublishDeps) {
+  const fb = deps.facebook ?? graph;
+  const made =
+    media.kind === "video"
+      ? await fb(`${FACEBOOK_GRAPH}/${target.pageId}/videos`, form({ file_url: media.url, description: text, access_token: target.token }), 60_000)
+      : await fb(`${FACEBOOK_GRAPH}/${target.pageId}/photos`, form({ url: media.url, message: text, published: "true", access_token: target.token }), 60_000);
+  const id = idFrom(made, "post_id") ?? idFrom(made);
+  if (!id) throw new FacebookError("Facebook did not publish the post.");
+  const url = permalinkFrom(await fb(`${FACEBOOK_GRAPH}/${id}?${q({ fields: "permalink_url", access_token: target.token })}`).catch(() => null));
+  return { id, url };
+}
+
+/**
+ * Publishes one of the store's approved posts now, to its channel (Instagram or Facebook). Refused without the marketing permission, for a
+ * post not approved, already published or being published, for a channel Kaizena Flow does not post to, and without a connection that
+ * allows publishing. Audited with who published it.
+ */
+export async function publishSocialPost(member: Membership, postId: unknown, origin: string, deps: PublishDeps = {}): Promise<PublishResult> {
+  if (!memberCan(member, "marketing:write")) return { ok: false, problem: NO_ACCESS };
+  const id = z.uuid().safeParse(postId);
+  if (!id.success) return { ok: false, problem: "Choose a post." };
+  const { store } = member;
+  const [post] = await typedRows(
+    POST,
+    sql`select p.id, p.channel, p.ref, p.title, p.caption, p.hashtags, p.link, p.price_line, p.approved_at is not null as approved,
+        p.published_at is not null as published, v.url as video
+      from commerce.social_posts p left join commerce.media v on v.id = p.video_media_id and v.store_id = p.store_id and v.kind = 'video'
+      where p.store_id = ${store.id}::uuid and p.id = ${id.data}::uuid`,
+  );
+  if (!post) return { ok: false, problem: "That post is not this store's." };
+  if (!isPublishChannel(post.channel)) return { ok: false, problem: "Kaizena Flow does not post to this channel yet: copy the post into it." };
+  if (post.published) return { ok: false, problem: "This post is published already." };
+  if (!post.approved) return { ok: false, problem: "Approve the post before it is published." };
+  const target = await targetOf(store, post.channel);
+  if ("problem" in target) return { ok: false, problem: target.problem };
+
+  // The claim: one publish at a time, and never one for a post that is out already.
+  const claimed = await db().execute(sql`
+    update commerce.social_posts set publish_started_at = now(), publish_problem = null
+    where store_id = ${store.id}::uuid and id = ${post.id}::uuid and published_at is null and approved_at is not null
+      and (publish_started_at is null or publish_started_at < now() - interval '5 minutes')
+    returning id`);
+  if (claimed.length === 0) return { ok: false, problem: "This post is being published already." };
+
+  try {
+    const kind = publishKind(Boolean(post.video));
+    const url = kind === "video" ? post.video : await (deps.picture ?? publicPicture)(member, post, origin);
+    if (!url) throw new InstagramError("The post's picture could not be made ready to publish.");
+    const text = publishedText({ channel: post.channel, title: post.title, caption: post.caption, hashtags: post.hashtags, link: post.link, priceLine: post.price_line });
+    const done = target.kind === "instagram" ? await toInstagram(target, { kind, url }, text, deps) : await toFacebook(target, { kind, url }, text, deps);
+    await db().execute(sql`
+      update commerce.social_posts set published_at = now(), published_by = ${member.account.id}::uuid, published_id = ${done.id},
+        published_url = ${done.url}, publish_problem = null, publish_started_at = null
+      where store_id = ${store.id}::uuid and id = ${post.id}::uuid`);
+    await audit(member.account.id, store.id, "store.social_post_published", { channel: post.channel, kind });
+    return { ok: true, url: done.url };
+  } catch (error) {
+    const said = error instanceof InstagramError || error instanceof FacebookError;
+    if (!said) log("error", "social.publish_failed", { post: post.id, channel: post.channel }, error);
+    const problem = said ? error.message.slice(0, 300) : "The post could not be published. Try again.";
+    await db().execute(sql`update commerce.social_posts set publish_problem = ${problem}, publish_started_at = null where store_id = ${store.id}::uuid and id = ${post.id}::uuid`);
+    return { ok: false, problem };
+  }
+}
+
+/** Where the store may publish from the calendar now: each channel whose connection allows it (Kaizena Flow's store: the platform's Instagram too). */
+export async function publishTargets(store: Membership["store"]): Promise<Record<PublishChannel, boolean>> {
+  const [row] = await typedRows(
+    z.object({ instagram: col.bool, facebook: col.bool }),
+    sql`select
+      exists (select 1 from commerce.instagram_accounts where (store_id = ${store.id}::uuid ${store.house ? sql`or store_id is null` : sql``}) and publish and token_expires_at > now()) as instagram,
+      exists (select 1 from commerce.facebook_pages where store_id = ${store.id}::uuid and publish and page_id is not null) as facebook`,
+  );
+  return { instagram: row?.instagram ?? false, facebook: row?.facebook ?? false };
+}

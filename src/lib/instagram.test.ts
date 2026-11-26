@@ -60,10 +60,10 @@ describe("hashtags", () => {
 });
 
 describe("connecting and upkeep", () => {
-  it("asks Instagram for the one scope that reads the account's own posts", () => {
+  it("asks Instagram to read the account's own posts and their figures, and to publish approved posts (D870 S3.1)", () => {
     const url = new URL(authorizeUrl("123", "https://kaizenaflow.com/api/integrations/instagram/callback", "s"));
     expect(url.host).toBe("www.instagram.com");
-    expect(url.searchParams.get("scope")).toBe("instagram_business_basic,instagram_business_manage_insights");
+    expect(url.searchParams.get("scope")).toBe("instagram_business_basic,instagram_business_manage_insights,instagram_business_content_publish");
     expect(url.searchParams.get("state")).toBe("s");
   });
 

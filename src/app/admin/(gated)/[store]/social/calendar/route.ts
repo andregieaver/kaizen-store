@@ -5,6 +5,7 @@ import { checkPermission } from "@/server/permissions";
 import { approveSocialPosts, editSocialPost } from "@/server/social-calendar";
 import { dropSocialScene, makeSocialScene } from "@/server/social-scenes";
 import { keepSlideshow, startSlideshowUpload } from "@/server/social-slideshow";
+import { publishSocialPost } from "@/server/social-publish";
 import { checkSocialPosts } from "@/server/social-vision";
 
 /**
@@ -31,5 +32,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   const extra = body as { size?: unknown; path?: unknown } | null;
   if (body?.do === "video_start") return NextResponse.json(await startSlideshowUpload(member, post, extra?.size));
   if (body?.do === "video_keep") return NextResponse.json(await keepSlideshow(member, post, extra?.path));
+  // Publishing an approved post now (S3.1): a person's press is the yes.
+  if (body?.do === "publish") return NextResponse.json(await publishSocialPost(member, post, request.nextUrl.origin));
   return NextResponse.json({ ok: false, problem: "Unknown request." }, { status: 400 });
 }

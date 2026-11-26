@@ -152,9 +152,16 @@ post is shown with its reason and left out of *Approve the week*, and *Check the
 - **The loop closes**: each post's figures flow back into phase 1's facts; what sold shapes the next plan. A/B tests of captions and
   pictures are a later step.
 
+S3.1 as built: an approved post on the calendar has *Post now* where the store's connection allows posting (`publishSocialPost()`,
+`src/server/social-publish.ts`): to Instagram as a media container then `media_publish` (its slideshow as a Reel), to the Facebook Page as a
+photo or video. The picture goes up as a JPEG kept in the library. The post is claimed first so it never goes out twice; Meta's id and
+address are kept, or its refusal in its words; a published post's words and yes no longer change. The AI manager's `publish_social_post`
+asks the owner (the public gate, never automatic until S3.3). Instagram now asks `instagram_business_content_publish` and Facebook's
+configuration `pages_manage_posts`: an owner connects again to allow posting. Other businesses' accounts need Meta's App Review for both.
+
 | Step | What |
 |---|---|
-| S3.1 | Publishing to Instagram and Facebook, approval per post |
+| S3.1 | Publishing to Instagram and Facebook, approval per post. **Done 2026-11-26** (below) |
 | S3.2 | The queue, retries, limits and token refresh |
 | S3.3 | The toggle and the rules, through `autonomyDecision()` |
 | S3.4 | Pinterest |

@@ -634,6 +634,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`startSlideshowUpload()`, the calendar route's `video_start`, storage limits as any video) and kept by `keepSlideshow()`
   (`video_keep`: the library row for that path, the store's own only), the only writer of `video_media_id`.
 
+## Publishing an approved social post (D870 S3.1, `src/lib/social-publish.ts` pure, `src/server/social-publish.ts`)
+
+- **Publishing an approved social post (D870 S3.1, `src/lib/social-publish.ts` pure, `src/server/social-publish.ts`)**:
+  `publishSocialPost()` (the calendar route's `publish`, a person's press; or `publish_social_post`, gated `public` and in `NEVER_AUTOMATIC`)
+  publishes one approved post to Instagram or the Facebook Page (`PUBLISH_CHANNELS`) where `publishTargets()` finds a connection with
+  `publish` (`instagram_accounts.publish`, `facebook_pages.publish`, from `src/lib/social-publish-grants.ts`, a module without imports as
+  every storefront reaches the Instagram feed). It claims the post (`publish_started_at`, lapsing after five minutes), sends the picture as a
+  library JPEG or the slideshow video, the words of `publishedText()`, and keeps `published_at`, `published_by`, `published_id`,
+  `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
+  (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
+
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 
 - **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram

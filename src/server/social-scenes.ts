@@ -112,11 +112,11 @@ export async function makeSocialScene(
       await typedRows(
         POST,
         sql`select id, channel, product_id, page_id, topic, planned_for::text as planned_for, scene_tries as tries
-          from commerce.social_posts where store_id = ${store.id}::uuid and id = ${id.data}::uuid`,
+          from commerce.social_posts where store_id = ${store.id}::uuid and id = ${id.data}::uuid and published_at is null and publish_started_at is null`,
       )
     )[0];
   let post = await read();
-  if (!post) return { ok: false, problem: "That post is not this store's." };
+  if (!post) return { ok: false, problem: "That post is not this store's, or it is published." };
   if (!mayRemakeScene(post.tries)) return { ok: false, problem: "This post's scene has been made as often as it may be. Use the drawn picture, or change it in Canva." };
   let verdict: CheckVerdict | null = null;
   // A scene takes up to a couple of minutes to make: no new one is started past this, so the request ends within its time.
@@ -139,6 +139,6 @@ export async function dropSocialScene(member: Membership, postId: unknown): Prom
   if (!id.success) return { ok: false };
   const rows = await db().execute(sql`
     update commerce.social_posts set scene_media_id = null, checked_at = null, check_problems = '{}', check_note = ''
-    where store_id = ${member.store.id}::uuid and id = ${id.data}::uuid and scene_media_id is not null returning id`);
+    where store_id = ${member.store.id}::uuid and id = ${id.data}::uuid and scene_media_id is not null and published_at is null returning id`);
   return { ok: rows.length > 0 };
 }

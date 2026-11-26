@@ -299,3 +299,29 @@ test("the adviser's plan is a calendar: write the week's posts, change one's wor
   await expect(calendar.getByText("Draft", { exact: true })).toHaveCount(0);
   await calendar.screenshot({ path: "test-results/social-calendar-approved.png" });
 });
+
+test("an approved post is posted from the calendar where the connection allows it, and a refusal says why (D870 S3.1)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const calendar = page.getByRole("region", { name: "Your posting plan" });
+  const instagram = calendar.getByRole("listitem").filter({ hasText: "Instagram" }).first();
+  // The Instagram account connected above allows reading only: the calendar says what is needed to post.
+  await expect(instagram).toContainText("Connect Instagram with posting allowed to post from here.");
+  await expect(instagram.getByRole("button", { name: "Post now" })).toHaveCount(0);
+
+  const sql = testDb();
+  try {
+    await sql`update commerce.instagram_accounts set publish = true where store_id = (select id from commerce.stores where slug = ${SLUG})`;
+  } finally {
+    await sql.end();
+  }
+  await page.reload();
+  await expect(instagram.getByRole("button", { name: "Post now" })).toBeVisible();
+  await calendar.scrollIntoViewIfNeeded();
+  await calendar.screenshot({ path: "test-results/social-calendar-post-now.png" });
+
+  // This build reaches no picture store or Instagram: the post is not published, and the calendar says why, with Post now still there.
+  await instagram.getByRole("button", { name: "Post now" }).click();
+  await expect(instagram).toContainText("Posting failed:");
+  await expect(instagram).not.toContainText("Posted");
+  await expect(instagram.getByRole("button", { name: "Post now" })).toBeVisible();
+});
