@@ -906,6 +906,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D901 | **Pipedrive: beside it, moving from it, and past it (plan)** | 2026-11-25 | [text](decisions/D901.md) |
 | D902 | **The CRM reaches Zapier, Make and the Admin API (D901 P29)** | 2026-11-25 | [text](decisions/D902.md) |
 | D903 | **Projects and checklists, ported from Kaizena Life** | 2026-11-25 | [text](decisions/D903.md) |
+| D904 | **The octopus: every part stands alone and each part added makes the whole smarter; Projects becomes a paid extension that** | 2026-11-26 | [text](decisions/D904.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
