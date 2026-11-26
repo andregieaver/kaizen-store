@@ -15,6 +15,7 @@ import { textList, uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { checkedRows, col, typedRows } from "./typed-rows";
 import { dealsOn, storeExtensionOn } from "@/lib/extensions";
+import { featureOn } from "@/lib/store-features";
 
 /**
  * One attention source (ecosystem plan E2.1, D713): the queues that wait on a store's people, counted in SQL for any number of stores at
@@ -23,7 +24,8 @@ import { dealsOn, storeExtensionOn } from "@/lib/extensions";
  * acts. Counts and ids only, never a customer.
  *
  * Here are the queues E2.1 added: payment disputes waiting for the store's answer, the AI manager's decisions, new leads, the day's calls,
- * meetings and tasks, and blog comments held for a check; and the questions the chat assistant could not answer (E4.3). The older queues
+ * meetings and tasks, and blog comments held for a check; the questions the chat assistant could not answer (E4.3); and checklist tasks
+ * late or due today (D903 P4.9). The older queues
  * are still counted in `controlCenter()`; the briefing reads those through the store checkup (`checkupFindings()`), whose output the AI
  * manager's `store_checkup` also gives.
  */
@@ -188,6 +190,34 @@ function activityRead(storeIds: readonly string[], assigneeId: string | null, no
   };
 }
 
+const TASK_ROW = z.object({ store_id: col.uuid, overdue: col.int, today: col.int });
+
+/**
+ * Checklist tasks not done in open lists whose due dates are shown (D903 P4.9), by the store's own day: late is due before today, or timed
+ * and already past; today is the rest due today. The reader's own and nobody's (`accountId`), or the team's.
+ */
+function taskRead(storeIds: readonly string[], accountId: string | null, now: Date): QueueRead<typeof TASK_ROW, Map<string, ActivityFigures>> | null {
+  if (storeIds.length === 0) return null;
+  const at = now.toISOString();
+  const late = sql`(commerce.store_day(i.store_id, i.due_at) < commerce.store_day(i.store_id, ${at}::timestamptz)
+    or (i.all_day is not true and i.due_at < ${at}::timestamptz))`;
+  return {
+    schema: TASK_ROW,
+    query: sql`
+      select i.store_id, count(*) filter (where ${late})::int as overdue, count(*) filter (where not ${late})::int as today
+      from commerce.checklist_items i join commerce.checklists c on c.store_id = i.store_id and c.id = i.checklist_id
+      where i.store_id = any(${uuidList(storeIds)}) and i.done_at is null and i.archived_at is null and i.due_at is not null
+        and (${accountId}::uuid is null or i.assigned_to is null or i.assigned_to = ${accountId}::uuid)
+        -- A day and more ahead of any time zone's today, for the index; the store's own day decides.
+        and i.due_at < ${at}::timestamptz + interval '2 days'
+        and commerce.store_day(i.store_id, i.due_at) <= commerce.store_day(i.store_id, ${at}::timestamptz)
+        and c.status = 'open' and c.is_advanced and c.advanced_features ->> 'dueDate' is distinct from 'false'
+      group by i.store_id
+    `,
+    figures: (rows) => new Map(rows.filter((r) => r.overdue > 0 || r.today > 0).map((r) => [r.store_id, { overdue: r.overdue, today: r.today, ...(accountId ? {} : { team: true }) }])),
+  };
+}
+
 /** The stores each queue is counted for: those where the reader may see it (`controlCenter()` gates them by the member's keys). */
 export type QueueGates = {
   disputes: readonly string[];
@@ -199,6 +229,8 @@ export type QueueGates = {
   questions?: readonly string[];
   /** Where flows losing readers are counted (M3.8): those who may read marketing. */
   flows?: readonly string[];
+  /** Where checklist tasks due are counted (D903 P4.9): those with Projects on, for who may read projects. */
+  tasks?: readonly string[];
 };
 
 export type QueueCounts = {
@@ -206,6 +238,7 @@ export type QueueCounts = {
   decisions: Map<string, number>;
   leads: Map<string, number>;
   activities: Map<string, ActivityFigures>;
+  tasks: Map<string, ActivityFigures>;
   comments: Map<string, number>;
   questions: Map<string, number>;
   flows: Map<string, LosingFlows>;
@@ -226,6 +259,7 @@ export async function queueCounts(gates: QueueGates, accountId: string | null, n
     q_decisions: decisionRead(gates.decisions, accountId),
     q_leads: leadCountsRead(gates.leads),
     q_activities: activityRead(gates.activities, accountId, now),
+    q_tasks: taskRead(gates.tasks ?? [], accountId, now),
     q_held: heldRead(gates.comments, gates.questions ?? [], gates.flows ?? []),
   };
   const asked = (Object.entries(reads) as [keyof typeof reads, { query: SQL } | null][]).filter((entry): entry is [keyof typeof reads, { query: SQL }] => entry[1] !== null);
@@ -248,6 +282,7 @@ export async function queueCounts(gates: QueueGates, accountId: string | null, n
     decisions: figures("q_decisions", reads.q_decisions, new Map()),
     leads: figures("q_leads", reads.q_leads, new Map()),
     activities: figures("q_activities", reads.q_activities, new Map()),
+    tasks: figures("q_tasks", reads.q_tasks, new Map()),
     comments,
     questions,
     flows,
@@ -256,12 +291,13 @@ export async function queueCounts(gates: QueueGates, accountId: string | null, n
 }
 
 /** A store's figures of the queues, only those that wait: what `queueItems()` reads, spread into its `StoreFigures`. */
-export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing" | "flowsPaused"> {
+export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "tasks" | "unansweredQuestions" | "flowsLosing" | "flowsPaused"> {
   const disputes = counts.disputes.get(storeId);
   const leads = counts.leads.get(storeId) ?? 0;
   const decisions = counts.decisions.get(storeId) ?? 0;
   const comments = counts.comments.get(storeId) ?? 0;
   const activities = counts.activities.get(storeId);
+  const tasks = counts.tasks.get(storeId);
   const questions = counts.questions.get(storeId) ?? 0;
   const flows = counts.flows.get(storeId);
   const paused = counts.paused.get(storeId);
@@ -270,6 +306,7 @@ export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<Queue
     ...(decisions > 0 ? { aiDecisions: decisions } : {}),
     ...(leads > 0 ? { leads } : {}),
     ...(activities ? { activities } : {}),
+    ...(tasks ? { tasks } : {}),
     ...(comments > 0 ? { blogComments: comments } : {}),
     ...(questions > 0 ? { unansweredQuestions: questions } : {}),
     ...(flows && flows.flows > 0 ? { flowsLosing: flows } : {}),
@@ -288,7 +325,11 @@ export type StoreAttention = Record<AdminLang, StoreAttentionItem[]>;
 export async function storeAttention(store: Store, now: Date = new Date()): Promise<StoreAttention> {
   const ids = [store.id];
   const sales = dealsOn(store) ? ids : [];
-  const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids, flows: storeExtensionOn(store, "email_automation", now) ? ids : [] }, null, now);
+  const counts = await queueCounts(
+    { disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids, flows: storeExtensionOn(store, "email_automation", now) ? ids : [], tasks: featureOn(store, "projects") ? ids : [] },
+    null,
+    now,
+  );
   const figures: QueueFigures = { slug: store.slug, name: store.name, role: "owner", ...queueFiguresOf(store.id, counts) };
   return Object.fromEntries(ADMIN_LANGS.map((lang) => [lang, storeAttentionItems(figures, now.getTime(), HOME_WORDS[lang].attention)])) as StoreAttention;
 }

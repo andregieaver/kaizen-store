@@ -224,12 +224,12 @@ Status: Planned, Building, Done (date and commit).
 | P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Done, 26 Nov 2026 (b7b673b) |
 | P4.2 | Duplicate a list with its options (templates are P4.12) | Done, 26 Nov 2026 (50c0dbf) |
 | P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Planned |
-| P4.4 | Comments on an item (Life's activity thread) | Done, 26 Nov 2026 |
+| P4.4 | Comments on an item (Life's activity thread) | Done, 26 Nov 2026 (a9d0ea8) |
 | P4.5 | Attachments from the media library | Planned |
-| P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 |
+| P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 (a9d0ea8) |
 | P4.7 | A customer on an item (Life's contacts) | Planned |
-| P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 |
-| P4.9 | What is due on Home's attention list | Planned |
+| P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 (87d9db8) |
+| P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 |
 | P4.10 | A light refresh while a list is open, for a team working together | Planned |
 | P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 (50c0dbf) |
 | P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Planned |
@@ -346,3 +346,11 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 - **Countdown**: an open list with a due date says how long is left ("3d, 4h left") or how late it is, in the danger colour, to the end of
   a due day in the store's zone, kept true every half minute while the page is open (`dueTarget()`, `countdown()`, units in the person's
   language).
+
+## As built: step P4.9 (26 November 2026)
+
+- **Home's attention**: checklist tasks late or due today are a queue of the one attention source (`taskRead()` in
+  `src/server/attention.ts`, kinds `tasks_overdue` and `tasks_today`), so the store's Home, the owner's Home across stores and the morning
+  briefing say the same. A member's own and nobody's (a one-person store assigns nobody), the team's in the briefing; only while Projects
+  is on and for who may read projects, and only lists that show due dates. The item opens All tasks. One CTE more in the queues' one
+  statement.

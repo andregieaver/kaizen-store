@@ -288,6 +288,8 @@ export const homeNb: HomeMessages = {
     activitiesToday: { one: "{store}: {n} av samtalene, møtene og oppgavene dine skal gjøres i dag.", many: "{store}: {n} av samtalene, møtene og oppgavene dine skal gjøres i dag." },
     teamActivitiesOverdue: { one: "{store}: {n} av teamets samtaler, møter og oppgaver er forsinket.", many: "{store}: {n} av teamets samtaler, møter og oppgaver er forsinket." },
     teamActivitiesToday: { one: "{store}: {n} av teamets samtaler, møter og oppgaver skal gjøres i dag.", many: "{store}: {n} av teamets samtaler, møter og oppgaver skal gjøres i dag." },
+    tasksOverdue: { one: "{store}: {n} sjekklisteoppgave er forsinket.", many: "{store}: {n} sjekklisteoppgaver er forsinket." },
+    tasksToday: { one: "{store}: {n} sjekklisteoppgave skal gjøres i dag.", many: "{store}: {n} sjekklisteoppgaver skal gjøres i dag." },
     blogComments: {
       one: "{store}: {n} kommentar på artiklene dine venter på kontroll.",
       many: "{store}: {n} kommentarer på artiklene dine venter på kontroll.",
@@ -392,6 +394,7 @@ export const homeNb: HomeMessages = {
       decide: "Avgjør",
       openLeads: "Åpne leads",
       seeToday: "Se dagen",
+      seeTasks: "Se oppgavene",
       seeFlow: "Se flyten",
     },
   },

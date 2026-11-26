@@ -53,10 +53,7 @@ export const homeEn = {
       products: "Products",
     },
   },
-  /**
-   * The store's Home as redesigned in round 1 (`docs/audits/admin-redesign-round-1.md`): a greeting and one sentence on how things are,
-   * the one next step, the week as a picture, what needs a look, and milestones. `{name}`, `{n}`, `{amount}` and `{when}` are filled in code.
-   */
+  /** The store's Home (round 1, `docs/audits/admin-redesign-round-1.md`). */
   today: {
     eyebrow: "Home · {date}",
     greeting: { morning: "Good morning, {name}", afternoon: "Good afternoon, {name}", evening: "Good evening, {name}" },
@@ -147,8 +144,7 @@ export const homeEn = {
       articles: { product: "Your first product", vat: "VAT when you sell to other countries", around: "Find your way around the admin" },
     },
   },
-  /** The settings hub as redesigned in round 2 (D597): settings by job, each with its state, and what is left. */
-  // Round 3 (D603): the Website's page: a sentence, the front page, the Dream Factory's box and each part with its state.
+  /** The settings hub (D597) and the Website's page (D603). */
   website: {
     title: "Website",
     lead: "Your site has {pages} and {articles} live.",
@@ -301,6 +297,8 @@ export const homeEn = {
     activitiesToday: { one: "{store}: {n} of your calls, meetings and tasks is due today.", many: "{store}: {n} of your calls, meetings and tasks are due today." },
     teamActivitiesOverdue: { one: "{store}: {n} of the team's calls, meetings and tasks is overdue.", many: "{store}: {n} of the team's calls, meetings and tasks are overdue." },
     teamActivitiesToday: { one: "{store}: {n} of the team's calls, meetings and tasks is due today.", many: "{store}: {n} of the team's calls, meetings and tasks are due today." },
+    tasksOverdue: { one: "{store}: {n} checklist task is late.", many: "{store}: {n} checklist tasks are late." },
+    tasksToday: { one: "{store}: {n} checklist task is due today.", many: "{store}: {n} checklist tasks are due today." },
     blogComments: {
       one: "{store}: {n} comment on your articles is waiting to be checked.",
       many: "{store}: {n} comments on your articles are waiting to be checked.",
@@ -402,6 +400,7 @@ export const homeEn = {
       decide: "Decide",
       openLeads: "Open leads",
       seeToday: "See today",
+      seeTasks: "See the tasks",
       seeFlow: "See the flow",
     },
   },
@@ -673,7 +672,7 @@ export const homeEn = {
       editFront: "Edit the front page",
       seeProducts: "See the products",
     },
-    /** Stage 1's end (D422): the owner looks at the real front page, asks for changes, and says This is it. */
+    /** Stage 1's end (D422). */
     look: {
       title: "Is this your look?",
       text: "This is your store's front page, in its own look. Ask for a change, or say This is it and the AI finishes the store in this look.",
@@ -689,7 +688,7 @@ export const homeEn = {
       limit: "You have asked for all {max} changes. Choose This is it, or start over with a new description below.",
     },
     stage: { one: "1. Your look", two: "2. Finishing your store" },
-    /** Start over or discard (D421), one step away on the run's page while the store is not open. */
+    /** Start over or discard (D421). */
     again: {
       title: "Not what you hoped for?",
       text: "Change the description and start over, or discard the store.",
@@ -700,7 +699,7 @@ export const homeEn = {
       discardHint: "The store is closed and moves to Closed stores on Your stores. Type its address, {address}, to confirm.",
       discardLabel: "The store's address",
     },
-    /** A rework (D527): changing a store that exists; everything is prepared as drafts and goes live on the owner's press. */
+    /** A rework (D527). */
     rework: {
       offer: "Change your store with AI: say what to change in the Dream Factory.",
       title: "Change your store",
@@ -767,7 +766,7 @@ export const homeEn = {
         discardHint: "What was prepared stays as drafts in Pages, Products and your theme library. Nothing goes live.",
       },
       done: { title: "Your changes are live", visit: "See your store" },
-      /** *Analyse existing* (D528): the AI photographs the site, says how it looks and suggests what to ask for. */
+      /** *Analyse existing* (D528). */
       analyse: {
         button: "Analyse existing",
         again: "Analyse again",

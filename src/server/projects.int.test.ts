@@ -14,6 +14,8 @@ const statuses = await import("./projects-statuses");
 const repeat = await import("./projects-repeat");
 const labels = await import("./projects-labels");
 const comments = await import("./projects-comments");
+const attention = await import("./attention");
+const { dayIn, addCalendarDays, noonOf } = await import("@/lib/work-dates");
 const { newStore } = await import("./inventory-test-support");
 
 type TestStore = Awaited<ReturnType<typeof newStore>>;
@@ -341,6 +343,29 @@ describe("every open task (P4.8)", () => {
     expect(ids).not.toContain(old);
     expect(open.find((t) => t.id === sooner)).toMatchObject({ checklistId: id, checklistTitle: "Across one", statusId: expect.any(String) });
     expect((await lists.openTasks(other.storeId)).map((t) => t.id)).not.toContain(sooner);
+  });
+});
+
+describe("Home's attention (P4.9)", () => {
+  it("counts the tasks late and due today of lists that show due dates: the reader's and nobody's, or the team's", async () => {
+    const fresh = await newStore("projects-attention");
+    await statuses.ensureDefaultStatuses(fresh.storeId, NAMES);
+    const { id } = ok(await lists.createChecklist(fresh.member, { title: "Due things" }));
+    ok(await lists.setChecklistMode(fresh.member, id, { isAdvanced: true }));
+    const zone = fresh.member.store.timeZone;
+    const today = dayIn(new Date(), zone);
+    const day = (offset: number) => noonOf(addCalendarDays(today, offset), zone).toISOString();
+    ok(await items.addItem(fresh.member, id, { title: "Late", dueAt: day(-1), allDay: true }));
+    ok(await items.addItem(fresh.member, id, { title: "Today", dueAt: day(0), allDay: true }));
+    ok(await items.addItem(fresh.member, id, { title: "Tomorrow", dueAt: day(1), allDay: true }));
+    const { id: done } = ok(await items.addItem(fresh.member, id, { title: "Done late", dueAt: day(-2), allDay: true }));
+    ok(await items.setItemDone(fresh.member, done, true));
+    const gates = { disputes: [], decisions: [], leads: [], activities: [], comments: [], tasks: [fresh.storeId] };
+    expect((await attention.queueCounts(gates, fresh.accountId)).tasks.get(fresh.storeId)).toEqual({ overdue: 1, today: 1 });
+    expect((await attention.queueCounts(gates, null)).tasks.get(fresh.storeId)).toEqual({ overdue: 1, today: 1, team: true });
+    // A list that hides its due dates asks nothing of anyone.
+    ok(await lists.setChecklistMode(fresh.member, id, { features: { dueDate: false } }));
+    expect((await attention.queueCounts(gates, fresh.accountId)).tasks.get(fresh.storeId)).toBeUndefined();
   });
 });
 

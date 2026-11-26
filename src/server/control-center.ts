@@ -348,7 +348,16 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
           `,
         ),
     queueCounts(
-      { disputes: orderIds, decisions: ownerIds, leads: salesCustomerIds, activities: salesCustomerIds, comments: idsWith(storeRows, "website:read"), questions: supportIds, flows: idsWith(storeRows.filter((r) => r.email_ext === true), "marketing:read") },
+      {
+        disputes: orderIds,
+        decisions: ownerIds,
+        leads: salesCustomerIds,
+        activities: salesCustomerIds,
+        comments: idsWith(storeRows, "website:read"),
+        questions: supportIds,
+        flows: idsWith(storeRows.filter((r) => r.email_ext === true), "marketing:read"),
+        tasks: idsWith(storeRows.filter((r) => featureOn(((r.features ?? []) as unknown[]).map(String), "projects")), "projects:read"),
+      },
       account.id,
     ),
     turnoverWatches,

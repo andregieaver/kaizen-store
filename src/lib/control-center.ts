@@ -132,6 +132,8 @@ export type StoreFigures = {
   blogComments?: number;
   /** Calls, meetings and tasks not done that are overdue or due today (D468; E2.1), only while Deals is on, for a member who may read customers. */
   activities?: ActivityFigures;
+  /** Checklist tasks not done that are late or due today (D903 P4.9), while Projects is on, for a member who may read projects: theirs and nobody's. */
+  tasks?: ActivityFigures;
   /** Questions the chat assistant could not answer, still open (ecosystem plan E4.3, D729), for a member who may read support. A count only. */
   unansweredQuestions?: number;
   /**
@@ -200,6 +202,8 @@ export const ATTENTION_KINDS = [
   "leads",
   "activities_overdue",
   "activities_today",
+  "tasks_overdue",
+  "tasks_today",
   "blog_comments",
   "unanswered_questions",
   "flows_losing",
@@ -441,7 +445,7 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
 }
 
 /** What `queueItems()` reads of a store: its name and the queues' figures (each left out where the member may not see it). */
-export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions" | "flowsLosing" | "flowsPaused">;
+export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "tasks" | "unansweredQuestions" | "flowsLosing" | "flowsPaused">;
 
 /**
  * The queues ecosystem plan E2.1 (D713) brought to Home, each with the page that acts on it: payment disputes waiting for the store's answer
@@ -477,6 +481,13 @@ export function queueItems(s: QueueFigures, now: number, w: AttentionWords): Kin
     const href = `${base}?today=${acts.team ? "team" : "mine"}`;
     if (acts.overdue > 0) items.push({ kind: "activities_overdue", text: count(acts.overdue, acts.team ? w.teamActivitiesOverdue : w.activitiesOverdue), href, action: a.seeToday });
     if (acts.today > 0) items.push({ kind: "activities_today", text: count(acts.today, acts.team ? w.teamActivitiesToday : w.activitiesToday), href, action: a.seeToday });
+  }
+  // Checklist tasks (D903 P4.9): All tasks lists them, the soonest due first.
+  const tasks = s.tasks;
+  if (tasks) {
+    const href = `${base}/checklists?view=tasks`;
+    if (tasks.overdue > 0) items.push({ kind: "tasks_overdue", text: count(tasks.overdue, w.tasksOverdue), href, action: a.seeTasks });
+    if (tasks.today > 0) items.push({ kind: "tasks_today", text: count(tasks.today, w.tasksToday), href, action: a.seeTasks });
   }
   if (s.blogComments && s.blogComments > 0) {
     items.push({ kind: "blog_comments", text: count(s.blogComments, w.blogComments), href: `${base}/articles/comments?status=pending`, action: a.check });
