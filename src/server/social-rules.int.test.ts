@@ -45,6 +45,8 @@ const row = async (id: string) =>
     sql`select approved_at, rules_queued_at, scheduled_for, published_at, next_try_at, held_at, publish_problem from commerce.social_posts where id = ${id}::uuid`,
   ))[0];
 const on = { on: true, postsPerDay: 1, quietFrom: 21, quietTo: 8 };
+/** A fixed time outside the quiet hours, so the test never depends on the hour it runs at. */
+const NOON = new Date("2030-05-06T12:00:00Z");
 
 beforeAll(async () => {
   store = await makeStore("social-rules");
@@ -135,9 +137,11 @@ describe("posting within the owner's rules", () => {
     await approveSocialPosts(member, [id], true);
     expect((await row(id)).held_at).toBeNull();
 
-    expect(await socialRulesAutopilotProblem({ id: store.id, timeZone: "UTC" }, id)).toBeNull();
+    expect(await socialRulesAutopilotProblem({ id: store.id, timeZone: "UTC" }, id, NOON)).toBeNull();
     const unchecked = await draft("rulesautoask", "2030-05-07", { checked: false });
-    expect(await socialRulesAutopilotProblem({ id: store.id, timeZone: "UTC" }, unchecked)).toContain("not been checked");
+    expect(await socialRulesAutopilotProblem({ id: store.id, timeZone: "UTC" }, unchecked, NOON)).toContain("not been checked");
+    // In the quiet hours (21:00 to 08:00 here) it asks, whatever the post.
+    expect(await socialRulesAutopilotProblem({ id: store.id, timeZone: "UTC" }, id, new Date("2030-05-06T22:30:00Z"))).toContain("quiet hours");
   });
 
   it("switched off, hands every post the rules queued back to a person at once", async () => {
@@ -149,6 +153,6 @@ describe("posting within the owner's rules", () => {
     const r = await row(id);
     expect(r.approved_at).toBeNull();
     expect(r.scheduled_for).toBeNull();
-    expect(await socialRulesAutopilotProblem({ id: store.id, timeZone: "UTC" }, id)).toContain("off");
+    expect(await socialRulesAutopilotProblem({ id: store.id, timeZone: "UTC" }, id, NOON)).toContain("off");
   });
 });
