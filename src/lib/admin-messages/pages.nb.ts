@@ -942,6 +942,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:incidents": { title: "Hendelser", keywords: ["feil", "autopilot"] },
   "platform:incident": { title: "Hendelse", keywords: ["feil"] },
   "platform:admin_use": { title: "Bruk av adminen", keywords: ["varmekart"] },
+  "platform:projects": { title: "Prosjekter", keywords: ["prosjekter", "sjekklister", "oppgaver", "teamarbeid"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },
   "platform:challenges": {
     title: "100-dagersutfordringen",

@@ -71,6 +71,7 @@ const SAME_THING: SameThing[] = [
   { labels: ["Domains"], why: "domains: a store's addresses, the ones stores buy through Kaizena Flow" },
   { labels: ["Emails"], why: "the emails the level sent" },
   { labels: ["Team"], why: "the people who run the level" },
+  { labels: ["Projects"], why: "the level's own projects: Kaizena Flow's live in its store, and the platform's link opens them there (D904 P7.1)" },
   { labels: ["Change log"], why: "the level's own change log (the audit log)" },
   { labels: ["Discounts"], why: "money off what the level sells: a store's goods, Kaizena Flow's plans" },
   { labels: ["Plans", "Subscriptions"], why: "what the level's customers subscribe to; Norwegian says both «Abonnementer»" },

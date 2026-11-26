@@ -263,7 +263,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 
 | Id | Step | Status |
 |---|---|---|
-| P7.1 | The platform admin's own projects (`store_id is null`), and the row in `docs/platform-parity.md` | Planned |
+| P7.1 | The platform admin's own projects, and the row in `docs/platform-parity.md` | Built 26 November 2026 (below: in Kaizena Flow's store, not `store_id is null`) |
 
 ### P8: an extension that stands alone (D904)
 
@@ -473,4 +473,13 @@ fixed in d03d5b0): both migrations applied (the four task sources, their keys an
 key). The advisors list only INFO: the new link indexes are not used yet; no new unindexed key, nothing for `docs/audits/psi-followups.md`.
 P8.3c needed no migration. Left of P8.3: **P8.3d** (Work's time on tasks with P6.1, a task's person told by email with P4.3's reminders),
 and the agents' eval recorded again on Platform → AI for the three new tools.
+
+## As built: step P7.1, Kaizena Flow's own projects (26 November 2026)
+
+- **Where they live.** In Kaizena Flow's own store (`kaizenaflow`), as its customers and deals do (D466's route, D467), not as rows with
+  no store: every Projects table holds its rules by `(store_id, id)` keys, which hold nothing for a row with no store, and the store
+  already has every extension (the platform's account) and every pair (its deals, its support desk, the AI manager).
+- **The way in.** The platform admin's Settings → *Running the platform* → *Projects* (`/admin/platform/projects`) opens that store's
+  Projects for someone on its team; anyone else is told its owner adds them under Team. The store's own page offers to switch the feature on
+  when it is off. The row in `docs/platform-parity.md` is ticked.
 

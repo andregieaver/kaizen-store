@@ -1418,6 +1418,9 @@ const PAGES: readonly MapEntry[] = [
   platform("admin_use", "/admin-use", "Admin use", "How store owners who said yes use the admin (D895): the screens where they struggle most over the last 30 days, and recordings with every word hidden, each viewing logged.", {
     keywords: ["heatmap", "recording", "owners", "struggle", "admin use"],
   }),
+  platform("projects", "/projects", "Projects", "Kaizena Flow's own projects and checklists: they live in its store, as its customers and deals do, and this opens them there for someone on that store's team.", {
+    keywords: ["projects", "checklists", "tasks", "team work", "prosjekter"],
+  }),
   platform("status", "/status", "Status page", "The public status page: each part's checks, incidents to post and update, and how many subscribe.", {
     keywords: ["status", "incident", "outage", "uptime", "downtime", "maintenance"],
     tasks: ["Post an incident", "Update or resolve an incident", "See the latest checks"],
@@ -1710,6 +1713,8 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   // Admin use (D895 phase 3b): Kaizena Flow's team's own page, empty until the switch opens; named in the AI's map once it is open and the
   // eval is recorded with it.
   "platform:admin_use",
+  // The platform's Projects (D904 P7.1): a door to Kaizena Flow's store's own Projects, whose pages the AI's map names already.
+  "platform:projects",
   // Projects and checklists (D903): kept out of the prompt for the push that carries their migration; named in the next, and the eval recorded.
   "store:projects",
   "store:project",

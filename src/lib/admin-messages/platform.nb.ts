@@ -1243,6 +1243,11 @@ export const platformNb: PlatformMessages = {
     noPlan: "ingen abonnement",
     since: "Siden {date}",
   },
+  projects: {
+    title: "Prosjekter",
+    elsewhere: "Kaizena Flows prosjekter og sjekklister ligger i sin egen butikk",
+    notMember: "Du er ikke med i den butikkens team ennå. Eieren legger deg til under Team, og Prosjekter åpnes her.",
+  },
   emails: {
     paused: {
       title: "Markedsførings-e-post på pause",
