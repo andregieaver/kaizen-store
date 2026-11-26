@@ -254,7 +254,10 @@ pages (their terms, and most are behind a sign-in), anything behind a sign-in, a
 The Chrome UX Report (Google's public field data: the 75th percentile of LCP, INP and CLS by origin, as Chrome's users met them) for the
 store's site and each rival's, monthly, and held against the store's own: only the origin is sent. It needs a key for the CrUX API on
 Platform → AI, kept as the search key is. Finding: a rival good where the store is poor on one of the three. Not a lab test of our own:
-field data is what visitors meet.
+field data is what visitors meet. **Cost: none** (checked 26 November 2026, developer.chrome.com/docs/crux/api): "limited to 150 queries
+per minute per Google Cloud project, which is offered without charge", and no more can be bought; a key is a Google Cloud API key with the
+Chrome UX Report API on. Data is a 28-day rolling p75, updated daily about two days behind. A site with too few Chrome visitors has no
+record: the check says so rather than guess.
 
 ### 7.5 M5d: service prices by hand (built 26 November 2026)
 
