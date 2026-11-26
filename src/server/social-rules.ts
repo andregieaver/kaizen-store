@@ -125,10 +125,10 @@ export async function postRuleFacts(storeId: string, postId: string): Promise<{ 
  * Whether the autopilot may ask for an approved post to go out now without the owner's yes (`publish_social_post`, `autonomyDecision()`): only
  * while the rules are on, outside the quiet hours, and for a post they allow. Why not, in words, or null.
  */
-export async function socialRulesAutopilotProblem(store: Pick<Store, "id" | "timeZone">, postId: string): Promise<string | null> {
+export async function socialRulesAutopilotProblem(store: Pick<Store, "id" | "timeZone">, postId: string, now = new Date()): Promise<string | null> {
   const rules = await socialRulesOf(store.id);
   if (!rules.on) return "Posting on its own is off: switch on Post on its own within my rules on Social posts.";
-  if (quietEnds(new Date(), store.timeZone, rules)) return "It is the quiet hours you set for posting.";
+  if (quietEnds(now, store.timeZone, rules)) return "It is the quiet hours you set for posting.";
   const id = z.uuid().safeParse(postId);
   const facts = id.success ? await postRuleFacts(store.id, id.data) : null;
   if (!facts) return "That post is not this store's.";
