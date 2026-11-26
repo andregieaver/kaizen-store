@@ -9,6 +9,9 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
 vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
 vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
+// Saving the look checks its fonts are ready (`checkStoreTheme()` → `installFonts()`), which downloaded Inter and Space Grotesk from
+// Google Fonts: the test failed main's run 1992 when that download did (D803). `install` below stands in for the typefaces already.
+vi.mock("./fonts", async (original) => ({ ...(await original<typeof import("./fonts")>()), installFonts: async () => ({ ok: true }) }));
 
 const { importFigmaLook } = await import("./figma-look");
 const { installLook, liveLook, switchToInstall } = await import("./theme-installs");
