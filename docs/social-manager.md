@@ -108,16 +108,29 @@ manager's tools and the weekly review carry them. Pages of other businesses need
 
 | Step | What |
 |---|---|
-| S2.1 | Templates and the composer (picture from code + photo + made background) |
+| S2.1 | Templates and the composer (picture from code + photo + made background). **Done 2026-11-26** for made scenes (below); carousels and Story frames are S2.1b |
 | S2.2 | The caption writer per channel, with the filters and the tagged link |
 | S2.3 | The vision check. **Done 2026-11-25** (below) |
 | S2.4 | The calendar screen, approval per post and per week. **Done 2026-11-25** (below) |
-| S2.5 | Slideshow video |
+| S2.5 | Slideshow video. **Done 2026-11-26** (below) |
 
 S2.4 as built: *Your posting plan* on Social posts (`socialCalendar()`, `src/server/social-calendar.ts`) lays the adviser's two weeks with
 their drafts (`social_posts.planned_for`); Homer writes the week's posts, then approves the week; Lisa writes, changes the words of (the
 claims filter again, the yes taken back), approves or takes back each post (`approved_at`, `approved_by`). Four columns and one route
 (`social/calendar`); no job, no table.
+
+S2.5 as built: *Make a video* on a calendar post makes a 9:16 slideshow in the owner's browser (`makeSlideshow()`,
+`src/lib/social-slideshow-make.ts`, timings in `src/lib/social-slideshow.ts`): the post's own picture whole over a blurred copy, then the
+product's other photos, each zooming and drifting with crossfades, encoded as H.264 MP4 by WebCodecs (mediabunny). It is uploaded straight
+to Storage, kept in the library and on the post (`video_media_id`, `src/server/social-slideshow.ts`), and offered to download. No server
+encoding and no AI: it costs nothing but the storage.
+
+S2.1 as built: *Make a scene* on a calendar post (`makeSocialScene()`, `src/server/social-scenes.ts`, brief in `src/lib/social-scenes.ts`)
+puts a product's own photo on a new background in the shop's style (the library's AI edit, `new_background`), or makes a background in the
+site's look for a page or topic (`makeSitePicture()`); the picture is kept in the library and drawn in the photo's place, the words, price
+and logo still code's. Each scene is checked (S2.3) and made again while the check fails it, at most three times in all
+(`social_posts.scene_media_id`, `scene_tries`); *Use the drawn picture* goes back. Made on request only: each scene is a picture model's
+call, metered as the library's.
 
 S2.3 as built: each post written on the calendar has its picture (its Canva one, else drawn) looked at by the store's model that sees
 pictures (`checkSocialPosts()`, `src/server/social-vision.ts`; prompt and verdict in `src/lib/social-vision.ts`): readable words, the

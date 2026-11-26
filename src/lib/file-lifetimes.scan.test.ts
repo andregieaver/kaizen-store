@@ -47,7 +47,8 @@ describe("every stored file has a lifetime", () => {
         expect(call, `${rel(file)}: an uploadToSignedUrl call without cacheControl`).toContain("cacheControl");
       }
     }
-    expect(total).toBe(9);
+    // 10 with a social post's slideshow video (D870 S2.5).
+    expect(total).toBe(10);
   });
 
   it("says how long it is kept for every server upload of made or fetched bytes", () => {
@@ -64,7 +65,7 @@ describe("every stored file has a lifetime", () => {
   });
 
   it("stores in each file the lifetime its files need", () => {
-    for (const file of ["video-upload.tsx", "media-compress.ts", "product-media-tools.tsx", "field-file-upload.ts"]) {
+    for (const file of ["video-upload.tsx", "media-compress.ts", "product-media-tools.tsx", "field-file-upload.ts", "social-calendar.tsx"]) {
       for (const call of callsOf(read(`src/components/admin/${file}`), "uploadToSignedUrl")) expect(call, file).toContain('cacheControl: "31536000"');
     }
     for (const file of ["product-editor.tsx", "customer-import-flow.tsx", "redirects/redirect-import-flow.tsx", "inventory/stock-import-flow.tsx", "data/import-flow.tsx"]) {

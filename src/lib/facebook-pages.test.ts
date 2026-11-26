@@ -10,6 +10,10 @@ describe("a store's Facebook Page (D870 S1.2b)", () => {
     expect(url.origin + url.pathname).toBe("https://www.facebook.com/v24.0/dialog/oauth");
     expect(url.searchParams.get("scope")).toBe("pages_show_list,pages_read_engagement,read_insights");
     expect(url.searchParams.get("state")).toBe("st");
+    // On Facebook Login for Business the saved configuration holds the permissions: it is sent in their place.
+    const business = new URL(facebookAuthorizeUrl("123", "https://kaizenaflow.com/api/integrations/facebook/callback", "st", "998877"));
+    expect(business.searchParams.get("config_id")).toBe("998877");
+    expect(business.searchParams.has("scope")).toBe(false);
   });
 
   it("reads the Pages the person manages, each with its token, and keeps only ids and names to choose among", () => {

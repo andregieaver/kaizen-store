@@ -104,12 +104,14 @@ describe("the platform admin's sections (D144), one structure (D877)", () => {
       ["AI", 4],
       ["Apps and connections", 4],
       ["Privacy and law", 3],
-      ["Running the platform", 9],
+      ["Running the platform", 11],
     ]);
     // The sidebar draws them under its headings (in D873's one style), and the page of cards under the same words.
     expect(areas.find((a) => a.section === "settings")!.groups.map((g) => g.heading)).toEqual(settings.groups.map((g) => g.heading));
     expect(settings.groups.find((g) => g.heading === "Running the platform")!.items.map((i) => i.label)).toEqual([
       "Incidents",
+      "Admin use",
+      "Projects",
       "Status page",
       "Usage and limits",
       "Emails",

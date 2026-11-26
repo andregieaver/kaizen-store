@@ -224,7 +224,11 @@ export function replayRouteHeaders(themesOrigin: string | null, env: CspEnv = {}
     `base-uri 'self'`,
     `form-action 'self'`,
   ].join("; ");
-  return [{ source: "/admin/:store/analytics/recordings/:id", headers: [{ key: "Content-Security-Policy", value }] }];
+  // The same player on the platform, for recordings of owners' own use of the admin (D895 phase 3b).
+  return [
+    { source: "/admin/:store/analytics/recordings/:id", headers: [{ key: "Content-Security-Policy", value }] },
+    { source: "/admin/platform/admin-use", headers: [{ key: "Content-Security-Policy", value }] },
+  ];
 }
 
 /**

@@ -16,6 +16,7 @@ import { audit } from "./auth";
 import { log } from "./log";
 import { owned } from "./owned";
 import { testsOfTags, type TaggedTest } from "./page-heat-read";
+import type { RecordingFiles } from "./recording-files";
 import { filesOf, type RecordingDeps } from "./recordings";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -156,8 +157,16 @@ export async function recordingEvents(store: { id: string; slug: string }, row: 
   if (!row.sealed && row.seqs.length === 0) return [];
   const files = filesOf(deps);
   if (!files) return [];
+  return readEvents(files, pathsOf({ storeId: store.id, id: row.id, sealed: row.sealed, seqs: row.seqs }), storeOrigins(store.slug), { storeId: store.id, recordingId: row.id });
+}
+
+/**
+ * The events in `paths`, in order, unpacked with a ceiling and sanitised against `origins` (the stores' recordings and the admin's own,
+ * D895 phase 3b, `admin-use-read.ts`). A file that cannot be read is skipped; a forged recording the sanitiser cannot read gives nothing.
+ */
+export async function readEvents(files: RecordingFiles, paths: readonly string[], origins: readonly string[], ids: Record<string, string>): Promise<unknown[]> {
   const events: unknown[] = [];
-  for (const path of pathsOf({ storeId: store.id, id: row.id, sealed: row.sealed, seqs: row.seqs })) {
+  for (const path of paths) {
     const bytes = await files.download(path);
     if (!bytes) continue;
     try {
@@ -168,10 +177,10 @@ export async function recordingEvents(store: { id: string; slug: string }, row: 
     }
   }
   try {
-    return sanitizeEvents(events, { storeOrigins: storeOrigins(store.slug), supabaseOrigin: new URL(publicEnv().NEXT_PUBLIC_SUPABASE_URL).origin });
+    return sanitizeEvents(events, { storeOrigins: [...origins], supabaseOrigin: new URL(publicEnv().NEXT_PUBLIC_SUPABASE_URL).origin });
   } catch (error) {
     // A forged recording the sanitiser cannot read is sent as nothing, never as it came.
-    log("error", "recordings.sanitize_failed", { storeId: store.id, recordingId: row.id }, error);
+    log("error", "recordings.sanitize_failed", ids, error);
     return [];
   }
 }

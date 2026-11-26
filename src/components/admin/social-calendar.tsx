@@ -8,6 +8,7 @@ import { Field, TextArea } from "@/components/admin/ui/field";
 import { fillWords } from "@/lib/admin-fill";
 import type { SocialMessages } from "@/lib/admin-messages/social.en";
 import type { CalendarItem, CalendarWeek } from "@/lib/social-calendar";
+import { SCENE_TRIES_MAX } from "@/lib/social-scenes";
 import { CHANNEL_SPECS } from "@/lib/social-posts";
 
 /**
@@ -31,6 +32,7 @@ export function SocialCalendar({
   base,
   mayWrite,
   hasAi,
+  makesPictures,
   dateLocale,
   words: w,
 }: {
@@ -40,6 +42,8 @@ export function SocialCalendar({
   base: string;
   mayWrite: boolean;
   hasAi: boolean;
+  /** The store's AI has a picture model, so a post can have a made scene (S2.1). */
+  makesPictures: boolean;
   dateLocale: string;
   words: SocialMessages["calendar"];
 }) {
@@ -74,6 +78,39 @@ export function SocialCalendar({
   };
   const write = (items: CalendarItem[], key: string) => run(key, items.map((it) => () => writeAndCheck(it)));
   const check = (id: string) => run(`check-${id}`, [() => postJson(`${base}/calendar`, { do: "check", ids: [id] })]);
+  const scene = (id: string) => {
+    setMessage({ tone: "ok", text: w.makingScene });
+    run(`scene-${id}`, [() => postJson(`${base}/calendar`, { do: "scene", id })]);
+  };
+  const drawn = (id: string) => run(`drawn-${id}`, [() => postJson(`${base}/calendar`, { do: "no_scene", id })]);
+  /** The slideshow (S2.5): made in this browser from the post's pictures, uploaded to the library, kept on the post. */
+  const video = (id: string) =>
+    start(async () => {
+      setMessage(null);
+      const plan = (await fetch(`${base}/slides/${id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)) as { photos: string[]; background: string; name: string } | null;
+      if (!plan) return setMessage({ tone: "problem", text: w.videoPhotos });
+      const { makeSlideshow } = await import("@/lib/social-slideshow-make");
+      const made = await makeSlideshow(plan.photos, plan.name, {
+        background: plan.background,
+        onProgress: (share) => setBusy(fillWords(w.makingVideo, { percent: String(Math.round(share * 100)) })),
+      });
+      if (!made.ok) {
+        setBusy(null);
+        return setMessage({ tone: "problem", text: made.why === "browser" ? w.videoBrowser : w.videoPhotos });
+      }
+      setBusy(w.savingVideo);
+      const started = (await postJson(`${base}/calendar`, { do: "video_start", id, size: made.video.size })) as Answer & { path?: string; token?: string; bucket?: string };
+      if (!started.ok || !started.path || !started.token || !started.bucket) {
+        setBusy(null);
+        return setMessage({ tone: "problem", text: started.problem ?? w.failed });
+      }
+      const { uploadToSignedUrl } = await import("@/lib/supabase/signed-upload");
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, made.video, { contentType: "video/mp4", cacheControl: "31536000" });
+      const kept = stored.error ? { ok: false } : await postJson(`${base}/calendar`, { do: "video_keep", id, path: started.path });
+      setBusy(null);
+      if (!kept.ok) return setMessage({ tone: "problem", text: kept.problem ?? w.failed });
+      window.location.reload();
+    });
   const problemsOf = (problems: string[]) =>
     problems.map((p) => (Object.hasOwn(w.problems, p) ? w.problems[p as keyof typeof w.problems] : p)).join(", ");
   const approve = (ids: string[], key: string, yes = true) => run(key, [() => postJson(`${base}/calendar`, { do: yes ? "approve" : "unapprove", ids })]);
@@ -129,7 +166,7 @@ export function SocialCalendar({
                       {it.draft && (
                         // eslint-disable-next-line @next/next/no-img-element -- the post's own picture, drawn by the page's route on request
                         <img
-                          src={`${base}/picture/${it.draft.id}${it.draft.editedAt ? `?v=${Date.parse(it.draft.editedAt)}` : ""}`}
+                          src={`${base}/picture/${it.draft.id}?v=${it.draft.editedAt ? Date.parse(it.draft.editedAt) : 0}-${it.draft.scene?.on ? it.draft.scene.tries : 0}`}
                           alt={fillWords(w.picture, { channel: CHANNEL_SPECS[it.channel].label })}
                           className="h-28 w-auto self-start rounded-md border border-line"
                           loading="lazy"
@@ -144,7 +181,12 @@ export function SocialCalendar({
                         {it.draft ? (
                           <>
                             <p className="line-clamp-3 text-body text-ink whitespace-pre-line">{it.draft.caption}</p>
-                            <span className={`text-caption ${it.draft.approved ? "text-success-text" : "text-ink-2"}`}>{it.draft.approved ? w.approved : w.draft}</span>
+                            <span className={`text-caption ${it.draft.approved ? "text-success-text" : "text-ink-2"}`}>
+                              {it.draft.approved ? w.approved : w.draft}
+                              {it.draft.scene?.on ? ` · ${w.sceneUsed}` : ""}
+                              {it.draft.video ? ` · ${w.videoMade}` : ""}
+                            </span>
+                            {makesPictures && !it.draft.scene?.on && (it.draft.scene?.tries ?? 0) >= SCENE_TRIES_MAX && <span className="text-caption text-ink-2">{w.sceneTriesUsed}</span>}
                             {it.draft.check ? (
                               it.draft.check.problems.length > 0 ? (
                                 <p className="text-caption text-danger-text">
@@ -196,6 +238,26 @@ export function SocialCalendar({
                               {w.checkPicture}
                             </button>
                           ) : null}
+                          {it.draft && makesPictures && (it.draft.scene?.tries ?? 0) < SCENE_TRIES_MAX ? (
+                            <button type="button" className={secondary} disabled={pending} onClick={() => scene(it.draft!.id)}>
+                              {it.draft.scene?.on ? w.makeSceneAgain : w.makeScene}
+                            </button>
+                          ) : null}
+                          {it.draft && (
+                            <button type="button" className={secondary} disabled={pending} onClick={() => video(it.draft!.id)}>
+                              {it.draft.video ? w.makeVideoAgain : w.makeVideo}
+                            </button>
+                          )}
+                          {it.draft?.video && (
+                            <a className={secondary} href={it.draft.video} download>
+                              {w.downloadVideo}
+                            </a>
+                          )}
+                          {it.draft?.scene?.on && (
+                            <button type="button" className={secondary} disabled={pending} onClick={() => drawn(it.draft!.id)}>
+                              {w.drawnPicture}
+                            </button>
+                          )}
                           {it.draft && !it.draft.approved && (
                             <button type="button" className={secondary} disabled={pending} onClick={() => approve([it.draft!.id], `approve-${it.draft!.id}`)}>
                               {w.approve}

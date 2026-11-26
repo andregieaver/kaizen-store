@@ -1255,6 +1255,12 @@ export const platformEn = {
     noPlan: "no plan",
     since: "Since {date}",
   },
+  /** Kaizena Flow's own projects (D904, docs/projects.md P7.1): they live in its store; the platform's entry opens them there. */
+  projects: {
+    title: "Projects",
+    elsewhere: "Kaizena Flow's projects and checklists are in its own store",
+    notMember: "You are not on that store's team yet. Its owner adds you under Team, and Projects opens here.",
+  },
   emails: {
     /** The sending guard (D730): stores whose marketing email is held now. */
     paused: {

@@ -3,7 +3,7 @@ import { gunzipSync } from "node:zlib";
 import { expect, test } from "@playwright/test";
 
 import { testDb } from "../db";
-import { E2E_STORE, OWNER, READER } from "./accounts";
+import { ADMIN, E2E_STORE, OWNER, READER } from "./accounts";
 
 /**
  * Heatmaps and recordings of how owners use the admin (D895 phase 3b), as a store owner meets them once the platform's switch is open: asked
@@ -127,6 +127,50 @@ test.describe("the owner's recordings", () => {
     await page.mouse.click(400, 300);
     await page.waitForTimeout(6000);
     for (const segment of sent.slice(before)) expect(segment).not.toContain("orders");
+  });
+});
+
+test.describe("Kaizena Flow's team on Platform → Admin use", () => {
+  test.use({ storageState: ADMIN.state });
+  const recording = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
+
+  test.beforeAll(async () => {
+    const sql = testDb();
+    try {
+      const zeros = (n: number) => `{${new Array(n).fill(0).join(",")}}`;
+      await sql`delete from commerce.platform_admin_recordings where id = ${recording}::uuid`;
+      await sql.unsafe(
+        `insert into commerce.platform_admin_heat_days (day, screen, device, views, reach, attention_ms, frustrated_views, dead_clicks, rage_clicks)
+         values (current_date, 's/settings/payments', 'desktop', 40, '${zeros(21)}', '${zeros(20)}', 14, 18, 5),
+                (current_date, 's/products/new', 'desktop', 32, '${zeros(21)}', '${zeros(20)}', 3, 3, 0)
+         on conflict (day, screen, device) do nothing`,
+      );
+      await sql`insert into commerce.platform_admin_recordings (id, day, started_at, last_at, duration_ms, device, entry_screen, screens, age_band, dead_clicks, rage_clicks, seqs, segments)
+                values (${recording}::uuid, current_date, now(), now(), 95000, 'desktop', 's/settings/payments', '{s/settings/payments,s/products/new}', 'week', 4, 2, '{0}', 1)`;
+    } finally {
+      await sql.end();
+    }
+  });
+
+  test("see where owners struggle, the hardest screen first, and open a recording whose viewing is logged", async ({ page }, info) => {
+    await page.goto("/admin/platform/admin-use");
+    const screens = page.getByRole("list", { name: "Where owners struggle" });
+    await expect(screens.getByRole("listitem").first()).toContainText("Settings › Payments");
+    await expect(screens).toContainText("35 % of views had a click that did nothing");
+    await page.screenshot({ path: info.outputPath("admin-use-viewer.png"), fullPage: true });
+
+    await page.getByRole("link", { name: "Settings › Payments → Products › New" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("A recording");
+    await expect
+      .poll(async () => {
+        const sql = testDb();
+        try {
+          return (await sql`select count(*)::int as n from commerce.audit_log where action = 'platform.admin_recording_viewed' and target_id = ${recording}`)[0].n;
+        } finally {
+          await sql.end();
+        }
+      })
+      .toBeGreaterThan(0);
   });
 });
 

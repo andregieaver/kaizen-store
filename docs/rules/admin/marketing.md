@@ -616,6 +616,26 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `editSocialPost()` clears them. The calendar checks each post it writes, shows the verdict, and leaves a failed post out of *Approve the
   week* (`checkFailed()`), for a person to approve on its own.
 
+## A social post's made scene (D870 S2.1, `src/lib/social-scenes.ts` pure, `src/server/social-scenes.ts`)
+
+- **A social post's made scene (D870 S2.1, `src/lib/social-scenes.ts` pure, `src/server/social-scenes.ts`)**: `makeSocialScene()` (the
+  calendar route's `scene`, `marketing:write`, the extension `social`, `maxDuration` 300) makes one post's scene from `sceneBrief()`: a
+  product's own library photo through `editLibraryPicture()` (`new_background`, the product kept) or else `makeSitePicture()` in the site's
+  look (`sceneShape()`), each kept in the library as AI-made. It sets `scene_media_id`, counts `scene_tries`, clears the post's verdict and
+  yes, runs the vision check, and makes it again while the check fails it and `mayRemakeScene()` allows (three in all, none started past two
+  minutes). The only writer of both columns (`dropSocialScene()` clears the scene for the drawn picture). `socialPicture()` draws the scene in
+  the photo's place, a topic's behind its headline on the accent band; a Canva copy (`picture_media_id`) still wins.
+
+## A social post's slideshow video (D870 S2.5, `src/lib/social-slideshow.ts` pure, `src/server/social-slideshow.ts`)
+
+- **A social post's slideshow video (D870 S2.5, `src/lib/social-slideshow.ts` pure, `src/server/social-slideshow.ts`)**: made in the
+  owner's browser by `makeSlideshow()` (`src/lib/social-slideshow-make.ts`, mediabunny loaded on the press) from `slideshowPlan()`: the
+  post's own picture (by its address with its version) and the product's photos after its first, each served by `social/slides/[postId]`
+  (`?n=`, the store's own files through `ownFile()`, `marketing:read`, the extension `social`). `framesAt()`, `coverRect()` and
+  `containRect()` place every frame (1080 × 1920, 30 fps, `SLIDES_MAX` photos). The video is uploaded straight to Storage
+  (`startSlideshowUpload()`, the calendar route's `video_start`, storage limits as any video) and kept by `keepSlideshow()`
+  (`video_keep`: the library row for that path, the store's own only), the only writer of `video_media_id`.
+
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 
 - **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram
@@ -631,7 +651,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 - **A store's Facebook Page (D870 S1.2b, `src/lib/facebook-pages.ts` pure, `src/server/facebook-pages.ts`)**: connected from the Facebook card
   on Social posts (plain forms posted to `/admin/{store}/social/facebook`, `marketing:write`, same site), through Facebook Login with
-  `pages_show_list`, `pages_read_engagement` and `read_insights`, back at `/api/integrations/facebook/callback` (state in an httpOnly cookie,
+  `pages_show_list`, `pages_read_engagement` and `read_insights` (on Facebook Login for Business, the configuration `FACEBOOK_LOGIN_CONFIG_ID` holding them), back at `/api/integrations/facebook/callback` (state in an httpOnly cookie,
   the same person). The person's token is made long-lived and their Pages listed: one is kept at once; with several, the person's token and
   the Pages' ids and names wait in `facebook_pages` until the owner chooses, then only the Page's own token is kept (encrypted, as payment
   secrets). `refreshFacebookInsights()` (the dispatcher's `facebookInsights`, never throws) reads each chosen Page once a day: its posts of

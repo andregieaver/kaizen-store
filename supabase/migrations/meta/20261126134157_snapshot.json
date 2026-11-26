@@ -1,6 +1,6 @@
 {
-  "id": "05e6cb7c-b159-40d4-936c-a0c3618ad994",
-  "prevId": "e9f02b91-7924-4df3-8176-b0bc6e3146d2",
+  "id": "cd9aebba-c6d6-40ae-8139-bb6be2775196",
+  "prevId": "121d0847-81cb-4a7f-a4d3-7ae0248ca832",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -89590,6 +89590,25 @@
           "notNull": true,
           "default": "''"
         },
+        "scene_media_id": {
+          "name": "scene_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scene_tries": {
+          "name": "scene_tries",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "video_media_id": {
+          "name": "video_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -89616,6 +89635,36 @@
             },
             {
               "expression": "planned_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_scene_idx": {
+          "name": "social_posts_scene_idx",
+          "columns": [
+            {
+              "expression": "scene_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "social_posts_video_idx": {
+          "name": "social_posts_video_idx",
+          "columns": [
+            {
+              "expression": "video_media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -89814,6 +89863,34 @@
           "schemaTo": "commerce",
           "columnsFrom": [
             "approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_scene_media_id_media_id_fk": {
+          "name": "social_posts_scene_media_id_media_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "media",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "scene_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "social_posts_video_media_id_media_id_fk": {
+          "name": "social_posts_video_media_id_media_id_fk",
+          "tableFrom": "social_posts",
+          "tableTo": "media",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "video_media_id"
           ],
           "columnsTo": [
             "id"

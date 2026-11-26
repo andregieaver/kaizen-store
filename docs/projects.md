@@ -263,7 +263,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 
 | Id | Step | Status |
 |---|---|---|
-| P7.1 | The platform admin's own projects (`store_id is null`), and the row in `docs/platform-parity.md` | Planned |
+| P7.1 | The platform admin's own projects, and the row in `docs/platform-parity.md` | Built 26 November 2026 (below: in Kaizena Flow's store, not `store_id is null`) |
 
 ### P8: an extension that stands alone (D904)
 
@@ -272,9 +272,9 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 | P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Done 26 November 2026 (bc2c881, 073eb4b; below) |
 | P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Done 26 November 2026 (below) |
 | P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | In steps below |
-| P8.3a | **The shop and the support desk:** *Make a task* from an order, a return, a review or a support conversation; the task links back, and an order's and a return's page show their tasks | Built 26 November 2026 (below) |
-| P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Built 26 November 2026 (below) |
-| P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Built 26 November 2026 (below) |
+| P8.3a | **The shop and the support desk:** *Make a task* from an order, a return, a review or a support conversation; the task links back, and an order's and a return's page show their tasks | Done 26 November 2026 (2a9f9d4; below) |
+| P8.3b | **Deals:** a won deal starts a project (its lists from templates if chosen); the deal and the project name each other | Done 26 November 2026 (3d7ee2c; below) |
+| P8.3c | **The AI manager:** its Projects tools (P5's first part): read what is open and due, add and tick tasks, each only while the store has Projects | Done 26 November 2026 (4b57e25; below) |
 | P8.3d | **Work:** time on a task and a task on an assignment (P6.1); **Email automation:** a task's person told when it is theirs (with P4.3's reminders) | Planned |
 
 ## 6. Tests
@@ -467,4 +467,19 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   the system made (*Follow up order 1042*), never a name a customer typed, since task titles reach the manager.
 - **The eval.** New tools change `toolsVersion()`: the agents' eval is recorded again on Platform → AI and its recording committed (D391);
   until then the replay warns (D793). The AI round rose by 30 characters (`load_tools` names them).
+
+**In production (26 November 2026).** P8.3a and P8.3b came out together after another session's red run (the admin's `/pages` scripts,
+fixed in d03d5b0): both migrations applied (the four task sources, their keys and the conversation's trigger; `projects.deal_id` and its
+key). The advisors list only INFO: the new link indexes are not used yet; no new unindexed key, nothing for `docs/audits/psi-followups.md`.
+P8.3c needed no migration. Left of P8.3: **P8.3d** (Work's time on tasks with P6.1, a task's person told by email with P4.3's reminders),
+and the agents' eval recorded again on Platform → AI for the three new tools.
+
+## As built: step P7.1, Kaizena Flow's own projects (26 November 2026)
+
+- **Where they live.** In Kaizena Flow's own store (`kaizenaflow`), as its customers and deals do (D466's route, D467), not as rows with
+  no store: every Projects table holds its rules by `(store_id, id)` keys, which hold nothing for a row with no store, and the store
+  already has every extension (the platform's account) and every pair (its deals, its support desk, the AI manager).
+- **The way in.** The platform admin's Settings → *Running the platform* → *Projects* (`/admin/platform/projects`) opens that store's
+  Projects for someone on its team; anyone else is told its owner adds them under Team. The store's own page offers to switch the feature on
+  when it is off. The row in `docs/platform-parity.md` is ticked.
 

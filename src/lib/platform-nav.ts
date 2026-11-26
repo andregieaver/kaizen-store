@@ -215,6 +215,10 @@ export const PLATFORM_SECTIONS: PlatformSection[] = [
         items: [
           // The incident log (D895): errors, warnings and improvements, worked by the autopilot; improvements wait for Approve.
           item("/incidents", "Incidents", "Every error and warning the platform meets and every improvement suggested: what needs you, what is being fixed and what was fixed.", "life-buoy", "settings", { basic: true }),
+          // How owners who said yes use the admin (D895 phase 3b): heat figures per screen and recordings with every word hidden.
+          item("/admin-use", "Admin use", "Where owners find the admin hard.", "flame", "settings"),
+          // Kaizena Flow's own projects (D904 P7.1): they live in its store; this opens them there.
+          item("/projects", "Projects", "Kaizena Flow's own projects and checklists, in its store.", "folder-kanban", "settings"),
           item("/status", "Status page", "The public status page: each part's checks every five minutes, incidents to post and update, and their subscribers.", "activity", "settings", { basic: true }),
           item("/capacity", "Usage and limits", "What every store used this month against its limits: storage, products, staff, visits, emails and AI.", "gauge", "settings", { basic: true }),
           item("/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup.", "mail", "settings", { basic: true }),

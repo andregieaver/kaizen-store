@@ -50,7 +50,7 @@ const PACKAGES: Record<string, { why: string; loads: Loads }> = {
   fontverter: { why: "Converts a trimmed font to WOFF2 (font-trim.ts).", loads: "server" },
   "lucide-react": { why: "The admin's and the storefront's icons.", loads: "both" },
   mammoth: { why: "Reads a Word file into text for the knowledge base (knowledge.ts).", loads: "server" },
-  mediabunny: { why: "Compresses a video in the browser before upload (video-compress.ts).", loads: "browser" },
+  mediabunny: { why: "Compresses a video in the browser before upload (video-compress.ts), and makes a social post's slideshow (social-slideshow-make.ts).", loads: "browser" },
   motion: { why: "Scroll-linked motion (motion-scroll.ts), loaded where a page uses it.", loads: "browser" },
   next: { why: "The framework.", loads: "both" },
   "node-forge": { why: "Reads the platform's PKCS#12 certificate for a contract seal (contract-seal.ts).", loads: "server" },

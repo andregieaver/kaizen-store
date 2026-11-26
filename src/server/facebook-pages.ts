@@ -32,7 +32,8 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * A store's Facebook Page and its posts' figures (D870 S1.2b, pure parts in `src/lib/facebook-pages.ts`): Kaizena Flow's Facebook app
- * (`FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`), Facebook Login with `pages_show_list`, `pages_read_engagement` and `read_insights`. The
+ * (`FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`), Facebook Login with `pages_show_list`, `pages_read_engagement` and `read_insights` (on Facebook
+ * Login for Business, a configuration holding them, `FACEBOOK_LOGIN_CONFIG_ID`). The
  * person's token is made long-lived and its Pages listed; with one Page it is chosen, with several the owner chooses on Social posts, and the
  * Page's own token (which a long-lived person's token gives without an end) is kept, encrypted. The dispatcher's daily run reads the Page's
  * posts of the last 90 days into `social_post_insights` (channel `facebook`). A refusal is kept as the Page's `problem`, in Facebook's words.
@@ -44,13 +45,15 @@ export const FACEBOOK_COOKIE = "kaizen_facebook_connect";
 export const FACEBOOK_CALLBACK = "/api/integrations/facebook/callback";
 export const FACEBOOK_COOKIE_PATH = "/api/integrations/facebook";
 
-type App = { appId: string; appSecret: string };
+type App = { appId: string; appSecret: string; configId: string | null };
 
 function facebookApp(): App | null {
   const appId = process.env.FACEBOOK_APP_ID?.trim();
   const appSecret = process.env.FACEBOOK_APP_SECRET?.trim();
   if (!appId || !appSecret || !encryptionKey()) return null;
-  return { appId, appSecret };
+  // Facebook Login for Business: the configuration made in Meta's dashboard, which holds the permissions (D870 S1.2b).
+  const configId = process.env.FACEBOOK_LOGIN_CONFIG_ID?.trim();
+  return { appId, appSecret, configId: configId && /^[0-9]{1,40}$/.test(configId) ? configId : null };
 }
 
 /** Kaizena Flow's Facebook app is set up here, so owners can connect a Page. */
@@ -70,7 +73,7 @@ export function facebookStart(storeSlug: string, accountId: string): { url: stri
   const app = facebookApp();
   if (!app) return null;
   const state = randomBytes(24).toString("base64url");
-  return { url: facebookAuthorizeUrl(app.appId, `${siteUrl()}${FACEBOOK_CALLBACK}`, state), cookie: [state, storeSlug, accountId].join(".") };
+  return { url: facebookAuthorizeUrl(app.appId, `${siteUrl()}${FACEBOOK_CALLBACK}`, state, app.configId), cookie: [state, storeSlug, accountId].join(".") };
 }
 
 /** Who started connecting, from the cookie; checked against the state Facebook sends back. */

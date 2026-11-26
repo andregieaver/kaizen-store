@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."social_posts" ADD COLUMN "video_media_id" uuid;--> statement-breakpoint
+ALTER TABLE "commerce"."social_posts" ADD CONSTRAINT "social_posts_video_media_id_media_id_fk" FOREIGN KEY ("video_media_id") REFERENCES "commerce"."media"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "social_posts_video_idx" ON "commerce"."social_posts" USING btree ("video_media_id");
