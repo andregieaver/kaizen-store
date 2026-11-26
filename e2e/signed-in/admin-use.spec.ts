@@ -60,8 +60,10 @@ test.describe("the owner", () => {
     await page.context().addCookies([{ name: "kz_admin_use", value: "h", url: new URL("/admin", baseURL).toString() }]);
     await page.goto(`/admin/${E2E_STORE}/products`);
     await expect(page.getByRole("main")).toBeVisible();
+    // The collector loads after the page; a view shorter than a second is never sent.
+    await page.waitForLoadState("networkidle");
     await page.mouse.click(400, 400);
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2500);
     // Leaving the screen ends its view and sends its summary.
     await page.goto(`/admin/${E2E_STORE}/orders`);
     await expect

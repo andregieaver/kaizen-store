@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
-import { ADMIN_USE_COOKIE } from "@/lib/admin-signals";
+import { ADMIN_USE_COOKIE } from "@/lib/admin-use-cookie";
 
 /**
  * Loads the admin heatmaps' collector (D895 phase 3b) only for a person whose browser says they allowed it (the choice cookie `h` or `hr`),

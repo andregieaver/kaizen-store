@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { ADMIN_USE_COOKIE, choiceFromForm, cookieValueOf } from "@/lib/admin-signals";
+import { choiceFromForm, cookieValueOf } from "@/lib/admin-signals";
+import { ADMIN_USE_COOKIE } from "@/lib/admin-use-cookie";
 import { sameSite } from "@/lib/same-site";
 import { chooseAdminSignals } from "@/server/admin-signals";
 import { getAccount } from "@/server/auth";
