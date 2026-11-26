@@ -8,7 +8,7 @@ import { E2E_STORE, OWNER } from "./accounts";
  * Projects and checklists (D903) as an owner uses them: the feature is switched on under Features; a checklist is made, tasks are added with
  * Enter and one is ticked below the Done line; the list made Advanced, a task set to repeat every day, ticked (its run shows) and the tick
  * undone; the list filtered by status, its open task found under All tasks, and the list duplicated under a name of its own; a tag made on Statuses, given to a task, and the task commented
- * on; a project is made, a checklist added to it, a task moved to the next stage on its board
+ * on; the task given a customer (P4.7), linked on the list and listed on the customer's page; a project is made, a checklist added to it, a task moved to the next stage on its board
  * with the keyboard's way (*Move to*), and the project's calendar opened. The store is left as it was found: its projects and lists deleted, the feature switched off again.
  */
 test.use({ storageState: OWNER.state });
@@ -18,7 +18,9 @@ const run = Date.now().toString(36);
 const LIST = `Opening ${run}`;
 const PROJECT = `Launch ${run}`;
 const TAG = `Fragile ${run}`;
+const BUYER = `Kari Tasker ${run}`;
 let wasOn = false;
+let buyerId = "";
 
 async function projects(page: Page, on: boolean) {
   await page.goto(`/admin/${E2E_STORE}/settings/features`);
@@ -46,8 +48,10 @@ async function addTask(page: Page, title: string) {
 test.beforeAll(async () => {
   const sql = testDb();
   try {
-    const [store] = await sql`select 'projects' = any(features) as on from commerce.stores where slug = ${E2E_STORE}`;
+    const [store] = await sql`select id, 'projects' = any(features) as on from commerce.stores where slug = ${E2E_STORE}`;
     wasOn = Boolean(store.on);
+    const [buyer] = await sql`insert into commerce.customers (store_id, email, name) values (${store.id}, ${`kari-${run}@example.com`}, ${BUYER}) returning id`;
+    buyerId = String(buyer.id);
   } finally {
     await sql.end();
   }
@@ -59,6 +63,7 @@ test.afterAll(async ({ browser }) => {
     await sql`delete from commerce.projects where name = ${PROJECT}`;
     await sql`delete from commerce.project_labels where name = ${TAG}`;
     await sql`delete from commerce.checklists where title in (${LIST}, ${`${LIST} (copy)`}, ${`Campaign ${run}`})`;
+    if (buyerId) await sql`delete from commerce.customers where id = ${buyerId}`;
   } finally {
     await sql.end();
   }
@@ -155,6 +160,25 @@ test("an owner makes a tag, gives it to a task and comments on the task", async 
   await editor.getByLabel("Write a comment").fill("Counted twice, it matches.");
   await editor.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(editor.getByText("Counted twice, it matches.")).toBeVisible({ timeout: 30_000 });
+});
+
+test("an owner says which customer a task is about, and finds it on the customer's page", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/checklists`);
+  await page.getByRole("link", { name: LIST, exact: true }).first().click();
+  await page.getByRole("button", { name: "Open Count the till" }).click();
+  const editor = page.getByRole("dialog");
+  await editor.getByLabel("Customer", { exact: true }).fill(BUYER.slice(0, 10));
+  await editor.getByRole("button", { name: new RegExp(`^${BUYER}`) }).click();
+  await expect(editor.getByRole("button", { name: `Remove ${BUYER} from the task` })).toBeVisible();
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(editor).toBeHidden({ timeout: 30_000 });
+
+  const link = page.getByRole("link", { name: BUYER, exact: true });
+  await expect(link).toBeVisible({ timeout: 30_000 });
+  await link.click();
+  const tasks = page.getByRole("region", { name: "Tasks", exact: true });
+  await expect(tasks.getByText("Count the till", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(tasks.getByRole("link", { name: `In ${LIST}`, exact: true })).toBeVisible();
 });
 
 test("an owner makes a project, adds a checklist and moves a task on the board", async ({ page }) => {

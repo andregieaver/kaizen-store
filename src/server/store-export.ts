@@ -125,8 +125,8 @@ export const STORE_EXPORT_TABLES = [
   "deal_stages",
   // Its contract templates (D695): its own words; the contracts name people and leave through the privacy export.
   "contract_templates",
-  // Its projects and checklists (D903): the team's own plans and labels, with who is assigned left out as every column naming a person is; folds
-  // are each person's own view and comments each person's words, and stay out.
+  // Its projects and checklists (D903): the team's own plans and labels, with who is assigned and the customer a task is about (P4.7) left out
+  // as every column naming a person is; folds are each person's own view and comments each person's words, and stay out.
   "projects",
   "project_statuses",
   "checklists",
@@ -143,8 +143,11 @@ export const STORE_EXPORT_TABLES = [
 /** A column that could open a door, never written to the file (the support inbox's channel and email-address keys among them). */
 export const SECRET_COLUMN = /(secret|token|_hash$|^hash$|password|encrypt|credential|signing|api_key|private_key|webhook|^channel_key$|^email_key$)/i;
 
-/** Columns that name a person (who made or changed a row, a code's named customers, a report's recipients, who a task is assigned to), left out whatever the table. */
-export const PERSON_COLUMN = /(_by$|^customer_ids$|^recipients$|(^|_)account_id$|^assigned_to$)/;
+/**
+ * Columns that name a person (who made or changed a row, a code's named customers, a report's recipients, who a task is assigned to and the
+ * customer it is about), left out whatever the table.
+ */
+export const PERSON_COLUMN = /(_by$|^customer_ids$|^recipients$|(^|_)account_id$|^assigned_to$|^customer_id$)/;
 
 /** A row as it goes into the file: without its store id, its secrets or the people it names. */
 export function exportable(row: Record<string, unknown>): Record<string, unknown> {

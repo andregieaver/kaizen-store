@@ -21,13 +21,13 @@ import { teamOf } from "@/server/projects";
 import { labelsOf } from "@/server/projects-labels";
 import { checklistDetail, listChecklists, listFingerprint, type ChecklistItem } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
-import { sourceLinks } from "@/server/projects-sources";
+import { customerLinks, sourceLinks } from "@/server/projects-sources";
 import { listWork, taskMinutes, workPairOn } from "@/server/projects-work";
 import { remindersOf } from "@/server/projects-reminders";
 import { todayIn } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 
-import { listStatusAction, projectsAction } from "../../projects/actions";
+import { findTaskCustomersAction, listStatusAction, projectsAction } from "../../projects/actions";
 
 export const metadata: Metadata = { title: "Checklist" };
 
@@ -68,13 +68,16 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const home = list.projects.find((p) => p.id === list.primaryProjectId);
   const toView = (item: ChecklistItem): ViewItem => ({ ...item, subtasks: item.subtasks.map((s) => ({ id: s.id, title: s.title, done: s.done, isGoal: s.isGoal })) });
   // Where tasks came from (D904 P8.3a): links back to orders, returns, reviews and conversations, while their arms are there.
-  const sources = await sourceLinks(member, [...list.entries.flatMap((e) => (e.kind === "item" ? [e.item] : [])), ...list.done], w.sources);
+  const tasks = [...list.entries.flatMap((e) => (e.kind === "item" ? [e.item] : [])), ...list.done];
+  // Who tasks are about (P4.7): a link to each customer's page, and the editor's field, for a person who may read customers.
+  const [sources, about] = await Promise.all([sourceLinks(member, tasks, w.sources), customerLinks(member, tasks)]);
+  const customers = memberCan(member, "customers:read") ? { links: about, find: findTaskCustomersAction.bind(null, store.slug) } : undefined;
   const entries: ViewEntry[] = list.entries.map((e) => (e.kind === "section" ? { kind: "section", section: { id: e.section.id, title: e.section.title } } : { kind: "item", item: toView(e.item) }));
   const assignee = team.find((p) => p.id === list.assignedTo)?.name;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const drawn = new Date();
   const now = drawn.getTime();
-  const costs = list.features.cost ? costSummary([...list.entries.flatMap((e) => (e.kind === "item" ? [e.item] : [])), ...list.done]) : [];
+  const costs = list.features.cost ? costSummary(tasks) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,6 +145,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         sources={sources}
         time={work ? { minutes, canLog: workPairOn(member, true), today: todayIn(store.timeZone) } : undefined}
         reminders={reminders.items}
+        customers={customers}
       />
       {canChange && (
         <details className="flex flex-col gap-3">

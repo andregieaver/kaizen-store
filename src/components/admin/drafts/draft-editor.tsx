@@ -26,6 +26,7 @@ import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/drafts-words";
 
+import { CustomerChoiceList } from "@/components/admin/customer-choices";
 import { DraftSummaryPanel } from "./draft-summary";
 import { ActionMessage, PaidOutsideBox, SendBox } from "./draft-send";
 import { QuotePanel, type DraftQuote } from "./quote-panel";
@@ -422,19 +423,7 @@ export function DraftEditor({
               {w.findCustomer} <span className="font-normal text-muted">{w.findCustomerHint}</span>
             </label>
             <input id="draft-customer-search" value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} autoComplete="off" className={field} />
-            {shownCustomers && (
-              <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-sunken text-sm" aria-label={w.customersFound}>
-                {shownCustomers.length === 0 && <li className="p-2 text-muted">{w.noCustomer}</li>}
-                {shownCustomers.map((c) => (
-                  <li key={c.id}>
-                    <button type="button" onClick={() => void chooseCustomer(c)} className="flex w-full flex-col items-start p-2 text-left hover:bg-card">
-                      <span>{c.name || c.email}</span>
-                      {c.name && <span className="text-xs text-muted">{c.email}</span>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {shownCustomers && <CustomerChoiceList choices={shownCustomers} label={w.customersFound} none={w.noCustomer} onChoose={(c) => void chooseCustomer(c)} />}
             {form.customerId && (
               <p className={hint}>
                 {w.linked}{" "}

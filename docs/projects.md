@@ -228,7 +228,7 @@ Status: Planned, Building, Done (date and commit).
 | P4.4 | Comments on an item (Life's activity thread) | Done, 26 Nov 2026 (a9d0ea8) |
 | P4.5 | Attachments from the media library | Planned |
 | P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 (a9d0ea8) |
-| P4.7 | A customer on an item (Life's contacts) | Planned |
+| P4.7 | A customer on an item (Life's contacts) | Built 26 November 2026 (below) |
 | P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 (87d9db8) |
 | P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 (a190512) |
 | P4.10 | A light refresh while a list is open, for a team working together | Done, 26 Nov 2026 (9fbb82c) |
@@ -542,4 +542,22 @@ policy on a table with RLS, as every `commerce` table; new indexes not used yet)
 - **Workflows** test a project's name, status or health, a list's title, or a task's title, list, priority and whether it repeats
   (`WORKFLOW_FIELDS`), with each action that suits any event (email staff, Slack, an endpoint, the AI manager).
 - **Left of P5.2:** a list archived as an event (not asked for yet; `checklist.created` and the tasks' events cover the work).
+
+## As built: step P4.7, a customer on a task (26 November 2026)
+
+- **The link.** `checklist_items.customer_id`, the store's own customer by its composite key (migrations
+  `20261126204448_checklist_item_customer` and `20261126204454_checklist_item_customer_rules`), cleared when the customer is deleted while
+  the task stays. It is beside a task's source, not one of them: a task made from an order, a return, a review or a conversation also names
+  that record's customer, when it has one of the store's (`customerOfLink()`, `src/server/projects-items.ts`).
+- **Who may.** Naming a task's customer needs the right to read customers as well as to change projects; without it the editor has no field,
+  the list shows no customer and a write that names one is refused. Another store's customer is not found.
+- **Where.** The list's switch *Customer* (`contacts`, now built) gives a task's editor the field `TaskCustomer`: the name with a cross, or a
+  search by name or email from two letters (`findTaskCustomersAction`, the same search as a draft order's, `src/server/customer-choices.ts`).
+  A task's row links its customer's page (`customerLinks()`); a customer's page has the card *Tasks* (`SourceTasks`, the kind `customer`):
+  their tasks, ticked there, and *Make a task*, written in advance as *Follow up the customer*, never their name.
+- **Their data.** A task about a person holds their data: the privacy export lists their tasks with the CRM's (`checklist_task`), and
+  erasure deletes them, as the CRM's own tasks, and blanks their events' deliveries; a merge moves them to the kept customer. The whole-store
+  file leaves the column out, as every column naming a person.
+- **The platform** has it at once: Kaizena Flow's Projects live in its own store, whose customers its owners and applicants are (D467).
+- **Left of P4.7:** the customer in the events' payloads (`task.*`) and a filter by customer, until asked for.
 

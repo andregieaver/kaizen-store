@@ -60,7 +60,11 @@ import { Mail } from "lucide-react";
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
 import { addCustomerTagAction, addGuestAction, addNoteAction, adjustBonusAction, deleteNoteAction, removeCustomerTagAction, saveCustomerFieldsAction, updateCustomerAction, deleteCustomerAction } from "./actions";
-import { dealsOn } from "@/lib/extensions";
+import { dealsOn, projectsOn } from "@/lib/extensions";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
+import { SourceTasks } from "@/components/admin/projects/source-tasks";
+import { sourceTasks } from "@/server/projects-sources";
+import { projectsAction } from "../../projects/actions";
 import { areaTexts } from "@/lib/admin-area";
 import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
@@ -148,6 +152,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
     customer.customerId ? customerLeadScore(store.id, customer.customerId, salesOn) : Promise.resolve(null),
   ]);
   const dealWords = DEALS_WORDS[lang];
+  // The tasks about them (D903 P4.7), while the store has Projects: Projects' pair with the customer, beside the CRM's own tasks.
+  const tasksAbout = customer.customerId && projectsOn(store) && memberCan(member, "projects:read") ? await sourceTasks(store.id, { kind: "customer", id: customer.customerId }) : null;
   const [activities, team] =
     salesOn && customer.customerId
       ? await Promise.all([activitiesOf(store.id, { customerId: customer.customerId }), mayTag ? activityTeam(store.id) : Promise.resolve([])])
@@ -539,6 +545,18 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               team={team}
               me={member.account.id}
               blank={newActivityValues({ customerId: customer.customerId }, member.account.id, new Date(), store.timeZone)}
+            />
+          )}
+          {tasksAbout && customer.customerId && (
+            <SourceTasks
+              base={base}
+              source={{ kind: "customer", id: customer.customerId }}
+              label={null}
+              tasks={tasksAbout.tasks}
+              lists={tasksAbout.lists}
+              canChange={memberCan(member, "projects:write")}
+              words={PROJECT_SOURCES_WORDS[lang]}
+              act={projectsAction.bind(null, store.slug)}
             />
           )}
           <CustomerNotes

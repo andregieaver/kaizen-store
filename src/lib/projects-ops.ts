@@ -8,7 +8,7 @@ import { z } from "zod";
 import { checklistInput, itemFields, labelInput, projectInput, statusInput, subtaskInput } from "./projects";
 import { ADVANCED_FEATURES } from "./projects-features";
 import { LABEL_KINDS } from "./projects-model";
-import { SOURCE_KINDS } from "./projects-sources";
+import { LINK_KINDS } from "./projects-sources";
 
 const id = z.uuid();
 const ids = z.array(z.uuid()).min(1).max(500);
@@ -73,7 +73,7 @@ export const projectsOp = z.discriminatedUnion("op", [
   z.object({ op: z.literal("list.fold"), id, sectionId: scope, folded: z.boolean() }),
   z.object({ op: z.literal("item.add"), checklistId: id, titles: z.array(z.string().max(500)).min(1).max(500) }),
   // A task from an order, a return, a review or a conversation (D904 P8.3a); no list: the store's list for follow-ups.
-  z.object({ op: z.literal("item.addFrom"), kind: z.enum(SOURCE_KINDS), sourceId: id, title: z.string().max(500), checklistId: id.nullable() }),
+  z.object({ op: z.literal("item.addFrom"), kind: z.enum(LINK_KINDS), sourceId: id, title: z.string().max(500), checklistId: id.nullable() }),
   z.object({ op: z.literal("item.update"), id, patch: itemFields.partial() }),
   z.object({ op: z.literal("item.done"), id, done: z.boolean() }),
   z.object({ op: z.literal("item.skip"), id }),

@@ -14057,6 +14057,11 @@ export const checklistItems = commerce
       reviewId: uuid("review_id"),
       conversationId: uuid("conversation_id"),
       /**
+       * The customer it is about (P4.7, Life's contact on an item): the store's own, by the composite key the rules migration holds, cleared
+       * when the customer is deleted while the task stays. A task made from an order or a return names its customer.
+       */
+      customerId: uuid("customer_id"),
+      /**
        * Who gave the task its person, and when (D904 P8.3d), written by the item writers when the person changes; the five-minute job
        * tells the person by email once (`assignee_told_at`), unless they took it themselves.
        */
@@ -14082,6 +14087,8 @@ export const checklistItems = commerce
       index("checklist_items_return_link_idx").on(t.storeId, t.returnId).where(sql`${t.returnId} is not null`),
       index("checklist_items_review_link_idx").on(t.storeId, t.reviewId).where(sql`${t.reviewId} is not null`),
       index("checklist_items_conversation_link_idx").on(t.conversationId).where(sql`${t.conversationId} is not null`),
+      // A customer's tasks, read on their page (P4.7).
+      index("checklist_items_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
       index("checklist_items_created_by_idx").on(t.createdBy),
       index("checklist_items_assigned_by_idx").on(t.assignedBy),
       // The tasks whose person is still to be told: a handful at a time, so the job's read stays small.

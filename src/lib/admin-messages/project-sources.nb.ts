@@ -18,6 +18,7 @@ export const projectSourcesNb: ProjectSourcesMessages = {
     return: "Følg opp retur {label}",
     review: "Svar på anmeldelsen",
     conversation: "Følg opp samtalen",
+    customer: "Følg opp kunden",
   },
   added: "Oppgaven er lagt i {list}.",
   deal: {

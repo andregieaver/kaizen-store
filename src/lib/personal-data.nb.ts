@@ -158,6 +158,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "En kontrakts logg (D695): når den ble sendt, åpnet, signert eller avslått, fra hvilken adresse og nettleser, knyttet gjennom kontrakten: eksporteres med den, slettes med en usignert og beholdes med en signert i oppbevaringstiden som bevis.",
   activities:
     "De ansattes samtaler, møter og oppgaver om en person (D468): hva og når, og det som ble skrevet om dem; eksporteres med personens notater og slettes når personen slettes (en aktivitet om en bedrift eller en avtale beholder den og mister personen).",
+  checklist_items:
+    "Teamets oppgaver i sjekklister om en person (D903 P4.7): hva som skal gjøres og det som ble skrevet om det; eksporteres med CRM-oppgavene og slettes når personen slettes (med trinn, kommentarer og påminnelser; tid ført på en oppgave blir stående på Work-oppdraget). En oppgave uten person har ingen persons opplysninger: butikkens eget arbeid, og id-en til ordren, returen, anmeldelsen eller samtalen den kom fra (D904 P8.3a).",
   customer_tags: "De ansattes stikkord på en person (D296), knyttet til adressen: eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes.",
   broadcast_recipients:
     "Adressene en utsendelse gikk til (D297), låst da sendingen startet: listes i eksporten av markedsføringsopplysninger, og slettes når personens opplysninger slettes og 90 dager etter at sendingen var ferdig (tallene beholdes).",

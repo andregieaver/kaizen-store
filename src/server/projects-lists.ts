@@ -83,6 +83,8 @@ export type ChecklistItem = {
   tagIds: string[];
   /** Where it came from (D904 P8.3a): an order, a return, a review or a conversation. */
   source: TaskSource | null;
+  /** The customer it is about (P4.7), one of the store's. */
+  customerId: string | null;
   subtasks: Subtask[];
   /** The team's comments on it (P4.4), oldest first. */
   comments: ItemComment[];
@@ -215,6 +217,7 @@ const itemRow = z.object({
   return_id: col.uuid.nullable(),
   review_id: col.uuid.nullable(),
   conversation_id: col.uuid.nullable(),
+  customer_id: col.uuid.nullable(),
 });
 
 const subtaskRow = z.object({
@@ -249,7 +252,7 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
       sql`
         select id, title, description, done_at, archived_at, sort_order, status_id, assigned_to, start_at, due_at, all_day, priority, recurrence,
           streak, next_due_at, last_completed_at, skipped_at, blocked_reason, blocked_by_item_id, cost_minor, cost_currency, category_id,
-          order_id, return_id, review_id, conversation_id
+          order_id, return_id, review_id, conversation_id, customer_id
         from commerce.checklist_items where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid
         order by sort_order, created_at
       `,
@@ -333,6 +336,7 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     categoryId: r.category_id,
     tagIds: tags.filter((t) => t.item_id === r.id).map((t) => t.label_id),
     source: sourceOf(r),
+    customerId: r.customer_id,
     subtasks: stepsOf.get(r.id) ?? [],
     comments: comments
       .filter((c) => c.item_id === r.id)

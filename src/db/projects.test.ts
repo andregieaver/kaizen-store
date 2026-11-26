@@ -382,6 +382,30 @@ describe("where a task came from (D904 P8.3a)", () => {
   });
 });
 
+describe("the customer a task is about (D903 P4.7)", () => {
+  const customer = (storeId: string) => {
+    counter += 1;
+    return id("insert into commerce.customers (store_id, email) values ($1, $2) returning id", [storeId, `buyer${counter}@example.com`]);
+  };
+
+  it("names a customer of its own store only, and keeps the task when the customer goes", async () => {
+    const task = await item(shop, await checklist(shop));
+    await rejects("update commerce.checklist_items set customer_id = $2 where id = $1", [task, await customer(other)], /checklist_items_customer_fk/);
+    const buyer = await customer(shop);
+    await db.query("update commerce.checklist_items set customer_id = $2 where id = $1", [task, buyer]);
+    await db.query("delete from commerce.customers where id = $1", [buyer]);
+    expect(await one("select customer_id, store_id = $2 as kept from commerce.checklist_items where id = $1", [task, shop])).toEqual({ customer_id: null, kept: true });
+  });
+
+  it("is beside a task's source, not one of them: a task from a conversation can also name its customer", async () => {
+    const buyer = await customer(shop);
+    const talk = await id("insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values ($1, 'site', 'ai', md5(gen_random_uuid()::text), 'en') returning id", [shop]);
+    const task = await item(shop, await checklist(shop));
+    await db.query("update commerce.checklist_items set conversation_id = $2, customer_id = $3 where id = $1", [task, talk, buyer]);
+    expect(await one("select conversation_id = $2 as sourced, customer_id = $3 as about from commerce.checklist_items where id = $1", [task, talk, buyer])).toEqual({ sourced: true, about: true });
+  });
+});
+
 describe("a project from a deal (D904 P8.3b)", () => {
   it("names a deal of its own store only, and keeps the project when the deal goes", async () => {
     const pipeline = await id("insert into commerce.deal_pipelines (store_id, name) values ($1, 'Sales') returning id", [shop]);
