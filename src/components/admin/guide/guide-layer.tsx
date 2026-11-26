@@ -6,12 +6,14 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as Rea
 import { fillWords } from "@/lib/admin-fill";
 import { GUIDE_KINDS, GUIDE_LEVELS, WELCOME, WELCOME_TARGETS, effectiveLevel, guideDay, guideTally, type GuideLevel, type GuidePlace, type WelcomeStep } from "@/lib/guide";
 
-import { GuideIcon, useGuide, type GuideState } from "./guide-provider";
+import { useGuide, type GuideState } from "./guide-context";
+import { GuideIcon } from "./guide-parts";
 
 /**
- * What Guide draws (D909), loaded by `GuideProvider` only once there is something to draw: the welcome's spotlight, a beacon beside a
+ * What Guide draws (D909), in its runtime's chunk (`guide-runtime.tsx`), never a screen's first scripts: the welcome's spotlight, a beacon beside a
  * page's title, the panel, and the note after the welcome. Each is placed from the page as it is drawn (the target's box, followed as the
- * page scrolls or resizes), in the admin's colour roles, and every motion stops for `prefers-reduced-motion`.
+ * page scrolls or resizes), in the admin's colour roles and classes the admin already has: what is Guide's own (a shadow, a width, a layer)
+ * is written as a style, so it adds nothing to the stylesheet every page shares (`e2e/performance.spec.ts`).
  */
 export function GuideLayer() {
   const guide = useGuide();
@@ -117,6 +119,11 @@ function stepWords(guide: GuideState, step: WelcomeStep) {
 
 const PILL = "inline-flex min-h-11 items-center justify-center rounded-pill px-5 text-body";
 const MAIN = `${PILL} bg-brand text-body-strong text-brand-ink hover:bg-brand-hover`;
+/** Over the admin's dialogs (50) and menus: written as styles, so nothing of Guide adds a rule to the stylesheet every page shares. */
+const ABOVE = { spotlight: 70, panel: 60, card: 40, dot: 30 } as const;
+const CARD_WIDTH = (px: number) => `min(${px}px, calc(100vw - 32px))`;
+/** Where the page begins beside the rail (0 on a phone, which has none). */
+const railEdge = () => document.querySelector("[data-admin-rail]")?.getBoundingClientRect().right ?? 0;
 const QUIET = `${PILL} border border-edge bg-card text-ink hover:bg-sunken`;
 
 /** The welcome: the page dimmed around one place at a time, a card beside it saying what it is and what can be done there. */
@@ -167,12 +174,18 @@ function Spotlight({ guide, steps }: { guide: GuideState; steps: WelcomeStep[] }
   const at = placeCard(box, size);
   const pad = 6;
   return (
-    <div className="fixed inset-0 z-[70]" data-guide-spotlight>
+    <div className="fixed inset-0" style={{ zIndex: ABOVE.spotlight }} data-guide-spotlight>
       <div aria-hidden className="absolute inset-0" />
       <div
         aria-hidden
-        className="pointer-events-none absolute rounded-card shadow-[0_0_0_9999px_color-mix(in_srgb,var(--rail)_62%,transparent)] outline-2 outline-offset-2 outline-brand motion-safe:transition-all motion-safe:duration-300"
-        style={{ top: box.top - pad, left: box.left - pad, width: box.width + pad * 2, height: box.height + pad * 2 }}
+        className="pointer-events-none absolute rounded-card"
+        style={{
+          top: box.top - pad,
+          left: box.left - pad,
+          width: box.width + pad * 2,
+          height: box.height + pad * 2,
+          boxShadow: "0 0 0 2px var(--brand), 0 0 0 9999px color-mix(in srgb, var(--rail) 62%, transparent)",
+        }}
       />
       <div
         ref={card}
@@ -188,12 +201,12 @@ function Spotlight({ guide, steps }: { guide: GuideState; steps: WelcomeStep[] }
           }
           trapTab(event, card.current);
         }}
-        className="absolute flex w-[min(380px,calc(100vw-32px))] flex-col gap-3.5 rounded-card bg-card p-6 text-ink shadow-[var(--shadow-float)] outline-none motion-safe:transition-all motion-safe:duration-300"
-        style={{ top: at.top, left: at.left }}
+        className="absolute flex flex-col gap-4 rounded-card bg-card p-6 text-ink shadow-[var(--shadow-float)] outline-none"
+        style={{ top: at.top, left: at.left, width: CARD_WIDTH(380) }}
       >
         <div className="flex items-center justify-between">
           <p className="text-eyebrow text-brand-text uppercase">{fillWords(guide.words.welcome.eyebrow, { n: index + 1, total: shown.length })}</p>
-          <button type="button" onClick={() => finish("later")} aria-label={w.close} className="-m-2.5 flex size-11 items-center justify-center rounded-pill text-muted hover:bg-sunken hover:text-ink">
+          <button type="button" onClick={() => finish("later")} aria-label={w.close} className="-mr-2 flex size-11 items-center justify-center rounded-pill text-muted hover:bg-sunken hover:text-ink">
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
@@ -205,7 +218,7 @@ function Spotlight({ guide, steps }: { guide: GuideState; steps: WelcomeStep[] }
         <p id="guide-step-body" className="text-body text-ink-2">
           {words.body}
         </p>
-        <div className="rounded-panel bg-sunken px-4 py-3.5">
+        <div className="rounded-panel bg-sunken px-4 py-3">
           <p className="sr-only">{w.here}</p>
           <ul className="flex flex-col gap-2">
             {words.can.map((line) => (
@@ -221,7 +234,7 @@ function Spotlight({ guide, steps }: { guide: GuideState; steps: WelcomeStep[] }
         <div className="flex items-center justify-between gap-3 pt-1">
           <div aria-hidden className="flex gap-1.5">
             {shown.map((s, i) => (
-              <span key={s} className={`h-2 rounded-pill motion-safe:transition-all ${i === index ? "w-5 bg-inverse" : "w-2 bg-edge"}`} />
+              <span key={s} className={`h-2 rounded-pill ${i === index ? "w-5 bg-inverse" : "w-2 bg-line"}`} />
             ))}
           </div>
           <div className="flex gap-2">
@@ -292,11 +305,11 @@ function Beacon({ guide, place, target, startOpen }: { guide: GuideState; place:
         aria-label={fillWords(w.label, { place: place.label })}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="fixed z-30 flex size-11 items-center justify-center rounded-pill"
-        style={{ top: dotBox.top, left: dotBox.left }}
+        className="fixed flex size-11 items-center justify-center rounded-pill"
+        style={{ top: dotBox.top, left: dotBox.left, zIndex: ABOVE.dot }}
       >
-        <span aria-hidden className="absolute size-6 rounded-pill bg-brand/40 motion-safe:animate-ping" />
-        <span aria-hidden className="relative size-3.5 rounded-pill bg-focus ring-[3px] ring-card shadow-[var(--shadow-float)]" />
+        <span aria-hidden className="absolute size-6 animate-pulse rounded-pill bg-brand-soft" />
+        <span aria-hidden className="relative size-3 rounded-pill" style={{ background: "var(--focus)", boxShadow: "0 0 0 3px var(--card)" }} />
       </button>
       {open && (
         <div
@@ -311,8 +324,8 @@ function Beacon({ guide, place, target, startOpen }: { guide: GuideState; place:
               dot.current?.focus();
             }
           }}
-          className="fixed z-40 flex w-[min(352px,calc(100vw-32px))] flex-col gap-3 rounded-card border border-edge bg-card p-5 text-ink shadow-[var(--shadow-float)] outline-none"
-          style={{ top: at.top, left: at.left }}
+          className="fixed flex flex-col gap-3 rounded-card border border-edge bg-card p-5 text-ink shadow-[var(--shadow-float)] outline-none"
+          style={{ top: at.top, left: at.left, width: CARD_WIDTH(352), zIndex: ABOVE.card }}
         >
           <p className="text-eyebrow text-brand-text uppercase">{fillWords(w.eyebrow, { place: place.label })}</p>
           <h2 id="guide-beacon-title" className="text-title text-ink">
@@ -320,7 +333,7 @@ function Beacon({ guide, place, target, startOpen }: { guide: GuideState; place:
           </h2>
           {place.what && <p className="text-body text-ink-2">{place.what}</p>}
           {place.also.length > 0 && (
-            <div className="flex flex-col gap-1 rounded-panel bg-sunken px-3.5 py-3">
+            <div className="flex flex-col gap-1 rounded-panel bg-sunken px-4 py-3">
               <p className="text-caption text-muted">{fillWords(w.also, { place: place.label })}</p>
               <p className="text-body text-ink">{place.also.join(" · ")}</p>
             </div>
@@ -344,6 +357,7 @@ function Panel({ guide }: { guide: GuideState }) {
   const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
   const [customise, setCustomise] = useState(false);
+  const [edge] = useState(railEdge);
   const [confirming, setConfirming] = useState(false);
   const w = guide.words.panel;
   const progress = guide.progress;
@@ -374,8 +388,8 @@ function Panel({ guide }: { guide: GuideState }) {
   };
   const setLevel = (value: GuideLevel) => guide.saveSettings({ ...guide.settings, level: value });
   return (
-    <div className="fixed inset-0 z-[60]">
-      <div aria-hidden className="absolute inset-0 bg-[color-mix(in_srgb,var(--rail)_32%,transparent)]" onClick={() => setPanel(false)} />
+    <div className="fixed inset-0" style={{ zIndex: ABOVE.panel }}>
+      <div aria-hidden className="absolute inset-0" style={{ background: "color-mix(in srgb, var(--rail) 32%, transparent)" }} onClick={() => setPanel(false)} />
       <div
         ref={root}
         role="dialog"
@@ -389,9 +403,10 @@ function Panel({ guide }: { guide: GuideState }) {
           }
           trapTab(event, root.current);
         }}
-        className="absolute inset-y-0 left-0 flex w-full flex-col gap-5 overflow-y-auto bg-card p-6 [&>*]:shrink-0 text-ink shadow-2xl outline-none sm:w-[30rem] md:left-20 [[data-rail=names]_&]:md:left-56"
+        className="absolute inset-y-0 flex w-full flex-col gap-5 overflow-y-auto bg-card p-6 text-ink shadow-2xl outline-none sm:w-[28rem]"
+        style={{ left: edge }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between">
           <h2 id="guide-panel-title" className="flex items-center gap-2.5 text-title text-ink">
             <span className="text-brand-text">
               <GuideIcon />
@@ -405,18 +420,18 @@ function Panel({ guide }: { guide: GuideState }) {
           </button>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex shrink-0 flex-col gap-2">
           <div className="flex justify-between gap-3 text-body">
             <span className="text-body-strong">{fillWords(w.found, { found, total })}</span>
             <span className="text-muted">{fillWords(w.day, { n: guideDay(progress, now) })}</span>
           </div>
           <div className="h-2 rounded-pill bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={found} aria-label={fillWords(w.found, { found, total })}>
-            <div className="h-2 rounded-pill bg-brand motion-safe:transition-all" style={{ width: `${total ? Math.round((found / total) * 100) : 0}%` }} />
+            <div className="h-2 rounded-pill bg-brand" style={{ width: `${total ? Math.round((found / total) * 100) : 0}%` }} />
           </div>
         </div>
 
         {next ? (
-          <section aria-labelledby="guide-next" className="flex flex-col gap-2.5 rounded-card bg-brand-soft p-5">
+          <section aria-labelledby="guide-next" className="flex shrink-0 flex-col gap-2.5 rounded-card bg-brand-soft p-5">
             <p id="guide-next" className="text-eyebrow text-brand-text uppercase">
               {w.nextUp}
             </p>
@@ -431,11 +446,11 @@ function Panel({ guide }: { guide: GuideState }) {
             </div>
           </section>
         ) : (
-          <p className="rounded-card bg-brand-soft p-5 text-body text-ink">{w.allFound}</p>
+          <p className="shrink-0 rounded-card bg-brand-soft p-5 text-body text-ink">{w.allFound}</p>
         )}
 
         {customise ? (
-          <section aria-labelledby="guide-customise" className="flex flex-col">
+          <section aria-labelledby="guide-customise" className="flex shrink-0 flex-col">
             <h3 id="guide-customise" className="mb-1 text-body-strong text-ink">
               {w.customiseTitle}
             </h3>
@@ -453,7 +468,7 @@ function Panel({ guide }: { guide: GuideState }) {
                     aria-checked={on}
                     aria-label={w.kinds[kind].name}
                     onClick={() => guide.saveSettings({ ...guide.settings, off: on ? [...guide.settings.off, kind] : guide.settings.off.filter((k) => k !== kind) })}
-                    className="flex h-7 w-12 shrink-0 items-center rounded-pill bg-edge p-1 aria-checked:justify-end aria-checked:bg-focus"
+                    className={`flex h-7 w-12 shrink-0 items-center rounded-pill p-1 ${on ? "justify-end bg-brand" : "justify-start bg-line"}`}
                   >
                     <span aria-hidden className="size-5 rounded-pill bg-card shadow" />
                   </button>
@@ -492,7 +507,7 @@ function Panel({ guide }: { guide: GuideState }) {
             </div>
           </section>
         ) : (
-          <section aria-labelledby="guide-places" className="flex flex-col">
+          <section aria-labelledby="guide-places" className="flex shrink-0 flex-col">
             <h3 id="guide-places" className="mb-1 text-body-strong text-ink">
               {w.places}
             </h3>
@@ -525,7 +540,7 @@ function Panel({ guide }: { guide: GuideState }) {
           </section>
         )}
 
-        <section aria-labelledby="guide-often" className="mt-auto flex flex-col gap-2.5 border-t border-line pt-4">
+        <section aria-labelledby="guide-often" className="mt-auto flex shrink-0 flex-col gap-2.5 border-t border-line pt-4">
           <div className="flex items-center justify-between gap-3">
             <h3 id="guide-often" className="text-body-strong text-ink">
               {w.howOften}
@@ -559,6 +574,7 @@ function Panel({ guide }: { guide: GuideState }) {
 function Toast({ guide }: { guide: GuideState }) {
   const w = guide.words.toast;
   const done = guide.toast === "done";
+  const [edge] = useState(railEdge);
   const { setToast } = guide;
   useEffect(() => {
     const timer = window.setTimeout(() => setToast(null), 12_000);
@@ -567,7 +583,8 @@ function Toast({ guide }: { guide: GuideState }) {
   return (
     <div
       role="status"
-      className="fixed bottom-24 left-4 z-40 flex w-[min(400px,calc(100vw-32px))] items-start gap-3 rounded-card bg-inverse p-4 text-inverse-ink shadow-[var(--shadow-float)] md:bottom-6 md:left-24 [[data-rail=names]_&]:md:left-60"
+      className="fixed flex items-start gap-3 rounded-card bg-inverse p-4 text-inverse-ink shadow-[var(--shadow-float)]"
+      style={{ bottom: edge ? 24 : 96, left: edge + 16, width: CARD_WIDTH(400), zIndex: ABOVE.card }}
     >
       <span className="mt-0.5 text-brand">
         <GuideIcon />

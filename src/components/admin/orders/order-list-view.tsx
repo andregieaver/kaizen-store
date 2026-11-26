@@ -10,7 +10,7 @@ import { pageHref, stateQuery } from "@/lib/order-list-admin";
 import { matchingWords } from "@/lib/order-list-words";
 import { columnsOf, hasFilters, type OrderListParams } from "@/lib/order-list";
 
-import { GuideHint } from "../guide/guide-provider";
+import { GuideSlot } from "../guide/guide-slots";
 
 import { FilterBar } from "./filter-bar";
 import { OrderTable, type OrderTableProps, type OrderTableRow } from "./order-table";
@@ -122,7 +122,7 @@ export function OrderListView({
             )
           }
         // No order at all yet: Guide says what each one will ask (D909).
-        after={!filtered && params.show === null && params.view === null && params.q === "" && <GuideHint place="orders" />}
+        after={!filtered && params.show === null && params.view === null && params.q === "" && <GuideSlot name="hint" place="orders" />}
       />
       ) : (
         <OrderTable

@@ -6,7 +6,7 @@
 export const guideEn = {
   name: "Guide",
   /** The rail's and the phone menu's button: its name and how far the person is. */
-  button: { label: "Guide", progress: "{found} of {total}", open: "Open Guide, {found} of {total} places found" },
+  button: { label: "Guide", progress: "{found} of {total} found" },
   /** The welcome on a level's Home: a step for each place, in order. */
   welcome: {
     eyebrow: "Welcome · {n} of {total}",
