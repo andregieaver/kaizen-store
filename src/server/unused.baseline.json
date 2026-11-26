@@ -220,6 +220,7 @@
     "src/db/schema.ts#giftCardEntries",
     "src/db/schema.ts#giftCardSettings",
     "src/db/schema.ts#googlePlaces",
+    "src/db/schema.ts#guideProgress",
     "src/db/schema.ts#hostCommissions",
     "src/db/schema.ts#hostStripeAccounts",
     "src/db/schema.ts#hostTaxDetails",

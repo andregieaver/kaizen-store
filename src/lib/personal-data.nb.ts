@@ -278,6 +278,9 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   push_subscriptions:
     "En ansatts enhet som får varsler om nye bestillinger i en butikk (D361): push-adressen og et navn; fjernes av personen, når push-tjenesten sier at den er borte, og når personen ikke lenger kan lese butikkens bestillinger. " +
     OWN,
+  guide_progress:
+    "Hva Guide har vist en person i en butikks administrasjon eller plattformens (D909): nøkler for stedene de har funnet og øyeblikkene som er vist, fullført eller lagt bort, og når det siste spotlyset var; ingen ord fra dem. Slettes når kontoen slettes (D377) og med butikken. " +
+    OWN,
   platform_admin_recordings:
     "Et opptak av en butikkeiers egen bruk av adminen (D895 fase 3b), bare med samtykke, under en tilfeldig id med grove tider, alle ord og adresser fjernet, knyttet til ingen konto eller butikk. Det kan likevel knyttes til en person gjennom sammenhengen, så det er personopplysninger; det kan ikke finnes ut fra en person (GDPR art. 11) og slettes etter 30 dager.",
   "storage:admin-recordings":

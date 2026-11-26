@@ -180,6 +180,28 @@ under *What the router fetches ahead*.
   is a key in `nav-icons.tsx`, lucide at the sections' stroke). The rail shows its sections' names on screens `RAIL_NAMES_WIDE` and wider
   until the person narrows it, which is kept.
 
+## Guide: the admin shown around a little at a time (D909, `src/lib/guide.ts`, `src/server/guide.ts`, `src/components/admin/guide`)
+
+- Guide shows a person around each level's admin where they already are, a little at a time, at a store's level and the platform's (a
+  sandbox store has none; the owner's level is its next step). Its rules are pure in `src/lib/guide.ts` and read the same in the browser
+  and on the server: three ways to speak up, loudest first, each with a budget. A **spotlight** dims the page around one place: only the
+  welcome on Home (the rail, the next step, the AI manager: `WELCOME_TARGETS`, a step whose place is not drawn is skipped), at most one a
+  day (`SPOTLIGHT_GAP_MS`). A **beacon** is a dot after a section's page title (or beside a part marked `data-guide-beacon="{key}"`) on the
+  first visits to a core section (`STORE_CORE_PLACES`, `PLATFORM_CORE_PLACES`; every section in Hands-on), whose card opens only when
+  pressed, and fades after `BEACON_FADES_AFTER` visits not pressed. A **hint** is `GuideHint` in an empty page's `EmptyState` (`after`):
+  part of the page, in no budget, gone once the page fills. "Later" twice and that kind stops (`LATER_STOPS_AFTER`). With no level chosen
+  it is Balanced for `AUTO_QUIET_DAYS` and Quiet after. Never while the person types, holds unsaved work (`asker()` of the leave guard),
+  has just arrived, has another dialog open, or is on a page of the layout's `quietOn` (the setup wizard and the workspace tools); a phone
+  gets hints only.
+- A level's places come from its menu as the frame draws it (`guidePlacesFromNav()`: each section's tab, sidebar prefixes and everyday
+  pages), so a new section is a place with no change here; its line is in the `guide` area's `places` by the section's key, else the
+  menu's intro. Guide's words are a server area (`GUIDE_WORDS[lang]`), handed to `GuideProvider` by each level's layout.
+- The record is one row of `commerce.guide_progress` per person and level (`store_id`, null for the platform), written only by
+  `recordGuide()` through `guideEventAction()`, events checked by `guideEventOf()` and read back through `guideProgressOf()`; the
+  person's choice (`accounts.guide_level`, null for automatic, and `accounts.guide_off`) follows them to every level. The layout reads
+  none of it: `GuideProvider` loads it once the page is drawn, and the spotlight, beacon, panel and note (`guide-layer.tsx`) load only when
+  there is something to draw. Everything Guide did not say is in its panel (the rail's foot, the phone's menu), one press away.
+
 ## Dates in the admin (code review 1.14, D786, `src/lib/admin-date.ts`)
 
 - An instant (a `timestamptz`) is shown with `adminDate(zone, at, style, lang)`: the store's zone on a store's screens (`adminDate(store, …)`),

@@ -59,6 +59,7 @@ import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
 import { INVENTORY_WORDS } from "@/lib/admin-words/inventory";
 import { INVENTORY_IMPORT_WORDS } from "@/lib/admin-words/inventory-import";
 import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
+import { GUIDE_WORDS } from "@/lib/admin-words/guide";
 import { KIT_WORDS } from "@/lib/admin-words/kit";
 import { LEGAL_WORDS } from "@/lib/admin-words/legal";
 import { LOYALTY_WORDS } from "@/lib/admin-words/loyalty";
@@ -219,6 +220,7 @@ export const ALL_AREA_WORDS: { [A in AdminArea]: Record<AdminLang, AdminAreaMess
   extensionPitch: EXTENSION_PITCH_WORDS,
   projectSources: PROJECT_SOURCES_WORDS,
   kit: KIT_WORDS,
+  guide: GUIDE_WORDS,
   builderText: BUILDER_TEXT_WORDS,
   websitePick: WEBSITE_PICK_WORDS,
   canvaField: CANVA_FIELD_WORDS,

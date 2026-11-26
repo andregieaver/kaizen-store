@@ -23,6 +23,7 @@ import { LIST_PAGE_SIZE, listOffset, listPage } from "@/lib/list-page";
 import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { KIT_WORDS } from "@/lib/admin-words/kit";
+import { GuideHint } from "@/components/admin/guide/guide-provider";
 import { AdminLink, ButtonLink, CARD_CLASS, EmptyState, ListSearch, PageHeader, Pager, Select, TextInput } from "@/components/admin/ui";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 
@@ -239,7 +240,9 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
               memberCan(member, "owner") && <ButtonLink href={`${base}/import`}>{staff.importCustomers}</ButtonLink>
             )
           }
-        />
+        // Nobody yet: Guide says how customers arrive (D909).
+        after={!filtered && !show && <GuideHint place="customers" />}
+      />
       ) : (
         <CustomerList
           base={base}

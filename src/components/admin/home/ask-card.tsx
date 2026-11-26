@@ -22,7 +22,7 @@ export function AskCard({ title, placeholder, asks }: { title: string; placehold
   const [text, setText] = useState("");
   if (!here) return null;
   return (
-    <section aria-label={title} className="flex flex-col gap-3 rounded-card bg-insight-soft p-5 dark:border dark:border-insight-line">
+    <section aria-label={title} data-guide="ask" className="flex flex-col gap-3 rounded-card bg-insight-soft p-5 dark:border dark:border-insight-line">
       <h2 className="flex items-center gap-2 text-body-strong text-insight-text">
         <Sparkles aria-hidden className="size-[18px]" />
         {title}

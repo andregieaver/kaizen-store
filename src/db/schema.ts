@@ -496,6 +496,13 @@ export const accounts = commerce.table(
      * everyone; or `advanced`, every page. Their own choice, kept so it follows them to every device.
      */
     adminView: text("admin_view").notNull().default("basic"),
+    /**
+     * How often Guide speaks up for them (D909, `GUIDE_LEVELS` in `src/lib/guide.ts`): `quiet`, `balanced` or `handson`; null is
+     * automatic, Balanced for the first two weeks and Quiet after. Their own choice, kept so it follows them to every store and device.
+     */
+    guideLevel: text("guide_level"),
+    /** The kinds of Guide's moments they switched off (`GUIDE_KINDS`: `spotlight`, `beacon`, `hint`). */
+    guideOff: text("guide_off").array().notNull().default(sql`'{}'::text[]`),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
     /** A role on the platform's team other than owner (D510: support, content, finance, read-only); an owner is `platform_admin`. */
@@ -538,6 +545,8 @@ export const accounts = commerce.table(
     check("accounts_admin_scheme", sql`${t.adminScheme} in ('meadow', 'indigo')`),
     check("accounts_admin_locale", sql`${t.adminLocale} in ('en', 'nb-NO')`),
     check("accounts_admin_view", sql`${t.adminView} in ('basic', 'advanced')`),
+    check("accounts_guide_level", sql`${t.guideLevel} in ('quiet', 'balanced', 'handson')`),
+    check("accounts_guide_off", sql`${t.guideOff} <@ array['spotlight', 'beacon', 'hint']::text[]`),
     check("accounts_platform_role", sql`${t.platformRole} is null or (${t.platformRole} in ('support', 'content', 'finance', 'read_only', 'legal') and not ${t.platformAdmin})`),
   ],
 );
@@ -9369,6 +9378,30 @@ export const pluginSignIns = commerce.table(
     check("plugin_sign_ins_code", sql`${t.code} ~ '^[A-HJ-NP-Z2-9]{8}$'`),
     check("plugin_sign_ins_read", sql`${t.readHash} ~ '^[0-9a-f]{64}$'`),
     check("plugin_sign_ins_token", sql`${t.tokenSealed} is null or ${t.status} = 'approved'`),
+  ],
+).enableRLS();
+
+/**
+ * What Guide has shown one person at one level (D909, `src/lib/guide.ts`, `src/server/guide.ts`, its only writer): a store's admin
+ * (`store_id`) or the platform's (null). `state` is `GuideProgress`: the places found, each moment's visits and whether it is done, the
+ * "Later"s by kind and when the last spotlight was. Read back through `guideProgressOf()`, which drops what it does not know. Never a
+ * person's data: keys of places and moments only.
+ */
+export const guideProgress = commerce.table(
+  "guide_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    state: jsonb("state").notNull().default({}),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("guide_progress_key").on(t.accountId, t.storeId).nullsNotDistinct(),
+    index("guide_progress_store_idx").on(t.storeId),
+    check("guide_progress_state", sql`jsonb_typeof(${t.state}) = 'object' and pg_column_size(${t.state}) < 16384`),
   ],
 ).enableRLS();
 

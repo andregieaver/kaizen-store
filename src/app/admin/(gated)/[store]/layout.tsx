@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { after } from "next/server";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 
-import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/shell-actions";
+import { adminViewAction, guideEventAction, guideLoadAction, guideSettingsAction } from "@/app/admin/(gated)/(owner)/account/shell-actions";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { ExtensionBanner } from "@/components/admin/extension-banner";
+import { GuideMenuLink, GuideProvider, GuideRailButton } from "@/components/admin/guide/guide-provider";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
@@ -21,7 +22,10 @@ import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
-import { storeNav } from "@/lib/store-nav";
+import { STORE_SECTIONS, storeNav } from "@/lib/store-nav";
+import { STORE_CORE_PLACES, guidePlacesFromNav } from "@/lib/guide";
+import { navAreasIn, navItemsIn, navWord } from "@/lib/admin-nav-words";
+import { GUIDE_WORDS } from "@/lib/admin-words/guide";
 import { STARTING_CONTENT_HREF, demoStoreHref } from "@/lib/theme-admin-paths";
 import { areaTexts } from "@/lib/admin-area";
 import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
@@ -97,9 +101,41 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const banners = extensionBanners(readExtensionFacts(store.extensionFacts), new Date());
   const w = SHELL_WORDS[lang];
   const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });
+  // Guide (D909): the store's places from its menu as the person sees it; quiet in the setup wizard and the workspace tools. A sandbox
+  // store (`/try`) has no record to keep.
+  const guideWords = GUIDE_WORDS[lang];
+  const guide = !store.sandbox && {
+    places: guidePlacesFromNav({
+      home: base,
+      tabs: navItemsIn(lang, tabs),
+      areas: navAreasIn(lang, areas),
+      words: guideWords,
+      intros: Object.fromEntries(STORE_SECTIONS.map((s) => [s.key, navWord(lang, s.intro)])),
+      core: STORE_CORE_PLACES,
+      // The AI manager is an owner's, in an open store (as the launcher above).
+      welcome: isOwner && open ? ["rail", "todo", "ai"] : ["rail", "todo"],
+    }),
+    quietOn: `(?:${SETUP})|(?:${FULL_WIDTH})|(?:${INBOX})`,
+  };
+  const guided = (frame: ReactNode) =>
+    guide ? (
+      <GuideProvider
+        store={store.slug}
+        home={base}
+        places={guide.places}
+        words={guideWords}
+        quietOn={guide.quietOn}
+        actions={{ load: guideLoadAction, event: guideEventAction, settings: guideSettingsAction }}
+      >
+        {frame}
+      </GuideProvider>
+    ) : (
+      frame
+    );
   // Basic or Advanced (D454): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
   return (
     <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
+      {guided(
       <AdminFrame
         layout={LEVEL_LAYOUTS.store}
         lang={lang}
@@ -152,6 +188,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
           </>
         }
         account={<AdminAccountMenu account={account} role={member.roleName ?? (member.kind === "collaborator" ? "collaborator" : role)} />}
+        railFoot={guide && <GuideRailButton />}
         tabs={tabs}
         groups={[]}
         areas={areas}
@@ -161,6 +198,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         menuFooter={
           <>
             <AdminViewToggle />
+            {guide && <GuideMenuLink />}
             {stores.some((s) => s.role === "owner") && <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>}
             <MenuFooterLink href="/admin/stores">{w.store.allYourStores}</MenuFooterLink>
             {account.platformAdmin && <MenuFooterLink href="/admin/platform">{w.levels.platform}</MenuFooterLink>}
@@ -237,7 +275,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         )}
         {banners.length > 0 && <ExtensionBanner banners={banners.map((b) => ({ extension: b.extension, state: b.state, untilDay: adminDate(PLATFORM_TIME_ZONE, b.until, "long", lang) }))} owner={isOwner} />}
         {children}
-      </AdminFrame>
+      </AdminFrame>,
+      )}
     </AdminViewProvider>
   );
 }

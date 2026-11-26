@@ -1,7 +1,5 @@
 import "server-only";
 
-import { randomBytes } from "node:crypto";
-
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -13,6 +11,7 @@ import { siteUrl } from "@/lib/site";
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import type { Connection } from "./social-connect-routes";
+import { ConnectError, connectStart, connectStarted } from "./social-connect-state";
 import { col, typedRow } from "./typed-rows";
 
 /**
@@ -39,28 +38,17 @@ function pinterestApp(): App | null {
 /** Kaizena Flow's Pinterest app is set up here, so owners can connect an account. */
 export const pinterestAppOn = () => pinterestApp() !== null;
 
-export class PinterestError extends Error {
-  constructor(
-    message: string,
-    readonly reason: "cancelled" | "failed" = "failed",
-  ) {
-    super(message);
-  }
-}
+export class PinterestError extends ConnectError {}
 
 /** Where the owner is sent to connect, and what the callback must see again (kept in `kaizen_pinterest_connect`). */
 export function pinterestStart(storeSlug: string, accountId: string): { url: string; cookie: string } | null {
   const app = pinterestApp();
-  if (!app) return null;
-  const state = randomBytes(24).toString("base64url");
-  return { url: pinterestAuthorizeUrl(app.appId, `${siteUrl()}${PINTEREST_CALLBACK}`, state), cookie: [state, storeSlug, accountId].join(".") };
+  return app ? connectStart((state) => pinterestAuthorizeUrl(app.appId, `${siteUrl()}${PINTEREST_CALLBACK}`, state), storeSlug, accountId) : null;
 }
 
 /** Who started connecting, from the cookie; checked against the state Pinterest sends back. */
 export function pinterestStarted(cookie: string | undefined, params: URLSearchParams): { store: string; accountId: string } {
-  const [state, store, accountId] = (cookie ?? "").split(".");
-  if (!state || !store || !accountId || state !== params.get("state")) throw new PinterestError("The connection could not be checked.");
-  return { store, accountId };
+  return connectStarted(cookie, params, (message) => new PinterestError(message));
 }
 
 /** One call to Pinterest's API: its JSON, or `PinterestError` with Pinterest's own words (never a person's data). */

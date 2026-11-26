@@ -64,6 +64,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | *Send to my store* from Figma (D898 F1, F2): a frame as a draft page, its pictures in the library | Account → Connect Figma, then the page builder | Kaizena Flow's site is its house store's: its owner connects the plugin to that store |
 | A look from a Figma file (D898 F3): its colours, typefaces and text styles as a look in the theme library, never live | Figma, *Send colours and type*, then Design settings → Themes | Kaizena Flow's site runs from its house store: the look is in that store's theme library |
 | The AI manager and autopilot | AI manager | Settings → AI manager |
+| Guide (D909): the welcome spotlight, beacons on a section's first visits, hints in empty pages, and the Guide panel | The rail's foot, the phone's menu | The same, with the platform's sections as its places |
 | Support desk and chat assistant | Support | Support (a store's handoff requests do not apply: Kaizena Flow's AI never acts on a store, `docs/support.md` 2.8) |
 | Speed | Analytics → Speed | Usage and limits → speed (`own_speed_samples`) |
 | SEO, cookies, Google reviews, emails, languages | Settings | Settings |

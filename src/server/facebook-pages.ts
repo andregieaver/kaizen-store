@@ -1,7 +1,5 @@
 import "server-only";
 
-import { randomBytes } from "node:crypto";
-
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -28,6 +26,7 @@ import { audit } from "./auth";
 import { jobReport } from "./cache-events";
 import { encryptionKey } from "./encryption-key";
 import type { Connection } from "./social-connect-routes";
+import { ConnectError, connectStart, connectStarted } from "./social-connect-state";
 import { log } from "./log";
 import type { InsightPost } from "./social-insights";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -61,28 +60,17 @@ function facebookApp(): App | null {
 /** Kaizena Flow's Facebook app is set up here, so owners can connect a Page. */
 export const facebookAppOn = () => facebookApp() !== null;
 
-export class FacebookError extends Error {
-  constructor(
-    message: string,
-    readonly reason: "cancelled" | "failed" = "failed",
-  ) {
-    super(message);
-  }
-}
+export class FacebookError extends ConnectError {}
 
 /** Where the owner is sent to connect, and what the callback must see again (kept in `kaizen_facebook_connect`). */
 export function facebookStart(storeSlug: string, accountId: string): { url: string; cookie: string } | null {
   const app = facebookApp();
-  if (!app) return null;
-  const state = randomBytes(24).toString("base64url");
-  return { url: facebookAuthorizeUrl(app.appId, `${siteUrl()}${FACEBOOK_CALLBACK}`, state, app.configId), cookie: [state, storeSlug, accountId].join(".") };
+  return app ? connectStart((state) => facebookAuthorizeUrl(app.appId, `${siteUrl()}${FACEBOOK_CALLBACK}`, state, app.configId), storeSlug, accountId) : null;
 }
 
 /** Who started connecting, from the cookie; checked against the state Facebook sends back. */
 export function facebookStarted(cookie: string | undefined, params: URLSearchParams): { store: string; accountId: string } {
-  const [state, store, accountId] = (cookie ?? "").split(".");
-  if (!state || !store || !accountId || state !== params.get("state")) throw new FacebookError("The connection could not be checked.");
-  return { store, accountId };
+  return connectStarted(cookie, params, (message) => new FacebookError(message));
 }
 
 /** One call to Facebook's Graph API: its JSON, or `FacebookError` with Facebook's own words (never a person's data). A post sends `init`. */

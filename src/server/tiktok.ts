@@ -1,7 +1,5 @@
 import "server-only";
 
-import { randomBytes } from "node:crypto";
-
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -13,6 +11,7 @@ import { grantsVideoPublish, parseCreator, parseTokens, renewDue, TIKTOK_API, ti
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import type { Connection } from "./social-connect-routes";
+import { ConnectError, connectStart, connectStarted } from "./social-connect-state";
 import { col, typedRow } from "./typed-rows";
 
 /**
@@ -43,28 +42,17 @@ export const tiktokAppOn = () => tiktokApp() !== null;
 /** TikTok has audited Kaizena Flow's app, so posts may be public (`TIKTOK_PUBLIC=1`); until then they are private to the account. */
 export const tiktokAudited = () => process.env.TIKTOK_PUBLIC?.trim() === "1";
 
-export class TiktokError extends Error {
-  constructor(
-    message: string,
-    readonly reason: "cancelled" | "failed" = "failed",
-  ) {
-    super(message);
-  }
-}
+export class TiktokError extends ConnectError {}
 
 /** Where the owner is sent to connect, and what the callback must see again (kept in `kaizen_tiktok_connect`). */
 export function tiktokStart(storeSlug: string, accountId: string): { url: string; cookie: string } | null {
   const app = tiktokApp();
-  if (!app) return null;
-  const state = randomBytes(24).toString("base64url");
-  return { url: tiktokAuthorizeUrl(app.key, `${siteUrl()}${TIKTOK_CALLBACK}`, state), cookie: [state, storeSlug, accountId].join(".") };
+  return app ? connectStart((state) => tiktokAuthorizeUrl(app.key, `${siteUrl()}${TIKTOK_CALLBACK}`, state), storeSlug, accountId) : null;
 }
 
 /** Who started connecting, from the cookie; checked against the state TikTok sends back. */
 export function tiktokStarted(cookie: string | undefined, params: URLSearchParams): { store: string; accountId: string } {
-  const [state, store, accountId] = (cookie ?? "").split(".");
-  if (!state || !store || !accountId || state !== params.get("state")) throw new TiktokError("The connection could not be checked.");
-  return { store, accountId };
+  return connectStarted(cookie, params, (message) => new TiktokError(message));
 }
 
 /** One call to TikTok's API: its JSON, or `TiktokError` with TikTok's own words (never a person's data). */
