@@ -907,6 +907,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D902 | **The CRM reaches Zapier, Make and the Admin API (D901 P29)** | 2026-11-25 | [text](decisions/D902.md) |
 | D903 | **Projects and checklists, ported from Kaizena Life** | 2026-11-25 | [text](decisions/D903.md) |
 | D904 | **The octopus for the whole of Kaizena Flow, and Projects as an extension that stands alone** | 2026-11-26 | [text](decisions/D904.md) |
+| D905 | **Rivals for every site: the market check without a shop (market check M5)** | 2026-11-26 | [text](decisions/D905.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
