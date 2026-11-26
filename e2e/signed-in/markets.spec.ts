@@ -106,12 +106,14 @@ test.beforeAll(async () => {
 async function rivalSite(sql: ReturnType<typeof testDb>, storeId: string, rivalId: string) {
   // The store's starter pages were published over a month ago: it published none in the 30 days.
   await sql`update commerce.pages set first_published_at = now() - interval '40 days' where store_id = ${storeId}`;
+  // One moment for the first listing and the pages it found: they are where the rival started, never added.
+  const since = new Date(Date.now() - 20 * 86_400_000).toISOString();
   await sql`
-    update commerce.market_rivals set site_since = now() - interval '20 days', site_read_at = now() - interval '1 day', site_pages = 46, site_cut = false
+    update commerce.market_rivals set site_since = ${since}, site_read_at = now() - interval '1 day', site_pages = 46, site_cut = false
     where store_id = ${storeId} and id = ${rivalId}`;
   await sql`
     insert into commerce.rival_pages (store_id, rival_id, path, section, first_seen_at, gone_at)
-    select ${storeId}, ${rivalId}, '/tjenester/side-' || n, '/tjenester', now() - interval '20 days', case when n <= 2 then now() - interval '2 days' end
+    select ${storeId}, ${rivalId}, '/tjenester/side-' || n, '/tjenester', ${since}::timestamptz, case when n <= 2 then now() - interval '2 days' end
     from generate_series(1, 40) n`;
   await sql`
     insert into commerce.rival_pages (store_id, rival_id, path, section, first_seen_at)
@@ -223,6 +225,10 @@ test.describe("as the owner of a store without a shop (D905)", () => {
     await expect(page.getByRole("heading", { name: "Markets", level: 1 })).toBeVisible();
     const findings = page.getByRole("region", { name: "What to do in your markets" });
     await expect(findings.locator('[data-finding="rival_site"]')).toContainText("Linnet added 8 pages to its site in 30 days");
+    // The rivals are in Lisa's fold, a step away: opened once the page has woken up.
+    await page.waitForLoadState("networkidle");
+    await page.getByText("See every country and every finding").click();
+    await expect(page.locator("[data-every-country]")).toHaveAttribute("open", "");
     const rivals = page.locator('section[aria-labelledby="market-rivals"]');
     await expect(rivals.locator('[data-rival="linnet.example"] [data-rival-site]')).toContainText("46 pages · 8 added in 30 days · 2 gone");
     await expect(rivals.locator('[data-rival="linnet.example"]').getByRole("link", { name: "/blogg/linpleie" })).toHaveAttribute("href", "https://linnet.example/blogg/linpleie");
