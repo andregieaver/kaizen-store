@@ -24,8 +24,7 @@ export const unansweredQuestions = (answeredByLegal: Iterable<string>): string[]
 
 export type AdminSignalChoice = { heatmaps: boolean; recordings: boolean };
 
-/** The browser's cookie, path `/admin`: `h` heatmaps, `hr` heatmaps and recordings, `0` neither. Never a secret or an id. */
-export const ADMIN_USE_COOKIE = "kz_admin_use";
+/** The value of the browser's cookie (`admin-use-cookie.ts`) for a choice. */
 export const cookieValueOf = (choice: AdminSignalChoice): "0" | "h" | "hr" => (choice.recordings ? "hr" : choice.heatmaps ? "h" : "0");
 
 /** A choice from a form: recordings only with heatmaps (a person who refuses heatmaps is never recorded). */
