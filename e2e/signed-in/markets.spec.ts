@@ -311,6 +311,13 @@ test.describe("as Kaizena Flow's platform admin", () => {
   });
 
   test("keeps the platform's Chrome UX Report key on Platform → AI, shown by its hint only (D905 M5c)", async ({ page }) => {
+    // From no key, whatever an earlier run left.
+    const sql = testDb();
+    try {
+      await sql`delete from commerce.speed_settings`;
+    } finally {
+      await sql.end();
+    }
     await page.goto("/admin/platform/ai");
     const card = page.locator('section[aria-labelledby="site-speed"]');
     await expect(card).toContainText("Not set up: no site's speed is measured.");

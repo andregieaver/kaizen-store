@@ -94,7 +94,8 @@ export default async function MarketsPage({ params, searchParams }: PageProps<"/
         searchOn={Boolean(search?.enabled)}
         actions={ctx.canExport ? { add: rivalsAction.bind(null, store.slug, "addTerm"), remove: rivalsAction.bind(null, store.slug, "removeTerm") } : null}
       />
-      <MarketSpeedSection lang={ctx.lang} locale={locale} timeZone={store.timeZone} words={words.speed} sites={check.siteSpeeds} keySet={speed !== null} />
+      {/* A time in the admin's own language (`1.9 s`), not the market's as amounts are. */}
+      <MarketSpeedSection lang={ctx.lang} locale={ctx.locale} timeZone={store.timeZone} words={words.speed} sites={check.siteSpeeds} keySet={speed !== null} />
       {check.house ? (
         // Kaizena Flow's own store (D900 M4): its rivals' plan prices are kept beside its plans on Platform → Plans.
         <Note>
