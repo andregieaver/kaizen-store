@@ -224,7 +224,7 @@ Status: Planned, Building, Done (date and commit).
 |---|---|---|
 | P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Done, 26 Nov 2026 (b7b673b) |
 | P4.2 | Duplicate a list with its options (templates are P4.12) | Done, 26 Nov 2026 (50c0dbf) |
-| P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Built 26 November 2026 (below) |
+| P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Done 26 November 2026 (6835062; below) |
 | P4.4 | Comments on an item (Life's activity thread) | Done, 26 Nov 2026 (a9d0ea8) |
 | P4.5 | Attachments from the media library | Planned |
 | P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 (a9d0ea8) |
@@ -522,4 +522,8 @@ and the agents' eval recorded again on Platform → AI for the three new tools.
   is due, or how many tasks the list has open) and a notification (`sendProjectsPush()`), each once. A reminder of a task done or archived,
   of a list not open, a day late, or for someone who may no longer read projects, is passed over. Its words are Projects' own
   (`project-sources` area), so the screens that load the staff emails' words carry none of them.
+
+**In production (26 November 2026).** P8.3d (e79c547) and P4.3 (6835062) are deployed and their migrations applied: Work's link and
+the task-time join, who gave a task its person, and the reminders table with its two triggers. The advisors list only INFO for them (no
+policy on a table with RLS, as every `commerce` table; new indexes not used yet), nothing for `docs/audits/psi-followups.md`.
 
