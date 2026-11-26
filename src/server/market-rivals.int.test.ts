@@ -135,8 +135,10 @@ describe("a store's rivals (D900 M2)", () => {
     });
     const gaps = (await marketCheck(store, customPeriod(today, today), { now })).findings.filter((f) => f.kind === "rival_out");
     expect(gaps).toEqual([{ kind: "rival_out", market: "NO", productName: "Forkle i lin", rivalName: "Shop 1", ownMinor: 46000, currency: "NOK" }]);
+    // Kaizena Flow's own store has rivals too (D905: their sites need no shop), but no offers and no price findings.
     const house = await marketCheck({ ...store, house: true }, customPeriod(today, today), { now });
-    expect([house.rivals, house.offers, house.findings.filter((f) => f.kind === "rival_cheaper")]).toEqual([[], [], []]);
+    expect(house.rivals).toHaveLength(RIVALS_PER_MARKET);
+    expect([house.offers, house.findings.filter((f) => f.kind === "rival_cheaper")]).toEqual([[], []]);
   });
 
   it("are read and checked by the AI manager's tools, every figure written by code", async () => {
@@ -168,6 +170,80 @@ describe("a store's rivals (D900 M2)", () => {
     const today = new Date().toISOString().slice(0, 10);
     const check = await marketCheck(store, customPeriod(today, today), { now: new Date() });
     expect(check.findings.find((f) => f.kind === "rival_move")).toMatchObject({ rivalName: "Linnet", move: "price", before: 40000, after: 38000 });
+  });
+
+  it("have what changed on their sites read from their sitemaps, robots.txt first, and a site growing faster than the store's found (D905)", async () => {
+    // Two rivals whose sites no read has reached (robots.txt answers are kept an hour, so hosts never read before), in two rivals' room;
+    // hosts that can have a `www.` twin, as `.example` cannot.
+    for (const name of ["Shop 6", "Shop 7"]) await rivals.removeRival(actor(), (await rivals.findRival(store.id, name))!.id);
+    const linde = await rivals.addRival(actor(), { market: "NO", name: "Linde", address: "https://www.linde-hus.no" });
+    await rivals.addRival(actor(), { market: "NO", name: "Furu", address: "furu-hus.no" });
+    // Only those two are due: every other rival's site was read now.
+    await db().execute(sql`update commerce.market_rivals set site_read_at = now() where host not in ('linde-hus.no', 'furu-hus.no') or store_id <> ${store.id}::uuid`);
+    const urlset = (paths: string[]) =>
+      `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((p) => `<url><loc>https://www.linde-hus.no${p}</loc></url>`).join("")}</urlset>`;
+    const index = ["page-sitemap.xml", "post-sitemap.xml", "private/sitemap.xml"].map((f) => `<sitemap><loc>https://www.linde-hus.no/${f}</loc></sitemap>`).join("");
+    const fetched: string[] = [];
+    const sitemaps = (posts: string[]) =>
+      (async (url: string): Promise<Fetched> => {
+        fetched.push(url);
+        const u = new URL(url);
+        const texts: Record<string, [string, string]> = {
+          "linde-hus.no/robots.txt": ["text/plain", "User-agent: *\nDisallow: /private\nSitemap: https://www.linde-hus.no/sitemap_index.xml"],
+          "www.linde-hus.no/sitemap_index.xml": ["application/xml", `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${index}</sitemapindex>`],
+          "www.linde-hus.no/page-sitemap.xml": ["application/xml", urlset(["/", "/om-oss", "/tjenester/bad"])],
+          "www.linde-hus.no/post-sitemap.xml": ["application/xml", urlset(posts)],
+          "gran-hus.no/robots.txt": ["text/plain", "User-agent: *\nDisallow: /"],
+        };
+        const got = texts[`${u.hostname}${u.pathname}`];
+        return got ? { ok: true, url, status: 200, contentType: got[0], bytes: new TextEncoder().encode(got[1]) } : { ok: false, problem: "The site answered 404.", status: 404 };
+      }) as never;
+
+    // The first read lists where Linde starts (nothing added yet); Furu has no sitemap.
+    expect(await rivals.watchRivalSites({ fetchPage: sitemaps(["/blogg/a", "/blogg/b"]) })).toEqual({ listed: 1, failed: 1 });
+    // The sitemap robots.txt closes is never fetched.
+    expect(fetched.some((url) => url.includes("/private/"))).toBe(false);
+    let sites = await rivals.rivalSites(store.id);
+    const site = () => sites.find((x) => x.rivalId === linde.id);
+    expect(site()).toMatchObject({ pages: 5, added: 0, gone: 0, cut: false, problem: null, newest: [] });
+    expect(site()?.since).toBe(site()?.readAt);
+    expect(sites.find((x) => x.rivalName === "Furu")).toMatchObject({ pages: null, problem: "unread", since: null });
+
+    // A week on, Linde added seven posts and took one down; nothing else is due.
+    expect(await rivals.watchRivalSites({ fetchPage: sitemaps([]) })).toEqual({ listed: 0, failed: 0 });
+    await db().execute(sql`update commerce.market_rivals set site_read_at = now() - interval '8 days' where id = ${linde.id}::uuid`);
+    const posts = ["/blogg/a", ...[1, 2, 3, 4, 5, 6, 7].map((n) => `/blogg/ny-${n}`)];
+    expect(await rivals.watchRivalSites({ fetchPage: sitemaps(posts) })).toEqual({ listed: 1, failed: 0 });
+    sites = await rivals.rivalSites(store.id);
+    expect(site()).toMatchObject({ pages: 11, added: 7, gone: 1, section: "/blogg" });
+    expect(site()?.newest).toHaveLength(5);
+
+    // Faster than the store, which published nothing in 30 days (its starter pages a month and more ago): a threat.
+    await db().execute(sql`update commerce.pages set first_published_at = now() - interval '40 days' where store_id = ${store.id}::uuid`);
+    const today = new Date().toISOString().slice(0, 10);
+    const check = await marketCheck(store, customPeriod(today, today), { now: new Date() });
+    expect(check.findings.find((f) => f.kind === "rival_site")).toEqual({ kind: "rival_site", market: "NO", rivalName: "Linde", added: 7, section: "/blogg", published: 0 });
+    const listed = await listRivalsTool({ store } as never);
+    expect(listed.rivals.find((r) => r.host === "linde-hus.no")?.site).toMatchObject({ pages: 11, added_in_30_days: 7, gone_in_30_days: 1, most_added_under: "/blogg" });
+
+    // A listing cut at the cap marks no page gone: one beyond it is not known to be gone.
+    await rivals.keepRivalSite(store.id, linde.id, { paths: ["/", "/om-oss"], cut: true, problem: null });
+    sites = await rivals.rivalSites(store.id);
+    expect(site()).toMatchObject({ pages: 2, cut: true, gone: 1 });
+    // A read that lists nothing keeps why, and the pages as they were.
+    await rivals.keepRivalSite(store.id, linde.id, { paths: [], cut: false, problem: "unread" });
+    sites = await rivals.rivalSites(store.id);
+    expect(site()).toMatchObject({ pages: 2, problem: "unread", added: 7 });
+
+    // A site whose robots.txt closes it is not read.
+    const research = await import("./research");
+    expect(await research.readSitemapPaths(actor(), "gran-hus.no", { files: 5, paths: 1000 }, { fetchPage: sitemaps([]) })).toEqual({ paths: [], cut: false, problem: "robots" });
+    expect(fetched.some((url) => url.startsWith("https://gran-hus.no/sitemap"))).toBe(false);
+
+    // Removing a rival removes its site's pages.
+    await rivals.removeRival(actor(), linde.id);
+    const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.rival_pages where store_id = ${store.id}::uuid and rival_id = ${linde.id}::uuid`);
+    expect(left.n).toBe(0);
   });
 
   it("are removed with their offers", async () => {

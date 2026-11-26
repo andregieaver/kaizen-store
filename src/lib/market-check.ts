@@ -9,7 +9,18 @@
 import { fillWords } from "./admin-fill";
 import { formatCount, formatPercent, safeRatio } from "./analytics-core";
 import { twoProportionZ } from "./analytics-discounts";
-import { offerFresh, PRICE_GAP_MIN, priceGap, rivalGone, rivalMove, type RivalMove, type RivalOfferFacts } from "./market-rivals";
+import {
+  offerFresh,
+  PRICE_GAP_MIN,
+  priceGap,
+  rivalGone,
+  pathShown,
+  rivalMove,
+  siteGrowth,
+  type RivalMove,
+  type RivalOfferFacts,
+  type RivalSiteFacts,
+} from "./market-rivals";
 import { englishMoney } from "./money";
 
 /** Visits a country, and the rest of the store, need before their conversion is compared. */
@@ -65,6 +76,9 @@ export type MarketCheckFacts = {
   demand: DemandTerm[];
   /** The rivals' offers held against the store's own products (D900 M2): every one kept, old ones too. */
   rivalOffers: RivalOfferFacts[];
+  /** What changed on the rivals' sites (D905), and the pages and articles the store first published in `SITE_WINDOW_DAYS`. */
+  rivalSites: RivalSiteFacts[];
+  published: number;
 };
 
 export type MarketFindingKind =
@@ -72,6 +86,7 @@ export type MarketFindingKind =
   | "unmet_demand"
   | "rival_cheaper"
   | "rival_move"
+  | "rival_site"
   | "untranslated"
   | "unpriced"
   | "rival_out"
@@ -84,6 +99,7 @@ export const FINDING_KINDS: readonly MarketFindingKind[] = [
   "unmet_demand",
   "rival_cheaper",
   "rival_move",
+  "rival_site",
   "untranslated",
   "unpriced",
   "rival_out",
@@ -97,7 +113,7 @@ export const SWOT_PARTS: readonly SwotPart[] = ["strengths", "weaknesses", "oppo
 
 /**
  * Where each kind of finding stands in the SWOT (D900 M2): the SWOT is only a way of drawing the findings, never a text of its own. Threats
- * are rivals' moves, which watching them shows (M3).
+ * are rivals' moves, which watching them shows (M3), and their sites growing faster than the store's (D905).
  */
 export const SWOT_OF: Record<MarketFindingKind, SwotPart> = {
   strong_market: "strengths",
@@ -109,6 +125,7 @@ export const SWOT_OF: Record<MarketFindingKind, SwotPart> = {
   unmet_demand: "opportunities",
   rival_out: "opportunities",
   rival_move: "threats",
+  rival_site: "threats",
 };
 
 /** The findings in their SWOT parts, each part in the findings' own order. */
@@ -127,6 +144,7 @@ export const FIX_PATHS: Record<MarketFindingKind, string> = {
   rival_dearer: "/products",
   rival_out: "/marketing",
   rival_move: "/products",
+  rival_site: "/pages",
   untranslated: "/translate",
   unpriced: "/products",
 };
@@ -178,12 +196,15 @@ export type MarketFinding =
   | { kind: "rival_out"; market: string; productName: string; rivalName: string; ownMinor: number; currency: string }
   /** A rival's move against the store since its page was read before (D900 M3): a lower price, cheaper shipping or longer returns. */
   | ({ kind: "rival_move"; market: string; productName: string; rivalName: string } & RivalMove)
+  /** A rival's site that added pages faster than the store published its own (D905): how many in 30 days, where most are, and the store's. */
+  | { kind: "rival_site"; market: string; rivalName: string; added: number; section: string | null; published: number }
   | { kind: "untranslated"; market: string; locale: string; products: number; of: number }
   | { kind: "unpriced"; market: string; products: number; of: number };
 
 /** The id of a finding, stable while its subject is: for a list key and the page's anchors. */
 export function findingId(f: MarketFinding): string {
   if (f.kind === "unmet_demand") return `${f.kind}:${f.term}`;
+  if (f.kind === "rival_site") return `${f.kind}:${f.market}:${f.rivalName}`;
   if (f.kind === "rival_cheaper" || f.kind === "rival_dearer" || f.kind === "rival_out" || f.kind === "rival_move") return `${f.kind}:${f.market}:${f.productName}:${f.rivalName}`;
   return `${f.kind}:${f.market}`;
 }
@@ -203,6 +224,8 @@ function sizeOf(f: MarketFinding): number {
       return f.move === "price" ? 2 + (f.before - f.after) / Math.max(f.before, 1) : f.move === "shipping" ? 1 : 0;
     case "unmet_demand":
       return f.misses;
+    case "rival_site":
+      return f.added;
     case "untranslated":
     case "unpriced":
       return f.products;
@@ -255,6 +278,11 @@ export function marketFindings(facts: MarketCheckFacts, now: Date = new Date()):
     if (gap >= PRICE_GAP_MIN) all.push({ kind: "rival_cheaper", ...about, rivalMinor: o.priceMinor, currency: o.currency, gap });
     else if (gap <= -PRICE_GAP_MIN) all.push({ kind: "rival_dearer", ...about, rivalMinor: o.priceMinor, currency: o.currency, gap: -gap });
   }
+  // A rival's site that grew faster than the store's own (D905): from a complete listing only.
+  for (const site of facts.rivalSites) {
+    const added = siteGrowth(site, facts.published);
+    if (added !== null) all.push({ kind: "rival_site", market: site.market, rivalName: site.rivalName, added, section: site.section, published: facts.published });
+  }
   for (const m of facts.markets) {
     if (m.locale && m.untranslated !== null && m.untranslated > 0) {
       all.push({ kind: "untranslated", market: m.code, locale: m.locale, products: m.untranslated, of: facts.products });
@@ -289,6 +317,9 @@ export type FindingWords = {
   rival_dearer: string;
   rival_out: string;
   rival_move: string;
+  rival_site: string;
+  /** How `rival_site` says where most pages were added: `, most under {section}`. */
+  rivalSiteUnder: string;
   rivalShipping: string;
   rivalReturns: string;
   untranslated: string;
@@ -346,6 +377,13 @@ export function findingText(
       const at = (minor: number) => money(minor, f.currency ?? "");
       return fillWords(f.move === "price" ? words.rival_move : words.rivalShipping, { ...said, before: at(f.before), after: at(f.after) });
     }
+    case "rival_site":
+      return fillWords(words.rival_site, {
+        rival: f.rivalName,
+        n: formatCount(f.added),
+        where: f.section ? fillWords(words.rivalSiteUnder, { section: pathShown(f.section) }) : "",
+        published: formatCount(f.published),
+      });
     case "rival_out":
       return fillWords(words.rival_out, { rival: f.rivalName, product: f.productName, market: nameOf(names, f.market), yours: money(f.ownMinor, f.currency) });
     case "untranslated":

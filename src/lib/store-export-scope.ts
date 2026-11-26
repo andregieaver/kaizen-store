@@ -165,6 +165,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   // The market check's rivals (D900 M2): the shops the owner added and the offers read of their pages.
   market_rivals: "record",
   rival_offers: "record",
+  // The pages rivals' sitemaps list (D905): paths only.
+  rival_pages: "record",
   platform_do_not_contact: "record",
   company_lookup_settings: "secret",
   staff_alert_recipients: "people",

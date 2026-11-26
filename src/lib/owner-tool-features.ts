@@ -115,8 +115,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   profit_overview: "shop",
   explain_change: "shop",
   analytics_alerts: "shop",
-  // A rival's offers are held against the store's products and prices (D900 M2).
-  list_rivals: "shop",
+  // A rival's offers are held against the store's products and prices (D900 M2); its site is every store's (D905), so list_rivals needs none.
   read_rival_offer: "shop",
   report_catalogue: "shop",
   run_report: "shop",

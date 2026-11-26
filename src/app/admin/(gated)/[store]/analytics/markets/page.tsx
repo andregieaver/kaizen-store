@@ -17,6 +17,7 @@ import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { marketCheck } from "@/server/market-check";
 import { rivalProductChoices } from "@/server/market-rivals";
+import { featureOn } from "@/lib/store-features";
 import { countryName } from "@/lib/vat-text";
 
 import { rivalsAction } from "./actions";
@@ -34,38 +35,44 @@ export default async function MarketsPage({ params, searchParams }: PageProps<"/
   const { store, now } = ctx;
   const words = MARKET_CHECK_WORDS[ctx.lang];
   const { period } = ctx.params;
-  const [check, products] = await Promise.all([marketCheck(store, period, { now, locale: ctx.locale }), rivalProductChoices(store)]);
+  const [check, products] = await Promise.all([marketCheck(store, period, { now, locale: ctx.locale }), featureOn(store, "shop") ? rivalProductChoices(store) : []]);
   // Amounts as the Traffic page writes them: the first market's locale in English, the admin's own otherwise.
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
   const found = check.findings.length;
-  // Rivals (D900 M2) where prices apply; their forms for a member who may change analytics.
+  // Rivals for every store (D905: their sites need no shop), their offers where prices apply (D900 M2); the forms for a member who may change
+  // analytics.
   const countries = [...new Map(store.markets.map((m) => [m.code, countryName(m.code, ctx.locale)])).entries()].map(([code, name]) => ({ code, name }));
-  const rivals = check.sells ? (
-    <MarketRivalsSection
-      lang={ctx.lang}
-      locale={locale}
-      timeZone={store.timeZone}
-      words={words.rivals}
-      rivals={check.rivals}
-      offers={check.offers}
-      countries={countries}
-      products={products}
-      actions={
-        ctx.canExport
-          ? { add: rivalsAction.bind(null, store.slug, "add"), remove: rivalsAction.bind(null, store.slug, "remove"), read: rivalsAction.bind(null, store.slug, "read") }
-          : null
-      }
-      now={now}
-    />
-  ) : check.house ? (
-    // Kaizena Flow's own store (D900 M4): its rivals are other store platforms, kept beside its plans on Platform → Plans.
-    <Note>
-      {words.rivals.house}{" "}
-      <AdminLink href="/admin/platform/plans#platform-rivals" className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
-        {words.rivals.houseLink}
-      </AdminLink>
-    </Note>
-  ) : null;
+  const rivals = (
+    <>
+      <MarketRivalsSection
+        lang={ctx.lang}
+        locale={locale}
+        timeZone={store.timeZone}
+        words={words.rivals}
+        rivals={check.rivals}
+        sites={check.sites}
+        sells={check.sells}
+        offers={check.offers}
+        countries={countries}
+        products={check.sells ? products : []}
+        actions={
+          ctx.canExport
+            ? { add: rivalsAction.bind(null, store.slug, "add"), remove: rivalsAction.bind(null, store.slug, "remove"), read: rivalsAction.bind(null, store.slug, "read") }
+            : null
+        }
+        now={now}
+      />
+      {check.house ? (
+        // Kaizena Flow's own store (D900 M4): its rivals' plan prices are kept beside its plans on Platform → Plans.
+        <Note>
+          {words.rivals.house}{" "}
+          <AdminLink href="/admin/platform/plans#platform-rivals" className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
+            {words.rivals.houseLink}
+          </AdminLink>
+        </Note>
+      ) : null}
+    </>
+  );
   return (
     <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
       <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>

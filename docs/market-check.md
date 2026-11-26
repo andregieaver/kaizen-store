@@ -33,6 +33,11 @@ The parts already exist; the market check joins them:
 | M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built, deployed at `9dfeeb3` (25 November 2026): migration `20261125181441_previous_black_crow.sql`, advisors INFO only |
 | M3 | **Watching**: rivals' pages read again before they go old; a change is kept, a threat in the SWOT and an autopilot event, never an action. | Built, deployed at `afc199e` (26 November 2026): migration `20261125225113_whole_the_leader.sql`, advisors INFO only |
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices and fees), cited and checked on their pages, beside `platform_pricing_facts` (D854). | Built but EU features, deployed at `9fbb82c` (26 November 2026): migration `20261125234508_friendly_lily_hollister.sql`, advisors INFO only |
+| M5a | **Rivals for every site**: rivals without a shop, and what changed on their sites, read from their own sitemaps (7.2). | Built (26 November 2026): migration `20261126083203_big_wild_child.sql` |
+| M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Spec |
+| M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Spec |
+| M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Spec |
+| M5e | **Enquiries as the conversion**: forms, bookings and appointments per country where a store has no orders (7.6). | Spec |
 
 ## 3. M1: your markets side by side (built)
 
@@ -175,7 +180,84 @@ minimum volume. A split worth having is by language (a sign-up already keeps its
 - **Still to come in M4.** EU features side by side (VAT OSS, the Omnibus 30-day price, the EAA): `docs/parity/` already keeps them by
   hand for Shopify, with sources and dates.
 
-## 7. Guardrails, for every step
+## 7. M5: rivals for every site (D905)
+
+Asked on 26 November 2026 by the owner: M2 to M4 need the online store turned on, and *offer no value to sites with it turned off. How can
+we bring value to these as well in terms of competitor watch and analysis?* A store without a shop (a service business, a consultant, a
+booking or appointment site, a content site) has no products and prices to hold against a rival's offer, so M2's rivals and M3's watching
+were closed to it.
+
+### 7.1 What every site has
+
+Every site can still be held against its rivals on what they publish for anyone, and robots, to read, without a product or a price of its
+own: the pages they add and take down (their sitemaps), where they stand in search for the words that matter, how fast their pages are for
+their visitors, the prices they publish for services, and, on the store's side, its own enquiries per country. Each is a fact read by code
+with its source and a finding worked out by code, as in M1 to M4; the model only words a plan.
+
+Never read: a rival's ratings and reviews over time from Google (the Places terms allow them shown when fetched, never kept), social media
+pages (their terms, and most are behind a sign-in), anything behind a sign-in, and a site's words in bulk (the EU database right, Directive
+96/9/EC): a sitemap gives addresses, not content.
+
+### 7.2 M5a: rivals for every site, and what changed on their sites
+
+- **Rivals without a shop.** Adding a rival no longer needs the shop: *Your rivals* on Analytics → Markets is for every store. What needs
+  products stays the shop's: reading a product page (*Read the page*, `read_rival_offer`), the offers' table and the price findings.
+  Kaizena Flow's own store gets rivals too: other store platforms' sites, beside M4's prices on Platform → Plans.
+- **What is read.** Each rival's sitemap (sitemaps.org), which a site publishes for robots to read: robots.txt first (`obeyRobots()`: a
+  sitemap it closes is not read, nor any of a site whose robots.txt cannot be heard), the sitemaps robots.txt names and `/sitemap.xml`, an
+  index's files followed up to `SITE_FILES_MAX` (5), on the rival's own host only. Each file is counted in the store's 200 pages a day and
+  kept as a research source. Only the addresses (`<loc>`) are kept, as paths; no page is fetched and no page's words are read.
+- **What is kept.** `commerce.rival_pages`: a rival's path, when it was first seen and since when it is gone, at most `RIVAL_PATHS_MAX`
+  (1,000) a rival. On the rival: when its site was last read, when it was first listed (the pages seen then are where it started, never
+  *added*), how many pages the last read listed, whether that listing passed the cap (no page is then marked gone, since one beyond the
+  cap is not known to be gone), and why the last read listed nothing (`robots`, `unread`, `none`). Written only by
+  `src/server/market-rivals.ts`.
+- **When.** The five-minute dispatcher's `rivalWatch` reads a rival's site never read first, so a rival just added is read within minutes,
+  then each read longer ago than `SITE_WATCH_DAYS` (7), `SITES_PER_RUN` (2) a run, as the person who added the rival, within the store's
+  pages for the day. No AI.
+- **From a listing cut at the cap, no finding**: a page beyond the cap before may look added. Hosts the crawler cannot reach (`.example`,
+  `.local`, `localhost`) list no `www.` twin.
+- **What is shown.** Under each rival in *Your rivals*: its pages, how many it added and took down in 30 days, the part of its site most
+  of them are under (a path's first part, `/blog`, `/tjenester`), the newest added (up to 5, linked to the rival's own page), and when it
+  was read, or why not.
+- **A threat.** A rival whose site added at least `SITE_ADDED_MIN` (5) pages in 30 days, more than twice what the store first published
+  in that time (pages and articles, a new store's starter pages too), is a finding of kind `rival_site` in the SWOT's threats: *Rival
+  added 12 pages to its site in 30 days, most under /blog; you published 1.* Its page is the website's pages. A rival that grows less is
+  shown, not found.
+- **For the AI.** `list_rivals` gives every store its rivals with their sites' facts (pages, added, gone, the part most are under, the
+  newest paths, as the rival's own words to treat as data); `market_check` names the finding. `read_rival_offer` stays the shop's.
+- **The platform.** Kaizena Flow's own store's rivals are other platforms' sites; what it published counts its own pages and the
+  platform site's (`store_id` null).
+
+### 7.3 M5b: search visibility
+
+The owner picks up to 10 words a market (offered from the store's own searches, page titles and products). Monthly, one search a word and
+market through the research search (`searchWeb()`, within `SEARCHES_PER_DAY`, only the word and the country are sent: Brave is a US
+company); code reads where the store's host and each rival's host stand in the first 20 results, and keeps the position with the date.
+Findings: a rival above the store for a word, the store not in the first 20 for a word a rival is. Kaizena Flow's own site gets the same,
+for its words.
+
+### 7.4 M5c: speed
+
+The Chrome UX Report (Google's public field data: the 75th percentile of LCP, INP and CLS by origin, as Chrome's users met them) for the
+store's site and each rival's, monthly, and held against the store's own: only the origin is sent. It needs a key for the CrUX API on
+Platform → AI, kept as the search key is. Finding: a rival good where the store is poor on one of the three. Not a lab test of our own:
+field data is what visitors meet.
+
+### 7.5 M5d: service prices by hand
+
+As M4 keeps other platforms' plan prices: the owner keeps a rival's published price for a service (an hour of consulting, a haircut, a
+night) with its page; when kept and monthly, `priceOnPage()` checks the figure stands on its page beside its currency's mark (*On its
+page*, *Not found*, *Gone*). It is held against the store's own price where the store has one for the service (an appointment's or a
+booking's), compared by code in one currency, never converted. The model never reads a price off a page.
+
+### 7.6 M5e: enquiries as the conversion
+
+For a store without a shop, M1's countries count enquiries (forms sent, bookings, appointments booked) where a shop counts orders, so a weak
+or strong market is found the same way and with the same minimums (`MIN_VISITS`, `MIN_ORDERS` as enquiries). Kaizena Flow's own store's
+sign-ups stay M1b's, parked.
+
+## 8. Guardrails, for every step
 
 - Numbers only from code; the model words a plan, never a figure (CLAUDE.md, the eval's rules).
 - Findings have minimum volumes and say when they are estimates.
@@ -184,3 +266,4 @@ minimum volume. A split worth having is by language (a sign-up already keeps its
 - Nothing changes a store by itself: a finding leads to a plan, and a plan's changes wait for their gate.
 - Cost: M1 costs no AI until *Make a plan* is pressed. A full M2 check is some 20 to 40 searches and a few dozen page reads, under the
   100 searches a day (`SEARCHES_PER_DAY`) and counted in the AI budget.
+- M5a costs no AI: a rival's sitemap is one to six files a week, within the store's pages for the day.

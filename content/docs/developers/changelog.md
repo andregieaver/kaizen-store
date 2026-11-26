@@ -9,12 +9,18 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900, D901, D902, D903]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900, D901, D902, D903, D905]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.65 — 2026-11-26
+
+The MCP tool `list_rivals` is every store's, with or without a shop (D905): for each rival it now gives what changed on its site, counted
+from the sitemaps the rival publishes (`site`: its pages, how many it added and took down in 30 days, the part most were added under and
+the newest paths). The offers it gave before are there for a store with a shop, as they were; `read_rival_offer` still needs the shop.
 
 ## 1.64 — 2026-11-26
 

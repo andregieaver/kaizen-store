@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { marketCheckEn } from "./admin-messages/market-check.en";
+import { marketCheckNb } from "./admin-messages/market-check.nb";
 import { englishMoney } from "./money";
 import {
   askAboutFinding,
@@ -18,6 +19,7 @@ import {
   type MarketCheckFacts,
   type MarketFacts,
 } from "./market-check";
+import type { RivalSiteFacts } from "./market-rivals";
 
 const country = (code: string, over: Partial<MarketFacts> = {}): MarketFacts => ({
   code,
@@ -36,7 +38,15 @@ const country = (code: string, over: Partial<MarketFacts> = {}): MarketFacts => 
   ...over,
 });
 
-const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): MarketCheckFacts => ({ markets, products: 100, demand: [], rivalOffers: [], ...over });
+const facts = (markets: MarketFacts[], over: Partial<MarketCheckFacts> = {}): MarketCheckFacts => ({
+  markets,
+  products: 100,
+  demand: [],
+  rivalOffers: [],
+  rivalSites: [],
+  published: 0,
+  ...over,
+});
 const names = new Map([
   ["NO", "Norway"],
   ["DE", "Germany"],
@@ -214,9 +224,52 @@ describe("the market check's findings (D900 M1)", () => {
     expect(findingText(returns, marketCheckEn.finding, names, language)).toBe("Linnet now gives 30 days to return its match to your Mug in Norway, up from 14.");
   });
 
+  it("finds a rival's site that added pages faster than the store published, from a complete listing only (D905)", () => {
+    const site = (rivalName: string, over: Partial<RivalSiteFacts> = {}): RivalSiteFacts => ({
+      rivalId: rivalName,
+      rivalName,
+      market: "NO",
+      host: `${rivalName.toLowerCase()}.example`,
+      readAt: "2026-11-24T10:00:00Z",
+      since: "2026-10-01T10:00:00Z",
+      pages: 120,
+      cut: false,
+      problem: null,
+      added: 12,
+      gone: 1,
+      section: "/blog",
+      newest: ["/blog/a"],
+      ...over,
+    });
+    const found = marketFindings(
+      facts([country("NO", { sells: false })], {
+        published: 2,
+        rivalSites: [
+          site("Rapid"),
+          site("Fewer", { added: 4 }),
+          // A listing past the cap may show pages as added that were only beyond it before.
+          site("Huge", { cut: true, added: 40 }),
+          // Only the first listing: nothing is added yet.
+          site("New", { since: null, added: 0 }),
+          site("Even", { added: 5, section: null }),
+        ],
+      }),
+    );
+    const sites = found.filter((f) => f.kind === "rival_site");
+    expect(sites.map((f) => (f.kind === "rival_site" ? [f.rivalName, f.added] : null))).toEqual([
+      ["Rapid", 12],
+      ["Even", 5],
+    ]);
+    expect(swotOf(found).threats).toHaveLength(2);
+    // Twice what the store published is not more than twice.
+    expect(marketFindings(facts([country("NO")], { published: 6, rivalSites: [site("Rapid")] })).filter((f) => f.kind === "rival_site")).toEqual([]);
+    expect(findingText(sites[0], marketCheckEn.finding, names, language)).toBe("Rapid added 12 pages to its site in 30 days, most under /blog; you published 2.");
+    expect(findingText(sites[1], marketCheckNb.finding, names, language)).toBe("Even la til 5 sider på nettstedet sitt på 30 dager; du publiserte 2.");
+  });
+
   it("draws the findings as a SWOT, each in the part its kind is, in their own order; a rival's move is a threat (D900 M2, M3)", () => {
     expect(new Set(Object.values(SWOT_OF))).toEqual(new Set(SWOT_PARTS));
-    expect(Object.entries(SWOT_OF).filter(([, part]) => part === "threats").map(([kind]) => kind)).toEqual(["rival_move"]);
+    expect(Object.entries(SWOT_OF).filter(([, part]) => part === "threats").map(([kind]) => kind)).toEqual(["rival_move", "rival_site"]);
     expect(Object.keys(SWOT_OF).sort()).toEqual([...FINDING_KINDS].sort());
     const found = marketFindings(
       facts(

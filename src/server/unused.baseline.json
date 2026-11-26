@@ -367,6 +367,7 @@
     "src/db/schema.ts#reviewRequests",
     "src/db/schema.ts#reviewSettings",
     "src/db/schema.ts#rivalOffers",
+    "src/db/schema.ts#rivalPages",
     "src/db/schema.ts#searchCache",
     "src/db/schema.ts#searchClicks",
     "src/db/schema.ts#searchRules",

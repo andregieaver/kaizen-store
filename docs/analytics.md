@@ -208,8 +208,9 @@ Which companies' own networks a store's counted visits came from. It rides on vi
 ## Markets (D900, `docs/market-check.md` M1, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)
 
 The store against itself, country by country, over the period picked: where it sells well, where it sells badly, and what each country
-asked for and could not find, and, where the owner added rivals (M2), how their offers stand against the store's prices. Nothing new is
-kept for it but those offers: every figure is read when the page or the AI manager's `market_check` asks.
+asked for and could not find, and, where the owner added rivals (M2), how their offers stand against the store's prices and what changed on
+their sites (D905). Nothing new is kept for it but those offers and the rivals' pages: every figure is read when the page or the AI
+manager's `market_check` asks.
 
 A **country** is a country the store sells to (`store.markets`, one row per country whatever its language and currency views) or any
 other country a visit or a search of the period was in (a country no longer offered). The front door (a visit with no country) is no
@@ -237,14 +238,15 @@ country and is left out.
 | A rival is dearer | The same offer the other way round: the store at least a tenth cheaper. |
 | Sold out at a rival | An offer read within 30 days whose own page says it cannot be bought now (`out_of_stock` or `discontinued`), held against a product of the store's with a price in that country: a gap the rival leaves. No price is compared. |
 | A rival's move | An offer read within 30 days whose last read changed it, within 30 days, in the rival's favour (D900 M3, `rivalMove()`): its price down by a twentieth or more against the read before in one currency, else its shipping down, else its returns window longer. |
+| A rival's site | A rival's site (D905, `siteGrowth()`) whose sitemaps, read weekly and listed whole (not past `RIVAL_PATHS_MAX`, 1,000), added at least `SITE_ADDED_MIN` (5) pages in 30 days after its first listing, more than twice the pages and articles the store first published in those 30 days (a new store's starter pages count). Every store's: no shop needed. |
 
-The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, a rival's move, not in its language, no
+The order is code's: one of each kind (a country that buys less, searched for, a rival is cheaper, a rival's move, a rival's site, not in its language, no
 price, sold out at a rival, a country that buys more, a rival is dearer), then the next of each, each kind's largest first. The page shows the first three as *What to do in your markets*, each with *Make a plan*
 (the AI manager opened with the finding's words and figures, `askAboutFinding()`, sent by the person) and a link to the page that fixes it.
 
 The **SWOT** (`SWOT_OF`, `swotOf()`) draws every finding in one of four parts by its kind, never a text of its own: **strengths** (a country
 that buys more, a rival is dearer), **weaknesses** (a country that buys less, a rival is cheaper, not in its language, no price),
-**opportunities** (searched for, sold out at a rival) and **threats** (a rival's move, M3; with none, the part says so). `market_check` names each finding's part.
+**opportunities** (searched for, sold out at a rival) and **threats** (a rival's move, M3, and a rival's site, D905; with none, the part says so). `market_check` names each finding's part.
 
 Kaizena Flow's own store (`house`) sells plans, not goods: its orders, average order and prices are left out and the page says so; its
 site sells in one country, so it has no conversion by country to compare (D900 M1b, parked). Its rivals are other store platforms, kept

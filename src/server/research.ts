@@ -16,6 +16,7 @@ import {
 } from "@/lib/research";
 import { pageOffers, type PageOffer } from "@/lib/offer-data";
 import { ROBOTS_MAX_BYTES, robotsVerdict, type RobotsAnswer } from "@/lib/robots";
+import { robotsSitemaps } from "@/lib/site-crawl";
 import { isReadableType, PAGE_MAX_BYTES, PAGES_PER_DAY, pageEmails, pageText } from "@/lib/web-page-text";
 import { SEARCH_APIS, SEARCH_MODEL, searchHostOk, SEARCHES_PER_DAY, type Freshness, type SearchResult } from "@/lib/web-search";
 
@@ -25,6 +26,7 @@ import { recordUsage } from "./ai-usage";
 import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import { safeFetch, type FetchOptions, type Fetched } from "./replicate-fetch";
+import { sitemapPaths } from "./site-crawl";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { searchConnection } from "./web-search-settings";
@@ -116,17 +118,12 @@ const robotsSeen = new Map<string, { at: number; answer: RobotsAnswer }>();
  * Refuses a page the site's robots.txt asks robots not to read, or any page of a site whose robots.txt cannot be heard (D900 M2,
  * `robotsVerdict()`). Every page research reads passes here first: the AI manager's, a found company's (D899) and a rival's.
  */
-async function obeyRobots(url: string, deps: ResearchDeps): Promise<void> {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return;
-  }
+/** A site's robots.txt as last heard, read again after `ROBOTS_TTL_MS`. */
+async function robotsAnswer(origin: string, deps: ResearchDeps): Promise<RobotsAnswer> {
   const now = Date.now();
-  let seen = robotsSeen.get(parsed.origin);
+  let seen = robotsSeen.get(origin);
   if (!seen || now - seen.at > ROBOTS_TTL_MS) {
-    const got = await (deps.fetchPage ?? safeFetch)(`${parsed.origin}/robots.txt`, { maxBytes: ROBOTS_MAX_BYTES, timeoutMs: 10_000, accept: "text/plain", maxRedirects: 5 });
+    const got = await (deps.fetchPage ?? safeFetch)(`${origin}/robots.txt`, { maxBytes: ROBOTS_MAX_BYTES, timeoutMs: 10_000, accept: "text/plain", maxRedirects: 5 });
     // A file too large to read (a 2xx refused for its size) is a file that could not be heard.
     const answer: RobotsAnswer = got.ok
       ? { status: got.status, text: new TextDecoder("utf-8").decode(got.bytes) }
@@ -134,10 +131,20 @@ async function obeyRobots(url: string, deps: ResearchDeps): Promise<void> {
         ? { status: got.status, text: "" }
         : { failed: true };
     seen = { at: now, answer };
-    robotsSeen.set(parsed.origin, seen);
+    robotsSeen.set(origin, seen);
     if (robotsSeen.size > 500) robotsSeen.delete(robotsSeen.keys().next().value as string);
   }
-  const verdict = robotsVerdict(seen.answer, `${parsed.pathname}${parsed.search}`);
+  return seen.answer;
+}
+
+async function obeyRobots(url: string, deps: ResearchDeps): Promise<void> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+  const verdict = robotsVerdict(await robotsAnswer(parsed.origin, deps), `${parsed.pathname}${parsed.search}`);
   if (verdict === "refused") fail("The site's robots.txt asks robots not to read that page, so it was not read.");
   if (verdict === "unknown") fail("The site's robots.txt could not be read, so none of its pages are read for now: try again later.");
 }
@@ -186,6 +193,46 @@ export async function readOfferPage(a: ResearchActor, input: { url: string }, de
   const hash = createHash("sha256").update(page.text).digest("hex");
   await keepSources(a, "page", [...new Set([input.url, fetched.url])].map((url) => ({ url, title: page.title, hash })));
   return { url: fetched.url, title: page.title, offers: fetched.contentType.includes("html") ? pageOffers(fetched.body) : [] };
+}
+
+/** What a read of a site's sitemaps found (D905): its pages' paths, or why there are none. */
+export type SitemapRead = { paths: string[]; cut: boolean; problem: "robots" | "unread" | "none" | null };
+
+/**
+ * The page paths a site lists in its sitemaps (D905, market check M5a, `docs/market-check.md` 7.2), read as research reads: its robots.txt
+ * first (a site whose robots.txt cannot be heard is not read, and a sitemap it closes is skipped), the sitemaps it names and
+ * `/sitemap.xml`, an index's files followed up to `limits.files`, on the site's own host. Each file read counts as a page of the day and is
+ * kept as a source. Only addresses are read: no page of the site is fetched.
+ */
+export async function readSitemapPaths(a: ResearchActor, host: string, limits: { files: number; paths: number }, deps: ResearchDeps = {}): Promise<SitemapRead> {
+  const left = PAGES_PER_DAY - (await countToday(a, "page"));
+  if (left <= 0) return fail(`The day's ${PAGES_PER_DAY} pages are read: try again tomorrow.`);
+  const origin = `https://${host}`;
+  const robots = await robotsAnswer(origin, deps);
+  if (robotsVerdict(robots, "/sitemap.xml") === "unknown") return { paths: [], cut: false, problem: "robots" };
+  const named = "status" in robots && robots.status >= 200 && robots.status < 300 ? robotsSitemaps(robots.text) : [];
+  const read: string[] = [];
+  let closed = 0;
+  const fetchPage = async (url: string, options: FetchOptions): Promise<Fetched> => {
+    let path: string;
+    try {
+      const parsed = new URL(url);
+      path = `${parsed.pathname}${parsed.search}`;
+    } catch {
+      return { ok: false, problem: "not an address" };
+    }
+    if (robotsVerdict(robots, path) !== "allowed") {
+      closed += 1;
+      return { ok: false, problem: "robots" };
+    }
+    if (read.length >= Math.min(left, limits.files)) return { ok: false, problem: "limit" };
+    read.push(url);
+    return (deps.fetchPage ?? safeFetch)(url, options);
+  };
+  const listed = await sitemapPaths(host, named, fetchPage, limits);
+  await keepSources(a, "page", read.map((url) => ({ url, title: "Sitemap" })));
+  if (listed.paths.length > 0) return { paths: listed.paths, cut: listed.cut, problem: null };
+  return { paths: [], cut: false, problem: listed.maps > 0 ? "none" : read.length === 0 && closed > 0 ? "robots" : "unread" };
 }
 
 /** Of the addresses given, those the store did not search or read within `SOURCE_DAYS`. */

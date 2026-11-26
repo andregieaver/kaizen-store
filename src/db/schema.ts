@@ -15724,6 +15724,15 @@ export const marketRivals = commerce.table(
     host: text("host").notNull(),
     addedBy: uuid("added_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
+    /** When its site's sitemaps were last read or tried (D905, market check M5a); null until the watcher first reaches it. */
+    siteReadAt: timestamp("site_read_at", { withTimezone: true }),
+    /** When its site was first listed: the pages seen then are where it started, never added. */
+    siteSince: timestamp("site_since", { withTimezone: true }),
+    /** The pages its last listing had, and whether that listing passed the paths kept (then no page is marked gone). */
+    sitePages: integer("site_pages"),
+    siteCut: boolean("site_cut").notNull().default(false),
+    /** Why the last read listed nothing (`robots`, `unread`, `none`); null when it listed pages. */
+    siteProblem: text("site_problem"),
   },
   (t) => [
     unique("market_rivals_store_id_key").on(t.storeId, t.id),
@@ -15732,6 +15741,35 @@ export const marketRivals = commerce.table(
     check("market_rivals_market", sql`${t.marketCode} ~ '^[A-Z]{2}$'`),
     check("market_rivals_name", sql`length(${t.name}) between 1 and 120`),
     check("market_rivals_host", sql`length(${t.host}) between 3 and 253 and ${t.host} ~ '^[a-z0-9][a-z0-9.-]*[a-z0-9]$'`),
+    check("market_rivals_site_problem", sql`${t.siteProblem} is null or ${t.siteProblem} in ('robots', 'unread', 'none')`),
+    check("market_rivals_site_pages", sql`${t.sitePages} is null or ${t.sitePages} >= 0`),
+    // The watcher's due sites: never read first, then the longest ago.
+    index("market_rivals_site_read_idx").on(t.siteReadAt),
+  ],
+).enableRLS();
+
+/**
+ * A page a rival's site lists in its sitemaps (D905, market check M5a, `docs/market-check.md` 7.2): its path only, when it was first seen,
+ * and since when it is gone from the listing; never the page's words. At most `RIVAL_PATHS_MAX` a rival listed at once; a page gone longer
+ * than `SITE_WINDOW_DAYS` is dropped. Written only by `src/server/market-rivals.ts`; staff-only.
+ */
+export const rivalPages = commerce.table(
+  "rival_pages",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    rivalId: uuid("rival_id").notNull(),
+    path: text("path").notNull(),
+    /** The part of the site it is under (`pathSection()`), for where most added pages are. */
+    section: text("section"),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    goneAt: timestamp("gone_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ name: "rival_pages_pkey", columns: [t.storeId, t.rivalId, t.path] }),
+    foreignKey({ name: "rival_pages_rival_fk", columns: [t.storeId, t.rivalId], foreignColumns: [marketRivals.storeId, marketRivals.id] }).onDelete("cascade"),
+    index("rival_pages_seen_idx").on(t.storeId, t.rivalId, t.firstSeenAt),
+    check("rival_pages_path", sql`${t.path} ~ '^/' and length(${t.path}) <= 500`),
+    check("rival_pages_section", sql`${t.section} is null or length(${t.section}) <= 120`),
   ],
 ).enableRLS();
 

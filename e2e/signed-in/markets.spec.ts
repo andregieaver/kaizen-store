@@ -93,10 +93,32 @@ test.beforeAll(async () => {
         previous = jsonb_build_object('priceMinor', ${Number(second.price) * 2}::bigint, 'currency', 'NOK', 'availability', 'in_stock',
           'shippingMinor', null, 'shippingCurrency', null, 'returnDays', null, 'readAt', now() - interval '31 days')
       where store_id = ${store.id} and address = 'https://linnet.example/p/two'`;
+    await rivalSite(sql, store.id, rival.id);
   } finally {
     await sql.end();
   }
 });
+
+/**
+ * What the watcher found on a rival's site (D905): first listed 20 days ago with 40 pages, read yesterday with eight new posts under
+ * `/blogg` and two pages gone.
+ */
+async function rivalSite(sql: ReturnType<typeof testDb>, storeId: string, rivalId: string) {
+  // The store's starter pages were published over a month ago: it published none in the 30 days.
+  await sql`update commerce.pages set first_published_at = now() - interval '40 days' where store_id = ${storeId}`;
+  await sql`
+    update commerce.market_rivals set site_since = now() - interval '20 days', site_read_at = now() - interval '1 day', site_pages = 46, site_cut = false
+    where store_id = ${storeId} and id = ${rivalId}`;
+  await sql`
+    insert into commerce.rival_pages (store_id, rival_id, path, section, first_seen_at, gone_at)
+    select ${storeId}, ${rivalId}, '/tjenester/side-' || n, '/tjenester', now() - interval '20 days', case when n <= 2 then now() - interval '2 days' end
+    from generate_series(1, 40) n`;
+  await sql`
+    insert into commerce.rival_pages (store_id, rival_id, path, section, first_seen_at)
+    select ${storeId}, ${rivalId}, '/blogg/' || (array['linpleie', 'vask-av-ull', 'r%C3%B8de-puter', 'h%C3%B8st', 'gaver', 'nye-farger', 'om-lin', 'sommer'])[n], '/blogg',
+      now() - make_interval(days => n)
+    from generate_series(1, 8) n`;
+}
 
 test.describe("as a store's owner", () => {
   test.use({ storageState: OWNER.state, viewport: { width: 1280, height: 900 } });
@@ -136,6 +158,9 @@ test.describe("as a store's owner", () => {
     await expect(swot("weaknesses").locator('[data-finding="rival_cheaper"]')).toContainText("Linnet sells");
     await expect(swot("opportunities").locator('[data-finding="rival_out"]')).toContainText("cannot be bought now in Norway");
     await expect(swot("threats").locator('[data-finding="rival_move"]')).toContainText("Linnet cut its price");
+    // Its site grew faster than the store's (D905): eight pages in 30 days, most under /blogg, against none of the store's.
+    await expect(swot("threats").locator('[data-finding="rival_site"]')).toContainText("Linnet added 8 pages to its site in 30 days, most under /blogg; you published 0.");
+    await expect(page.locator('[data-rival="linnet.example"] [data-rival-site]')).toContainText("46 pages · 8 added in 30 days · 2 gone · most under /blogg");
     await expect(page.getByRole("table", { name: "Rivals' offers" })).toContainText("Was ");
     if (shots) await page.locator('section[aria-labelledby="market-swot"]').screenshot({ path: `${shots}/markets-swot.png` });
     if (shots) await page.locator('section[aria-labelledby="market-rivals"]').screenshot({ path: `${shots}/markets-rivals.png` });
@@ -161,7 +186,7 @@ test.describe("as a store's owner, keeping rivals", () => {
     await page.getByText("See every country and every finding").click();
     await expect(page.locator("[data-every-country]")).toHaveAttribute("open", "");
     const rivals = page.locator('section[aria-labelledby="market-rivals"]');
-    await rivals.getByLabel("Shop's name").fill("Vev");
+    await rivals.getByLabel("Rival's name").fill("Vev");
     await rivals.getByLabel("Web address").fill("https://www.vev.example/om");
     await rivals.getByRole("button", { name: "Add rival" }).click();
     await expect(rivals).toContainText("Vev is added.");
@@ -169,6 +194,46 @@ test.describe("as a store's owner, keeping rivals", () => {
     await expect(vev).toContainText("Vev");
     await vev.getByRole("button", { name: "Remove Vev" }).click();
     await expect(vev).toHaveCount(0);
+  });
+});
+
+test.describe("as the owner of a store without a shop (D905)", () => {
+  test.use({ storageState: OWNER.state, viewport: { width: 1280, height: 900 } });
+  let site = "";
+
+  test.beforeAll(async () => {
+    const store = await testStore("markets-site", ["countries"]);
+    site = store.slug;
+    const sql = testDb();
+    try {
+      const [owner] = await sql`select id from commerce.accounts where email = ${OWNER.email}`;
+      await sql`insert into commerce.store_members (store_id, account_id, role) values (${store.id}, ${owner.id}, 'owner')`;
+      await sql`update commerce.stores set features = array_remove(features, 'shop') where id = ${store.id}`;
+      const [rival] = await sql`
+        insert into commerce.market_rivals (store_id, market_code, name, host) values (${store.id}, 'NO', 'Linnet', 'linnet.example') returning id`;
+      await rivalSite(sql, store.id, rival.id);
+      await sql`insert into commerce.market_rivals (store_id, market_code, name, host) values (${store.id}, 'NO', 'Furu', 'furu.example')`;
+    } finally {
+      await sql.end();
+    }
+  });
+
+  test("keeps rivals and sees what changed on their sites, without offers to read", async ({ page }) => {
+    await page.goto(`/admin/${site}/analytics/markets?period=30d`);
+    await expect(page.getByRole("heading", { name: "Markets", level: 1 })).toBeVisible();
+    const findings = page.getByRole("region", { name: "What to do in your markets" });
+    await expect(findings.locator('[data-finding="rival_site"]')).toContainText("Linnet added 8 pages to its site in 30 days");
+    const rivals = page.locator('section[aria-labelledby="market-rivals"]');
+    await expect(rivals.locator('[data-rival="linnet.example"] [data-rival-site]')).toContainText("46 pages · 8 added in 30 days · 2 gone");
+    await expect(rivals.locator('[data-rival="linnet.example"]').getByRole("link", { name: "/blogg/linpleie" })).toHaveAttribute("href", "https://linnet.example/blogg/linpleie");
+    // A rival just added is read by the watcher within minutes.
+    await expect(rivals.locator('[data-rival="furu.example"]')).toContainText("Its site is read within a few minutes.");
+    await expect(rivals.getByRole("button", { name: "Add rival" })).toBeVisible();
+    await expect(rivals.getByRole("button", { name: "Read the page" })).toHaveCount(0);
+    if (shots) {
+      await page.screenshot({ path: `${shots}/markets-site-computer.png` });
+      await rivals.screenshot({ path: `${shots}/markets-site-rivals.png` });
+    }
   });
 });
 

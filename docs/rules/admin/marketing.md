@@ -50,7 +50,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   The SWOT is only the findings drawn by `SWOT_OF`, never a text a model writes. Every read keeps what moved (`keepOffer()`), and the
   dispatcher's `watchRivals()` reads offers again before they go old (M3); a rival's change is an event (`rival_changed`) whose plan always
   waits for the owner's yes: a store's price never follows a rival's by itself. Other platforms' prices (M4, `platform_rival_prices`) are
-  kept by a platform admin with their page and checked there by code (`priceOnPage()`), never read off a page by a model.
+  kept by a platform admin with their page and checked there by code (`priceOnPage()`), never read off a page by a model. Rivals are every
+  store's (D905, M5a): a rival's site is read only from its sitemaps (`readSitemapPaths()`: robots.txt first, each file a page of the day,
+  addresses only, never a page's words), weekly by the same watcher (`watchRivalSites()`), its paths kept in `rival_pages` by
+  `keepRivalSite()` alone; what needs products (offers, *Read the page*, `read_rival_offer`) stays the shop's.
 
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 

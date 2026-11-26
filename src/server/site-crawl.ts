@@ -83,31 +83,52 @@ async function robotsOf(host: string, fetchPage: typeof safeFetch): Promise<{ ru
   return { rules: robotsRules(text), sitemaps: robotsSitemaps(text) };
 }
 
-/** The page paths the site's sitemaps list (its own and those robots.txt names, an index's files followed), on its own host only. */
-async function sitemapPaths(host: string, named: string[], fetchPage: typeof safeFetch): Promise<string[]> {
+/**
+ * The page paths the site's sitemaps list (its own and those robots.txt names, an index's files followed), on its own host only, without
+ * duplicates; `maps` the files that were sitemaps, `cut` when files or paths were left unread at the limits. Also a rival's sitemaps (D905, `readSitemapPaths()` in research),
+ * whose `fetchPage` asks robots.txt first and counts each file.
+ */
+export async function sitemapPaths(
+  host: string,
+  named: string[],
+  fetchPage: typeof safeFetch,
+  limits: { files: number; paths: number } = { files: SITEMAP_FILES_MAX, paths: SITE_PAGES_MAX * 3 },
+): Promise<{ paths: string[]; files: number; maps: number; cut: boolean }> {
   const queue = [...new Set([...named, `https://${host}/sitemap.xml`])].filter((url) => mayFrame(host, hostOf(url)));
   const seen = new Set<string>();
-  const paths: string[] = [];
+  const paths = new Set<string>();
   let files = 0;
-  while (queue.length > 0 && files < SITEMAP_FILES_MAX && paths.length < SITE_PAGES_MAX * 3) {
+  let maps = 0;
+  let cut = false;
+  while (queue.length > 0) {
+    if (files >= limits.files || paths.size >= limits.paths) {
+      cut = queue.some((url) => !seen.has(url)) || cut;
+      break;
+    }
     const url = queue.shift()!;
     if (seen.has(url)) continue;
     seen.add(url);
     files += 1;
     const got = await fetchPage(url, { maxBytes: SITEMAP_BYTES, timeoutMs: 15_000, accept: "application/xml,text/xml;q=0.9,*/*;q=0.5", maxRedirects: 3 });
     if (!got.ok || got.status >= 400 || !mayFrame(host, hostOf(got.url))) continue;
-    const map = readSitemap(textOf(got.bytes), SITE_PAGES_MAX * 3);
+    const map = readSitemap(textOf(got.bytes), limits.paths + 1);
     if (!map) continue;
+    maps += 1;
     for (const loc of map.locs) {
       if (map.index) {
         if (mayFrame(host, hostOf(loc))) queue.push(loc);
       } else {
         const path = sitePath(host, loc);
-        if (path) paths.push(path);
+        if (!path) continue;
+        if (paths.size >= limits.paths) {
+          if (!paths.has(path)) cut = true;
+          continue;
+        }
+        paths.add(path);
       }
     }
   }
-  return paths;
+  return { paths: [...paths], files, maps, cut };
 }
 
 /** For a site without a sitemap: the front page and the pages its links lead to, `LINK_DEPTH` deep, fetching at most `LINK_PAGES_MAX`. */
@@ -164,7 +185,7 @@ export async function discoverSite(siteId: string, deps: CrawlDeps = {}): Promis
     if (!robotsAllow(rules, "/") && rules.allow.length === 0) {
       problem = "robots";
     } else {
-      const listed = await sitemapPaths(site.host, sitemaps, fetchPage);
+      const listed = (await sitemapPaths(site.host, sitemaps, fetchPage)).paths;
       const candidates = listed.length > 0 ? ["/", ...listed] : await linkedPaths(site.host, rules, fetchPage);
       paths = [...new Set(candidates)].filter((path) => robotsAllow(rules, path)).slice(0, SITE_PAGES_MAX);
       if (paths.length === 0) problem = "no_pages";

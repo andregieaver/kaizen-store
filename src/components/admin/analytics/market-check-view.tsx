@@ -50,6 +50,7 @@ const TONE: Record<MarketFindingKind, PillTone> = {
   unpriced: "warning",
   rival_out: "info",
   rival_move: "bad",
+  rival_site: "warning",
   strong_market: "good",
   rival_dearer: "good",
 };
@@ -77,7 +78,7 @@ export type MarketCheckViewProps = {
   /** The period's own words ("Last 30 days"), for the AI manager's message. */
   periodLabel: string;
   words: MarketCheckMessages;
-  /** The rivals' section (`MarketRivalsSection`), drawn by the page with its forms; left out where prices do not apply. */
+  /** The rivals' section (`MarketRivalsSection`), drawn by the page with its forms: every store's (D905). */
   rivals?: ReactNode;
 };
 

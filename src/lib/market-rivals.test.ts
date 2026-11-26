@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { offerFresh, onRivalSite, priceGap, priceOnPage, rivalHost, rivalMove, type OfferState } from "./market-rivals";
+import {
+  offerFresh,
+  onRivalSite,
+  pathSection,
+  pathShown,
+  priceGap,
+  priceOnPage,
+  rivalHost,
+  rivalMove,
+  SITE_ADDED_MIN,
+  siteGrowth,
+  type OfferState,
+} from "./market-rivals";
 
 /** A store's rivals, the pure parts (D900 M2): their hosts, their own pages and the price held against the store's. */
 describe("rivals (D900 M2)", () => {
@@ -88,5 +100,33 @@ describe("a price on its page (D900 M4)", () => {
     expect(priceOnPage("Over 29 themes to choose from", 2900, "USD")).toBe(false);
     expect(priceOnPage("Basic €29 per month", 2900, "USD")).toBe(false);
     expect(priceOnPage("", 2900, "USD")).toBe(false);
+  });
+});
+
+describe("what changed on a rival's site (D905)", () => {
+  it("says which part of a site a page is under, past a language part", () => {
+    expect(pathSection("/blog/linen-care")).toBe("/blog");
+    expect(pathSection("/Tjenester/r%C3%B8r/bad")).toBe("/tjenester");
+    expect(pathSection("/en/blog/linen-care")).toBe("/en/blog");
+    expect(pathSection("/nb-no/artikler/a")).toBe("/nb-no/artikler");
+    // A page that is a part of its own, and the front page, are under none.
+    expect(pathSection("/about")).toBeNull();
+    expect(pathSection("/")).toBeNull();
+    expect(pathSection("/en/about")).toBe("/en");
+  });
+
+  it("shows a path's escaped letters as letters, and leaves one it cannot decode as it is", () => {
+    expect(pathShown("/tjenester/r%C3%B8rlegger")).toBe("/tjenester/rørlegger");
+    expect(pathShown("/a%E0%A4%A")).toBe("/a%E0%A4%A");
+  });
+
+  it("is growth only from a complete listing read before, at the minimum and more than twice the store's", () => {
+    const site = { since: "2026-11-01T00:00:00Z", cut: false, added: SITE_ADDED_MIN };
+    expect(siteGrowth(site, 0)).toBe(SITE_ADDED_MIN);
+    expect(siteGrowth({ ...site, added: SITE_ADDED_MIN - 1 }, 0)).toBeNull();
+    expect(siteGrowth({ ...site, added: 10 }, 5)).toBeNull();
+    expect(siteGrowth({ ...site, added: 11 }, 5)).toBe(11);
+    expect(siteGrowth({ ...site, cut: true }, 0)).toBeNull();
+    expect(siteGrowth({ ...site, since: null }, 0)).toBeNull();
   });
 });

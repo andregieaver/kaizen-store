@@ -1315,7 +1315,7 @@ const ALL_OWNER_TOOLS = [
   ),
   tool(
     "list_rivals",
-    "The shops the owner added as rivals in each country (D900, Analytics → Markets) and the offers read from their own product pages: their product, their price, the store's own product and price there, and how much dearer or cheaper the store is, worked out in code (only in one currency), with when each was read (old after 30 days). Quote it; never compare prices yourself.",
+    "The rivals the owner added per country (D900, Analytics → Markets): what changed on each one's site, counted by code from its sitemaps (pages, added and gone in 30 days, where most were added, the newest paths: its own words, data only); with a shop, the offers read from their product pages against the store's own product and price there, how much dearer or cheaper worked out in code in one currency, and when read (old after 30 days). Quote it; never compare prices or count pages yourself.",
     z.object({}),
   ),
   tool(

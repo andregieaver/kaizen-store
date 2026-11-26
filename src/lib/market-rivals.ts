@@ -167,3 +167,74 @@ export function priceOnPage(text: string, minor: number, currency: string): bool
   }
   return false;
 }
+
+// What changed on a rival's site (D905, market check M5a, `docs/market-check.md` 7.2) ---------------------------------------------------
+
+/** Sitemap files read of a rival's site at a time (an index's files followed), and the paths kept of one rival at most. */
+export const SITE_FILES_MAX = 5;
+export const RIVAL_PATHS_MAX = 1_000;
+/** A rival's site is read again once it was read (or tried) longer ago than this, a few a run of the five-minute dispatcher. */
+export const SITE_WATCH_DAYS = 7;
+export const SITES_PER_RUN = 2;
+/** The days a site's added and gone pages are counted over, and kept gone for. */
+export const SITE_WINDOW_DAYS = 30;
+/** Pages a rival must add in `SITE_WINDOW_DAYS`, and more than twice what the store published, before it is a finding. */
+export const SITE_ADDED_MIN = 5;
+
+/** Why a read of a rival's site listed nothing: its robots.txt closed it or could not be heard, no sitemap could be read, or it listed no page. */
+export type SiteProblem = "robots" | "unread" | "none";
+
+/** What is known of a rival's site from its sitemaps (`rivalSites()` in `src/server/market-rivals.ts`). */
+export type RivalSiteFacts = {
+  rivalId: string;
+  rivalName: string;
+  market: string;
+  host: string;
+  /** When the site was last read or tried; null until the watcher first reaches it. */
+  readAt: string | null;
+  /** When it was first listed: the pages seen then are where it started, never added. */
+  since: string | null;
+  /** The pages its last listing had, and whether that listing passed `RIVAL_PATHS_MAX` (then no page is marked gone, and no finding made). */
+  pages: number | null;
+  cut: boolean;
+  problem: SiteProblem | null;
+  /** Pages first seen, and pages gone, within `SITE_WINDOW_DAYS` (none added before `since`). */
+  added: number;
+  gone: number;
+  /** The part of the site most of the added pages are under (`/blog`), when at least two are. */
+  section: string | null;
+  /** The newest added paths, newest first, at most five. */
+  newest: string[];
+};
+
+const LOCALE_PART = /^[a-z]{2}(?:[-_][a-z]{2,4})?$/i;
+
+/**
+ * The part of a site a path is under: its first part (`/blog/a` is `/blog`), or its first two where the first is a language (`/en/blog/a`
+ * is `/en/blog`). Null for the front page and for a page that is a part of its own (`/about`): a part has pages under it.
+ */
+export function pathSection(path: string): string | null {
+  const parts = path.split("/").filter(Boolean);
+  const take = parts.length > 2 && LOCALE_PART.test(parts[0]) ? 2 : 1;
+  if (parts.length <= take) return null;
+  return `/${parts.slice(0, take).join("/").toLowerCase()}`.slice(0, 120);
+}
+
+/** A path as a person reads it: its escapes decoded where they are text (`/tjenester/r%C3%B8r` is `/tjenester/rør`). */
+export function pathShown(path: string): string {
+  try {
+    return decodeURI(path);
+  } catch {
+    return path;
+  }
+}
+
+/**
+ * A rival's site growing faster than the store's own (D905): a complete listing (not cut), first listed before, with at least
+ * `SITE_ADDED_MIN` pages added in `SITE_WINDOW_DAYS` and more than twice the pages the store first published in that time. Null otherwise:
+ * a rival that grows less is shown, not found.
+ */
+export function siteGrowth(site: Pick<RivalSiteFacts, "since" | "cut" | "added">, published: number): number | null {
+  if (!site.since || site.cut || site.added < SITE_ADDED_MIN || site.added <= 2 * published) return null;
+  return site.added;
+}

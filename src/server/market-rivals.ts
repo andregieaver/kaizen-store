@@ -7,18 +7,26 @@ import { db } from "@/db/client";
 import {
   OFFERS_PER_RIVAL,
   onRivalSite,
+  pathSection,
   PLATFORM_WATCH_DAYS,
   PLATFORM_WATCH_PER_RUN,
   priceOnPage,
   RIVAL_RETRY_DAYS,
   RIVAL_WATCH_DAYS,
+  RIVAL_PATHS_MAX,
   RIVALS_PER_MARKET,
   rivalHost,
+  SITE_FILES_MAX,
+  SITE_WATCH_DAYS,
+  SITE_WINDOW_DAYS,
+  SITES_PER_RUN,
   WATCH_PER_RUN,
   WATCH_PER_STORE_DAY,
   type OfferState,
   type OwnPrice,
   type RivalOfferFacts,
+  type RivalSiteFacts,
+  type SiteProblem,
 } from "@/lib/market-rivals";
 import { amountMinor, type PageOffer } from "@/lib/offer-data";
 import { normaliseSource } from "@/lib/research";
@@ -27,7 +35,9 @@ import { audit } from "./auth";
 import { jobReport } from "./cache-events";
 import { isDemoProduct } from "./demo-content";
 import { OwnerToolError } from "./owner-tool-error";
-import { readOfferPage, readWebPage, type ResearchActor, type ResearchDeps } from "./research";
+import { log } from "./log";
+import { pgTextArray } from "./pg-arrays";
+import { readOfferPage, readSitemapPaths, readWebPage, type ResearchActor, type ResearchDeps, type SitemapRead } from "./research";
 import { getStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -194,7 +204,7 @@ const CHANGED = sql`(o.price_minor, o.currency, o.availability, o.shipping_minor
   is distinct from (excluded.price_minor, excluded.currency, excluded.availability, excluded.shipping_minor, excluded.shipping_currency, excluded.return_days)`;
 
 export type WatchDeps = ResearchDeps & { now?: Date; perRun?: number };
-export type WatchRun = { read: number; changed: number; failed: number; platform: PlatformWatchRun };
+export type WatchRun = { read: number; changed: number; failed: number; sites: SiteWatchRun; platform: PlatformWatchRun };
 
 /**
  * The watcher (D900 M3, the five-minute dispatcher's `rivalWatch`): a few kept offers read longer ago than `RIVAL_WATCH_DAYS` are read
@@ -233,7 +243,7 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
       join commerce.market_rivals r on r.store_id = c.store_id and r.id = c.rival_id
     `,
   );
-  const run: WatchRun = { read: 0, changed: 0, failed: 0, platform: { checked: 0, gone: 0, failed: 0 } };
+  const run: WatchRun = { read: 0, changed: 0, failed: 0, sites: { listed: 0, failed: 0 }, platform: { checked: 0, gone: 0, failed: 0 } };
   for (const o of due) {
     try {
       const store = await getStore(o.slug);
@@ -253,6 +263,12 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
       if (!(error instanceof OwnerToolError)) report(error, "rivals.watch");
     }
   }
+  // What changed on rivals' sites (D905), for every store, Kaizena Flow's own too: a few sitemaps a run.
+  try {
+    run.sites = await watchRivalSites(deps);
+  } catch (error) {
+    report(error, "rivals.site_watch");
+  }
   // The other store platforms' prices (M4), in the same job: a few pages a run.
   try {
     run.platform = await watchPlatformRivalPrices(deps);
@@ -260,6 +276,165 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
     report(error, "rivals.platform_watch");
   }
   return run;
+}
+
+// What changed on rivals' sites (D905, market check M5a, `docs/market-check.md` 7.2) ---------------------------------------------------
+
+export type SiteWatchRun = { listed: number; failed: number };
+
+/**
+ * Keeps what a read of a rival's sitemaps found: each path listed is kept with when it was first seen (a path seen again keeps its first
+ * day and is no longer gone), a kept path the listing no longer has is gone since now (not when the listing was cut: a path beyond the cap
+ * is not known to be gone), and a path gone longer than `SITE_WINDOW_DAYS` is dropped. The rival keeps when it was read, its first
+ * listing (`site_since`, kept), its pages and whether the listing was cut. A read that listed nothing keeps only why, and its pages as
+ * they were. In one transaction, so `now()` is one moment.
+ */
+export async function keepRivalSite(storeId: string, rivalId: string, read: SitemapRead, now: Date = new Date()): Promise<void> {
+  const at = now.toISOString();
+  const paths = read.paths.slice(0, RIVAL_PATHS_MAX);
+  await db().transaction(async (tx) => {
+    if (read.problem !== null || paths.length === 0) {
+      await tx.execute(sql`
+        update commerce.market_rivals set site_read_at = ${at}::timestamptz, site_problem = ${read.problem ?? "none"}
+        where store_id = ${storeId}::uuid and id = ${rivalId}::uuid
+      `);
+      return;
+    }
+    await tx.execute(sql`
+      insert into commerce.rival_pages (store_id, rival_id, path, section, first_seen_at)
+      select ${storeId}::uuid, ${rivalId}::uuid, p.path, nullif(p.section, ''), ${at}::timestamptz
+      from unnest(${pgTextArray(paths)}::text[], ${pgTextArray(paths.map((path) => pathSection(path) ?? ""))}::text[]) as p(path, section)
+      on conflict (store_id, rival_id, path) do update set gone_at = null, section = excluded.section
+    `);
+    if (!read.cut && paths.length === read.paths.length) {
+      await tx.execute(sql`
+        update commerce.rival_pages set gone_at = ${at}::timestamptz
+        where store_id = ${storeId}::uuid and rival_id = ${rivalId}::uuid and gone_at is null and path <> all(${pgTextArray(paths)}::text[])
+      `);
+    }
+    await tx.execute(sql`
+      delete from commerce.rival_pages
+      where store_id = ${storeId}::uuid and rival_id = ${rivalId}::uuid and gone_at < ${at}::timestamptz - make_interval(days => ${SITE_WINDOW_DAYS})
+    `);
+    await tx.execute(sql`
+      update commerce.market_rivals
+      set site_read_at = ${at}::timestamptz, site_since = coalesce(site_since, ${at}::timestamptz), site_pages = ${paths.length},
+        site_cut = ${read.cut || paths.length < read.paths.length}, site_problem = null
+      where store_id = ${storeId}::uuid and id = ${rivalId}::uuid
+    `);
+  });
+}
+
+/**
+ * The watcher's part for rivals' sites: a rival whose site was never read first (one just added is read within minutes), then each read
+ * longer ago than `SITE_WATCH_DAYS`, `SITES_PER_RUN` a run, as the person who added it (`readSitemapPaths()`: robots.txt first, the day's
+ * pages, kept as sources). For every open store, Kaizena Flow's own too, since a site needs no shop. The try is claimed first
+ * (`site_read_at`), so a site that cannot be read waits its week; one the day's pages stopped is tried again a day later. No AI.
+ */
+export async function watchRivalSites(deps: WatchDeps = {}): Promise<SiteWatchRun> {
+  const now = deps.now ?? new Date();
+  const at = now.toISOString();
+  const due = await typedRows(
+    z.object({ id: col.uuid, store_id: col.uuid, slug: col.text, host: col.text, added_by: col.uuid }),
+    sql`
+      with claimed as (
+        update commerce.market_rivals r set site_read_at = ${at}::timestamptz
+        where r.id in (
+          select r2.id from commerce.market_rivals r2
+          where r2.added_by is not null and commerce.store_is_active(r2.store_id)
+            and (r2.site_read_at is null or r2.site_read_at < ${at}::timestamptz - make_interval(days => ${SITE_WATCH_DAYS}))
+          order by r2.site_read_at nulls first, r2.created_at
+          limit ${SITES_PER_RUN}
+          for update of r2 skip locked
+        )
+        returning r.id, r.store_id, r.host, r.added_by
+      )
+      select c.id, c.store_id, s.slug, c.host, c.added_by from claimed c join commerce.stores s on s.id = c.store_id
+    `,
+  );
+  const run: SiteWatchRun = { listed: 0, failed: 0 };
+  // An error that is not a business outcome is thrown once the other sites were read, for the job to report.
+  let failure: unknown = null;
+  for (const r of due) {
+    try {
+      const store = await getStore(r.slug);
+      if (!store || store.id !== r.store_id) continue;
+      const read = await readSitemapPaths({ account: { id: r.added_by }, store }, r.host, { files: SITE_FILES_MAX, paths: RIVAL_PATHS_MAX + 1 }, deps);
+      await keepRivalSite(r.store_id, r.id, read, now);
+      if (read.problem === null) run.listed++;
+      else run.failed++;
+    } catch (error) {
+      run.failed++;
+      if (!(error instanceof OwnerToolError)) {
+        failure ??= error;
+        continue;
+      }
+      // The day's pages are read: the site is tried again a day later, not a week.
+      log("info", "rivals.site_waits", { rival: r.id });
+      await db().execute(sql`
+        update commerce.market_rivals set site_read_at = ${at}::timestamptz - make_interval(days => ${SITE_WATCH_DAYS - 1})
+        where store_id = ${r.store_id}::uuid and id = ${r.id}::uuid
+      `);
+    }
+  }
+  if (failure) throw failure;
+  return run;
+}
+
+const SITE_ROW = z.object({
+  id: col.uuid,
+  market: col.text,
+  name: col.text,
+  host: col.text,
+  site_read_at: col.text.nullable(),
+  site_since: col.text.nullable(),
+  site_pages: col.int.nullable(),
+  site_cut: col.bool,
+  site_problem: z.enum(["robots", "unread", "none"]).nullable(),
+  added: col.int,
+  gone: col.int,
+  section: col.text.nullable(),
+  newest: z.array(z.string()).nullable(),
+});
+
+/**
+ * What is known of each of the store's rivals' sites (D905): when read, its pages, how many it added (first seen after its first listing)
+ * and how many went in `SITE_WINDOW_DAYS`, the part most added pages are under (two at least), and the five newest added paths.
+ */
+export async function rivalSites(storeId: string, now: Date = new Date()): Promise<RivalSiteFacts[]> {
+  const from = sql`${now.toISOString()}::timestamptz - make_interval(days => ${SITE_WINDOW_DAYS})`;
+  const added = sql`p.store_id = r.store_id and p.rival_id = r.id and p.first_seen_at > r.site_since and p.first_seen_at > ${from}`;
+  const rows = await typedRows(
+    SITE_ROW,
+    sql`
+      select r.id, r.market_code::text as market, r.name, r.host, r.site_read_at::text, r.site_since::text, r.site_pages, r.site_cut, r.site_problem,
+        (select count(*)::int from commerce.rival_pages p where ${added}) as added,
+        (select count(*)::int from commerce.rival_pages p where p.store_id = r.store_id and p.rival_id = r.id and p.gone_at > ${from}) as gone,
+        (select p.section from commerce.rival_pages p where ${added} and p.section is not null
+          group by p.section having count(*) >= 2 order by count(*) desc, p.section limit 1) as section,
+        (select array_agg(n.path order by n.first_seen_at desc, n.path) from (
+          select p.path, p.first_seen_at from commerce.rival_pages p where ${added} and p.gone_at is null order by p.first_seen_at desc, p.path limit 5
+        ) n) as newest
+      from commerce.market_rivals r
+      where r.store_id = ${storeId}::uuid
+      order by r.market_code, lower(r.name)
+    `,
+  );
+  return rows.map((r) => ({
+    rivalId: r.id,
+    rivalName: r.name,
+    market: r.market,
+    host: r.host,
+    readAt: r.site_read_at,
+    since: r.site_since,
+    pages: r.site_pages,
+    cut: r.site_cut,
+    problem: r.site_problem as SiteProblem | null,
+    added: r.added,
+    gone: r.gone,
+    section: r.section,
+    newest: r.newest ?? [],
+  }));
 }
 
 /** The most other platforms' prices the platform keeps. */
