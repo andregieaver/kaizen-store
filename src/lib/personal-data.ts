@@ -501,6 +501,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   field_search: "A search index over public fields the store wrote itself.",
   font_files: "A font's files.",
   facebook_pages: "A store's Facebook Page connected for its posts' figures (D870 S1.2b): the Page's id and name, its encrypted token (and the connecting person's, only until a Page is chosen), the names of their Pages to choose among and the staff account that connected it; never a shopper's data.",
+  pinterest_accounts: "A store's Pinterest account connected to pin its approved posts (D870 S3.4): the account's name, its encrypted tokens, its boards' names to choose among and the chosen one, and the staff account that connected it; never a shopper's data.",
   google_places: "A business place's address, the store's own.",
   inventory_locations: "The name of a stock location.",
   inventory_movements: "Stock counts and the staff account that changed them (an id, never a name); the note is staff text about stock, and a movement holds no shopper's data.",

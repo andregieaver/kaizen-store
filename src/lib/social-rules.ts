@@ -1,7 +1,7 @@
 /**
  * *Post on its own within my rules* (D870 S3.3, `docs/social-manager.md` 6): the owner's switch and limits, and the one rule that says whether a
- * post may go out without a person's yes. Off by default. While it is on, the posting queue approves and queues each Instagram and Facebook
- * post whose picture passed the vision check, that no person held back, and whose product is still on sale and in stock, at most
+ * post may go out without a person's yes. Off by default. While it is on, the posting queue approves and queues each Instagram, Facebook and
+ * Pinterest post whose picture passed the vision check, that no person held back, and whose product is still on sale and in stock, at most
  * `postsPerDay` a day on a channel and never in the quiet hours. Switching it off hands every post the rules queued back to a person. Pure; the
  * server is `src/server/social-rules.ts`.
  */

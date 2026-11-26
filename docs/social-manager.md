@@ -175,12 +175,18 @@ in stock (`queueByRules()`, `rules_queued_at`); due, each is read again and post
 Taking back a yes or *Don't post on its day* holds a post (`held_at`); switching off hands the rules' posts back at once; the platform pause
 stops it. The autopilot's `publish_social_post` runs by the same rules (`socialProblem`), whatever the marketing level.
 
+S3.4 as built: a Pinterest card on Social posts connects the store's account (`src/server/pinterest.ts`, pure parts `src/lib/pinterest.ts`;
+`PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, scopes `boards:read`, `pins:read`, `pins:write`, `user_accounts:read`) and chooses the board
+Pins go to, never a secret one (`pinterest_accounts`, tokens encrypted). An approved Pinterest post is pinned with its picture, title, words
+and tagged link (`toPinterest()`), by *Post now*, the queue, the owner's rules and `publish_social_post`. The 30-day access token is renewed
+before it ends whenever it is used. Facebook's and Pinterest's routes share `social-connect-routes.ts` and the cards `social-connect-parts.tsx`.
+
 | Step | What |
 |---|---|
 | S3.1 | Publishing to Instagram and Facebook, approval per post. **Done 2026-11-26** (below) |
 | S3.2 | The queue, retries, limits and token refresh. **Done 2026-11-26** (below) |
 | S3.3 | The toggle and the rules, through `autonomyDecision()`. **Done 2026-11-26** (below) |
-| S3.4 | Pinterest |
+| S3.4 | Pinterest. **Done 2026-11-26** (below) |
 | S3.5 | TikTok (after the audit) |
 | S3.6 | LinkedIn |
 

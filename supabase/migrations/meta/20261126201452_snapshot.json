@@ -1,6 +1,6 @@
 {
-  "id": "75fcc88a-e6c8-465f-8e5c-0f3e02d9238c",
-  "prevId": "ac88fa1c-c900-4c9e-b3e9-219dd3ec9b93",
+  "id": "d75ce904-cb68-4f1d-ba42-55e080a3ba35",
+  "prevId": "9fb022ad-b8a6-45a2-a545-a7c3cc23697b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -63965,6 +63965,186 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.pinterest_accounts": {
+      "name": "pinterest_accounts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "access_token_encrypted": {
+          "name": "access_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token_encrypted": {
+          "name": "refresh_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_expires_at": {
+          "name": "token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_expires_at": {
+          "name": "refresh_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "board_id": {
+          "name": "board_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "board_name": {
+          "name": "board_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "choices": {
+          "name": "choices",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "publish": {
+          "name": "publish",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "connected_by": {
+          "name": "connected_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "pinterest_accounts_connected_by_idx": {
+          "name": "pinterest_accounts_connected_by_idx",
+          "columns": [
+            {
+              "expression": "connected_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "pinterest_accounts_store_id_stores_id_fk": {
+          "name": "pinterest_accounts_store_id_stores_id_fk",
+          "tableFrom": "pinterest_accounts",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "pinterest_accounts_connected_by_accounts_id_fk": {
+          "name": "pinterest_accounts_connected_by_accounts_id_fk",
+          "tableFrom": "pinterest_accounts",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "connected_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "pinterest_accounts_store_key": {
+          "name": "pinterest_accounts_store_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "pinterest_accounts_board": {
+          "name": "pinterest_accounts_board",
+          "value": "\"commerce\".\"pinterest_accounts\".\"board_id\" is null or \"commerce\".\"pinterest_accounts\".\"board_id\" ~ '^[0-9]{1,40}$'"
+        },
+        "pinterest_accounts_names": {
+          "name": "pinterest_accounts_names",
+          "value": "char_length(\"commerce\".\"pinterest_accounts\".\"username\") <= 100 and char_length(\"commerce\".\"pinterest_accounts\".\"board_name\") <= 180"
+        },
+        "pinterest_accounts_choices": {
+          "name": "pinterest_accounts_choices",
+          "value": "jsonb_typeof(\"commerce\".\"pinterest_accounts\".\"choices\") = 'array' and octet_length(\"commerce\".\"pinterest_accounts\".\"choices\"::text) < 30000"
+        },
+        "pinterest_accounts_problem": {
+          "name": "pinterest_accounts_problem",
+          "value": "\"commerce\".\"pinterest_accounts\".\"problem\" is null or char_length(\"commerce\".\"pinterest_accounts\".\"problem\") <= 300"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.plan_extension_grants": {
       "name": "plan_extension_grants",

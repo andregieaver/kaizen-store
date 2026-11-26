@@ -1587,8 +1587,15 @@
     {
       "idx": 226,
       "version": "7",
-      "when": 1795722151117,
-      "tag": "20261126194231_guide",
+      "when": 1795720823734,
+      "tag": "20261126192023_pinterest_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 227,
+      "version": "7",
+      "when": 1795724092365,
+      "tag": "20261126201452_guide",
       "breakpoints": true
     }
   ]

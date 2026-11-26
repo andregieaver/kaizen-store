@@ -27,6 +27,7 @@ import { siteUrl } from "@/lib/site";
 import { audit } from "./auth";
 import { jobReport } from "./cache-events";
 import { encryptionKey } from "./encryption-key";
+import type { Connection } from "./social-connect-routes";
 import { log } from "./log";
 import type { InsightPost } from "./social-insights";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -310,3 +311,19 @@ export async function facebookView(storeId: string): Promise<FacebookView> {
     })),
   };
 }
+
+/** The Facebook Page's connection for its routes on Social posts (`src/server/social-connect-routes.ts`). */
+export const FACEBOOK_CONNECTION: Connection = {
+  key: "facebook",
+  cookie: FACEBOOK_COOKIE,
+  cookiePath: FACEBOOK_COOKIE_PATH,
+  isPlatformError: (error) => error instanceof FacebookError,
+  start: facebookStart,
+  started: facebookStarted,
+  connect: connectFacebook,
+  choose: chooseFacebookPage,
+  chooseField: "page",
+  disconnect: disconnectFacebook,
+  failedStatus: (error) =>
+    error instanceof FacebookError && error.reason === "cancelled" ? "cancelled" : error instanceof FacebookError && error.message.startsWith("No Facebook Page") ? "nopage" : "failed",
+};

@@ -26,6 +26,8 @@ export const GUARDS = [
 export const DELEGATED_GUARDS: Record<string, string> = {
   /** A store admin's server action (code review 1.4): `checkPermission()` with the key it is given, then the handler inside a catch. */
   storeAction: "src/server/store-action.ts",
+  /** A connected social account's card forms on Social posts (D870 S3.4): `marketing:write` with the extension `social`, Facebook and Pinterest alike. */
+  connectionForm: "src/server/social-connect-routes.ts",
   /** The analytics pages' first call: `analytics:read` by default, and the settings page passes `owner`. */
   analyticsContext: "src/server/analytics-context.ts",
   /** The page replicator's routes (D150): `website:read` to look at a job, `website:write` to start, nudge or stop one. */

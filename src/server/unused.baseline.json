@@ -297,6 +297,7 @@
     "src/db/schema.ts#payoutLines",
     "src/db/schema.ts#payoutReads",
     "src/db/schema.ts#peppolReceivers",
+    "src/db/schema.ts#pinterestAccounts",
     "src/db/schema.ts#planExtensionGrants",
     "src/db/schema.ts#planFeatureGrants",
     "src/db/schema.ts#planLimits",
