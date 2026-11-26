@@ -10,6 +10,7 @@ import { todayIn } from "@/lib/analytics-period";
 import { PROSPECTS_WORDS } from "@/lib/admin-words/prospects";
 import type { ProspectsMessages } from "@/lib/admin-messages/prospects.en";
 import { foldDomain } from "@/lib/do-not-contact";
+import { countryStanding } from "@/lib/outreach-rules";
 import { criteriaFromQuery, criteriaToQuery } from "@/lib/prospect-reading";
 import {
   filtersFromQuery,
@@ -82,6 +83,7 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
   const page = Math.max(1, Number.parseInt(one("page"), 10) || 1);
   const result = hasFilters(filters) ? await searchCompanies(filters, page - 1, { today }) : null;
   const canWrite = memberCan(member, "customers:write");
+  const standing = countryStanding(filters.country);
   const listed = canWrite ? await doNotContactCount() : 0;
   const dnc = one("dnc");
   const kept = { ...(words ? { q: words } : {}), ...filtersToQuery(filters), ...(criteria.length ? { c: criteriaToQuery(criteria) } : {}) };
@@ -141,6 +143,10 @@ export default async function ProspectsPage({ params, searchParams }: PageProps<
         <section className="flex flex-col gap-3" aria-labelledby="found">
           <p className="text-body text-ink-2">{fillWords(w.searching, { filters: describe(filters, w, lang) })}</p>
           {filters.country === "FI" && <p className="text-sm text-ink-2">{w.finland}</p>}
+          {/* Where the country stands for writing to them (P5.3, D906): the owner's position, and that nothing is sent before a lawyer reads it. */}
+          <p className="text-sm text-ink-2" data-outreach-standing>
+            {fillWords(w.standing[standing.route], { country: w.countries[filters.country] })} {standing.read ? "" : w.standingUnread}
+          </p>
           {criteria.length > 0 && <p className="text-sm text-ink-2">{fillWords(w.read.criteria, { criteria: criteria.map((k) => k.name).join(", ") })}</p>}
           {!result.ok ? (
             <p role="alert" className="text-body text-ink">

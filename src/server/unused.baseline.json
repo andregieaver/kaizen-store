@@ -653,6 +653,7 @@
     "src/lib/order-ops-events.ts#allInOrdersArea",
     "src/lib/order-profit.ts#lossMakers",
     "src/lib/order-search.ts#searchText",
+    "src/lib/outreach-rules.ts#outreachGate",
     "src/lib/page-content.ts#IMAGE_WIDTH_MAX",
     "src/lib/page-content.ts#rowSpacing",
     "src/lib/page-content.ts#spacingStyle",

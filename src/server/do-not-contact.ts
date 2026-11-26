@@ -1,11 +1,12 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { parseKey } from "@/lib/secret-box";
 import { foldAddress, foldDomain, readEntry, type DoNotContactReason } from "@/lib/do-not-contact";
 import { pgTextArray } from "@/server/pg-arrays";
 
@@ -18,8 +19,17 @@ import { col, typedRows } from "./typed-rows";
  * `blockedDomains()`); nothing removes an entry.
  */
 
-/** The hash an entry is kept under: SHA-256 of its kind and folded value, so an address and a domain of the same text never meet. */
-export const entryHash = (kind: "address" | "domain", value: string): string => createHash("sha256").update(`kaizen-dnc:${kind}:${value}`).digest("hex");
+/**
+ * The hash an entry is kept under, of its kind and folded value, so an address and a domain of the same text never meet: keyed (HMAC-SHA256
+ * with a key derived from the settings key, D906, the owner's view on question 4), so the list cannot be matched against a list of addresses
+ * by anyone without the key. Without a settings key (tests, a fresh machine) a plain SHA-256. The settings key must never be replaced while
+ * the list holds entries: a no kept under the old key would no longer be found.
+ */
+export function entryHash(kind: "address" | "domain", value: string, env: string | undefined = process.env.SETTINGS_ENCRYPTION_KEY): string {
+  const key = parseKey(env);
+  const text = `${kind}:${value}`;
+  return key ? createHmac("sha256", createHmac("sha256", key).update("kaizen:do-not-contact").digest()).update(text).digest("hex") : createHash("sha256").update(`kaizen-dnc:${text}`).digest("hex");
+}
 
 /** Puts an address or a domain on the list (again is fine). An address puts only itself: a person's no is not their employer's. */
 export async function addDoNotContact(

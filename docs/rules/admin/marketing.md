@@ -523,6 +523,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   only (a role name on the company's own domain); the model's sentence goes through `plainSentence()`. Nothing is kept.
   The addresses come from the whole page (`pageEmails()`, footers and `mailto:` links, returned by `readWebPage()` as `emails`, never
   passed to a model by `readWebPageTool()`), else from the contact page (`CONTACT_PATHS`, at most two reads) (D899).
+- **The country rules and the outreach gate (D906, `src/lib/outreach-rules.ts`)**: `COUNTRY_RULES` holds the owner's position per country
+  and a `legalReading`, null until a lawyer signs; `outreachGate()` is the one check before writing and before sending (country, recipient
+  kind, address kind, the do-not-contact list, consent), returns every reason, takes no store, and sends nothing under a row no lawyer has
+  read. The do-not-contact hashes are keyed from the settings key (`entryHash()`), which must not be replaced while the list holds entries.
 
 ## A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
 
