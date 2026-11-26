@@ -1,6 +1,6 @@
 {
-  "id": "e9f02b91-7924-4df3-8176-b0bc6e3146d2",
-  "prevId": "6ee2271a-d5e3-41ba-93a6-d1f61aea3427",
+  "id": "05e6cb7c-b159-40d4-936c-a0c3618ad994",
+  "prevId": "e9f02b91-7924-4df3-8176-b0bc6e3146d2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -87492,6 +87492,132 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.site_speeds": {
+      "name": "site_speeds",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "site": {
+          "name": "site",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "own": {
+          "name": "own",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lcp_ms": {
+          "name": "lcp_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "inp_ms": {
+          "name": "inp_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cls_milli": {
+          "name": "cls_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "period_end": {
+          "name": "period_end",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tried_at": {
+          "name": "tried_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "site_speeds_tried_idx": {
+          "name": "site_speeds_tried_idx",
+          "columns": [
+            {
+              "expression": "tried_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "site_speeds_store_id_stores_id_fk": {
+          "name": "site_speeds_store_id_stores_id_fk",
+          "tableFrom": "site_speeds",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "site_speeds_pkey": {
+          "name": "site_speeds_pkey",
+          "columns": [
+            "store_id",
+            "site"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "site_speeds_site": {
+          "name": "site_speeds_site",
+          "value": "length(\"commerce\".\"site_speeds\".\"site\") between 3 and 300"
+        },
+        "site_speeds_figures": {
+          "name": "site_speeds_figures",
+          "value": "(\"commerce\".\"site_speeds\".\"lcp_ms\" is null or \"commerce\".\"site_speeds\".\"lcp_ms\" >= 0) and (\"commerce\".\"site_speeds\".\"inp_ms\" is null or \"commerce\".\"site_speeds\".\"inp_ms\" >= 0) and (\"commerce\".\"site_speeds\".\"cls_milli\" is null or \"commerce\".\"site_speeds\".\"cls_milli\" >= 0)"
+        },
+        "site_speeds_problem": {
+          "name": "site_speeds_problem",
+          "value": "\"commerce\".\"site_speeds\".\"problem\" is null or \"commerce\".\"site_speeds\".\"problem\" in ('none', 'failed')"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.site_staging_pages": {
       "name": "site_staging_pages",
       "schema": "commerce",
@@ -89975,6 +90101,102 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.speed_settings": {
+      "name": "speed_settings",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "single": {
+          "name": "single",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "key_encrypted": {
+          "name": "key_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_hint": {
+          "name": "key_hint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "speed_settings_updated_by_idx": {
+          "name": "speed_settings_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "speed_settings_updated_by_accounts_id_fk": {
+          "name": "speed_settings_updated_by_accounts_id_fk",
+          "tableFrom": "speed_settings",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "speed_settings_single_key": {
+          "name": "speed_settings_single_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "single"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "speed_settings_single": {
+          "name": "speed_settings_single",
+          "value": "\"commerce\".\"speed_settings\".\"single\""
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.staff_alert_recipients": {
       "name": "staff_alert_recipients",

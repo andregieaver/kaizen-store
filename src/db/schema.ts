@@ -15800,6 +15800,62 @@ export const rivalPages = commerce.table(
 ).enableRLS();
 
 /**
+ * How fast a store's own site and each of its rivals' sites are for their visitors (D905, market check M5c, `docs/market-check.md` 7.4): the
+ * Chrome UX Report's 75th percentile over 28 days of the three Core Web Vitals, as the watcher last read it, monthly. One row a site;
+ * a site no longer the store's or a rival's is dropped at the next reading. Written only by `src/server/site-speed.ts`; staff-only.
+ */
+export const siteSpeeds = commerce.table(
+  "site_speeds",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    /** The site as asked: a host (its whole origin), or a host and path for a store at a path of another site. */
+    site: text("site").notNull(),
+    /** The store's own site; else a rival's, by its host. */
+    own: boolean("own").notNull(),
+    /** Largest Contentful Paint and Interaction to Next Paint in milliseconds, Cumulative Layout Shift in thousandths. */
+    lcpMs: integer("lcp_ms"),
+    inpMs: integer("inp_ms"),
+    clsMilli: integer("cls_milli"),
+    /** The last day the figures cover. */
+    periodEnd: date("period_end"),
+    /** When figures were last read; when it was last tried, and why that try found none (`none`: too few Chrome visitors; `failed`). */
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    triedAt: timestamp("tried_at", { withTimezone: true }).notNull().defaultNow(),
+    problem: text("problem"),
+  },
+  (t) => [
+    primaryKey({ name: "site_speeds_pkey", columns: [t.storeId, t.site] }),
+    // The watcher's due stores: tried longest ago first.
+    index("site_speeds_tried_idx").on(t.triedAt),
+    check("site_speeds_site", sql`length(${t.site}) between 3 and 300`),
+    check("site_speeds_figures", sql`(${t.lcpMs} is null or ${t.lcpMs} >= 0) and (${t.inpMs} is null or ${t.inpMs} >= 0) and (${t.clsMilli} is null or ${t.clsMilli} >= 0)`),
+    check("site_speeds_problem", sql`${t.problem} is null or ${t.problem} in ('none', 'failed')`),
+  ],
+).enableRLS();
+
+/**
+ * The platform's key for the Chrome UX Report (D905 M5c), set by a platform admin on Platform → AI: one row, the key kept encrypted and
+ * shown by its hint only, decrypted for a reading and never sent to a page. Written only by `src/server/site-speed.ts`.
+ */
+export const speedSettings = commerce.table(
+  "speed_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** True: the table holds one row. */
+    single: boolean("single").notNull().default(true),
+    keyEncrypted: text("key_encrypted").notNull(),
+    keyHint: text("key_hint").notNull(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("speed_settings_single_key").on(t.single),
+    index("speed_settings_updated_by_idx").on(t.updatedBy),
+    check("speed_settings_single", sql`${t.single}`),
+  ],
+).enableRLS();
+
+/**
  * A word a store follows in search in one of its countries (D905, market check M5b, `docs/market-check.md` 7.3), and where the store and its
  * rivals there came up on the first page of results when it was last searched (`searchWeb()`: only the word and the country are sent),
  * with the store's place the time before. At most `SEARCH_TERMS_PER_MARKET` a country; written only by `src/server/market-search.ts`;

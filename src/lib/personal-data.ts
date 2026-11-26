@@ -373,6 +373,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   company_visits: "A company's visits to a store per day (D890): visitor-days, page views and the pages' shapes; no visitor, address or person, and never tied to a visit, cart, order or customer.",
   market_rivals: "A store's rivals per country (D900 M2): a shop's name and web host the owner added, and the account that added it (an id); no person's data.",
   rival_offers: "Offers read from rivals' own product pages (D900 M2): a shop's product name, price, availability, shipping and returns as its page's data states them; no person's data.",
+  site_speeds: "How fast the store's own site and its rivals' sites are, by Chrome's measure (D905 M5c): an address and three figures; no person's data.",
   search_terms: "Words a store follows in search (D905 M5b) and where it and its rivals came up, with the account that added each (an id); no person's data.",
   rival_service_prices: "Rivals' published service prices kept by a member (D905 M5d): a service's name and price, the page it is on, the store's own price, and the account that kept it (an id); no person's data.",
   rival_pages: "The paths rivals' sitemaps list (D905): a page's path on a rival's site and when it was first seen and gone; no person's data.",

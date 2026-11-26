@@ -225,6 +225,12 @@ test.describe("as the owner of a store without a shop (D905)", () => {
         values (${store.id}, 'NO', 'linkurs oslo', now() - interval '2 days', 6, '{"linnet.example": 2}', 8, now() - interval '32 days', now() - interval '2 days'),
           (${store.id}, 'NO', 'ullkurs', now() - interval '2 days', 1, '{}', null, null, now() - interval '2 days'),
           (${store.id}, 'NO', 'strikkekurs', null, null, '{}', null, null, null)`;
+      // Speed by Chrome's measure (D905 M5c), read two days ago: the store's own slow to show its content, Linnet fast, Furu too small.
+      await sql`
+        insert into commerce.site_speeds (store_id, site, own, lcp_ms, inp_ms, cls_milli, period_end, checked_at, tried_at, problem)
+        values (${store.id}, ${`kaizenaflow.com/s/${store.slug}`}, true, 4800, 180, 120, current_date - 4, now() - interval '2 days', now() - interval '2 days', null),
+          (${store.id}, 'linnet.example', false, 1900, 150, 20, current_date - 4, now() - interval '2 days', now() - interval '2 days', null),
+          (${store.id}, 'furu.example', false, null, null, null, null, null, now() - interval '2 days', 'none')`;
     } finally {
       await sql.end();
     }
@@ -270,7 +276,14 @@ test.describe("as the owner of a store without a shop (D905)", () => {
     await words.getByRole("button", { name: "Follow the word" }).click();
     await expect(words).toContainText("“lin workshop” is followed");
     await expect(words.locator('[data-search-term="lin workshop"]')).toContainText("Searched within a few minutes.");
+    // How fast its site is (D905 M5c): each figure rated by Google's thresholds, a rival good where the store is poor a weakness.
+    const speed = page.locator('section[aria-labelledby="market-speed"]');
+    await expect(speed.getByRole("row", { name: /Linnet/ })).toContainText("1.9 s · Good");
+    await expect(speed.getByRole("row", { name: /Your site/ })).toContainText("4.8 s · Poor");
+    await expect(speed.getByRole("row", { name: /Furu/ })).toContainText("Too few Chrome visitors to measure");
+    await expect(page.locator('[data-finding="speed_behind"]').first()).toContainText("Linnet's pages show their main content in 1.9 s");
     if (shots) {
+      await speed.screenshot({ path: `${shots}/markets-speed.png` });
       await words.screenshot({ path: `${shots}/markets-search.png` });
       await page.screenshot({ path: `${shots}/markets-site-computer.png` });
       await rivals.screenshot({ path: `${shots}/markets-site-rivals.png` });
@@ -291,6 +304,20 @@ test.describe("as Kaizena Flow's platform admin", () => {
     await expect(page.getByRole("columnheader", { name: "No price" })).toHaveCount(0);
     // Its rivals are other store platforms (D900 M4), kept beside its plans.
     await expect(page.getByRole("link", { name: "Open other platforms' prices" })).toHaveAttribute("href", "/admin/platform/plans#platform-rivals");
+  });
+
+  test("keeps the platform's Chrome UX Report key on Platform → AI, shown by its hint only (D905 M5c)", async ({ page }) => {
+    await page.goto("/admin/platform/ai");
+    const card = page.locator('section[aria-labelledby="site-speed"]');
+    await expect(card).toContainText("Not set up: no site's speed is measured.");
+    await page.waitForLoadState("networkidle");
+    await card.getByLabel("Chrome UX Report API key").fill("AIzaE2eSpeedKey9876");
+    await card.getByRole("button", { name: "Save site speed" }).click();
+    await expect(card).toContainText("Saved key: …9876");
+    await expect(card.getByLabel("Chrome UX Report API key")).toHaveValue("");
+    if (shots) await card.screenshot({ path: `${shots}/platform-speed-key.png` });
+    await card.getByRole("button", { name: "Remove the key" }).click();
+    await expect(card).toContainText("Not set up: no site's speed is measured.");
   });
 
   test("sees other platforms' prices beside Kaizena Flow's plans, each against a plan of its own (D900 M4)", async ({ page }) => {

@@ -56,7 +56,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `keepRivalSite()` alone; what needs products (offers, *Read the page*, `read_rival_offer`) stays the shop's. A rival's service price
   (M5d, `rival_service_prices`) is kept only by a person with its page, checked there by code (`priceOnPage()`, when kept and by the
   watcher), and compared (`serviceGap()`) only when found there. Words followed in search (M5b, `search_terms`) are written only by
-  `src/server/market-search.ts`, searched only through `searchWeb()` by the watcher, and placed only by `placesIn()`.
+  `src/server/market-search.ts`, searched only through `searchWeb()` by the watcher, and placed only by `placesIn()`. Sites' speed (M5c,
+  `site_speeds`, the key in `speed_settings`) is written only by `src/server/site-speed.ts`, read only from the Chrome UX Report by the watcher,
+  and rated only by `speedRating()`.
 
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 

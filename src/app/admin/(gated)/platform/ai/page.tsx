@@ -15,6 +15,7 @@ import { recentDreamRuns } from "@/server/dream-factory";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { aiAutonomyPaused } from "@/server/ai-pause";
 import { requirePlatformReader } from "@/server/auth";
+import { speedSettings } from "@/server/site-speed";
 import { searchSettings } from "@/server/web-search-settings";
 import { SEARCH_API_IDS, SEARCH_APIS } from "@/lib/web-search";
 import { ActionForm } from "@/components/admin/action-form";
@@ -29,7 +30,7 @@ import { PLATFORM_TOOLS_WORDS } from "@/lib/admin-words/platform-tools";
 import { SETTINGS_WORDS } from "@/lib/admin-words/settings";
 import { SETTINGS_AI_WORDS } from "@/lib/admin-words/settings-ai";
 
-import { checkPlatformVisionAction, evalPlatformAiAction, setAiPauseAction, evalPlatformAgentsAction, removePlatformAiAction, savePlatformAiAction, saveWebSearchAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
+import { checkPlatformVisionAction, evalPlatformAiAction, setAiPauseAction, evalPlatformAgentsAction, removePlatformAiAction, savePlatformAiAction, saveSiteSpeedAction, saveWebSearchAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
 
 /** The evals run in this page's actions and take up to a few minutes (PSI 2026-10-24, AST-09). */
 export const maxDuration = 300;
@@ -50,7 +51,7 @@ export default async function PlatformAiPage() {
   const shared = SETTINGS_WORDS[lang].ai;
   const [agentRuns, dreamRuns, ratings] = await Promise.all([recentAgentEvalRuns(), recentDreamRuns(), managerRatingsByVersion()]);
   const current = promptVersions();
-  const [settings, ownCount, search, paused] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings(), aiAutonomyPaused()]);
+  const [settings, ownCount, search, paused, speed] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings(), aiAutonomyPaused(), speedSettings()]);
   const status = settings
     ? `${settings.enabled ? w.on : w.off} · ${providerInfo(settings.provider).name}` +
       [settings.embeddingModel, settings.textModel].filter(Boolean).map((model) => ` · ${model}`).join("")
@@ -151,6 +152,36 @@ export default async function PlatformAiPage() {
             <Button type="submit" kind="main">
               {w.webSearchSave}
             </Button>
+          </div>
+        </ActionForm>
+      </section>
+      </PhoneRow>
+
+      <PhoneRow flat {...row} title={w.speed} sub={speed ? fillWords(w.speedKeySaved, { hint: speed.keyHint }) : ph.noKey}>
+      <section aria-labelledby="site-speed" className={card}>
+        <h2 id="site-speed" className="mb-1 text-title text-ink">{w.speed}</h2>
+        <p className="mb-1 text-sm text-muted">{w.speedText}</p>
+        <p className="mb-4 text-sm text-muted">{speed ? w.on : w.speedNone}</p>
+        <ActionForm action={saveSiteSpeedAction} successMessage={w.webSearchSaved} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1 text-sm">
+            {w.speedKey}
+            <input name="api_key" type="password" autoComplete="off" className="min-h-10 max-w-96 rounded-lg border border-edge bg-card px-3 text-sm" />
+            <span className="text-caption text-muted">
+              {speed ? fillWords(w.speedKeySaved, { hint: speed.keyHint }) : null}{" "}
+              <a href="https://developer.chrome.com/docs/crux/api" target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-2">
+                {w.speedGetKey}
+              </a>
+            </span>
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" kind="main">
+              {w.speedSave}
+            </Button>
+            {speed ? (
+              <Button type="submit" name="intent" value="remove">
+                {w.speedRemove}
+              </Button>
+            ) : null}
           </div>
         </ActionForm>
       </section>

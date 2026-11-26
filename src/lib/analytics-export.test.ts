@@ -55,11 +55,12 @@ describe("the registry", () => {
     }
     // The tax tables keep D161's files; the others are a single payout's lines (D290), the Live page's countries, which are now, not a period
     // (D347), the ten least profitable orders, each a link to its order (D415), the sales report's three tables, read from the deals (D520),
-    // heatmaps' four, read beside a page's map (D656), and the market check's countries and rivals' offers (D900).
+    // heatmaps' four, read beside a page's map (D656), the market check's countries and rivals' offers (D900), and sites' speed (D905).
     const tax = Object.entries(NOT_EXPORTED).filter(([i]) => i.startsWith("tax.") || i.startsWith("oss."));
-    expect(tax.length).toBe(Object.keys(NOT_EXPORTED).length - 12);
+    expect(tax.length).toBe(Object.keys(NOT_EXPORTED).length - 13);
     expect(NOT_EXPORTED["markets.countries"]).toMatch(/D900/);
     expect(NOT_EXPORTED["markets.rivals"]).toMatch(/D900/);
+    expect(NOT_EXPORTED["markets.speed"]).toMatch(/D905/);
     for (const id of ["heatmaps.pages", "heatmaps.parts", "heatmaps.scroll", "heatmaps.look"]) expect(NOT_EXPORTED[id]).toMatch(/D656/);
     for (const id of ["sales.forecast", "sales.stages", "sales.people"]) expect(NOT_EXPORTED[id]).toMatch(/D520/);
     expect(tax.every(([, r]) => /D161/.test(r))).toBe(true);

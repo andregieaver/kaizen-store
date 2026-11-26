@@ -25,6 +25,7 @@ import {
   type ServicePer,
 } from "./market-rivals";
 import { SEARCH_PLACES, searchStanding, type SearchTermFacts } from "./market-search";
+import { speedBehind, speedText, type SiteSpeedFacts, type SpeedMetric } from "./site-speed";
 import { englishMoney } from "./money";
 
 /** Visits a country, and the rest of the store, need before their conversion is compared. */
@@ -87,6 +88,8 @@ export type MarketCheckFacts = {
   rivalServices: RivalServiceFacts[];
   /** The words the store follows in search and where it and its rivals came up (D905 M5b). */
   searchTerms: SearchTermFacts[];
+  /** How fast the store's own site and its rivals' are for their visitors, by Chrome's measure (D905 M5c). */
+  siteSpeeds: SiteSpeedFacts[];
 };
 
 export type MarketFindingKind =
@@ -95,6 +98,7 @@ export type MarketFindingKind =
   | "rival_cheaper"
   | "service_cheaper"
   | "search_behind"
+  | "speed_behind"
   | "rival_move"
   | "rival_site"
   | "untranslated"
@@ -112,6 +116,7 @@ export const FINDING_KINDS: readonly MarketFindingKind[] = [
   "rival_cheaper",
   "service_cheaper",
   "search_behind",
+  "speed_behind",
   "rival_move",
   "rival_site",
   "untranslated",
@@ -138,6 +143,7 @@ export const SWOT_OF: Record<MarketFindingKind, SwotPart> = {
   search_ahead: "strengths",
   weak_market: "weaknesses",
   search_behind: "weaknesses",
+  speed_behind: "weaknesses",
   rival_cheaper: "weaknesses",
   service_cheaper: "weaknesses",
   untranslated: "weaknesses",
@@ -166,6 +172,7 @@ export const FIX_PATHS: Record<MarketFindingKind, string> = {
   service_dearer: "/pages",
   search_behind: "/pages",
   search_ahead: "/pages",
+  speed_behind: "/website",
   rival_out: "/marketing",
   rival_move: "/products",
   rival_site: "/pages",
@@ -235,6 +242,8 @@ export type MarketFinding =
   /** Where the store came up in a search for a word it follows (D905 M5b): behind a rival, or near the top with no rival above it. */
   | { kind: "search_behind"; market: string; term: string; rivalName: string; theirs: number; yours: number | null }
   | { kind: "search_ahead"; market: string; term: string; yours: number }
+  /** A rival's site good where the store's is poor, on one of Google's three Core Web Vitals (D905 M5c). */
+  | { kind: "speed_behind"; metric: SpeedMetric; rivalName: string; theirs: number; yours: number }
   /** A rival's site that added pages faster than the store published its own (D905): how many in 30 days, where most are, and the store's. */
   | { kind: "rival_site"; market: string; rivalName: string; added: number; section: string | null; published: number }
   | { kind: "untranslated"; market: string; locale: string; products: number; of: number }
@@ -245,6 +254,7 @@ export function findingId(f: MarketFinding): string {
   if (f.kind === "unmet_demand") return `${f.kind}:${f.term}`;
   if (f.kind === "rival_site") return `${f.kind}:${f.market}:${f.rivalName}`;
   if (f.kind === "search_behind" || f.kind === "search_ahead") return `${f.kind}:${f.market}:${f.term}`;
+  if (f.kind === "speed_behind") return `${f.kind}:${f.metric}`;
   if (f.kind === "service_cheaper" || f.kind === "service_dearer") return `${f.kind}:${f.market}:${f.service}:${f.rivalName}`;
   if (f.kind === "rival_cheaper" || f.kind === "rival_dearer" || f.kind === "rival_out" || f.kind === "rival_move") return `${f.kind}:${f.market}:${f.productName}:${f.rivalName}`;
   return `${f.kind}:${f.market}`;
@@ -273,6 +283,8 @@ function sizeOf(f: MarketFinding): number {
       return (f.yours ?? SEARCH_PLACES + 1) - f.theirs;
     case "search_ahead":
       return SEARCH_PLACES + 1 - f.yours;
+    case "speed_behind":
+      return f.yours / Math.max(f.theirs, 1);
     case "untranslated":
     case "unpriced":
       return f.products;
@@ -339,6 +351,8 @@ export function marketFindings(facts: MarketCheckFacts, now: Date = new Date()):
     if (standing?.kind === "behind") all.push({ kind: "search_behind", market: t.market, term: t.term, rivalName: standing.rivalName, theirs: standing.theirs, yours: standing.yours });
     else if (standing?.kind === "ahead") all.push({ kind: "search_ahead", market: t.market, term: t.term, yours: standing.yours });
   }
+  // A rival's site good where the store's is poor, by Chrome's measure (D905 M5c): from fresh measurements only.
+  for (const b of speedBehind(facts.siteSpeeds, now)) all.push({ kind: "speed_behind", ...b });
   // A rival's site that grew faster than the store's own (D905): from a complete listing only.
   for (const site of facts.rivalSites) {
     const added = siteGrowth(site, facts.published);
@@ -385,6 +399,10 @@ export type FindingWords = {
   /** `search_behind` when the store is not on the first page. */
   searchBehindMissing: string;
   search_ahead: string;
+  /** `speed_behind` for each of the three: when the main content shows, how fast a tap is answered, how much the layout moves. */
+  speed_behind: string;
+  speedBehindInp: string;
+  speedBehindCls: string;
   /** A service price with what it is for: `{price} an hour`. */
   servicePer: Record<ServicePer, string>;
   /** How `rival_site` says where most pages were added: `, most under {section}`. */
@@ -414,6 +432,8 @@ export function findingText(
   names: ReadonlyMap<string, string>,
   languageName: (locale: string) => string,
   money: (minor: number, currency: string) => string = englishMoney,
+  /** The locale a speed is written in (`2,4 s`). */
+  locale = "en-GB",
 ): string {
   switch (f.kind) {
     case "weak_market":
@@ -454,6 +474,10 @@ export function findingText(
         theirs: formatCount(f.theirs),
         yours: f.yours === null ? "" : formatCount(f.yours),
       });
+    case "speed_behind": {
+      const said = { rival: f.rivalName, theirs: speedText(f.metric, f.theirs, locale), yours: speedText(f.metric, f.yours, locale) };
+      return fillWords(f.metric === "lcp" ? words.speed_behind : f.metric === "inp" ? words.speedBehindInp : words.speedBehindCls, said);
+    }
     case "search_ahead":
       return fillWords(words.search_ahead, { term: quoted(f.term), market: nameOf(names, f.market), yours: formatCount(f.yours) });
     case "service_cheaper":

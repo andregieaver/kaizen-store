@@ -35,7 +35,7 @@ The parts already exist; the market check joins them:
 | M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices and fees), cited and checked on their pages, beside `platform_pricing_facts` (D854). | Built but EU features, deployed at `9fbb82c` (26 November 2026): migration `20261125234508_friendly_lily_hollister.sql`, advisors INFO only |
 | M5a | **Rivals for every site**: rivals without a shop, and what changed on their sites, read from their own sitemaps (7.2). | Built, deployed at `4a5d1f7` (26 November 2026): migration `20261126083203_big_wild_child.sql`, advisors INFO only |
 | M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Built (26 November 2026): migration `20261126122344_daily_thor_girl.sql` |
-| M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Spec |
+| M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Built (26 November 2026): migration `20261126130300_legal_unus.sql` |
 | M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Built (26 November 2026): migration `20261126112637_absent_magma.sql` |
 | M5e | **Enquiries as the conversion**: forms, bookings and appointments per country where a store has no orders (7.6). | Spec |
 
@@ -249,15 +249,24 @@ pages (their terms, and most are behind a sign-in), anything behind a sign-in, a
   searched or why not, *Remove*, and *Follow the word*. `market_check` gives the words and places to the AI manager.
 - **The platform.** Kaizena Flow's own store follows its words the same way, found at its own host.
 
-### 7.4 M5c: speed
+### 7.4 M5c: speed (built 26 November 2026)
 
-The Chrome UX Report (Google's public field data: the 75th percentile of LCP, INP and CLS by origin, as Chrome's users met them) for the
-store's site and each rival's, monthly, and held against the store's own: only the origin is sent. It needs a key for the CrUX API on
-Platform → AI, kept as the search key is. Finding: a rival good where the store is poor on one of the three. Not a lab test of our own:
-field data is what visitors meet. **Cost: none** (checked 26 November 2026, developer.chrome.com/docs/crux/api): "limited to 150 queries
-per minute per Google Cloud project, which is offered without charge", and no more can be bought; a key is a Google Cloud API key with the
-Chrome UX Report API on. Data is a 28-day rolling p75, updated daily about two days behind. A site with too few Chrome visitors has no
-record: the check says so rather than guess.
+- **The key.** The Chrome UX Report costs nothing (checked 26 November 2026, developer.chrome.com/docs/crux/api): "limited to 150 queries
+  per minute per Google Cloud project, which is offered without charge", and no more can be bought. A platform admin keeps the key on
+  Platform → AI (*Site speed*), in `commerce.speed_settings`, encrypted and shown by its hint only. Without it no site is read, and
+  Analytics → Markets says so.
+- **What is read.** For each open store, Kaizena Flow's own too, its own site (`ownSite()`: its primary domain as an origin; a store at a
+  path of the platform's host, that page) and each rival's host (its origin, else its `www.` twin), at most `SPEED_SITES_MAX` (25): the
+  75th percentile over 28 days of Largest Contentful Paint, Interaction to Next Paint and Cumulative Layout Shift as Chrome's users met
+  them, and the last day covered. Only a site's address is sent. A site with too few Chrome visitors has no record and says so.
+- **When.** The five-minute dispatcher's `rivalWatch` reads one store a run whose sites were not tried within `SPEED_CHECK_DAYS` (30), a
+  store never read first; a site the report could not be asked about is tried again a day later. `commerce.site_speeds`, one row a site,
+  written only by `src/server/site-speed.ts`; a site no longer the store's or a rival's is dropped at the next reading. No AI.
+- **Rated by code.** Google's thresholds (`speedRating()`): LCP good to 2.5 s, poor over 4 s; INP good to 200 ms, poor over 500 ms; CLS good
+  to 0.1, poor over 0.25. A rival rated good where the store is rated poor, from readings within `SPEED_FRESH_DAYS` (45), is a weakness
+  (`speed_behind`, one for each of the three, the best such rival); its page is the website.
+- **Where.** *How fast your site is* in Lisa's part: your site and each rival's with the three figures, each rated, and the day they cover.
+  `market_check` gives them to the AI manager.
 
 ### 7.5 M5d: service prices by hand (built 26 November 2026)
 

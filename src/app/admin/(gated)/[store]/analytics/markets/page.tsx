@@ -6,6 +6,7 @@ import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { MarketCheckView } from "@/components/admin/analytics/market-check-view";
 import { MarketRivalsSection } from "@/components/admin/analytics/market-rivals-section";
 import { MarketSearchSection } from "@/components/admin/analytics/market-search-section";
+import { MarketSpeedSection } from "@/components/admin/analytics/market-speed-section";
 import { Note } from "@/components/admin/analytics/section";
 import { AdminLink } from "@/components/admin/ui/link";
 import { countWords } from "@/lib/admin-fill";
@@ -19,6 +20,7 @@ import { analyticsCaptions } from "@/server/analytics-say";
 import { marketCheck } from "@/server/market-check";
 import { rivalProductChoices } from "@/server/market-rivals";
 import { searchTermIdeas } from "@/server/market-search";
+import { speedSettings } from "@/server/site-speed";
 import { searchSettings } from "@/server/web-search-settings";
 import { featureOn } from "@/lib/store-features";
 import { countryName } from "@/lib/vat-text";
@@ -38,11 +40,12 @@ export default async function MarketsPage({ params, searchParams }: PageProps<"/
   const { store, now } = ctx;
   const words = MARKET_CHECK_WORDS[ctx.lang];
   const { period } = ctx.params;
-  const [check, products, ideas, search] = await Promise.all([
+  const [check, products, ideas, search, speed] = await Promise.all([
     marketCheck(store, period, { now, locale: ctx.locale }),
     featureOn(store, "shop") ? rivalProductChoices(store) : [],
     ctx.canExport ? searchTermIdeas(store.id) : [],
     searchSettings(),
+    speedSettings(),
   ]);
   // Amounts as the Traffic page writes them: the first market's locale in English, the admin's own otherwise.
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
@@ -91,6 +94,7 @@ export default async function MarketsPage({ params, searchParams }: PageProps<"/
         searchOn={Boolean(search?.enabled)}
         actions={ctx.canExport ? { add: rivalsAction.bind(null, store.slug, "addTerm"), remove: rivalsAction.bind(null, store.slug, "removeTerm") } : null}
       />
+      <MarketSpeedSection lang={ctx.lang} locale={locale} timeZone={store.timeZone} words={words.speed} sites={check.siteSpeeds} keySet={speed !== null} />
       {check.house ? (
         // Kaizena Flow's own store (D900 M4): its rivals' plan prices are kept beside its plans on Platform → Plans.
         <Note>
