@@ -131,7 +131,7 @@ test.describe("Kaizena Flow's admin", () => {
     await expect(sidebar.getByRole("link", { name: "Team" })).toHaveAttribute("aria-current", "page");
 
     const note = sidebar.getByRole("note");
-    await expect(note).toContainText("17 more in Advanced view");
+    await expect(note).toContainText("18 more in Advanced view");
     await note.getByRole("button", { name: /^Switch to Advanced/ }).click();
     await expect(sidebar.getByRole("link", { name: "Duty rates" })).toBeVisible();
     await expect(sidebar.getByRole("note")).toHaveCount(0);
