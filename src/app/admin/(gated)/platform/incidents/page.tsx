@@ -14,6 +14,7 @@ import { AUTOPILOT_GAPS, incidentGroup } from "@/lib/incidents";
 import { requirePlatformReader } from "@/server/auth";
 import { autopilotWakeEnv } from "@/lib/env";
 import { ADMIN_USE_WORDS } from "@/lib/admin-words/admin-use";
+import { ADMIN_USE_VIEWER_WORDS } from "@/lib/admin-words/admin-use-viewer";
 import { adminSignalsState } from "@/server/admin-signals";
 import { autopilotSettings, incidentBoard, lastAutopilotRun, type IncidentEntry } from "@/server/incidents";
 
@@ -146,6 +147,9 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
             {signals.open ? (
               <form method="post" action={INCIDENT_ACT} className="flex flex-col gap-3">
                 <p className="text-sm text-ink">{fillWords(uw.isOpen, { at: signals.openedAt ? adminDate(PLATFORM_TIME_ZONE, signals.openedAt, "dayTime", lang) : "" })}</p>
+                <AdminLink href="/admin/platform/admin-use" className="text-sm text-ink underline underline-offset-2">
+                  {ADMIN_USE_VIEWER_WORDS[lang].link}
+                </AdminLink>
                 <div>
                   <SubmitButton name="intent" value="signals_close" variant="secondary">
                     {uw.close}

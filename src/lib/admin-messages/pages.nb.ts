@@ -939,8 +939,9 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:apps": { title: "Appoppføringer", keywords: ["apper", "appkatalog", "oppføring", "gjennomgang", "godkjenn app", "avslå app", "utviklere"] },
   "platform:oauth": { title: "AI-assistenter og apper", keywords: ["oauth", "klienter", "mcp", "ai-assistenter", "apper", "bekreft", "blokker", "autorisasjonsserver"] },
   "platform:reports": { title: "Meldinger om innhold", keywords: ["meldinger om ulovlig innhold", "dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
-  "platform:incidents": { title: "Hendelser", keywords: ["hendelse", "feil", "advarsel", "autopilot", "forbedring", "idé", "godkjenn"] },
-  "platform:incident": { title: "Hendelse", keywords: ["hendelse", "feil", "historikk"] },
+  "platform:incidents": { title: "Hendelser", keywords: ["feil", "autopilot"] },
+  "platform:incident": { title: "Hendelse", keywords: ["feil"] },
+  "platform:admin_use": { title: "Bruk av adminen", keywords: ["varmekart"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },
   "platform:challenges": {
     title: "100-dagersutfordringen",

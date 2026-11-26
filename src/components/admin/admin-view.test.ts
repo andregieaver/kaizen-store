@@ -101,7 +101,7 @@ describe("the platform's and the owner's sidebars in each view (D884)", () => {
     for (const heading of ["Site", "Money and tax", "AI", "Apps and connections", "Privacy and law", "Running the platform"]) expect(basic).toContain(`uppercase">${heading}</h2>`);
     expect(basic).toContain("VAT rates");
     expect(basic).not.toContain("Duty rates");
-    expect(basic).toContain("17 more in Advanced view");
+    expect(basic).toContain("18 more in Advanced view");
     const advanced = inView("advanced", h(StoreSidebar, { groups: settings, label: "More" }));
     expect(advanced).toContain("Duty rates");
     expect(advanced).not.toContain("more in Advanced view");
@@ -111,7 +111,7 @@ describe("the platform's and the owner's sidebars in each view (D884)", () => {
     path.current = "/admin/platform/duty-rates";
     const basic = inView("basic", h(StoreSidebar, { groups: settings, label: "More" }));
     expect(basic).toMatch(/aria-current="page"[^>]*>.*Duty rates/);
-    expect(basic).toContain("16 more in Advanced view");
+    expect(basic).toContain("17 more in Advanced view");
   });
 
   it("shows the owner's Account in its groups, its everyday pages in Basic", () => {

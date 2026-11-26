@@ -730,6 +730,8 @@ under *What the router fetches ahead*.
   daily totals per screen key, only for screens on `admin-screens.ts`'s allow-list, reusing the storefront heatmaps' engine.
   Recordings (`admin-recordings.ts`, `/api/admin-use/rec`, bucket `admin-recordings`) run the stores' recorder in its admin form and keep
   only what `admin-replay-scrub.ts` leaves: no word, label or address. A new attribute there must describe layout, never text.
+  Platform → Admin use (`admin-use.ts`) shows them to Kaizena Flow's team (`settings` read): figures in code, the stores' player on the
+  page, each viewing written to the activity log before any event is sent.
 
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 
