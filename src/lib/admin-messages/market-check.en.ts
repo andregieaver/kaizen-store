@@ -69,7 +69,7 @@ export const marketCheckEn = {
       opportunities: { title: "Opportunities", hint: "What shoppers searched for and did not find, and what rivals cannot sell now.", none: "Nothing stands out yet." },
       threats: { title: "Threats", hint: "Rivals' moves: a price cut, cheaper shipping, longer returns.", none: "No rival lowered its price or shipping, or lengthened its returns, since its pages were read before." },
     },
-    house: "Kaizena Flow's rivals are other store platforms: they are not compared yet.",
+    house: "Kaizena Flow's rivals are other store platforms: their prices stand beside its plans on Platform → Plans.",
   },
   every: {
     summary: "See every country and every finding",
@@ -117,6 +117,8 @@ export const marketCheckEn = {
     difference: "Difference",
     readOn: "Read",
     old: "Old",
+    house: "Kaizena Flow's rivals are other store platforms. Their prices, read from their own pages and checked there by code, stand beside its plans.",
+    houseLink: "Open other platforms' prices",
     was: "Was {price}",
     notComparable: "Not comparable",
     problems: {

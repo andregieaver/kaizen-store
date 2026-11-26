@@ -160,7 +160,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (`anchorFor()`), so changes on its own never walk out of the range. A change is a new price row through the editors' writers, never at or
   below a founding price, kept with its reasons in `commerce.platform_price_changes`; the approval's words come from the price as it is
   (`platformPriceApprovalWords()`). The autopilot's levels never decide it (`NEVER_AUTOMATIC`). A store's own prices stay the autopilot's
-  (D309, D605). The eval case `platform-request-asks-prices` plays the platform's prompt and tools (a case's `platform` flag); the
+  (D309, D605). Other platforms' prices (D900 M4) are in the facts as `other_platforms`, facts to weigh and never on their own a reason for a
+  change. The eval case `platform-request-asks-prices` plays the platform's prompt and tools (a case's `platform` flag); the
   platform's drawing is part of the manager's prompt version.
 
 ## The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`, `src/server/exchange-tools.ts`)

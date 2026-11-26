@@ -13,6 +13,7 @@ const { marketCheck } = await import("./market-check");
 const { listRivalsTool, readRivalOfferTool } = await import("./market-check-tool");
 const { getStore } = await import("./stores");
 const { customPeriod } = await import("@/lib/analytics-period");
+const { platformPricingFacts } = await import("./price-tuning");
 
 type Row = Record<string, unknown>;
 type Store = NonNullable<Awaited<ReturnType<typeof getStore>>>;
@@ -149,18 +150,18 @@ describe("a store's rivals (D900 M2)", () => {
     await db().execute(sql`update commerce.stores set status = 'active' where id = ${store.id}::uuid`);
     const page = "https://www.linnet.example/p/linen-apron";
     // Nothing is due while every offer is fresh.
-    expect(await rivals.watchRivals({ fetchPage: site({}) })).toEqual({ read: 0, changed: 0, failed: 0 });
+    expect(await rivals.watchRivals({ fetchPage: site({}) })).toMatchObject({ read: 0, changed: 0, failed: 0 });
     await db().execute(sql`update commerce.rival_offers set read_at = now() - interval '40 days' where store_id = ${store.id}::uuid`);
     const run = await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 });
     // Linnet's page is read and its cut kept; Shop 1's page is gone, so it waits and goes old.
-    expect(run).toEqual({ read: 1, changed: 1, failed: 1 });
+    expect(run).toMatchObject({ read: 1, changed: 1, failed: 1 });
     const linnet = (await rivals.rivalOffers(store, "nb-NO")).find((o) => o.address === page);
     expect(linnet).toMatchObject({ priceMinor: 38000, previous: { priceMinor: 40000 } });
     // The watcher just tried every due page: none is tried again within RIVAL_RETRY_DAYS, whatever it found.
-    expect(await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 })).toEqual({ read: 0, changed: 0, failed: 0 });
+    expect(await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 })).toMatchObject({ read: 0, changed: 0, failed: 0 });
     // A month on, read again unchanged: kept fresh, the change and what it was left as they were.
     await db().execute(sql`update commerce.rival_offers set read_at = now() - interval '40 days', watched_at = now() - interval '8 days' where store_id = ${store.id}::uuid and address = ${page}`);
-    expect(await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 })).toEqual({ read: 1, changed: 0, failed: 0 });
+    expect(await rivals.watchRivals({ fetchPage: site({ "/p/linen-apron": offerPage("380.00") }), perRun: 5 })).toMatchObject({ read: 1, changed: 0, failed: 0 });
     const kept = (await rivals.rivalOffers(store, "nb-NO")).find((o) => o.address === page);
     expect(kept).toMatchObject({ priceMinor: 38000, previous: { priceMinor: 40000 }, changedAt: linnet?.changedAt });
     // The finding: a rival's cut is a threat in the SWOT.
@@ -177,3 +178,91 @@ describe("a store's rivals (D900 M2)", () => {
     expect(left.n).toBe(0);
   });
 });
+
+/**
+ * Other store platforms' prices (D900 M4): kept by a platform admin from a platform's own pricing page (a stand-in site), checked there by
+ * code when kept and by the watcher after, held against one of Kaizena Flow's plans, and in the platform manager's pricing facts.
+ */
+describe("other store platforms' prices (D900 M4)", () => {
+  const pricing = (text: string) => `<html><head><title>Pricing</title></head><body><main><h1>Plans</h1><p>${text}</p></main></body></html>`;
+  let planId = "";
+  let admin = { id: "" };
+
+  beforeAll(async () => {
+    const [plan] = await db().execute<Row>(sql`insert into commerce.plans (name, position) values (${`Starter ${run}`}, 99) returning id`);
+    planId = String(plan.id);
+    await db().execute(sql`insert into commerce.plan_prices (plan_id, currency, interval, amount_minor) values (${planId}::uuid, 'EUR', 'month', 3900)`);
+    admin = account;
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.platform_rival_prices where plan_id = ${planId}::uuid or platform like ${`%${run}%`}`);
+    await db().execute(sql`delete from commerce.plan_prices where plan_id = ${planId}::uuid`);
+    await db().execute(sql`delete from commerce.plans where id = ${planId}::uuid`);
+  });
+
+  it("are kept with whether code found the price on its page, and refused when a field is wrong", async () => {
+    const platform = `Shopify ${run}`;
+    const input = { platform, plan: "Basic", price: "29", currency: "EUR", interval: "month", fee: "2", ours: planId, source: "https://www.shop.example/pricing" };
+    const found = await rivals.keepPlatformRivalPrice(admin, input, { fetchPage: site({ "/pricing": pricing("Basic €29 per month, billed yearly") }) });
+    expect(found.onPage).toBe(true);
+    const listed = (await rivals.listPlatformRivalPrices()).find((r) => r.platform === platform);
+    expect(listed).toMatchObject({ plan: "Basic", priceMinor: 2900, currency: "EUR", interval: "month", feeBps: 200, planName: `Starter ${run}`, oursMinor: 3900, onPage: true, goneAt: null });
+    // Kept again in place: a figure not on its page is kept unconfirmed; a page that cannot be read leaves it unread.
+    expect((await rivals.keepPlatformRivalPrice(admin, { ...input, price: "31" }, { fetchPage: site({ "/pricing": pricing("Basic €29 per month") }) })).onPage).toBe(false);
+    expect((await rivals.keepPlatformRivalPrice(admin, input, { fetchPage: site({}) })).onPage).toBeNull();
+    expect((await rivals.listPlatformRivalPrices()).filter((r) => r.platform === platform)).toHaveLength(1);
+    const refused = async (over: Partial<typeof input>) => {
+      try {
+        await rivals.keepPlatformRivalPrice(admin, { ...input, ...over }, { fetchPage: site({}) });
+        return null;
+      } catch (error) {
+        return error instanceof rivals.PlatformRivalError ? error.problem : String(error);
+      }
+    };
+    expect(await refused({ platform: " " })).toBe("platform");
+    expect(await refused({ price: "twenty" })).toBe("price");
+    expect(await refused({ currency: "XXX" })).toBe("price");
+    expect(await refused({ interval: "week" })).toBe("interval");
+    expect(await refused({ fee: "120" })).toBe("fee");
+    expect(await refused({ source: "http://shop.example/pricing" })).toBe("source");
+    expect(await refused({ ours: "11111111-1111-4111-8111-111111111111" })).toBe("ours");
+  });
+
+  it("are checked on their pages by the watcher: a price gone from its page is flagged for a person, never guessed", async () => {
+    const platform = `Wix ${run}`;
+    const input = { platform, plan: "Core", price: "36", currency: "EUR", interval: "month", fee: "", ours: planId, source: "https://wix.example/plans" };
+    await rivals.keepPlatformRivalPrice(admin, input, { fetchPage: site({ "/plans": pricing("Core €36/month") }) });
+    const age = () => db().execute(sql`update commerce.platform_rival_prices set checked_on = current_date - 40, watched_at = null where platform = ${platform}`);
+    await age();
+    // Still on its page: checked today.
+    expect(await rivals.watchPlatformRivalPrices({ fetchPage: site({ "/plans": pricing("Core €36/month") }) })).toMatchObject({ checked: 1, gone: 0 });
+    await age();
+    // The page now shows another figure: flagged, the kept price left as it was.
+    expect(await rivals.watchPlatformRivalPrices({ fetchPage: site({ "/plans": pricing("Core €39/month") }) })).toMatchObject({ gone: 1 });
+    const flagged = (await rivals.listPlatformRivalPrices()).find((r) => r.platform === platform);
+    expect(flagged).toMatchObject({ priceMinor: 3600, onPage: false });
+    expect(flagged?.goneAt).not.toBeNull();
+    // Kept again by a person: the flag goes.
+    await rivals.keepPlatformRivalPrice(admin, { ...input, price: "39" }, { fetchPage: site({ "/plans": pricing("Core €39/month") }) });
+    expect((await rivals.listPlatformRivalPrices()).find((r) => r.platform === platform)).toMatchObject({ priceMinor: 3900, onPage: true, goneAt: null });
+  });
+
+  it("stand in the platform manager's pricing facts as facts, every difference worked out by code", async () => {
+    const facts = await platformPricingFacts({});
+    const wix = facts.other_platforms.find((o) => o.platform === `Wix ${run}`);
+    expect(wix).toMatchObject({ plan: "Core", held_against: `Starter ${run}`, difference: "the same", on_its_page: "yes", source: "https://wix.example/plans" });
+    const shopify = facts.other_platforms.find((o) => o.platform === `Shopify ${run}`);
+    expect(shopify?.difference).toBe("Kaizena Flow is 34 % dearer");
+    expect(shopify?.on_its_page).toBe("its page could not be read");
+    expect(facts.other_platforms_note).toContain("never on their own a reason for set_platform_price");
+  });
+
+  it("are removed by a platform admin", async () => {
+    const [row] = (await rivals.listPlatformRivalPrices()).filter((r) => r.platform === `Wix ${run}`);
+    expect(await rivals.removePlatformRivalPrice(admin, row.id)).toBe(true);
+    expect(await rivals.removePlatformRivalPrice(admin, row.id)).toBe(false);
+    expect(await rivals.removePlatformRivalPrice(admin, "not-an-id")).toBe(false);
+  });
+});
+

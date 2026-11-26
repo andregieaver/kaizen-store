@@ -2498,6 +2498,51 @@ export const platformPriceChanges = commerce.table(
 ).enableRLS();
 
 /**
+ * Other store platforms' plan prices (D900 M4, `docs/market-check.md` 6): what a platform admin read on a rival platform's own pricing page,
+ * cited by its address, held against one of Kaizena Flow's plans. Code checks that the price is still on its page when it is kept and
+ * monthly after (`on_page`, `gone_at`); the figures are facts beside `platform_pricing_facts`, never what `set_platform_price` acts on by
+ * itself. The platform's own rows: no store. Written only by `src/server/market-rivals.ts`.
+ */
+export const platformRivalPrices = commerce.table(
+  "platform_rival_prices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    platform: text("platform").notNull(),
+    plan: text("plan").notNull(),
+    priceMinor: money("price_minor"),
+    currency: char("currency", { length: 3 }).notNull(),
+    interval: text("interval").notNull(),
+    /** The transaction fee it takes on top, in basis points (200 is 2 %); null when its page states none. */
+    feeBps: integer("fee_bps"),
+    /** Kaizena Flow's plan it is held against; null when none is named. */
+    planId: uuid("plan_id").references(() => plans.id, { onDelete: "set null" }),
+    /** The rival platform's own page it was read from. */
+    source: text("source").notNull(),
+    /** When a person kept it or code last found it on its page. */
+    checkedOn: date("checked_on").notNull().defaultNow(),
+    /** Whether code found the price on its page at the last read: null when the page could not be read. */
+    onPage: boolean("on_page"),
+    /** When a read no longer found a price that was on its page before: a person checks it again. */
+    goneAt: timestamp("gone_at", { withTimezone: true }),
+    /** When the watcher last tried to read its page. */
+    watchedAt: timestamp("watched_at", { withTimezone: true }),
+    addedBy: uuid("added_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("platform_rival_prices_key").on(t.platform, t.plan, t.currency, t.interval),
+    index("platform_rival_prices_plan_idx").on(t.planId),
+    index("platform_rival_prices_added_by_idx").on(t.addedBy),
+    check("platform_rival_prices_names", sql`length(${t.platform}) between 1 and 80 and length(${t.plan}) between 1 and 80`),
+    check("platform_rival_prices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("platform_rival_prices_interval", sql`${t.interval} in ('month', 'year')`),
+    check("platform_rival_prices_amount", sql`${t.priceMinor} >= 0`),
+    check("platform_rival_prices_fee", sql`${t.feeBps} is null or ${t.feeBps} between 0 and 10000`),
+    check("platform_rival_prices_source", sql`${t.source} ~ '^https://' and length(${t.source}) <= 2000`),
+  ],
+).enableRLS();
+
+/**
  * What Kaizen has created in its own Stripe account, per mode: a Stripe
  * Product per plan, a Price per plan price, the VAT rate and the customer
  * portal settings. `error` keeps the last failure so it can be shown.

@@ -182,5 +182,33 @@ test.describe("as Kaizena Flow's platform admin", () => {
     await page.getByText("See every country and every finding").click();
     await expect(page.getByRole("columnheader", { name: "Average order" })).toHaveCount(0);
     await expect(page.getByRole("columnheader", { name: "No price" })).toHaveCount(0);
+    // Its rivals are other store platforms (D900 M4), kept beside its plans.
+    await expect(page.getByRole("link", { name: "Open other platforms' prices" })).toHaveAttribute("href", "/admin/platform/plans#platform-rivals");
+  });
+
+  test("sees other platforms' prices beside Kaizena Flow's plans, each against a plan of its own (D900 M4)", async ({ page }) => {
+    const sql = testDb();
+    try {
+      const [plan] = await sql`insert into commerce.plans (name, position) values (${`Starter ${run}`}, 98) returning id`;
+      await sql`insert into commerce.plan_prices (plan_id, currency, interval, amount_minor) values (${plan.id}, 'EUR', 'month', 3900)`;
+      await sql`
+        insert into commerce.platform_rival_prices (platform, plan, price_minor, currency, interval, fee_bps, plan_id, source, checked_on, on_page)
+        values (${`Shopify ${run}`}, 'Basic', 2900, 'EUR', 'month', 200, ${plan.id}, 'https://www.shop.example/pricing', current_date, true),
+          (${`Wix ${run}`}, 'Core', 3600, 'EUR', 'month', null, ${plan.id}, 'https://wix.example/plans', current_date - 30, false)`;
+      await sql`update commerce.platform_rival_prices set gone_at = now() where platform = ${`Wix ${run}`}`;
+    } finally {
+      await sql.end();
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/admin/platform/plans");
+    const card = page.locator('section[aria-labelledby="platform-rivals"]');
+    await expect(card.getByRole("heading", { name: "Other platforms' prices" })).toBeVisible();
+    const shopify = card.locator(`[data-platform-price="Shopify ${run} Basic"]`);
+    await expect(shopify).toContainText(`against your Starter ${run}`);
+    await expect(shopify).toContainText("you are 34 % dearer");
+    await expect(shopify).toContainText("On its page");
+    await expect(card.locator(`[data-platform-price="Wix ${run} Core"]`)).toContainText("Gone from its page: check it");
+    await expect(card.getByText("Add another platform's price")).toBeVisible();
+    if (shots) await card.screenshot({ path: `${shots}/platform-rivals.png` });
   });
 });

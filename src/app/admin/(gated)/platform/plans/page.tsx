@@ -7,9 +7,13 @@ import { formatBps, PLAN_INTERVALS, priceLabel, type PlanInterval } from "@/lib/
 import { formatPriceInput } from "@/lib/product-input";
 import { listPlans, planCurrencies, type Plan } from "@/server/billing";
 import { getPriceTuning, recentPriceChanges } from "@/server/price-tuning";
+import { listPlatformRivalPrices } from "@/server/market-rivals";
+import { PlatformRivalsCard } from "@/components/admin/platform-rivals-card";
+import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { platformModes } from "@/server/stripe";
 
 import { AiPricesCard } from "./ai-prices-card";
+import { platformRivalsAction } from "./actions";
 
 import { savePlanAction, syncPlansAction } from "../actions";
 import { requirePlatformReader } from "@/server/auth";
@@ -36,7 +40,7 @@ export default async function PlansPage() {
   const w = PLATFORM_WORDS[lang].plans;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const intervals = BILLING_WORDS[lang].intervals;
-  const [plans, currencies, tuning, changes] = await Promise.all([listPlans(), planCurrencies(), getPriceTuning(), recentPriceChanges(5)]);
+  const [plans, currencies, tuning, changes, rivals] = await Promise.all([listPlans(), planCurrencies(), getPriceTuning(), recentPriceChanges(5), listPlatformRivalPrices()]);
   const modes = platformModes();
   return (
     <>
@@ -114,6 +118,16 @@ export default async function PlansPage() {
       </section>
 
       <AiPricesCard tuning={tuning} changes={changes} w={w.aiPrices} lang={lang} locale={locale} />
+
+      <PlatformRivalsCard
+        lang={lang}
+        locale={locale}
+        w={w.rivals}
+        prices={rivals}
+        plans={plans.filter((plan) => plan.active).map((plan) => ({ id: plan.id, name: plan.name }))}
+        currencies={[...new Set([...currencies, ...OFFERABLE_CURRENCIES])]}
+        actions={{ keep: platformRivalsAction.bind(null, "keep"), remove: platformRivalsAction.bind(null, "remove") }}
+      />
     </>
   );
 }

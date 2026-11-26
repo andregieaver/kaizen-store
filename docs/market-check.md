@@ -32,7 +32,7 @@ The parts already exist; the market check joins them:
 | M1b | Kaizena Flow's sign-ups by country. | Parked (25 November 2026): its site sells in one country, so it would be one row (3.5) |
 | M2 | **Rivals**: up to 8 per market, added by the owner, with offers read by code from their own pages and held against the store's prices. The SWOT as a view of M1 and M2. | Built, deployed at `9dfeeb3` (25 November 2026): migration `20261125181441_previous_black_crow.sql`, advisors INFO only |
 | M3 | **Watching**: rivals' pages read again before they go old; a change is kept, a threat in the SWOT and an autopilot event, never an action. | Built (25 November 2026) |
-| M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices, fees, EU features), shown beside `platform_pricing_facts` (D854). | Planned |
+| M4 | **The platform's rivals**: Kaizena Flow against other store platforms (plan prices and fees), cited and checked on their pages, beside `platform_pricing_facts` (D854). | Built but EU features (26 November 2026) |
 
 ## 3. M1: your markets side by side (built)
 
@@ -156,12 +156,24 @@ minimum volume. A split worth having is by language (a sign-up already keeps its
   (`runEvents()` never starts it). Prices that follow each other by algorithm are a live concern of EU competition law (the Commission's
   horizontal guidelines, 2023), and the fastest way to a race to the bottom.
 
-## 6. M4: the platform's rivals (planned)
+## 6. M4: the platform's rivals (built 26 November 2026, but the EU features)
 
-Kaizena Flow's own manager compares Kaizena Flow with other store platforms on what their public pages say: plan prices per month,
-transaction fees, EU-specific features (VAT OSS, the Omnibus 30-day price, the EAA). `docs/parity/` is already a careful hand-made
-version of this for Shopify; M4 keeps its figures current and cites them. They are shown beside `platform_pricing_facts` (D854) as facts,
-never as an input `set_platform_price` acts on by itself.
+- **What is kept.** `commerce.platform_rival_prices`, the platform's own rows: another store platform's plan, its price, currency and
+  interval, the transaction fee it takes on top, the page it was read from, and Kaizena Flow's plan it is held against. A platform admin
+  keeps one on Platform → Plans (*Other platforms' prices*, beside *AI and prices*), at most `PLATFORM_RIVAL_PRICES_MAX` (60); kept again in
+  place by platform, plan, currency and interval. Written only by `src/server/market-rivals.ts`.
+- **Cited and checked by code.** When a price is kept, its page is read (`readWebPage()`, robots.txt first, kept as a research source) and
+  `priceOnPage()` says whether the figure stands there beside its currency's mark: *On its page*, *Not found on its page* or *Page not read*.
+  The dispatcher's `rivalWatch` reads each page again once it was checked longer ago than `PLATFORM_WATCH_DAYS` (28), two a run, as the admin
+  who kept it: found, it is checked today; a price that was on its page and is no longer is *Gone from its page* for a person to check again.
+  Code never guesses the new figure, and the model never reads a price off a page.
+- **Compared by code.** Against the active price of the plan it is held against in the same currency and interval (`priceGap()`), never
+  converted. The card says how much dearer or cheaper Kaizena Flow is.
+- **For the AI, facts only.** `platform_pricing_facts` carries them as `other_platforms`, each with its difference, whether it is on its
+  page and its source, and the note that they are facts to weigh, never on their own a reason for `set_platform_price` (D854's own gate and
+  range still decide every change). Kaizena Flow's own store's Analytics → Markets points to them.
+- **Still to come in M4.** EU features side by side (VAT OSS, the Omnibus 30-day price, the EAA): `docs/parity/` already keeps them by
+  hand for Shopify, with sources and dates.
 
 ## 7. Guardrails, for every step
 

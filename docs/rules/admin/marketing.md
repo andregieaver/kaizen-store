@@ -36,7 +36,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)
 
 - **The market check (D900, `docs/market-check.md`, `src/lib/market-check.ts`, `src/server/market-check.ts`, `/admin/{store}/analytics/markets`)**:
-  the store against itself, country by country (M1), then its rivals (M2, M3; M4 planned). Facts are read by code from what the store
+  the store against itself, country by country (M1), then its rivals (M2, M3) and the platform's (M4). Facts are read by code from what the store
   keeps, through the figures' one definition each (`docs/analytics.md` "Markets"): visits and conversion are `marketTraffic()` (the Traffic
   page's countries, shared with `trafficReport()`), orders and revenue `geoReport()`, searches `searchesByMarket()` (its `MISS` and term),
   products with no price or no name in a country's language are counted in `marketCheck()`. Findings are only `marketFindings()` (pure:
@@ -49,7 +49,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `readOfferPage()` (robots.txt first, the page's JSON-LD only, on the rival's own host) and compared only by `priceGap()`, in one currency.
   The SWOT is only the findings drawn by `SWOT_OF`, never a text a model writes. Every read keeps what moved (`keepOffer()`), and the
   dispatcher's `watchRivals()` reads offers again before they go old (M3); a rival's change is an event (`rival_changed`) whose plan always
-  waits for the owner's yes: a store's price never follows a rival's by itself.
+  waits for the owner's yes: a store's price never follows a rival's by itself. Other platforms' prices (M4, `platform_rival_prices`) are
+  kept by a platform admin with their page and checked there by code (`priceOnPage()`), never read off a page by a model.
 
 ## Which companies visited (D890, `docs/analytics.md` "Companies", `src/server/company-visits.ts`, `src/lib/company-lookup.ts`, `/admin/{store}/analytics/companies`)
 

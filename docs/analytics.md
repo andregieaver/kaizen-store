@@ -247,7 +247,8 @@ that buys more, a rival is dearer), **weaknesses** (a country that buys less, a 
 **opportunities** (searched for, sold out at a rival) and **threats** (a rival's move, M3; with none, the part says so). `market_check` names each finding's part.
 
 Kaizena Flow's own store (`house`) sells plans, not goods: its orders, average order and prices are left out and the page says so; its
-site sells in one country, so it has no conversion by country to compare (D900 M1b, parked).
+site sells in one country, so it has no conversion by country to compare (D900 M1b, parked). Its rivals are other store platforms, kept
+beside its plans on Platform → Plans (M4).
 
 ## Speed (D336, wave 7 unit B, `docs/wave-7-storefront.md` B)
 

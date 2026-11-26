@@ -3,9 +3,13 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { db } from "@/db/client";
 import {
   OFFERS_PER_RIVAL,
   onRivalSite,
+  PLATFORM_WATCH_DAYS,
+  PLATFORM_WATCH_PER_RUN,
+  priceOnPage,
   RIVAL_RETRY_DAYS,
   RIVAL_WATCH_DAYS,
   RIVALS_PER_MARKET,
@@ -16,13 +20,14 @@ import {
   type OwnPrice,
   type RivalOfferFacts,
 } from "@/lib/market-rivals";
-import type { PageOffer } from "@/lib/offer-data";
+import { amountMinor, type PageOffer } from "@/lib/offer-data";
+import { normaliseSource } from "@/lib/research";
 
 import { audit } from "./auth";
 import { jobReport } from "./cache-events";
 import { isDemoProduct } from "./demo-content";
 import { OwnerToolError } from "./owner-tool-error";
-import { readOfferPage, type ResearchActor, type ResearchDeps } from "./research";
+import { readOfferPage, readWebPage, type ResearchActor, type ResearchDeps } from "./research";
 import { getStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -32,7 +37,9 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * page through `readOfferPage()` (robots.txt first, the page's JSON-LD only, kept as a research source) and held against one of the store's
  * products. Its price is never read off a page's words, and nothing here changes what shoppers see. Since M3 the watcher reads each kept
  * offer's page again before it goes old (`watchRivals()`), and every read that changes the price, availability, shipping or returns keeps
- * what they were (`previous`, `changed_at`), whoever read it.
+ * what they were (`previous`, `changed_at`), whoever read it. Since M4 it also keeps the other store platforms' prices
+ * (`commerce.platform_rival_prices`, the platform's own rows): kept by a platform admin with the page they came from, checked on that page
+ * by code when kept and monthly after.
  */
 
 export type RivalProblem = "market" | "name" | "host" | "full" | "exists" | "rival" | "site" | "product" | "offers" | "no_offer";
@@ -187,7 +194,7 @@ const CHANGED = sql`(o.price_minor, o.currency, o.availability, o.shipping_minor
   is distinct from (excluded.price_minor, excluded.currency, excluded.availability, excluded.shipping_minor, excluded.shipping_currency, excluded.return_days)`;
 
 export type WatchDeps = ResearchDeps & { now?: Date; perRun?: number };
-export type WatchRun = { read: number; changed: number; failed: number };
+export type WatchRun = { read: number; changed: number; failed: number; platform: PlatformWatchRun };
 
 /**
  * The watcher (D900 M3, the five-minute dispatcher's `rivalWatch`): a few kept offers read longer ago than `RIVAL_WATCH_DAYS` are read
@@ -226,7 +233,7 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
       join commerce.market_rivals r on r.store_id = c.store_id and r.id = c.rival_id
     `,
   );
-  const run: WatchRun = { read: 0, changed: 0, failed: 0 };
+  const run: WatchRun = { read: 0, changed: 0, failed: 0, platform: { checked: 0, gone: 0, failed: 0 } };
   for (const o of due) {
     try {
       const store = await getStore(o.slug);
@@ -245,6 +252,204 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
       // A page the site refuses or that cannot be read is a business outcome: it waits and goes old. Anything else is reported.
       if (!(error instanceof OwnerToolError)) report(error, "rivals.watch");
     }
+  }
+  // The other store platforms' prices (M4), in the same job: a few pages a run.
+  try {
+    run.platform = await watchPlatformRivalPrices(deps);
+  } catch (error) {
+    report(error, "rivals.platform_watch");
+  }
+  return run;
+}
+
+/** The most other platforms' prices the platform keeps. */
+export const PLATFORM_RIVAL_PRICES_MAX = 60;
+
+export type PlatformRivalProblem = "platform" | "plan" | "price" | "interval" | "fee" | "source" | "ours" | "full";
+
+export class PlatformRivalError extends Error {
+  constructor(readonly problem: PlatformRivalProblem) {
+    super(problem);
+  }
+}
+
+/** Another store platform's plan price as kept (D900 M4), with Kaizena Flow's own price for the plan it is held against, in its currency and interval. */
+export type PlatformRivalPrice = {
+  id: string;
+  platform: string;
+  plan: string;
+  priceMinor: number;
+  currency: string;
+  interval: "month" | "year";
+  feeBps: number | null;
+  planId: string | null;
+  planName: string | null;
+  /** Kaizena Flow's active price for that plan in the same currency and interval; null when it has none to compare. */
+  oursMinor: number | null;
+  source: string;
+  checkedOn: string;
+  onPage: boolean | null;
+  goneAt: string | null;
+};
+
+const PLATFORM_PRICE = z.object({
+  id: col.uuid,
+  platform: col.text,
+  plan: col.text,
+  price_minor: col.minor,
+  currency: col.currency,
+  interval: z.enum(["month", "year"]),
+  fee_bps: col.minorOrNull,
+  plan_id: col.textOrNull,
+  plan_name: col.textOrNull,
+  ours_minor: col.minorOrNull,
+  source: col.text,
+  checked_on: col.text,
+  on_page: col.bool.nullable(),
+  gone_at: col.textOrNull,
+});
+
+/** Every other platform's price kept, by platform and plan, each with Kaizena Flow's own price beside it. One read. */
+export async function listPlatformRivalPrices(): Promise<PlatformRivalPrice[]> {
+  const rows = await typedRows(
+    PLATFORM_PRICE,
+    sql`
+      select r.id, r.platform, r.plan, r.price_minor, r.currency::text as currency, r.interval, r.fee_bps, r.plan_id::text as plan_id, p.name as plan_name,
+        pp.amount_minor as ours_minor, r.source, r.checked_on::text as checked_on, r.on_page, r.gone_at::text as gone_at
+      from commerce.platform_rival_prices r
+      left join commerce.plans p on p.id = r.plan_id
+      left join commerce.plan_prices pp on pp.plan_id = r.plan_id and pp.currency = r.currency and pp.interval = r.interval and pp.active
+      order by lower(r.platform), r.price_minor, lower(r.plan)
+    `,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    platform: r.platform,
+    plan: r.plan,
+    priceMinor: r.price_minor,
+    currency: r.currency,
+    interval: r.interval,
+    feeBps: r.fee_bps,
+    planId: r.plan_id,
+    planName: r.plan_name,
+    oursMinor: r.ours_minor,
+    source: r.source,
+    checkedOn: r.checked_on,
+    onPage: r.on_page,
+    goneAt: r.gone_at,
+  }));
+}
+
+/** Whether a page's text states the price, or null when the page could not be read (refused by its robots.txt, gone, too large). */
+async function onItsPage(account: { id: string }, source: string, minor: number, currency: string, deps: ResearchDeps): Promise<boolean | null> {
+  try {
+    const page = await readWebPage({ account, store: null }, { url: source }, deps);
+    return priceOnPage(`${page.title} ${page.description} ${page.text}`, minor, currency);
+  } catch (error) {
+    if (error instanceof OwnerToolError) return null;
+    throw error;
+  }
+}
+
+/**
+ * Keeps another platform's plan price as a platform admin read it on that platform's own page (D900 M4): by platform, plan, currency and
+ * interval, kept again in place when it is there. Code reads the page and says whether the price is on it (`priceOnPage()`); a page that
+ * cannot be read keeps it unconfirmed. The caller is a platform admin (`platformAction()`).
+ */
+export async function keepPlatformRivalPrice(
+  account: { id: string },
+  input: { platform: string; plan: string; price: string; currency: string; interval: string; fee: string; ours: string; source: string },
+  deps: ResearchDeps = {},
+): Promise<{ id: string; onPage: boolean | null }> {
+  const platform = input.platform.trim().replace(/\s+/g, " ");
+  if (platform.length < 1 || platform.length > 80) throw new PlatformRivalError("platform");
+  const plan = input.plan.trim().replace(/\s+/g, " ");
+  if (plan.length < 1 || plan.length > 80) throw new PlatformRivalError("plan");
+  const currency = input.currency.trim().toUpperCase();
+  const minor = amountMinor(input.price.trim().replace(/\s/g, "").replace(",", "."), currency);
+  if (minor === null || minor < 0) throw new PlatformRivalError("price");
+  if (input.interval !== "month" && input.interval !== "year") throw new PlatformRivalError("interval");
+  const feeText = input.fee.trim().replace(",", ".").replace(/%$/, "").trim();
+  const fee = feeText === "" ? null : Number(feeText);
+  if (fee !== null && (!Number.isFinite(fee) || fee < 0 || fee > 100)) throw new PlatformRivalError("fee");
+  const source = input.source.trim();
+  if (!normaliseSource(source) || !source.startsWith("https://") || source.length > 2000) throw new PlatformRivalError("source");
+  const ours = input.ours.trim() || null;
+  if (ours) {
+    const plan = await typedRow(z.object({ id: col.uuid }), sql`select id from commerce.plans where id::text = ${ours}`);
+    if (!plan) throw new PlatformRivalError("ours");
+  }
+  const count = await typedRow(z.object({ n: col.int }), sql`select count(*)::int as n from commerce.platform_rival_prices`);
+  const exists = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`select id from commerce.platform_rival_prices where platform = ${platform} and plan = ${plan} and currency = ${currency} and interval = ${input.interval}`,
+  );
+  if (!exists && (count?.n ?? 0) >= PLATFORM_RIVAL_PRICES_MAX) throw new PlatformRivalError("full");
+  const onPage = await onItsPage(account, source, minor, currency, deps);
+  const row = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`insert into commerce.platform_rival_prices (platform, plan, price_minor, currency, interval, fee_bps, plan_id, source, checked_on, on_page, added_by)
+      values (${platform}, ${plan}, ${minor}, ${currency}, ${input.interval}, ${fee === null ? null : Math.round(fee * 100)}, ${ours}::uuid, ${source}, current_date, ${onPage},
+        ${account.id}::uuid)
+      on conflict (platform, plan, currency, interval) do update set
+        price_minor = excluded.price_minor, fee_bps = excluded.fee_bps, plan_id = excluded.plan_id, source = excluded.source, checked_on = excluded.checked_on,
+        on_page = excluded.on_page, gone_at = null, added_by = excluded.added_by
+      returning id`,
+  );
+  if (!row) throw new Error("platform_rival_prices: the upsert returned no row");
+  await audit(account.id, null, "platform.rival_price_kept", { price: row.id, platform, plan, currency, interval: input.interval, onPage });
+  return { id: row.id, onPage };
+}
+
+/** Removes another platform's price; false when there is no such row. */
+export async function removePlatformRivalPrice(account: { id: string }, id: string): Promise<boolean> {
+  if (!z.uuid().safeParse(id).success) return false;
+  const gone = await db().execute(sql`delete from commerce.platform_rival_prices where id = ${id}::uuid returning id`);
+  if (gone.length === 0) return false;
+  await audit(account.id, null, "platform.rival_price_removed", { price: id });
+  return true;
+}
+
+export type PlatformWatchRun = { checked: number; gone: number; failed: number };
+
+/**
+ * The other platforms' prices checked again (D900 M4): a few checked longer ago than `PLATFORM_WATCH_DAYS`, each page read as the admin who
+ * kept it. Found on its page: checked today. A price that was on its page and is no longer: `gone_at`, for a person to check again (code
+ * never guesses the new figure). A page that cannot be read waits `RIVAL_RETRY_DAYS`.
+ */
+export async function watchPlatformRivalPrices(deps: WatchDeps = {}): Promise<PlatformWatchRun> {
+  const now = deps.now ?? new Date();
+  const due = await typedRows(
+    z.object({ id: col.uuid, source: col.text, price_minor: col.minor, currency: col.currency, on_page: col.bool.nullable(), added_by: col.uuid }),
+    sql`
+      update commerce.platform_rival_prices r set watched_at = ${now.toISOString()}::timestamptz
+      where r.id in (
+        select id from commerce.platform_rival_prices
+        where added_by is not null and checked_on < (${now.toISOString()}::timestamptz - make_interval(days => ${PLATFORM_WATCH_DAYS}))::date
+          and (watched_at is null or watched_at < ${now.toISOString()}::timestamptz - make_interval(days => ${RIVAL_RETRY_DAYS}))
+        order by checked_on limit ${PLATFORM_WATCH_PER_RUN}
+        for update skip locked
+      )
+      returning r.id, r.source, r.price_minor, r.currency::text as currency, r.on_page, r.added_by
+    `,
+  );
+  const run: PlatformWatchRun = { checked: 0, gone: 0, failed: 0 };
+  for (const r of due) {
+    const found = await onItsPage({ id: r.added_by }, r.source, r.price_minor, r.currency, deps);
+    if (found === null) {
+      run.failed++;
+      continue;
+    }
+    if (found) {
+      await db().execute(sql`update commerce.platform_rival_prices set checked_on = current_date, on_page = true, gone_at = null where id = ${r.id}::uuid`);
+      run.checked++;
+      continue;
+    }
+    await db().execute(sql`
+      update commerce.platform_rival_prices set on_page = false, gone_at = case when on_page or gone_at is not null then coalesce(gone_at, now()) else null end
+      where id = ${r.id}::uuid
+    `);
+    if (r.on_page) run.gone++;
   }
   return run;
 }

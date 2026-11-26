@@ -69,7 +69,7 @@ export const marketCheckNb: MarketCheckMessages = {
         none: "Ingen konkurrent har satt ned pris eller frakt, eller gitt lengre tid til retur, siden sidene deres ble lest sist.",
       },
     },
-    house: "Kaizena Flows konkurrenter er andre butikkplattformer: de sammenlignes ikke ennå.",
+    house: "Kaizena Flows konkurrenter er andre butikkplattformer: prisene deres står ved siden av planene på Plattform → Planer.",
   },
   every: {
     summary: "Se alle land og alle funn",
@@ -118,6 +118,8 @@ export const marketCheckNb: MarketCheckMessages = {
     difference: "Forskjell",
     readOn: "Lest",
     old: "Gammel",
+    house: "Kaizena Flows konkurrenter er andre butikkplattformer. Prisene deres, lest fra deres egne sider og sjekket der av kode, står ved siden av planene.",
+    houseLink: "Åpne andre plattformers priser",
     was: "Var {price}",
     notComparable: "Kan ikke sammenlignes",
     problems: {

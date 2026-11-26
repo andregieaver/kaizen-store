@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { offerFresh, onRivalSite, priceGap, rivalHost, rivalMove, type OfferState } from "./market-rivals";
+import { offerFresh, onRivalSite, priceGap, priceOnPage, rivalHost, rivalMove, type OfferState } from "./market-rivals";
 
 /** A store's rivals, the pure parts (D900 M2): their hosts, their own pages and the price held against the store's. */
 describe("rivals (D900 M2)", () => {
@@ -67,5 +67,26 @@ describe("a rival's move (D900 M3)", () => {
     expect(rivalMove(offer({ priceMinor: 40000 }, { previous: null }), now)).toBeNull();
     expect(rivalMove(offer({ priceMinor: 40000 }, { changedAt: "2026-10-01T12:00:00Z" }), now)).toBeNull();
     expect(rivalMove(offer({ priceMinor: 40000 }, { readAt: "2026-10-01T12:00:00Z" }), now)).toBeNull();
+  });
+});
+
+/** Other store platforms' prices (D900 M4): whether a pricing page's text still states the figure a person kept. */
+describe("a price on its page (D900 M4)", () => {
+  it("finds the amount as pages write it, beside its currency's mark", () => {
+    expect(priceOnPage("Basic $29/mo billed yearly", 2900, "USD")).toBe(true);
+    expect(priceOnPage("Basic 29 USD per month", 2900, "USD")).toBe(true);
+    expect(priceOnPage("Grow €79 per month", 7900, "EUR")).toBe(true);
+    expect(priceOnPage("Fra 349 kr/mnd", 34900, "NOK")).toBe(true);
+    expect(priceOnPage("Premium\u00a01\u00a0299,00\u00a0kr i måneden", 129900, "NOK")).toBe(true);
+    expect(priceOnPage("Plus: $2,300 / month", 230000, "USD")).toBe(true);
+    expect(priceOnPage("Shop 24,99 € monatlich", 2499, "EUR")).toBe(true);
+  });
+
+  it("does not take another amount, a part of a number, or the figure without its currency", () => {
+    expect(priceOnPage("Basic $29.99/mo", 2900, "USD")).toBe(false);
+    expect(priceOnPage("Basic $129/mo", 2900, "USD")).toBe(false);
+    expect(priceOnPage("Over 29 themes to choose from", 2900, "USD")).toBe(false);
+    expect(priceOnPage("Basic €29 per month", 2900, "USD")).toBe(false);
+    expect(priceOnPage("", 2900, "USD")).toBe(false);
   });
 });

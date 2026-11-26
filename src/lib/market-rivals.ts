@@ -1,3 +1,5 @@
+import { minorUnitDigits } from "./money";
+
 /**
  * A store's rivals (D900 M2, `docs/market-check.md` 4), the pure parts: a rival's web host from what the owner typed, whether a page is the
  * rival's own, the limits, and how a rival's offer is held against the store's own price. The facts are read by `readOfferPage()` from the
@@ -117,4 +119,51 @@ export function priceGap(own: OwnPrice | null, rival: { priceMinor: number; curr
 export function offerFresh(readAt: string, now: Date): boolean {
   const at = Date.parse(readAt);
   return Number.isFinite(at) && now.getTime() - at <= OFFER_FRESH_DAYS * 86_400_000;
+}
+
+/** Other store platforms' prices (D900 M4): the watcher reads a price's page again once it was checked longer ago than this, a few a run. */
+export const PLATFORM_WATCH_DAYS = 28;
+export const PLATFORM_WATCH_PER_RUN = 2;
+
+/** The marks a page writes beside a price in each currency it may show: its symbol, its code, and the Nordic `kr`. */
+const CURRENCY_MARKS: Readonly<Record<string, readonly string[]>> = {
+  EUR: ["€", "eur"],
+  USD: ["$", "us$", "usd"],
+  GBP: ["£", "gbp"],
+  NOK: ["kr", "nok", ",-"],
+  SEK: ["kr", "sek", ":-"],
+  DKK: ["kr", "dkk", ",-"],
+  CHF: ["chf", "fr."],
+  PLN: ["zł", "pln"],
+  CZK: ["kč", "czk"],
+  ISK: ["kr", "isk"],
+};
+
+/** How an amount in major units may be written: with or without decimals and thousands marks, as pages write them. */
+function amountSpellings(minor: number, digits: number): string[] {
+  const whole = Math.floor(minor / 10 ** digits);
+  const fraction = digits > 0 ? String(minor % 10 ** digits).padStart(digits, "0") : "";
+  const grouped = (mark: string) => String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, mark);
+  const wholes = [...new Set([String(whole), grouped(" "), grouped(","), grouped(".")])];
+  if (!fraction || /^0+$/.test(fraction)) return [...wholes, ...wholes.flatMap((w) => (digits > 0 ? [`${w}.${"0".repeat(digits)}`, `${w},${"0".repeat(digits)}`] : []))];
+  return wholes.flatMap((w) => [`${w}.${fraction}`, `${w},${fraction}`]);
+}
+
+/**
+ * Whether a page's readable text states this price (D900 M4): the amount as pages write it, standing alone as a number, with the currency's
+ * mark within a few characters before or after. Code reads the page for the figure a person kept; the model never reads a price off it.
+ */
+export function priceOnPage(text: string, minor: number, currency: string): boolean {
+  const digits = minorUnitDigits(currency);
+  const marks = CURRENCY_MARKS[currency] ?? [currency.toLowerCase()];
+  const flat = text.replace(/[\u00a0\u202f\u2009]/g, " ").toLowerCase();
+  for (const spelling of amountSpellings(minor, digits)) {
+    const escaped = spelling.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const found = new RegExp(`(?<![\\d.,])${escaped}(?![\\d]|[.,]\\d)`, "g");
+    for (const m of flat.matchAll(found)) {
+      const around = flat.slice(Math.max(0, m.index - 12), m.index + m[0].length + 12);
+      if (marks.some((mark) => around.includes(mark))) return true;
+    }
+  }
+  return false;
 }

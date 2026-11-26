@@ -1,6 +1,6 @@
 {
-  "id": "b9c041b8-3a6f-4757-a45b-e11260319dd9",
-  "prevId": "58de6465-da5d-4175-889d-31e58cade87d",
+  "id": "7ed56d28-f8ca-4b9d-87f2-8beedd60576a",
+  "prevId": "b9c041b8-3a6f-4757-a45b-e11260319dd9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -64947,6 +64947,208 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.platform_rival_prices": {
+      "name": "platform_rival_prices",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "platform": {
+          "name": "platform",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "plan": {
+          "name": "plan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_minor": {
+          "name": "price_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval": {
+          "name": "interval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fee_bps": {
+          "name": "fee_bps",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checked_on": {
+          "name": "checked_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "on_page": {
+          "name": "on_page",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gone_at": {
+          "name": "gone_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "watched_at": {
+          "name": "watched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "platform_rival_prices_plan_idx": {
+          "name": "platform_rival_prices_plan_idx",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_rival_prices_added_by_idx": {
+          "name": "platform_rival_prices_added_by_idx",
+          "columns": [
+            {
+              "expression": "added_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "platform_rival_prices_plan_id_plans_id_fk": {
+          "name": "platform_rival_prices_plan_id_plans_id_fk",
+          "tableFrom": "platform_rival_prices",
+          "tableTo": "plans",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "platform_rival_prices_added_by_accounts_id_fk": {
+          "name": "platform_rival_prices_added_by_accounts_id_fk",
+          "tableFrom": "platform_rival_prices",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "added_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "platform_rival_prices_key": {
+          "name": "platform_rival_prices_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "platform",
+            "plan",
+            "currency",
+            "interval"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "platform_rival_prices_names": {
+          "name": "platform_rival_prices_names",
+          "value": "length(\"commerce\".\"platform_rival_prices\".\"platform\") between 1 and 80 and length(\"commerce\".\"platform_rival_prices\".\"plan\") between 1 and 80"
+        },
+        "platform_rival_prices_currency": {
+          "name": "platform_rival_prices_currency",
+          "value": "\"commerce\".\"platform_rival_prices\".\"currency\" ~ '^[A-Z]{3}$'"
+        },
+        "platform_rival_prices_interval": {
+          "name": "platform_rival_prices_interval",
+          "value": "\"commerce\".\"platform_rival_prices\".\"interval\" in ('month', 'year')"
+        },
+        "platform_rival_prices_amount": {
+          "name": "platform_rival_prices_amount",
+          "value": "\"commerce\".\"platform_rival_prices\".\"price_minor\" >= 0"
+        },
+        "platform_rival_prices_fee": {
+          "name": "platform_rival_prices_fee",
+          "value": "\"commerce\".\"platform_rival_prices\".\"fee_bps\" is null or \"commerce\".\"platform_rival_prices\".\"fee_bps\" between 0 and 10000"
+        },
+        "platform_rival_prices_source": {
+          "name": "platform_rival_prices_source",
+          "value": "\"commerce\".\"platform_rival_prices\".\"source\" ~ '^https://' and length(\"commerce\".\"platform_rival_prices\".\"source\") <= 2000"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.platform_sales": {
       "name": "platform_sales",

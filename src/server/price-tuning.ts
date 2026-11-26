@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { formatPercent } from "@/lib/analytics-core";
+import { priceGap } from "@/lib/market-rivals";
 import { englishMoney as money } from "@/lib/money";
 import type { PlanInterval } from "@/lib/plans";
 import { anchorFor, changePercent, isPriceTuningLevel, priceTuningDecision, PRICE_TUNING_RANGE_DEFAULT, PRICE_TUNING_RANGE_MAX, PRICE_TUNING_RANGE_MIN, type PriceDecision, type PriceTuning } from "@/lib/price-tuning";
@@ -14,6 +16,7 @@ import { aiAutonomyPaused } from "./ai-pause";
 import { audit, type Account } from "./auth";
 import { listPlans, savePlan } from "./billing";
 import { extensionsLaunchedAt, getExtensionCatalogue, setOneExtensionPrice } from "./extensions";
+import { listPlatformRivalPrices } from "./market-rivals";
 import { OwnerToolError } from "./owner-tool-error";
 import { planAnalytics } from "./plan-analytics";
 import type { SaveResult } from "./settings";
@@ -82,7 +85,7 @@ export async function recentPriceChanges(limit: number) {
  */
 export async function platformPricingFacts(input: { days?: number }) {
   const days = Math.max(7, Math.min(365, Math.round(input.days ?? 90)));
-  const [tuning, plans, analytics, catalogue, launched, extensionCounts, bundleCounts, changes] = await Promise.all([
+  const [tuning, plans, analytics, catalogue, launched, extensionCounts, bundleCounts, changes, rivals] = await Promise.all([
     getPriceTuning(),
     listPlans(),
     planAnalytics(days),
@@ -106,6 +109,7 @@ export async function platformPricingFacts(input: { days?: number }) {
       sql`select o.bundle_id, count(distinct o.organisation_id)::int as accounts from commerce.organisation_extensions o where o.source = 'bundle' and o.ended_at is null group by o.bundle_id`,
     ),
     recentPriceChanges(10),
+    listPlatformRivalPrices(),
   ]);
   const counts = new Map(extensionCounts.map((c) => [c.extension_id, c]));
   const moves = Object.fromEntries(analytics.moves.live.map((m) => [m.kind, m.count]));
@@ -164,6 +168,27 @@ export async function platformPricingFacts(input: { days?: number }) {
         prices: b.prices.map((x) => ({ currency: x.currency, interval: x.interval, price: `${money(x.amountMinor, x.currency)} ${per(x.interval)}`, ...(x.foundingMinor !== null && { founding: money(x.foundingMinor, x.currency) }) })),
         ...(launched && { accounts: bundleCounts.find((x) => x.bundle_id === b.id)?.accounts ?? 0 }),
       })),
+    // Other store platforms' prices (D900 M4): kept by a platform admin from each platform's own page, checked there by code, compared by code.
+    other_platforms: rivals.map((r) => {
+      const gap = r.oursMinor === null ? null : priceGap({ priceMinor: r.oursMinor, currency: r.currency }, r);
+      return {
+        platform: r.platform,
+        plan: r.plan,
+        price: `${money(r.priceMinor, r.currency)} ${per(r.interval)}`,
+        transaction_fee: r.feeBps === null ? "not stated" : `${formatPercent(r.feeBps / 10_000, 1)} of each sale`,
+        held_against: r.planName,
+        kaizena_flow_price: r.oursMinor === null ? null : `${money(r.oursMinor, r.currency)} ${per(r.interval)}`,
+        difference:
+          gap === null ? "not comparable: no Kaizena Flow price in that currency and interval" : gap > 0 ? `Kaizena Flow is ${formatPercent(gap, 0)} dearer` : gap < 0 ? `Kaizena Flow is ${formatPercent(-gap, 0)} cheaper` : "the same",
+        checked: r.checkedOn,
+        on_its_page: r.goneAt ? "no longer on its page: a person checks it again" : r.onPage === null ? "its page could not be read" : r.onPage ? "yes" : "not found on its page",
+        source: r.source,
+      };
+    }),
+    other_platforms_note:
+      rivals.length === 0
+        ? "No other platform's price is kept yet: a platform admin adds them on Platform → Plans."
+        : "Read by a platform admin from each platform's own page and checked there by code. Facts to weigh, never on their own a reason for set_platform_price.",
     recent_ai_changes: changes.map((c) => ({
       when: c.at,
       what: c.what,

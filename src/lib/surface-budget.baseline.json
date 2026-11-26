@@ -21,8 +21,8 @@
   "shopOnlyTools": 274,
   "managerTools": 28,
   "featureIds": 14,
-  "tables": 568,
-  "platformTables": 26,
+  "tables": 569,
+  "platformTables": 27,
   "hot": {
     "orders": {
       "indexes": 33,
@@ -638,6 +638,18 @@
       "count": "dispatcherJobs",
       "from": 91,
       "to": 92,
+      "decision": "D900"
+    },
+    {
+      "count": "tables",
+      "from": 568,
+      "to": 569,
+      "decision": "D900"
+    },
+    {
+      "count": "platformTables",
+      "from": 26,
+      "to": 27,
       "decision": "D900"
     }
   ]

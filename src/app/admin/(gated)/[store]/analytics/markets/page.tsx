@@ -5,6 +5,8 @@ import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { MarketCheckView } from "@/components/admin/analytics/market-check-view";
 import { MarketRivalsSection } from "@/components/admin/analytics/market-rivals-section";
+import { Note } from "@/components/admin/analytics/section";
+import { AdminLink } from "@/components/admin/ui/link";
 import { countWords } from "@/lib/admin-fill";
 import { areaTexts } from "@/lib/admin-area";
 import { ANALYTICS_EXPORT_WORDS } from "@/lib/admin-words/analytics-export";
@@ -55,6 +57,14 @@ export default async function MarketsPage({ params, searchParams }: PageProps<"/
       }
       now={now}
     />
+  ) : check.house ? (
+    // Kaizena Flow's own store (D900 M4): its rivals are other store platforms, kept beside its plans on Platform → Plans.
+    <Note>
+      {words.rivals.house}{" "}
+      <AdminLink href="/admin/platform/plans#platform-rivals" className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
+        {words.rivals.houseLink}
+      </AdminLink>
+    </Note>
   ) : null;
   return (
     <AdminTextScope texts={areaTexts(ctx.lang, { analyticsExport: ANALYTICS_EXPORT_WORDS })}>
