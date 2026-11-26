@@ -84,6 +84,7 @@ import type { HouseAutopilotMessages } from "./admin-messages/house-autopilot.en
 import type { LeadScoreMessages } from "./admin-messages/lead-score.en";
 import type { FlowSplitsMessages } from "./admin-messages/flow-splits.en";
 import type { SendAllowanceMessages } from "./admin-messages/send-allowance.en";
+import type { ExtensionPitchMessages } from "./admin-messages/extension-pitch.en";
 import type { KitMessages } from "./admin-messages/kit.en";
 
 /**
@@ -181,6 +182,8 @@ export type AdminAreaMessages = {
   leadScore: LeadScoreMessages;
   flowSplits: FlowSplitsMessages;
   sendAllowance: SendAllowanceMessages;
+  /** Each extension's line on its marker (D748 E5), handed to `ExtensionOffPanel` by `requireExtension()`. */
+  extensionPitch: ExtensionPitchMessages;
   /** The admin kit's own words (code review 1.12, D818): `Pager` and `ListSearch`, drawn on the server. */
   kit: KitMessages;
   /** Cuts (bloat review step 2.27, `cut()` in `src/lib/admin-area.ts`, each a module in `src/lib/admin-words`): some groups of an area, the same objects, for screens whose parts read only those. */
@@ -232,7 +235,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "marketCheck", "registerFacts", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit", "social", "projects"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "marketCheck", "registerFacts", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit", "social", "projects", "extensionPitch"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;

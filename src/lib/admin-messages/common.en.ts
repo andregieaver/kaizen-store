@@ -28,15 +28,6 @@ export const commonEn = {
     hidden: "It is an extension: its pages, links and tools are here once the account has it. Nothing kept in it is lost.",
     onlyOwner: "The account's owner decides which extensions it has.",
     /** The marker (D748 E5): what Homer gets, in words, and one press to try it. */
-    pitch: {
-      ab_testing: "Test two versions of a page and keep the one that sells more.",
-      support_desk: "Answer every email and chat in one inbox, with AI answering first.",
-      email_automation: "Send newsletters and emails that go out on their own at the right moment.",
-      work: "Clients, time, invoices and the books, in one place.",
-      deals: "Follow every deal from the first lead to the signed contract.",
-      social: "Posts and pictures for every channel, written in your brand, and an adviser that says what to post next from your figures.",
-      projects: "The team's projects and checklists: who does what, by when.",
-    },
     tryFree: "Try free for {days} days",
     trialStarted: "Your trial has started.",
     allExtensions: "See every extension",

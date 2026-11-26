@@ -16,10 +16,13 @@ import { useAdminText } from "./admin-text";
  */
 export function ExtensionOffPanel({
   extension,
+  pitch,
   owner,
   tryAction,
 }: {
   extension: ExtensionId;
+  /** Its line, in the member's language (`extensionPitch`, read by `requireExtension()` on the server). */
+  pitch: string;
   owner: boolean;
   tryAction: (state: FormState, form: FormData) => Promise<FormState>;
 }) {
@@ -30,7 +33,7 @@ export function ExtensionOffPanel({
       <h1 id="extension-off-heading" className="text-xl font-medium">
         {name}
       </h1>
-      <p className="text-sm">{w.pitch[extension]}</p>
+      <p className="text-sm">{pitch}</p>
       {owner ? (
         <div className="flex flex-wrap items-center gap-3">
           <ActionForm action={tryAction}>

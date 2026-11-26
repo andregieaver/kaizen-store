@@ -372,7 +372,7 @@ appears only when a store's plan would end). Moving every account is E5's launch
 **E5 as built, part one (19 November 2026).** A trial (`startExtensionTrial()` in `src/server/extensions.ts`): one press for the
 account's owner, 14 days (`EXTENSION_TRIAL_DAYS`) at the smallest size with its grace period set with it, refused before launch, for
 Kaizena Flow's own account, for an extension the account has, and a second time. The marker is the page an absent extension's folder
-shows (`requireExtension()`, `ExtensionOffPanel`): its name, what Homer gets (`common.extensions.pitch`), "Try free for 14 days" and
+shows (`requireExtension()`, `ExtensionOffPanel`): its name, what Homer gets (the server area `extensionPitch`, handed to the marker by `requireExtension()` so the lines are not in every screen's words), "Try free for 14 days" and
 every extension for the owner, "Ask your account owner" for a member. An extension in its grace period or read-only opens its pages:
 the store frame's banner (`ExtensionBanner`, by `EXTENSION_PATHS`) says until when, or that nothing is sent or changed, with Subscribe;
 its actions and jobs already refuse. Account → Extensions lists each extension with the account's standing and its price from, with try

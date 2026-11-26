@@ -406,3 +406,6 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   workspace in production was given it), and its Home has a Projects card opening `/projects` (`WORKSPACE_STARTS`), so an account with
   only Projects works in it. Its landing page and its place in the combined sign-up are P8.2.
 - **The AI round** rose by 22 characters: the extension tools' id lists name `projects`.
+- **Every screen's words.** Each extension's line on its marker moved out of the shared words (`common.extensions.pitch`) into the server
+  area `extensionPitch`, which `requireExtension()` hands to `ExtensionOffPanel`: every admin screen carries about 600 bytes less in each
+  language, more than Projects' own line added (the Norwegian platform home had gone over its allowance in `admin-handed.baseline.json`).
