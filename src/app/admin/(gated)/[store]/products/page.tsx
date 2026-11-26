@@ -21,7 +21,7 @@ import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { productsListReads } from "@/server/admin-screens";
 import { PRODUCT_SHOWS, type ProductShow } from "@/server/product-list";
-import { GuideHint } from "@/components/admin/guide/guide-provider";
+import { GuideSlot } from "@/components/admin/guide/guide-slots";
 import { ButtonLink, EmptyState, ListSearch, PageHeader, Pager } from "@/components/admin/ui";
 import { pageAddress } from "@/components/admin/ui/pager";
 
@@ -177,7 +177,7 @@ async function ProductList({
             )
           }
         // No product yet: Guide says what is enough to start (D909).
-        after={!archived && <GuideHint place="products" />}
+        after={!archived && <GuideSlot name="hint" place="products" />}
       />
       ) : (
         <>

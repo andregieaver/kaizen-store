@@ -222,6 +222,7 @@ on to the consent page `/admin/oauth/authorize` (the admin's gate, never framed)
 | `/api/fonts` | browsers loading fonts (D59) | public reads of the platform's own font files, nothing written |
 | `/api/forms` | a visitor sending a form (D93) | `sameSite()`, the visitor's own key |
 | `/api/gravatar` | the admin's pictures (D97) | only hashes Kaizena Flow signed (HMAC); fetched from Gravatar's fixed host |
+| `/api/guide` | a signed-in person's own admin (Guide, D909) | signed in; a store's member (`checkMemberAny()`) or the platform's team (`platformRoleOf()`); POST `sameSite()`; only the person's own record, events checked by `guideEventOf()`, keys of places and moments only |
 | `/api/health` | the deploy check and monitors | public; names no host or connection mode |
 | `/api/instagram` | visitors' browsers loading an Instagram feed's pictures (D560) | public reads of an owner's kept posts only, by the post's id; fetched only from Instagram's picture hosts (`isInstagramPicture()`), images only, at most 8 MB; nothing of the visitor is sent to Meta |
 | `/api/integrations` | an owner connecting Slack, Mollie, Fiken, eBay or Instagram (D101, D292, D460, D555, D560); eBay and Fiken return with a state cookie signed by the server and checked against the owner signed in | a signed-in account with the owner's role (`requireAccount()`, `checkOwnerRole()`) |

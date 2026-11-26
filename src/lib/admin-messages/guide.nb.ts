@@ -3,7 +3,7 @@ import type { GuideMessages } from "./guide.en";
 /** Guide's words in Norwegian (bokmål); see `guide.en.ts`. */
 export const guideNb: GuideMessages = {
   name: "Guide",
-  button: { label: "Guide", progress: "{found} av {total}", open: "Åpne Guide, {found} av {total} steder funnet" },
+  button: { label: "Guide", progress: "{found} av {total} funnet" },
   welcome: {
     eyebrow: "Velkommen · {n} av {total}",
     rail: {

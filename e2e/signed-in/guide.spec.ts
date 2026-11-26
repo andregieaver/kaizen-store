@@ -12,7 +12,7 @@ import { ADMIN, E2E_STORE, OWNER } from "./accounts";
 test.use({ storageState: OWNER.state });
 
 async function openGuide(page: Page) {
-  const button = page.getByRole("button", { name: /^Open Guide, \d+ of \d+ places found$/ });
+  const button = page.getByRole("button", { name: /^Guide \d+ of \d+ found$/ });
   await expect(button).toBeVisible();
   await button.click();
   const panel = page.getByRole("dialog", { name: "Guide" });

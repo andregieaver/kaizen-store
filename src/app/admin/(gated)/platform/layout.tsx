@@ -1,11 +1,12 @@
 import { after } from "next/server";
 import { Suspense } from "react";
 
-import { adminViewAction, guideEventAction, guideLoadAction, guideSettingsAction } from "@/app/admin/(gated)/(owner)/account/shell-actions";
+import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/shell-actions";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
-import { GuideMenuLink, GuideProvider, GuideRailButton } from "@/components/admin/guide/guide-provider";
+import { GuideProvider } from "@/components/admin/guide/guide-provider";
+import { GuideSlot } from "@/components/admin/guide/guide-slots";
 import { PageFinder } from "@/components/admin/page-finder";
 import { PlatformRoleNotice } from "@/components/admin/platform-role-notice";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -14,10 +15,7 @@ import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { platformRoleOf } from "@/lib/platform-access";
-import { PLATFORM_BASE, PLATFORM_SECTIONS, platformNav } from "@/lib/platform-nav";
-import { PLATFORM_CORE_PLACES, guidePlacesFromNav } from "@/lib/guide";
-import { navAreasIn, navItemsIn, navWord } from "@/lib/admin-nav-words";
-import { GUIDE_WORDS } from "@/lib/admin-words/guide";
+import { PLATFORM_BASE, platformNav } from "@/lib/platform-nav";
 import { areaTexts } from "@/lib/admin-area";
 import { ASSISTANT_BAR_WORDS } from "@/lib/admin-words/assistant-bar";
 import { SHELL_WORDS } from "@/lib/admin-words/shell";
@@ -64,29 +62,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
   const lang = adminLangOf(account.adminLocale);
   const w = SHELL_WORDS[lang];
   // Basic or Advanced (D454, D884): the person's own choice, the one a store's admin shows them, around the whole frame.
-  // Guide (D909), as in a store: the platform's places from its menu, quiet in the workspace tools.
-  const guideWords = GUIDE_WORDS[lang];
-  const guidePlaces = guidePlacesFromNav({
-    home: base,
-    tabs: navItemsIn(lang, tabs),
-    areas: navAreasIn(lang, areas),
-    words: guideWords,
-    intros: Object.fromEntries(PLATFORM_SECTIONS.flatMap((s) => (s.intro ? [[s.key, navWord(lang, s.intro)]] : []))),
-    core: PLATFORM_CORE_PLACES,
-    // The platform's Home has no next step's card; its AI manager is the owners' (D510).
-    welcome: account.platformAdmin ? ["rail", "ai"] : ["rail"],
-  });
   return (
     <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
-      <GuideProvider
-        store={null}
-        home={base}
-        places={guidePlaces}
-        words={guideWords}
-        quietOn={`(?:${FULL_WIDTH})|(?:${INBOX})`}
-        platform
-        actions={{ load: guideLoadAction, event: guideEventAction, settings: guideSettingsAction }}
-      >
       <AdminFrame
         layout={LEVEL_LAYOUTS.platform}
         lang={lang}
@@ -127,7 +104,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
           </>
         }
         account={<AdminAccountMenu account={account} role={w.levels.platform} />}
-        railFoot={<GuideRailButton />}
+        railFoot={<GuideSlot name="rail" />}
         tabs={tabs}
         groups={[]}
         areas={areas}
@@ -137,7 +114,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         menuFooter={
           <>
             <AdminViewToggle />
-            <GuideMenuLink />
+            <GuideSlot name="menu" />
             <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>
             <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
           </>
@@ -148,7 +125,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         {role !== "owner" && <PlatformRoleNotice role={role} words={w.platformRole} />}
         {children}
       </AdminFrame>
-      </GuideProvider>
+      {/* Guide (D909), as in a store: the platform's places come from its route; quiet in the workspace tools. */}
+      <GuideProvider level="platform" home={base} quietOn={`(?:${FULL_WIDTH})|(?:${INBOX})`} />
     </AdminViewProvider>
   );
 }

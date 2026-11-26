@@ -188,19 +188,26 @@ under *What the router fetches ahead*.
   welcome on Home (the rail, the next step, the AI manager: `WELCOME_TARGETS`, a step whose place is not drawn is skipped), at most one a
   day (`SPOTLIGHT_GAP_MS`). A **beacon** is a dot after a section's page title (or beside a part marked `data-guide-beacon="{key}"`) on the
   first visits to a core section (`STORE_CORE_PLACES`, `PLATFORM_CORE_PLACES`; every section in Hands-on), whose card opens only when
-  pressed, and fades after `BEACON_FADES_AFTER` visits not pressed. A **hint** is `GuideHint` in an empty page's `EmptyState` (`after`):
+  pressed, and fades after `BEACON_FADES_AFTER` visits not pressed. A **hint** is a `GuideSlot name="hint"` in an empty page's `EmptyState` (`after`):
   part of the page, in no budget, gone once the page fills. "Later" twice and that kind stops (`LATER_STOPS_AFTER`). With no level chosen
   it is Balanced for `AUTO_QUIET_DAYS` and Quiet after. Never while the person types, holds unsaved work (`asker()` of the leave guard),
   has just arrived, has another dialog open, or is on a page of the layout's `quietOn` (the setup wizard and the workspace tools); a phone
   gets hints only.
 - A level's places come from its menu as the frame draws it (`guidePlacesFromNav()`: each section's tab, sidebar prefixes and everyday
   pages), so a new section is a place with no change here; its line is in the `guide` area's `places` by the section's key, else the
-  menu's intro. Guide's words are a server area (`GUIDE_WORDS[lang]`), handed to `GuideProvider` by each level's layout.
+  menu's intro (`storeGuidePlaces()`, `platformGuidePlaces()` in `src/server/guide-places.ts`, the store layout's rule of what a member may
+  open). Guide's words are a server area (`GUIDE_WORDS[lang]`), sent by its route.
 - The record is one row of `commerce.guide_progress` per person and level (`store_id`, null for the platform), written only by
-  `recordGuide()` through `guideEventAction()`, events checked by `guideEventOf()` and read back through `guideProgressOf()`; the
-  person's choice (`accounts.guide_level`, null for automatic, and `accounts.guide_off`) follows them to every level. The layout reads
-  none of it: `GuideProvider` loads it once the page is drawn, and the spotlight, beacon, panel and note (`guide-layer.tsx`) load only when
-  there is something to draw. Everything Guide did not say is in its panel (the rail's foot, the phone's menu), one press away.
+  `recordGuide()`, events checked by `guideEventOf()` and read back through `guideProgressOf()`; the person's choice
+  (`accounts.guide_level`, null for automatic, and `accounts.guide_off`) follows them to every level. Everything goes through Guide's route
+  (`/api/guide`: GET reads the record, places and words and marks found the screen's place; POST takes an event or the choice),
+  never a server action, which Next queues with the router's own moves and the signed-in specs count. The layout renders `GuideProvider`
+  with three props (all a screen's first scripts carry of Guide) and empty `GuideSlot`s (server markup: the rail's foot, the phone's menu,
+  the empty pages' hints); the runtime (`guide-runtime.tsx`) is a chunk loaded once the screen is drawn and fills the slots by portal, and
+  what it shows (`guide-layer.tsx`) a chunk loaded only when something is shown. Guide's own looks (a shadow, a width, a layer) are styles,
+  not classes, so it adds nothing to the stylesheet store pages share (`e2e/performance.spec.ts`). `e2e/signed-in/prefetch.spec.ts` names
+  the route's one read.
+  Everything Guide did not say is in its panel (the rail's foot, the phone's menu), one press away.
 
 ## Dates in the admin (code review 1.14, D786, `src/lib/admin-date.ts`)
 

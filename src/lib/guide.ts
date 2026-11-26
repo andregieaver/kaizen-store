@@ -8,7 +8,7 @@
  *   most one a day, and never two in one visit;
  * - a beacon is a small dot beside a page's title on the first visits to a section; it opens its card only when pressed and fades after
  *   `BEACON_FADES_AFTER` visits not pressed;
- * - a hint is a line inside an empty page (`GuideHint`), part of the page, costing nothing.
+ * - a hint is a line inside an empty page (`GuideSlot name="hint"`, drawn by `GuideHint`), part of the page, costing nothing.
  *
  * Guide never speaks while the person types, holds unsaved work, has just arrived, or is in a focus task (the browser's signals, `calm`).
  * "Later" twice and that kind of moment stops by itself (`LATER_STOPS_AFTER`). With no level chosen, Guide is Balanced for its first
