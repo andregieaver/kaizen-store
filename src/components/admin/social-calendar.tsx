@@ -197,7 +197,7 @@ export function SocialCalendar({
                           <>
                             <p className="line-clamp-3 text-body text-ink whitespace-pre-line">{it.draft.caption}</p>
                             <span className={`text-caption ${it.draft.approved ? "text-success-text" : "text-ink-2"}`}>
-                              {it.draft.approved ? w.approved : w.draft}
+                              {it.draft.approved ? (it.draft.byRules ? w.byRules : w.approved) : w.draft}
                               {it.draft.scene?.on ? ` · ${w.sceneUsed}` : ""}
                               {it.draft.video ? ` · ${w.videoMade}` : ""}
                               {it.draft.published ? ` · ${w.posted}` : ""}

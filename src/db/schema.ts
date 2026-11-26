@@ -19085,6 +19085,12 @@ export const socialPosts = commerce
       scheduledBy: uuid("scheduled_by").references(() => accounts.id, { onDelete: "set null" }),
       publishTries: smallint("publish_tries").notNull().default(0),
       nextTryAt: timestamp("next_try_at", { withTimezone: true }),
+      /**
+       * Posting by the owner's rules (D870 S3.3): `rules_queued_at` when the rules approved and queued it, no person's yes (null: a person's);
+       * `held_at` when a person took back its yes or took it off the queue, after which the rules leave it to them.
+       */
+      rulesQueuedAt: timestamp("rules_queued_at", { withTimezone: true }),
+      heldAt: timestamp("held_at", { withTimezone: true }),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },
@@ -20751,6 +20757,11 @@ export const autopilotSettings = commerce.table(
      * only by `saveChallenge()` (a platform admin's): its dates and budgets. While it is on, the preset rules and the owner's settings are locked.
      */
     challenge: jsonb("challenge"),
+    /**
+     * *Post on its own within my rules* (D870 S3.3): the switch, who switched it on, and the owner's limits, read only through
+     * `readSocialRules()` (`src/lib/social-rules.ts`) and written only by `saveSocialRules()` (an owner's).
+     */
+    social: jsonb("social").notNull().default({}),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

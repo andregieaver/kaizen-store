@@ -16,6 +16,7 @@ import { priceRuleAutopilotFacts } from "./market-price-tools";
 import { orderChangeMoneyOf, type OrderChangeInput } from "./order-change-tools";
 import type { Store } from "./stores";
 import { replacementAutopilotProblem } from "./replacement-tools";
+import { socialRulesAutopilotProblem } from "./social-rules";
 import { purchaseAutopilotProblem } from "./supply-tools";
 
 /** A purchase order against the purchasing budget (C3): one that cannot be made at all asks too, with the reason in words. */
@@ -82,6 +83,8 @@ export async function autopilotDecision(
             ? { adProblem: await adBudgetAutopilotProblem(p.store, args, settings.budgets.adRaisePercent) }
             : tool === "create_purchase_order" && p.store
             ? { purchaseProblem: await purchaseProblemOf(p.store, args, settings) }
+            : tool === "publish_social_post" && p.store
+            ? { socialProblem: await socialRulesAutopilotProblem(p.store, String(args.post_id ?? "")) }
             : (CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)
             ? { customerEmailsThisWeek: p.store ? await autopilotCustomerEmailsThisWeek(p.store.id) : null }
             : {};

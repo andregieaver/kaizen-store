@@ -30,6 +30,8 @@ export type CalendarDraft = {
   published?: { url: string | null } | null;
   /** When the posting queue puts it out (S3.2); absent while it goes out only by hand. */
   scheduledFor?: string | null;
+  /** Approved and queued by the owner's rules (S3.3), not by a person's yes. */
+  byRules?: boolean;
   publishProblem?: string | null;
 };
 

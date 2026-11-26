@@ -33,7 +33,9 @@ export async function scheduleSocialPosts(member: Membership, raw: unknown, on: 
   const { store } = member;
   if (!on) {
     const rows = await db().execute(sql`
-      update commerce.social_posts set scheduled_for = null, scheduled_by = null, next_try_at = null
+      update commerce.social_posts set scheduled_for = null, scheduled_by = null, next_try_at = null, held_at = now(),
+        -- A post the rules queued had no person's yes: taken off the queue, it waits for one (S3.3).
+        approved_at = case when rules_queued_at is null then approved_at end, approved_by = case when rules_queued_at is null then approved_by end, rules_queued_at = null
       where store_id = ${store.id}::uuid and id = any(${list}::uuid[]) and scheduled_for is not null and published_at is null and publish_started_at is null returning id`);
     if (rows.length > 0) await audit(member.account.id, store.id, "store.social_posts_unscheduled", { posts: rows.length });
     return { ok: true, changed: rows.length };

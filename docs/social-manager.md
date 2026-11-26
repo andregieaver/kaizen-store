@@ -167,11 +167,19 @@ an hour after a refusal and giving up after three, Meta's words left for a perso
 yes) queues one for now, loading no publishing. Tokens: Instagram's are renewed by the feed's job before they run out; a Page's token does
 not expire.
 
+S3.3 as built: *Post on its own within my rules* is a switch above the calendar (`social-rules-card.tsx`), the owner's alone, off by
+default, kept on `autopilot_settings.social` with who switched it on (`saveSocialRules()`, `src/server/social-rules.ts`; rule in
+`src/lib/social-rules.ts`); *Customise* sets posts a day per channel (1) and quiet hours (21:00 to 08:00). While on, the queue's job first
+approves and queues today's and tomorrow's drafts whose picture passed the check, that no person held back and whose product is on sale and
+in stock (`queueByRules()`, `rules_queued_at`); due, each is read again and posted as the autopilot, else waits or goes back to a person.
+Taking back a yes or *Don't post on its day* holds a post (`held_at`); switching off hands the rules' posts back at once; the platform pause
+stops it. The autopilot's `publish_social_post` runs by the same rules (`socialProblem`), whatever the marketing level.
+
 | Step | What |
 |---|---|
 | S3.1 | Publishing to Instagram and Facebook, approval per post. **Done 2026-11-26** (below) |
 | S3.2 | The queue, retries, limits and token refresh. **Done 2026-11-26** (below) |
-| S3.3 | The toggle and the rules, through `autonomyDecision()` |
+| S3.3 | The toggle and the rules, through `autonomyDecision()`. **Done 2026-11-26** (below) |
 | S3.4 | Pinterest |
 | S3.5 | TikTok (after the audit) |
 | S3.6 | LinkedIn |

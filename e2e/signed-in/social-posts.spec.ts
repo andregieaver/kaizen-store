@@ -332,3 +332,24 @@ test("an approved post is posted from the calendar where the connection allows i
   await expect(instagram).not.toContainText("Posted");
   await expect(instagram.getByRole("button", { name: "Post now" })).toBeVisible();
 });
+
+test("the owner switches on posting within their rules, sets its limits, and switches it off (D870 S3.3)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const rules = page.getByRole("region", { name: "Post on its own within my rules" });
+  await expect(rules).toContainText("Off: every post waits for your yes.");
+  await rules.getByRole("switch", { name: "Switch on posting within my rules" }).click();
+  await expect(rules).toContainText("On: a post whose picture passed the check goes out on its day without asking, at most 1 a day on each channel and never between 21:00 and 08:00.");
+  await expect(rules.getByRole("switch", { name: "Switch off posting within my rules" })).toHaveAttribute("aria-checked", "true");
+
+  // Lisa's limits, under Customise.
+  await rules.getByText("Customise").click();
+  await rules.getByLabel("Posts a day on each channel").selectOption("2");
+  await rules.getByLabel("Quiet from").selectOption("22");
+  await rules.getByRole("button", { name: "Save the rules" }).click();
+  await expect(rules).toContainText("at most 2 a day on each channel and never between 22:00 and 08:00.");
+  await rules.scrollIntoViewIfNeeded();
+  await rules.screenshot({ path: "test-results/social-rules-on.png" });
+
+  await rules.getByRole("switch", { name: "Switch off posting within my rules" }).click();
+  await expect(rules).toContainText("Off: every post waits for your yes.");
+});

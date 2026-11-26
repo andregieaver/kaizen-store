@@ -97,6 +97,9 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   switch_loyalty_reward: "marketing",
   // A loyalty reward made or changed (AGT-01), as a discount is made.
   save_loyalty_reward: "marketing",
+  // A social post put out to the store's followers (D870 S3.3): only while the owner's *Post on its own within my rules* is on and the post
+  // passes them (`socialProblem`), whatever the marketing level; otherwise it waits for a yes.
+  publish_social_post: "marketing",
   // Messages to customers and staff
   mark_order_sent: "messages",
   send_draft_order: "messages",
@@ -135,8 +138,6 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
  * `TOOL_AREAS` (`autopilot-autonomy.test.ts`).
  */
 export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
-  // A social post put out to the store's followers (D870 S3.2): a person's yes each time, until the owner's rules and toggle (S3.3).
-  "publish_social_post",
   // A price rule rewrites every price of a country at once (D335): a person always says yes to it.
   "set_market_price_rule",
   // A producer registration decides what a country's shoppers can buy, and its number is the owner's to give (D342): never automatic.
@@ -314,6 +315,11 @@ export type AutonomyFacts = {
    * `charge` (a link to pay more); null when the change could not be previewed or would be refused.
    */
   orderChangeMoney?: "none" | "refund" | "charge" | null;
+  /**
+   * A social post against the owner's *Post on its own within my rules* (D870 S3.3, `socialRulesAutopilotProblem()`): why it must ask (the
+   * switch off, the quiet hours, the post's check or product), or null when it may.
+   */
+  socialProblem?: string | null;
 };
 
 /**
@@ -375,6 +381,12 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
     return { run: true, tell: levelOf(settings, "money") === "tell", area: "money" };
   }
   if (NEVER_AUTOMATIC.has(tool) || NEVER_CATEGORIES.has(gate)) return { run: false, why: "This always waits for your yes." };
+  // The owner's own switch for social posts decides (D870 S3.3), not the marketing level: it was switched on for exactly this.
+  if (tool === "publish_social_post") {
+    if (facts.socialProblem === undefined) return { run: false, why: "The post could not be read against your rules for posting." };
+    if (facts.socialProblem !== null) return { run: false, why: facts.socialProblem };
+    return { run: true, tell: true, area: "marketing" };
+  }
   const area = TOOL_AREAS[tool];
   if (!area) return { run: false, why: "This always waits for your yes." };
   const level = levelOf(settings, area);

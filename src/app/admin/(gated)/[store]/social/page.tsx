@@ -5,6 +5,8 @@ import { CanvaFieldProvider } from "@/components/admin/canva-field";
 import { PageHeader } from "@/components/admin/ui";
 import { SocialAdviser } from "@/components/admin/social-adviser";
 import { SocialCalendar } from "@/components/admin/social-calendar";
+import { SocialRulesCard } from "@/components/admin/social-rules-card";
+import { RULE_POSTS_MAX } from "@/lib/social-rules";
 import { SocialFacebookCard } from "@/components/admin/social-facebook-card";
 import { SocialFactsCard } from "@/components/admin/social-facts-card";
 import { SocialInsightsCard } from "@/components/admin/social-insights-card";
@@ -19,6 +21,7 @@ import { aiAbilities, aiFor } from "@/server/ai";
 import { canvaForField } from "@/server/canva";
 import { calendarOf } from "@/server/social-calendar";
 import { publishTargets } from "@/server/social-publish";
+import { socialRulesOf } from "@/server/social-rules";
 import { facebookAppOn, facebookView } from "@/server/facebook-pages";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { mainRecommendation } from "@/lib/social-advice";
@@ -66,7 +69,11 @@ export default async function SocialPostsPage({
     canvaForField(`/admin/${store.slug}/social/canva`, store.slug, "marketing:write"),
   ]);
   // The adviser's two-week plan with the drafts written for its days (S2.4).
-  const [weeks, publishTo] = await Promise.all([calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []), publishTargets(store)]);
+  const [weeks, publishTo, rules] = await Promise.all([
+    calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []),
+    publishTargets(store),
+    socialRulesOf(store.id),
+  ]);
   const titles = Object.fromEntries([
     ...products.map((p) => [p.id, p.title]),
     ...[...facts.push, ...facts.newProducts, ...(advice ? [...advice.facts.push, ...advice.facts.newProducts] : [])].map((p) => [p.id, p.title]),
@@ -87,6 +94,7 @@ export default async function SocialPostsPage({
         timeZone={store.timeZone}
         words={w.adviser}
       />
+      <SocialRulesCard rules={rules} mayChange={memberCan(member, "owner")} postsMax={RULE_POSTS_MAX} base={`/admin/${store.slug}/social`} words={w.rules} />
       <SocialCalendar
         weeks={weeks}
         titles={titles}

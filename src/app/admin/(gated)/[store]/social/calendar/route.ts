@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 import { approveSocialPosts, editSocialPost } from "@/server/social-calendar";
+import { saveSocialRules } from "@/server/social-rules";
 import { dropSocialScene, makeSocialScene } from "@/server/social-scenes";
 import { keepSlideshow, startSlideshowUpload } from "@/server/social-slideshow";
 import { publishSocialPost } from "@/server/social-publish";
@@ -11,7 +12,7 @@ import { checkSocialPosts } from "@/server/social-vision";
 
 /**
  * The social calendar's buttons (D870 S2.4), for a member who may change marketing: `approve` and `unapprove` a list of posts (one, or a
- * week's), `edit` one post's words, `check` posts' pictures (S2.3), `scene` and `no_scene` for one post's made scene (S2.1). A route, so the screen adds no server action; answers the server function's result as JSON.
+ * week's), `edit` one post's words, `check` posts' pictures (S2.3), `scene` and `no_scene` for one post's made scene (S2.1), and `rules`, the owner's *Post on its own within my rules* (S3.3). A route, so the screen adds no server action; answers the server function's result as JSON.
  */
 /** Making a scene asks the picture model, perhaps more than once. */
 export const maxDuration = 300;
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
     if (approved.ok) await scheduleSocialPosts(member, body.ids, true);
     return NextResponse.json(approved);
   }
+  // *Post on its own within my rules* (S3.3): the owner's switch and limits; switched off, the posts the rules queued wait for a yes again.
+  if (body?.do === "rules") return NextResponse.json(await saveSocialRules(member, body));
   if (body?.do === "unapprove") return NextResponse.json(await approveSocialPosts(member, body.ids, false));
   if (body?.do === "schedule" || body?.do === "unschedule") return NextResponse.json(await scheduleSocialPosts(member, body.ids, body.do === "schedule"));
   if (body?.do === "edit") return NextResponse.json(await editSocialPost(member, body));

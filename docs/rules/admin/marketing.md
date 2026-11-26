@@ -648,6 +648,15 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
   (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
 
+## Posting within the owner's rules (D870 S3.3, `src/lib/social-rules.ts` pure, `src/server/social-rules.ts`)
+
+- **Posting within the owner's rules (D870 S3.3, `src/lib/social-rules.ts` pure, `src/server/social-rules.ts`)**: `autopilot_settings.social`
+  is written only by `saveSocialRules()`, an owner's (`memberCan(member, "owner")`), audited (`store.social_rules`), with `by` the owner who
+  switched it on. `queueByRules()` approves (`approved_by` null, `rules_queued_at`) only a post `rulesProblem()` allows; the job re-reads it
+  when due (`quietEnds()`, `postsPerDay`, `postRuleFacts()`) and publishes inside `actingAs("autopilot")`. A person's unapprove or unschedule
+  sets `held_at` and the rules never take that post again; switched off, `handBack()` clears every unpublished rules post. Nothing is
+  queued by the rules while `skipWhilePaused("social_queue")`. `publish_social_post` is in `TOOL_AREAS` and decided by `socialProblem` alone.
+
 ## The social posting queue (D870 S3.2, `src/lib/social-queue.ts` pure, `src/server/social-queue.ts`, `social-queue-run.ts`)
 
 - **The social posting queue (D870 S3.2, `src/lib/social-queue.ts` pure, `src/server/social-queue.ts`, `social-queue-run.ts`)**: only an
