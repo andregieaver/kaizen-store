@@ -245,6 +245,40 @@ describe("a repeating task (P4.1)", () => {
   });
 });
 
+describe("a duplicated list (P4.2)", () => {
+  it("copies the shape of the work, all open, without due dates, repeats or archived tasks, its blocker and subtasks on the copies", async () => {
+    const { id: projectId } = ok(await projects.createProject(store.member, { name: "Trade fair" }));
+    const { id } = ok(await lists.createChecklist(store.member, { title: "The stand" }, projectId));
+    ok(await lists.setChecklistMode(store.member, id, { isAdvanced: true }));
+    ok(await statuses.useOwnStatuses(store.member, "checklist", id));
+    ok(await items.addSection(store.member, id, "Before"));
+    const { id: book } = ok(await items.addItem(store.member, id, { title: "Book the stand", dueAt: "2027-01-10T10:00:00Z", priority: "high", recurrence: { freq: "daily", times: ["09:00"] } }));
+    const { id: banner } = ok(await items.addItem(store.member, id, { title: "Print the banner", blockedByItemId: book }));
+    const { id: step } = ok(await items.addSubtask(store.member, banner, { title: "Proof it" }));
+    ok(await items.updateSubtask(store.member, step, { done: true }));
+    ok(await items.setItemDone(store.member, book, true));
+    const { id: old } = ok(await items.addItem(store.member, id, { title: "Last year's flyer" }));
+    ok(await items.setItemArchived(store.member, [old], true));
+
+    const { id: copy } = ok(await lists.duplicateChecklist(store.member, id, "The stand (copy)"));
+    const d = await detail(copy);
+    expect(d).toMatchObject({ title: "The stand (copy)", isAdvanced: true, ownStatuses: true, primaryProjectId: projectId, done: [], archived: 0 });
+    expect(d.projects).toEqual([{ id: projectId, name: "Trade fair" }]);
+    expect(d.entries.filter((e) => e.kind === "section").map((e) => e.kind === "section" && e.section.title)).toEqual(["Before"]);
+    const tasks = d.entries.flatMap((e) => (e.kind === "item" ? [e.item] : []));
+    expect(tasks.map((t) => t.title).sort()).toEqual(["Book the stand", "Print the banner"]);
+    const bookCopy = tasks.find((t) => t.title === "Book the stand");
+    const bannerCopy = tasks.find((t) => t.title === "Print the banner");
+    expect(bookCopy).toMatchObject({ done: false, dueAt: null, recurrence: null, streak: 0, priority: "high" });
+    expect(d.statuses.map((s) => s.id)).toContain(bookCopy?.statusId);
+    expect(bannerCopy?.blockedByItemId).toBe(bookCopy?.id);
+    expect(bannerCopy?.subtasks.map((s) => [s.title, s.done])).toEqual([["Proof it", false]]);
+    // The original is as it was.
+    expect((await detail(id)).done.map((t) => t.title)).toEqual(["Book the stand"]);
+    expect(await lists.duplicateChecklist(other.member, id, "Theirs")).toEqual({ ok: false, problem: "not_found" });
+  });
+});
+
 describe("a project", () => {
   it("has lists (the first its home), stages for their items, and a bar of where they stand", async () => {
     const { id: projectId } = ok(await projects.createProject(store.member, { name: "Black Friday", targetDate: "2026-11-27" }));

@@ -39,6 +39,8 @@ export async function runProjectsOp(member: Membership, op: ProjectsOp): Promise
       const result = await lists.resetChecklist(member, op.id);
       return result.ok ? { ok: true, count: result.reset } : result;
     }
+    case "list.duplicate":
+      return lists.duplicateChecklist(member, op.id, op.title);
     case "list.delete":
       return lists.deleteChecklist(member, op.id);
     case "list.reorder":

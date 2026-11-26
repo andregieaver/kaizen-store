@@ -350,6 +350,74 @@ export async function createChecklist(member: Membership, raw: unknown, projectI
   });
 }
 
+/**
+ * A list copied (P4.2, Life's `duplicateChecklistRecord`), at the end of the store's lists, under the title given. The shape of the work
+ * comes: its settings, its own statuses, its projects and home, its sections, and its tasks (open and done) with their notes, people,
+ * priorities, costs, blockers inside the list and subtasks in order. The record of doing it does not: every task is open, in the list's
+ * first status, with no run. Due dates and repeats stay behind (a deadline belongs to the occasion, two tasks on one schedule are almost
+ * always a mistake), and so do archived tasks.
+ */
+export async function duplicateChecklist(member: Membership, id: string, title: string): Promise<ProjectsResult<{ id: string }>> {
+  if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
+  const input = checklistInput.pick({ title: true }).safeParse({ title });
+  if (!input.success) return { ok: false, problem: "invalid", fields: problemFields(input.error) };
+  const storeId = member.store.id;
+  return projectsGuard(() =>
+    db().transaction(async (tx): Promise<ProjectsResult<{ id: string }>> => {
+      // Its home first (the database makes it a member), its own statuses before its tasks, so they start in the copy's first one.
+      const made = await typedRow(
+        z.object({ id: col.uuid }),
+        sql`
+          insert into commerce.checklists (store_id, title, description, assigned_to, primary_project_id, is_routine, is_advanced, advanced_features, goal, sort_order, created_by)
+          select store_id, ${input.data.title}, description, assigned_to, primary_project_id, is_routine, is_advanced, advanced_features, goal,
+            (select coalesce(max(sort_order) + 1, 0) from commerce.checklists where store_id = ${storeId}::uuid), ${member.account.id}::uuid
+          from commerce.checklists where store_id = ${storeId}::uuid and id = ${id}::uuid
+          returning id
+        `,
+        tx,
+      );
+      if (!made) return { ok: false, problem: "not_found" };
+      const copy = made.id;
+      await tx.execute(sql`
+        insert into commerce.project_checklists (store_id, project_id, checklist_id, sort_order)
+        select pc.store_id, pc.project_id, ${copy}::uuid, (select coalesce(max(o.sort_order) + 1, 0) from commerce.project_checklists o where o.store_id = pc.store_id and o.project_id = pc.project_id)
+        from commerce.project_checklists pc where pc.store_id = ${storeId}::uuid and pc.checklist_id = ${id}::uuid
+        on conflict do nothing
+      `);
+      await tx.execute(sql`
+        insert into commerce.checklist_statuses (store_id, checklist_id, name, slug, colour, bucket, sort_order)
+        select store_id, ${copy}::uuid, name, slug, colour, bucket, sort_order from commerce.checklist_statuses where store_id = ${storeId}::uuid and checklist_id = ${id}::uuid
+      `);
+      await tx.execute(sql`
+        insert into commerce.checklist_sections (store_id, checklist_id, title, sort_order)
+        select store_id, ${copy}::uuid, title, sort_order from commerce.checklist_sections where store_id = ${storeId}::uuid and checklist_id = ${id}::uuid
+      `);
+      // Each task's new id chosen first, so a blocker inside the list and the subtasks find their copies.
+      await tx.execute(sql`
+        with src as materialized (
+          select gen_random_uuid() as new_id, i.id, i.title, i.description, i.sort_order, i.assigned_to, i.priority, i.blocked_reason, i.blocked_by_item_id,
+            i.cost_minor, i.cost_currency
+          from commerce.checklist_items i
+          where i.store_id = ${storeId}::uuid and i.checklist_id = ${id}::uuid and i.archived_at is null
+        ),
+        tasks as (
+          insert into commerce.checklist_items (id, store_id, checklist_id, title, description, sort_order, assigned_to, priority, blocked_reason,
+            blocked_by_item_id, cost_minor, cost_currency, created_by)
+          select s.new_id, ${storeId}::uuid, ${copy}::uuid, s.title, s.description, s.sort_order, s.assigned_to, s.priority, s.blocked_reason,
+            (select b.new_id from src b where b.id = s.blocked_by_item_id), s.cost_minor, s.cost_currency, ${member.account.id}::uuid
+          from src s
+          returning id
+        )
+        insert into commerce.checklist_subtasks (store_id, item_id, title, sort_order, is_goal, assigned_to)
+        select st.store_id, s.new_id, st.title, st.sort_order, st.is_goal, st.assigned_to
+        from commerce.checklist_subtasks st join src s on s.id = st.item_id
+        where st.store_id = ${storeId}::uuid and s.new_id in (select id from tasks)
+      `);
+      return { ok: true, id: copy };
+    }),
+  );
+}
+
 /** A list's details changed: only the fields given. */
 export async function updateChecklist(member: Membership, id: string, raw: unknown): Promise<ProjectsResult> {
   if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };

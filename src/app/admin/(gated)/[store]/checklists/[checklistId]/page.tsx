@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActButton } from "@/components/admin/projects/act-button";
+import { DuplicateButton } from "@/components/admin/projects/duplicate-button";
 import { ChecklistView, type ViewEntry, type ViewItem } from "@/components/admin/projects/checklist-view";
 import { AdminLink, ButtonLink, PageHeader } from "@/components/admin/ui";
 import { adminDate } from "@/lib/admin-date";
@@ -22,7 +23,7 @@ export const metadata: Metadata = { title: "Checklist" };
 /**
  * A checklist (D903, Life's `app/app/checklists/[id]`): its tasks to add and tick, sections, the Done line and each task's editor
  * (`ChecklistView`). The header says how far it has come, when it is due and which projects it is in; More holds what is done to the whole
- * list (untick everything, mark it done or archive it, delete it), Customise how it works.
+ * list (untick everything, duplicate it, mark it done or archive it, delete it), Customise how it works.
  */
 export default async function ChecklistPage({ params }: PageProps<"/admin/[store]/checklists/[checklistId]">) {
   const { store: slug, checklistId } = await params;
@@ -98,6 +99,20 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
                 done={w.checklist.resetDone}
               />
             )}
+            <DuplicateButton
+              listId={list.id}
+              name={fillWords(w.checklist.duplicateCopy, { title: list.title })}
+              base={base}
+              act={act}
+              words={{
+                label: w.checklist.duplicate,
+                title: w.checklist.duplicateTitle,
+                field: w.checklist.duplicateName,
+                hint: w.checklist.duplicateHint,
+                submit: w.checklist.duplicateMake,
+                cancel: w.cancel,
+              }}
+            />
             {list.status === "open" ? (
               <ActButton op={{ op: "list.update", id: list.id, patch: { status: "done" } }} act={act} label={w.checklist.markDone} />
             ) : (

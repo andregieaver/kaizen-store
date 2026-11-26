@@ -5,6 +5,8 @@ import { fillWords } from "@/lib/admin-fill";
 import type { ProjectsMessages } from "@/lib/admin-messages/projects.en";
 import { TIME_WINDOW_ORDER, timesToWindows, WEEK_ORDER, windowsToTimes, type Recurrence, type Repeat, type TimeWindow } from "@/lib/projects-recurrence";
 
+import { Toggle } from "./toggle";
+
 export type RepeatWords = ProjectsMessages["repeat"];
 
 /** The editor's state of a rule: every part kept while the kind changes, so going back to *Every week* finds its days. */
@@ -63,9 +65,6 @@ export function repeatSummary(rule: Recurrence, words: RepeatWords, locale: stri
   }
 }
 
-const TOGGLE =
-  "flex min-h-9 min-w-9 items-center justify-center rounded-pill border border-line px-2 text-sm text-ink-2 aria-[pressed=false]:hover:bg-sunken aria-[pressed=false]:hover:text-ink aria-pressed:border-transparent aria-pressed:bg-inverse aria-pressed:text-inverse-ink disabled:opacity-50";
-
 /** Days to choose from, each a toggle; the last chosen cannot be taken away, since a rule without a day is refused. */
 function Toggles({ label, options, chosen, onChange, disabled }: { label: string; options: { value: number; label: string }[]; chosen: number[]; onChange: (next: number[]) => void; disabled: boolean }) {
   return (
@@ -73,19 +72,17 @@ function Toggles({ label, options, chosen, onChange, disabled }: { label: string
       {options.map((o) => {
         const on = chosen.includes(o.value);
         return (
-          <button
+          <Toggle
             key={o.value}
-            type="button"
-            aria-pressed={on}
+            on={on}
             disabled={disabled}
-            className={TOGGLE}
             onClick={() => {
               const next = on ? chosen.filter((v) => v !== o.value) : [...chosen, o.value];
               if (next.length > 0) onChange(next);
             }}
           >
             {o.label}
-          </button>
+          </Toggle>
         );
       })}
     </div>
@@ -148,16 +145,9 @@ export function RepeatField({ draft, onChange, words, locale, disabled }: { draf
             {TIME_WINDOW_ORDER.map((w) => {
               const on = draft.windows.includes(w);
               return (
-                <button
-                  key={w}
-                  type="button"
-                  aria-pressed={on}
-                  disabled={disabled}
-                  className={TOGGLE}
-                  onClick={() => set({ windows: on ? draft.windows.filter((x) => x !== w) : [...draft.windows, w] })}
-                >
+                <Toggle key={w} on={on} disabled={disabled} onClick={() => set({ windows: on ? draft.windows.filter((x) => x !== w) : [...draft.windows, w] })}>
                   {words.windows[w]}
-                </button>
+                </Toggle>
               );
             })}
           </div>

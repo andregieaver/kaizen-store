@@ -47,6 +47,7 @@ export const projectsOp = z.discriminatedUnion("op", [
     primaryProjectId: scope.optional(),
   }),
   z.object({ op: z.literal("list.reset"), id }),
+  z.object({ op: z.literal("list.duplicate"), id, title: z.string().max(200) }),
   z.object({ op: z.literal("list.delete"), id }),
   z.object({ op: z.literal("list.reorder"), ids }),
   z.object({ op: z.literal("list.fold"), id, sectionId: scope, folded: z.boolean() }),

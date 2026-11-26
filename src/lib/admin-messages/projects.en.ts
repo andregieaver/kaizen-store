@@ -162,6 +162,12 @@ export const projectsEn = {
     bulkDelete: "Delete",
     bulkDeleteConfirm: { one: "Delete {n} task? Its subtasks go with it.", many: "Delete {n} tasks? Their subtasks go with them." },
     more: "More",
+    duplicate: "Duplicate",
+    duplicateTitle: "Duplicate the list",
+    duplicateName: "Name of the copy",
+    duplicateHint: "Its tasks, sections and settings come along, all open; due dates and repeats stay behind.",
+    duplicateCopy: "{title} (copy)",
+    duplicateMake: "Make the copy",
     reset: "Untick everything",
     resetConfirm: "Untick every task in {title}?",
     resetDone: { one: "{n} task unticked.", many: "{n} tasks unticked." },
@@ -234,6 +240,25 @@ export const projectsEn = {
     doneSaid: "{title} done.",
     skippedSaid: "{title} skipped.",
     undo: "Undo",
+  },
+
+  /** A checklist's filters (P4.11). */
+  filter: {
+    open: "Filter",
+    active: { one: "Filter ({n})", many: "Filter ({n})" },
+    label: "Filter the tasks",
+    status: "Status",
+    people: "Who does it",
+    priority: "Priority",
+    due: "Due",
+    nobody: "Nobody",
+    none: "No priority",
+    dueNames: { late: "Late", today: "Today", week: "This week", none: "No date" },
+    option: "{name}: {n}",
+    showing: "Showing {shown} of {total} tasks",
+    clear: "Clear filters",
+    nothing: "No task matches the filters.",
+    nothingToFilter: "Nothing to filter by yet: give the tasks a status, a person, a priority or a due date.",
   },
 
   listSettings: {

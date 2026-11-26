@@ -18,12 +18,14 @@ import { formatMoney } from "@/lib/money";
 import type { ItemMoment } from "@/lib/projects-ops";
 import { dueState } from "@/lib/projects-dates";
 import type { ChecklistFeatures } from "@/lib/projects-features";
+import { isFiltering, matches, NO_FILTER, type TaskFilter } from "@/lib/projects-filter";
 import type { ProjectColour, StatusBucket } from "@/lib/projects-model";
 
 import { DragHandle } from "./drag-handle";
 import { ItemEditor, type EditorItem } from "./item-editor";
 import { StatusPill } from "./parts";
 import { repeatSummary } from "./repeat-field";
+import { TaskFilterPanel } from "./task-filter";
 import { useAct, type ProjectsAct } from "./use-act";
 
 export type ViewItem = EditorItem &
@@ -31,7 +33,7 @@ export type ViewItem = EditorItem &
 export type ViewEntry = { kind: "section"; section: { id: string; title: string } } | { kind: "item"; item: ViewItem };
 export type ViewStatus = { id: string; name: string; colour: ProjectColour; bucket: StatusBucket };
 
-export type ChecklistWords = Pick<ProjectsMessages, "checklist" | "item" | "repeat" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody" | "due">;
+export type ChecklistWords = Pick<ProjectsMessages, "checklist" | "item" | "repeat" | "filter" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody" | "due">;
 
 type Props = {
   list: { id: string; title: string; isRoutine: boolean; features: ChecklistFeatures };
@@ -71,7 +73,7 @@ const keyOf = (e: ViewEntry) => (e.kind === "section" ? `section:${e.section.id}
  * A checklist (D903, Life's `checklist-detail-body.tsx` and `checklist-items-sortable-list.tsx`): Homer types a task and presses Enter
  * (several pasted lines are a task each) and ticks it off; a ticked task sinks below the Done line. Lisa drags tasks and sections into one
  * order (a handle, or the keyboard), folds a section or the Done line for herself, opens a task for its fields and subtasks, and with Select
- * gives many tasks a status, moves, archives or deletes them. A repeating task (P4.1) says how often, its run and when it is back; it can
+ * gives many tasks a status, moves, archives or deletes them, and filters them by status, person, priority and due (P4.11). A repeating task (P4.1) says how often, its run and when it is back; it can
  * be skipped this time, and its tick or skip undone for a moment after. Every change shows at once and the page's next drawing confirms it;
  * a refusal is said in the line at the foot.
  */
@@ -92,6 +94,8 @@ export function ChecklistView(props: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [draft, setDraft] = useState("");
   const [sectionDraft, setSectionDraft] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filter, setFilter] = useState<TaskFilter>(NO_FILTER);
   const [undo, setUndo] = useState<{ item: ViewItem; said: string; moment: ItemMoment } | null>(null);
   useEffect(() => {
     if (!undo) return;
@@ -110,6 +114,9 @@ export function ChecklistView(props: Props) {
   const statusOf = (id: string | null) => statuses.find((s) => s.id === id) ?? null;
   const personOf = (id: string | null) => team.find((p) => p.id === id)?.name ?? null;
   const now = new Date(props.now);
+  const filtering = isFiltering(filter);
+  const visible = (item: ViewItem) => !filtering || matches(item, filter, now, props.timeZone);
+  const filterable = list.features.status || list.features.assignment || list.features.priority || list.features.dueDate;
 
   const add = () => {
     const titles = draft
@@ -164,10 +171,18 @@ export function ChecklistView(props: Props) {
 
   // A folded section hides the tasks after it, up to the next section.
   const sectionAbove = (index: number) => entries.slice(0, index).findLast((e) => e.kind === "section");
+  // While filtering, a section shows only when a task under it matches.
+  const matchUnder = (index: number) => {
+    for (const e of entries.slice(index + 1)) {
+      if (e.kind === "section") return false;
+      if (!isDone(e.item) && visible(e.item)) return true;
+    }
+    return false;
+  };
   const shown = entries.filter((entry, index) => {
-    if (entry.kind === "section") return true;
+    if (entry.kind === "section") return !filtering || matchUnder(index);
     const above = sectionAbove(index);
-    return !(above?.kind === "section" && folds.has(above.section.id)) && !isDone(entry.item);
+    return !(above?.kind === "section" && folds.has(above.section.id)) && !isDone(entry.item) && visible(entry.item);
   });
   const countUnder = (sectionId: string) => {
     const at = entries.findIndex((e) => e.kind === "section" && e.section.id === sectionId);
@@ -178,7 +193,8 @@ export function ChecklistView(props: Props) {
     }
     return n;
   };
-  const doneItems = [...props.done.filter((i) => isDone(i)), ...props.entries.flatMap((e) => (e.kind === "item" && isDone(e.item) && !e.item.done ? [e.item] : []))];
+  const doneItems = [...props.done.filter((i) => isDone(i)), ...props.entries.flatMap((e) => (e.kind === "item" && isDone(e.item) && !e.item.done ? [e.item] : []))].filter(visible);
+  const matching = allItems.filter(visible).length;
   const openCount = allItems.filter((i) => !isDone(i)).length;
 
   const row = (item: ViewItem, sortable: boolean) => (
@@ -186,7 +202,7 @@ export function ChecklistView(props: Props) {
       key={item.id}
       item={item}
       done={isDone(item)}
-      sortable={sortable && canChange && !selecting}
+      sortable={sortable && canChange && !selecting && !filtering}
       selecting={selecting}
       selected={selected.has(item.id)}
       onSelect={() => toggleSelected(item.id)}
@@ -239,21 +255,47 @@ export function ChecklistView(props: Props) {
         </form>
       )}
 
-      {canChange && allItems.length > 0 && (
+      {allItems.length > 0 && (canChange || filterable) && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted">{selecting ? countWords(selected.size, w.selected) : w.dragHint}</p>
-          <Button
-            kind="quiet"
-            size="dense"
-            aria-pressed={selecting}
-            onClick={() => {
-              setSelecting((s) => !s);
-              setSelected(new Set());
-            }}
-          >
-            {selecting ? w.selectDone : w.selectMode}
-          </Button>
+          <p className="text-sm text-muted">
+            {selecting ? countWords(selected.size, w.selected) : filtering ? fillWords(words.filter.showing, { shown: matching, total: allItems.length }) : canChange ? w.dragHint : ""}
+          </p>
+          <span className="flex flex-wrap items-center gap-1">
+            {filterable && (
+              <Button kind="quiet" size="dense" aria-expanded={filterOpen} onClick={() => setFilterOpen((o) => !o)}>
+                {filtering ? countWords(Object.values(filter).flat().length, words.filter.active) : words.filter.open}
+              </Button>
+            )}
+            {canChange && (
+              <Button
+                kind="quiet"
+                size="dense"
+                aria-pressed={selecting}
+                onClick={() => {
+                  setSelecting((s) => !s);
+                  setSelected(new Set());
+                }}
+              >
+                {selecting ? w.selectDone : w.selectMode}
+              </Button>
+            )}
+          </span>
         </div>
+      )}
+
+      {filterOpen && filterable && (
+        <TaskFilterPanel
+          tasks={allItems}
+          filter={filter}
+          onChange={setFilter}
+          features={list.features}
+          statuses={statuses}
+          team={team}
+          now={now}
+          timeZone={props.timeZone}
+          words={words.filter}
+          priorityNames={words.priorities}
+        />
       )}
 
       {selecting && selected.size > 0 && (
@@ -287,7 +329,9 @@ export function ChecklistView(props: Props) {
         </div>
       )}
 
-      {openCount === 0 && entries.every((e) => e.kind === "item") ? (
+      {filtering && matching === 0 ? (
+        <EmptyState compact title={words.filter.nothing} />
+      ) : openCount === 0 && entries.every((e) => e.kind === "item") ? (
         <EmptyState compact title={allItems.length === 0 ? w.empty : w.allDone} />
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -301,7 +345,7 @@ export function ChecklistView(props: Props) {
                     folded={folds.has(entry.section.id)}
                     count={countUnder(entry.section.id)}
                     onFold={() => toggleFold(entry.section.id, entry.section.id)}
-                    canChange={canChange && !selecting}
+                    canChange={canChange && !selecting && !filtering}
                     words={words}
                     run={run}
                   />

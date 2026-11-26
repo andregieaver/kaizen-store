@@ -221,17 +221,18 @@ Status: Planned, Building, Done (date and commit).
 
 | Id | Step | Status |
 |---|---|---|
-| P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Done, 26 Nov 2026 |
-| P4.2 | Duplicate a list with its options; templates | Planned |
+| P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Done, 26 Nov 2026 (b7b673b) |
+| P4.2 | Duplicate a list with its options (templates are P4.12) | Done, 26 Nov 2026 |
 | P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Planned |
 | P4.4 | Comments on an item (Life's activity thread) | Planned |
 | P4.5 | Attachments from the media library | Planned |
 | P4.6 | Category and labels | Planned |
 | P4.7 | A customer on an item (Life's contacts) | Planned |
-| P4.8 | Calendar and Timeline views of a project; every item across lists (Life's *All items*); cost summary; due countdown | Planned |
+| P4.8 | Calendar and Timeline views of a project; every item across lists (Life's *All items*, with P4.11's filters); cost summary; due countdown | Planned |
 | P4.9 | What is due on Home's attention list | Planned |
 | P4.10 | A light refresh while a list is open, for a team working together | Planned |
-| P4.11 | Filters on a list and across lists (Life's `checklist-item-filter.tsx`): by status, person, priority and due | Planned |
+| P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 |
+| P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Planned |
 
 ### P5: the AI manager and events
 
@@ -309,3 +310,15 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   second finds nothing and a late write never unticks a task ticked in between.
 - **Differs from Life.** Saving a task's other fields never unticks it (Life's form unticked a task whenever it carried the repeat, which
   it always did); skipping an open task keeps its next time (it is already the next); a rollover clears the skip.
+
+## As built: steps P4.2 and P4.11 (26 November 2026)
+
+- **Duplicate** (More, on a list): the copy is named first, its name filled in as *{title} (copy)* and chosen, so Enter makes it; the page
+  moves to the copy (`duplicateChecklist()`). It brings the list's settings, own statuses, projects and home, sections, and its open and done
+  tasks with their notes, people, priorities, costs, a blocker inside the list (pointed at its copy) and subtasks, every task open in the
+  list's first status and no run. Due dates, repeats and archived tasks stay behind, as in Life. One transaction; each task's new id is
+  chosen before the insert so blockers and subtasks find their copies.
+- **Filters** (*Filter*, beside *Select*, for anyone who can read the list): a group for each field the list uses (status, who does it,
+  priority, due: late, today, this week, no date), offering only the values its tasks have, each with its count over the whole list
+  (`src/lib/projects-filter.ts`). Within a group any value matches, across groups every one must. While filtering, a section shows only when
+  a task under it matches, dragging rests, and the line says *Showing 3 of 12 tasks*. Kept on the page only, not in the address.

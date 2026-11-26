@@ -7,7 +7,7 @@ import { E2E_STORE, OWNER } from "./accounts";
 /**
  * Projects and checklists (D903) as an owner uses them: the feature is switched on under Features; a checklist is made, tasks are added with
  * Enter and one is ticked below the Done line; the list made Advanced, a task set to repeat every day, ticked (its run shows) and the tick
- * undone; a project is made, a checklist added to it, and a task moved to the next stage on its board
+ * undone; the list filtered by status and duplicated under a name of its own; a project is made, a checklist added to it, and a task moved to the next stage on its board
  * with the keyboard's way (*Move to*). The store is left as it was found: its projects and lists deleted, the feature switched off again.
  */
 test.use({ storageState: OWNER.state });
@@ -55,7 +55,7 @@ test.afterAll(async ({ browser }) => {
   const sql = testDb();
   try {
     await sql`delete from commerce.projects where name = ${PROJECT}`;
-    await sql`delete from commerce.checklists where title in (${LIST}, ${`Campaign ${run}`})`;
+    await sql`delete from commerce.checklists where title in (${LIST}, ${`${LIST} (copy)`}, ${`Campaign ${run}`})`;
   } finally {
     await sql.end();
   }
@@ -102,6 +102,25 @@ test("an owner makes a task repeat every day, ticks it off and undoes the tick",
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(tick).not.toBeChecked({ timeout: 30_000 });
   await expect(page.getByText("1 in a row")).toHaveCount(0);
+});
+
+test("an owner filters the list by status and duplicates it", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/checklists`);
+  await page.getByRole("link", { name: LIST }).first().click();
+  await expect(page.getByRole("heading", { level: 1, name: LIST })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("group", { name: "Status", exact: true }).getByRole("button", { name: "Done: 1" }).click();
+  await expect(page.getByText("Showing 1 of 2 tasks")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Count the till" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.getByRole("button", { name: "Open Count the till" })).toBeVisible();
+
+  await page.locator("summary", { hasText: "More" }).click();
+  await page.getByRole("button", { name: "Duplicate", exact: true }).click();
+  await expect(page.getByLabel("Name of the copy")).toHaveValue(`${LIST} (copy)`);
+  await page.getByRole("button", { name: "Make the copy" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: `${LIST} (copy)` })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("0 of 2 done")).toBeVisible();
 });
 
 test("an owner makes a project, adds a checklist and moves a task on the board", async ({ page }) => {
