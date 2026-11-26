@@ -661,6 +661,7 @@ export const assistantNb: AssistantMessages = {
     social_report: "Leser rådene om sosiale medier",
     social_plan: "Spør rådgiveren for sosiale medier",
     write_social_posts: "Skriver innleggene",
+    publish_social_post: "Setter innlegget i kø",
     start_flow: "Starter flyten",
     create_flow: "Skriver flyten",
     change_flow: "Endrer flyten",

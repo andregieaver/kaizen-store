@@ -209,6 +209,7 @@ export const TOOL_EXTENSIONS: Partial<Record<OwnerToolName, ExtensionId>> = {
   social_report: "social",
   social_plan: "social",
   write_social_posts: "social",
+  publish_social_post: "social",
   // Work (D122).
   work_overview: "work",
   list_work_clients: "work",

@@ -95,6 +95,7 @@ export default async function SocialPostsPage({
         hasAi={Boolean(ai?.textModel)}
         makesPictures={Boolean(abilities?.pictures)}
         publishTo={publishTo}
+        timeZone={store.timeZone}
         dateLocale={ADMIN_LANG_FACTS[lang].locale}
         words={w.calendar}
       />

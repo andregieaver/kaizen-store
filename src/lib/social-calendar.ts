@@ -28,6 +28,8 @@ export type CalendarDraft = {
   video?: string | null;
   /** Published (S3.1): its address on the platform (null when Meta gave none); absent while not. A refusal's words, in `publishProblem`. */
   published?: { url: string | null } | null;
+  /** When the posting queue puts it out (S3.2); absent while it goes out only by hand. */
+  scheduledFor?: string | null;
   publishProblem?: string | null;
 };
 

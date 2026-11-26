@@ -6,6 +6,7 @@ import { approveSocialPosts, editSocialPost } from "@/server/social-calendar";
 import { dropSocialScene, makeSocialScene } from "@/server/social-scenes";
 import { keepSlideshow, startSlideshowUpload } from "@/server/social-slideshow";
 import { publishSocialPost } from "@/server/social-publish";
+import { scheduleSocialPosts } from "@/server/social-queue";
 import { checkSocialPosts } from "@/server/social-vision";
 
 /**
@@ -20,7 +21,14 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   if (!member) return NextResponse.json({ ok: false, problem: "Not found." }, { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   const body = (await request.json().catch(() => null)) as { do?: unknown; ids?: unknown } | null;
-  if (body?.do === "approve" || body?.do === "unapprove") return NextResponse.json(await approveSocialPosts(member, body.ids, body.do === "approve"));
+  if (body?.do === "approve") {
+    const approved = await approveSocialPosts(member, body.ids, true);
+    // An approved Instagram or Facebook post is queued for its planned day (S3.2); the calendar shows when, and it can be taken off.
+    if (approved.ok) await scheduleSocialPosts(member, body.ids, true);
+    return NextResponse.json(approved);
+  }
+  if (body?.do === "unapprove") return NextResponse.json(await approveSocialPosts(member, body.ids, false));
+  if (body?.do === "schedule" || body?.do === "unschedule") return NextResponse.json(await scheduleSocialPosts(member, body.ids, body.do === "schedule"));
   if (body?.do === "edit") return NextResponse.json(await editSocialPost(member, body));
   // The vision check (S2.3): each picture looked at by the store's model that sees pictures.
   if (body?.do === "check") return NextResponse.json(await checkSocialPosts(member, body.ids, request.nextUrl.origin));

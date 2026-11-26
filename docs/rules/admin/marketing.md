@@ -648,6 +648,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
   (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
 
+## The social posting queue (D870 S3.2, `src/lib/social-queue.ts` pure, `src/server/social-queue.ts`, `social-queue-run.ts`)
+
+- **The social posting queue (D870 S3.2, `src/lib/social-queue.ts` pure, `src/server/social-queue.ts`, `social-queue-run.ts`)**: only an
+  approved Instagram or Facebook post is queued. `scheduleSocialPosts()` (the calendar's `approve`, `schedule`, `unschedule`) sets
+  `scheduled_for` to `scheduleFor()` (`POST_HOUR` in the store's time on its planned day; today's late post now; a past day never) and
+  `scheduled_by`; `requestSocialPost()` (`publish_social_post`, gated `public`, in `NEVER_AUTOMATIC`) queues one for now. Taking back a yes,
+  editing and a new scene clear the queue. `runSocialQueue()` (the dispatcher's `socialQueue`, never throws) publishes due posts through
+  `publishSocialPost()` as who queued them, their membership, `marketing:write` and the extension `social` read again (else handed back with
+  a problem), at most `DAY_POSTS_MAX` a day per channel, `nextTry()` after a refusal and none after `QUEUE_TRIES_MAX`. `social-queue.ts`
+  loads no publishing, as the manager's tools, which the shop's functions load, use it (ci-red #66).
+
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 
 - **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram

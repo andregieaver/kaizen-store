@@ -19076,6 +19076,15 @@ export const socialPosts = commerce
       publishProblem: text("publish_problem"),
       /** A publish under way claims the post (D870 S3.1), so a second press cannot publish it twice; a claim older than five minutes lapses. */
       publishStartedAt: timestamp("publish_started_at", { withTimezone: true }),
+      /**
+       * The posting queue (D870 S3.2): when an approved post goes out on its own, set by a person (approving it for a channel that may be
+       * posted to, its planned day at the posting hour; or *Post on its day*) or by a yes to the AI manager's request (now), and who.
+       * `publish_tries` counts the queue's attempts; `next_try_at` waits after a refusal. Null `scheduled_for`: it goes out only by hand.
+       */
+      scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+      scheduledBy: uuid("scheduled_by").references(() => accounts.id, { onDelete: "set null" }),
+      publishTries: smallint("publish_tries").notNull().default(0),
+      nextTryAt: timestamp("next_try_at", { withTimezone: true }),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },
@@ -19085,6 +19094,8 @@ export const socialPosts = commerce
       index("social_posts_scene_idx").on(t.sceneMediaId),
       index("social_posts_video_idx").on(t.videoMediaId),
       index("social_posts_published_by_idx").on(t.publishedBy),
+      index("social_posts_scheduled_by_idx").on(t.scheduledBy),
+      index("social_posts_due_idx").on(t.scheduledFor).where(sql`${t.scheduledFor} is not null and ${t.publishedAt} is null`),
       index("social_posts_approved_by_idx").on(t.approvedBy),
       uniqueIndex("social_posts_ref_idx").on(t.storeId, t.ref, t.channel),
       index("social_posts_list_idx").on(t.storeId, t.createdAt),

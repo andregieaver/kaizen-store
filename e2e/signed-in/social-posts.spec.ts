@@ -316,6 +316,13 @@ test("an approved post is posted from the calendar where the connection allows i
   }
   await page.reload();
   await expect(instagram.getByRole("button", { name: "Post now" })).toBeVisible();
+  // Approving queued it for its planned day (S3.2): the calendar says when it goes out, and a person may take it off the queue and back.
+  await expect(instagram).toContainText("Goes out");
+  await instagram.getByRole("button", { name: "Don't post on its day" }).click();
+  await expect(instagram.getByRole("button", { name: "Post on its day" })).toBeVisible();
+  await expect(instagram).not.toContainText("Goes out");
+  await instagram.getByRole("button", { name: "Post on its day" }).click();
+  await expect(instagram).toContainText("Goes out");
   await calendar.scrollIntoViewIfNeeded();
   await calendar.screenshot({ path: "test-results/social-calendar-post-now.png" });
 

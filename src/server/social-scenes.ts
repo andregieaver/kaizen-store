@@ -88,7 +88,7 @@ async function makeScene(member: Membership, store: Store, post: z.infer<typeof 
   // The picture changed: its old verdict and yes no longer hold.
   await db().execute(sql`
     update commerce.social_posts set scene_media_id = ${mediaId}::uuid, scene_tries = scene_tries + 1,
-      checked_at = null, check_problems = '{}', check_note = '', approved_at = null, approved_by = null
+      checked_at = null, check_problems = '{}', check_note = '', approved_at = null, approved_by = null, scheduled_for = null, scheduled_by = null
     where store_id = ${store.id}::uuid and id = ${post.id}::uuid`);
   return { ok: true, mediaId };
 }

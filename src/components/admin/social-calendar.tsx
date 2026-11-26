@@ -34,6 +34,7 @@ export function SocialCalendar({
   hasAi,
   makesPictures,
   publishTo,
+  timeZone,
   dateLocale,
   words: w,
 }: {
@@ -47,6 +48,8 @@ export function SocialCalendar({
   makesPictures: boolean;
   /** The channels whose connection allows publishing from here (S3.1). */
   publishTo: Partial<Record<string, boolean>>;
+  /** The store's time zone, for when a queued post goes out. */
+  timeZone: string;
   dateLocale: string;
   words: SocialMessages["calendar"];
 }) {
@@ -92,6 +95,8 @@ export function SocialCalendar({
       await postJson(`${base}/calendar`, { do: "publish", id });
       window.location.reload();
     });
+  const schedule = (id: string, on: boolean) => run(`schedule-${id}`, [() => postJson(`${base}/calendar`, { do: on ? "schedule" : "unschedule", ids: [id] })]);
+  const when = (iso: string) => new Date(iso).toLocaleString(dateLocale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone });
   const drawn = (id: string) => run(`drawn-${id}`, [() => postJson(`${base}/calendar`, { do: "no_scene", id })]);
   /** The slideshow (S2.5): made in this browser from the post's pictures, uploaded to the library, kept on the post. */
   const video = (id: string) =>
@@ -197,6 +202,9 @@ export function SocialCalendar({
                               {it.draft.video ? ` · ${w.videoMade}` : ""}
                               {it.draft.published ? ` · ${w.posted}` : ""}
                             </span>
+                            {!it.draft.published && it.draft.scheduledFor && (
+                              <span className="text-caption text-ink">{fillWords(w.goesOut, { when: when(it.draft.scheduledFor) })}</span>
+                            )}
                             {it.draft.published?.url && (
                               <a className="text-caption underline" href={it.draft.published.url} target="_blank" rel="noopener noreferrer">
                                 {w.viewPost}
@@ -263,6 +271,11 @@ export function SocialCalendar({
                           {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (
                             <button type="button" className={primary} disabled={pending} onClick={() => publish(it.draft!.id)}>
                               {w.postNow}
+                            </button>
+                          )}
+                          {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (
+                            <button type="button" className={secondary} disabled={pending} onClick={() => schedule(it.draft!.id, !it.draft!.scheduledFor)}>
+                              {it.draft.scheduledFor ? w.dontPostOnItsDay : w.postOnItsDay}
                             </button>
                           )}
                           {it.draft && !it.draft.published && makesPictures && (it.draft.scene?.tries ?? 0) < SCENE_TRIES_MAX ? (

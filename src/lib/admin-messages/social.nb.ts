@@ -167,6 +167,9 @@ export const socialNb: SocialMessages = {
     viewPost: "Se innlegget",
     postFailed: "Postingen mislyktes: {problem}",
     connectToPost: "Koble til {channel} og tillat posting for å poste herfra.",
+    goesOut: "Postes {when}",
+    postOnItsDay: "Post på dagen",
+    dontPostOnItsDay: "Ikke post på dagen",
     checkPicture: "Sjekk bildet",
     checkWaits: "Et innlegg der bildesjekken fant noe, er ikke med i Godkjenn uka: godkjenn det for seg.",
     problems: {

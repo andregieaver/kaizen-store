@@ -40,6 +40,7 @@ const DRAFT_ROW = z.object({
   published_at: col.timestampOrNull,
   published_url: col.textOrNull,
   publish_problem: col.textOrNull,
+  scheduled_for: col.timestampOrNull,
 });
 
 /** The calendar of the store's two weeks from today's Monday: the advice's plan and the drafts written for its days. */
@@ -48,13 +49,13 @@ export async function calendarOf(storeId: string, today: string, slots: readonly
   const rows = await typedRows(
     DRAFT_ROW,
     sql`
-      select p.id, p.planned_for::text as day, p.channel, p.caption, p.approved_at is not null as approved, p.product_id, p.topic, p.edited_at, p.checked_at, p.check_problems, p.check_note, p.scene_media_id is not null as scene, p.scene_tries, v.url as video, p.published_at, p.published_url, p.publish_problem
+      select p.id, p.planned_for::text as day, p.channel, p.caption, p.approved_at is not null as approved, p.product_id, p.topic, p.edited_at, p.checked_at, p.check_problems, p.check_note, p.scene_media_id is not null as scene, p.scene_tries, v.url as video, p.published_at, p.published_url, p.publish_problem, p.scheduled_for
       from commerce.social_posts p left join commerce.media v on v.id = p.video_media_id and v.store_id = p.store_id
       where p.store_id = ${storeId}::uuid and p.planned_for between ${first}::date and ${addDays(first, CALENDAR_WEEKS * 7 - 1)}::date
       order by p.created_at desc
     `,
   );
-  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null, scene: { on: r.scene, tries: r.scene_tries }, video: r.video, published: r.published_at ? { url: r.published_url } : null, publishProblem: r.publish_problem }));
+  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null, scene: { on: r.scene, tries: r.scene_tries }, video: r.video, published: r.published_at ? { url: r.published_url } : null, publishProblem: r.publish_problem, scheduledFor: r.scheduled_for }));
   return socialCalendar(today, slots, drafts);
 }
 
@@ -71,7 +72,7 @@ export async function approveSocialPosts(member: Membership, raw: unknown, appro
         update commerce.social_posts set approved_at = now(), approved_by = ${member.account.id}::uuid
         where store_id = ${member.store.id}::uuid and id = any(${list}::uuid[]) and approved_at is null returning id`)
     : await db().execute(sql`
-        update commerce.social_posts set approved_at = null, approved_by = null
+        update commerce.social_posts set approved_at = null, approved_by = null, scheduled_for = null, scheduled_by = null, next_try_at = null
         where store_id = ${member.store.id}::uuid and id = any(${list}::uuid[]) and approved_at is not null and published_at is null and publish_started_at is null returning id`);
   if (rows.length > 0) await audit(member.account.id, member.store.id, approve ? "store.social_posts_approved" : "store.social_posts_unapproved", { posts: rows.length });
   return { ok: true, changed: rows.length };
@@ -104,7 +105,7 @@ export async function editSocialPost(member: Membership, raw: unknown): Promise<
     return { ok: false, problem: `The words make claims the shop does not make in posts: ${found}.` };
   }
   await db().execute(sql`
-    update commerce.social_posts set caption = ${caption}, edited_at = now(), approved_at = null, approved_by = null,
+    update commerce.social_posts set caption = ${caption}, edited_at = now(), approved_at = null, approved_by = null, scheduled_for = null, scheduled_by = null,
       checked_at = null, check_problems = '{}', check_note = ''
     where store_id = ${member.store.id}::uuid and id = ${parsed.data.id}::uuid`);
   await audit(member.account.id, member.store.id, "store.social_post_edited", {});

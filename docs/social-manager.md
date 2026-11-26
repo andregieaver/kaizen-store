@@ -159,10 +159,18 @@ address are kept, or its refusal in its words; a published post's words and yes 
 comes with the queue (S3.2), so the shop's functions, which load the manager's tools, never load the publishing (ci-red #66). Instagram now asks `instagram_business_content_publish` and Facebook's
 configuration `pages_manage_posts`: an owner connects again to allow posting. Other businesses' accounts need Meta's App Review for both.
 
+S3.2 as built: approving an Instagram or Facebook post on the calendar queues it for 10:00 in the store's time on its planned day
+(`scheduleSocialPosts()`, `src/server/social-queue.ts`, rules in `src/lib/social-queue.ts`); the calendar says when it goes out, with
+*Don't post on its day* and *Post on its day*. The dispatcher's `socialQueue` (`src/server/social-queue-run.ts`) publishes each post whose
+moment came, as who queued it (membership, permission and the extension read again), at most 25 a day per channel, waiting 15 minutes then
+an hour after a refusal and giving up after three, Meta's words left for a person. The AI manager's `publish_social_post` (on the owner's
+yes) queues one for now, loading no publishing. Tokens: Instagram's are renewed by the feed's job before they run out; a Page's token does
+not expire.
+
 | Step | What |
 |---|---|
 | S3.1 | Publishing to Instagram and Facebook, approval per post. **Done 2026-11-26** (below) |
-| S3.2 | The queue, retries, limits and token refresh |
+| S3.2 | The queue, retries, limits and token refresh. **Done 2026-11-26** (below) |
 | S3.3 | The toggle and the rules, through `autonomyDecision()` |
 | S3.4 | Pinterest |
 | S3.5 | TikTok (after the audit) |

@@ -9,6 +9,7 @@ import { OwnerToolError } from "./owner-tool-error";
 import type { PermissionHolder } from "@/lib/permissions";
 import { latestAdvice, writeSocialAdvice } from "./social-advice";
 import { writeSocialPosts } from "./social-posts";
+import { requestSocialPost } from "./social-queue";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { col, typedRows } from "./typed-rows";
@@ -84,8 +85,8 @@ const adviceOf = (advice: Advice) => ({
 });
 
 /**
- * The approved posts not yet published (S3.1): their channels and days, and their words' start. The owner posts them with *Post now* on
- * Social posts; the manager's own request to publish comes with the posting queue (S3.2), so the shop's functions never load the publishing.
+ * The approved posts not yet published (S3.1): their ids, channels and days, and their words' start, for publish_social_post, which puts one
+ * on the posting queue (S3.2). The queue's job publishes it; the tools load no publishing, as the shop's functions load the tools (ci-red #66).
  */
 async function readyToPost(storeId: string) {
   const rows = await typedRows(
@@ -118,3 +119,9 @@ export async function writeSocialPostsTool(ctx: Ctx, input: OwnerToolInput<"writ
   };
 }
 
+/** Puts an approved post on the posting queue for now (S3.2), once the owner said yes: the dispatcher publishes it within minutes. */
+export async function publishSocialPostTool(ctx: Ctx, input: OwnerToolInput<"publish_social_post">) {
+  const result = await requestSocialPost(memberOf(ctx), input.post_id);
+  if (!result.ok) throw new OwnerToolError(result.problem);
+  return { done: "Queued: it goes out within a few minutes, and Social posts shows it as posted with its link.", link: link(ctx.store) };
+}

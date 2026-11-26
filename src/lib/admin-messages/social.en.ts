@@ -168,6 +168,9 @@ export const socialEn = {
     viewPost: "View the post",
     postFailed: "Posting failed: {problem}",
     connectToPost: "Connect {channel} with posting allowed to post from here.",
+    goesOut: "Goes out {when}",
+    postOnItsDay: "Post on its day",
+    dontPostOnItsDay: "Don't post on its day",
     checkPicture: "Check the picture",
     checkWaits: "A post whose picture check found something is left out of Approve the week: approve it on its own.",
     problems: {

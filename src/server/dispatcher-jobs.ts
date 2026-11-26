@@ -22,6 +22,7 @@ import { expireAssistantApprovals } from "@/server/owner-assistant";
 import { refreshInstagramFeeds } from "@/server/instagram";
 import { watchRivals } from "@/server/market-rivals";
 import { refreshSocialInsights } from "@/server/social-insights";
+import { runSocialQueue } from "@/server/social-queue-run";
 import { refreshFacebookInsights } from "@/server/facebook-pages";
 import { sendSocialReviews } from "@/server/social-review";
 import { expireDrafts } from "@/server/draft-orders";
@@ -159,6 +160,8 @@ export const DISPATCHER_JOBS = {
   facebookInsights: () => refreshFacebookInsights(),
   // The social media adviser's weekly review (D870 S1.5): from Monday 08:00 in each store's time, once a week, to who asked the adviser lately.
   socialReviews: () => sendSocialReviews(),
+  // The posting queue (D870 S3.2): approved posts whose moment has come, published as who queued them, ten a run.
+  socialQueue: () => runSocialQueue(),
   experiments: () => runExperimentJobs(),
   returns: () => runReturnJobs(),
   invoices: () => invoiceJobs(),
