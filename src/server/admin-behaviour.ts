@@ -10,17 +10,27 @@ import {
   readingMessage,
   toolsWorthReading,
   worthReading,
+  MAX_RECORDING_NOTES,
+  MAX_USE_SCREENS,
+  recordingNote,
   type AdminFigures,
+  type RecordingNote,
   type ScreenFigure,
+  type UseFigure,
 } from "@/lib/admin-behaviour";
+import { ADMIN_RECORDING_BUCKET, ADMIN_RECORDING_FOLDER, pathsOf } from "@/lib/recording";
 
+import { adminScreenFigures } from "./admin-use";
 import { aiFor, completeText } from "./ai";
 import { logIncident } from "./incidents";
 import { ownSpeedReport } from "./own-speed";
+import { recordingFiles, type RecordingFiles } from "./recording-files";
+import { readEvents } from "./recordings-read";
 import { col, typedRows } from "./typed-rows";
 
 /**
- * Learning from how store owners use the admin (D895 phase 3a): the week's figures from signals the platform already keeps as counts, and
+ * Learning from how store owners use the admin (D895 phase 3a, and 3b's admin heatmaps and recording notes): the week's figures from signals the
+ * platform keeps as counts, and
  * the weekly reading by the platform's AI that turns them into at most three improvements for the owner to approve. Counts only, across
  * every store and the platform: never a message's words, never a store or a person. Owners' own app tools (`app__…`, D363) are left out:
  * their names are an owner's, and would point at one store.
@@ -68,15 +78,53 @@ async function screenFigures(now: Date): Promise<ScreenFigure[]> {
   );
 }
 
-/** The week's figures, worked out in code; only what is above its minimum volume. */
-export async function adminFigures(now: Date = new Date()): Promise<AdminFigures> {
+/** The admin heatmaps' screens over the week whose shares are above their minimum, the most frustrated first (D895 phase 3b). */
+async function heatFiguresOfWeek(now: Date): Promise<UseFigure[]> {
+  const rows = await adminScreenFigures(now, 7);
+  return rows
+    .filter((r) => r.frustratedPct !== null && r.endPct !== null)
+    .slice(0, MAX_USE_SCREENS)
+    .map((r) => ({ screen: r.screen, views: r.views, frustratedPct: r.frustratedPct!, endPct: r.endPct!, deadClicks: r.deadClicks, rageClicks: r.rageClicks }));
+}
+
+/**
+ * The notes of up to five of the week's recordings on the screens the figures point at, most frustrated first: what happened, written by
+ * code from the kept events (`recordingNote()`), never the recording. Without the bucket, none.
+ */
+async function recordingNotes(since: Date, screens: readonly string[], files: RecordingFiles | null): Promise<RecordingNote[]> {
+  if (!files || screens.length === 0) return [];
+  const rows = await typedRows(
+    z.object({ id: col.uuid, screens: z.array(z.string()), seqs: z.array(z.union([z.number(), z.string()]).transform(Number)) }),
+    sql`select id, screens, seqs from commerce.platform_admin_recordings
+        where started_at >= ${since.toISOString()}::timestamptz and segments > 0 and screens && ${`{${screens.join(",")}}`}::text[]
+        order by rage_clicks desc, dead_clicks desc, started_at desc limit ${MAX_RECORDING_NOTES}`,
+  );
+  const notes: RecordingNote[] = [];
+  for (const row of rows) {
+    const paths = pathsOf({ storeId: ADMIN_RECORDING_FOLDER, id: row.id, sealed: false, seqs: row.seqs });
+    const text = recordingNote(await readEvents(files, paths, [], { recordingId: row.id }));
+    if (text) notes.push({ label: `r${notes.length + 1}`, id: row.id, screens: row.screens, text });
+  }
+  return notes;
+}
+
+/** The week's figures, worked out in code; only what is above its minimum volume. `files` is injectable for tests. */
+export async function adminFigures(now: Date = new Date(), deps: { files?: RecordingFiles | null } = {}): Promise<AdminFigures> {
   const since = new Date(now.getTime() - 7 * DAY_MS);
-  const [tools, screens] = await Promise.all([toolFigures(since), screenFigures(now)]);
+  const [tools, screens, use] = await Promise.all([toolFigures(since), screenFigures(now), heatFiguresOfWeek(now)]);
+  const files = deps.files === undefined ? recordingFiles(ADMIN_RECORDING_BUCKET) : deps.files;
+  const notes = await recordingNotes(
+    since,
+    use.map((u) => u.screen),
+    files,
+  );
   return {
     from: since.toISOString().slice(0, 10),
     to: now.toISOString().slice(0, 10),
     tools: toolsWorthReading(tools),
     screens,
+    use,
+    notes,
   };
 }
 
@@ -86,8 +134,8 @@ export async function adminFigures(now: Date = new Date()): Promise<AdminFigures
  * to approve (a push goes at once). A proposal made before only counts (its fingerprint). Nothing to read, no AI set: no call. An error
  * is the caller's to report (the job's `report()`).
  */
-export async function readAdminBehaviour(now: Date = new Date()): Promise<{ read: boolean; proposed: number }> {
-  const figures = await adminFigures(now);
+export async function readAdminBehaviour(now: Date = new Date(), deps: { files?: RecordingFiles | null } = {}): Promise<{ read: boolean; proposed: number }> {
+  const figures = await adminFigures(now, deps);
   if (!worthReading(figures)) return { read: false, proposed: 0 };
   const connection = await aiFor(null, { feature: "admin_reading" });
   if (!connection) return { read: false, proposed: 0 };

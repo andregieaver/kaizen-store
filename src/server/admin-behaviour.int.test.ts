@@ -19,6 +19,8 @@ vi.mock("./ai", async (importOriginal) => ({
 }));
 
 const { closeDb, db } = await import("@/db/client");
+const { memoryFiles } = await import("./recording-files-test-support");
+const { gzipSync } = await import("node:zlib");
 const { readAdminBehaviour, adminFigures } = await import("./admin-behaviour");
 
 type Row = Record<string, unknown>;
@@ -87,5 +89,46 @@ describe("the weekly reading", () => {
     const calls = asked.length;
     const result = await readAdminBehaviour();
     if (!result.read) expect(asked.length).toBe(calls);
+  });
+});
+
+describe("admin heatmaps and recording notes (D895 phase 3b)", () => {
+  const recording = crypto.randomUUID();
+  const zeros = (n: number) => `{${new Array(n).fill(0).join(",")}}`;
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.platform_admin_heat_days where screen = 's/redirects'`);
+    await db().execute(sql`delete from commerce.platform_admin_recordings where id = ${recording}::uuid`);
+    await db().execute(sql`delete from commerce.platform_incidents where fingerprint like 'platform_ai:s/redirects:%'`);
+  });
+
+  it("hands the model a screen's figures and a recording's note, and keeps a proposal on that screen with the recording's id", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??= "https://project.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= "sb_publishable_test";
+    await db().execute(sql`
+      insert into commerce.platform_admin_heat_days (day, screen, device, views, reach, attention_ms, frustrated_views, dead_clicks, rage_clicks)
+      values (current_date, 's/redirects', 'desktop', 30, ${zeros(21)}::int[], ${zeros(20)}::bigint[], 9, 11, 3)
+      on conflict (day, screen, device) do update set views = 30, frustrated_views = 9, dead_clicks = 11, rage_clicks = 3
+    `);
+    await db().execute(sql`
+      insert into commerce.platform_admin_recordings (id, day, started_at, last_at, device, entry_screen, screens, age_band, dead_clicks, seqs, segments)
+      values (${recording}::uuid, current_date, now(), now(), 'desktop', 's/redirects', '{s/redirects}', 'week', 2, '{0}', 1)
+    `);
+    const files = memoryFiles();
+    const events = [
+      { type: 5, timestamp: 0, data: { tag: "kz-page", payload: { path: "s/redirects" } } },
+      { type: 5, timestamp: 9000, data: { tag: "kz-click", payload: { dead: true, rage: false } } },
+      { type: 3, timestamp: 30_000, data: { source: 2 } },
+    ];
+    await files.upload(`admin/${recording}/000.gz`, new Uint8Array(gzipSync(JSON.stringify({ v: 1, events }))));
+    reply = JSON.stringify({
+      proposals: [{ subject: "s/redirects", title: "Show why a redirect is not saved", why: "Owners click Save and nothing happens.", figure: 30 }],
+    });
+    const result = await readAdminBehaviour(new Date(), { files });
+    expect(result.read).toBe(true);
+    expect(asked.at(-1)?.user).toContain("admin screen s/redirects: 30 views, 30% with a dead or rage click, 0% scrolled to the end, 11 dead clicks, 3 rage clicks");
+    expect(asked.at(-1)?.user).toContain("recording r1 (s/redirects): 0:00 opened s/redirects; 0:09 a click that did nothing; ended at 0:30");
+    const [row] = await db().execute<Row>(sql`select evidence from commerce.platform_incidents where fingerprint like 'platform_ai:s/redirects:%'`);
+    expect(row.evidence).toMatchObject({ adminScreen: "s/redirects", frustratedPct: 30, recordings: recording });
   });
 });

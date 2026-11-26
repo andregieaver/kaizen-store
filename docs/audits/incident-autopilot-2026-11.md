@@ -357,8 +357,10 @@ These are the owner's to write (legal texts are never written by a model, D656 s
       thumbs; the admin's slow screens) and the platform AI's weekly reading into `proposed` entries with evidence, checked against the
       figures. Done 25 November 2026: Mondays in the `incidents` job's daily step; the prompt is no agent's, so its cases are tests in code
       with the model played (`admin-behaviour.int.test.ts`), as D894's; owners' own app tools are left out.
-- [ ] **IA-16b** (phase 3b, after IA-15) The admin heatmaps' figures and the masked event summaries of up to five recordings added to the
-      reading.
+- [x] **IA-16b** (phase 3b, after IA-15) The admin heatmaps' figures and the masked event summaries of up to five recordings added to the
+      reading. Done 26 November 2026: the week's screens with shares above 20 views (at most 8), and notes of up to 5 recordings on them
+      written by code from their page and click events alone (`recordingNote()`, no word kept); a proposal on a screen must cite one of its
+      figures, never a note's time, and carries the recordings' ids so the owner can watch them before Approve.
 
 ### Later
 

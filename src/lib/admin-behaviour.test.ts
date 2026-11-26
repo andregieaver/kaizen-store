@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { checkReading, READING_SYSTEM, readingMessage, toolsWorthReading, type AdminFigures, type ToolFigure } from "./admin-behaviour";
+import { checkReading, READING_SYSTEM, readingMessage, recordingNote, toolsWorthReading, type AdminFigures, type ToolFigure } from "./admin-behaviour";
 import { UNTRUSTED_TEXT } from "./prompt-safety";
 
 /** Learning from how owners use the admin (D895 phase 3a): the figures read, and the model's answer checked in code. */
@@ -48,5 +48,44 @@ describe("the model's answer, checked in code", () => {
     const many: AdminFigures = { ...figures, tools: ["a_one", "a_two", "a_three", "a_four"].map((name) => tool({ tool: name })) };
     const proposals = many.tools.map((t) => ({ subject: t.tool, title: "Fix it", why: "It fails.", figure: 6 }));
     expect(checkReading(answer(proposals), many)).toHaveLength(3);
+  });
+});
+
+describe("admin heatmaps and recording notes in the reading (D895 phase 3b)", () => {
+  const withUse: AdminFigures = {
+    ...figures,
+    tools: [],
+    screens: [],
+    use: [{ screen: "s/settings/payments", views: 40, frustratedPct: 35, endPct: 10, deadClicks: 18, rageClicks: 5 }],
+    notes: [{ label: "r1", id: "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c", screens: ["s/settings/payments"], text: "0:00 opened s/settings/payments; 0:12 a click that did nothing; ended at 1:35" }],
+  };
+
+  it("writes a recording's note from its page and click events alone, never a word or a screen that is not measured", () => {
+    const at = (ms: number, tag: string, payload: Record<string, unknown>) => ({ type: 5, timestamp: 1000 + ms, data: { tag, payload } });
+    const note = recordingNote([
+      { type: 4, timestamp: 1000, data: { href: "s/settings/payments" } },
+      at(0, "kz-page", { path: "s/settings/payments" }),
+      { type: 3, timestamp: 5000, data: { source: 0, texts: [{ id: 1, value: "•••" }] } },
+      at(12_000, "kz-click", { dead: true, rage: false }),
+      at(14_000, "kz-click", { dead: false, rage: true }),
+      at(20_000, "kz-page", { path: "s/orders" }),
+      at(40_000, "kz-page", { path: "s/products/new" }),
+      at(95_000, "other", { name: "Kari" }),
+    ]);
+    expect(note).toBe("0:00 opened s/settings/payments; 0:12 a click that did nothing; 0:14 a burst of clicks; 0:40 opened s/products/new; ended at 1:35");
+    expect(recordingNote([{ type: 3, timestamp: 1, data: {} }])).toBeNull();
+  });
+
+  it("hands the model each screen's figures and the notes, and keeps a proposal that cites a screen's number, with its recordings", () => {
+    expect(readingMessage(withUse)).toContain("admin screen s/settings/payments: 40 views, 35% with a dead or rage click, 10% scrolled to the end, 18 dead clicks, 5 rage clicks");
+    expect(readingMessage(withUse)).toContain("recording r1 (s/settings/payments): 0:00 opened s/settings/payments;");
+    const kept = checkReading(answer([{ subject: "s/settings/payments", title: "Say why a payment setting cannot be saved", why: "Owners click Save and nothing happens.", figure: 35 }]), withUse);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].facts).toMatchObject({ adminScreen: "s/settings/payments", frustratedPct: 35, recordings: "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c" });
+  });
+
+  it("drops a number taken from a note, not from the figures", () => {
+    expect(checkReading(answer([{ subject: "s/settings/payments", title: "x", why: "y", figure: 12 }]), withUse)).toEqual([]);
+    expect(checkReading(answer([{ subject: "r1", title: "x", why: "y", figure: 40 }]), withUse)).toEqual([]);
   });
 });

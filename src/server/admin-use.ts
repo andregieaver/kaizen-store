@@ -51,7 +51,7 @@ export async function adminScreenFigures(
     sql`select screen, sum(views)::int as views, sum(frustrated_views)::int as frustrated, sum(dead_clicks)::int as dead, sum(rage_clicks)::int as rage,
           sum(reach[21])::int as deep
         from commerce.platform_admin_heat_days
-        where day >= (${now.toISOString()}::timestamptz - make_interval(days => ${days}))::date
+        where day >= (${now.toISOString()}::timestamptz - make_interval(days => ${days}))::date and day <= ${now.toISOString()}::timestamptz::date
         group by screen`,
   );
   return adminScreenRows(rows satisfies AdminScreenTotals[]);
