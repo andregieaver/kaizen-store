@@ -230,7 +230,7 @@ Status: Planned, Building, Done (date and commit).
 | P4.7 | A customer on an item (Life's contacts) | Planned |
 | P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 (87d9db8) |
 | P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 (a190512) |
-| P4.10 | A light refresh while a list is open, for a team working together | Done, 26 Nov 2026 |
+| P4.10 | A light refresh while a list is open, for a team working together | Done, 26 Nov 2026 (9fbb82c) |
 | P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 (50c0dbf) |
 | P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Done, 26 Nov 2026 (7fd75cc) |
 | P4.13 | Calendar and Timeline views of a project (its tasks by due day; start to due as bars) | Done, 26 Nov 2026 (ab702af) |
