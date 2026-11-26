@@ -16,6 +16,12 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.71 — 2026-11-26
+
+`publish_social_post` also posts an approved TikTok post (D870 S3.5): its slideshow video, uploaded to the store's connected TikTok account
+with its caption. Until TikTok has approved Kaizena Flow's app each video is private to the account. A TikTok post without a video is
+refused. LinkedIn is still copied by hand.
+
 ## 1.70 — 2026-11-26
 
 `publish_social_post` also posts an approved Pinterest post (D870 S3.4): pinned to the board the store's connected Pinterest account chose,

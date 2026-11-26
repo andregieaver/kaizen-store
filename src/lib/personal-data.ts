@@ -192,6 +192,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("contracts", "shopper", via("customer", "customer_id"), ["customer_id", "title", "blocks", "snapshot"], "marketing", "restrict", "Contracts sent to a person for signing (D695): what they said, filled in with the person's name and details; exported with the person's deals. One not signed is deleted when they are erased; a signed one is a contract the law keeps (Bokføringsloven § 13(2)): kept, cut loose from the account, and deleted with its files when its period ends.", { until: "contracts" }),
   entry("contract_signers", "shopper", via("none"), ["name", "email", "signed_name", "ip", "user_agent", "evidence", "decline_reason"], "marketing", "restrict", "Who was asked to sign a contract (D695) and how they signed or why they declined, linked to the person through the contract: exported with it, deleted with an unsigned one, and kept with a signed one for its period as its evidence.", { until: "contracts" }),
   entry("contract_events", "shopper", via("none"), ["ip", "user_agent"], "marketing", "restrict", "A contract's audit trail (D695): when it was sent, viewed, signed or declined, from which address and browser, linked through the contract: exported with it, deleted with an unsigned one, and kept with a signed one for its period as its evidence.", { until: "contracts" }),
+  entry("checklist_items", "shopper", via("customer", "customer_id"), ["customer_id", "title", "description"], "marketing", "delete", "The team's checklist tasks about a person (D903 P4.7): what is to be done and what was written about it; exported with the CRM's tasks, deleted when they are erased (their steps, comments and reminders with them; time logged on one stays on its Work assignment). A task named after no one holds nobody's data: the store's own work, and the id of the order, return, review or conversation it came from (D904 P8.3a)."),
   entry("activities", "shopper", via("customer", "customer_id"), ["customer_id", "title", "note"], "marketing", "delete", "Staff's calls, meetings and tasks about a person (D468): what and when, and what was written about it; exported with the person's notes, deleted when they are erased (one about a company or a deal keeps that and loses the person)."),
   entry("customer_tags", "shopper", via("email", "email"), ["email", "label"], "marketing", "delete", "Staff's tags on a person (D296), by their address: exported with the marketing data and deleted on erasure."),
   entry("broadcast_recipients", "shopper", via("email", "email"), ["email"], "marketing", "delete", "The addresses a broadcast went to (D297), frozen when its send started: listed in the marketing export, deleted on erasure and 90 days after the send ended (its figures kept)."),
@@ -502,6 +503,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   font_files: "A font's files.",
   facebook_pages: "A store's Facebook Page connected for its posts' figures (D870 S1.2b): the Page's id and name, its encrypted token (and the connecting person's, only until a Page is chosen), the names of their Pages to choose among and the staff account that connected it; never a shopper's data.",
   pinterest_accounts: "A store's Pinterest account connected to pin its approved posts (D870 S3.4): the account's name, its encrypted tokens, its boards' names to choose among and the chosen one, and the staff account that connected it; never a shopper's data.",
+  tiktok_accounts: "A store's TikTok account connected to post its approved videos (D870 S3.5): the account's TikTok id and name, its encrypted tokens and the staff account that connected it; never a shopper's data.",
   google_places: "A business place's address, the store's own.",
   inventory_locations: "The name of a stock location.",
   inventory_movements: "Stock counts and the staff account that changed them (an id, never a name); the note is staff text about stock, and a movement holds no shopper's data.",
@@ -555,9 +557,6 @@ export const NOT_PERSONAL: Record<string, string> = {
   checklist_statuses: "A checklist's statuses (D903): names, colours and order, the store's own words.",
   project_labels: "A store's categories and tags for tasks (D903 P4.6): names, colours and order, the store's own words.",
   checklist_item_comments: "The team's comments on a task (D903 P4.4): staff writing about the store's own work. " + OWN,
-  checklist_items:
-    "A store's checklist tasks (D903): titles, notes, dates and fields written by staff about the store's own work, and the id of the order, return, review or support conversation a task came from (D904 P8.3a); the person is that record's own and never copied here. " +
-    OWN,
   contract_codes: "The codes a contract's signer proves their email with (D695): a hash, its tries and its expiry, tied to the signer; no person's data of its own.",
   contract_seals: "Kaizena Flow's own seal for signed contracts (D695): a certificate and its encrypted key; no person's data.",
   contract_templates: "A store's contract templates (D695): its own words, fields and signature boxes, written by staff; no person's data.",

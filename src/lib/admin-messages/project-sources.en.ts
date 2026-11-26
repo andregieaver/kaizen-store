@@ -23,6 +23,8 @@ export const projectSourcesEn = {
     return: "Follow up return {label}",
     review: "Answer the review",
     conversation: "Follow up the conversation",
+    /** A customer's page (P4.7): never their name, which would reach the AI manager in the task's title. */
+    customer: "Follow up the customer",
   },
   /** After a task is made from a conversation, where the inbox has no room for its list. */
   added: "Task added to {list}.",

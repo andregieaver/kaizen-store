@@ -256,6 +256,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   contract_signers: "sales",
   contract_events: "sales",
   activities: "sales",
+  checklist_items: "sales",
   lead_decisions: "sales",
   filed_emails: "sales",
   customer_tags: "marketing",

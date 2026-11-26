@@ -14,6 +14,8 @@ import { projectsOn } from "@/lib/extensions";
 import { formFields, projectsOp, type ProjectsAnswer, type ProjectsOpInput } from "@/lib/projects-ops";
 import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
+import { findCustomerChoices, type CustomerChoice } from "@/server/customer-choices";
+import { memberCan } from "@/server/permissions";
 import { createProject, linkChecklist, updateProject } from "@/server/projects";
 import type { ProjectsResult } from "@/server/projects-errors";
 import { createChecklist, duplicateChecklist, listFingerprint, updateChecklist } from "@/server/projects-lists";
@@ -60,6 +62,16 @@ export async function projectsAction(store: string, raw: ProjectsOpInput): Promi
 export async function listStatusAction(store: string, checklistId: string): Promise<string | null> {
   return storeAction({ store, key: "projects:read", action: "projects.listStatus", extension: "projects", answer: (): string | null => null }, async (member): Promise<string | null> =>
     projectsOn(member.store) ? listFingerprint(member.store.id, checklistId) : null,
+  );
+}
+
+/**
+ * The store's customers a task may be about (P4.7), found by name or email for the task's editor: for a member who may change projects and
+ * read customers, while Projects is on; nothing for anyone else.
+ */
+export async function findTaskCustomersAction(store: string, query: string): Promise<CustomerChoice[]> {
+  return storeAction({ store, key: "projects:write", action: "projects.findCustomers", extension: "projects", answer: (): CustomerChoice[] => [] }, async (member): Promise<CustomerChoice[]> =>
+    projectsOn(member.store) && memberCan(member, "customers:read") ? findCustomerChoices(member.store.id, String(query ?? "")) : [],
   );
 }
 

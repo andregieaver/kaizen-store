@@ -8,15 +8,15 @@ import { Field, Select, TextInput } from "@/components/admin/ui/field";
 import { AdminLink } from "@/components/admin/ui/link";
 import { fillWords } from "@/lib/admin-fill";
 import type { ProjectSourcesMessages } from "@/lib/admin-messages/project-sources.en";
-import type { TaskSource } from "@/lib/projects-sources";
+import type { TaskLink } from "@/lib/projects-sources";
 
 import { useAct, type ProjectsAct } from "./use-act";
 
 export type SourceTaskView = { id: string; title: string; done: boolean; checklistId: string; listTitle: string };
 
 /**
- * The tasks of an order, a return, a review or a support conversation (D904 P8.3a): a pair of the octopus, drawn by the source's page only
- * while the store has Projects and the source's own arm. Homer sees the tasks and ticks them off, and *Make a task* opens one field with a
+ * The tasks of an order, a return, a review or a support conversation (D904 P8.3a), or about a customer (P4.7): a pair of the octopus, drawn
+ * by the page only while the store has Projects and the page's own arm. Homer sees the tasks and ticks them off, and *Make a task* opens one field with a
  * title already written and the list it goes to (the store's list for follow-ups unless he picks another). Each task links to its list.
  */
 export function SourceTasks({
@@ -31,8 +31,9 @@ export function SourceTasks({
 }: {
   /** `/admin/{store}`. */
   base: string;
-  source: TaskSource;
-  /** What the source is called (an order's number, a reviewer's name), for the suggested title; none for a conversation. */
+  /** What the page is about: a source, or a customer (P4.7). */
+  source: TaskLink;
+  /** What the source is called (an order's number), for the suggested title; none for a conversation or a customer. */
   label: string | null;
   tasks: SourceTaskView[];
   lists: { id: string; title: string }[];

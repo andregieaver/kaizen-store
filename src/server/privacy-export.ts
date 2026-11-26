@@ -1149,15 +1149,21 @@ async function loadCustomerContracts(s: PrivacySubject): Promise<NonNullable<Exp
   }));
 }
 
-/** Staff's calls, meetings and tasks about the person (D468), by their account: what, when and what was written; never who did it. */
+/**
+ * Staff's calls, meetings and tasks about the person (D468), by their account: what, when and what was written; never who did it. The team's
+ * checklist tasks about them (D903 P4.7) are among them, as `checklist_task`, due when they are due or else when they were made.
+ */
 async function loadCustomerActivities(s: PrivacySubject): Promise<NonNullable<ExportInput["customerActivities"]>> {
   if (!s.customerId) return [];
   const rows = await typedRows(
     z.object({ kind: col.text, title: col.text, note: col.textOrNull, due_at: col.timestamp, done_at: col.timestampOrNull }),
     sql`
-      select kind, title, note, due_at, done_at from commerce.activities
+      select kind, title, note, due_at, done_at, id from commerce.activities
       where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid
-      order by due_at, id
+      union all
+      select 'checklist_task', title, description, coalesce(due_at, created_at), done_at, id from commerce.checklist_items
+      where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid
+      order by 4, 6
     `,
   );
   return rows.map((r) => ({ kind: r.kind, title: r.title, note: r.note, dueAt: r.due_at, doneAt: r.done_at }));

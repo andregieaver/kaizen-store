@@ -379,3 +379,23 @@ test("a connected Pinterest account shows its board, and an approved Pinterest p
   await card.scrollIntoViewIfNeeded();
   await card.screenshot({ path: "test-results/social-pinterest-card.png" });
 });
+
+test("a connected TikTok account says where videos go, and that they stay private until TikTok approves Kaizena Flow (D870 S3.5)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const card = page.getByRole("region", { name: "TikTok" });
+  await expect(card).toContainText("TikTok cannot be connected here yet.");
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.tiktok_accounts (store_id, open_id, username, access_token_encrypted, refresh_token_encrypted, token_expires_at, refresh_expires_at, publish)
+      select id, '-000shop', 'theshop', 'x', 'x', now() + interval '1 day', now() + interval '365 days', true from commerce.stores where slug = ${SLUG}
+      on conflict (store_id) do nothing`;
+  } finally {
+    await sql.end();
+  }
+  await page.reload();
+  await expect(card).toContainText("Videos go to @theshop.");
+  await expect(card).toContainText("each video is posted as private");
+  await card.scrollIntoViewIfNeeded();
+  await card.screenshot({ path: "test-results/social-tiktok-card.png" });
+});

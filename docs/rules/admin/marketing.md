@@ -648,6 +648,14 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
   (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
 
+## TikTok for social posts (D870 S3.5, `src/lib/tiktok.ts` pure, `src/server/tiktok.ts`)
+
+- **TikTok for social posts (D870 S3.5, `src/lib/tiktok.ts` pure, `src/server/tiktok.ts`)**: `tiktok_accounts` (one per store) is written only by
+  `src/server/tiktok.ts`, its tokens encrypted; `tiktokTarget()` is the only reader of a token and renews it within `TIKTOK_RENEW_MINUTES` of
+  its end. A TikTok post is its video alone (`toTiktok()`: creator info asked before each post, `FILE_UPLOAD` in one chunk up to
+  `TIKTOK_ONE_CHUNK_MAX`); the queue and the rules take a TikTok post only with `video_media_id`. Privacy is `privacyFor()`: `SELF_ONLY` unless
+  `tiktokAudited()` and the account offers `PUBLIC_TO_EVERYONE`. A post TikTok accepted but still processes is kept as posted, without an address.
+
 ## Pinterest for social posts (D870 S3.4, `src/lib/pinterest.ts` pure, `src/server/pinterest.ts`)
 
 - **Pinterest for social posts (D870 S3.4, `src/lib/pinterest.ts` pure, `src/server/pinterest.ts`)**: `pinterest_accounts` (one per store,

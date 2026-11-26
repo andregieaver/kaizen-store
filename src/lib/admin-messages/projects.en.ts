@@ -278,6 +278,11 @@ export const projectsEn = {
     noCategory: "No category",
     tags: "Tags",
     labelsWhere: "Make categories and tags on the Statuses page.",
+    /** The customer a task is about (P4.7): found by name or email, one of the store's. */
+    customer: "Customer",
+    customerFind: "Find a customer by name or email",
+    customerNone: "No customer found.",
+    customerRemove: "Remove {name} from the task",
     comments: "Comments",
     commentLabel: "Write a comment",
     commentAdd: "Comment",

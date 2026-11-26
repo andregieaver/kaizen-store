@@ -494,6 +494,68 @@ describe("a task from where it came from (D904 P8.3a)", () => {
   });
 });
 
+describe("the customer a task is about (D903 P4.7)", () => {
+  let n = 0;
+  const customer = async (storeId: string, name: string | null) => {
+    n += 1;
+    return (await db().execute<{ id: string }>(sql`insert into commerce.customers (store_id, email, name) values (${storeId}::uuid, ${`p47-${n}@example.com`}, ${name ?? ""}) returning id`))[0].id;
+  };
+  const customerOf = async (itemId: string) =>
+    (await db().execute<{ customer_id: string | null }>(sql`select customer_id from commerce.checklist_items where id = ${itemId}::uuid`))[0].customer_id;
+
+  it("is given in the task's editor, linked on the list and listed on the customer's page", async () => {
+    const buyer = await customer(store.storeId, "Kari Nordmann");
+    const { id: listId } = ok(await lists.createChecklist(store.member, { title: "Customer calls" }));
+    const { id } = ok(await items.addItem(store.member, listId, { title: "Ring back about the sofa" }));
+    ok(await items.updateItem(store.member, id, { customerId: buyer }));
+    expect((await detail(listId)).entries.find((e) => e.kind === "item" && e.item.id === id)).toMatchObject({ item: { customerId: buyer } });
+    expect(await sources.customerLinks(store.member, [{ id, customerId: buyer }])).toEqual({
+      [id]: { id: buyer, text: "Kari Nordmann", href: `/admin/${store.member.store.slug}/customers/${buyer}` },
+    });
+    const here = await sources.sourceTasks(store.storeId, { kind: "customer", id: buyer });
+    expect(here.tasks.map((t) => t.id)).toEqual([id]);
+    // A customer who gave no name is called by their email.
+    const quiet = await customer(store.storeId, null);
+    ok(await items.updateItem(store.member, id, { customerId: quiet }));
+    expect((await sources.customerLinks(store.member, [{ id, customerId: quiet }]))[id]?.text).toMatch(/^p47-\d+@example\.com$/);
+    ok(await items.updateItem(store.member, id, { customerId: null }));
+    expect(await customerOf(id)).toBeNull();
+  });
+
+  it("needs the right to read customers, and refuses another store's customer", async () => {
+    const buyer = await customer(store.storeId, "Ola");
+    const { id: listId } = ok(await lists.createChecklist(store.member, { title: "Without customers" }));
+    const { id } = ok(await items.addItem(store.member, listId, { title: "A task" }));
+    const planner = { ...store.member, role: "admin" as const, permissions: ["projects:read", "projects:write"] };
+    expect(await items.updateItem(planner, id, { customerId: buyer })).toEqual({ ok: false, problem: "forbidden" });
+    expect(await sources.addSourceTask(planner, { kind: "customer", sourceId: buyer, title: "Nope", checklistId: listId }, "Follow-ups")).toEqual({ ok: false, problem: "forbidden" });
+    // The planner still changes the task's other fields, and sees no customer on the list.
+    ok(await items.updateItem(store.member, id, { customerId: buyer }));
+    ok(await items.updateItem(planner, id, { title: "A task, renamed" }));
+    expect(await customerOf(id)).toBe(buyer);
+    expect(await sources.customerLinks(planner, [{ id, customerId: buyer }])).toEqual({});
+    expect(await items.updateItem(store.member, id, { customerId: await customer(other.storeId, "Theirs") })).toEqual({ ok: false, problem: "not_found" });
+  });
+
+  it("is made from the customer's page, and a task from a source names the source's customer", async () => {
+    const buyer = await customer(store.storeId, "Liv");
+    const made = ok(await sources.addSourceTask(store.member, { kind: "customer", sourceId: buyer, title: "Follow up the customer", checklistId: null }, "Follow-ups"));
+    expect(await customerOf(made.id)).toBe(buyer);
+    const chat = (
+      await db().execute<{ id: string }>(sql`
+        insert into commerce.support_conversations (store_id, source, handler, token_hash, locale, customer_id)
+        values (${store.storeId}::uuid, 'site', 'ai', md5(gen_random_uuid()::text), 'en', ${buyer}::uuid) returning id`)
+    )[0].id;
+    const fromChat = ok(await sources.addSourceTask(store.member, { kind: "conversation", sourceId: chat, title: "Follow up the conversation", checklistId: null }, "Follow-ups"));
+    expect(await customerOf(fromChat.id)).toBe(buyer);
+    expect((await sources.sourceTasks(store.storeId, { kind: "customer", id: buyer })).tasks.map((t) => t.id).sort()).toEqual([made.id, fromChat.id].sort());
+    expect(await sources.addSourceTask(store.member, { kind: "customer", sourceId: await customer(other.storeId, "Theirs"), title: "Not ours", checklistId: null }, "Follow-ups")).toEqual({
+      ok: false,
+      problem: "not_found",
+    });
+  });
+});
+
 describe("a project from a won deal (D904 P8.3b)", () => {
   it("is named after the deal, linked to it, and starts with a copy of the template list, at home in the new project", async () => {
     const [pipeline] = await db().execute<{ id: string }>(sql`insert into commerce.deal_pipelines (store_id, name) values (${store.storeId}::uuid, 'Sales') returning id`);

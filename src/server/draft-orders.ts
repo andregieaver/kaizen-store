@@ -50,6 +50,7 @@ import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
 import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { jobReport } from "./cache-events";
+import { findCustomerChoices, type CustomerChoice } from "./customer-choices";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;
@@ -114,7 +115,6 @@ const VARIANT_CHOICE_ROW = z.object({
   title: col.text,
   in_stock: col.minor,
 });
-const CUSTOMER_CHOICE_ROW = z.object({ id: col.uuid, name: col.textOrNull, email: col.text });
 const CUSTOMER_DETAILS_ROW = z.object({
   name: col.textOrNull,
   email: col.text,
@@ -1001,20 +1001,10 @@ export async function searchDraftVariants(storeId: string, marketSlug: string, q
   }));
 }
 
-export type DraftCustomerChoice = { id: string; name: string; email: string };
+export type DraftCustomerChoice = CustomerChoice;
 
 /** Customers found by name or email, for the picker (name and email only; 10 at most). Needs nothing beyond `orders:write`. */
-export async function searchDraftCustomers(storeId: string, query: string, limit = 10): Promise<DraftCustomerChoice[]> {
-  const q = query.trim().slice(0, 80);
-  if (q.length < 2) return [];
-  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const rows = await typedRows(CUSTOMER_CHOICE_ROW, sql`
-    select id, name, email from commerce.customers
-    where store_id = ${storeId}::uuid and (lower(email) like lower(${like}) or lower(name) like lower(${like}))
-    order by lower(email) limit ${limit}
-  `);
-  return rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ""), email: String(r.email) }));
-}
+export const searchDraftCustomers = findCustomerChoices;
 
 /** What choosing a customer fills in: their name, email, phone, address and company, as they keep them. Null for a customer that is not this store's. */
 export async function draftCustomerDetails(storeId: string, customerId: string): Promise<{ email: string; phone: string | null; shippingAddress: DraftAddress; companyName: string | null; organisationNumber: string | null } | null> {

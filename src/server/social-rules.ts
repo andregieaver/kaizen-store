@@ -83,7 +83,8 @@ export async function queueByRules(now = new Date()): Promise<number> {
         and commerce.store_is_active(p.store_id)
         and ((p.channel = 'instagram' and exists (select 1 from commerce.instagram_accounts i where (i.store_id = p.store_id or (s.house and i.store_id is null)) and i.publish and i.token_expires_at > now()))
           or (p.channel = 'facebook' and exists (select 1 from commerce.facebook_pages f where f.store_id = p.store_id and f.publish and f.page_id is not null))
-          or (p.channel = 'pinterest' and exists (select 1 from commerce.pinterest_accounts t where t.store_id = p.store_id and t.publish and t.board_id is not null and t.refresh_expires_at > now())))
+          or (p.channel = 'pinterest' and exists (select 1 from commerce.pinterest_accounts t where t.store_id = p.store_id and t.publish and t.board_id is not null and t.refresh_expires_at > now()))
+          or (p.channel = 'tiktok' and p.video_media_id is not null and exists (select 1 from commerce.tiktok_accounts k where k.store_id = p.store_id and k.publish and k.refresh_expires_at > now())))
       order by p.planned_for, p.created_at
       limit 50
     `,

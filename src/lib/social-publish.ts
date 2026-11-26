@@ -1,14 +1,14 @@
 /**
  * Publishing an approved social post (D870 S3.1, `docs/social-manager.md` 6): to the store's Instagram account (the Instagram API with
  * Instagram Login's content publishing: a media container, then `media_publish`), its Facebook Page (`/{page-id}/photos` or `/videos`) and
- * its Pinterest board (a Pin, S3.4, `src/lib/pinterest.ts`).
+ * its Pinterest board (a Pin, S3.4, `src/lib/pinterest.ts`) and its TikTok account (the slideshow video, S3.5, `src/lib/tiktok.ts`).
  * What each post is published as, the words it carries and how Meta's answers are read. Pure; the server is `src/server/social-publish.ts`.
  */
 
 import { copyText, type PostChannel } from "./social-posts";
 
-/** The channels Kaizena Flow publishes to (Pinterest from S3.4); the others stay copy-and-paste until their own step (S3.5, S3.6). */
-export const PUBLISH_CHANNELS = ["instagram", "facebook", "pinterest"] as const satisfies readonly PostChannel[];
+/** The channels Kaizena Flow publishes to (Pinterest from S3.4, TikTok from S3.5); LinkedIn stays copy-and-paste until S3.6. */
+export const PUBLISH_CHANNELS = ["instagram", "facebook", "pinterest", "tiktok"] as const satisfies readonly PostChannel[];
 export type PublishChannel = (typeof PUBLISH_CHANNELS)[number];
 export const isPublishChannel = (channel: string): channel is PublishChannel => (PUBLISH_CHANNELS as readonly string[]).includes(channel);
 

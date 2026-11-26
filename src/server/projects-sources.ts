@@ -7,7 +7,7 @@ import { PROJECT_LIMITS } from "@/lib/projects-model";
 import { fillWords } from "@/lib/admin-fill";
 import { storeExtensionOn } from "@/lib/extensions";
 import type { PermissionKey } from "@/lib/permission-keys";
-import { SOURCE_COLUMNS, SOURCE_KINDS, sourcePath, type SourceKind, type TaskSource } from "@/lib/projects-sources";
+import { LINK_COLUMNS, LINK_KINDS, SOURCE_KINDS, sourcePath, type SourceKind, type TaskLink, type TaskSource } from "@/lib/projects-sources";
 import { featureOn } from "@/lib/store-features";
 
 import type { Membership } from "./auth";
@@ -40,9 +40,9 @@ export type SourceTasks = { tasks: SourceTask[]; lists: { id: string; title: str
 const SHOWN = 20;
 const LISTS = 50;
 
-/** A source's tasks, open ones first, and the store's open lists a new one may go to, most recently changed first. */
-export async function sourceTasks(storeId: string, source: TaskSource): Promise<SourceTasks> {
-  const column = sql.identifier(SOURCE_COLUMNS[source.kind]);
+/** A source's or a customer's tasks, open ones first, and the store's open lists a new one may go to, most recently changed first. */
+export async function sourceTasks(storeId: string, source: TaskLink): Promise<SourceTasks> {
+  const column = sql.identifier(LINK_COLUMNS[source.kind]);
   const [tasks, lists] = await Promise.all([
     typedRows(
       TASK_ROW,
@@ -100,7 +100,7 @@ export async function sourceLabels(storeId: string, sources: readonly TaskSource
 
 /** A task from a source: its title, and the list it goes to (none: the store's list for follow-ups, made on first use). */
 export const sourceTaskInput = z.object({
-  kind: z.enum(SOURCE_KINDS),
+  kind: z.enum(LINK_KINDS),
   sourceId: z.uuid(),
   title: z.string().trim().min(1).max(PROJECT_LIMITS.itemTitle),
   checklistId: z.uuid().nullable(),
@@ -116,6 +116,8 @@ export async function addSourceTask(member: Membership, raw: unknown, followUps:
   const input = sourceTaskInput.safeParse(raw);
   if (!input.success) return { ok: false, problem: "invalid", fields: ["title"] };
   const { kind, sourceId, title } = input.data;
+  // A customer's task (P4.7) shows who they are: the right to read customers too, before a list is made for it.
+  if (kind === "customer" && !memberCan(member, "customers:read")) return { ok: false, problem: "forbidden" };
   let checklistId = input.data.checklistId;
   if (!checklistId) {
     const kept = await typedRow(
@@ -160,6 +162,30 @@ export async function sourceLinks(
     const label = labels.get(key) ?? null;
     const text = source.kind === "conversation" && !label ? words.conversationUnnamed : fillWords(words[source.kind], { label: label ?? "" });
     links[id] = { text, href: `/admin/${member.store.slug}${sourcePath(source)}` };
+  }
+  return links;
+}
+
+const CUSTOMER_ROW = z.object({ id: col.uuid, name: col.textOrNull, email: col.textOrNull });
+
+export type CustomerLink = { id: string; text: string; href: string };
+
+/**
+ * Who a list's tasks are about (P4.7), by task: the customer's name (their email when they gave none) and their page, for a member who may
+ * read customers; nothing for anyone else, nor for a customer who is gone. One statement, and none when no task names a customer.
+ */
+export async function customerLinks(member: Membership, tasks: readonly { id: string; customerId: string | null }[]): Promise<Record<string, CustomerLink>> {
+  const named = tasks.filter((t): t is { id: string; customerId: string } => t.customerId !== null);
+  if (named.length === 0 || !memberCan(member, "customers:read")) return {};
+  const rows = await typedRows(
+    CUSTOMER_ROW,
+    sql`select id, name, email from commerce.customers where store_id = ${member.store.id}::uuid and id = any(${uuidList([...new Set(named.map((t) => t.customerId))])})`,
+  );
+  const people = new Map(rows.map((r) => [r.id, (r.name?.trim() || r.email || "").trim()]));
+  const links: Record<string, CustomerLink> = {};
+  for (const { id, customerId } of named) {
+    const text = people.get(customerId);
+    if (text) links[id] = { id: customerId, text, href: `/admin/${member.store.slug}/customers/${customerId}` };
   }
   return links;
 }

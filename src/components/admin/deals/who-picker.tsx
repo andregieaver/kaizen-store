@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/admin/ui/button";
+import { useFound } from "@/components/admin/use-found";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import type { WhoChoice } from "@/lib/deals";
 
@@ -15,21 +16,8 @@ export type WhoWords = Pick<DealsMessages["form"], "who" | "whoSearch" | "whoNon
 export function WhoPicker({ initial, search, words }: { initial: WhoChoice | null; search: (query: string) => Promise<WhoChoice[]>; words: WhoWords }) {
   const [chosen, setChosen] = useState<WhoChoice | null>(initial);
   const [query, setQuery] = useState("");
-  const [found, setFound] = useState<WhoChoice[] | null>(null);
+  const [shown, forget] = useFound(query, search);
   const id = useId();
-  useEffect(() => {
-    if (query.trim().length < 2) return;
-    let live = true;
-    const timer = setTimeout(async () => {
-      const answer = await search(query);
-      if (live) setFound(answer);
-    }, 250);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [query, search]);
-  const shown = query.trim().length < 2 ? null : found;
 
   return (
     <fieldset className="flex flex-col gap-2">
@@ -48,7 +36,7 @@ export function WhoPicker({ initial, search, words }: { initial: WhoChoice | nul
             onClick={() => {
               setChosen(null);
               setQuery("");
-              setFound(null);
+              forget();
             }}
           >
             {words.whoChange}

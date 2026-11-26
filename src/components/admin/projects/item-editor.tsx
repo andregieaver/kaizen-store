@@ -18,6 +18,7 @@ import { PRIORITIES, type Priority, type ProjectColour, type StatusBucket } from
 import type { Recurrence } from "@/lib/projects-recurrence";
 
 import { ItemComments, type EditorComment } from "./item-comments";
+import { TaskCustomer, type TaskCustomerChoice, type TaskCustomerValue } from "./task-customer";
 import { TaskReminders, type ReminderView } from "./task-reminders";
 import { TaskTime, type TaskTimeFacts } from "./task-time";
 import { ColourDot } from "./parts";
@@ -43,6 +44,8 @@ export type EditorItem = {
   recurrence: Recurrence | null;
   categoryId: string | null;
   tagIds: string[];
+  /** The customer it is about (P4.7). */
+  customerId: string | null;
   subtasks: { id: string; title: string; done: boolean; isGoal: boolean }[];
   comments: EditorComment[];
 };
@@ -73,6 +76,7 @@ export function ItemEditor({
   canChange,
   time,
   reminders,
+  customer,
   onClose,
 }: {
   item: EditorItem;
@@ -96,6 +100,8 @@ export function ItemEditor({
   time?: TaskTimeFacts;
   /** Its reminders (P4.3); none drawn when the page gives none. */
   reminders?: ReminderView[];
+  /** The customer it is about and how to find another (P4.7); given only to a person who may read customers. */
+  customer?: { value: TaskCustomerValue | null; find: (query: string) => Promise<TaskCustomerChoice[]> };
   onClose: () => void;
 }) {
   const w = words.item;
@@ -118,6 +124,9 @@ export function ItemEditor({
   const [newStep, setNewStep] = useState("");
   const [categoryId, setCategoryId] = useState(item.categoryId ?? "");
   const [tagIds, setTagIds] = useState(item.tagIds);
+  const [about, setAbout] = useState(customer?.value ?? null);
+  // The customer field: on a list that uses it, for a person who may read customers.
+  const withCustomer = features.contacts && customer !== undefined;
   const categories = labels.filter((l) => l.kind === "category");
   const tags = labels.filter((l) => l.kind === "tag");
   const [repeat, setRepeat] = useState(() => draftOf(item.recurrence));
@@ -147,6 +156,7 @@ export function ItemEditor({
           ...(features.recurrence && ruleChanged && { recurrence: rule }),
           ...(features.category && categories.length > 0 && { categoryId: categoryId || null }),
           ...(features.tags && tags.length > 0 && { tagIds }),
+          ...(withCustomer && (about?.id ?? null) !== item.customerId && { customerId: about?.id ?? null }),
         },
       },
       (answer) => answer.ok && onClose(),
@@ -247,6 +257,7 @@ export function ItemEditor({
               )}
             </Field>
           )}
+          {withCustomer && customer && <TaskCustomer value={about} onChange={setAbout} find={customer.find} words={w} disabled={!canChange} />}
           {features.cost && (
             <Field label={`${w.cost} (${item.cost?.currency ?? currency})`}>
               {(control) => <TextInput {...control} value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" disabled={!canChange} full />}

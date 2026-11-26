@@ -8,7 +8,7 @@ import { itemFields, itemInput, problemFields, sectionTitle, sequence, subtaskIn
 import { itemMoment } from "@/lib/projects-ops";
 import { anchored, nextOccurrence, type Recurrence } from "@/lib/projects-recurrence";
 import { parseRecurrence } from "@/lib/projects-recurrence-schema";
-import { SOURCE_COLUMNS, type TaskSource } from "@/lib/projects-sources";
+import { LINK_COLUMNS, type TaskLink } from "@/lib/projects-sources";
 
 import type { Membership } from "./auth";
 import { memberCan } from "./permissions";
@@ -70,7 +70,28 @@ function itemColumns(d: Partial<ItemInput>): [SQL, unknown][] {
     [sql`cost_minor`, d.cost === undefined ? undefined : (d.cost?.minor ?? null)],
     [sql`cost_currency`, d.cost === undefined ? undefined : (d.cost?.currency ?? null)],
     [sql`category_id`, uuidOrNull(d.categoryId)],
+    [sql`customer_id`, uuidOrNull(d.customerId)],
   ];
+}
+
+/** Naming a task's customer (P4.7) shows who they are, so it needs the right to read customers as well as to change projects. */
+const mayName = (member: Membership, customerId: string | null | undefined) => customerId === undefined || memberCan(member, "customers:read");
+
+/**
+ * A task from a source names its customer too (P4.7), when the source has one of the store's: an order's or its return's buyer, a review's
+ * writer, a conversation's signed-in customer. Read inside the insert; a customer that is not the store's (or is gone) leaves none.
+ */
+function customerOfLink(storeId: string, link: TaskLink): SQL {
+  if (link.kind === "customer") return sql`${link.id}::uuid`;
+  const named =
+    link.kind === "order"
+      ? sql`select customer_id from commerce.orders where store_id = ${storeId}::uuid and id = ${link.id}::uuid`
+      : link.kind === "return"
+        ? sql`select o.customer_id from commerce.returns r join commerce.orders o on o.store_id = r.store_id and o.id = r.order_id where r.store_id = ${storeId}::uuid and r.id = ${link.id}::uuid`
+        : link.kind === "review"
+          ? sql`select customer_id from commerce.product_reviews where store_id = ${storeId}::uuid and id = ${link.id}::uuid`
+          : sql`select customer_id from commerce.support_conversations where store_id = ${storeId}::uuid and id = ${link.id}::uuid`;
+  return sql`(select c.id from commerce.customers c where c.store_id = ${storeId}::uuid and c.id = (${named}))`;
 }
 
 /**
@@ -103,16 +124,24 @@ function repeatColumns(rule: Recurrence | null | undefined, timeZone: string, no
   ];
 }
 
-/** A new item at the end of a list (its status the list's default, by the database). */
-export async function addItem(member: Membership, checklistId: string, raw: unknown, source?: TaskSource): Promise<ProjectsResult<{ id: string }>> {
+/**
+ * A new item at the end of a list (its status the list's default, by the database). Made from a page's *Tasks* card, it is linked to what the
+ * page is about (`link`): a source (P8.3a) and its customer, or a customer (P4.7).
+ */
+export async function addItem(member: Membership, checklistId: string, raw: unknown, link?: TaskLink): Promise<ProjectsResult<{ id: string }>> {
   if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
   const input = itemInput.safeParse(raw);
   if (!input.success) return { ok: false, problem: "invalid", fields: problemFields(input.error) };
+  if (!mayName(member, input.data.customerId) || (link?.kind === "customer" && !mayName(member, link.id))) return { ok: false, problem: "forbidden" };
   const storeId = member.store.id;
   if (!(await listExists(storeId, checklistId))) return { ok: false, problem: "not_found" };
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
-  // Where it came from (P8.3a): the source's column, from a fixed list, never the caller's words.
-  const from: [SQL, unknown][] = source ? [[sql`${sql.identifier(SOURCE_COLUMNS[source.kind])}`, sql`${source.id}::uuid`]] : [];
+  // Where it came from (P8.3a): the source's column, from a fixed list, never the caller's words; and who it is about (P4.7), unless given.
+  const from: [SQL, unknown][] = !link
+    ? []
+    : link.kind === "customer"
+      ? [[sql`customer_id`, sql`${link.id}::uuid`]]
+      : [[sql`${sql.identifier(LINK_COLUMNS[link.kind])}`, sql`${link.id}::uuid`], ...(input.data.customerId === undefined ? [[sql`customer_id`, customerOfLink(storeId, link)] as [SQL, unknown]] : [])];
   const given = [
     ...itemColumns(input.data),
     ...giverColumns(input.data.assignedTo, member.account.id, "insert"),
@@ -164,6 +193,7 @@ export async function updateItem(member: Membership, itemId: string, raw: unknow
   // The dates are checked together on what is kept, so a patch of one date reads the other.
   const input = itemFields.partial().safeParse(raw);
   if (!input.success) return { ok: false, problem: "invalid", fields: problemFields(input.error) };
+  if (!mayName(member, input.data.customerId)) return { ok: false, problem: "forbidden" };
   const storeId = member.store.id;
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
   const set = setList([

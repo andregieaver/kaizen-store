@@ -194,6 +194,8 @@ export async function mergeCustomers(member: Membership, keep: string, remove: s
     await tx.execute(sql`update commerce.contracts set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
     await tx.execute(sql`select set_config('commerce.customer_merge', '', true)`);
     await tx.execute(sql`update commerce.activities set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
+    // The team's checklist tasks about them (D903 P4.7) are about the kept account now.
+    await tx.execute(sql`update commerce.checklist_items set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
     await tx.execute(sql`delete from commerce.customers where store_id = ${storeId}::uuid and id = ${remove}::uuid`);
     return plan;
   });

@@ -3,7 +3,7 @@
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Bell, ChevronDown, ChevronRight, Clock, Pencil, Repeat, Trash2 } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, Clock, Pencil, Repeat, Trash2, UserRound } from "lucide-react";
 import { useEffect, useOptimistic, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/admin/ui/button";
@@ -24,6 +24,7 @@ import type { ProjectColour, StatusBucket } from "@/lib/projects-model";
 
 import { DragHandle } from "./drag-handle";
 import { ItemEditor, type EditorItem, type TimeWords } from "./item-editor";
+import type { TaskCustomerChoice } from "./task-customer";
 import type { ReminderView } from "./task-reminders";
 import { repeatSummary } from "./repeat-field";
 import { taskFacts } from "./task-facts";
@@ -65,6 +66,11 @@ type Props = {
   time?: { minutes: Record<string, number>; canLog: boolean; today: string };
   /** Each task's reminders (P4.3), by task. */
   reminders?: Record<string, ReminderView[]>;
+  /**
+   * The customers tasks are about (P4.7), by task, and how the editor finds one: given only to a person who may read customers. A task's
+   * customer is a link to their page.
+   */
+  customers?: { links: Record<string, { id: string; text: string; href: string }>; find: (query: string) => Promise<TaskCustomerChoice[]> };
 };
 
 /** How long a repeating task's Undo is offered after its tick or its skip. */
@@ -453,6 +459,7 @@ export function ChecklistView(props: Props) {
           canChange={canChange}
           time={props.time ? { minutes: props.time.minutes[editingItem.id] ?? 0, canLog: props.time.canLog && canChange, today: props.time.today } : undefined}
           reminders={props.reminders ? (props.reminders[editingItem.id] ?? []) : undefined}
+          customer={props.customers ? { value: props.customers.links[editingItem.id] ?? null, find: props.customers.find } : undefined}
           onClose={() => setEditing(null)}
         />
       )}
@@ -507,6 +514,14 @@ function ItemFacts({ item, features, status, person, props, now }: { item: ViewI
     facts.push(
       <AdminLink key="from" href={from.href} className="text-chip text-ink-2 underline underline-offset-2" data-task-source>
         {from.text}
+      </AdminLink>,
+    );
+  const about = props.customers?.links[item.id];
+  if (about)
+    facts.push(
+      <AdminLink key="customer" href={about.href} className="inline-flex items-center gap-1 text-chip text-ink-2 underline underline-offset-2" data-task-customer>
+        <UserRound className="size-3.5" aria-hidden />
+        {about.text}
       </AdminLink>,
     );
   return facts.length > 0 ? <span className="flex flex-wrap items-center gap-x-3 gap-y-1">{facts}</span> : null;

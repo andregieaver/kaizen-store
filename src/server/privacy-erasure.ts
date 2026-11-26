@@ -750,6 +750,8 @@ async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
         and lower(to_address) = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
       -- Ecosystem plan E5.1 (D757): their activities (a title may name them, as a deal's) and staff's decisions about them as a lead.
       union all select id from commerce.activities where store_id = ${sid}::uuid and customer_id = ${cid}::uuid
+      -- D903 P4.7: the team's checklist tasks about them (a title may name them).
+      union all select id from commerce.checklist_items where store_id = ${sid}::uuid and customer_id = ${cid}::uuid
       union all select id from commerce.lead_decisions where store_id = ${sid}::uuid and email = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
     )
     update commerce.integration_deliveries d set
@@ -883,6 +885,9 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     // Staff's calls, meetings and tasks about the person (D468): one about the person alone goes; one about a company or a deal loses the person.
     await tx.execute(sql`delete from commerce.activities where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and company_id is null and deal_id is null`);
     await tx.execute(sql`update commerce.activities set customer_id = null, updated_at = now() where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
+    // The team's checklist tasks about the person (D903 P4.7), as the CRM's own: they go, with their steps, comments and reminders; time
+    // logged on one stays on its Work assignment.
+    await tx.execute(sql`delete from commerce.checklist_items where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   }
   await tx.execute(sql`delete from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   await tx.execute(sql`delete from commerce.lead_decisions where store_id = ${sid}::uuid and email = any(${addresses})`);

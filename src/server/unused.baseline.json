@@ -451,6 +451,7 @@
     "src/db/schema.ts#themeSchedules",
     "src/db/schema.ts#themeShots",
     "src/db/schema.ts#themeSubmissions",
+    "src/db/schema.ts#tiktokAccounts",
     "src/db/schema.ts#tripletexConnections",
     "src/db/schema.ts#tripletexSync",
     "src/db/schema.ts#turnoverThresholds",

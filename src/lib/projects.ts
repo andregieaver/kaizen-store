@@ -207,6 +207,8 @@ export const itemFields = z.object({
   /** Its category and its tags (P4.6): the store's labels of each kind; the tags given replace those it has. */
   categoryId: uuidOrNone,
   tagIds: z.array(z.uuid()).max(30).optional(),
+  /** The customer it is about (P4.7): one of the store's, which the database holds it to. */
+  customerId: uuidOrNone,
 });
 export const itemInput = itemFields.refine(
   (v) => !v.startAt || !v.dueAt || v.startAt <= v.dueAt,

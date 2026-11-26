@@ -181,13 +181,19 @@ Pins go to, never a secret one (`pinterest_accounts`, tokens encrypted). An appr
 and tagged link (`toPinterest()`), by *Post now*, the queue, the owner's rules and `publish_social_post`. The 30-day access token is renewed
 before it ends whenever it is used. Facebook's and Pinterest's routes share `social-connect-routes.ts` and the cards `social-connect-parts.tsx`.
 
+S3.5 as built: a TikTok card on Social posts connects the store's account (`src/server/tiktok.ts`, pure parts `src/lib/tiktok.ts`;
+`TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, scopes `user.info.basic` and `video.publish`; `tiktok_accounts`, tokens encrypted). An approved
+TikTok post goes out as its slideshow video, uploaded as a file in one piece (no address of ours to verify with TikTok), its caption as the
+words, by *Post now*, the queue, the rules and `publish_social_post`; one without a video is refused and never queued. Each post is private
+(`SELF_ONLY`) until `TIKTOK_PUBLIC=1`, set once TikTok has audited the app. The day-long token is renewed whenever it is used near its end.
+
 | Step | What |
 |---|---|
 | S3.1 | Publishing to Instagram and Facebook, approval per post. **Done 2026-11-26** (below) |
 | S3.2 | The queue, retries, limits and token refresh. **Done 2026-11-26** (below) |
 | S3.3 | The toggle and the rules, through `autonomyDecision()`. **Done 2026-11-26** (below) |
 | S3.4 | Pinterest. **Done 2026-11-26** (below) |
-| S3.5 | TikTok (after the audit) |
+| S3.5 | TikTok (after the audit). **Done 2026-11-26**, private until TikTok audits the app (below) |
 | S3.6 | LinkedIn |
 
 ## 7. Models per stage
