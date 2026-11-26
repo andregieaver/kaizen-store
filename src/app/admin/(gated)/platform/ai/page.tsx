@@ -165,7 +165,8 @@ export default async function PlatformAiPage() {
         <ActionForm action={saveSiteSpeedAction} successMessage={w.webSearchSaved} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm">
             {w.speedKey}
-            <input name="api_key" type="password" autoComplete="off" className="min-h-10 max-w-96 rounded-lg border border-edge bg-card px-3 text-sm" />
+            {/* Drawn anew when the saved key changes, so a key typed in is not left in the field once kept. */}
+            <input key={speed?.keyHint ?? "none"} name="api_key" type="password" autoComplete="off" className="min-h-10 max-w-96 rounded-lg border border-edge bg-card px-3 text-sm" />
             <span className="text-caption text-muted">
               {speed ? fillWords(w.speedKeySaved, { hint: speed.keyHint }) : null}{" "}
               <a href="https://developer.chrome.com/docs/crux/api" target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-2">

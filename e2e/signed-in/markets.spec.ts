@@ -240,7 +240,11 @@ test.describe("as the owner of a store without a shop (D905)", () => {
     await page.goto(`/admin/${site}/analytics/markets?period=30d`);
     await expect(page.getByRole("heading", { name: "Markets", level: 1 })).toBeVisible();
     const findings = page.getByRole("region", { name: "What to do in your markets" });
-    await expect(findings.locator('[data-finding="rival_site"]')).toContainText("Linnet added 8 pages to its site in 30 days");
+    // Its weaknesses come first: a rival's service price, behind a rival in search, slower than a rival. The rival's growing site is a threat
+    // in the SWOT, a step away.
+    await expect(findings.locator("[data-finding]")).toHaveCount(3);
+    await expect(findings.locator('[data-finding="speed_behind"]')).toBeVisible();
+    await expect(page.locator('[data-finding="rival_site"]').first()).toContainText("Linnet added 8 pages to its site in 30 days");
     // The rivals are in Lisa's fold, a step away: opened once the page has woken up.
     await page.waitForLoadState("networkidle");
     await page.getByText("See every country and every finding").click();
