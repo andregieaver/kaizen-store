@@ -71,7 +71,11 @@ export const projectsEn = {
   project: {
     back: "Projects",
     customise: "Customise",
-    views: { list: "List", board: "Board" },
+    views: { list: "List", board: "Board", calendar: "Calendar", timeline: "Timeline" },
+    earlier: "Earlier",
+    later: "Later",
+    monthLabel: "Month",
+    noDates: "No task of this project is due this month.",
     viewsLabel: "Show the project as",
     next: "Next: {text}",
     reviewed: "Reviewed {date}",

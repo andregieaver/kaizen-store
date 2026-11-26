@@ -3,15 +3,18 @@ import { notFound } from "next/navigation";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { CreateButton } from "@/components/admin/projects/create-button";
+import { ProjectCalendar, ProjectTimeline, type CalendarTask } from "@/components/admin/projects/project-calendar";
 import { healthColour, projectStatusColour, StatusBarView, StatusPill, ViewSwitch } from "@/components/admin/projects/parts";
 import { ProjectBoard, type BoardCardView } from "@/components/admin/projects/project-board";
 import { ProjectLists, type ProjectListView } from "@/components/admin/projects/project-lists";
 import { ButtonLink, EmptyState, PageHeader } from "@/components/admin/ui";
 import { adminDate, adminDay } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { PROJECT_LIMITS } from "@/lib/projects-model";
+import { monthOrToday } from "@/lib/projects-views";
+import { dayIn } from "@/lib/work-dates";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { projectDetail, teamOf, type BoardItem } from "@/server/projects";
 import { listChecklists } from "@/server/projects-lists";
@@ -38,7 +41,10 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   await ensureDefaultStatuses(store.id, w.defaults);
   const [project, lists, team] = await Promise.all([projectDetail(store.id, projectId), listChecklists(store.id), teamOf(store.id)]);
   if (!project) notFound();
-  const view = (await searchParams).view === "board" ? "board" : "list";
+  const query = await searchParams;
+  const view = query.view === "board" || query.view === "calendar" || query.view === "timeline" ? query.view : "list";
+  const drawn = new Date();
+  const month = monthOrToday(typeof query.month === "string" ? query.month : undefined, dayIn(drawn, store.timeZone));
   const canChange = memberCan(member, "projects:write");
   const base = `/admin/${store.slug}`;
   const act = projectsAction.bind(null, store.slug);
@@ -67,17 +73,42 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   // A task without a stage of its own is in the first (Life's rule), or, once ticked, in the first done stage.
   const firstStage = project.stages[0]?.id ?? "";
   const firstDone = project.stages.find((x) => x.bucket === "done")?.id ?? firstStage;
+  const stageOf = (i: BoardItem) => (i.stageId && project.stages.some((s) => s.id === i.stageId) ? i.stageId : i.done ? firstDone : firstStage);
   const cards: BoardCardView[] = project.items.map((i) => ({
     id: i.id,
     title: i.title,
     href: `${base}/checklists/${i.checklistId}`,
     list: i.checklistTitle,
     done: i.done,
-    stageId: i.stageId && project.stages.some((s) => s.id === i.stageId) ? i.stageId : i.done ? firstDone : firstStage,
+    stageId: stageOf(i),
     status: statusOf(i),
     facts: factsOf(i),
   }));
   const inProject = new Set(project.checklists.map((l) => l.id));
+  const page = `${base}/projects/${project.id}`;
+  // On the calendar and the timeline a task wears its stage's colour, as on the board.
+  const stageColour = (stageId: string) => project.stages.find((s) => s.id === stageId)?.colour ?? "neutral";
+  const dated: CalendarTask[] = project.items.map((i) => ({
+    id: i.id,
+    title: i.title,
+    checklistId: i.checklistId,
+    done: i.done,
+    startAt: i.startAt,
+    dueAt: i.dueAt,
+    allDay: i.allDay,
+    colour: stageColour(stageOf(i)),
+  }));
+  const calendarWords = { earlier: w.project.earlier, later: w.project.later, monthLabel: w.project.monthLabel, noDates: w.project.noDates };
+  const timeProps = {
+    tasks: dated,
+    month,
+    now: drawn,
+    href: (m: string) => `${page}?view=${view}&month=${m}`,
+    listHref: (id: string) => `${base}/checklists/${id}`,
+    timeZone: store.timeZone,
+    locale: ADMIN_LANG_FACTS[lang].locale,
+    words: calendarWords,
+  };
   const addChecklist = canChange ? (
     <CreateButton
       label={w.project.addChecklist}
@@ -131,11 +162,17 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             label={w.project.viewsLabel}
             current={view}
             views={[
-              { key: "list", label: w.project.views.list, href: `${base}/projects/${project.id}` },
-              { key: "board", label: w.project.views.board, href: `${base}/projects/${project.id}?view=board` },
+              { key: "list", label: w.project.views.list, href: page },
+              { key: "board", label: w.project.views.board, href: `${page}?view=board` },
+              { key: "calendar", label: w.project.views.calendar, href: `${page}?view=calendar` },
+              { key: "timeline", label: w.project.views.timeline, href: `${page}?view=timeline` },
             ]}
           />
-          {view === "board" ? (
+          {view === "calendar" ? (
+            <ProjectCalendar {...timeProps} />
+          ) : view === "timeline" ? (
+            <ProjectTimeline {...timeProps} />
+          ) : view === "board" ? (
             <ProjectBoard projectId={project.id} stages={project.stages.map((s) => ({ id: s.id, name: s.name, colour: s.colour }))} cards={cards} canChange={canChange} words={w.board} act={act} />
           ) : (
             <ProjectLists

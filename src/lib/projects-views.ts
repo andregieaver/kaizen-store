@@ -4,7 +4,7 @@
  */
 
 import { zonedTime } from "./booking-slots";
-import { addCalendarDays, dayIn } from "./work-dates";
+import { addCalendarDays, addMonthsClamped, daysBetween, dayIn, type Day } from "./work-dates";
 
 export type CostLine = { currency: string; total: number; done: number; remaining: number; priced: number };
 
@@ -39,4 +39,36 @@ export function dueTarget(dueAt: string, allDay: boolean | null, timeZone: strin
 export function countdown(target: number, now: number): { late: boolean; days: number; hours: number; minutes: number } {
   const minutes = Math.ceil(Math.abs(target - now) / 60_000);
   return { late: now > target, days: Math.floor(minutes / 1440), hours: Math.floor((minutes % 1440) / 60), minutes: minutes % 60 };
+}
+
+/** A month as `YYYY-MM`, read from an address or today's; anything else is today's month. */
+export const monthOrToday = (month: string | undefined, today: Day): string => (month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : today.slice(0, 7));
+
+/** The month `by` months from `month`. */
+export const shiftMonth = (month: string, by: number): string => addMonthsClamped(`${month}-01`, by).slice(0, 7);
+
+/** A month's calendar (P4.13): whole weeks, Monday first, from the week of its first day to the week of its last, as day keys. */
+export function monthWeeks(month: string): Day[][] {
+  const first = `${month}-01`;
+  const last = addCalendarDays(shiftMonth(month, 1) + "-01", -1);
+  const weekday = (new Date(`${first}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const weeks: Day[][] = [];
+  for (let day = addCalendarDays(first, -weekday); day <= last; day = addCalendarDays(day, 7)) {
+    weeks.push(Array.from({ length: 7 }, (_, i) => addCalendarDays(day, i)));
+  }
+  return weeks;
+}
+
+/**
+ * Where a task's bar sits on a month's timeline (P4.13), as shares of the month from its first day: from its start (or its due day when it
+ * has none) to its due day, cut to the month; none when it does not touch the month.
+ */
+export function timelineBar(start: Day | null, due: Day, month: string): { left: number; width: number } | null {
+  const first = `${month}-01`;
+  const days = daysBetween(first, shiftMonth(month, 1) + "-01");
+  const from = start && start < due ? start : due;
+  const a = Math.max(0, daysBetween(first, from));
+  const b = Math.min(days, daysBetween(first, due) + 1);
+  if (b <= 0 || a >= days) return null;
+  return { left: a / days, width: (b - a) / days };
 }

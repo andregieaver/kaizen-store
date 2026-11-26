@@ -66,7 +66,11 @@ export const projectsNb: ProjectsMessages = {
   project: {
     back: "Prosjekter",
     customise: "Tilpass",
-    views: { list: "Liste", board: "Tavle" },
+    views: { list: "Liste", board: "Tavle", calendar: "Kalender", timeline: "Tidslinje" },
+    earlier: "Tidligere",
+    later: "Senere",
+    monthLabel: "Måned",
+    noDates: "Ingen oppgave i prosjektet har frist denne måneden.",
     viewsLabel: "Vis prosjektet som",
     next: "Neste: {text}",
     reviewed: "Gjennomgått {date}",

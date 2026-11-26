@@ -50,6 +50,7 @@ export type BoardItem = {
   /** Its stage in this project; null means the project's first. */
   stageId: string | null;
   assignedTo: string | null;
+  startAt: string | null;
   dueAt: string | null;
   allDay: boolean | null;
   priority: (typeof PRIORITIES)[number] | null;
@@ -163,6 +164,7 @@ const boardRow = z.object({
   status_id: col.uuid.nullable(),
   stage_id: col.uuid.nullable(),
   assigned_to: col.uuid.nullable(),
+  start_at: col.timestampOrNull,
   due_at: col.timestampOrNull,
   all_day: col.bool.nullable(),
   priority: z.enum(PRIORITIES).nullable(),
@@ -190,7 +192,7 @@ export async function projectDetail(storeId: string, projectId: string): Promise
       boardRow,
       sql`
         select i.id, i.title, i.checklist_id, c.title as checklist_title, i.done_at is not null as done, i.status_id, st.status_id as stage_id,
-          i.assigned_to, i.due_at, i.all_day, i.priority,
+          i.assigned_to, i.start_at, i.due_at, i.all_day, i.priority,
           (select count(*)::int from commerce.checklist_subtasks s where s.store_id = i.store_id and s.item_id = i.id) as subtasks,
           (select count(*)::int from commerce.checklist_subtasks s where s.store_id = i.store_id and s.item_id = i.id and s.done_at is not null) as subtasks_done
         from commerce.project_checklists pc
@@ -219,6 +221,7 @@ export async function projectDetail(storeId: string, projectId: string): Promise
       statusId: i.status_id,
       stageId: i.stage_id,
       assignedTo: i.assigned_to,
+      startAt: i.start_at,
       dueAt: i.due_at,
       allDay: i.all_day,
       priority: i.priority,

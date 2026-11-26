@@ -232,8 +232,8 @@ Status: Planned, Building, Done (date and commit).
 | P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 (a190512) |
 | P4.10 | A light refresh while a list is open, for a team working together | Planned |
 | P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 (50c0dbf) |
-| P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Done, 26 Nov 2026 |
-| P4.13 | Calendar and Timeline views of a project (its tasks by due day; start to due as bars) | Planned |
+| P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Done, 26 Nov 2026 (7fd75cc) |
+| P4.13 | Calendar and Timeline views of a project (its tasks by due day; start to due as bars) | Done, 26 Nov 2026 |
 
 ### P5: the AI manager and events
 
@@ -360,3 +360,11 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 - **Templates**: a list's settings switch *Template* (`checklists.as_template`); a template is listed apart under Templates, has no tasks to
   do (All tasks and Home's attention leave it out), and is offered as *Start from* when a list is made, on Checklists and in a project. The
   new list is the template's copy (`duplicateChecklist()`, all open, not a template), in the project chosen.
+
+## As built: step P4.13 (26 November 2026)
+
+- **Calendar** (a project's views: List, Board, Calendar, Timeline): the month in whole weeks, Monday first, each task on its due day in the
+  store's zone, late ones in the danger colour, done ones struck through, each a link to its list; *Earlier* and *Later* move a month (the
+  month is in the address). **Timeline**: a bar from each task's start (or its due day) to its due day in its stage's colour, cut to the
+  month, the earliest first. Both drawn on the server (`project-calendar.tsx`, `monthWeeks()`, `timelineBar()`), no browser script and no
+  class the stylesheet lacked.
