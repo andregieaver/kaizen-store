@@ -16,8 +16,8 @@ export const projectSourcesNb: ProjectSourcesMessages = {
   suggested: {
     order: "Følg opp ordre {label}",
     return: "Følg opp retur {label}",
-    review: "Svar på anmeldelsen fra {label}",
-    conversation: "Følg opp samtalen med {label}",
+    review: "Svar på anmeldelsen",
+    conversation: "Følg opp samtalen",
   },
   added: "Oppgaven er lagt i {list}.",
   deal: {

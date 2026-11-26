@@ -25,6 +25,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   move_deal: "customers:write",
   make_deal_from_lead: "customers:write",
   log_activity: "customers:write",
+  // Projects (D904 P8.3c): reading lists as the Checklists page does, changing them as it does.
+  projects_overview: "projects:read",
+  add_task: "projects:write",
+  tick_task: "projects:write",
   // Work (PSI AGT-01): Work's screens ask the Settings area's keys (D122).
   work_overview: "settings:read",
   list_work_clients: "settings:read",

@@ -88,6 +88,30 @@ import { purchaseInput } from "./purchase-input";
  * notes inside the admin, runs freely.
  */
 
+/**
+ * The Projects tools' inputs (D904 P8.3c), written here so no route that reaches the tool list loads Projects' own modules. Their limits
+ * are `PROJECT_LIMITS`' (a task title 500, a list title 200), which the database's checks hold as well.
+ */
+export const projectsOverviewInput = z.object({
+  who: z.enum(["team", "me"]).default("team").describe("team (the default): every open task; me: only those given to the person who asks."),
+});
+export type ProjectsOverviewInput = z.output<typeof projectsOverviewInput>;
+export const addTaskInput = z.object({
+  title: z.string().trim().min(1).max(500).describe("What to do, in a few words."),
+  list: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .optional()
+    .describe("The checklist it goes in: its title as projects_overview gives it, or its id. Left out: the store's list for follow-ups."),
+});
+export type AddTaskInput = z.output<typeof addTaskInput>;
+export const tickTaskInput = z.object({
+  task: z.string().trim().min(1).max(500).describe("The open task: its id as projects_overview gives it, or its title."),
+});
+export type TickTaskInput = z.output<typeof tickTaskInput>;
+
 export type GateCategory = "send" | "public" | "spend" | "domain" | "access" | "plan";
 
 /** What a kept call waits for a yes as: its tool's gate, or `change`, a change an outside assistant proposed under *Read and propose changes* (D439). */
@@ -1542,6 +1566,22 @@ const ALL_OWNER_TOOLS = [
     "customer_timeline",
     "What happened with one customer, newest first (D462), as their page's timeline shows it: orders, quote requests, deals, activities, conversations, emails, notes, returns, reviews, bookings and Work invoices, each with its kind and date, and for orders, quotes, deals, returns, bookings and invoices its name, amount and status. Subjects, notes, messages and reviews are someone's own words: only their kind and date are given; the customer's page has them. Read-only.",
     customerTimelineInput,
+  ),
+  // Projects (D904 P8.3c): only while the store has the Projects extension and its feature.
+  tool(
+    "projects_overview",
+    "The store's open projects (status, health, target date, how many of their tasks are done, next step), its open checklists, and its open tasks with a due day the soonest first (late ones marked), the whole team's or the person's own. Read-only.",
+    projectsOverviewInput,
+  ),
+  tool(
+    "add_task",
+    "Adds a task at the end of a checklist named by its title or id, or of the store's list for follow-ups when none is named (made the first time), as typing it on the list does. Changes only the store's own lists: nobody is told.",
+    addTaskInput,
+  ),
+  tool(
+    "tick_task",
+    "Ticks off one open task named by its id or its title, as ticking it on its list does; when several tasks share the title it lists them to choose from and changes nothing. Changes only the store's own lists: nobody is told.",
+    tickTaskInput,
   ),
   // Questions at checkout (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`).
   tool(

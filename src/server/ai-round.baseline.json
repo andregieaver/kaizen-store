@@ -101,100 +101,100 @@
     "all|none": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152673,
-      "alwaysSentChars": 36614,
-      "totalChars": 169214
+      "toolChars": 152703,
+      "alwaysSentChars": 36644,
+      "totalChars": 169244
     },
     "all|orders": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152673,
-      "alwaysSentChars": 36614,
-      "totalChars": 169214
+      "toolChars": 152703,
+      "alwaysSentChars": 36644,
+      "totalChars": 169244
     },
     "all|products": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152673,
-      "alwaysSentChars": 36614,
-      "totalChars": 169214
+      "toolChars": 152703,
+      "alwaysSentChars": 36644,
+      "totalChars": 169244
     },
     "all|customers": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 157815,
-      "alwaysSentChars": 36612,
-      "totalChars": 174356
+      "toolChars": 157845,
+      "alwaysSentChars": 36642,
+      "totalChars": 174386
     },
     "all|marketing": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 157567,
-      "alwaysSentChars": 36613,
-      "totalChars": 174108
+      "toolChars": 157597,
+      "alwaysSentChars": 36643,
+      "totalChars": 174138
     },
     "all|analytics": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152510,
-      "alwaysSentChars": 36581,
-      "totalChars": 169051
+      "toolChars": 152540,
+      "alwaysSentChars": 36611,
+      "totalChars": 169081
     },
     "all|website": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 161649,
-      "alwaysSentChars": 36617,
-      "totalChars": 178190
+      "toolChars": 161679,
+      "alwaysSentChars": 36647,
+      "totalChars": 178220
     },
     "all|bookings": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152292,
-      "alwaysSentChars": 36584,
-      "totalChars": 168833
+      "toolChars": 152322,
+      "alwaysSentChars": 36614,
+      "totalChars": 168863
     },
     "all|support": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 151013,
-      "alwaysSentChars": 36586,
-      "totalChars": 167554
+      "toolChars": 151043,
+      "alwaysSentChars": 36616,
+      "totalChars": 167584
     },
     "all|projects": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152673,
+      "toolChars": 151898,
       "alwaysSentChars": 36614,
-      "totalChars": 169214
+      "totalChars": 168439
     },
     "all|settings": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 132130,
-      "alwaysSentChars": 36642,
-      "totalChars": 148671
+      "toolChars": 132160,
+      "alwaysSentChars": 36672,
+      "totalChars": 148701
     },
     "all|billing": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 151520,
-      "alwaysSentChars": 36586,
-      "totalChars": 168061
+      "toolChars": 151550,
+      "alwaysSentChars": 36616,
+      "totalChars": 168091
     },
     "all|staff": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152282,
-      "alwaysSentChars": 36590,
-      "totalChars": 168823
+      "toolChars": 152312,
+      "alwaysSentChars": 36620,
+      "totalChars": 168853
     },
     "all|books": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152673,
-      "alwaysSentChars": 36614,
-      "totalChars": 169214
+      "toolChars": 152703,
+      "alwaysSentChars": 36644,
+      "totalChars": 169244
     }
   },
   "fixed": {
@@ -281,6 +281,7 @@
     "add_recommendation_rule": 1114,
     "add_redirect": 1229,
     "add_support_note": 526,
+    "add_task": 652,
     "add_theme": 902,
     "adjust_customer_credits": 1056,
     "ai_usage": 586,
@@ -455,7 +456,7 @@
     "list_transfers": 646,
     "list_work_assignments": 259,
     "list_work_clients": 214,
-    "load_tools": 801,
+    "load_tools": 831,
     "log_activity": 1452,
     "log_time": 799,
     "look_at_page": 1010,
@@ -564,6 +565,7 @@
     "producer_registrations": 861,
     "product_performance": 353,
     "profit_overview": 1230,
+    "projects_overview": 525,
     "propose_exchange": 1172,
     "publish_entry": 738,
     "publish_page": 828,
@@ -678,6 +680,7 @@
     "tag_orders": 1207,
     "tax_readiness": 435,
     "tell_customer_about_order": 1191,
+    "tick_task": 494,
     "try_theme": 676,
     "undo_dns_change": 905,
     "unit_price_gaps": 1148,
