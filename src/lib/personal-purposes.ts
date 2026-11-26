@@ -327,6 +327,8 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   push_subscriptions: "platform_service",
   account_email_changes: "platform_service",
   platform_admin_signal_choices: "admin_improvement",
+  platform_admin_recordings: "admin_improvement",
+  "storage:admin-recordings": "admin_improvement",
   status_subscribers: "platform_applicants",
   content_reports: "illegal_content",
   access_requests: "platform_applicants",

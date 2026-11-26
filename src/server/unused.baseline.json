@@ -302,6 +302,7 @@
     "src/db/schema.ts#platformAdConversions",
     "src/db/schema.ts#platformAdminClickCells",
     "src/db/schema.ts#platformAdminHeatDays",
+    "src/db/schema.ts#platformAdminRecordings",
     "src/db/schema.ts#platformAdminSignalChoices",
     "src/db/schema.ts#platformApiTokens",
     "src/db/schema.ts#platformAutopilotRuns",

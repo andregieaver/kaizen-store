@@ -3,7 +3,9 @@ import { record } from "@rrweb/record";
 import { AB_SHOWN_EVENT, shownVersions } from "@/lib/ab-shown";
 import type { HeatDevice } from "@/lib/page-heat";
 import {
+  ADMIN_REC_ENDPOINT,
   addId,
+  adminRecorderOptions,
   idsKey,
   readSession,
   recorderOptions,
@@ -28,8 +30,14 @@ import { signalPlace } from "@/lib/signal-paths";
  * otherwise every 30 s; a tail goes by beacon as the page goes away. The server's answer steers it (section 7.4's table).
  */
 
-type Event = { type: number; timestamp: number; data?: unknown };
-export type RecorderStore = { id: string; slug: string; share: number; mask: "balanced" | "strict"; device: HeatDevice };
+export type Event = { type: number; timestamp: number; data?: unknown };
+/**
+ * Where the recorder runs: a store, or the admin (D895 phase 3b), where `admin.screen()` names the screen on show by its key (null for a
+ * screen never measured), each event is scrubbed of every word and address before it is buffered (`admin.scrub`, the server scrubs
+ * again), segments go to the admin's own endpoint, pictures are blocked, and no id is kept for forgetting (an admin recording is joined to
+ * no one).
+ */
+export type RecorderStore = { id: string; slug: string; share: number; mask: "balanced" | "strict"; device: HeatDevice; admin?: { screen: () => string | null; scrub: (event: Event) => Event | null | undefined } };
 
 let store: RecorderStore | null = null;
 let session: RecSession | null = null;
@@ -79,7 +87,8 @@ function halt() {
   ticker = null;
 }
 
-const allowedHere = () => Boolean(store && signalPlace(window.location.pathname, window.location.search, store.slug)?.rec);
+const allowedHere = () =>
+  Boolean(store && (store.admin ? store.admin.screen() !== null : signalPlace(window.location.pathname, window.location.search, store.slug)?.rec));
 
 function emit(raw: Event) {
   if (!store || !session) return;
@@ -88,8 +97,15 @@ function emit(raw: Event) {
     pause(false);
     return;
   }
-  const event = { ...raw, timestamp: Math.max(0, raw.timestamp - session.started) };
-  if (event.type === 4 && event.data && typeof event.data === "object") event.data = { ...(event.data as object), href: `${window.location.origin}${window.location.pathname}` };
+  // In the admin, undefined is an event dropped on purpose; null one from a screen never measured, which pauses.
+  const timed: Event = { ...raw, timestamp: Math.max(0, raw.timestamp - session.started) };
+  const event = store.admin ? store.admin.scrub(timed) : timed;
+  if (event === undefined) return;
+  if (event === null) {
+    pause(false);
+    return;
+  }
+  if (!store.admin && event.type === 4 && event.data && typeof event.data === "object") event.data = { ...(event.data as object), href: `${window.location.origin}${window.location.pathname}` };
   buffer.push(event);
   if (buffer.length > REC_MAX_BUFFER) {
     end();
@@ -115,12 +131,15 @@ function body(events: Event[]) {
   });
 }
 
-const segmentUrl = (z: 0 | 1) => `/api/signals/rec?store=${encodeURIComponent(store!.slug)}&id=${session!.id}&seq=${session!.seq}&z=${z}`;
+const segmentUrl = (z: 0 | 1) =>
+  store!.admin
+    ? `${ADMIN_REC_ENDPOINT}?id=${session!.id}&seq=${session!.seq}&z=${z}`
+    : `/api/signals/rec?store=${encodeURIComponent(store!.slug)}&id=${session!.id}&seq=${session!.seq}&z=${z}`;
 
 /** Before a recording's first upload, its id is kept so the visitor can delete it later. */
 function keepId() {
   const local = storage("local");
-  if (!local || !store || !session) return;
+  if (!local || !store || !session || store.admin) return;
   local.setItem(idsKey(store.id), JSON.stringify(addId(local.getItem(idsKey(store.id)), session.id, session.started, now())));
 }
 
@@ -229,7 +248,8 @@ export function recordPage(next: RecorderStore, path: string): boolean {
     size = { w: window.innerWidth, h: window.innerHeight };
     lastSent = lastSent || now();
     listen();
-    stopRrweb = record({ ...recorderOptions(next.mask, window.matchMedia?.("(pointer: coarse)").matches ?? false), emit: (e) => emit(e as Event), errorHandler: () => true });
+    const touch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+    stopRrweb = record({ ...(next.admin ? adminRecorderOptions(touch) : recorderOptions(next.mask, touch)), emit: (e) => emit(e as Event), errorHandler: () => true });
     recording = stopRrweb !== undefined;
     if (!recording) return false;
     ticker = window.setInterval(tick, 5_000);

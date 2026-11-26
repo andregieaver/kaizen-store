@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { memoryFiles } from "./recording-files-test-support";
 
 type Row = Record<string, unknown>;
 
@@ -36,29 +37,6 @@ const VISITOR = "33333333-3333-4333-8333-333333333333";
 const NOW = new Date("2026-11-16T10:17:42Z");
 const uuid = () => crypto.randomUUID();
 
-/** Storage in memory, modelled on the review pictures' tests: a path written once, listed per recording folder. */
-function memoryFiles(options: { fail?: boolean } = {}) {
-  const files = new Map<string, Uint8Array>();
-  return {
-    files,
-    async upload(path: string, bytes: Uint8Array) {
-      if (options.fail) return "failed" as const;
-      if (files.has(path)) return "exists" as const;
-      files.set(path, bytes);
-      return "ok" as const;
-    },
-    async download(path: string) {
-      return files.get(path) ?? null;
-    },
-    async remove(paths: string[]) {
-      for (const p of paths) files.delete(p);
-      return true;
-    },
-    async list(store: string, id: string) {
-      return [...files.keys()].filter((p) => p.startsWith(`${store}/${id}/`));
-    },
-  };
-}
 
 const consent = (recordings = true) => `consent_${storeId}=1.${VISITOR}.recordings.000${recordings ? 1 : 0}`;
 const headers = (cookie = consent(), extra: Record<string, string> = {}, ua = UA) =>

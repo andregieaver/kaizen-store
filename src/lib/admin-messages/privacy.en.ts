@@ -350,6 +350,7 @@ export const privacyEn = {
       contracts: "Signed contracts",
       form_responses: "Form responses",
       unanswered_questions: "Questions the chat assistant could not answer",
+      admin_recordings: "Recordings of owners' own use of the admin",
     },
     bases: {
       read: "Read at the source",

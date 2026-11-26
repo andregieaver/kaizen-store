@@ -29,6 +29,12 @@ export const REC_TIME_MINUTES = 10;
 
 export const RECORDING_BUCKET = "recordings";
 
+/** Recordings of owners' own use of the admin (D895 phase 3b): their own bucket, one folder for all, and a day's cap against a script. */
+export const ADMIN_RECORDING_BUCKET = "admin-recordings";
+export const ADMIN_RECORDING_FOLDER = "admin";
+export const ADMIN_RECORDINGS_PER_DAY = 500;
+export const ADMIN_REC_ENDPOINT = "/api/admin-use/rec";
+
 /** `seq` as its file name: three digits, `000`…`199`. */
 export const seqName = (seq: number) => String(seq).padStart(3, "0");
 
@@ -155,6 +161,14 @@ export function recorderOptions(mask: "balanced" | "strict", isTouch: boolean) {
     recordCrossOriginIframes: false,
     sampling: { mousemove: isTouch ? 150 : 50, scroll: 150, media: 800, input: "last" as const },
   };
+}
+
+/**
+ * rrweb's options in the admin (D895 phase 3b): the strict mask (every text node three dots), every field masked to nothing, and pictures,
+ * video and frames blocked as well as private parts, so a product's or a shopper's picture is never drawn. The server scrubs again.
+ */
+export function adminRecorderOptions(isTouch: boolean) {
+  return { ...recorderOptions("strict", isTouch), blockSelector: "[data-kz-private], img, picture, video, iframe, canvas" };
 }
 
 // ---------------------------------------------------------------------------

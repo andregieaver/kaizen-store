@@ -9107,7 +9107,7 @@ describe("an owner's choices about heatmaps and recordings of the admin (D895 ph
     expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.platform_admin_signal_choices'::regclass")).on).toBe(true);
   });
 
-  it("keeps admin heat totals only under a screen key, never a store's address, and closed to the Data API", async () => {
+  it("keeps admin heat totals and recordings only under a screen key, never a store's address, with the recordings' retention rule, and closed to the Data API", async () => {
     const zeros = (n: number) => `{${new Array(n).fill(0).join(",")}}`;
     const day = (screen: string) =>
       db.query("insert into commerce.platform_admin_heat_days (day, screen, device, reach, attention_ms) values ('2026-11-26', $1, 'desktop', $2, $3)", [screen, zeros(21), zeros(20)]);
@@ -9118,7 +9118,16 @@ describe("an owner's choices about heatmaps and recordings of the admin (D895 ph
       db.query("insert into commerce.platform_admin_click_cells (day, screen, device, anchor, cx, cy) values ('2026-11-26', 's', 'desktop', $1, $2, 0)", [anchor, cx]);
     await cell("@main", 9);
     await expect(cell("@main", 10)).rejects.toThrow(/platform_admin_click_cells_cell/);
-    for (const table of ["platform_admin_heat_days", "platform_admin_click_cells"]) {
+    const recording = (entry: string, band: string) =>
+      db.query(
+        "insert into commerce.platform_admin_recordings (id, day, started_at, last_at, device, entry_screen, age_band) values (gen_random_uuid(), '2026-11-26', now(), now(), 'desktop', $1, $2)",
+        [entry, band],
+      );
+    await recording("s/products", "week");
+    await expect(recording("/admin/my-shop/orders", "week")).rejects.toThrow(/platform_admin_recordings_entry/);
+    await expect(recording("s", "a year")).rejects.toThrow(/platform_admin_recordings_age_band/);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.retention_rules where kind = 'admin_recordings'")).n).toBe(1);
+    for (const table of ["platform_admin_heat_days", "platform_admin_click_cells", "platform_admin_recordings"]) {
       expect((await one<{ on: boolean }>(`select relrowsecurity as on from pg_class where oid = 'commerce.${table}'::regclass`)).on).toBe(true);
     }
   });

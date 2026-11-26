@@ -23228,6 +23228,48 @@ export const platformAdminHeatDays = commerce.table(
   ],
 ).enableRLS();
 
+/**
+ * A recording of a store owner's own use of the admin (D895 phase 3b, `docs/dpia-admin-use.md` section 2), only from an owner who allowed
+ * recordings, only of screens on the allow-list, under the random id the tab made, joined to no account, store or address: coarse times,
+ * the screens' keys, the click counts and the age band of the owner's first store. Its segments, scrubbed of every word
+ * (`admin-replay-scrub.ts`), are files in the private bucket `admin-recordings` (`admin/{id}/{seq}.gz`). Deleted with its files after 30
+ * days. Apart from every store's data.
+ */
+export const platformAdminRecordings = commerce.table(
+  "platform_admin_recordings",
+  {
+    id: uuid("id").primaryKey(),
+    day: date("day", { mode: "string" }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull(),
+    durationMs: integer("duration_ms").notNull().default(0),
+    device: text("device").notNull(),
+    width: smallint("width"),
+    height: smallint("height"),
+    entryScreen: text("entry_screen").notNull(),
+    screens: text("screens").array().notNull().default(sql`'{}'::text[]`),
+    ageBand: text("age_band").notNull(),
+    clicks: integer("clicks").notNull().default(0),
+    deadClicks: integer("dead_clicks").notNull().default(0),
+    rageClicks: integer("rage_clicks").notNull().default(0),
+    seqs: smallint("seqs").array().notNull().default(sql`'{}'::smallint[]`),
+    segments: smallint("segments").notNull().default(0),
+    bytes: integer("bytes").notNull().default(0),
+  },
+  (t) => [
+    index("platform_admin_recordings_started_idx").on(t.startedAt),
+    check("platform_admin_recordings_duration", sql`${t.durationMs} between 0 and 3600000`),
+    check("platform_admin_recordings_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("platform_admin_recordings_entry", sql`${t.entryScreen} ~ '^(s|a)(/[a-z0-9-]{1,30}){0,2}$'`),
+    check("platform_admin_recordings_screens", sql`cardinality(${t.screens}) <= 50`),
+    check("platform_admin_recordings_age_band", sql`${t.ageBand} in ('week', 'month', 'older')`),
+    check("platform_admin_recordings_seqs", sql`cardinality(${t.seqs}) <= 200`),
+    check("platform_admin_recordings_segments", sql`${t.segments} between 0 and 200`),
+    check("platform_admin_recordings_bytes", sql`${t.bytes} between 0 and 4194304`),
+    check("platform_admin_recordings_counts", sql`${t.clicks} >= 0 and ${t.deadClicks} >= 0 and ${t.rageClicks} >= 0`),
+  ],
+).enableRLS();
+
 /** Admin heatmaps' clicks per landmark and cell of its box, per day and screen (D895 phase 3b): written with the day's totals, kept 90 days. */
 export const platformAdminClickCells = commerce.table(
   "platform_admin_click_cells",

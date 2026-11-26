@@ -383,6 +383,7 @@ export const privacyNb: PrivacyMessages = {
       contracts: "Signerte kontrakter",
       form_responses: "Skjemasvar",
       unanswered_questions: "Spørsmål chatassistenten ikke kunne svare på",
+      admin_recordings: "Opptak av butikkeieres egen bruk av adminen",
     },
     bases: {
       read: "Lest i kilden",

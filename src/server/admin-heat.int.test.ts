@@ -15,7 +15,7 @@ type Row = Record<string, unknown>;
  * owner whose choice under the current notice allows heatmaps, for a measured screen; the person, the store and the address are never kept.
  */
 let before: Row | undefined;
-const NOW = new Date("2026-11-20T10:00:00Z");
+const NOW = new Date("2020-01-10T10:00:00Z");
 const zeros = (n: number) => new Array<number>(n).fill(0);
 const summary = (path: string, extra: Record<string, unknown> = {}) => ({
   v: 1,
@@ -38,12 +38,12 @@ const summary = (path: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 const totals = () =>
-  db().execute<Row>(sql`select screen, views, clicks, dead_clicks from commerce.platform_admin_heat_days where day = '2026-11-20' order by screen`);
+  db().execute<Row>(sql`select screen, views, clicks, dead_clicks from commerce.platform_admin_heat_days where day = '2020-01-10' order by screen`);
 
 beforeAll(async () => {
   [before] = await db().execute<Row>(sql`select admin_signals_open from commerce.platform_settings`);
-  await db().execute(sql`delete from commerce.platform_admin_heat_days where day = '2026-11-20'`);
-  await db().execute(sql`delete from commerce.platform_admin_click_cells where day = '2026-11-20'`);
+  await db().execute(sql`delete from commerce.platform_admin_heat_days where day = '2020-01-10'`);
+  await db().execute(sql`delete from commerce.platform_admin_click_cells where day = '2020-01-10'`);
 });
 
 afterAll(async () => {
@@ -83,7 +83,7 @@ describe("admin heatmaps' totals", () => {
       { screen: "s/products", views: 1, clicks: 2, dead_clicks: 1 },
       { screen: "s/settings/payments", views: 1, clicks: 2, dead_clicks: 1 },
     ]);
-    const cells = await db().execute<Row>(sql`select screen, anchor, cx, cy, clicks, dead from commerce.platform_admin_click_cells where day = '2026-11-20' order by screen`);
+    const cells = await db().execute<Row>(sql`select screen, anchor, cx, cy, clicks, dead from commerce.platform_admin_click_cells where day = '2020-01-10' order by screen`);
     expect(cells[0]).toEqual({ screen: "s/products", anchor: "@main", cx: 3, cy: 4, clicks: 2, dead: 1 });
   });
 
@@ -95,9 +95,9 @@ describe("admin heatmaps' totals", () => {
   });
 
   it("prunes totals past 13 months and cells past 90 days", async () => {
-    const later = new Date("2027-03-01T10:00:00Z");
+    const later = new Date("2020-04-20T10:00:00Z");
     expect(await pruneAdminHeat(later)).toEqual({ days: 0, cells: 1 + 1 });
     expect((await totals()).length).toBe(2);
-    expect((await pruneAdminHeat(new Date("2028-01-01T10:00:00Z"))).days).toBe(2);
+    expect((await pruneAdminHeat(new Date("2021-03-01T10:00:00Z"))).days).toBe(2);
   });
 });

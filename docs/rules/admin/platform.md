@@ -728,6 +728,8 @@ under *What the router fetches ahead*.
   are built locked (`admin-signals.ts`): the switch opens only once a Legal account has answered every question of the review `admin-use`
   and the owner confirms the signed assessment; only a store's owner is asked, about their own use; each choice is a kept row. Heatmaps (`admin-heat.ts`, `/api/admin-use/heat`) keep
   daily totals per screen key, only for screens on `admin-screens.ts`'s allow-list, reusing the storefront heatmaps' engine.
+  Recordings (`admin-recordings.ts`, `/api/admin-use/rec`, bucket `admin-recordings`) run the stores' recorder in its admin form and keep
+  only what `admin-replay-scrub.ts` leaves: no word, label or address. A new attribute there must describe layout, never text.
 
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 
