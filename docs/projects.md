@@ -270,7 +270,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 | Id | Step | Status |
 |---|---|---|
 | P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Done 26 November 2026 (bc2c881, 073eb4b; below) |
-| P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Planned |
+| P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Done 26 November 2026 (below) |
 | P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | Planned |
 
 ## 6. Tests
@@ -413,3 +413,12 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   prices and founding prices, €4 and NOK 40 a person beyond, the Everything bundle and the grants to Grow, Advanced and Plus; the one
   workspace has `projects` and `sales`; no trial was written (no account used it). The advisors list only the INFO kinds every commerce
   table has (RLS on with no policy, indexes not used yet): nothing for `docs/audits/psi-followups.md`.
+
+## As built: step P8.2, Projects on its own (26 November 2026)
+
+- **Its workspace** came with P8.1: a workspace starts with the store feature `projects` on, and its Home has a Projects card.
+- **The sign-up and Add to your account** read the catalogue's `standalone`, so both offer Projects with nothing changed: the sign-up for
+  extensions (`/sign-up/extensions?with=projects`) ticks it, at €25 a month, and the Everything bundle names it.
+- **Its page**: `/projects` on kaizenaflow.com, made by `docs/site-pages/standalone-products.test.ts` (`PROJECTS`) from `docs/site-design.md`
+  in the other product pages' shape, saved as a draft of Kaizena Flow's own store for the owner to publish (row
+  `fa016e02-6bf6-463d-b3f0-47ed756411c1`, `docs/site-pages/README.md`). Only what is built is claimed.
