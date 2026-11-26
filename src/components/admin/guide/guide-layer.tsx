@@ -389,7 +389,7 @@ function Panel({ guide }: { guide: GuideState }) {
           }
           trapTab(event, root.current);
         }}
-        className="absolute inset-y-0 left-0 flex w-full flex-col gap-5 overflow-y-auto bg-card p-6 text-ink shadow-2xl outline-none sm:w-[30rem] md:left-20 [[data-rail=names]_&]:md:left-56"
+        className="absolute inset-y-0 left-0 flex w-full flex-col gap-5 overflow-y-auto bg-card p-6 [&>*]:shrink-0 text-ink shadow-2xl outline-none sm:w-[30rem] md:left-20 [[data-rail=names]_&]:md:left-56"
       >
         <div className="flex items-center justify-between">
           <h2 id="guide-panel-title" className="flex items-center gap-2.5 text-title text-ink">
@@ -492,7 +492,7 @@ function Panel({ guide }: { guide: GuideState }) {
             </div>
           </section>
         ) : (
-          <section aria-labelledby="guide-places" className="flex min-h-0 flex-col">
+          <section aria-labelledby="guide-places" className="flex flex-col">
             <h3 id="guide-places" className="mb-1 text-body-strong text-ink">
               {w.places}
             </h3>

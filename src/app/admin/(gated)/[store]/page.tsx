@@ -413,7 +413,8 @@ export default async function AdminOverview({ params, searchParams }: Props) {
   );
 
   const firstWeekPath = firstWeek && nextStep && (
-    <section aria-labelledby="path-step" className={`${CARD_CLASS} flex flex-col gap-7 p-6 sm:p-7`}>
+    // Guide's welcome points here as the store's to-do list (D909), as it points at the next step's card once the store is set up.
+    <section aria-labelledby="path-step" data-guide="todo" className={`${CARD_CLASS} flex flex-col gap-7 p-6 sm:p-7`}>
       <ol className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(96px,100%),1fr))]">
         {steps.map((step) => {
           const current = step === nextStep;
