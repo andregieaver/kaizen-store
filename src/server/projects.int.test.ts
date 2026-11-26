@@ -320,6 +320,30 @@ describe("labels and comments (P4.6, P4.4)", () => {
   });
 });
 
+describe("every open task (P4.8)", () => {
+  it("lists the open tasks of open lists, the soonest due first, without the done, the archived, routines or closed lists", async () => {
+    const { id } = ok(await lists.createChecklist(store.member, { title: "Across one" }));
+    const { id: later } = ok(await items.addItem(store.member, id, { title: "Due later", dueAt: "2099-02-01T10:00:00Z" }));
+    const { id: sooner } = ok(await items.addItem(store.member, id, { title: "Due sooner", dueAt: "2099-01-01T10:00:00Z" }));
+    const { id: ticked } = ok(await items.addItem(store.member, id, { title: "Ticked" }));
+    ok(await items.setItemDone(store.member, ticked, true));
+    const { id: routine } = ok(await lists.createChecklist(store.member, { title: "A routine" }));
+    ok(await lists.setChecklistMode(store.member, routine, { isRoutine: true }));
+    const { id: habit } = ok(await items.addItem(store.member, routine, { title: "A habit" }));
+    const { id: closed } = ok(await lists.createChecklist(store.member, { title: "Closed" }));
+    const { id: old } = ok(await items.addItem(store.member, closed, { title: "In a closed list" }));
+    ok(await lists.updateChecklist(store.member, closed, { status: "archived" }));
+    const open = await lists.openTasks(store.storeId);
+    const ids = open.map((t) => t.id);
+    expect(ids.indexOf(sooner)).toBeLessThan(ids.indexOf(later));
+    expect(ids).not.toContain(ticked);
+    expect(ids).not.toContain(habit);
+    expect(ids).not.toContain(old);
+    expect(open.find((t) => t.id === sooner)).toMatchObject({ checklistId: id, checklistTitle: "Across one", statusId: expect.any(String) });
+    expect((await lists.openTasks(other.storeId)).map((t) => t.id)).not.toContain(sooner);
+  });
+});
+
 describe("a project", () => {
   it("has lists (the first its home), stages for their items, and a bar of where they stand", async () => {
     const { id: projectId } = ok(await projects.createProject(store.member, { name: "Black Friday", targetDate: "2026-11-27" }));

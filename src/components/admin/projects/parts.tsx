@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Field, Select } from "@/components/admin/ui/field";
+import { ButtonLink } from "@/components/admin/ui/button";
 
 import type { ProjectColour, ProjectHealth, ProjectStatus } from "@/lib/projects-model";
 
@@ -61,5 +62,18 @@ export function ChoiceField({ label, name, value, options, disabled }: { label: 
         </Select>
       )}
     </Field>
+  );
+}
+
+/** A page's views (a project's List and Board, the checklists' Lists and All tasks): links, the current one drawn strong. */
+export function ViewSwitch({ label, views, current }: { label: string; views: { key: string; label: string; href: string }[]; current: string }) {
+  return (
+    <nav aria-label={label} className="flex gap-2">
+      {views.map((v) => (
+        <ButtonLink key={v.key} kind={current === v.key ? "strong" : "quiet"} size="dense" href={v.href} aria-current={current === v.key ? "page" : undefined}>
+          {v.label}
+        </ButtonLink>
+      ))}
+    </nav>
   );
 }

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { CreateButton } from "@/components/admin/projects/create-button";
-import { healthColour, projectStatusColour, StatusBarView, StatusPill } from "@/components/admin/projects/parts";
+import { healthColour, projectStatusColour, StatusBarView, StatusPill, ViewSwitch } from "@/components/admin/projects/parts";
 import { ProjectBoard, type BoardCardView } from "@/components/admin/projects/project-board";
 import { ProjectLists, type ProjectListView } from "@/components/admin/projects/project-lists";
 import { ButtonLink, EmptyState, PageHeader } from "@/components/admin/ui";
@@ -126,19 +126,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         </EmptyState>
       ) : (
         <>
-          <nav aria-label={w.project.viewsLabel} className="flex gap-2">
-            {(["list", "board"] as const).map((v) => (
-              <ButtonLink
-                key={v}
-                kind={view === v ? "strong" : "quiet"}
-                size="dense"
-                href={v === "list" ? `${base}/projects/${project.id}` : `${base}/projects/${project.id}?view=board`}
-                aria-current={view === v ? "page" : undefined}
-              >
-                {w.project.views[v]}
-              </ButtonLink>
-            ))}
-          </nav>
+          <ViewSwitch
+            label={w.project.viewsLabel}
+            current={view}
+            views={[
+              { key: "list", label: w.project.views.list, href: `${base}/projects/${project.id}` },
+              { key: "board", label: w.project.views.board, href: `${base}/projects/${project.id}?view=board` },
+            ]}
+          />
           {view === "board" ? (
             <ProjectBoard projectId={project.id} stages={project.stages.map((s) => ({ id: s.id, name: s.name, colour: s.colour }))} cards={cards} canChange={canChange} words={w.board} act={act} />
           ) : (

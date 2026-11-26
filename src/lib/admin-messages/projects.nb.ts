@@ -125,6 +125,9 @@ export const projectsNb: ProjectsMessages = {
     advanced: "Avansert",
     project: "Prosjekt",
     titleField: "Tittel",
+    views: { lists: "Lister", tasks: "Alle oppgaver" },
+    viewsLabel: "Vis",
+    noOpenTasks: "Ingen åpne oppgaver: alt er gjort."
   },
 
   checklist: {
@@ -177,6 +180,11 @@ export const projectsNb: ProjectsMessages = {
     blocked: "Blokkert",
     subtasks: "{done}/{total}",
     comments: { one: "{n} kommentar", many: "{n} kommentarer" },
+    left: "{time} igjen",
+    late: "{time} på overtid",
+    costTotal: "Totalt {amount}",
+    costDone: "Ferdig {amount}",
+    costLeft: "Igjen {amount}",
     inProjects: "I {projects}",
   },
 

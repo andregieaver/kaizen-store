@@ -16,15 +16,14 @@ import type { AdminLang } from "@/lib/admin-lang";
 import type { ProjectsMessages } from "@/lib/admin-messages/projects.en";
 import { formatMoney } from "@/lib/money";
 import type { ItemMoment } from "@/lib/projects-ops";
-import { dueState } from "@/lib/projects-dates";
 import type { ChecklistFeatures } from "@/lib/projects-features";
 import { isFiltering, matches, NO_FILTER, type TaskFilter } from "@/lib/projects-filter";
 import type { ProjectColour, StatusBucket } from "@/lib/projects-model";
 
 import { DragHandle } from "./drag-handle";
 import { ItemEditor, type EditorItem } from "./item-editor";
-import { StatusPill } from "./parts";
 import { repeatSummary } from "./repeat-field";
+import { taskFacts } from "./task-facts";
 import { TaskFilterPanel } from "./task-filter";
 import { useAct, type ProjectsAct } from "./use-act";
 
@@ -453,34 +452,21 @@ export function ChecklistView(props: Props) {
 /** What a task's row says besides its title: only the fields its list uses. */
 function ItemFacts({ item, features, status, person, props, now }: { item: ViewItem; features: ChecklistFeatures; status: ViewStatus | null; person: string | null; props: Props; now: Date }) {
   const w = props.words;
-  const facts: ReactNode[] = [];
-  if (features.status && status) facts.push(<StatusPill key="status" colour={status.colour}>{status.name}</StatusPill>);
-  if (features.status && (item.blockedReason || item.blockedByItemId)) facts.push(<span key="blocked" className="text-chip text-warning-text">{w.checklist.blocked}</span>);
-  if (features.priority && item.priority) facts.push(<span key="priority" className="text-chip text-ink-2">{w.priorities[item.priority]}</span>);
-  if (features.dueDate && item.dueAt) {
-    const state = item.done ? "later" : dueState(item.dueAt, item.allDay, now, props.timeZone);
-    facts.push(
-      <span key="due" className={`text-chip tabular-nums ${state === "late" ? "text-danger-text" : state === "today" ? "text-warning-text" : "text-ink-2"}`}>
-        {fillWords(w.due, { date: adminDate(props.timeZone, item.dueAt, item.allDay ? "day" : "dayTime", props.lang) })}
-      </span>,
-    );
-  }
+  const r = w.repeat;
+  const between: ReactNode[] = [];
+  if (features.status && (item.blockedReason || item.blockedByItemId)) between.push(<span key="blocked" className="text-chip text-warning-text">{w.checklist.blocked}</span>);
   if (features.recurrence && item.recurrence) {
-    const r = w.repeat;
-    facts.push(
+    between.push(
       <span key="repeat" className="inline-flex items-center gap-1 text-chip text-ink-2">
         <Repeat className="size-3.5" aria-hidden />
         {repeatSummary(item.recurrence, r, props.locale)}
       </span>,
     );
-    if (item.streak > 0) facts.push(<span key="streak" className="text-chip text-positive-text tabular-nums">{countWords(item.streak, r.streak)}</span>);
-    if (item.done && item.nextDueAt) facts.push(<span key="back" className="text-chip text-ink-2 tabular-nums">{fillWords(r.back, { date: adminDate(props.timeZone, item.nextDueAt, "dayTime", props.lang) })}</span>);
-    if (!item.done && item.skippedAt) facts.push(<span key="skipped" className="text-chip text-warning-text">{r.skipped}</span>);
+    if (item.streak > 0) between.push(<span key="streak" className="text-chip text-positive-text tabular-nums">{countWords(item.streak, r.streak)}</span>);
+    if (item.done && item.nextDueAt) between.push(<span key="back" className="text-chip text-ink-2 tabular-nums">{fillWords(r.back, { date: adminDate(props.timeZone, item.nextDueAt, "dayTime", props.lang) })}</span>);
+    if (!item.done && item.skippedAt) between.push(<span key="skipped" className="text-chip text-warning-text">{r.skipped}</span>);
   }
-  const category = features.category ? props.labels.find((l) => l.id === item.categoryId) : undefined;
-  if (category) facts.push(<StatusPill key="category" colour={category.colour}>{category.name}</StatusPill>);
-  if (features.tags) for (const tag of props.labels.filter((l) => item.tagIds.includes(l.id))) facts.push(<StatusPill key={tag.id} colour={tag.colour}>{tag.name}</StatusPill>);
-  if (features.assignment && person) facts.push(<span key="person" className="text-chip text-ink-2">{person}</span>);
+  const facts = taskFacts({ task: item, features, status, person, labels: props.labels, timeZone: props.timeZone, lang: props.lang, now, words: w, between });
   if (features.subtasks && item.subtasks.length > 0) {
     facts.push(
       <span key="steps" className="text-chip text-ink-2 tabular-nums">

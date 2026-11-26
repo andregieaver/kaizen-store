@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { AllTasks } from "@/components/admin/projects/all-tasks";
 import { CreateButton } from "@/components/admin/projects/create-button";
+import { ViewSwitch } from "@/components/admin/projects/parts";
 import { AdminLink, EmptyState, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminDate } from "@/lib/admin-date";
@@ -12,19 +14,21 @@ import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { PROJECT_LIMITS } from "@/lib/projects-model";
 import type { Store } from "@/server/stores";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { projectChoices } from "@/server/projects";
-import { listChecklists, type ChecklistSummary } from "@/server/projects-lists";
+import { projectChoices, teamOf } from "@/server/projects";
+import { labelsOf } from "@/server/projects-labels";
+import { listChecklists, openTasks, type ChecklistSummary } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
 
-import { createChecklistAction } from "../projects/actions";
+import { createChecklistAction, projectsAction } from "../projects/actions";
 
 export const metadata: Metadata = { title: "Checklists" };
 
 /**
  * Checklists (D903, Life's `app/app/checklists`): Homer sees his open lists, each with how far it has come, and presses New checklist; an
- * empty page is one card to make the first. Routines are apart (habits used again), done and archived lists below.
+ * empty page is one card to make the first. Routines are apart (habits used again), done and archived lists below. *All tasks* (P4.8, Life's
+ * All items) is every open task of every open list, the soonest due first, to tick off or filter there.
  */
-export default async function ChecklistsPage({ params }: PageProps<"/admin/[store]/checklists">) {
+export default async function ChecklistsPage({ params, searchParams }: PageProps<"/admin/[store]/checklists">) {
   const member = await requirePermission((await params).store, "projects:read");
   const off = requireFeature(member, "projects");
   if (off) return off;
@@ -32,13 +36,20 @@ export default async function ChecklistsPage({ params }: PageProps<"/admin/[stor
   const lang = adminLangOf(member.account.adminLocale);
   const w = PROJECTS_WORDS[lang];
   await ensureDefaultStatuses(store.id, w.defaults);
-  const [lists, projects] = await Promise.all([listChecklists(store.id), projectChoices(store.id)]);
+  const view = (await searchParams).view === "tasks" ? "tasks" : "lists";
+  const [lists, projects, tasks, team, labels] = await Promise.all([
+    listChecklists(store.id),
+    projectChoices(store.id),
+    view === "tasks" ? openTasks(store.id) : [],
+    view === "tasks" ? teamOf(store.id) : [],
+    view === "tasks" ? labelsOf(store.id) : [],
+  ]);
   const canChange = memberCan(member, "projects:write");
   const base = `/admin/${store.slug}/checklists`;
   const open = lists.filter((l) => l.status === "open" && !l.isRoutine);
   const routines = lists.filter((l) => l.status === "open" && l.isRoutine);
   const closed = lists.filter((l) => l.status !== "open");
-  const openTasks = lists.filter((l) => l.status === "open").reduce((sum, l) => sum + (l.total - l.done), 0);
+  const openCount = lists.filter((l) => l.status === "open").reduce((sum, l) => sum + (l.total - l.done), 0);
   const create = canChange ? (
     <CreateButton
       label={w.checklists.newChecklist}
@@ -69,17 +80,40 @@ export default async function ChecklistsPage({ params }: PageProps<"/admin/[stor
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.checklists.title}
-        meta={[<span key="lead">{lists.length === 0 ? w.checklists.leadNone : countWords(openTasks, w.checklists.leadOpen)}</span>]}
+        meta={[<span key="lead">{lists.length === 0 ? w.checklists.leadNone : countWords(openCount, w.checklists.leadOpen)}</span>]}
         actions={lists.length > 0 ? create : undefined}
       />
+      {lists.length > 0 && (
+        <ViewSwitch
+          label={w.checklists.viewsLabel}
+          current={view}
+          views={[
+            { key: "lists", label: w.checklists.views.lists, href: base },
+            { key: "tasks", label: w.checklists.views.tasks, href: `${base}?view=tasks` },
+          ]}
+        />
+      )}
       {lists.length === 0 ? (
         <EmptyState title={w.checklists.firstTitle} action={create}>
           {w.checklists.firstText}
         </EmptyState>
+      ) : view === "tasks" ? (
+        <AllTasks
+          tasks={tasks}
+          labels={labels.map((l) => ({ id: l.id, kind: l.kind, name: l.name, colour: l.colour }))}
+          team={team}
+          base={base}
+          timeZone={store.timeZone}
+          lang={lang}
+          now={new Date().toISOString()}
+          canChange={canChange}
+          words={w}
+          act={projectsAction.bind(null, store.slug)}
+        />
       ) : (
         group(open)
       )}
-      {routines.length > 0 && (
+      {view === "lists" && routines.length > 0 && (
         <section aria-labelledby="routines" className="flex flex-col gap-3">
           <h2 id="routines" className="text-title text-ink">
             {w.checklists.routines}
@@ -87,7 +121,7 @@ export default async function ChecklistsPage({ params }: PageProps<"/admin/[stor
           {group(routines)}
         </section>
       )}
-      {closed.length > 0 && (
+      {view === "lists" && closed.length > 0 && (
         <details className="flex flex-col gap-3">
           <summary className="cursor-pointer text-body-strong text-ink-2">
             {w.checklists.closed} <span className="text-muted tabular-nums">{closed.length}</span>

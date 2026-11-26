@@ -228,11 +228,12 @@ Status: Planned, Building, Done (date and commit).
 | P4.5 | Attachments from the media library | Planned |
 | P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 |
 | P4.7 | A customer on an item (Life's contacts) | Planned |
-| P4.8 | Calendar and Timeline views of a project; every item across lists (Life's *All items*, with P4.11's filters); cost summary; due countdown | Planned |
+| P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 |
 | P4.9 | What is due on Home's attention list | Planned |
 | P4.10 | A light refresh while a list is open, for a team working together | Planned |
 | P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 (50c0dbf) |
 | P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Planned |
+| P4.13 | Calendar and Timeline views of a project (its tasks by due day; start to due as bars) | Planned |
 
 ### P5: the AI manager and events
 
@@ -333,3 +334,15 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 - **Comments.** A thread under every task, in its editor (Life's activity thread, `checklist_item_comments`): who wrote it and when, the
   writer edits or deletes their own, and the row counts them. Read with the list; shown as text. Not in the whole-store file (people's own
   words), not copied with a store, and classed as staff's own in the personal-data register.
+
+## As built: step P4.8 (26 November 2026)
+
+- **All tasks** (Checklists, beside *Lists*): every open task of the store's open lists, routines apart, the soonest due first, at most
+  1,000 (`openTasks()`); each names its list (a link), shows the fields its own list uses, is ticked off there, and is filtered by who does it,
+  priority, due, category and tags (a status is each list's own, so not across lists). A list's row and this view draw their fields with one
+  function (`task-facts.tsx`).
+- **Costs**: an Advanced list with Cost on shows its total, what is done and what is left, a line a currency; an unpriced task is unknown,
+  not free, and is left out (`costSummary()`).
+- **Countdown**: an open list with a due date says how long is left ("3d, 4h left") or how late it is, in the danger colour, to the end of
+  a due day in the store's zone, kept true every half minute while the page is open (`dueTarget()`, `countdown()`, units in the person's
+  language).

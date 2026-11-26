@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActButton } from "@/components/admin/projects/act-button";
+import { DueCountdown } from "@/components/admin/projects/due-countdown";
 import { DuplicateButton } from "@/components/admin/projects/duplicate-button";
 import { ChecklistView, type ViewEntry, type ViewItem } from "@/components/admin/projects/checklist-view";
 import { AdminLink, ButtonLink, PageHeader } from "@/components/admin/ui";
@@ -11,6 +12,8 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { mainCurrency } from "@/lib/markets";
+import { formatMoney } from "@/lib/money";
+import { costSummary, dueTarget } from "@/lib/projects-views";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { teamOf } from "@/server/projects";
 import { labelsOf } from "@/server/projects-labels";
@@ -50,6 +53,10 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const toView = (item: ChecklistItem): ViewItem => ({ ...item, subtasks: item.subtasks.map((s) => ({ id: s.id, title: s.title, done: s.done, isGoal: s.isGoal })) });
   const entries: ViewEntry[] = list.entries.map((e) => (e.kind === "section" ? { kind: "section", section: { id: e.section.id, title: e.section.title } } : { kind: "item", item: toView(e.item) }));
   const assignee = team.find((p) => p.id === list.assignedTo)?.name;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const drawn = new Date();
+  const now = drawn.getTime();
+  const costs = list.features.cost ? costSummary([...list.entries.flatMap((e) => (e.kind === "item" ? [e.item] : [])), ...list.done]) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,6 +66,9 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         meta={[
           <span key="progress">{fillWords(w.progress, { done: list.done.length, total })}</span>,
           ...(list.dueAt ? [<span key="due">{fillWords(w.due, { date: adminDate(store, list.dueAt, list.allDay ? "day" : "dayTime", lang) })}</span>] : []),
+          ...(list.dueAt && list.status === "open"
+            ? [<DueCountdown key="countdown" target={dueTarget(list.dueAt, list.allDay, store.timeZone)} now={now} locale={locale} words={{ left: w.checklist.left, late: w.checklist.late }} />]
+            : []),
           ...(assignee ? [<span key="who">{assignee}</span>] : []),
           ...(list.archived > 0 ? [<span key="archived">{countWords(list.archived, w.checklist.archived)}</span>] : []),
           ...(list.status !== "open" ? [<span key="state">{w.checklistStates[list.status]}</span>] : []),
@@ -75,6 +85,13 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         }
       />
       {list.description && <p className="max-w-prose text-body text-ink-2">{list.description}</p>}
+      {costs.map((c) => (
+        <p key={c.currency} className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted tabular-nums">
+          <span className="text-ink">{fillWords(w.checklist.costTotal, { amount: formatMoney(c.total, c.currency, locale) })}</span>
+          <span>{fillWords(w.checklist.costDone, { amount: formatMoney(c.done, c.currency, locale) })}</span>
+          <span>{fillWords(w.checklist.costLeft, { amount: formatMoney(c.remaining, c.currency, locale) })}</span>
+        </p>
+      ))}
       <ChecklistView
         list={{ id: list.id, title: list.title, isRoutine: list.isRoutine, features: list.features }}
         entries={entries}
@@ -88,9 +105,9 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         canChange={canChange}
         timeZone={store.timeZone}
         lang={lang}
-        locale={ADMIN_LANG_FACTS[lang].locale}
+        locale={locale}
         currency={mainCurrency(store)}
-        now={new Date().toISOString()}
+        now={drawn.toISOString()}
         words={w}
         act={act}
       />

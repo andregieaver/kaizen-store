@@ -130,6 +130,9 @@ export const projectsEn = {
     advanced: "Advanced",
     project: "Project",
     titleField: "Title",
+    views: { lists: "Lists", tasks: "All tasks" },
+    viewsLabel: "Show",
+    noOpenTasks: "No open tasks: everything is done.",
   },
 
   checklist: {
@@ -183,6 +186,11 @@ export const projectsEn = {
     subtasks: "{done}/{total}",
     inProjects: "In {projects}",
     comments: { one: "{n} comment", many: "{n} comments" },
+    left: "{time} left",
+    late: "{time} late",
+    costTotal: "Total {amount}",
+    costDone: "Done {amount}",
+    costLeft: "Left {amount}",
   },
 
   item: {

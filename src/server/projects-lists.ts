@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { checklistInput, problemFields } from "@/lib/projects";
 import { effectiveFeatures, storedFeatures, type ChecklistFeatures } from "@/lib/projects-features";
-import { CHECKLIST_STATES, PRIORITIES, type ChecklistState } from "@/lib/projects-model";
+import { CHECKLIST_STATES, PRIORITIES, PROJECT_COLOURS, type ChecklistState } from "@/lib/projects-model";
 import { parseRecurrence, type Recurrence } from "@/lib/projects-recurrence-schema";
 
 import type { Membership } from "./auth";
@@ -355,6 +355,88 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
 }
 
 const sortOf = (e: ChecklistEntry): number => (e.kind === "section" ? e.section.sortOrder : e.item.sortOrder);
+
+/** An open task as the store's All tasks view shows it (P4.8, Life's *All items*): with its list and what that list uses. */
+export type OpenTask = {
+  id: string;
+  title: string;
+  checklistId: string;
+  checklistTitle: string;
+  features: ChecklistFeatures;
+  statusId: string | null;
+  status: { name: string; colour: Status["colour"] } | null;
+  assignedTo: string | null;
+  priority: (typeof PRIORITIES)[number] | null;
+  dueAt: string | null;
+  allDay: boolean | null;
+  categoryId: string | null;
+  tagIds: string[];
+};
+
+const openTaskRow = z.object({
+  id: col.uuid,
+  title: col.text,
+  checklist_id: col.uuid,
+  checklist_title: col.text,
+  is_advanced: col.bool,
+  advanced_features: z.unknown(),
+  is_routine: col.bool,
+  status_id: col.uuid.nullable(),
+  status_name: col.textOrNull,
+  status_colour: z.enum(PROJECT_COLOURS).nullable(),
+  assigned_to: col.uuid.nullable(),
+  priority: z.enum(PRIORITIES).nullable(),
+  due_at: col.timestampOrNull,
+  all_day: col.bool.nullable(),
+  category_id: col.uuid.nullable(),
+});
+
+/** At most this many open tasks in the All tasks view, the soonest due first. */
+const MAX_OPEN_TASKS = 1000;
+
+/** The store's open tasks across its open lists (routines apart), the soonest due first, then by list and order. */
+export async function openTasks(storeId: string): Promise<OpenTask[]> {
+  const [rows, tags] = await Promise.all([
+    typedRows(
+      openTaskRow,
+      sql`
+        select i.id, i.title, c.id as checklist_id, c.title as checklist_title, c.is_advanced, c.advanced_features, c.is_routine,
+          i.status_id, s.name as status_name, s.colour as status_colour, i.assigned_to, i.priority, i.due_at, i.all_day, i.category_id
+        from commerce.checklist_items i
+        join commerce.checklists c on c.store_id = i.store_id and c.id = i.checklist_id
+        left join commerce.checklist_statuses s on s.store_id = i.store_id and s.id = i.status_id
+        where i.store_id = ${storeId}::uuid and i.done_at is null and i.archived_at is null and c.status = 'open' and not c.is_routine
+        order by i.due_at nulls last, c.sort_order, i.sort_order
+        limit ${MAX_OPEN_TASKS}
+      `,
+    ),
+    typedRows(
+      z.object({ item_id: col.uuid, label_id: col.uuid }),
+      sql`
+        select t.item_id, t.label_id from commerce.checklist_item_tags t
+        join commerce.checklist_items i on i.store_id = t.store_id and i.id = t.item_id
+        join commerce.project_labels l on l.store_id = t.store_id and l.id = t.label_id
+        where t.store_id = ${storeId}::uuid and i.done_at is null and i.archived_at is null
+        order by l.sort_order
+      `,
+    ),
+  ]);
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    checklistId: r.checklist_id,
+    checklistTitle: r.checklist_title,
+    features: effectiveFeatures({ isAdvanced: r.is_advanced, advancedFeatures: r.advanced_features, isRoutine: r.is_routine }),
+    statusId: r.status_id,
+    status: r.status_name && r.status_colour ? { name: r.status_name, colour: r.status_colour } : null,
+    assignedTo: r.assigned_to,
+    priority: r.priority,
+    dueAt: r.due_at,
+    allDay: r.all_day,
+    categoryId: r.category_id,
+    tagIds: tags.filter((t) => t.item_id === r.id).map((t) => t.label_id),
+  }));
+}
 
 // ---------------------------------------------------------------------------
 // Writes

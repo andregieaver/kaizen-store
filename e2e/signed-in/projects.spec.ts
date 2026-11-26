@@ -7,7 +7,7 @@ import { E2E_STORE, OWNER } from "./accounts";
 /**
  * Projects and checklists (D903) as an owner uses them: the feature is switched on under Features; a checklist is made, tasks are added with
  * Enter and one is ticked below the Done line; the list made Advanced, a task set to repeat every day, ticked (its run shows) and the tick
- * undone; the list filtered by status and duplicated under a name of its own; a tag made on Statuses, given to a task, and the task commented
+ * undone; the list filtered by status, its open task found under All tasks, and the list duplicated under a name of its own; a tag made on Statuses, given to a task, and the task commented
  * on; a project is made, a checklist added to it, and a task moved to the next stage on its board
  * with the keyboard's way (*Move to*). The store is left as it was found: its projects and lists deleted, the feature switched off again.
  */
@@ -118,6 +118,12 @@ test("an owner filters the list by status and duplicates it", async ({ page }) =
   await page.getByRole("button", { name: "Clear filters" }).click();
   await expect(page.getByRole("button", { name: "Open Count the till" })).toBeVisible();
 
+  await page.goto(`/admin/${E2E_STORE}/checklists?view=tasks`);
+  const ours = page.getByRole("listitem").filter({ has: page.getByRole("link", { name: LIST, exact: true }) });
+  await expect(ours.getByRole("checkbox", { name: "Count the till done" })).toBeVisible({ timeout: 30_000 });
+  await expect(ours.getByRole("checkbox", { name: "Unlock the door done" })).toHaveCount(0);
+  await page.goto(`/admin/${E2E_STORE}/checklists`);
+  await page.getByRole("link", { name: LIST, exact: true }).first().click();
   await page.locator("summary", { hasText: "More" }).click();
   await page.getByRole("button", { name: "Duplicate", exact: true }).click();
   await expect(page.getByLabel("Name of the copy")).toHaveValue(`${LIST} (copy)`);
