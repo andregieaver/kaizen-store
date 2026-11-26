@@ -300,6 +300,8 @@
     "src/db/schema.ts#planMoves",
     "src/db/schema.ts#planReminderSteps",
     "src/db/schema.ts#platformAdConversions",
+    "src/db/schema.ts#platformAdminClickCells",
+    "src/db/schema.ts#platformAdminHeatDays",
     "src/db/schema.ts#platformAdminSignalChoices",
     "src/db/schema.ts#platformApiTokens",
     "src/db/schema.ts#platformAutopilotRuns",
@@ -909,6 +911,7 @@
   ],
   "keptForTests": {
     "src/components/terms-choice.ts#resetTicks": "A reset helper a test calls between cases.",
+    "src/lib/admin-screens.ts#MEASURED": "The admin screens' allow-list, which a test holds to the app's folders so no listed screen is stale (D895).",
     "src/lib/analytics-export.ts#NOT_EXPORTED": "A constant a guard test reads.",
     "src/lib/credit-allocation.ts#creditNoteSnapshot": "An oracle a test compares the live code against.",
     "src/lib/credit-allocation.ts#editCreditNote": "An oracle a test compares the live code against.",

@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { z } from "zod";
 
+import { answer } from "@/lib/beacon-answer";
 import { sameSite } from "@/lib/same-site";
 import { getOpenStore } from "@/server/stores";
 import { log } from "@/server/log";
@@ -14,7 +15,6 @@ import { budgetVisitor, takeBudget } from "@/server/request-budget";
  */
 const MAX_BYTES = 4000;
 const body = z.object({ store: z.string().regex(/^[a-z0-9-]{1,63}$/), ids: z.array(z.string()).max(51) });
-const answer = (status: number) => new Response(null, { status, headers: { "Cache-Control": "no-store" } });
 
 export async function POST(request: Request) {
   await connection();

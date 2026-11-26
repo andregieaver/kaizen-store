@@ -909,6 +909,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D904 | **The octopus for the whole of Kaizena Flow, and Projects as an extension that stands alone** | 2026-11-26 | [text](decisions/D904.md) |
 | D905 | **Rivals for every site: the market check without a shop (market check M5)** | 2026-11-26 | [text](decisions/D905.md) |
 | D906 | **The country rules in code as the owner left them, one outreach gate, and keyed do-not-contact hashes (email plan P5.3, P5.6)** | 2026-11-26 | [text](decisions/D906.md) |
+| D907 | **Added to a team, told by email with the way in, for Kaizena Flow's team and every store's** | 2026-11-26 | [text](decisions/D907.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

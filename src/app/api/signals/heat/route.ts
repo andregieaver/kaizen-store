@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 
+import { answer } from "@/lib/beacon-answer";
 import { sameSite } from "@/lib/same-site";
 import { log } from "@/server/log";
 import { recordHeat } from "@/server/page-heat";
@@ -11,7 +12,6 @@ import { recordHeat } from "@/server/page-heat";
  */
 
 const MAX_BYTES = 8000;
-const answer = (status: number) => new Response(null, { status, headers: { "Cache-Control": "no-store" } });
 
 export async function POST(request: Request) {
   await connection();

@@ -1,5 +1,5 @@
-// The four product pages of the extensions sold on their own (D748 E7 part four, docs/extensions.md 7): /support-desk, /email-automation,
-// /work and /deals, from docs/site-design.md's recipes in the feature pages' shape (6.11): the hero, three cards, feature rows, questions and
+// The product pages of the extensions sold on their own (D748 E7 part four, docs/extensions.md 7; Projects D904): /support-desk, /email-automation,
+// /work, /deals and /projects, from docs/site-design.md's recipes in the feature pages' shape (6.11): the hero, three cards, feature rows, questions and
 // the end. Their main action is the sign-up for extensions with the product ticked (`/sign-up/extensions?with=…`), which answers once the
 // owner opens it (STANDALONE_SIGNUP_OPEN). Every line is built today; its sources are beside each page (docs/support.md, docs/flows.md,
 // docs/work.md, docs/contracts.md, the rules in docs/rules/admin and the decisions named). Checked by `checkPage()` (parts.ts).
@@ -266,7 +266,60 @@ export const DEALS: Product = {
   end: { title: "Try Deals and Contracts Free", bold: "Free for 14 days.", rest: "Put your first deals on the board today." },
 };
 
-export const PRODUCTS = [SUPPORT_DESK, EMAIL_AUTOMATION, WORK, DEALS];
+// D903 and docs/projects.md: plain and Advanced lists and their fields (P2, P3), statuses per store or list, sections and the Done line,
+// select many (P4.2), routines (P4.1), comments (P4.4), labels (P4.6), All tasks, costs and the countdown (P4.8), Home's tasks due (P4.9),
+// the light refresh (P4.10), filters (P4.11), templates (P4.12), the calendar and timeline (P4.13); D904 (an extension on its own, five
+// people, those who only read free). Not claimed: reminders by email or push (P4.3), attachments (P4.5), a task tied to a customer (P4.7),
+// the AI manager's project tools (P5).
+export const PROJECTS: Product = {
+  id: "projects",
+  slug: "projects",
+  title: "Projects",
+  seo: {
+    title: "Projects and Checklists: Kaizena Flow",
+    description: "Checklists and projects for your team: who does what and by when, as a list, a board, a calendar or a timeline. Try it free for 14 days.",
+  },
+  hero: {
+    eyebrow: "Kaizena Projects",
+    title: "Your Team's Work, Done",
+    bold: "Checklists and projects that show who does what, and by when.",
+    rest: "No online store needed. Try it free for 14 days.",
+    claims: ["Simple checklists", "Projects on a board", "Routines that repeat"],
+  },
+  cards: {
+    heading: { eyebrow: "How it works", title: "Start Simple, Grow When You Need To", bold: "A list first, more when you want it.", rest: "Every list starts plain, and any list can take on statuses, people and dates." },
+    items: [
+      ["Checklists", "in seconds", "Type a line and press Enter.", "Paste many lines at once, tick tasks off and group them in sections. Done tasks sink below the open ones.", ["Sections and a Done line", "Many tasks moved at once", "Templates to start from"]],
+      ["Projects", "at a glance", "See where every project stands.", "Each project has a status, a health, its next step and a target date, with a bar showing where its tasks are.", ["A list or a board per project", "Drag tasks from stage to stage", "A calendar and a timeline"]],
+      ["Routines", "that repeat", "Daily rounds that reset themselves.", "A task can come back every day, week or month at the times you choose, and keeps count of its run.", ["Morning, midday or evening", "Its subtasks unticked again", "A streak for every routine"]],
+    ],
+  },
+  features: [
+    {
+      eyebrow: "Advanced lists",
+      title: "Every Detail, Only Where You Need It",
+      bold: "Switch a list to Advanced and choose its fields.",
+      rest: "Statuses, people, dates, priority and cost appear only on the lists that use them, so a simple list stays simple.",
+      lines: ["Statuses of your own, per list or shared", "Who does it, and by when", "Priority, cost and subtasks", "Categories and tags", "Comments on every task"],
+    },
+    {
+      eyebrow: "Stay on top",
+      title: "See What Is Next, Everywhere",
+      bold: "Every open task in one list, the soonest first.",
+      rest: "Filter by person, status, priority, due date or label, and tick tasks off without opening their lists.",
+      lines: ["All open tasks across your lists", "Filters by person, status and label", "A list's costs added up", "A countdown to each due date", "A teammate's ticks show without reloading"],
+    },
+  ],
+  faq: [
+    NO_STORE("Projects"),
+    { q: "How many people can use it?", bold: "Five people are included.", rest: "Anyone who only reads your lists is free, and you can add more people as your team grows." },
+    { q: "Can I start from a template?", bold: "Yes.", rest: "Mark any list as a template, and start new lists from it with their sections and tasks in place." },
+    { q: "Which languages does it speak?", bold: "English and Norwegian.", rest: "Each person chooses the language they work in." },
+  ],
+  end: { title: "Try Projects Free", bold: "Free for 14 days.", rest: "Make your first checklist today and invite your team when you are ready." },
+};
+
+export const PRODUCTS = [SUPPORT_DESK, EMAIL_AUTOMATION, WORK, DEALS, PROJECTS];
 
 for (const product of PRODUCTS) {
   it(`builds the ${product.title} page as the editor would save it`, () => {

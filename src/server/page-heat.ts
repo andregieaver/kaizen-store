@@ -42,7 +42,7 @@ import { getOpenStore } from "./stores";
  */
 
 const pair = z.tuple([z.string().uuid(), z.enum(["a", "b", "c", "d"])]);
-const heatInput = z.object({
+export const heatInput = z.object({
   v: z.literal(1),
   store: z.string().min(1).max(100),
   path: z.string().min(1).max(300),
@@ -79,6 +79,60 @@ async function takeHeatSlot(storeId: string): Promise<boolean> {
 
 const intArray = (values: readonly number[]) => `{${values.map((v) => Math.trunc(v)).join(",")}}`;
 
+export type HeatSummary = z.infer<typeof heatInput>;
+
+/**
+ * A summary's figures for its day's row, the engine the stores' heatmaps and the admin's (D895 phase 3b, `admin-heat.ts`) share: the first
+ * summary of a view counts it, with its reach, fold and height; later ones add attention, clicks and flags.
+ */
+export function heatFigures(input: HeatSummary) {
+  const first = input.seq === 0;
+  const reach = new Array<number>(REACH_BUCKETS).fill(0);
+  if (first) reach[input.reach ?? REACH_BUCKETS - 1] = 1;
+  return {
+    views: first ? 1 : 0,
+    reach: intArray(reach),
+    fold: first ? (input.fold ?? 1000) : 0,
+    att: intArray(input.att),
+    attH: first ? (input.attH ?? 0) : 0,
+    clicks: input.clicks.length,
+    dead: input.clicks.filter((c) => c[3] === 1).length,
+    rage: input.clicks.filter((c) => c[4] === 1).length,
+  };
+}
+
+/** How a day's row adds a summary (`h` the row kept, `excluded` the summary). */
+export const HEAT_DAY_SUMS = sql.raw(`views = h.views + excluded.views, reach = commerce.add_int_arrays(h.reach, excluded.reach), fold_sum = h.fold_sum + excluded.fold_sum,
+      attention_ms = commerce.add_bigint_arrays(h.attention_ms, excluded.attention_ms), att_height_sum = h.att_height_sum + excluded.att_height_sum,
+      clicks = h.clicks + excluded.clicks, dead_clicks = h.dead_clicks + excluded.dead_clicks, rage_clicks = h.rage_clicks + excluded.rage_clicks,
+      dead_views = h.dead_views + excluded.dead_views, rage_views = h.rage_views + excluded.rage_views,
+      frustrated_views = h.frustrated_views + excluded.frustrated_views`);
+
+/** How a cell's row adds a summary's clicks (`c` the row kept). */
+export const CELL_SUMS = sql.raw("clicks = c.clicks + excluded.clicks, dead = c.dead + excluded.dead, rage = c.rage + excluded.rage");
+
+type Cell = { anchor: string; cx: number; cy: number; clicks: number; dead: number; rage: number };
+
+/** A summary's clicks summed per anchor and cell, or null when it has none. Written in key order, so two summaries never lock the same rows in opposite orders. */
+export function heatCells(clicks: HeatSummary["clicks"]): Cell[] | null {
+  if (clicks.length === 0) return null;
+  const cells = new Map<string, Cell>();
+  for (const [anchor, cx, cy, d, r] of clicks) {
+    const key = `${anchor}|${cx}|${cy}`;
+    const cell = cells.get(key) ?? { anchor, cx, cy, clicks: 0, dead: 0, rage: 0 };
+    cell.clicks += 1;
+    cell.dead += d;
+    cell.rage += r;
+    cells.set(key, cell);
+  }
+  return [...cells.values()];
+}
+
+/** The cells as rows `k(anchor, cx, cy, clicks, dead, rage)` for a select. */
+export const cellRows = (list: Cell[]) => sql`unnest(${textList(list.map((k) => k.anchor))}, ${intArray(list.map((k) => k.cx))}::smallint[], ${intArray(list.map((k) => k.cy))}::smallint[],
+      ${intArray(list.map((k) => k.clicks))}::int[], ${intArray(list.map((k) => k.dead))}::int[], ${intArray(list.map((k) => k.rage))}::int[])
+      as k(anchor, cx, cy, clicks, dead, rage)`;
+
 /** Adds one page view's summary to the totals, or says why not. `headers` are the request's, read for the robot, privacy, own-page and cookie checks. */
 export async function recordHeat({ headers: h, body, now = new Date() }: { headers: Headers; body: unknown; now?: Date }): Promise<HeatOutcome> {
   const parsed = heatInput.safeParse(body);
@@ -107,47 +161,24 @@ export async function recordHeat({ headers: h, body, now = new Date() }: { heade
 
   const tags = ["", ...(await verifiedTags(store.id, input.ab, h.get("cookie")))];
   const day = storeDayKey(now, store.timeZone);
-  const first = input.seq === 0;
-  const reach = new Array<number>(REACH_BUCKETS).fill(0);
-  if (first) reach[input.reach ?? REACH_BUCKETS - 1] = 1;
-  const dead = input.clicks.filter((c) => c[3] === 1).length;
-  const rage = input.clicks.filter((c) => c[4] === 1).length;
+  const f = heatFigures(input);
   await db().execute(sql`
     insert into commerce.page_heat_days as h
       (store_id, day, page, device, tag, views, reach, fold_sum, attention_ms, att_height_sum, clicks, dead_clicks, rage_clicks, dead_views, rage_views, frustrated_views)
-    select ${store.id}::uuid, ${day}::date, ${place.landing}, ${input.device}, t.tag, ${first ? 1 : 0}, ${intArray(reach)}::int[],
-      ${first ? (input.fold ?? 1000) : 0}, ${intArray(input.att)}::bigint[], ${first ? (input.attH ?? 0) : 0},
-      ${input.clicks.length}, ${dead}, ${rage}, ${input.dv}, ${input.rv}, ${input.fv}
+    select ${store.id}::uuid, ${day}::date, ${place.landing}, ${input.device}, t.tag, ${f.views}, ${f.reach}::int[], ${f.fold}, ${f.att}::bigint[], ${f.attH},
+      ${f.clicks}, ${f.dead}, ${f.rage}, ${input.dv}, ${input.rv}, ${input.fv}
     from unnest(${textList(tags)}) as t(tag) order by t.tag
-    on conflict (store_id, day, page, device, tag) do update set
-      views = h.views + excluded.views, reach = commerce.add_int_arrays(h.reach, excluded.reach), fold_sum = h.fold_sum + excluded.fold_sum,
-      attention_ms = commerce.add_bigint_arrays(h.attention_ms, excluded.attention_ms), att_height_sum = h.att_height_sum + excluded.att_height_sum,
-      clicks = h.clicks + excluded.clicks, dead_clicks = h.dead_clicks + excluded.dead_clicks, rage_clicks = h.rage_clicks + excluded.rage_clicks,
-      dead_views = h.dead_views + excluded.dead_views, rage_views = h.rage_views + excluded.rage_views,
-      frustrated_views = h.frustrated_views + excluded.frustrated_views
+    on conflict (store_id, day, page, device, tag) do update set ${HEAT_DAY_SUMS}
   `);
-  if (input.clicks.length === 0) return { recorded: true };
-  // Equal cells summed first, then one row per cell and tag, in key order (so two summaries never lock the same rows in opposite orders).
-  const cells = new Map<string, { anchor: string; cx: number; cy: number; clicks: number; dead: number; rage: number }>();
-  for (const [anchor, cx, cy, d, r] of input.clicks) {
-    const key = `${anchor}|${cx}|${cy}`;
-    const cell = cells.get(key) ?? { anchor, cx, cy, clicks: 0, dead: 0, rage: 0 };
-    cell.clicks += 1;
-    cell.dead += d;
-    cell.rage += r;
-    cells.set(key, cell);
-  }
-  const list = [...cells.values()];
+  const k = heatCells(input.clicks);
+  if (!k) return { recorded: true };
   await db().execute(sql`
     insert into commerce.click_cells as c (store_id, day, page, device, tag, anchor, cx, cy, clicks, dead, rage)
     select ${store.id}::uuid, ${day}::date, ${place.landing}, ${input.device}, t.tag, k.anchor, k.cx, k.cy, k.clicks, k.dead, k.rage
     from unnest(${textList(tags)}) as t(tag)
-    cross join unnest(${textList(list.map((k) => k.anchor))}, ${intArray(list.map((k) => k.cx))}::smallint[], ${intArray(list.map((k) => k.cy))}::smallint[],
-      ${intArray(list.map((k) => k.clicks))}::int[], ${intArray(list.map((k) => k.dead))}::int[], ${intArray(list.map((k) => k.rage))}::int[])
-      as k(anchor, cx, cy, clicks, dead, rage)
+    cross join ${cellRows(k)}
     order by t.tag, k.anchor, k.cx, k.cy
-    on conflict (store_id, day, page, device, tag, anchor, cx, cy) do update set
-      clicks = c.clicks + excluded.clicks, dead = c.dead + excluded.dead, rage = c.rage + excluded.rage
+    on conflict (store_id, day, page, device, tag, anchor, cx, cy) do update set ${CELL_SUMS}
   `);
   return { recorded: true };
 }

@@ -13,6 +13,7 @@ The comparison pages have their own generator (`docs/comparison-evidence/pages/`
 | Email Automation | `/email-automation` | `standalone-products.test.ts` | `abd30949-ef48-4b8d-9d39-78067241e3f3` (Kaizena Flow's own store) |
 | Work | `/work` | `standalone-products.test.ts` | `7232b055-590c-4997-93a0-e219f47088cb` (Kaizena Flow's own store) |
 | Deals and Contracts | `/deals` | `standalone-products.test.ts` | `c1ad81a3-1d53-4a1a-a8d1-b69d7a1f1f1b` (Kaizena Flow's own store) |
+| Projects | `/projects` | `standalone-products.test.ts` | `fa016e02-6bf6-463d-b3f0-47ed756411c1` (Kaizena Flow's own store) |
 
 `try-the-page-builder.test.ts` (*Try the page builder*, D457 S4) is here too, with its own parts and its notes in `docs/builder-sandbox.md`.
 
@@ -107,4 +108,19 @@ place (its two buttons *Get Started with Flow* to `/sign-up`, and the hero's lin
 now makes it. **Before publishing:** the sign-up the other three lead to is open (`STANDALONE_SIGNUP_OPEN`). Look at each on a phone and in
 dark mode; screenshots of the inbox, a flow, a Work invoice and the deals board would make the feature rows better. They belong in the
 *Explore* menu's *Run your business* group (the owner's to approve).
+
+## Projects, 26 November 2026
+
+D904, `docs/projects.md` P8.2: Projects became an extension sold on its own, so it has its product page like the four above, made by the same
+generator (`PROJECTS` in `standalone-products.test.ts`): the hero (*Your Team's Work, Done*), three cards (checklists, projects, routines), two
+feature rows (Advanced lists and their fields; All tasks, filters, costs and the countdown), four questions and the one after a trial, and
+the end, each main action *Start Your Free Trial* to `/sign-up/extensions?with=projects`. Every line is built (its sources are beside the
+page in the generator); held back: reminders by email or push, attachments, a task tied to a customer and the AI manager's project tools,
+none built yet. No issues and no claims found. Saved as a new draft of Kaizena Flow's own store (`published` null, a `saved` version, a
+`store.page_saved` entry), its stored draft's md5 the checked JSON's (`16bc5ebc6c77ee3050285e6247dc07ac`).
+
+**Before publishing:** looked at in a local build in the site's own look, at desktop and phone width; nothing overflows. The sign-up it
+leads to ticks Projects (the catalogue's `standalone`, so the picker and Add to your account offer it with no change). It belongs in the
+*Explore* menu's *Run your business* group beside the other four (the owner's to approve). When the pairs of P8.3 are built, the generator
+gains a row for them and the draft is saved again.
 

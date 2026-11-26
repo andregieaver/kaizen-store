@@ -496,6 +496,9 @@ under *What the router fetches ahead*.
   two-step sign-in. Only an owner changes the team (`addPlatformAdmin()`, `setPlatformRole()`, `removePlatformAdmin()`), never their own
   place, and the platform keeps an owner; a member is an admin of Kaizena Flow's own store in the store role of their work
   (`HOUSE_ROLE_TEMPLATE`), set in the same transaction, never its owner (`store_members_house()`).
+- **Told when added (D907)**: `addPlatformAdmin()` and a store's `inviteStaff()` send `teamInviteEmail()` (`platform.team_invite`,
+  `staff.team_invite`) after the addition is saved, best effort: who added them, to what, as which role, and the sign-in page with `next` set
+  to where they work (Legal reviews for a lawyer).
 
 ## Legal reviews and the Legal role (D892, `src/lib/legal-reviews.ts`, `src/server/legal-reviews.ts`, `/admin/legal`)
 
@@ -723,7 +726,8 @@ under *What the router fetches ahead*.
   `incidents` scope (`incident-api.ts`) and follows `docs/runbooks/incident-autopilot.md`. Sources inside the app (`alertFailingJob()`,
   `runWatchdog()`, `runStatusChecks()`) name a fingerprint with `fingerprintOf()`, never a person's data. Admin heatmaps and recordings
   are built locked (`admin-signals.ts`): the switch opens only once a Legal account has answered every question of the review `admin-use`
-  and the owner confirms the signed assessment; only a store's owner is asked, about their own use; each choice is a kept row.
+  and the owner confirms the signed assessment; only a store's owner is asked, about their own use; each choice is a kept row. Heatmaps (`admin-heat.ts`, `/api/admin-use/heat`) keep
+  daily totals per screen key, only for screens on `admin-screens.ts`'s allow-list, reusing the storefront heatmaps' engine.
 
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 

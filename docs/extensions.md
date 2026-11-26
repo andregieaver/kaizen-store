@@ -134,7 +134,7 @@ or repeating invoices, contracts cannot be sent for signing). Subscribing again 
 ## 7. Standalone products
 
 - **Sign-up**: each standalone product has its own landing page on kaizenaflow.com (`/support-desk`, `/email-automation`,
-  `/work`, `/deals`: built from `docs/site-design.md`, saved as drafts for the owner to publish) with its own sign-up, and one
+  `/work`, `/deals`, `/projects`: built from `docs/site-design.md`, saved as drafts for the owner to publish) with its own sign-up, and one
   combined sign-up where you tick what you want. Both create the account and start the chosen trials.
 - **What they see**: only the extensions they have, the account's settings and the AI manager. No website, store, products,
   orders, themes or pages; no marker for the core plan inside the extension's screens.

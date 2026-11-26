@@ -17,6 +17,7 @@ import { sendDueWake, WAKE_DUE_SQL } from "./autopilot-wake";
 import { jobReport } from "./cache-events";
 import { sendEmail } from "./email";
 import { keepIncidents, pruneIncidents, pushMorning } from "./incidents";
+import { pruneAdminHeat } from "./admin-heat";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -24,7 +25,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * the autopilot sent once its gap allows, `autopilot-wake.ts`), and once a day
  * from seven in Oslo, the day claimed in `platform_settings.incident_digest_last_day` first so it happens once: the summary emailed to each
  * platform admin in their language and the morning push (what waits for them, the night's proposals among them, the owner's answer of 20
- * November 2026), then closed entries and old runs past their 180 days pruned. Never throws; each part's error is reported and the others run.
+ * November 2026), then closed entries and old runs past their 180 days pruned, and admin heatmaps' old totals. Never throws; each part's error is reported and the others run.
  */
 export async function runIncidentJobs(
   options: { now?: Date } = {},
@@ -66,6 +67,8 @@ export async function runIncidentJobs(
           report(error, "digest");
         }
         pruned = await pruneIncidents();
+        // Admin heatmaps' totals past 13 months and click cells past 90 days (D895 phase 3b); never throws.
+        await pruneAdminHeat(now);
         // Mondays: the week's reading of how owners use the admin (D895 phase 3a); its proposals reach the next day's summary and a push.
         if (oslo.weekday === 1) {
           try {

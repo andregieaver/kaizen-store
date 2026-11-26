@@ -1,5 +1,6 @@
 import { after, connection } from "next/server";
 
+import { answer } from "@/lib/beacon-answer";
 import { sameSite } from "@/lib/same-site";
 import { log } from "@/server/log";
 import { noteFirstRequest } from "@/server/instance-start";
@@ -11,7 +12,6 @@ import { recordOwnSpeed } from "@/server/own-speed";
  */
 
 const MAX_BYTES = 1000;
-const answer = (status: number) => new Response(null, { status, headers: { "Cache-Control": "no-store" } });
 
 export async function POST(request: Request) {
   await connection();

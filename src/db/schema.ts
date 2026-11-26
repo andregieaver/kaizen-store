@@ -23179,6 +23179,61 @@ export const platformAdminSignalChoices = commerce.table(
   ],
 ).enableRLS();
 
+/**
+ * Admin heatmaps' daily totals per screen (D895 phase 3b, `docs/dpia-admin-use.md` section 2), written only by `recordAdminHeat()`
+ * (`src/server/admin-heat.ts`) from owners who allowed heatmaps of their own use: as `page_heat_days`, but per admin screen key
+ * (`src/lib/admin-screens.ts`), never a store, a person or an address. Kept 13 months. Apart from every store's data.
+ */
+export const platformAdminHeatDays = commerce.table(
+  "platform_admin_heat_days",
+  {
+    day: date("day", { mode: "string" }).notNull(),
+    screen: text("screen").notNull(),
+    device: text("device").notNull(),
+    views: integer("views").notNull().default(0),
+    reach: integer("reach").array().notNull(),
+    foldSum: bigint("fold_sum", { mode: "number" }).notNull().default(0),
+    attentionMs: bigint("attention_ms", { mode: "number" }).array().notNull(),
+    attHeightSum: bigint("att_height_sum", { mode: "number" }).notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
+    deadClicks: integer("dead_clicks").notNull().default(0),
+    rageClicks: integer("rage_clicks").notNull().default(0),
+    deadViews: integer("dead_views").notNull().default(0),
+    rageViews: integer("rage_views").notNull().default(0),
+    frustratedViews: integer("frustrated_views").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.day, t.screen, t.device] }),
+    check("platform_admin_heat_days_screen", sql`${t.screen} ~ '^(s|a)(/[a-z0-9-]{1,30}){0,2}$'`),
+    check("platform_admin_heat_days_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("platform_admin_heat_days_arrays", sql`cardinality(${t.reach}) = 21 and cardinality(${t.attentionMs}) = 20`),
+    check("platform_admin_heat_days_counts", sql`${t.views} >= 0 and ${t.clicks} >= 0 and ${t.deadClicks} >= 0 and ${t.rageClicks} >= 0`),
+  ],
+).enableRLS();
+
+/** Admin heatmaps' clicks per landmark and cell of its box, per day and screen (D895 phase 3b): written with the day's totals, kept 90 days. */
+export const platformAdminClickCells = commerce.table(
+  "platform_admin_click_cells",
+  {
+    day: date("day", { mode: "string" }).notNull(),
+    screen: text("screen").notNull(),
+    device: text("device").notNull(),
+    anchor: text("anchor").notNull(),
+    cx: smallint("cx").notNull(),
+    cy: smallint("cy").notNull(),
+    clicks: integer("clicks").notNull().default(0),
+    dead: integer("dead").notNull().default(0),
+    rage: integer("rage").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.day, t.screen, t.device, t.anchor, t.cx, t.cy] }),
+    check("platform_admin_click_cells_screen", sql`${t.screen} ~ '^(s|a)(/[a-z0-9-]{1,30}){0,2}$'`),
+    check("platform_admin_click_cells_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("platform_admin_click_cells_anchor", sql`char_length(${t.anchor}) between 1 and 60`),
+    check("platform_admin_click_cells_cell", sql`${t.cx} between 0 and 9 and ${t.cy} between 0 and 9`),
+  ],
+).enableRLS();
+
 /** Every status change and note of an incident (D895): who (an account, or the autopilot's session link) and when; nothing is overwritten. */
 export const platformIncidentEvents = commerce.table(
   "platform_incident_events",
