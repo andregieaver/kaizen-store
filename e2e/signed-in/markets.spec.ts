@@ -243,17 +243,18 @@ test.describe("as the owner of a store without a shop (D905)", () => {
     // Their published prices (D905 M5d): the course against the store's own, a weakness found by code.
     await expect(findings.locator('[data-finding="service_cheaper"]')).toContainText("Linnet asks");
     const prices = rivals.locator("[data-service-prices]");
-    await expect(prices.locator('[data-service-price="Linnet Linkurs, 3 timer"]')).toContainText("you are 33 % dearer");
-    await expect(prices.locator('[data-service-price="Linnet Linkurs, 3 timer"]')).toContainText("On its page");
+    await expect(prices.locator('[data-service-price="Linnet: Linkurs, 3 timer"]')).toContainText("you are 33 % dearer");
+    await expect(prices.locator('[data-service-price="Linnet: Linkurs, 3 timer"]')).toContainText("On its page");
     // Keeping one through the form: the page cannot be read from here, so it is kept unconfirmed.
     await prices.getByText("Keep a price").click();
+    await prices.locator('select[name="rival"]').selectOption({ label: "Linnet" });
     await prices.getByLabel("Their service").fill("Ullkurs");
     await prices.getByLabel("Their price").fill("400");
     await prices.getByLabel("The page it is on").fill("https://linnet.example/ull");
     await prices.getByLabel("Your price for it").fill("450");
     await prices.getByRole("button", { name: "Keep the price" }).click();
     await expect(prices).toContainText("Kept: Ullkurs at");
-    await expect(prices.locator('[data-service-price="Linnet Ullkurs"]')).toContainText("Page not read");
+    await expect(prices.locator('[data-service-price="Linnet: Ullkurs"]')).toContainText("Page not read");
     if (shots) {
       await page.screenshot({ path: `${shots}/markets-site-computer.png` });
       await rivals.screenshot({ path: `${shots}/markets-site-rivals.png` });

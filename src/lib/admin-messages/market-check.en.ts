@@ -154,6 +154,7 @@ export const marketCheckEn = {
       ownHint: "Leave empty if you have none",
       product: "Or your product",
       source: "The page it is on",
+      sourceHint: "https://",
       keep: "Keep the price",
       kept: "Kept: {service} at {price}.",
       remove: "Remove",

@@ -151,6 +151,7 @@ export const marketCheckNb: MarketCheckMessages = {
       ownHint: "La stå tomt hvis du ikke har en",
       product: "Eller produktet ditt",
       source: "Siden den står på",
+      sourceHint: "https://",
       keep: "Lagre prisen",
       kept: "Lagret: {service} til {price}.",
       remove: "Fjern",
