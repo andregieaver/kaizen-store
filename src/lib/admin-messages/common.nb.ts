@@ -73,6 +73,7 @@ export const commonNb: CommonMessages = {
       referrals: "Vervekampanje",
       reviews: "Produktomtaler",
       sales: "Avtaler",
+      projects: "Prosjekter og sjekklister",
     },
     need: {
       shop: "nettbutikken",
@@ -89,6 +90,7 @@ export const commonNb: CommonMessages = {
       referrals: "vervekampanjen",
       reviews: "produktomtalene",
       sales: "avtalene",
+      projects: "prosjektene og sjekklistene",
     },
     or: " eller ",
     off: { one: "{label} er slått av", many: "{label} er slått av" },

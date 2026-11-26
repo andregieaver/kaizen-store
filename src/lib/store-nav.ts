@@ -64,7 +64,7 @@ export type StoreGroup = { heading: string; items: StoreItem[] };
 
 export type StoreSection = {
   /** The section's name in the menu, and the area of its page of cards (`hub`), which is the section's own page; its items name their own. */
-  key: "orders" | "products" | "customers" | "marketing" | "analytics" | "website" | "bookings" | "support" | "settings";
+  key: "orders" | "products" | "customers" | "marketing" | "analytics" | "website" | "bookings" | "support" | "projects" | "settings";
   label: string;
   icon: NavIconName;
   /** The tab's address after the store's: the section's main page, or its hub. */
@@ -355,6 +355,26 @@ export const STORE_SECTIONS: StoreSection[] = [
     ],
   },
   {
+    // Projects and checklists (D903, docs/projects.md): the team's work, ported from Kaizen Life. A website or a workspace has it too.
+    key: "projects",
+    label: "Projects",
+    icon: "kanban",
+    start: "/projects",
+    hub: false,
+    feature: "projects",
+    intro: "Projects and checklists for the team's work.",
+    groups: [
+      {
+        heading: "Projects",
+        items: [
+          // Statuses (`/projects/statuses`) is Lisa's page, one press from Projects: under its address, so in this section and area.
+          item("/projects", "Projects", "Each project and where its tasks stand, as a list or a board.", { area: "projects", feature: "projects", icon: "folder-kanban", basic: true, workspace: true }),
+          item("/checklists", "Checklists", "Lists to tick off, plain or with statuses, people and dates.", { area: "projects", feature: "projects", icon: "list-checks", basic: true, workspace: true }),
+        ],
+      },
+    ],
+  },
+  {
     key: "settings",
     label: "Settings",
     icon: "cog",
@@ -528,7 +548,8 @@ type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; 
 export type StoreTab = Link & { icon: NavIconName; also?: string[]; section?: string; badge?: number; foot?: boolean; home?: true };
 
 /** A section's sidebar, by the addresses inside it (`prefixes`; a page of cards in `exact`), keyed as its tab is (`section`, Home's `home`). */
-export type StoreArea = { section: string; prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] };
+/** A sidebar; a group sent without a heading is the section's only one and named as it, which the sidebar takes from the section's tab. */
+export type StoreArea = { section: string; prefixes: string[]; exact?: string[]; groups: { heading?: string; items: Link[] }[] };
 
 // Whether a section's page is left out of the Basic view (D454): the rule of all three levels, kept in `admin-view.ts` (D884).
 export { advancedIn };
@@ -591,7 +612,8 @@ function areasOf(base: string, sections: StoreSection[]): StoreArea[] {
       prefixes: s.groups.flatMap((g) => g.items.flatMap((i) => itemPaths(i).map((p) => `${base}${p}`))),
       ...(s.hub && { exact: [`${base}${s.start}`] }),
       groups: s.groups.map((g) => ({
-        heading: g.heading,
+        // A section's one group, named as the section, goes without its heading: the sidebar names it by the section's tab (the menu's cost).
+        ...(!(s.groups.length === 1 && g.heading === s.label) && { heading: g.heading }),
         items: g.items.map((i) => ({
           label: i.label,
           icon: i.icon,

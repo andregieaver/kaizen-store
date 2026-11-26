@@ -47,6 +47,7 @@ import { FORMS_WORDS } from "@/lib/admin-words/forms";
 import { GIFT_CARDS_WORDS } from "@/lib/admin-words/gift-cards";
 import { HEATMAPS_WORDS } from "@/lib/admin-words/heatmaps";
 import { SOCIAL_WORDS } from "@/lib/admin-words/social";
+import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { HOME_DRAFTS_WORDS } from "@/lib/admin-words/home-drafts";
 import { HOUSE_AUTOPILOT_WORDS } from "@/lib/admin-words/house-autopilot";
@@ -167,6 +168,7 @@ export const ALL_AREA_WORDS: { [A in AdminArea]: Record<AdminLang, AdminAreaMess
   animation: ANIMATION_WORDS,
   heatmaps: HEATMAPS_WORDS,
   social: SOCIAL_WORDS,
+  projects: PROJECTS_WORDS,
   recordings: RECORDINGS_WORDS,
   companies: COMPANIES_WORDS,
   marketCheck: MARKET_CHECK_WORDS,

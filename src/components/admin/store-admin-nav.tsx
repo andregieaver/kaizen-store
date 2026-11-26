@@ -40,8 +40,11 @@ export type NavItem = {
   /** The level's Home tab: a page there has no section, so its header shows no section's word (D873). */
   home?: true;
 };
-/** A sidebar's group; `sections` is the level's tabs as a group of the phone's menu, marked by section apart from the pages (D873). */
-export type NavGroup = { heading: string; items: NavItem[]; sections?: true };
+/**
+ * A sidebar's group; `sections` is the level's tabs as a group of the phone's menu, marked by section apart from the pages (D873). A group
+ * sent without a heading is its section's only one, named by the section's tab (`useAreaGroups()`).
+ */
+export type NavGroup = { heading?: string; items: NavItem[]; sections?: true };
 
 /**
  * Which of `links`, one list (the level's tabs, or a sidebar's pages), is the page being viewed or the section it is inside: only the one
@@ -60,17 +63,19 @@ export function useIsCurrent(links: readonly NavItem[], areas: readonly NavArea[
  */
 export type NavArea = { prefixes: string[]; exact?: string[]; groups: NavGroup[]; /** The key a tab names it by (`NavItem.section`). */ section?: string };
 
-export function useAreaGroups(areas: NavArea[], fallback: NavGroup[]): NavGroup[] {
+export function useAreaGroups(areas: NavArea[], fallback: NavGroup[], tabs: readonly NavItem[] = []): NavGroup[] {
   const area = areas[placeIndex(usePathname(), areas)];
-  return area ? area.groups : fallback;
+  if (!area) return fallback;
+  const named = tabs.find((tab) => tab.section !== undefined && tab.section === area.section)?.label;
+  return named ? area.groups.map((group) => (group.heading === undefined ? { ...group, heading: named } : group)) : area.groups;
 }
 
 /**
  * The sidebar of the section being viewed; nothing, not even its room, where the section has none. On a section's page of cards the cards
  * say what Basic leaves out (D454), so the sidebar beside them does not say it again.
  */
-export function AreaSidebar({ areas, fallback, label, railed = false }: { areas: NavArea[]; fallback: NavGroup[]; label: string; railed?: boolean }) {
-  const groups = useAreaGroups(areas, fallback);
+export function AreaSidebar({ areas, fallback, label, railed = false, tabs }: { areas: NavArea[]; fallback: NavGroup[]; label: string; railed?: boolean; tabs?: NavItem[] }) {
+  const groups = useAreaGroups(areas, fallback, tabs);
   const pathname = usePathname();
   const onHub = areas.some((a) => (a.exact ?? []).includes(pathname));
   if (groups.length === 0) return null;
@@ -89,8 +94,8 @@ export function AreaSidebar({ areas, fallback, label, railed = false }: { areas:
  * room for the sidebar beside it: the support inbox's Requests, Reports, Saved replies and Settings. From `lg` up; the slide-out menu
  * has them on smaller screens.
  */
-export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallback: NavGroup[]; label: string }) {
-  const groups = useAreaGroups(areas, fallback);
+export function AreaLinks({ areas, fallback, label, tabs }: { areas: NavArea[]; fallback: NavGroup[]; label: string; tabs?: NavItem[] }) {
+  const groups = useAreaGroups(areas, fallback, tabs);
   const all = groups.flatMap((group) => group.items);
   const isCurrent = useIsCurrent(all);
   const { view } = useAdminView();
@@ -120,7 +125,7 @@ export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallba
 
 /** The slide-out menu on phones: the tabs, and the sidebar of the section being viewed. */
 export function AreaMenu({ tabs, areas, fallback, label, footer }: { tabs: NavItem[]; areas: NavArea[]; fallback: NavGroup[]; label: string; footer?: ReactNode }) {
-  const groups = useAreaGroups(areas, fallback);
+  const groups = useAreaGroups(areas, fallback, tabs);
   const sections = useAdminText("shell").frame.sections;
   return (
     <>
@@ -256,9 +261,9 @@ export function StoreSidebar({ groups, label, hint = true, areas }: { groups: Na
   );
   return (
     <nav aria-label={label} className="flex flex-col gap-6">
-      {shown.map((group) => (
-        <div key={group.heading}>
-          <h2 className="mb-1 px-3 text-eyebrow text-muted uppercase">{group.heading}</h2>
+      {shown.map((group, index) => (
+        <div key={group.heading ?? index}>
+          {group.heading && <h2 className="mb-1 px-3 text-eyebrow text-muted uppercase">{group.heading}</h2>}
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => (
               <li key={item.href}>

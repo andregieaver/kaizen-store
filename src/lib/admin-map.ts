@@ -608,6 +608,37 @@ const PAGES: readonly MapEntry[] = [
     keywords: ["pipelines", "stages", "probability", "sales process"],
     feature: "sales",
   }),
+  // Projects and checklists (D903): the team's work, ported from Kaizen Life.
+  store("projects", "/projects", "Projects", "The store's projects: each with its status, health, next action, target date and a bar of where its tasks stand; done and archived ones below.", {
+    keywords: ["projects", "project management", "plan", "launch", "campaign", "board", "kanban", "tasks", "to do", "prosjekter"],
+    tasks: ["Start a project", "See where a project stands"],
+    feature: "projects",
+  }),
+  store("project", "/projects/[projectId]", "Project", "One project: its checklists as a list of open tasks to tick, or a board with a column per stage to drag tasks along.", {
+    tasks: ["Add a checklist to a project", "Move a task to the next stage"],
+    feature: "projects",
+  }),
+  store("project.settings", "/projects/[projectId]/settings", "Customise project", "A project's name, description, colour, status and health, next action and target date, its own stages, and deleting it.", {
+    tasks: ["Change a project's stages", "Mark a project at risk"],
+    feature: "projects",
+  }),
+  store("projects.statuses", "/projects/statuses", "Statuses", "The store's task statuses and project stages: names, colours, order and what each counts as (open, done, archived).", {
+    keywords: ["statuses", "stages", "workflow", "columns", "kanban columns"],
+    feature: "projects",
+  }),
+  store("checklists", "/checklists", "Checklists", "The store's checklists with how far each has come: open lists, routines, and done and archived lists.", {
+    keywords: ["checklists", "checklist", "to do list", "routine", "opening routine", "tasks", "sjekklister"],
+    tasks: ["Make a checklist", "Tick off a task"],
+    feature: "projects",
+  }),
+  store("checklist", "/checklists/[checklistId]", "Checklist", "One checklist: add tasks (a line each), tick them off, sections and the Done line, select many to move or give a status, and each task's fields and subtasks.", {
+    tasks: ["Add tasks to a checklist", "Give a task a due date or assignee", "Untick a whole checklist"],
+    feature: "projects",
+  }),
+  store("checklist.settings", "/checklists/[checklistId]/settings", "Customise checklist", "A checklist's title, notes, due date, assignee, goal and state; Advanced list and its fields, Routine, its projects and its own statuses.", {
+    tasks: ["Make a checklist advanced", "Give a checklist its own statuses"],
+    feature: "projects",
+  }),
   store("deliveries", "/deliveries", "Subscription boxes", "Delivery days, the round being packed and shoppers' subscription box lists.", {
     feature: "boxes",
     tasks: ["Add a delivery day", "Send and charge this round's orders"],
@@ -1666,6 +1697,14 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   "store:prospects",
   // The incident log (D895): named in the AI's map once its autopilot is connected (phase 2) and the eval is recorded with it.
   "platform:incidents",
+  // Projects and checklists (D903): kept out of the prompt for the push that carries their migration; named in the next, and the eval recorded.
+  "store:projects",
+  "store:project",
+  "store:project.settings",
+  "store:projects.statuses",
+  "store:checklists",
+  "store:checklist",
+  "store:checklist.settings",
 ]);
 
 /** The map as the AI reads it: every page without params, by the menu's sections, each by the menu's word (D881). */

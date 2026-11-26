@@ -222,6 +222,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   work_invoice_losses: "record",
   work_invoice_payments: "record",
   work_tasks: "record",
+  checklist_folds: "people",
   work_timers: "people",
   workflow_runs: "record",
 };

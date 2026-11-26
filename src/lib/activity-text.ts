@@ -13,6 +13,7 @@ export const AUDIT_AREA_LABELS: Record<AuditArea, string> = {
   website: "Website",
   bookings: "Bookings",
   support: "Support",
+  projects: "Projects",
   settings: "Settings",
   billing: "Billing",
   staff: "Team",

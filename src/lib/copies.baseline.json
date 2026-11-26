@@ -1,7 +1,7 @@
 {
   "exactAcrossFiles": 3959,
   "exactInsideFiles": 476,
-  "nearLines": 22754,
+  "nearLines": 23099,
   "repeatedHelperNames": 96,
   "repeatedHelperDeclarations": 475,
   "twins": {

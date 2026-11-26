@@ -44,6 +44,7 @@ import type { ConsentLookMessages } from "./admin-messages/consent-look.en";
 import type { AnimationMessages } from "./admin-messages/animation.en";
 import type { HeatmapsMessages } from "./admin-messages/heatmaps.en";
 import type { SocialMessages } from "./admin-messages/social.en";
+import type { ProjectsMessages } from "./admin-messages/projects.en";
 import type { RecordingsMessages } from "./admin-messages/recordings.en";
 import type { CompaniesMessages } from "./admin-messages/companies.en";
 import type { MarketCheckMessages } from "./admin-messages/market-check.en";
@@ -134,6 +135,7 @@ export type AdminAreaMessages = {
   animation: AnimationMessages;
   heatmaps: HeatmapsMessages;
   social: SocialMessages;
+  projects: ProjectsMessages;
   recordings: RecordingsMessages;
   companies: CompaniesMessages;
   marketCheck: MarketCheckMessages;
@@ -230,7 +232,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "marketCheck", "registerFacts", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit", "social"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "consentLook", "console", "business", "books", "heatmaps", "recordings", "companies", "marketCheck", "registerFacts", "privacyOfficer", "flows", "automatic", "houseAutopilot", "leadScore", "flowSplits", "sendAllowance", "kit", "social", "projects"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;

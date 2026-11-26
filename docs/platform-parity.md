@@ -88,6 +88,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Customers, with leads, notes, tags, timeline, import and export | Customers | Kaizena Flow's store (D466, D467): every owner and applicant, linked from Platform → Customers |
 | The subscriber list, segments, broadcasts, email automations (D295 to D298) | Marketing | Kaizena Flow's store: its own pages' newsletter keeps who asks (D467); the platform's tags (plan, trial, overdue) for segments |
 | Deals (D464) | Customers → Deals | Kaizena Flow's store: a Sign-ups pipeline, a deal per application, won when its plan is paid (D467) |
+| Projects and checklists (D903) | Projects | Kaizena Flow's store: its team's projects and checklists with the feature on; the platform admin's own (`store_id is null`) is step P7.1 of `docs/projects.md` |
 | Privacy requests (D162) | Customers → Privacy requests | Kaizena Flow's store, its erasure blanking the person's applications too (D467) |
 | Subscriptions analytics (for Kaizena Flow: its plans) | Analytics → Subscriptions | Plans → Analytics (D470): monthly revenue, paying, late, trying and leaving stores, each plan, how revenue moved, and the way from asking to paying |
 | Blogs (several, with authors) and their comments | Website → Blogs | Kaizena Flow's store, serving kaizenaflow.com (D484) |

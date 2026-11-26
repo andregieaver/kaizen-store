@@ -74,7 +74,7 @@ describe("the sidebar in each view", () => {
 });
 
 describe("the pages of cards in each view", () => {
-  const lists = groups.map((g) => ({ heading: g.heading, items: g.items.map((i) => ({ href: i.href, label: i.label, description: `About ${i.label}`, icon: i.icon, advanced: i.advanced })) }));
+  const lists = groups.map((g) => ({ heading: g.heading ?? "", items: g.items.map((i) => ({ href: i.href, label: i.label, description: `About ${i.label}`, icon: i.icon, advanced: i.advanced })) }));
 
   it("leaves the advanced cards out of Basic, with a note and the switch at the foot", () => {
     const out = inView("basic", h(HubCards, { lists }));

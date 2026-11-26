@@ -1359,6 +1359,20 @@
       "when": 1795650308157,
       "tag": "20261125234508_friendly_lily_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1795654326506,
+      "tag": "20261126005206_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 195,
+      "version": "7",
+      "when": 1795654328444,
+      "tag": "20261126005208_projects_rules",
+      "breakpoints": true
     }
   ]
 }

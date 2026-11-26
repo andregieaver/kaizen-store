@@ -333,6 +333,13 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:deals.contract_template": { title: "Kontraktmal", keywords: ["kontraktmal", "mal", "påminnelser"] },
   "store:deal.contract": { title: "Kontrakt", keywords: ["kontrakt", "signering", "signere", "avtaletekst", "mal"] },
   "store:deals.pipelines": { title: "Salgsløp", keywords: ["salgsløp", "trinn", "sannsynlighet", "salgsprosess"] },
+  "store:projects": { title: "Prosjekter", keywords: ["prosjekter", "prosjektstyring", "plan", "lansering", "kampanje", "tavle", "kanban", "oppgaver", "å gjøre"] },
+  "store:project": { title: "Prosjekt", keywords: ["prosjekt", "sjekkliste", "tavle", "fase", "oppgave"] },
+  "store:project.settings": { title: "Tilpass prosjekt", keywords: ["prosjekt", "faser", "status", "fremdrift", "frist"] },
+  "store:projects.statuses": { title: "Statuser", keywords: ["statuser", "faser", "arbeidsflyt", "kolonner", "tavlekolonner"] },
+  "store:checklists": { title: "Sjekklister", keywords: ["sjekklister", "sjekkliste", "huskeliste", "rutine", "åpningsrutine", "oppgaver"] },
+  "store:checklist": { title: "Sjekkliste", keywords: ["sjekkliste", "oppgaver", "krysse av", "seksjoner", "deloppgaver"] },
+  "store:checklist.settings": { title: "Tilpass sjekkliste", keywords: ["sjekkliste", "avansert liste", "rutine", "statuser", "felter"] },
   "store:deliveries": {
     title: "Abonnementskasser",
     keywords: ["abonnementskasse", "fast bestilling", "ukentlig levering", "matkasse", "leveringsdager"],

@@ -62,6 +62,9 @@ export function normalisePermissions(keys: readonly string[]): AreaPermission[] 
 }
 
 /** The keys a holder has: for an owner everything, for an admin the default or the custom role's, without what only owners hold. */
+/** An area key a role may hold: one of `AREAS` with `read` or `write`. */
+const AREA_KEY = new RegExp(`^(${AREAS.join("|")}):(read|write)$`);
+
 export function permissionsOf(holder: PermissionHolder): PermissionKey[] {
   if (holder.limit != null) return permissionsOf({ ...holder, limit: null }).filter((key) => withinLimit(holder.limit, key));
   if (holder.role === "owner") return [...GRANTABLE_PERMISSIONS, ...OWNER_HELD];
@@ -70,7 +73,7 @@ export function permissionsOf(holder: PermissionHolder): PermissionKey[] {
   const held = new Set<string>();
   for (const key of base) {
     if (OWNER_HELD.includes(key as PermissionKey)) continue;
-    if (!/^(orders|products|customers|marketing|analytics|website|bookings|support|settings|billing|staff|books):(read|write)$/.test(key)) continue;
+    if (!AREA_KEY.test(key)) continue;
     held.add(key);
     if (key.endsWith(":write")) held.add(key.replace(/:write$/, ":read"));
   }
@@ -191,6 +194,7 @@ export const AREA_LABELS: Record<Area, string> = {
   website: "Website",
   bookings: "Bookings",
   support: "Support",
+  projects: "Projects",
   settings: "Settings",
   billing: "Billing",
   staff: "Team",
@@ -266,7 +270,7 @@ export const ROLE_TEMPLATES: Record<RoleTemplateKey, { name: string; description
   read_only: {
     name: "Read-only",
     description: "Can look at everything except billing and the team, and change nothing.",
-    permissions: normalisePermissions(["orders:read", "products:read", "customers:read", "marketing:read", "analytics:read", "website:read", "bookings:read", "support:read", "settings:read", "books:read"]),
+    permissions: normalisePermissions(["orders:read", "products:read", "customers:read", "marketing:read", "analytics:read", "website:read", "bookings:read", "support:read", "projects:read", "settings:read", "books:read"]),
   },
 };
 

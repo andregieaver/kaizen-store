@@ -16,6 +16,7 @@ export const staffNb: StaffMessages = {
     website: "Nettsted",
     bookings: "Bookinger",
     support: "Kundestøtte",
+    projects: "Prosjekter",
     settings: "Innstillinger",
     billing: "Abonnement og faktura",
     staff: "Team",

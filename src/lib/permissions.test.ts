@@ -32,11 +32,11 @@ const admin: PermissionHolder = { role: "admin" };
 const withRole = (permissions: string[], extra: Partial<PermissionHolder> = {}): PermissionHolder => ({ role: "admin", permissions, ...extra });
 
 describe("the keys", () => {
-  it("are twelve areas with read and write, and the owner key: 25 in all, 22 of them grantable (the books its own area, D512)", () => {
-    expect(AREAS).toHaveLength(12);
-    expect(AREA_PERMISSIONS).toHaveLength(24);
-    expect(PERMISSION_KEYS).toHaveLength(25);
-    expect(GRANTABLE_PERMISSIONS).toHaveLength(22);
+  it("are thirteen areas with read and write, and the owner key: 27 in all, 24 of them grantable (the books its own area, D512; projects, D903)", () => {
+    expect(AREAS).toHaveLength(13);
+    expect(AREA_PERMISSIONS).toHaveLength(26);
+    expect(PERMISSION_KEYS).toHaveLength(27);
+    expect(GRANTABLE_PERMISSIONS).toHaveLength(24);
     expect(GRANTABLE_PERMISSIONS).toEqual(expect.arrayContaining(["books:read", "books:write"]));
     expect(OWNER_HELD).toEqual(["owner", "staff:write", "billing:write"]);
     for (const key of OWNER_HELD) expect(GRANTABLE_PERMISSIONS as readonly string[]).not.toContain(key);

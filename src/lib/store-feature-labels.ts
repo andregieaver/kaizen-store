@@ -23,7 +23,7 @@ export const FEATURE_SETTINGS_EN = {
   switchOff: "Switch off",
   close: "Close",
   keepOn: "Keep it on",
-  groups: { selling: "Selling", world: "Countries and languages", customers: "Customers" },
+  groups: { selling: "Selling", world: "Countries and languages", customers: "Customers", team: "Working together" },
   /** What a feature does, and what switching it off does, by id (`STORE_FEATURES`). */
   items: {
     shop: {
@@ -86,6 +86,10 @@ export const FEATURE_SETTINGS_EN = {
     sales: {
       words: "Follow what each customer or company may buy, from the first talk to won or lost, on a board in stages.",
       offWords: "Deals leaves the admin and the customer pages. Every deal and pipeline is kept for when you switch it on again.",
+    },
+    projects: {
+      words: "Plan the team's work: checklists, and projects with a board, statuses, who does what and when it is due.",
+      offWords: "Projects and Checklists leave the admin. Every project, list and item is kept for when you switch it on again.",
     },
   },
   /** What stops a feature being switched off (`featureBlockers()`). */
@@ -164,6 +168,10 @@ export const FEATURE_SETTINGS_EN = {
     openDeals: {
       one: "{n} deal is still open. It is kept, and is there again when you switch Deals on.",
       many: "{n} deals are still open. They are kept, and are there again when you switch Deals on.",
+    },
+    openTasks: {
+      one: "{n} task is still open. It is kept, and is there again when you switch Projects and checklists on.",
+      many: "{n} tasks are still open. They are kept, and are there again when you switch Projects and checklists on.",
     },
     asleep: {
       one: "{labels} needs it, so it stops too. Its own switch is kept for when you switch it on again.",

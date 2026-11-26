@@ -9,12 +9,13 @@
 /**
  * The areas of a store's admin, the store navigation's sections (D147) plus `billing` and `staff`, which live in the Settings sidebar, and
  * `books` (B6, D512): the store's own books, Settings → Books, kept apart so an accountant may keep them without the rest of Settings.
+ * `projects` (D903) is the team's projects and checklists.
  */
-export const AREAS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings", "billing", "staff", "books"] as const;
+export const AREAS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "projects", "settings", "billing", "staff", "books"] as const;
 export type Area = (typeof AREAS)[number];
 
 /** The areas that are working areas: what an admin can do in without being the owner. */
-export const WORKING_AREAS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings"] as const satisfies readonly Area[];
+export const WORKING_AREAS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "projects", "settings"] as const satisfies readonly Area[];
 
 export type Access = "read" | "write";
 export type AreaPermission = `${Area}:${Access}`;
@@ -22,13 +23,13 @@ export type AreaPermission = `${Area}:${Access}`;
 export type PermissionKey = AreaPermission | "owner";
 
 export const AREA_PERMISSIONS: readonly AreaPermission[] = AREAS.flatMap((area) => [`${area}:read`, `${area}:write`] as const);
-/** All 25 keys. */
+/** All 27 keys. */
 export const PERMISSION_KEYS: readonly PermissionKey[] = [...AREA_PERMISSIONS, "owner"];
 
 /** Held by owners only in this wave: a role must not be able to grant the power to change roles, the plan or what only the owner may. */
 export const OWNER_HELD: readonly PermissionKey[] = ["owner", "staff:write", "billing:write"];
 
-/** The 22 keys a custom role may contain. */
+/** The 24 keys a custom role may contain. */
 export const GRANTABLE_PERMISSIONS: readonly AreaPermission[] = AREA_PERMISSIONS.filter((key) => !(OWNER_HELD as readonly string[]).includes(key));
 
 /**
@@ -49,11 +50,11 @@ export const isPermissionKey = (value: unknown): value is PermissionKey => (PERM
 export const isGrantable = (value: unknown): value is AreaPermission => (GRANTABLE_PERMISSIONS as readonly unknown[]).includes(value);
 
 /**
- * The areas a standalone account's workspace (D748 E7) serves: the people (customers, deals and leads), email automation, the sales figures,
+ * The areas a standalone account's workspace (D748 E7) serves: the people (customers, deals and leads), email automation, the sales figures, projects and checklists (D903),
  * support, a few settings, the team, the plan and the books. Orders, products, the website and bookings are not there: their pages and
  * actions answer as for a key the member lacks (`memberCan()`, `canOpenPath()`), whatever the role holds.
  */
-const WORKSPACE_AREAS: readonly string[] = ["customers", "marketing", "analytics", "support", "settings", "billing", "staff", "books"];
+const WORKSPACE_AREAS: readonly string[] = ["customers", "marketing", "analytics", "support", "projects", "settings", "billing", "staff", "books"];
 
 /** Whether a key works in a workspace: the owner's, or one of `WORKSPACE_AREAS`. */
 export const allowedInWorkspace = (key: PermissionKey): boolean => key === "owner" || WORKSPACE_AREAS.includes(key.split(":")[0]);

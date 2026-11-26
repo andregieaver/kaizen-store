@@ -153,6 +153,9 @@ export function featureWarnings(
     case "sales":
       add(f.openDeals, t.openDeals);
       break;
+    case "projects":
+      add(f.openTasks, t.openTasks);
+      break;
   }
   if (asleep.length > 0) {
     const labels = asleep.map((dep) => w.c.labels[dep]);

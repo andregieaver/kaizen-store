@@ -23,6 +23,7 @@ import {
   FileClock,
   FilePen,
   Flag,
+  FolderKanban,
   Files,
   FileSpreadsheet,
   FileText,
@@ -38,6 +39,7 @@ import {
   Inbox,
   Landmark,
   Languages,
+  ListChecks,
   LayoutDashboard,
   LayoutTemplate,
   Layers,
@@ -175,6 +177,13 @@ const PATHS = {
   ),
   chart: <path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6M20 16V6" />,
   bell: <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2ZM10 21a2 2 0 0 0 4 0" />,
+  // Projects (D903): a board of three columns.
+  kanban: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M8 7v7M12 7v3M16 7v9" />
+    </>
+  ),
   // Support (D216): a speech bubble.
   chat: <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-9l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM8 10h8M8 13h5" />,
 } as const;
@@ -196,6 +205,8 @@ const PAGE_ICONS = {
   "chart-pie": ChartPie,
   "clipboard-check": ClipboardCheck,
   "clipboard-list": ClipboardList,
+  "folder-kanban": FolderKanban,
+  "list-checks": ListChecks,
   handshake: Handshake,
   clock: Clock,
   coins: Coins,

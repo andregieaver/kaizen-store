@@ -132,7 +132,7 @@ export function AdminFrame({
   );
   const sidebar = (railed: boolean) =>
     areas ? (
-      <AreaSidebar areas={areas} fallback={groups} label={w.more} railed={railed} />
+      <AreaSidebar areas={areas} fallback={groups} label={w.more} railed={railed} tabs={tabs} />
     ) : groups.length > 0 ? (
       <aside className={`hidden w-52 shrink-0 lg:block ${railed ? "pt-2 pb-8" : "py-8"}`}>
         <div className={`sticky ${railed ? "top-6" : "top-32"}`}>
@@ -201,7 +201,7 @@ export function AdminFrame({
                   {menuButton}
                   {switcher}
                   {workspaceLinks && (
-                    <ByPath pattern={workspaceLinks} match={<AreaLinks areas={areas ?? []} fallback={groups} label={w.thisSection} />} otherwise={null} />
+                    <ByPath pattern={workspaceLinks} match={<AreaLinks areas={areas ?? []} fallback={groups} label={w.thisSection} tabs={tabs} />} otherwise={null} />
                   )}
                 </>,
                 focusStart,

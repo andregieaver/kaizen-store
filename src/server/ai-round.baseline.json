@@ -63,12 +63,19 @@
       "alwaysSentChars": 36501,
       "totalChars": 171384
     },
+    "shop|projects": {
+      "promptChars": 15661,
+      "toolCount": 128,
+      "toolChars": 156769,
+      "alwaysSentChars": 36529,
+      "totalChars": 172430
+    },
     "shop|settings": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 134609,
+      "toolChars": 134630,
       "alwaysSentChars": 36590,
-      "totalChars": 150270
+      "totalChars": 150291
     },
     "shop|billing": {
       "promptChars": 15661,
@@ -154,12 +161,19 @@
       "alwaysSentChars": 36564,
       "totalChars": 167532
     },
+    "all|projects": {
+      "promptChars": 16541,
+      "toolCount": 128,
+      "toolChars": 152651,
+      "alwaysSentChars": 36592,
+      "totalChars": 169192
+    },
     "all|settings": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 132087,
+      "toolChars": 132108,
       "alwaysSentChars": 36620,
-      "totalChars": 148628
+      "totalChars": 148649
     },
     "all|billing": {
       "promptChars": 16541,
@@ -614,7 +628,7 @@
     "set_discount_active": 465,
     "set_domain_renewal": 714,
     "set_draft_prices": 1419,
-    "set_feature": 1538,
+    "set_feature": 1559,
     "set_fields": 1710,
     "set_flat_shipping": 1290,
     "set_goal": 2474,

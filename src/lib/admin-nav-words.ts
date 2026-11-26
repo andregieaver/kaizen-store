@@ -14,5 +14,8 @@ export function navWord(lang: AdminLang, text: string): string {
 export const navItemsIn = <T extends { label: string }>(lang: AdminLang, items: readonly T[]): T[] => items.map((i) => ({ ...i, label: navWord(lang, i.label) }));
 
 /** Sidebar areas with their headings and links in `lang`. */
-export const navAreasIn = <T extends { groups: { heading: string; items: { label: string }[] }[] }>(lang: AdminLang, areas: readonly T[]): T[] =>
-  areas.map((a) => ({ ...a, groups: a.groups.map((g) => ({ ...g, heading: navWord(lang, g.heading), items: navItemsIn(lang, g.items) })) }));
+export const navAreasIn = <T extends { groups: { heading?: string; items: { label: string }[] }[] }>(lang: AdminLang, areas: readonly T[]): T[] =>
+  areas.map((a) => ({
+    ...a,
+    groups: a.groups.map((g) => ({ ...g, ...(g.heading !== undefined && { heading: navWord(lang, g.heading) }), items: navItemsIn(lang, g.items) })),
+  }));

@@ -28,7 +28,7 @@ export const settingsNb: SettingsMessages = {
     switchOff: "Slå av",
     close: "Lukk",
     keepOn: "La den være på",
-    groups: { selling: "Salg", world: "Land og språk", customers: "Kunder" },
+    groups: { selling: "Salg", world: "Land og språk", customers: "Kunder", team: "Samarbeid" },
     items: {
       shop: {
         words: "Selg på nett: produkter med priser, handlekurv, kasse og bestillinger. Av, er butikken et nettsted.",
@@ -90,6 +90,10 @@ export const settingsNb: SettingsMessages = {
       sales: {
         words: "Følg hva hver kunde eller bedrift kan kjøpe, fra første samtale til vunnet eller tapt, på en tavle i trinn.",
         offWords: "Avtaler forsvinner fra administrasjonen og kundesidene. Alle avtaler og salgsløp beholdes til du slår den på igjen.",
+      },
+      projects: {
+        words: "Planlegg teamets arbeid: sjekklister, og prosjekter med tavle, statuser, hvem som gjør hva og når det skal være ferdig.",
+        offWords: "Prosjekter og Sjekklister forsvinner fra administrasjonen. Alle prosjekter, lister og oppgaver beholdes til du slår den på igjen.",
       },
     },
     blockers: {
@@ -172,6 +176,10 @@ export const settingsNb: SettingsMessages = {
       openDeals: {
         one: "{n} avtale er fortsatt åpen. Den beholdes, og er der igjen når du slår på Avtaler.",
         many: "{n} avtaler er fortsatt åpne. De beholdes, og er der igjen når du slår på Avtaler.",
+      },
+      openTasks: {
+        one: "{n} oppgave er fortsatt åpen. Den beholdes, og er der igjen når du slår på Prosjekter og sjekklister.",
+        many: "{n} oppgaver er fortsatt åpne. De beholdes, og er der igjen når du slår på Prosjekter og sjekklister.",
       },
       asleep: {
         one: "{labels} trenger den, så den stopper også. Bryteren beholdes til du slår den på igjen.",

@@ -22,6 +22,7 @@ export const staffEn = {
     website: "Website",
     bookings: "Bookings",
     support: "Support",
+    projects: "Projects",
     settings: "Settings",
     billing: "Billing",
     staff: "Team",

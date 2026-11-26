@@ -21,6 +21,7 @@ export const FEATURE_COMMON_EN = {
     referrals: "Referral program",
     reviews: "Product reviews",
     sales: "Deals",
+    projects: "Projects and checklists",
   },
   /** A feature that another needs, in a sentence: "needs the online shop". */
   need: {
@@ -38,6 +39,7 @@ export const FEATURE_COMMON_EN = {
     referrals: "the referral program",
     reviews: "the product reviews",
     sales: "the deals",
+    projects: "the projects and checklists",
   },
   or: " or ",
   off: { one: "{label} is switched off", many: "{label} are switched off" },

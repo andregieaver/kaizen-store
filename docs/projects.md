@@ -190,32 +190,32 @@ Status: Planned, Building, Done (date and commit).
 
 | Id | Step | Status |
 |---|---|---|
-| P1.1 | Tables of 4.2, rules of 4.3, `src/db/projects.test.ts`; the feature, the permission area and the store copy, export and personal-data registrations | Planned |
+| P1.1 | Tables of 4.2, rules of 4.3, `src/db/projects.test.ts`; the feature, the permission area and the store copy, export and personal-data registrations | Done, 26 Nov 2026 |
 
 ### P2: the server
 
 | Id | Step | Status |
 |---|---|---|
-| P2.1 | Pure parts (advanced fields, recurrence, defaults) with tests | Planned |
-| P2.2 | Projects: create, edit, status and health, reorder, archive, delete; link and unlink lists, home project | Planned |
-| P2.3 | Lists: create, edit, advanced fields, routine, goal, reorder, archive, done, reset (untick all), delete, duplicate | Planned |
-| P2.4 | Items and sections: add, edit every field, tick, archive, delete, reorder with sections, move across lists, bulk status, delete and move | Planned |
-| P2.5 | Subtasks: add, edit, tick, reorder, delete, promote to an item | Planned |
-| P2.6 | Statuses and stages: defaults made in the store's language, per list and per project, reorder, buckets, colours, delete with a replacement | Planned |
-| P2.7 | Integration tests (`src/server/projects*.int.test.ts`) | Planned |
+| P2.1 | Pure parts (advanced fields, defaults, dates in the store's zone, the operations) with tests; recurrence is P4.1's | Done, 26 Nov 2026 |
+| P2.2 | Projects: create, edit, status and health, reorder, archive, delete; link and unlink lists, home project | Done, 26 Nov 2026 |
+| P2.3 | Lists: create, edit, advanced fields, routine, goal, reorder, archive, done, reset (untick all), delete (duplicate is P4.2) | Done, 26 Nov 2026 |
+| P2.4 | Items and sections: add, edit every field, tick, archive, delete, reorder with sections, move across lists, bulk status, delete and move | Done, 26 Nov 2026 |
+| P2.5 | Subtasks: add, edit, tick, reorder, delete, promote to an item | Done, 26 Nov 2026 |
+| P2.6 | Statuses and stages: defaults made in the store's language, per list and per project, reorder, buckets, colours, delete with a replacement | Done, 26 Nov 2026 |
+| P2.7 | Integration tests (`src/server/projects*.int.test.ts`) | Done, 26 Nov 2026 |
 
 ### P3: the screens
 
 | Id | Step | Status |
 |---|---|---|
-| P3.1 | Feature card, navigation section, permission area in the role editor | Planned |
-| P3.2 | Checklists: the list of lists (open, done and archived, routines) | Planned |
-| P3.3 | A list: items and sections in one dragged order, the Done line, folds, filters, bulk actions, the item editor with the advanced fields, subtasks | Planned |
-| P3.4 | A list's settings: Advanced list and its fields, routine, goal, its statuses | Planned |
-| P3.5 | Projects: the list with each project's status bar and health; a project's List and Board views; linked lists | Planned |
-| P3.6 | A project's settings: details, status and health, stages | Planned |
-| P3.7 | Statuses: the store's default statuses and stages | Planned |
-| P3.8 | Signed-in e2e spec, screenshots to the owner | Planned |
+| P3.1 | Feature card, navigation section, permission area in the role editor | Done, 26 Nov 2026 |
+| P3.2 | Checklists: the list of lists (open, done and archived, routines) | Done, 26 Nov 2026 |
+| P3.3 | A list: items and sections in one dragged order, the Done line, folds, bulk actions, the item editor with the advanced fields, subtasks (filters are P4.11) | Done, 26 Nov 2026 |
+| P3.4 | A list's settings: Advanced list and its fields, routine, goal, its statuses | Done, 26 Nov 2026 |
+| P3.5 | Projects: the list with each project's status bar and health; a project's List and Board views; linked lists | Done, 26 Nov 2026 |
+| P3.6 | A project's settings: details, status and health, stages | Done, 26 Nov 2026 |
+| P3.7 | Statuses: the store's default statuses and stages | Done, 26 Nov 2026 |
+| P3.8 | Signed-in e2e spec (`e2e/signed-in/projects.spec.ts`), screenshots to the owner | Building |
 
 ### P4: the rest of Life's richness
 
@@ -231,6 +231,7 @@ Status: Planned, Building, Done (date and commit).
 | P4.8 | Calendar and Timeline views of a project; every item across lists (Life's *All items*); cost summary; due countdown | Planned |
 | P4.9 | What is due on Home's attention list | Planned |
 | P4.10 | A light refresh while a list is open, for a team working together | Planned |
+| P4.11 | Filters on a list and across lists (Life's `checklist-item-filter.tsx`): by status, person, priority and due | Planned |
 
 ### P5: the AI manager and events
 
@@ -268,3 +269,25 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   that cover this system, about 68).
 - `src/server/projects*.int.test.ts`: the server against Postgres.
 - `e2e/signed-in/projects.spec.ts`: a list made, items ticked, a status chosen, a project's board dragged and moved by keyboard.
+
+## As built: steps P1 to P3 (26 November 2026)
+
+- **Where.** The feature `projects` (group *Working together* on the Features page, off for a new store, needing nothing), a store menu
+  section *Projects* with *Projects*, *Checklists* (Basic) and *Statuses*, and the permission area `projects` (an admin with the default set
+  has it; a custom role gets it from its owner). Pages: `/projects`, `/projects/{id}` (List and Board), `/projects/{id}/settings`,
+  `/projects/statuses`, `/checklists`, `/checklists/{id}`, `/checklists/{id}/settings`.
+- **Server.** `src/server/projects.ts` (projects, membership, stages, the team), `projects-lists.ts`, `projects-items.ts`,
+  `projects-statuses.ts`; every change of a screen is one typed operation (`src/lib/projects-ops.ts`) run by `runProjectsOp()` through the
+  area's one action (`projectsAction`), plus the forms that make a project or a list and save their details.
+- **Differs from Life, on purpose.**
+  - A list's or a project's own statuses *replace* the store's (Life merged them by name, so a list could not drop one); *Statuses of its
+    own* copies the store's to start from and moves the tasks along, *Use the store's statuses* moves them back by name.
+  - The store starts with *To do*, *In progress*, *Done*, *Archived* (Life: Backlog, To do, Done, Archived), made in the person's language.
+  - Ticking a task already in a finished status keeps it there, so a status moved to the done bucket ticks its tasks without moving them.
+  - A subtask is a plain step until it is given a status (Life's subtasks start without one); then its tick and status agree as a task's.
+  - The rules live in the database (`projects_rules`), so the AI manager and the API get them as the screens do.
+- **Elsewhere.** `permissionsOf()` read the areas from a list of its own and now from `AREAS`; the Read-only role template reads projects (an owner
+  grants them to other roles); a section whose one sidebar group is named as it sends no heading (the sidebar names it by
+  the tab), which makes room in the menu's budget; Statuses is reached from Projects, not the menu.
+- **Tests.** `src/db/projects.test.ts` (20, the rules), `src/lib/projects*.test.ts` (the pure parts), `src/server/projects.int.test.ts` (13,
+  the server against Postgres), `e2e/signed-in/projects.spec.ts`.

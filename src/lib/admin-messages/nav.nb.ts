@@ -230,6 +230,12 @@ export const NAV_NB: Record<string, string> = {
   Hosts: "Verter",
   "Outside hosts who list stays and rentals in the store, and the DAC7 report.": "Eksterne verter som legger ut opphold og utleie i butikken, og DAC7-rapporten.",
 
+  // Store: Projects (D903)
+  Projects: "Prosjekter",
+  "Projects and checklists for the team's work.": "Prosjekter og sjekklister for teamets arbeid.",
+  "Each project and where its tasks stand, as a list or a board.": "Hvert prosjekt og hvor oppgavene står, som liste eller tavle.",
+  Checklists: "Sjekklister",
+  "Lists to tick off, plain or with statuses, people and dates.": "Lister å krysse av, enkle eller med statuser, personer og datoer.",
   // Store: Support
   Support: "Kundestøtte",
   "Conversations with the store's customers: the inbox, and the chat assistant that answers them first.":

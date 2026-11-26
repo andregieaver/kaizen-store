@@ -121,7 +121,10 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
         and commerce.gift_card_balance(g.id) > 0) as gift_cards_held,
       (select count(*)::int from commerce.product_reviews r where r.store_id = ${storeId}::uuid and r.status = 'published') as published_reviews,
       (select count(*)::int from commerce.deals d where d.store_id = ${storeId}::uuid) as deals,
-      (select count(*)::int from commerce.deals d where d.store_id = ${storeId}::uuid and d.status = 'open') as open_deals
+      (select count(*)::int from commerce.deals d where d.store_id = ${storeId}::uuid and d.status = 'open') as open_deals,
+      (select count(*)::int from commerce.projects p where p.store_id = ${storeId}::uuid)
+        + (select count(*)::int from commerce.checklists c where c.store_id = ${storeId}::uuid) as projects_kept,
+      (select count(*)::int from commerce.checklist_items i where i.store_id = ${storeId}::uuid and i.done_at is null and i.archived_at is null) as open_tasks
   `);
   return {
     paidUnshipped: obligations.paidUnshipped,
@@ -161,6 +164,8 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
     publishedReviews: n(row?.published_reviews),
     deals: n(row?.deals),
     openDeals: n(row?.open_deals),
+    projectsKept: n(row?.projects_kept),
+    openTasks: n(row?.open_tasks),
   };
 }
 

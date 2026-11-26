@@ -44,6 +44,7 @@ import {
 import { FLOW_TRIGGERS } from "../lib/flow-triggers";
 import { AUTOPILOT_GAPS, AUTOPILOT_REASONS, ENHANCEMENT_ONLY, INCIDENT_KINDS, INCIDENT_LIMITS, INCIDENT_SOURCES, INCIDENT_STATUSES, PROBLEM_ONLY } from "../lib/incidents";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
+import { CHECKLIST_STATES, PRIORITIES, PROJECT_COLOURS, PROJECT_HEALTHS, PROJECT_LIMITS, PROJECT_STATUSES, STATUS_BUCKETS } from "../lib/projects-model";
 import { LIMIT_KEYS } from "../lib/limits";
 import { EXTENSION_IDS, EXTENSION_SOURCES } from "../lib/extensions";
 import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
@@ -966,7 +967,7 @@ export const stores = commerce.table(
     check("stores_modules", sql`${t.modules} <@ array['work']::text[]`),
     check(
       "stores_features",
-      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards', 'reviews', 'sales']::text[]`,
+      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards', 'reviews', 'sales', 'projects']::text[]`,
     ),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
@@ -13664,6 +13665,363 @@ export const workEvents = commerce.table(
     check("work_events_data", sql`jsonb_typeof(${t.data}) = 'object'`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Projects and checklists (D903, docs/projects.md): ported from Kaizen Life
+// ---------------------------------------------------------------------------
+//
+// A store's projects, its checklists (standalone or in projects), their items, sections and subtasks, and the statuses of both. The
+// foreign keys that must only null their own column (`ON DELETE SET NULL (col)`), which Drizzle cannot express, are added in the
+// `projects_rules` migration with the triggers (done and status agree, a status belongs where it is used, the home project is a member);
+// their indexes are here. Every table has row-level security on with no policy.
+
+/** The code's own words (`src/lib/projects-model.ts`) as a SQL list for a check. */
+const wordList = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(", "));
+/** One of the code's own limits written into a check. */
+const checkNumber = (n: number) => sql.raw(String(n));
+const projectColourList = wordList(PROJECT_COLOURS);
+const statusBucketList = wordList(STATUS_BUCKETS);
+/** A trimmed text of 1 to `max` characters. */
+const trimmedText = (column: AnyPgColumn, max: number) => sql`${column} = btrim(${column}) and char_length(${column}) between 1 and ${checkNumber(max)}`;
+/** An optional text of at most `max` characters. */
+const shortText = (column: AnyPgColumn, max: number) => sql`${column} is null or char_length(${column}) <= ${checkNumber(max)}`;
+
+/** A project: where its work stands (status, health, next action, target date) and the checklists that belong to it (`project_checklists`). */
+export const projects = commerce
+  .table(
+    "projects",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      name: text("name").notNull(),
+      description: text("description"),
+      /** A palette key (`PROJECT_COLOURS`), drawn in the admin's colour scheme. */
+      colour: text("colour").notNull().default("chart-1"),
+      /** `planning`, `active`, `blocked`, `done` or `archived`. */
+      status: text("status").notNull().default("active"),
+      /** `green`, `amber` or `red`: how it is doing, said by a person or the AI manager. */
+      health: text("health").notNull().default("green"),
+      nextAction: text("next_action"),
+      targetDate: date("target_date", { mode: "string" }),
+      /** When someone last looked at the status and health and said they stand. */
+      statusReviewedAt: timestamp("status_reviewed_at", { withTimezone: true }),
+      sortOrder: integer("sort_order").notNull().default(0),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("projects_store_id_key").on(t.storeId, t.id),
+      index("projects_sort_idx").on(t.storeId, t.status, t.sortOrder),
+      index("projects_created_by_idx").on(t.createdBy),
+      check("projects_name", trimmedText(t.name, PROJECT_LIMITS.projectName)),
+      check("projects_texts", sql`(${shortText(t.description, PROJECT_LIMITS.description)}) and (${shortText(t.nextAction, PROJECT_LIMITS.nextAction)})`),
+      check("projects_colour", sql`${t.colour} in (${projectColourList})`),
+      check("projects_status", sql`${t.status} in (${wordList(PROJECT_STATUSES)})`),
+      check("projects_health", sql`${t.health} in (${wordList(PROJECT_HEALTHS)})`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * A project's stages, the columns of its board: the store's default stages (`project_id` null) until the project has stages of its own.
+ * A stage's bucket says what it means: `active`, `done` or `archived`.
+ */
+export const projectStatuses = commerce
+  .table(
+    "project_statuses",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      projectId: uuid("project_id"),
+      name: text("name").notNull(),
+      slug: text("slug").notNull(),
+      colour: text("colour").notNull().default("neutral"),
+      bucket: text("bucket").notNull().default("active"),
+      sortOrder: integer("sort_order").notNull().default(0),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("project_statuses_store_id_key").on(t.storeId, t.id),
+      foreignKey({ name: "project_statuses_project_fk", columns: [t.storeId, t.projectId], foreignColumns: [projects.storeId, projects.id] }).onDelete("cascade"),
+      unique("project_statuses_slug_key").on(t.storeId, t.projectId, t.slug).nullsNotDistinct(),
+      index("project_statuses_order_idx").on(t.storeId, t.projectId, t.sortOrder),
+      check("project_statuses_name", trimmedText(t.name, PROJECT_LIMITS.statusName)),
+      check("project_statuses_slug", sql`${t.slug} ~ '^[a-z0-9][a-z0-9_-]{0,39}$'`),
+      check("project_statuses_colour", sql`${t.colour} in (${projectColourList})`),
+      check("project_statuses_bucket", sql`${t.bucket} in (${statusBucketList})`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * A checklist. A plain list (a title and a box to tick) until `is_advanced`, which brings every item field; `advanced_features` records
+ * only the fields switched off, so a field added later is on every advanced list, and hiding one never clears its data
+ * (`src/lib/projects-features.ts`). It stands alone or belongs to projects (`project_checklists`); `primary_project_id` is its home among them.
+ */
+export const checklists = commerce
+  .table(
+    "checklists",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      title: text("title").notNull(),
+      description: text("description"),
+      /** `open`, `done` or `archived`. */
+      status: text("status").notNull().default("open"),
+      dueAt: timestamp("due_at", { withTimezone: true }),
+      /** The due time is a day, not a moment. */
+      allDay: boolean("all_day"),
+      assignedTo: uuid("assigned_to").references(() => accounts.id, { onDelete: "set null" }),
+      /** The project it lives in, one of its projects (the rules migration holds it); null when it is in none. */
+      primaryProjectId: uuid("primary_project_id"),
+      /** A habit followed in order: ticking keeps an item's place, and status, assignment and labels are hidden. */
+      isRoutine: boolean("is_routine").notNull().default(false),
+      isAdvanced: boolean("is_advanced").notNull().default(false),
+      advancedFeatures: jsonb("advanced_features").notNull().default({}),
+      /** What the list is for, read by the AI manager; an advanced list's field. */
+      goal: text("goal"),
+      sortOrder: integer("sort_order").notNull().default(0),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("checklists_store_id_key").on(t.storeId, t.id),
+      index("checklists_sort_idx").on(t.storeId, t.status, t.sortOrder),
+      index("checklists_primary_project_idx").on(t.storeId, t.primaryProjectId).where(sql`${t.primaryProjectId} is not null`),
+      index("checklists_assigned_idx").on(t.assignedTo),
+      index("checklists_created_by_idx").on(t.createdBy),
+      check("checklists_title", trimmedText(t.title, PROJECT_LIMITS.checklistTitle)),
+      check("checklists_texts", sql`(${shortText(t.description, PROJECT_LIMITS.description)}) and (${shortText(t.goal, PROJECT_LIMITS.goal)})`),
+      check("checklists_status", sql`${t.status} in (${wordList(CHECKLIST_STATES)})`),
+      check("checklists_features", sql`jsonb_typeof(${t.advancedFeatures}) = 'object'`),
+    ],
+  )
+  .enableRLS();
+
+/** Which projects a checklist belongs to: membership, not containment (a list may be in several, or in none). */
+export const projectChecklists = commerce
+  .table(
+    "project_checklists",
+    {
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      projectId: uuid("project_id").notNull(),
+      checklistId: uuid("checklist_id").notNull(),
+      sortOrder: integer("sort_order").notNull().default(0),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.storeId, t.projectId, t.checklistId] }),
+      foreignKey({ name: "project_checklists_project_fk", columns: [t.storeId, t.projectId], foreignColumns: [projects.storeId, projects.id] }).onDelete("cascade"),
+      foreignKey({ name: "project_checklists_checklist_fk", columns: [t.storeId, t.checklistId], foreignColumns: [checklists.storeId, checklists.id] }).onDelete("cascade"),
+      index("project_checklists_checklist_idx").on(t.storeId, t.checklistId),
+      index("project_checklists_order_idx").on(t.storeId, t.projectId, t.sortOrder),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * An item's statuses: the store's default statuses (`checklist_id` null) merged with a list's own by slug, its own winning
+ * (`commerce.checklist_effective_statuses()`). A status says what the work is; a project's stage where it sits in that project.
+ */
+export const checklistStatuses = commerce
+  .table(
+    "checklist_statuses",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      checklistId: uuid("checklist_id"),
+      name: text("name").notNull(),
+      slug: text("slug").notNull(),
+      colour: text("colour").notNull().default("neutral"),
+      bucket: text("bucket").notNull().default("active"),
+      sortOrder: integer("sort_order").notNull().default(0),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("checklist_statuses_store_id_key").on(t.storeId, t.id),
+      foreignKey({ name: "checklist_statuses_checklist_fk", columns: [t.storeId, t.checklistId], foreignColumns: [checklists.storeId, checklists.id] }).onDelete("cascade"),
+      unique("checklist_statuses_slug_key").on(t.storeId, t.checklistId, t.slug).nullsNotDistinct(),
+      index("checklist_statuses_order_idx").on(t.storeId, t.checklistId, t.sortOrder),
+      check("checklist_statuses_name", trimmedText(t.name, PROJECT_LIMITS.statusName)),
+      check("checklist_statuses_slug", sql`${t.slug} ~ '^[a-z0-9][a-z0-9_-]{0,39}$'`),
+      check("checklist_statuses_colour", sql`${t.colour} in (${projectColourList})`),
+      check("checklist_statuses_bucket", sql`${t.bucket} in (${statusBucketList})`),
+    ],
+  )
+  .enableRLS();
+
+/** A named separator in a checklist, in the same order as its items (`sort_order` is one sequence); the Done line is fixed and not stored. */
+export const checklistSections = commerce
+  .table(
+    "checklist_sections",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      checklistId: uuid("checklist_id").notNull(),
+      title: text("title").notNull(),
+      sortOrder: integer("sort_order").notNull().default(0),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("checklist_sections_store_id_key").on(t.storeId, t.id),
+      // Lets a fold point at a section of its own list only.
+      unique("checklist_sections_checklist_key").on(t.storeId, t.checklistId, t.id),
+      foreignKey({ name: "checklist_sections_checklist_fk", columns: [t.storeId, t.checklistId], foreignColumns: [checklists.storeId, checklists.id] }).onDelete("cascade"),
+      index("checklist_sections_order_idx").on(t.storeId, t.checklistId, t.sortOrder),
+      index("checklist_sections_created_by_idx").on(t.createdBy),
+      check("checklist_sections_title", trimmedText(t.title, PROJECT_LIMITS.sectionTitle)),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * A checklist item, Flow's one task (D903). Done is `done_at`; its status and the tick agree (the rules migration). A repeating item
+ * (`recurrence`, `src/lib/projects-recurrence.ts`) moves to `next_due_at` when completed and counts a streak. Its cost is money: minor units
+ * and a currency.
+ */
+export const checklistItems = commerce
+  .table(
+    "checklist_items",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      checklistId: uuid("checklist_id").notNull(),
+      title: text("title").notNull(),
+      description: text("description"),
+      doneAt: timestamp("done_at", { withTimezone: true }),
+      archivedAt: timestamp("archived_at", { withTimezone: true }),
+      sortOrder: integer("sort_order").notNull().default(0),
+      /** Its own status: the list's (`checklist_statuses`); null shows none. */
+      statusId: uuid("status_id"),
+      assignedTo: uuid("assigned_to").references(() => accounts.id, { onDelete: "set null" }),
+      startAt: timestamp("start_at", { withTimezone: true }),
+      dueAt: timestamp("due_at", { withTimezone: true }),
+      allDay: boolean("all_day"),
+      /** `low`, `medium` or `high`. */
+      priority: text("priority"),
+      recurrence: jsonb("recurrence"),
+      nextDueAt: timestamp("next_due_at", { withTimezone: true }),
+      lastCompletedAt: timestamp("last_completed_at", { withTimezone: true }),
+      streak: integer("streak").notNull().default(0),
+      skippedAt: timestamp("skipped_at", { withTimezone: true }),
+      blockedReason: text("blocked_reason"),
+      blockedByItemId: uuid("blocked_by_item_id"),
+      costMinor: bigint("cost_minor", { mode: "number" }),
+      costCurrency: char("cost_currency", { length: 3 }),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("checklist_items_store_id_key").on(t.storeId, t.id),
+      foreignKey({ name: "checklist_items_checklist_fk", columns: [t.storeId, t.checklistId], foreignColumns: [checklists.storeId, checklists.id] }).onDelete("cascade"),
+      index("checklist_items_order_idx").on(t.storeId, t.checklistId, t.sortOrder),
+      index("checklist_items_status_idx").on(t.storeId, t.statusId).where(sql`${t.statusId} is not null`),
+      index("checklist_items_blocked_by_idx").on(t.storeId, t.blockedByItemId).where(sql`${t.blockedByItemId} is not null`),
+      index("checklist_items_due_idx").on(t.storeId, t.dueAt).where(sql`${t.dueAt} is not null and ${t.doneAt} is null and ${t.archivedAt} is null`),
+      index("checklist_items_next_due_idx").on(t.nextDueAt).where(sql`${t.recurrence} is not null and ${t.nextDueAt} is not null`),
+      index("checklist_items_assigned_idx").on(t.assignedTo),
+      index("checklist_items_created_by_idx").on(t.createdBy),
+      check("checklist_items_title", trimmedText(t.title, PROJECT_LIMITS.itemTitle)),
+      check("checklist_items_texts", sql`(${shortText(t.description, PROJECT_LIMITS.itemDescription)}) and (${shortText(t.blockedReason, PROJECT_LIMITS.blockedReason)})`),
+      check("checklist_items_priority", sql`${t.priority} is null or ${t.priority} in (${wordList(PRIORITIES)})`),
+      check("checklist_items_dates", sql`${t.startAt} is null or ${t.dueAt} is null or ${t.startAt} <= ${t.dueAt}`),
+      check("checklist_items_recurrence", sql`${t.recurrence} is null or jsonb_typeof(${t.recurrence}) = 'object'`),
+      check("checklist_items_streak", sql`${t.streak} >= 0`),
+      check("checklist_items_cost", sql`(${t.costMinor} is null) = (${t.costCurrency} is null) and (${t.costMinor} is null or ${t.costMinor} between -100000000000 and 100000000000) and (${t.costCurrency} is null or ${t.costCurrency} ~ '^[A-Z]{3}$')`),
+      check("checklist_items_not_self_blocked", sql`${t.blockedByItemId} is null or ${t.blockedByItemId} <> ${t.id}`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * Where an item sits in one project's process (Life's `project_item_statuses`): a second axis beside its own status, keyed by project and
+ * item because a list may be in several projects. No row means the project's first stage.
+ */
+export const projectItemStages = commerce
+  .table(
+    "project_item_stages",
+    {
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      projectId: uuid("project_id").notNull(),
+      itemId: uuid("item_id").notNull(),
+      statusId: uuid("status_id"),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.storeId, t.projectId, t.itemId] }),
+      foreignKey({ name: "project_item_stages_project_fk", columns: [t.storeId, t.projectId], foreignColumns: [projects.storeId, projects.id] }).onDelete("cascade"),
+      foreignKey({ name: "project_item_stages_item_fk", columns: [t.storeId, t.itemId], foreignColumns: [checklistItems.storeId, checklistItems.id] }).onDelete("cascade"),
+      index("project_item_stages_item_idx").on(t.storeId, t.itemId),
+      index("project_item_stages_status_idx").on(t.storeId, t.statusId).where(sql`${t.statusId} is not null`),
+    ],
+  )
+  .enableRLS();
+
+/** A step of an item (Life's subtasks), with a real foreign key: it goes with its item. A goal step is what the item is for. */
+export const checklistSubtasks = commerce
+  .table(
+    "checklist_subtasks",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      itemId: uuid("item_id").notNull(),
+      title: text("title").notNull(),
+      doneAt: timestamp("done_at", { withTimezone: true }),
+      isGoal: boolean("is_goal").notNull().default(false),
+      sortOrder: integer("sort_order").notNull().default(0),
+      dueAt: timestamp("due_at", { withTimezone: true }),
+      allDay: boolean("all_day"),
+      assignedTo: uuid("assigned_to").references(() => accounts.id, { onDelete: "set null" }),
+      statusId: uuid("status_id"),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("checklist_subtasks_store_id_key").on(t.storeId, t.id),
+      foreignKey({ name: "checklist_subtasks_item_fk", columns: [t.storeId, t.itemId], foreignColumns: [checklistItems.storeId, checklistItems.id] }).onDelete("cascade"),
+      index("checklist_subtasks_order_idx").on(t.storeId, t.itemId, t.sortOrder),
+      index("checklist_subtasks_status_idx").on(t.storeId, t.statusId).where(sql`${t.statusId} is not null`),
+      index("checklist_subtasks_assigned_idx").on(t.assignedTo),
+      index("checklist_subtasks_created_by_idx").on(t.createdBy),
+      check("checklist_subtasks_title", trimmedText(t.title, PROJECT_LIMITS.itemTitle)),
+    ],
+  )
+  .enableRLS();
+
+/** A section, or the Done line (`section_id` null), folded by one person in one list: each person's own view. */
+export const checklistFolds = commerce
+  .table(
+    "checklist_folds",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      checklistId: uuid("checklist_id").notNull(),
+      accountId: uuid("account_id")
+        .notNull()
+        .references(() => accounts.id, { onDelete: "cascade" }),
+      sectionId: uuid("section_id"),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      foreignKey({ name: "checklist_folds_checklist_fk", columns: [t.storeId, t.checklistId], foreignColumns: [checklists.storeId, checklists.id] }).onDelete("cascade"),
+      foreignKey({
+        name: "checklist_folds_section_fk",
+        columns: [t.storeId, t.checklistId, t.sectionId],
+        foreignColumns: [checklistSections.storeId, checklistSections.checklistId, checklistSections.id],
+      }).onDelete("cascade"),
+      unique("checklist_folds_key").on(t.storeId, t.checklistId, t.accountId, t.sectionId).nullsNotDistinct(),
+      index("checklist_folds_account_idx").on(t.accountId),
+    ],
+  )
+  .enableRLS();
 
 /**
  * A store duplicated from another (D129, `docs/store-copy.md`): one row per copy, kept for its progress page and

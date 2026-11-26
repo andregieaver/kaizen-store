@@ -127,6 +127,7 @@ const FEATURE_TABLES: Record<Exclude<FeatureId, "shop"> | "work", readonly strin
   referrals: ["affiliate_settings", "affiliates", "affiliate_attributions"],
   reviews: ["product_reviews", "review_pictures", "review_requests", "review_settings"],
   sales: ["deals", "deal_links", "deal_moves", "deal_pipelines", "deal_stages", "lead_decisions", "contracts", "contract_templates", "contract_signers", "contract_events", "contract_codes"],
+  projects: ["projects", "project_statuses", "checklists", "project_checklists", "checklist_statuses", "checklist_sections", "checklist_items", "project_item_stages", "checklist_subtasks", "checklist_folds"],
   work: [
     "work_settings",
     "work_clients",

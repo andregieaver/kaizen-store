@@ -25,18 +25,20 @@ export const FEATURE_IDS = [
   "referrals",
   "reviews",
   "sales",
+  "projects",
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
 export const isFeatureId = (value: unknown): value is FeatureId => (FEATURE_IDS as readonly unknown[]).includes(value);
 
-export type FeatureGroupId = "selling" | "world" | "customers";
+export type FeatureGroupId = "selling" | "world" | "customers" | "team";
 
 export const FEATURE_GROUPS: { id: FeatureGroupId; label: string }[] = [
   { id: "selling", label: "Selling" },
   { id: "world", label: "Countries and languages" },
   { id: "customers", label: "Customers" },
+  { id: "team", label: "Working together" },
 ];
 
 export type StoreFeature = {
@@ -182,6 +184,16 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     offWords: "Deals leaves the admin and the customer pages. Every deal and pipeline is kept for when you switch it on again.",
     needs: [],
     setupPath: "/deals",
+  },
+  {
+    // Projects and checklists (D903): the team plans its work where it sells; a website or a workspace has it too, so it needs nothing.
+    id: "projects",
+    group: "team",
+    label: "Projects and checklists",
+    words: "Plan the team's work: checklists, and projects with a board, statuses, who does what and when it is due.",
+    offWords: "Projects and Checklists leave the admin. Every project, list and item is kept for when you switch it on again.",
+    needs: [],
+    setupPath: "/projects",
   },
 ];
 
@@ -366,6 +378,9 @@ export type FeatureFacts = {
   /** Deals (D464): every deal, and those still open. */
   deals: number;
   openDeals: number;
+  /** Projects and checklists (D903): how many the store keeps, and the open items in them. */
+  projectsKept: number;
+  openTasks: number;
 };
 
 export const NO_FACTS: FeatureFacts = {
@@ -406,6 +421,8 @@ export const NO_FACTS: FeatureFacts = {
   publishedReviews: 0,
   deals: 0,
   openDeals: 0,
+  projectsKept: 0,
+  openTasks: 0,
 };
 
 /** Whether there is data for a feature (the Features page's "In use"). */
@@ -439,5 +456,7 @@ export function featureInUse(id: FeatureId, f: FeatureFacts): boolean {
       return f.publishedReviews > 0;
     case "sales":
       return f.deals > 0;
+    case "projects":
+      return f.projectsKept > 0;
   }
 }
