@@ -12,9 +12,14 @@ import { INSIGHT_CAPTION_KEPT, NO_FIGURES, parseInsights, type MediaItem, type P
 export const FACEBOOK_GRAPH = "https://graph.facebook.com/v24.0";
 export const FACEBOOK_SCOPES = ["pages_show_list", "pages_read_engagement", "read_insights"] as const;
 
-/** Where the owner signs in with Facebook and allows reading their Page's posts. */
-export function facebookAuthorizeUrl(appId: string, redirectUri: string, state: string): string {
-  const params = new URLSearchParams({ client_id: appId, redirect_uri: redirectUri, response_type: "code", scope: FACEBOOK_SCOPES.join(","), state });
+/**
+ * Where the owner signs in with Facebook and allows reading their Page's posts. An app on Facebook Login for Business names its saved
+ * configuration (`config_id`, its permissions chosen in Meta's dashboard) in place of the permissions; a classic app asks for them (`scope`).
+ */
+export function facebookAuthorizeUrl(appId: string, redirectUri: string, state: string, configId: string | null = null): string {
+  const params = new URLSearchParams({ client_id: appId, redirect_uri: redirectUri, response_type: "code", state });
+  if (configId) params.set("config_id", configId);
+  else params.set("scope", FACEBOOK_SCOPES.join(","));
   return `https://www.facebook.com/v24.0/dialog/oauth?${params}`;
 }
 
