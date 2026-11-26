@@ -85,10 +85,13 @@ export function SocialCalendar({
     setMessage({ tone: "ok", text: w.makingScene });
     run(`scene-${id}`, [() => postJson(`${base}/calendar`, { do: "scene", id })]);
   };
-  const publish = (id: string) => {
-    setMessage({ tone: "ok", text: w.posting });
-    run(`publish-${id}`, [() => postJson(`${base}/calendar`, { do: "publish", id })]);
-  };
+  /** Posts one approved post now (S3.1). Its outcome is kept on the post, so the page is read again either way: a refusal shows on the post. */
+  const publish = (id: string) =>
+    start(async () => {
+      setMessage({ tone: "ok", text: w.posting });
+      await postJson(`${base}/calendar`, { do: "publish", id });
+      window.location.reload();
+    });
   const drawn = (id: string) => run(`drawn-${id}`, [() => postJson(`${base}/calendar`, { do: "no_scene", id })]);
   /** The slideshow (S2.5): made in this browser from the post's pictures, uploaded to the library, kept on the post. */
   const video = (id: string) =>
