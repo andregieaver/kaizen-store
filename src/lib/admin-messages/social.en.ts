@@ -148,6 +148,12 @@ export const socialEn = {
     checked: "Picture checked",
     notChecked: "Picture not checked yet",
     checkFound: "The picture check found: {problems}",
+    makeScene: "Make a scene",
+    makeSceneAgain: "Make the scene again",
+    makingScene: "Making a scene… this takes up to a minute.",
+    drawnPicture: "Use the drawn picture",
+    sceneUsed: "Made scene",
+    sceneTriesUsed: "The scene has been made as often as it may be. Use the drawn picture, or change it in Canva.",
     checkPicture: "Check the picture",
     checkWaits: "A post whose picture check found something is left out of Approve the week: read it and approve it on its own.",
     problems: {

@@ -22,6 +22,8 @@ export type CalendarDraft = {
   editedAt?: string | null;
   /** The vision check's verdict (S2.3): what it found wrong (none: passed) and its note; null or absent while unchecked. */
   check?: { problems: string[]; note: string } | null;
+  /** Whether it draws a made scene (S2.1), and how often one was made for it. */
+  scene?: { on: boolean; tries: number };
 };
 
 /** One planned post: the adviser's idea (or none, for a draft written straight onto a day) and its draft, if written. */

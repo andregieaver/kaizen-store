@@ -34,6 +34,8 @@ const DRAFT_ROW = z.object({
   checked_at: col.timestampOrNull,
   check_problems: z.array(z.string()),
   check_note: col.text,
+  scene: col.bool,
+  scene_tries: col.int,
 });
 
 /** The calendar of the store's two weeks from today's Monday: the advice's plan and the drafts written for its days. */
@@ -42,13 +44,13 @@ export async function calendarOf(storeId: string, today: string, slots: readonly
   const rows = await typedRows(
     DRAFT_ROW,
     sql`
-      select id, planned_for::text as day, channel, caption, approved_at is not null as approved, product_id, topic, edited_at, checked_at, check_problems, check_note
+      select id, planned_for::text as day, channel, caption, approved_at is not null as approved, product_id, topic, edited_at, checked_at, check_problems, check_note, scene_media_id is not null as scene, scene_tries
       from commerce.social_posts
       where store_id = ${storeId}::uuid and planned_for between ${first}::date and ${addDays(first, CALENDAR_WEEKS * 7 - 1)}::date
       order by created_at desc
     `,
   );
-  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null }));
+  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null, scene: { on: r.scene, tries: r.scene_tries } }));
   return socialCalendar(today, slots, drafts);
 }
 

@@ -1485,6 +1485,13 @@
       "when": 1795693850212,
       "tag": "20261126115050_admin_recordings_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1795695105618,
+      "tag": "20261126121145_social_scenes",
+      "breakpoints": true
     }
   ]
 }

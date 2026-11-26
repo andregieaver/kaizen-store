@@ -35,6 +35,7 @@ const POST = z.object({
   caption: col.text,
   price_line: col.textOrNull,
   picture_media_id: col.textOrNull,
+  scene: col.textOrNull,
 });
 
 type Palette = { background: string; surface: string; text: string; accent: string; accentText: string };
@@ -168,7 +169,9 @@ export async function socialPicture(member: Membership, postId: string, origin: 
   const { store } = member;
   const [post] = await typedRows(
     POST,
-    sql`select channel, ref, product_id, page_id, title, caption, price_line, picture_media_id from commerce.social_posts where store_id = ${store.id}::uuid and id = ${postId}::uuid`,
+    sql`select p.channel, p.ref, p.product_id, p.page_id, p.title, p.caption, p.price_line, p.picture_media_id, m.url as scene
+      from commerce.social_posts p left join commerce.media m on m.id = p.scene_media_id and m.store_id = p.store_id and m.kind = 'image'
+      where p.store_id = ${store.id}::uuid and p.id = ${postId}::uuid`,
   );
   if (!post) return { ok: false };
   if (post.picture_media_id && !options.drawn) {
@@ -208,7 +211,8 @@ export async function socialPicture(member: Membership, postId: string, origin: 
   const navigation = parseNavigation(nav?.navigation ?? null);
   const scaleOf = size.width / 1080;
   const [photo, logo, type] = await Promise.all([
-    product ? photoOf(product.image?.url ?? null, origin, photoBox, deps) : Promise.resolve(null),
+    // A made scene (S2.1) is drawn in the photo's place; a topic's fills the picture behind its headline.
+    product ? photoOf(post.scene ?? product.image?.url ?? null, origin, photoBox, deps) : post.scene ? photoOf(post.scene, origin, size, deps) : Promise.resolve(null),
     // On the product picture the logo sits on the page's colour: the dark-background logo where the theme is dark (D60).
     product ? logoOf((scheme === "dark" ? navigation.logoDark ?? navigation.logo : navigation.logo)?.url ?? null, origin, Math.round(64 * scaleOf), deps) : Promise.resolve(null),
     fontsOf(store, deps),
@@ -242,6 +246,16 @@ export async function socialPicture(member: Membership, postId: string, origin: 
             </div>
           ) : null}
         </div>
+      </div>
+    </div>
+  ) : photo ? (
+    // A topic with a made scene (S2.1): the scene fills the picture, the shop's name and headline on a band of the theme's accent.
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", position: "relative", ...face(type.body) }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- drawn by next/og, not a page */}
+      <img src={photo} width={size.width} height={size.height} alt="" style={{ position: "absolute", top: 0, left: 0, objectFit: "cover" }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: px(18), background: palette.accent, color: palette.accentText, padding: pad * 1.2, margin: pad, borderRadius: px(28) }}>
+        <div style={{ display: "flex", fontSize: px(40), opacity: 0.9 }}>{store.name}</div>
+        <div style={{ display: "flex", fontSize: px(80), ...face(type.heading), lineHeight: 1.08 }}>{pictureHeadline(post)}</div>
       </div>
     </div>
   ) : (

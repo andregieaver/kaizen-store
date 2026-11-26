@@ -147,6 +147,12 @@ export const socialNb: SocialMessages = {
     checked: "Bildet er sjekket",
     notChecked: "Bildet er ikke sjekket ennå",
     checkFound: "Bildesjekken fant: {problems}",
+    makeScene: "Lag en scene",
+    makeSceneAgain: "Lag scenen på nytt",
+    makingScene: "Lager en scene … dette tar opptil et minutt.",
+    drawnPicture: "Bruk det tegnede bildet",
+    sceneUsed: "Laget scene",
+    sceneTriesUsed: "Scenen er laget så mange ganger som den kan. Bruk det tegnede bildet, eller endre det i Canva.",
     checkPicture: "Sjekk bildet",
     checkWaits: "Et innlegg der bildesjekken fant noe, er ikke med i Godkjenn uka: les det og godkjenn det for seg.",
     problems: {

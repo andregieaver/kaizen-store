@@ -613,6 +613,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `editSocialPost()` clears them. The calendar checks each post it writes, shows the verdict, and leaves a failed post out of *Approve the
   week* (`checkFailed()`), for a person to approve on its own.
 
+## A social post's made scene (D870 S2.1, `src/lib/social-scenes.ts` pure, `src/server/social-scenes.ts`)
+
+- **A social post's made scene (D870 S2.1, `src/lib/social-scenes.ts` pure, `src/server/social-scenes.ts`)**: `makeSocialScene()` (the
+  calendar route's `scene`, `marketing:write`, the extension `social`, `maxDuration` 300) makes one post's scene from `sceneBrief()`: a
+  product's own library photo through `editLibraryPicture()` (`new_background`, the product kept) or else `makeSitePicture()` in the site's
+  look (`sceneShape()`), each kept in the library as AI-made. It sets `scene_media_id`, counts `scene_tries`, clears the post's verdict and
+  yes, runs the vision check, and makes it again while the check fails it and `mayRemakeScene()` allows (three in all, none started past two
+  minutes). The only writer of both columns (`dropSocialScene()` clears the scene for the drawn picture). `socialPicture()` draws the scene in
+  the photo's place, a topic's behind its headline on the accent band; a Canva copy (`picture_media_id`) still wins.
+
 ## How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)
 
 - **How a store's own Instagram posts did (D870 S1.2, `src/lib/social-insights.ts` pure, `src/server/social-insights.ts`)**: the Instagram

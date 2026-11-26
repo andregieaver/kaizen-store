@@ -18867,12 +18867,20 @@ export const socialPosts = commerce
       checkedAt: timestamp("checked_at", { withTimezone: true }),
       checkProblems: text("check_problems").array().notNull().default(sql`'{}'::text[]`),
       checkNote: text("check_note").notNull().default(""),
+      /**
+       * The post's made scene (D870 S2.1): a library picture in the shop's look (the product's photo on a new background, or a made
+       * background for a topic), drawn in the photo's place; null draws the product's photo. `scene_tries` counts how often it was made,
+       * so a picture the vision check fails is made again at most twice.
+       */
+      sceneMediaId: uuid("scene_media_id").references(() => media.id, { onDelete: "set null" }),
+      sceneTries: smallint("scene_tries").notNull().default(0),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },
     (t) => [
       unique("social_posts_store_id_key").on(t.storeId, t.id),
       index("social_posts_planned_idx").on(t.storeId, t.plannedFor),
+      index("social_posts_scene_idx").on(t.sceneMediaId),
       index("social_posts_approved_by_idx").on(t.approvedBy),
       uniqueIndex("social_posts_ref_idx").on(t.storeId, t.ref, t.channel),
       index("social_posts_list_idx").on(t.storeId, t.createdAt),

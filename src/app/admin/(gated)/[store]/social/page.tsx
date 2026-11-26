@@ -15,7 +15,7 @@ import { SOCIAL_WORDS } from "@/lib/admin-words/social";
 import { areaTexts } from "@/lib/admin-area";
 import { CANVA_FIELD_WORDS } from "@/lib/admin-words/canva-field";
 import { todayIn } from "@/lib/analytics-period";
-import { aiFor } from "@/server/ai";
+import { aiAbilities, aiFor } from "@/server/ai";
 import { canvaForField } from "@/server/canva";
 import { calendarOf } from "@/server/social-calendar";
 import { facebookAppOn, facebookView } from "@/server/facebook-pages";
@@ -51,7 +51,7 @@ export default async function SocialPostsPage({
   const lang = adminLangOf(member.account.adminLocale);
   const w = SOCIAL_WORDS[lang];
   const done = (await searchParams).facebook;
-  const [products, pages, posts, insights, facebook, facts, advice, ai, canva] = await Promise.all([
+  const [products, pages, posts, insights, facebook, facts, advice, ai, abilities, canva] = await Promise.all([
     socialProducts(store),
     socialPages(store),
     listSocialPosts(store.id),
@@ -60,6 +60,7 @@ export default async function SocialPostsPage({
     gatherSocialFacts(store, member.account.id),
     latestAdvice(store.id),
     aiFor(store.id, { feature: "social_posts" }).catch(() => null),
+    aiAbilities(store.id).catch(() => null),
     // A post's picture edited in the person's own Canva (D898 C3), for a member who may change the marketing.
     canvaForField(`/admin/${store.slug}/social/canva`, store.slug, "marketing:write"),
   ]);
@@ -91,6 +92,7 @@ export default async function SocialPostsPage({
         base={`/admin/${store.slug}/social`}
         mayWrite={memberCan(member, "marketing:write")}
         hasAi={Boolean(ai?.textModel)}
+        makesPictures={Boolean(abilities?.pictures)}
         dateLocale={ADMIN_LANG_FACTS[lang].locale}
         words={w.calendar}
       />
