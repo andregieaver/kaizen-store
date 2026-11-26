@@ -9132,3 +9132,31 @@ describe("an owner's choices about heatmaps and recordings of the admin (D895 ph
     }
   });
 });
+
+describe("Guide's record and the person's choice (D909)", () => {
+  it("keeps one record per person and store, one for the platform, gone with the account, and is closed to the Data API", async () => {
+    const { id } = await one<{ id: string }>(`insert into commerce.accounts (email) values ('guide@example.com') returning id`);
+    const store = await createStore("guide-shop", ["NO"]);
+    const insert = (storeId: string | null, state = "{}") =>
+      db.query("insert into commerce.guide_progress (account_id, store_id, state) values ($1, $2, $3::jsonb)", [id, storeId, state]);
+    await insert(store);
+    await insert(null);
+    await expect(insert(store)).rejects.toThrow(/guide_progress_key/);
+    await expect(insert(null)).rejects.toThrow(/guide_progress_key/);
+    await expect(insert(null, "[]")).rejects.toThrow(/guide_progress_state/);
+    expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.guide_progress'::regclass")).on).toBe(true);
+    await db.query("delete from commerce.accounts where id = $1", [id]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.guide_progress where account_id = $1", [id])).n).toBe(0);
+  });
+
+  it("takes only the levels and kinds Guide knows, automatic by default", async () => {
+    const { id, guide_level, guide_off } = await one<{ id: string; guide_level: string | null; guide_off: string[] }>(
+      `insert into commerce.accounts (email) values ('guide-choice@example.com') returning id, guide_level, guide_off`,
+    );
+    expect(guide_level).toBeNull();
+    expect(guide_off).toEqual([]);
+    await db.query("update commerce.accounts set guide_level = 'handson', guide_off = '{beacon,hint}' where id = $1", [id]);
+    await expect(db.query("update commerce.accounts set guide_level = 'loud' where id = $1", [id])).rejects.toThrow(/accounts_guide_level/);
+    await expect(db.query("update commerce.accounts set guide_off = '{toast}' where id = $1", [id])).rejects.toThrow(/accounts_guide_off/);
+  });
+});

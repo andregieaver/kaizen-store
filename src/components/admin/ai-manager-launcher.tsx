@@ -276,6 +276,7 @@ export function AiManagerLauncher({
       <button
         ref={buttonRef}
         type="button"
+        data-guide="ai"
         onClick={() => toggle()}
         aria-expanded={open && !onItsPage}
         aria-keyshortcuts="Meta+J Control+J"

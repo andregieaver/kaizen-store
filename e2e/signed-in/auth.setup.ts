@@ -25,6 +25,8 @@ setup("the platform admin signs in with the second step", async ({ browser }) =>
       insert into commerce.accounts (email, name, platform_admin) values (${ADMIN.email}, ${ADMIN.name}, true)
       on conflict do nothing`;
     await sql`update commerce.accounts set platform_admin = true, disabled_at = null where lower(email) = ${ADMIN.email}`;
+    // Guide Quiet (D909), so no welcome dims a page another spec clicks on; `guide.spec.ts` asks for its moments from the panel.
+    await sql`update commerce.accounts set guide_level = 'quiet' where lower(email) = ${ADMIN.email}`;
   } finally {
     await sql.end();
   }
@@ -67,6 +69,9 @@ setup("the owner and the reader sign in", async ({ browser }) => {
        where s.slug = ${E2E_STORE}
       on conflict (store_id, account_id) do nothing`;
 
+    // Guide Quiet (D909), as for the platform admin above.
+    for (const person of [OWNER, READER, QUIET]) await sql`update commerce.accounts set guide_level = 'quiet' where lower(email) = ${person.email}`;
+
     const owner = await browser.newContext();
     const ownerPage = await owner.newPage();
     await signIn(ownerPage, OWNER.email, `/admin/${E2E_STORE}`);
@@ -107,7 +112,7 @@ setup("the Norwegian owner signs in", async ({ browser }) => {
       await sql`select commerce.approve_access_request(${request.id}, ${E2E_STORE_NB}, 'E2E Butikk', null)`;
     }
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${E2E_STORE_NB}`;
-    await sql`update commerce.accounts set admin_locale = 'en' where lower(email) = ${OWNER_NB.email}`;
+    await sql`update commerce.accounts set admin_locale = 'en', guide_level = 'quiet' where lower(email) = ${OWNER_NB.email}`;
 
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -132,7 +137,7 @@ setup("the Norwegian platform admin signs in with the second step", async ({ bro
       insert into commerce.accounts (email, name, platform_admin) values (${ADMIN_NB.email}, ${ADMIN_NB.name}, true)
       on conflict do nothing`;
     // Back to English first: on a database this ran against before the account reads Norwegian, and the second step's form is in its language.
-    await sql`update commerce.accounts set platform_admin = true, disabled_at = null, admin_locale = 'en' where lower(email) = ${ADMIN_NB.email}`;
+    await sql`update commerce.accounts set platform_admin = true, disabled_at = null, admin_locale = 'en', guide_level = 'quiet' where lower(email) = ${ADMIN_NB.email}`;
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.goto(`/admin/sign-in?next=${encodeURIComponent("/admin/platform")}`);

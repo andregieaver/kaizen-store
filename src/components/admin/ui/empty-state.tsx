@@ -11,6 +11,7 @@ export function EmptyState({
   children,
   action,
   icon,
+  after,
   compact = false,
   className,
 }: {
@@ -19,6 +20,8 @@ export function EmptyState({
   children?: ReactNode;
   /** The one next step. */
   action?: ReactNode;
+  /** Under the next step at the box's width: Guide's hint on an empty page (D909). */
+  after?: ReactNode;
   /** An icon above the title, in the secondary ink. */
   icon?: ReactNode;
   compact?: boolean;
@@ -37,6 +40,7 @@ export function EmptyState({
       <p className={compact ? "font-medium" : "text-body-strong text-ink"}>{title}</p>
       {children && <div className={compact ? "text-xs text-muted" : "max-w-[60ch] text-body text-muted"}>{children}</div>}
       {action && <div className={compact ? "flex flex-wrap gap-2" : "mt-2 flex flex-wrap justify-center gap-2"}>{action}</div>}
+      {after}
     </div>
   );
 }

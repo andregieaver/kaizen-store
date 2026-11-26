@@ -1,6 +1,6 @@
 {
-  "id": "ac88fa1c-c900-4c9e-b3e9-219dd3ec9b93",
-  "prevId": "0e79f0df-647e-4b89-871a-076297434365",
+  "id": "75fcc88a-e6c8-465f-8e5c-0f3e02d9238c",
+  "prevId": "ac88fa1c-c900-4c9e-b3e9-219dd3ec9b93",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1359,6 +1359,19 @@
           "notNull": true,
           "default": "'basic'"
         },
+        "guide_level": {
+          "name": "guide_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "guide_off": {
+          "name": "guide_off",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
         "platform_admin": {
           "name": "platform_admin",
           "type": "boolean",
@@ -1492,6 +1505,14 @@
         "accounts_admin_view": {
           "name": "accounts_admin_view",
           "value": "\"commerce\".\"accounts\".\"admin_view\" in ('basic', 'advanced')"
+        },
+        "accounts_guide_level": {
+          "name": "accounts_guide_level",
+          "value": "\"commerce\".\"accounts\".\"guide_level\" in ('quiet', 'balanced', 'handson')"
+        },
+        "accounts_guide_off": {
+          "name": "accounts_guide_off",
+          "value": "\"commerce\".\"accounts\".\"guide_off\" <@ array['spotlight', 'beacon', 'hint']::text[]"
         },
         "accounts_platform_role": {
           "name": "accounts_platform_role",
@@ -43390,6 +43411,111 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.guide_progress": {
+      "name": "guide_progress",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "guide_progress_store_idx": {
+          "name": "guide_progress_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "guide_progress_account_id_accounts_id_fk": {
+          "name": "guide_progress_account_id_accounts_id_fk",
+          "tableFrom": "guide_progress",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "guide_progress_store_id_stores_id_fk": {
+          "name": "guide_progress_store_id_stores_id_fk",
+          "tableFrom": "guide_progress",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "guide_progress_key": {
+          "name": "guide_progress_key",
+          "nullsNotDistinct": true,
+          "columns": [
+            "account_id",
+            "store_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "guide_progress_state": {
+          "name": "guide_progress_state",
+          "value": "jsonb_typeof(\"commerce\".\"guide_progress\".\"state\") = 'object' and pg_column_size(\"commerce\".\"guide_progress\".\"state\") < 16384"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.host_commissions": {
       "name": "host_commissions",
