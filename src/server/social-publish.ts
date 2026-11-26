@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { decryptSecret } from "@/lib/secret-box";
 import { FACEBOOK_GRAPH } from "@/lib/facebook-pages";
+import { pinBody, pinIdFrom, pinUrl } from "@/lib/pinterest";
 import { POST_CHANNELS } from "@/lib/social-posts";
 import {
   CONTAINER_CHECKS,
@@ -23,6 +24,7 @@ import { audit, type Membership } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import { FacebookError, graph } from "./facebook-pages";
 import { call, GRAPH, InstagramError } from "./instagram";
+import { pinterestCall, PinterestError, pinterestTarget } from "./pinterest";
 import { loadSharp } from "./sharp-load";
 import { log } from "./log";
 import { storePicture } from "./media-library";
@@ -53,12 +55,17 @@ const POST = z.object({
 });
 
 type Post = z.infer<typeof POST>;
-type Target = { kind: "instagram"; userId: string; token: string } | { kind: "facebook"; pageId: string; token: string };
+type Target =
+  | { kind: "instagram"; userId: string; token: string }
+  | { kind: "facebook"; pageId: string; token: string }
+  | { kind: "pinterest"; boardId: string; token: string };
 
 export type PublishDeps = {
   /** Meta's API, for a test: Instagram's and Facebook's callers. */
   instagram?: typeof call;
   facebook?: typeof graph;
+  /** Pinterest's API, for a test. */
+  pinterest?: typeof pinterestCall;
   /** The picture's public address, for a test. */
   picture?: (member: Membership, post: Post, origin: string) => Promise<string | null>;
   wait?: (ms: number) => Promise<void>;
@@ -67,9 +74,13 @@ export type PublishDeps = {
 export type PublishResult = { ok: true; url: string | null } | { ok: false; problem: string };
 
 /** The account a store publishes to on a channel, with its token; Kaizena Flow's own store uses the platform's Instagram while it has none. */
-async function targetOf(store: Membership["store"], channel: PublishChannel): Promise<Target | { problem: string }> {
+async function targetOf(store: Membership["store"], channel: PublishChannel, deps: PublishDeps): Promise<Target | { problem: string }> {
   const key = encryptionKey();
   if (!key) return { problem: "Publishing is not set up here." };
+  if (channel === "pinterest") {
+    const board = await pinterestTarget(store.id, new Date(), deps.pinterest);
+    return "problem" in board ? board : { kind: "pinterest", ...board };
+  }
   if (channel === "instagram") {
     const rows = await typedRows(
       z.object({ store_id: col.uuid.nullable(), user: col.text, token: col.text, publish: col.bool, live: col.bool }),
@@ -150,8 +161,21 @@ async function toFacebook(target: Extract<Target, { kind: "facebook" }>, media: 
   return { id, url };
 }
 
+/** Pins the post to the board: its picture, title, words and tagged link. A Pin is a picture: a slideshow is not pinned. */
+async function toPinterest(target: Extract<Target, { kind: "pinterest" }>, post: Post, imageUrl: string, deps: PublishDeps) {
+  const call = deps.pinterest ?? pinterestCall;
+  const made = await call("/pins", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${target.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(pinBody(target.boardId, { channel: post.channel, title: post.title, caption: post.caption, hashtags: post.hashtags, link: post.link, priceLine: post.price_line }, imageUrl)),
+  });
+  const id = pinIdFrom(made);
+  if (!id) throw new PinterestError("Pinterest did not make the Pin.");
+  return { id, url: pinUrl(id) };
+}
+
 /**
- * Publishes one of the store's approved posts now, to its channel (Instagram or Facebook). Refused without the marketing permission, for a
+ * Publishes one of the store's approved posts now, to its channel (Instagram, Facebook or Pinterest). Refused without the marketing permission, for a
  * post not approved, already published or being published, for a channel Kaizena Flow does not post to, and without a connection that
  * allows publishing. Audited with who published it.
  */
@@ -171,7 +195,7 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
   if (!isPublishChannel(post.channel)) return { ok: false, problem: "Kaizena Flow does not post to this channel yet: copy the post into it." };
   if (post.published) return { ok: false, problem: "This post is published already." };
   if (!post.approved) return { ok: false, problem: "Approve the post before it is published." };
-  const target = await targetOf(store, post.channel);
+  const target = await targetOf(store, post.channel, deps);
   if ("problem" in target) return { ok: false, problem: target.problem };
 
   // The claim: one publish at a time, and never one for a post that is out already.
@@ -183,11 +207,16 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
   if (claimed.length === 0) return { ok: false, problem: "This post is being published already." };
 
   try {
-    const kind = publishKind(Boolean(post.video));
+    const kind = target.kind === "pinterest" ? "picture" : publishKind(Boolean(post.video));
     const url = kind === "video" ? post.video : await (deps.picture ?? publicPicture)(member, post, origin);
     if (!url) throw new InstagramError("The post's picture could not be made ready to publish.");
     const text = publishedText({ channel: post.channel, title: post.title, caption: post.caption, hashtags: post.hashtags, link: post.link, priceLine: post.price_line });
-    const done = target.kind === "instagram" ? await toInstagram(target, { kind, url }, text, deps) : await toFacebook(target, { kind, url }, text, deps);
+    const done =
+      target.kind === "instagram"
+        ? await toInstagram(target, { kind, url }, text, deps)
+        : target.kind === "facebook"
+          ? await toFacebook(target, { kind, url }, text, deps)
+          : await toPinterest(target, post, url, deps);
     await db().execute(sql`
       update commerce.social_posts set published_at = now(), published_by = ${member.account.id}::uuid, published_id = ${done.id},
         published_url = ${done.url}, publish_problem = null, publish_started_at = null
@@ -195,7 +224,7 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
     await audit(member.account.id, store.id, "store.social_post_published", { channel: post.channel, kind });
     return { ok: true, url: done.url };
   } catch (error) {
-    const said = error instanceof InstagramError || error instanceof FacebookError;
+    const said = error instanceof InstagramError || error instanceof FacebookError || error instanceof PinterestError;
     if (!said) log("error", "social.publish_failed", { post: post.id, channel: post.channel }, error);
     const problem = said ? error.message.slice(0, 300) : "The post could not be published. Try again.";
     await db().execute(sql`update commerce.social_posts set publish_problem = ${problem}, publish_started_at = null where store_id = ${store.id}::uuid and id = ${post.id}::uuid`);
@@ -206,10 +235,11 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
 /** Where the store may publish from the calendar now: each channel whose connection allows it (Kaizena Flow's store: the platform's Instagram too). */
 export async function publishTargets(store: Membership["store"]): Promise<Record<PublishChannel, boolean>> {
   const [row] = await typedRows(
-    z.object({ instagram: col.bool, facebook: col.bool }),
+    z.object({ instagram: col.bool, facebook: col.bool, pinterest: col.bool }),
     sql`select
       exists (select 1 from commerce.instagram_accounts where (store_id = ${store.id}::uuid ${store.house ? sql`or store_id is null` : sql``}) and publish and token_expires_at > now()) as instagram,
-      exists (select 1 from commerce.facebook_pages where store_id = ${store.id}::uuid and publish and page_id is not null) as facebook`,
+      exists (select 1 from commerce.facebook_pages where store_id = ${store.id}::uuid and publish and page_id is not null) as facebook,
+      exists (select 1 from commerce.pinterest_accounts where store_id = ${store.id}::uuid and publish and board_id is not null and refresh_expires_at > now()) as pinterest`,
   );
-  return { instagram: row?.instagram ?? false, facebook: row?.facebook ?? false };
+  return { instagram: row?.instagram ?? false, facebook: row?.facebook ?? false, pinterest: row?.pinterest ?? false };
 }

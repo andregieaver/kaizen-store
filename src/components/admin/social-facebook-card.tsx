@@ -1,8 +1,9 @@
-import { Button, EmptyState, Field, List, ListRow, RowFact, RowLead, Select } from "@/components/admin/ui";
+import { EmptyState, List, ListRow, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { SocialMessages } from "@/lib/admin-messages/social.en";
 import type { FacebookView } from "@/server/facebook-pages";
 
+import { ActionForm, ChooseForm, ConnectAction, DoneNote } from "./social-connect-parts";
 import { InsightsFrame, PostTitle } from "./social-insights-card";
 
 type Done = keyof SocialMessages["facebook"]["done"];
@@ -37,42 +38,14 @@ export function SocialFacebookCard({
   const count = (n: number | null) => (n === null ? "–" : n.toLocaleString(numberLocale));
   const date = (iso: string) => new Date(iso).toLocaleDateString(numberLocale, { dateStyle: "medium", timeZone });
   const said = done && Object.hasOwn(w.done, done) ? w.done[done as Done] : null;
-  const form = (what: string, label: string, kind: "main" | "secondary" | "quiet" = "secondary") => (
-    <form method="post" action={action}>
-      <input type="hidden" name="do" value={what} />
-      <Button type="submit" kind={kind}>
-        {label}
-      </Button>
-    </form>
-  );
-  const connect = !mayConnect ? <p className="text-caption text-ink-2">{w.askOwner}</p> : appOn ? form("connect", w.connect) : <p className="text-caption text-ink-2">{w.off}</p>;
+  const connect = <ConnectAction action={action} mayConnect={mayConnect} appOn={appOn} words={w} />;
   return (
     <InsightsFrame id="social-facebook" title={w.title} lead={`${w.lead}${view.state === "ready" && view.fetchedAt ? ` ${fillWords(w.readAt, { date: date(view.fetchedAt) })}` : ""}`}>
-      {said && (
-        <p role="status" className={done === "failed" || done === "nopage" ? "text-body text-danger-text" : "text-body text-ink"}>
-          {said}
-        </p>
-      )}
+      <DoneNote said={said} bad={done === "failed" || done === "nopage"} />
       {view.state === "none" && <EmptyState compact title={w.none} action={connect} />}
       {view.state === "choose" &&
         (mayConnect ? (
-          <form method="post" action={action} className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="do" value="choose" />
-            <Field label={w.choose}>
-              {(control) => (
-                <Select name="page" {...control}>
-                  {view.choices.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-            <Button type="submit" kind="main">
-              {w.keep}
-            </Button>
-          </form>
+          <ChooseForm action={action} field="page" label={w.choose} keep={w.keep} choices={view.choices} />
         ) : (
           <p className="text-caption text-ink-2">{w.askOwner}</p>
         ))}
@@ -100,8 +73,8 @@ export function SocialFacebookCard({
       )}
       {(view.state === "ready" || view.state === "waiting" || view.state === "choose") && mayConnect && (
         <div className="flex flex-wrap gap-2">
-          {appOn && form("connect", w.connect, "quiet")}
-          {form("disconnect", w.disconnect, "quiet")}
+          {appOn && <ActionForm action={action} what="connect" label={w.connect} kind="quiet" />}
+          <ActionForm action={action} what="disconnect" label={w.disconnect} kind="quiet" />
         </div>
       )}
     </InsightsFrame>

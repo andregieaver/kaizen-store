@@ -8,6 +8,7 @@ import { SocialCalendar } from "@/components/admin/social-calendar";
 import { SocialRulesCard } from "@/components/admin/social-rules-card";
 import { RULE_POSTS_MAX } from "@/lib/social-rules";
 import { SocialFacebookCard } from "@/components/admin/social-facebook-card";
+import { SocialPinterestCard } from "@/components/admin/social-pinterest-card";
 import { SocialFactsCard } from "@/components/admin/social-facts-card";
 import { SocialInsightsCard } from "@/components/admin/social-insights-card";
 import { SocialPostCreator } from "@/components/admin/social-posts";
@@ -22,6 +23,7 @@ import { canvaForField } from "@/server/canva";
 import { calendarOf } from "@/server/social-calendar";
 import { publishTargets } from "@/server/social-publish";
 import { socialRulesOf } from "@/server/social-rules";
+import { pinterestAppOn, pinterestView } from "@/server/pinterest";
 import { facebookAppOn, facebookView } from "@/server/facebook-pages";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { mainRecommendation } from "@/lib/social-advice";
@@ -54,7 +56,8 @@ export default async function SocialPostsPage({
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = SOCIAL_WORDS[lang];
-  const done = (await searchParams).facebook;
+  const query = await searchParams;
+  const done = query.facebook;
   const [products, pages, posts, insights, facebook, facts, advice, ai, abilities, canva] = await Promise.all([
     socialProducts(store),
     socialPages(store),
@@ -69,10 +72,11 @@ export default async function SocialPostsPage({
     canvaForField(`/admin/${store.slug}/social/canva`, store.slug, "marketing:write"),
   ]);
   // The adviser's two-week plan with the drafts written for its days (S2.4).
-  const [weeks, publishTo, rules] = await Promise.all([
+  const [weeks, publishTo, rules, pinterest] = await Promise.all([
     calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []),
     publishTargets(store),
     socialRulesOf(store.id),
+    pinterestView(store.id),
   ]);
   const titles = Object.fromEntries([
     ...products.map((p) => [p.id, p.title]),
@@ -139,6 +143,14 @@ export default async function SocialPostsPage({
         done={typeof done === "string" ? done : null}
         numberLocale={ADMIN_LANG_FACTS[lang].locale}
         timeZone={store.timeZone}
+      />
+      <SocialPinterestCard
+        view={pinterest}
+        words={w.pinterest}
+        action={`/admin/${store.slug}/social/pinterest`}
+        mayConnect={memberCan(member, "marketing:write")}
+        appOn={pinterestAppOn()}
+        done={typeof query.pinterest === "string" ? query.pinterest : null}
       />
       <SocialFactsCard facts={facts} words={w.facts} locale={ADMIN_LANG_FACTS[lang].locale} />
     </div>

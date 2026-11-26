@@ -353,3 +353,29 @@ test("the owner switches on posting within their rules, sets its limits, and swi
   await rules.getByRole("switch", { name: "Switch off posting within my rules" }).click();
   await expect(rules).toContainText("Off: every post waits for your yes.");
 });
+
+test("a connected Pinterest account shows its board, and an approved Pinterest post can be pinned from the calendar (D870 S3.4)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const card = page.getByRole("region", { name: "Pinterest" });
+  // This build has no Pinterest app: the card says so.
+  await expect(card).toContainText("Pinterest cannot be connected here yet.");
+
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.pinterest_accounts (store_id, username, access_token_encrypted, refresh_token_encrypted, token_expires_at, refresh_expires_at, board_id, board_name, publish)
+      select id, 'theshop', 'x', 'x', now() + interval '30 days', now() + interval '365 days', '549755885175', 'Kitchen', true from commerce.stores where slug = ${SLUG}
+      on conflict (store_id) do nothing`;
+  } finally {
+    await sql.end();
+  }
+  await page.reload();
+  await expect(card).toContainText("Pins go to Kitchen as theshop.");
+  const calendar = page.getByRole("region", { name: "Your posting plan" });
+  const pin = calendar.getByRole("listitem").filter({ hasText: "Pinterest" }).first();
+  await expect(pin.getByRole("button", { name: "Post now" })).toBeVisible();
+  await pin.scrollIntoViewIfNeeded();
+  await pin.screenshot({ path: "test-results/social-pinterest-post.png" });
+  await card.scrollIntoViewIfNeeded();
+  await card.screenshot({ path: "test-results/social-pinterest-card.png" });
+});

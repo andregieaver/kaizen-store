@@ -1583,6 +1583,13 @@
       "when": 1795718733211,
       "tag": "20261126184533_social_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1795720823734,
+      "tag": "20261126192023_pinterest_accounts",
+      "breakpoints": true
     }
   ]
 }

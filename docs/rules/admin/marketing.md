@@ -648,6 +648,14 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
   (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
 
+## Pinterest for social posts (D870 S3.4, `src/lib/pinterest.ts` pure, `src/server/pinterest.ts`)
+
+- **Pinterest for social posts (D870 S3.4, `src/lib/pinterest.ts` pure, `src/server/pinterest.ts`)**: `pinterest_accounts` (one per store,
+  Kaizena Flow's own as its store's) is written only by `src/server/pinterest.ts`; both tokens are kept encrypted and never leave the server.
+  `pinterestTarget()` is the only reader of a token: it renews the access token when it ends within `PINTEREST_RENEW_DAYS` and asks to connect
+  again once the refresh token has ended. `parseBoards()` never offers a secret board. A Pin is a picture (`pinBody()`): a slideshow is not
+  pinned. Pinterest is in `PUBLISH_CHANNELS`, so the queue, the rules and `publish_social_post` take it as Instagram and Facebook.
+
 ## Posting within the owner's rules (D870 S3.3, `src/lib/social-rules.ts` pure, `src/server/social-rules.ts`)
 
 - **Posting within the owner's rules (D870 S3.3, `src/lib/social-rules.ts` pure, `src/server/social-rules.ts`)**: `autopilot_settings.social`

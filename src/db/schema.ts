@@ -12039,6 +12039,46 @@ export const facebookPages = commerce
   .enableRLS();
 
 /**
+ * A store's Pinterest account and the board its Pins go to (D870 S3.4, `src/lib/pinterest.ts`, `src/server/pinterest.ts`): the account's
+ * name, its tokens (encrypted; the access token runs 30 days and is renewed with the refresh token before it ends), and the chosen board, or
+ * the boards to choose among. Kaizena Flow's own Pins are its own store's row. A refusal is kept as `problem`, in Pinterest's words.
+ */
+export const pinterestAccounts = commerce
+  .table(
+    "pinterest_accounts",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: uuid("store_id")
+        .notNull()
+        .references(() => stores.id, { onDelete: "cascade" }),
+      username: text("username").notNull().default(""),
+      accessTokenEncrypted: text("access_token_encrypted").notNull(),
+      refreshTokenEncrypted: text("refresh_token_encrypted").notNull(),
+      tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
+      refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }).notNull(),
+      /** The board Pins go to; null while the owner chooses among `choices`. */
+      boardId: text("board_id"),
+      boardName: text("board_name").notNull().default(""),
+      choices: jsonb("choices").notNull().default(sql`'[]'::jsonb`),
+      /** The token carries `pins:write`: approved Pins may be published. */
+      publish: boolean("publish").notNull().default(false),
+      problem: text("problem"),
+      connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("pinterest_accounts_store_key").on(t.storeId),
+      index("pinterest_accounts_connected_by_idx").on(t.connectedBy),
+      check("pinterest_accounts_board", sql`${t.boardId} is null or ${t.boardId} ~ '^[0-9]{1,40}$'`),
+      check("pinterest_accounts_names", sql`char_length(${t.username}) <= 100 and char_length(${t.boardName}) <= 180`),
+      check("pinterest_accounts_choices", sql`jsonb_typeof(${t.choices}) = 'array' and octet_length(${t.choices}::text) < 30000`),
+      check("pinterest_accounts_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * How each of a connected Instagram account's own posts did (D870 S1.2, `src/lib/social-insights.ts`, `src/server/social-insights.ts`): the
  * post (its id, kind, when, its caption's start and its address) and its totals as Instagram counts them, read again daily while the post is
  * under 90 days old, kept 400 days. A store's or, with no store, Kaizena Flow's own (as `instagram_accounts`); a Facebook Page's posts too
