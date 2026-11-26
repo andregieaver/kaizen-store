@@ -277,6 +277,7 @@ describe("what the guards promise the scan test", () => {
       "StorePreviewPageView",
       "abortRequest",
       "analyticsContext",
+      "connectionForm",
       "currentRequest",
       "startRequest",
       "statusRequest",
